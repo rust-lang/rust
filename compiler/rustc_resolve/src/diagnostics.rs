@@ -1357,8 +1357,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // #90113: Do not count an inaccessible reexported item as a candidate.
-                if let DeclKind::Import { binding, .. } = name_binding.kind
-                    && this.is_accessible_from(binding.vis, parent_scope.module)
+                if let DeclKind::Import { source_decl, .. } = name_binding.kind
+                    && this.is_accessible_from(source_decl.vis, parent_scope.module)
                     && !this.is_accessible_from(name_binding.vis, parent_scope.module)
                 {
                     return;
@@ -2210,15 +2210,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let name = next_ident;
             next_binding = match binding.kind {
                 _ if res == Res::Err => None,
-                DeclKind::Import { binding, import, .. } => match import.kind {
-                    _ if binding.span.is_dummy() => None,
+                DeclKind::Import { source_decl, import, .. } => match import.kind {
+                    _ if source_decl.span.is_dummy() => None,
                     ImportKind::Single { source, .. } => {
                         next_ident = source;
-                        Some(binding)
+                        Some(source_decl)
                     }
                     ImportKind::Glob { .. }
                     | ImportKind::MacroUse { .. }
-                    | ImportKind::MacroExport => Some(binding),
+                    | ImportKind::MacroExport => Some(source_decl),
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,

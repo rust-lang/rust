@@ -316,7 +316,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         self.arenas.alloc_decl(DeclData {
-            kind: DeclKind::Import { binding: decl, import },
+            kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: None,
             warn_ambiguity: false,
             span: import.span,
@@ -1199,10 +1199,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 let resolution = resolution.borrow();
                                 if let Some(name_binding) = resolution.best_decl() {
                                     match name_binding.kind {
-                                        DeclKind::Import { binding, .. } => {
-                                            match binding.kind {
-                                                // Never suggest the name that has binding error
-                                                // i.e., the name that cannot be previously resolved
+                                        DeclKind::Import { source_decl, .. } => {
+                                            match source_decl.kind {
+                                                // Never suggest names that previously could not
+                                                // be resolved.
                                                 DeclKind::Def(Res::Err) => None,
                                                 _ => Some(i.name),
                                             }

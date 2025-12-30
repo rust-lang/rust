@@ -838,7 +838,7 @@ enum DeclKind<'ra> {
     /// can be provided by source code or built into the language.
     Def(Res),
     /// The name declaration is a link to another name declaration.
-    Import { binding: Decl<'ra>, import: Import<'ra> },
+    Import { source_decl: Decl<'ra>, import: Import<'ra> },
 }
 
 impl<'ra> DeclKind<'ra> {
@@ -926,13 +926,13 @@ impl<'ra> DeclData<'ra> {
     fn res(&self) -> Res {
         match self.kind {
             DeclKind::Def(res) => res,
-            DeclKind::Import { binding, .. } => binding.res(),
+            DeclKind::Import { source_decl, .. } => source_decl.res(),
         }
     }
 
     fn import_source(&self) -> Decl<'ra> {
         match self.kind {
-            DeclKind::Import { binding, .. } => binding,
+            DeclKind::Import { source_decl, .. } => source_decl,
             _ => unreachable!(),
         }
     }
@@ -941,7 +941,7 @@ impl<'ra> DeclData<'ra> {
         match self.ambiguity {
             Some(ambig_binding) => Some((self, ambig_binding)),
             None => match self.kind {
-                DeclKind::Import { binding, .. } => binding.descent_to_ambiguity(),
+                DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
                 _ => None,
             },
         }
@@ -950,7 +950,7 @@ impl<'ra> DeclData<'ra> {
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
-                DeclKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
+                DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -958,14 +958,14 @@ impl<'ra> DeclData<'ra> {
     fn warn_ambiguity_recursive(&self) -> bool {
         self.warn_ambiguity
             || match self.kind {
-                DeclKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
+                DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
 
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
-            DeclKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
+            DeclKind::Import { source_decl, .. } => source_decl.is_possibly_imported_variant(),
             DeclKind::Def(Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _)) => {
                 true
             }
@@ -1012,9 +1012,9 @@ impl<'ra> DeclData<'ra> {
     fn reexport_chain(self: Decl<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
         let mut reexport_chain = SmallVec::new();
         let mut next_binding = self;
-        while let DeclKind::Import { binding, import, .. } = next_binding.kind {
+        while let DeclKind::Import { source_decl, import, .. } = next_binding.kind {
             reexport_chain.push(import.simplify(r));
-            next_binding = binding;
+            next_binding = source_decl;
         }
         reexport_chain
     }
@@ -1043,9 +1043,9 @@ impl<'ra> DeclData<'ra> {
     // FIXME: How can we integrate it with the `update_resolution`?
     fn determined(&self) -> bool {
         match &self.kind {
-            DeclKind::Import { binding, import, .. } if import.is_glob() => {
+            DeclKind::Import { source_decl, import, .. } if import.is_glob() => {
                 import.parent_scope.module.unexpanded_invocations.borrow().is_empty()
-                    && binding.determined()
+                    && source_decl.determined()
             }
             _ => true,
         }
@@ -1985,14 +1985,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         trait_name: Ident,
     ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
-        while let DeclKind::Import { import, binding, .. } = kind {
+        while let DeclKind::Import { import, source_decl, .. } = kind {
             if let Some(node_id) = import.id() {
                 let def_id = self.local_def_id(node_id);
                 self.maybe_unused_trait_imports.insert(def_id);
                 import_ids.push(def_id);
             }
             self.add_to_glob_map(*import, trait_name);
-            kind = &binding.kind;
+            kind = &source_decl.kind;
         }
         import_ids
     }
@@ -2066,7 +2066,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
-        if let DeclKind::Import { import, binding } = used_decl.kind {
+        if let DeclKind::Import { import, source_decl } = used_decl.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
@@ -2110,9 +2110,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.add_to_glob_map(import, ident);
             self.record_use_inner(
                 ident,
-                binding,
+                source_decl,
                 Used::Other,
-                warn_ambiguity || binding.warn_ambiguity,
+                warn_ambiguity || source_decl.warn_ambiguity,
             );
         }
     }

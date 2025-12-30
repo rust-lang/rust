@@ -128,7 +128,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             let is_ambiguity = |decl: Decl<'ra>, warn: bool| decl.ambiguity.is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
             let mut warn_ambiguity = decl.warn_ambiguity;
-            while let DeclKind::Import { binding: nested_binding, .. } = decl.kind {
+            while let DeclKind::Import { source_decl, .. } = decl.kind {
                 self.update_import(decl, parent_id);
 
                 if is_ambiguity(decl, warn_ambiguity) {
@@ -139,8 +139,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 }
 
                 parent_id = ParentId::Import(decl);
-                decl = nested_binding;
-                warn_ambiguity |= nested_binding.warn_ambiguity;
+                decl = source_decl;
+                warn_ambiguity |= source_decl.warn_ambiguity;
             }
             if !is_ambiguity(decl, warn_ambiguity)
                 && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
