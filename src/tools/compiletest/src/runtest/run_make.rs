@@ -190,8 +190,8 @@ impl TestCx<'_> {
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
-        // Only `run-make-cargo` test suite gets an in-tree `cargo`, not `run-make`.
-        if self.config.suite == TestSuite::RunMakeCargo {
+        // The `run-make-cargo` and `build-std` suites need an in-tree `cargo`, `run-make` does not.
+        if matches!(self.config.suite, TestSuite::RunMakeCargo | TestSuite::BuildStd) {
             cmd.env(
                 "CARGO",
                 self.config.cargo_path.as_ref().expect("cargo must be built and made available"),

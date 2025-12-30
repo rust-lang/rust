@@ -927,6 +927,7 @@ impl<'a> Builder<'a> {
                 test::CollectLicenseMetadata,
                 test::RunMake,
                 test::RunMakeCargo,
+                test::BuildStd,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
