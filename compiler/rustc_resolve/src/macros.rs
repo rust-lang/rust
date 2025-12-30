@@ -38,9 +38,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
-    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
-    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -49,7 +49,7 @@ type Res = def::Res<NodeId>;
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
 pub(crate) struct MacroRulesBinding<'ra> {
-    pub(crate) binding: NameBinding<'ra>,
+    pub(crate) binding: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
     pub(crate) ident: Ident,
@@ -1062,7 +1062,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<NameBinding<'ra>>,
+        binding: Option<Decl<'ra>>,
         res: Option<Res>,
         span: Span,
     ) {
@@ -1084,12 +1084,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        binding: Option<NameBinding<'ra>>,
+        binding: Option<Decl<'ra>>,
     ) {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
             && let Some(binding) = binding
             // This is a `macro_rules` itself, not some import.
-            && let NameBindingKind::Res(res) = binding.kind
+            && let DeclKind::Def(res) = binding.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,

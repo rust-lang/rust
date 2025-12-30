@@ -8,12 +8,12 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::ty::Visibility;
 use tracing::info;
 
-use crate::{NameBinding, NameBindingKind, Resolver};
+use crate::{Decl, DeclKind, Resolver};
 
 #[derive(Clone, Copy)]
 enum ParentId<'ra> {
     Def(LocalDefId),
-    Import(NameBinding<'ra>),
+    Import(Decl<'ra>),
 }
 
 impl ParentId<'_> {
@@ -31,7 +31,7 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     /// While walking import chains we need to track effective visibilities per-binding, and def id
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
     /// bindings can correspond to a single def id in imports. So we keep a separate table.
-    import_effective_visibilities: EffectiveVisibilities<NameBinding<'ra>>,
+    import_effective_visibilities: EffectiveVisibilities<Decl<'ra>>,
     // It's possible to recalculate this at any point, but it's relatively expensive.
     current_private_vis: Visibility,
     changed: bool,
@@ -42,8 +42,8 @@ impl Resolver<'_, '_> {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
 
-    fn private_vis_import(&self, binding: NameBinding<'_>) -> Visibility {
-        let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
+    fn private_vis_import(&self, binding: Decl<'_>) -> Visibility {
+        let DeclKind::Import { import, .. } = binding.kind else { unreachable!() };
         Visibility::Restricted(
             import
                 .id()
@@ -70,7 +70,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     pub(crate) fn compute_effective_visibilities<'c>(
         r: &'a mut Resolver<'ra, 'tcx>,
         krate: &'c Crate,
-    ) -> FxHashSet<NameBinding<'ra>> {
+    ) -> FxHashSet<Decl<'ra>> {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -95,7 +95,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // information, but are used by later passes. Effective visibility of an import def id
         // is the maximum value among visibilities of bindings corresponding to that def id.
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
-            let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
+            let DeclKind::Import { import, .. } = binding.kind else { unreachable!() };
             if !binding.is_ambiguity_recursive() {
                 if let Some(node_id) = import.id() {
                     r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
@@ -126,10 +126,10 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // leading to it into the table. They are used by the `ambiguous_glob_reexports`
             // lint. For all bindings added to the table this way `is_ambiguity` returns true.
             let is_ambiguity =
-                |binding: NameBinding<'ra>, warn: bool| binding.ambiguity.is_some() && !warn;
+                |binding: Decl<'ra>, warn: bool| binding.ambiguity.is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
             let mut warn_ambiguity = binding.warn_ambiguity;
-            while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind {
+            while let DeclKind::Import { binding: nested_binding, .. } = binding.kind {
                 self.update_import(binding, parent_id);
 
                 if is_ambiguity(binding, warn_ambiguity) {
@@ -188,7 +188,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn update_import(&mut self, binding: NameBinding<'ra>, parent_id: ParentId<'ra>) {
+    fn update_import(&mut self, binding: Decl<'ra>, parent_id: ParentId<'ra>) {
         let nominal_vis = binding.vis.expect_local();
         let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);

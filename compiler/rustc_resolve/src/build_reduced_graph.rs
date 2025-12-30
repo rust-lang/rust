@@ -36,9 +36,9 @@ use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
-    NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, Segment, Used, VisResolutionError, errors,
+    BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, MacroData, Module,
+    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver, Segment,
+    Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -51,7 +51,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent: Module<'ra>,
         ident: Ident,
         ns: Namespace,
-        binding: NameBinding<'ra>,
+        binding: Decl<'ra>,
     ) {
         if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
@@ -82,10 +82,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<NameBinding<'ra>>,
+        ambiguity: Option<Decl<'ra>>,
     ) {
-        let binding = self.arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Res(res),
+        let binding = self.arenas.alloc_name_binding(DeclData {
+            kind: DeclKind::Def(res),
             ambiguity,
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
             warn_ambiguity: true,
@@ -1092,7 +1092,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     fn add_macro_use_binding(
         &mut self,
         name: Symbol,
-        binding: NameBinding<'ra>,
+        binding: Decl<'ra>,
         span: Span,
         allow_shadowing: bool,
     ) {

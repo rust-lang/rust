@@ -431,7 +431,7 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
 /// forward.
 #[derive(Debug, Copy, Clone)]
 enum LexicalScopeBinding<'ra> {
-    Item(NameBinding<'ra>),
+    Item(Decl<'ra>),
     Res(Res),
 }
 
@@ -624,8 +624,7 @@ struct ModuleData<'ra> {
     globs: CmRefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits:
-        CmRefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
+    traits: CmRefCell<Option<Box<[(Macros20NormalizedIdent, Decl<'ra>, Option<Module<'ra>>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -634,7 +633,7 @@ struct ModuleData<'ra> {
 
     /// Binding for implicitly declared names that come with a module,
     /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
-    self_binding: Option<NameBinding<'ra>>,
+    self_binding: Option<Decl<'ra>>,
 }
 
 /// All modules are unique and allocated on a same arena,
@@ -663,7 +662,7 @@ impl<'ra> ModuleData<'ra> {
         expansion: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        self_binding: Option<NameBinding<'ra>>,
+        self_binding: Option<Decl<'ra>>,
     ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
@@ -691,7 +690,7 @@ impl<'ra> Module<'ra> {
     fn for_each_child<'tcx, R: AsRef<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &R,
-        mut f: impl FnMut(&R, Macros20NormalizedIdent, Namespace, NameBinding<'ra>),
+        mut f: impl FnMut(&R, Macros20NormalizedIdent, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().best_binding() {
@@ -703,7 +702,7 @@ impl<'ra> Module<'ra> {
     fn for_each_child_mut<'tcx, R: AsMut<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &mut R,
-        mut f: impl FnMut(&mut R, Macros20NormalizedIdent, Namespace, NameBinding<'ra>),
+        mut f: impl FnMut(&mut R, Macros20NormalizedIdent, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().best_binding() {
@@ -803,11 +802,11 @@ impl<'ra> fmt::Debug for Module<'ra> {
     }
 }
 
-/// Records a possibly-private value, type, or module definition.
+/// Data associated with any name declaration.
 #[derive(Clone, Copy, Debug)]
-struct NameBindingData<'ra> {
-    kind: NameBindingKind<'ra>,
-    ambiguity: Option<NameBinding<'ra>>,
+struct DeclData<'ra> {
+    kind: DeclKind<'ra>,
+    ambiguity: Option<Decl<'ra>>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
@@ -816,15 +815,15 @@ struct NameBindingData<'ra> {
     vis: Visibility<DefId>,
 }
 
-/// All name bindings are unique and allocated on a same arena,
+/// All name declarations are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
-type NameBinding<'ra> = Interned<'ra, NameBindingData<'ra>>;
+type Decl<'ra> = Interned<'ra, DeclData<'ra>>;
 
 // Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
 // contained data.
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
 // are upheld.
-impl std::hash::Hash for NameBindingData<'_> {
+impl std::hash::Hash for DeclData<'_> {
     fn hash<H>(&self, _: &mut H)
     where
         H: std::hash::Hasher,
@@ -833,23 +832,27 @@ impl std::hash::Hash for NameBindingData<'_> {
     }
 }
 
+/// Name declaration kind.
 #[derive(Clone, Copy, Debug)]
-enum NameBindingKind<'ra> {
-    Res(Res),
-    Import { binding: NameBinding<'ra>, import: Import<'ra> },
+enum DeclKind<'ra> {
+    /// The name declaration is a definition (possibly without a `DefId`),
+    /// can be provided by source code or built into the language.
+    Def(Res),
+    /// The name declaration is a link to another name declaration.
+    Import { binding: Decl<'ra>, import: Import<'ra> },
 }
 
-impl<'ra> NameBindingKind<'ra> {
+impl<'ra> DeclKind<'ra> {
     /// Is this a name binding of an import?
     fn is_import(&self) -> bool {
-        matches!(*self, NameBindingKind::Import { .. })
+        matches!(*self, DeclKind::Import { .. })
     }
 }
 
 #[derive(Debug)]
 struct PrivacyError<'ra> {
     ident: Ident,
-    binding: NameBinding<'ra>,
+    binding: Decl<'ra>,
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'ra>,
@@ -912,36 +915,34 @@ impl AmbiguityKind {
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
     ident: Ident,
-    b1: NameBinding<'ra>,
-    b2: NameBinding<'ra>,
+    b1: Decl<'ra>,
+    b2: Decl<'ra>,
     // `empty_module` in module scope serves as an unknown module here.
     scope1: Scope<'ra>,
     scope2: Scope<'ra>,
     warning: bool,
 }
 
-impl<'ra> NameBindingData<'ra> {
+impl<'ra> DeclData<'ra> {
     fn res(&self) -> Res {
         match self.kind {
-            NameBindingKind::Res(res) => res,
-            NameBindingKind::Import { binding, .. } => binding.res(),
+            DeclKind::Def(res) => res,
+            DeclKind::Import { binding, .. } => binding.res(),
         }
     }
 
-    fn import_source(&self) -> NameBinding<'ra> {
+    fn import_source(&self) -> Decl<'ra> {
         match self.kind {
-            NameBindingKind::Import { binding, .. } => binding,
+            DeclKind::Import { binding, .. } => binding,
             _ => unreachable!(),
         }
     }
 
-    fn descent_to_ambiguity(
-        self: NameBinding<'ra>,
-    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>)> {
+    fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
         match self.ambiguity {
             Some(ambig_binding) => Some((self, ambig_binding)),
             None => match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
+                DeclKind::Import { binding, .. } => binding.descent_to_ambiguity(),
                 _ => None,
             },
         }
@@ -950,7 +951,7 @@ impl<'ra> NameBindingData<'ra> {
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
+                DeclKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -958,46 +959,45 @@ impl<'ra> NameBindingData<'ra> {
     fn warn_ambiguity_recursive(&self) -> bool {
         self.warn_ambiguity
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
+                DeclKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
 
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
-            NameBindingKind::Res(Res::Def(
-                DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..),
-                _,
-            )) => true,
-            NameBindingKind::Res(..) => false,
+            DeclKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
+            DeclKind::Def(Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _)) => {
+                true
+            }
+            DeclKind::Def(..) => false,
         }
     }
 
     fn is_extern_crate(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import { import, .. } => {
+            DeclKind::Import { import, .. } => {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
-            NameBindingKind::Res(Res::Def(_, def_id)) => def_id.is_crate_root(),
+            DeclKind::Def(Res::Def(_, def_id)) => def_id.is_crate_root(),
             _ => false,
         }
     }
 
     fn is_import(&self) -> bool {
-        matches!(self.kind, NameBindingKind::Import { .. })
+        matches!(self.kind, DeclKind::Import { .. })
     }
 
     /// The binding introduced by `#[macro_export] macro_rules` is a public import, but it might
     /// not be perceived as such by users, so treat it as a non-import in some diagnostics.
     fn is_import_user_facing(&self) -> bool {
-        matches!(self.kind, NameBindingKind::Import { import, .. }
+        matches!(self.kind, DeclKind::Import { import, .. }
             if !matches!(import.kind, ImportKind::MacroExport))
     }
 
     fn is_glob_import(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import { import, .. } => import.is_glob(),
+            DeclKind::Import { import, .. } => import.is_glob(),
             _ => false,
         }
     }
@@ -1010,10 +1010,10 @@ impl<'ra> NameBindingData<'ra> {
         self.res().macro_kinds()
     }
 
-    fn reexport_chain(self: NameBinding<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
+    fn reexport_chain(self: Decl<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
         let mut reexport_chain = SmallVec::new();
         let mut next_binding = self;
-        while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
+        while let DeclKind::Import { binding, import, .. } = next_binding.kind {
             reexport_chain.push(import.simplify(r));
             next_binding = binding;
         }
@@ -1026,11 +1026,7 @@ impl<'ra> NameBindingData<'ra> {
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(
-        &self,
-        invoc_parent_expansion: LocalExpnId,
-        binding: NameBinding<'_>,
-    ) -> bool {
+    fn may_appear_after(&self, invoc_parent_expansion: LocalExpnId, binding: Decl<'_>) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
@@ -1048,7 +1044,7 @@ impl<'ra> NameBindingData<'ra> {
     // FIXME: How can we integrate it with the `update_resolution`?
     fn determined(&self) -> bool {
         match &self.kind {
-            NameBindingKind::Import { binding, import, .. } if import.is_glob() => {
+            DeclKind::Import { binding, import, .. } if import.is_glob() => {
                 import.parent_scope.module.unexpanded_invocations.borrow().is_empty()
                     && binding.determined()
             }
@@ -1061,7 +1057,7 @@ struct ExternPreludeEntry<'ra> {
     /// Binding from an `extern crate` item.
     /// The boolean flag is true is `item_binding` is non-redundant, happens either when
     /// `flag_binding` is `None`, or when `extern crate` introducing `item_binding` used renaming.
-    item_binding: Option<(NameBinding<'ra>, /* introduced by item */ bool)>,
+    item_binding: Option<(Decl<'ra>, /* introduced by item */ bool)>,
     /// Binding from an `--extern` flag, lazily populated on first use.
     flag_binding: Option<CacheCell<(PendingBinding<'ra>, /* finalized */ bool)>>,
 }
@@ -1181,7 +1177,7 @@ pub struct Resolver<'ra, 'tcx> {
     local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
     extern_module_map: CacheRefCell<FxIndexMap<DefId, Module<'ra>>>,
-    binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
+    binding_parent_modules: FxHashMap<Decl<'ra>, Module<'ra>>,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
@@ -1206,14 +1202,14 @@ pub struct Resolver<'ra, 'tcx> {
     inaccessible_ctor_reexport: FxHashMap<Span, Span>,
 
     arenas: &'ra ResolverArenas<'ra>,
-    dummy_binding: NameBinding<'ra>,
-    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
-    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
-    registered_tool_bindings: FxHashMap<Ident, NameBinding<'ra>>,
+    dummy_binding: Decl<'ra>,
+    builtin_types_bindings: FxHashMap<Symbol, Decl<'ra>>,
+    builtin_attrs_bindings: FxHashMap<Symbol, Decl<'ra>>,
+    registered_tool_bindings: FxHashMap<Ident, Decl<'ra>>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
+    macro_use_prelude: FxIndexMap<Symbol, Decl<'ra>>,
     /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra MacroData>,
     /// Lazily populated cache of macro definitions loaded from external crates.
@@ -1229,7 +1225,7 @@ pub struct Resolver<'ra, 'tcx> {
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
-        CmRefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>>,
+        CmRefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<Decl<'ra>>, Option<Span>)>>,
     multi_segment_macro_resolutions:
         CmRefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
     builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
@@ -1246,7 +1242,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
     macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'ra>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'ra>)>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, Decl<'ra>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,
@@ -1344,9 +1340,9 @@ impl<'ra> ResolverArenas<'ra> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-    ) -> NameBinding<'ra> {
-        self.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Res(res),
+    ) -> Decl<'ra> {
+        self.alloc_name_binding(DeclData {
+            kind: DeclKind::Def(res),
             ambiguity: None,
             warn_ambiguity: false,
             vis,
@@ -1355,12 +1351,7 @@ impl<'ra> ResolverArenas<'ra> {
         })
     }
 
-    fn new_pub_res_binding(
-        &'ra self,
-        res: Res,
-        span: Span,
-        expn_id: LocalExpnId,
-    ) -> NameBinding<'ra> {
+    fn new_pub_res_binding(&'ra self, res: Res, span: Span, expn_id: LocalExpnId) -> Decl<'ra> {
         self.new_res_binding(res, Visibility::Public, span, expn_id)
     }
 
@@ -1387,7 +1378,7 @@ impl<'ra> ResolverArenas<'ra> {
             self_binding,
         ))))
     }
-    fn alloc_name_binding(&'ra self, name_binding: NameBindingData<'ra>) -> NameBinding<'ra> {
+    fn alloc_name_binding(&'ra self, name_binding: DeclData<'ra>) -> Decl<'ra> {
         Interned::new_unchecked(self.dropless.alloc(name_binding))
     }
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
@@ -1994,11 +1985,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn find_transitive_imports(
         &mut self,
-        mut kind: &NameBindingKind<'_>,
+        mut kind: &DeclKind<'_>,
         trait_name: Ident,
     ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
-        while let NameBindingKind::Import { import, binding, .. } = kind {
+        while let DeclKind::Import { import, binding, .. } = kind {
             if let Some(node_id) = import.id() {
                 let def_id = self.local_def_id(node_id);
                 self.maybe_unused_trait_imports.insert(def_id);
@@ -2053,14 +2044,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'ra>, used: Used) {
+    fn record_use(&mut self, ident: Ident, used_binding: Decl<'ra>, used: Used) {
         self.record_use_inner(ident, used_binding, used, used_binding.warn_ambiguity);
     }
 
     fn record_use_inner(
         &mut self,
         ident: Ident,
-        used_binding: NameBinding<'ra>,
+        used_binding: Decl<'ra>,
         used: Used,
         warn_ambiguity: bool,
     ) {
@@ -2079,7 +2070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
-        if let NameBindingKind::Import { import, binding } = used_binding.kind {
+        if let DeclKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
@@ -2236,7 +2227,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
-    fn set_binding_parent_module(&mut self, binding: NameBinding<'ra>, module: Module<'ra>) {
+    fn set_binding_parent_module(&mut self, binding: Decl<'ra>, module: Module<'ra>) {
         if let Some(old_module) = self.binding_parent_modules.insert(binding, module) {
             if module != old_module {
                 span_bug!(binding.span, "parent module is reset for binding");
@@ -2246,8 +2237,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn disambiguate_macro_rules_vs_modularized(
         &self,
-        macro_rules: NameBinding<'ra>,
-        modularized: NameBinding<'ra>,
+        macro_rules: Decl<'ra>,
+        modularized: Decl<'ra>,
     ) -> bool {
         // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
@@ -2266,7 +2257,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut self: CmResolver<'r, 'ra, 'tcx>,
         ident: Ident,
         finalize: bool,
-    ) -> Option<NameBinding<'ra>> {
+    ) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
         entry.and_then(|entry| entry.item_binding).map(|(binding, _)| {
             if finalize {
@@ -2276,7 +2267,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
-    fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
+    fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
         entry.and_then(|entry| entry.flag_binding.as_ref()).and_then(|flag_binding| {
             let (pending_binding, finalized) = flag_binding.get();

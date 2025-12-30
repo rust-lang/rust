@@ -36,7 +36,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, kw};
 
 use crate::imports::{Import, ImportKind};
-use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
+use crate::{DeclKind, LexicalScopeBinding, Resolver, module_to_string};
 
 struct UnusedImport {
     use_tree: ast::UseTree,
@@ -515,7 +515,7 @@ impl Resolver<'_, '_> {
         for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 if let Some(binding) = resolution.borrow().best_binding()
-                    && let NameBindingKind::Import { import, .. } = binding.kind
+                    && let DeclKind::Import { import, .. } = binding.kind
                     && let ImportKind::Single { id, .. } = import.kind
                 {
                     if let Some(unused_import) = unused_imports.get(&import.root_id)
@@ -543,7 +543,7 @@ impl Resolver<'_, '_> {
         // in the item not being found.
         for unn_qua in &self.potentially_unnecessary_qualifications {
             if let LexicalScopeBinding::Item(name_binding) = unn_qua.binding
-                && let NameBindingKind::Import { import, .. } = name_binding.kind
+                && let DeclKind::Import { import, .. } = name_binding.kind
                 && (is_unused_import(import, &unused_imports)
                     || is_redundant_import(import, &redundant_imports))
             {

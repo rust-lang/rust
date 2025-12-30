@@ -32,23 +32,23 @@ use crate::errors::{
 };
 use crate::ref_mut::CmCell;
 use crate::{
-    AmbiguityError, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion, Module,
-    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
+    AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
+    ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS, ResolutionError,
+    Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 type Res = def::Res<NodeId>;
 
-/// A [`NameBinding`] in the process of being resolved.
+/// A [`Decl`] in the process of being resolved.
 #[derive(Clone, Copy, Default, PartialEq)]
 pub(crate) enum PendingBinding<'ra> {
-    Ready(Option<NameBinding<'ra>>),
+    Ready(Option<Decl<'ra>>),
     #[default]
     Pending,
 }
 
 impl<'ra> PendingBinding<'ra> {
-    pub(crate) fn binding(self) -> Option<NameBinding<'ra>> {
+    pub(crate) fn binding(self) -> Option<Decl<'ra>> {
         match self {
             PendingBinding::Ready(binding) => binding,
             PendingBinding::Pending => None,
@@ -244,14 +244,14 @@ pub(crate) struct NameResolution<'ra> {
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
     pub single_imports: FxIndexSet<Import<'ra>>,
     /// The non-glob binding for this name, if it is known to exist.
-    pub non_glob_binding: Option<NameBinding<'ra>>,
+    pub non_glob_binding: Option<Decl<'ra>>,
     /// The glob binding for this name, if it is known to exist.
-    pub glob_binding: Option<NameBinding<'ra>>,
+    pub glob_binding: Option<Decl<'ra>>,
 }
 
 impl<'ra> NameResolution<'ra> {
     /// Returns the binding for the name if it is known or None if it not known.
-    pub(crate) fn binding(&self) -> Option<NameBinding<'ra>> {
+    pub(crate) fn binding(&self) -> Option<Decl<'ra>> {
         self.best_binding().and_then(|binding| {
             if !binding.is_glob_import() || self.single_imports.is_empty() {
                 Some(binding)
@@ -261,7 +261,7 @@ impl<'ra> NameResolution<'ra> {
         })
     }
 
-    pub(crate) fn best_binding(&self) -> Option<NameBinding<'ra>> {
+    pub(crate) fn best_binding(&self) -> Option<Decl<'ra>> {
         self.non_glob_binding.or(self.glob_binding)
     }
 }
@@ -282,12 +282,9 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(
-    import: Import<'_>,
-    binding: NameBinding<'_>,
-) -> Option<NodeId> {
+fn pub_use_of_private_extern_crate_hack(import: Import<'_>, binding: Decl<'_>) -> Option<NodeId> {
     match (&import.kind, &binding.kind) {
-        (ImportKind::Single { .. }, NameBindingKind::Import { import: binding_import, .. })
+        (ImportKind::Single { .. }, DeclKind::Import { import: binding_import, .. })
             if let ImportKind::ExternCrate { id, .. } = binding_import.kind
                 && import.vis.is_public() =>
         {
@@ -300,11 +297,7 @@ fn pub_use_of_private_extern_crate_hack(
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Given a binding and an import that resolves to it,
     /// return the corresponding binding defined by the import.
-    pub(crate) fn import(
-        &self,
-        binding: NameBinding<'ra>,
-        import: Import<'ra>,
-    ) -> NameBinding<'ra> {
+    pub(crate) fn import(&self, binding: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
         let import_vis = import.vis.to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, binding).is_some()
@@ -321,8 +314,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             max_vis.set_unchecked(Some(vis.expect_local()))
         }
 
-        self.arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Import { binding, import },
+        self.arenas.alloc_name_binding(DeclData {
+            kind: DeclKind::Import { binding, import },
             ambiguity: None,
             warn_ambiguity: false,
             span: import.span,
@@ -337,9 +330,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Module<'ra>,
         ident: Ident,
         ns: Namespace,
-        binding: NameBinding<'ra>,
+        binding: Decl<'ra>,
         warn_ambiguity: bool,
-    ) -> Result<(), NameBinding<'ra>> {
+    ) -> Result<(), Decl<'ra>> {
         let res = binding.res();
         self.check_reserved_macro_name(ident, res);
         self.set_binding_parent_module(binding, module);
@@ -361,9 +354,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let (glob_binding, old_glob_binding) = (binding, old_binding);
                         // FIXME: remove `!binding.is_ambiguity_recursive()` after delete the warning ambiguity.
                         if !binding.is_ambiguity_recursive()
-                            && let NameBindingKind::Import { import: old_import, .. } =
+                            && let DeclKind::Import { import: old_import, .. } =
                                 old_glob_binding.kind
-                            && let NameBindingKind::Import { import, .. } = glob_binding.kind
+                            && let DeclKind::Import { import, .. } = glob_binding.kind
                             && old_import == import
                         {
                             // When imported from the same glob-import statement, we should replace
@@ -421,18 +414,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn new_ambiguity_binding(
         &self,
-        primary_binding: NameBinding<'ra>,
-        secondary_binding: NameBinding<'ra>,
+        primary_binding: Decl<'ra>,
+        secondary_binding: Decl<'ra>,
         warn_ambiguity: bool,
-    ) -> NameBinding<'ra> {
+    ) -> Decl<'ra> {
         let ambiguity = Some(secondary_binding);
-        let data = NameBindingData { ambiguity, warn_ambiguity, ..*primary_binding };
+        let data = DeclData { ambiguity, warn_ambiguity, ..*primary_binding };
         self.arenas.alloc_name_binding(data)
     }
 
-    fn new_warn_ambiguity_binding(&self, binding: NameBinding<'ra>) -> NameBinding<'ra> {
+    fn new_warn_ambiguity_binding(&self, binding: Decl<'ra>) -> Decl<'ra> {
         assert!(binding.is_ambiguity_recursive());
-        self.arenas.alloc_name_binding(NameBindingData { warn_ambiguity: true, ..*binding })
+        self.arenas.alloc_name_binding(DeclData { warn_ambiguity: true, ..*binding })
     }
 
     // Use `f` to mutate the resolution of the name in the module.
@@ -634,13 +627,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<NameBinding<'ra>>) {
+    pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<Decl<'ra>>) {
         for module in &self.local_modules {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
                 let Some(binding) = resolution.best_binding() else { continue };
 
-                if let NameBindingKind::Import { import, .. } = binding.kind
+                if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(amb_binding) = binding.ambiguity
                     && binding.res() != Res::Err
                     && exported_ambiguities.contains(&binding)
@@ -663,8 +656,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 {
                     if binding.res() != Res::Err
                         && glob_binding.res() != Res::Err
-                        && let NameBindingKind::Import { import: glob_import, .. } =
-                            glob_binding.kind
+                        && let DeclKind::Import { import: glob_import, .. } = glob_binding.kind
                         && let Some(glob_import_id) = glob_import.id()
                         && let glob_import_def_id = self.local_def_id(glob_import_id)
                         && self.effective_visibilities.is_exported(glob_import_def_id)
@@ -672,10 +664,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && !binding.vis.is_public()
                     {
                         let binding_id = match binding.kind {
-                            NameBindingKind::Res(res) => {
+                            DeclKind::Def(res) => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
-                            NameBindingKind::Import { import, .. } => import.id(),
+                            DeclKind::Import { import, .. } => import.id(),
                         };
                         if let Some(binding_id) = binding_id {
                             self.lint_buffer.buffer_lint(
@@ -693,7 +685,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
 
-                if let NameBindingKind::Import { import, .. } = binding.kind
+                if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(binding_id) = import.id()
                     && let import_def_id = self.local_def_id(binding_id)
                     && self.effective_visibilities.is_exported(import_def_id)
@@ -1207,11 +1199,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 let resolution = resolution.borrow();
                                 if let Some(name_binding) = resolution.best_binding() {
                                     match name_binding.kind {
-                                        NameBindingKind::Import { binding, .. } => {
+                                        DeclKind::Import { binding, .. } => {
                                             match binding.kind {
                                                 // Never suggest the name that has binding error
                                                 // i.e., the name that cannot be previously resolved
-                                                NameBindingKind::Res(Res::Err) => None,
+                                                DeclKind::Def(Res::Err) => None,
                                                 _ => Some(i.name),
                                             }
                                         }
@@ -1342,7 +1334,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
 
                 match binding.kind {
-                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id))
+                        DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
                             // exclude decl_macro
                             if self.get_macro_by_def_id(def_id).macro_rules =>
                         {

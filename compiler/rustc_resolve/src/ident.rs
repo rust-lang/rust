@@ -19,10 +19,10 @@ use crate::late::{
 };
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportKind,
-    LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind,
-    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Used, errors,
+    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Decl, DeclKind, Determinacy, Finalize,
+    ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, ParentScope,
+    PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage,
+    Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -305,7 +305,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
         ribs: &[Rib<'ra>],
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
         let orig_ident = ident;
@@ -392,9 +392,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
         force: bool,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
+    ) -> Result<Decl<'ra>, Determinacy> {
         assert!(force || finalize.is_none()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
@@ -425,7 +425,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_results: Vec<(NameBinding<'_>, Scope<'_>)> = Vec::new();
+        let mut innermost_results: Vec<(Decl<'_>, Scope<'_>)> = Vec::new();
         let mut determinacy = Determinacy::Determined;
 
         // Go through all the scopes and try to resolve the name.
@@ -518,9 +518,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
         force: bool,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
@@ -759,9 +759,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
-        binding: NameBinding<'ra>,
+        binding: Decl<'ra>,
         scope: Scope<'ra>,
-        innermost_results: &[(NameBinding<'ra>, Scope<'ra>)],
+        innermost_results: &[(Decl<'ra>, Scope<'ra>)],
     ) -> bool {
         let (innermost_binding, innermost_scope) = *innermost_results.first().unwrap();
         let (res, innermost_res) = (binding.res(), innermost_binding.res());
@@ -869,7 +869,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
+    ) -> Result<Decl<'ra>, Determinacy> {
         self.resolve_ident_in_module(module, ident, ns, parent_scope, None, None, ignore_import)
     }
 
@@ -881,9 +881,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
+    ) -> Result<Decl<'ra>, Determinacy> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
         match module {
@@ -921,9 +921,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
+    ) -> Result<Decl<'ra>, Determinacy> {
         match module {
             ModuleOrUniformRoot::Module(module) => self.resolve_ident_in_scope_set(
                 ident,
@@ -994,9 +994,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: Option<Finalize>,
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
@@ -1055,9 +1055,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
@@ -1179,12 +1179,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn finalize_module_binding(
         &mut self,
         ident: Ident,
-        binding: Option<NameBinding<'ra>>,
+        binding: Option<Decl<'ra>>,
         parent_scope: &ParentScope<'ra>,
         module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
-    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+    ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let Finalize { path_span, report_private, used, root_span, .. } = finalize;
 
         let Some(binding) = binding else {
@@ -1209,7 +1209,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if shadowing == Shadowing::Unrestricted
             && binding.expansion != LocalExpnId::ROOT
-            && let NameBindingKind::Import { import, .. } = binding.kind
+            && let DeclKind::Import { import, .. } = binding.kind
             && matches!(import.kind, ImportKind::MacroExport)
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
@@ -1255,15 +1255,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn single_import_can_define_name<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         resolution: &NameResolution<'ra>,
-        binding: Option<NameBinding<'ra>>,
+        binding: Option<Decl<'ra>>,
         ns: Namespace,
         ignore_import: Option<Import<'ra>>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         parent_scope: &ParentScope<'ra>,
     ) -> bool {
         for single_import in &resolution.single_imports {
             if let Some(binding) = resolution.non_glob_binding
-                && let NameBindingKind::Import { import, .. } = binding.kind
+                && let DeclKind::Import { import, .. } = binding.kind
                 && import == *single_import
             {
                 // Single import has already defined the name and we are aware of it,
@@ -1277,7 +1277,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
             if let Some(ignored) = ignore_binding
-                && let NameBindingKind::Import { import, .. } = ignored.kind
+                && let DeclKind::Import { import, .. } = ignored.kind
                 && import == *single_import
             {
                 continue;
@@ -1668,7 +1668,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> PathResult<'ra> {
         self.resolve_path_with_ribs(
@@ -1692,7 +1692,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         source: Option<PathSource<'_, '_, '_>>,
         finalize: Option<Finalize>,
         ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {

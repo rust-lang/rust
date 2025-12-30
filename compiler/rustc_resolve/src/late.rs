@@ -43,9 +43,9 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    BindingError, BindingKey, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
-    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt,
-    UseError, Used, errors, path_names_to_string, rustdoc,
+    BindingError, BindingKey, Decl, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
+    ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt, UseError, Used,
+    errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -1489,7 +1489,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_binding: Option<Decl<'ra>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
