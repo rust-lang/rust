@@ -195,7 +195,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: TypeFreshener::new(infcx),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
@@ -321,10 +321,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.check_recursion_limit(stack.obligation, stack.obligation)?;
 
         // Check the cache. Note that we freshen the trait-ref
-        // separately rather than using `stack.fresh_trait_ref` --
+        // separately rather than using `stack.fresh_trait_pred` --
         // this is because we want the unbound variables to be
         // replaced with fresh types starting from index 0.
-        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate);
+        let cache_fresh_trait_pred =
+            stack.obligation.predicate.fold_with(&mut TypeFreshener::new(self.infcx));
         debug!(?cache_fresh_trait_pred);
         debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
@@ -1135,7 +1136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
     /// `Send`.
     ///
-    /// Note that we do this comparison using the `fresh_trait_ref`
+    /// Note that we do this comparison using the `fresh_trait_pred`
     /// fields. Because these have all been freshened using
     /// `self.freshener`, we can be sure that (a) this will not
     /// affect the inferencer state and (b) that if we see two
@@ -1219,7 +1220,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
-                    && self.match_fresh_trait_refs(stack.fresh_trait_pred, prev.fresh_trait_pred)
+                    && self.match_fresh_trait_preds(stack.fresh_trait_pred, prev.fresh_trait_pred)
             })
         {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
@@ -2742,7 +2743,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
 
-    fn match_fresh_trait_refs(
+    fn match_fresh_trait_preds(
         &self,
         previous: ty::PolyTraitPredicate<'tcx>,
         current: ty::PolyTraitPredicate<'tcx>,
@@ -3031,7 +3032,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     }
 
     /// Check the provisional cache for any result for
-    /// `fresh_trait_ref`. If there is a hit, then you must consider
+    /// `fresh_trait_pred`. If there is a hit, then you must consider
     /// it an access to the stack slots at depth
     /// `reached_depth` (from the returned value).
     fn get_provisional(

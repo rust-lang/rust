@@ -167,7 +167,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Adds the given node to the front of the list.
     ///
     /// # Safety
-    /// `node` must point to a valid node that was boxed and leaked using the list's allocator.
+    /// `node` must point to a valid node in the list's allocator.
     /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
     unsafe fn push_front_node(&mut self, node: NonNull<Node<T>>) {
@@ -212,7 +212,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Adds the given node to the back of the list.
     ///
     /// # Safety
-    /// `node` must point to a valid node that was boxed and leaked using the list's allocator.
+    /// `node` must point to a valid node in the list's allocator.
     /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
     unsafe fn push_back_node(&mut self, node: NonNull<Node<T>>) {
@@ -597,7 +597,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_back(&self) -> Cursor<'_, T, A> {
-        Cursor { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
+        Cursor { index: self.len.saturating_sub(1), current: self.tail, list: self }
     }
 
     /// Provides a cursor with editing operations at the back element.
@@ -607,7 +607,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T, A> {
-        CursorMut { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
+        CursorMut { index: self.len.saturating_sub(1), current: self.tail, list: self }
     }
 
     /// Returns `true` if the `LinkedList` is empty.
@@ -866,12 +866,12 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_front` instead"]
     pub fn push_front_mut(&mut self, elt: T) -> &mut T {
-        let node = Box::new_in(Node::new(elt), &self.alloc);
-        let mut node_ptr = NonNull::from(Box::leak(node));
-        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
+        let mut node =
+            Box::into_non_null_with_allocator(Box::new_in(Node::new(elt), &self.alloc)).0;
+        // SAFETY: node is a unique pointer to a node in self.alloc
         unsafe {
-            self.push_front_node(node_ptr);
-            &mut node_ptr.as_mut().element
+            self.push_front_node(node);
+            &mut node.as_mut().element
         }
     }
 
@@ -938,12 +938,12 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_back` instead"]
     pub fn push_back_mut(&mut self, elt: T) -> &mut T {
-        let node = Box::new_in(Node::new(elt), &self.alloc);
-        let mut node_ptr = NonNull::from(Box::leak(node));
-        // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
+        let mut node =
+            Box::into_non_null_with_allocator(Box::new_in(Node::new(elt), &self.alloc)).0;
+        // SAFETY: node is a unique pointer to a node in self.alloc
         unsafe {
-            self.push_back_node(node_ptr);
-            &mut node_ptr.as_mut().element
+            self.push_back_node(node);
+            &mut node.as_mut().element
         }
     }
 
@@ -1432,7 +1432,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
             // No current. We're at the start of the list. Yield None and jump to the end.
             None => {
                 self.current = self.list.tail;
-                self.index = self.list.len().checked_sub(1).unwrap_or(0);
+                self.index = self.list.len().saturating_sub(1);
             }
             // Have a prev. Yield it and go to the previous element.
             Some(current) => unsafe {
@@ -1559,7 +1559,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
             // No current. We're at the start of the list. Yield None and jump to the end.
             None => {
                 self.current = self.list.tail;
-                self.index = self.list.len().checked_sub(1).unwrap_or(0);
+                self.index = self.list.len().saturating_sub(1);
             }
             // Have a prev. Yield it and go to the previous element.
             Some(current) => unsafe {
@@ -1690,7 +1690,8 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
         unsafe {
-            let spliced_node = Box::leak(Box::new_in(Node::new(item), &self.list.alloc)).into();
+            let spliced_node =
+                Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
             let node_next = match self.current {
                 None => self.list.head,
                 Some(node) => node.as_ref().next,
@@ -1710,7 +1711,8 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
         unsafe {
-            let spliced_node = Box::leak(Box::new_in(Node::new(item), &self.list.alloc)).into();
+            let spliced_node =
+                Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
             let node_prev = match self.current {
                 None => self.list.tail,
                 Some(node) => node.as_ref().prev,
