@@ -874,7 +874,7 @@ impl<'a> Parser<'a> {
         let (value, mgca_disambiguation) = if self.token.kind == token::OpenBrace {
             let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
             (value, MgcaDisambiguation::Direct)
-        } else if self.token.is_keyword(kw::Const) {
+        } else if self.eat_keyword(exp!(Const)) {
             // While we could just disambiguate `Direct` from `AnonConst` by
             // treating all const block exprs as `AnonConst`, that would
             // complicate the DefCollector and likely all other visitors.

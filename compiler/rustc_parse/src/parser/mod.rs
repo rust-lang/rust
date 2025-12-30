@@ -1303,9 +1303,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mgca_const_block(&mut self, gate_syntax: bool) -> PResult<'a, AnonConst> {
-        self.expect_keyword(exp!(Const))?;
-        let kw_span = self.token.span;
-        let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
+        let kw_span = self.prev_token.span;
+        let value = self.parse_expr_block(None, kw_span, BlockCheckMode::Default)?;
         if gate_syntax {
             self.psess.gated_spans.gate(sym::min_generic_const_args, kw_span.to(value.span));
         }
