@@ -315,7 +315,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFrom<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
-unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeTo<usize>> {
+unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeTo<usize>> {
     type Output = [T];
 
     fn get(self, slice: &[T]) -> Option<&Self::Output> {
@@ -408,7 +408,7 @@ unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeToInclusive<usize>> {
 }
 
 #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
-unsafe impl<T> SliceIndex<[T]> for Clamp<range::RangeFull> {
+unsafe impl<T> SliceIndex<[T]> for Clamp<ops::RangeFull> {
     type Output = [T];
 
     fn get(self, slice: &[T]) -> Option<&Self::Output> {
