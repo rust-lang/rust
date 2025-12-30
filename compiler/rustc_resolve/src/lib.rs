@@ -38,7 +38,7 @@ use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
 };
-use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
@@ -1391,8 +1391,8 @@ impl<'ra> ResolverArenas<'ra> {
     }
     fn alloc_macro_rules_binding(
         &'ra self,
-        binding: MacroRulesBinding<'ra>,
-    ) -> &'ra MacroRulesBinding<'ra> {
+        binding: MacroRulesDecl<'ra>,
+    ) -> &'ra MacroRulesDecl<'ra> {
         self.dropless.alloc(binding)
     }
     fn alloc_ast_paths(&'ra self, paths: &[ast::Path]) -> &'ra [ast::Path] {

@@ -33,7 +33,7 @@ use tracing::debug;
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, MacroData, Module,
@@ -1326,8 +1326,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.feed_visibility(feed, vis);
-            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
-                self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
+            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Def(
+                self.r.arenas.alloc_macro_rules_binding(MacroRulesDecl {
                     parent_macro_rules_scope: parent_scope.macro_rules,
                     binding,
                     ident,

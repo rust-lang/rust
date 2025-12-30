@@ -182,7 +182,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
                 Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
-                    MacroRulesScope::Binding(binding) => {
+                    MacroRulesScope::Def(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
                     MacroRulesScope::Invocation(invoc_id) => {
@@ -559,9 +559,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 result
             }
             Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
-                MacroRulesScope::Binding(macro_rules_binding)
-                    if ident == macro_rules_binding.ident =>
-                {
+                MacroRulesScope::Def(macro_rules_binding) if ident == macro_rules_binding.ident => {
                     Ok(macro_rules_binding.binding)
                 }
                 MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),

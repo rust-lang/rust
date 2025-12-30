@@ -45,10 +45,10 @@ use crate::{
 
 type Res = def::Res<NodeId>;
 
-/// Binding produced by a `macro_rules` item.
+/// Name declaration produced by a `macro_rules` item definition.
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
-pub(crate) struct MacroRulesBinding<'ra> {
+pub(crate) struct MacroRulesDecl<'ra> {
     pub(crate) binding: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
@@ -65,7 +65,7 @@ pub(crate) enum MacroRulesScope<'ra> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
-    Binding(&'ra MacroRulesBinding<'ra>),
+    Def(&'ra MacroRulesDecl<'ra>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(LocalExpnId),
