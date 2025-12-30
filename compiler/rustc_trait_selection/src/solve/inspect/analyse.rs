@@ -441,7 +441,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn visit_with<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
+    pub fn visit_with<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
         if self.depth < visitor.config().max_depth {
             try_visit!(visitor.visit_goal(self));
         }
