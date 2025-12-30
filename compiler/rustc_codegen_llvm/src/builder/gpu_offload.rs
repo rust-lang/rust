@@ -430,7 +430,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let fn_ty = offload_globals.mapper_fn_ty;
 
     let num_args = types.len() as u64;
-    let ip = unsafe { llvm::LLVMRustGetInsertPoint(&builder.llbuilder) };
+    let bb = builder.llbb();
 
     // FIXME(Sa4dUs): dummy loads are a temp workaround, we should find a proper way to prevent these
     // variables from being optimized away
@@ -468,7 +468,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 1)
     unsafe {
-        llvm::LLVMRustRestoreInsertPoint(&builder.llbuilder, ip);
+        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, bb);
     }
     builder.memset(tgt_bin_desc_alloca, cx.get_const_i8(0), cx.get_const_i64(32), Align::EIGHT);
 
