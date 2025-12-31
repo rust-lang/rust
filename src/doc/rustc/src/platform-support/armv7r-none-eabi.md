@@ -1,10 +1,12 @@
 # `armv7r-none-eabi` and `armv7r-none-eabihf`
 
-* **Tier: 2**
+* **Tier: 2** (`armv7r-none-eabi`)
+* **Tier: 3** (`thumbv7r-none-eabi`)
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
-Bare-metal target for CPUs in the Armv7-R architecture family, supporting
-dual ARM/Thumb mode, with ARM mode as the default.
+Bare-metal target for CPUs in the Armv7-R architecture family, supporting dual
+ARM/Thumb mode. The `armv7r-none-eabi` target uses Arm mode by default and
+the `thumbv7r-none-eabihf` target uses Thumb mode by default.
 
 Processors in this family include the [Arm Cortex-R4, 5, 7, and 8][cortex-r].
 

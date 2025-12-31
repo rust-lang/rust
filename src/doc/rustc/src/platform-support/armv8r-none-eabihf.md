@@ -1,10 +1,12 @@
-# `armv8r-none-eabihf`
+# `armv8r-none-eabihf` and `thumbv8r-none-eabihf`
 
-* **Tier: 2**
+* **Tier: 2**: `armv8r-none-eabihf`
+* **Tier: 3**: `thumbv8r-none-eabihf`
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
-Bare-metal target for CPUs in the Armv8-R architecture family, supporting
-dual ARM/Thumb mode, with ARM mode as the default.
+Bare-metal target for CPUs in the Armv8-R architecture family, supporting dual
+ARM/Thumb mode. The `armv8r-none-eabi` target uses Arm mode by default and
+the `thumbv8r-none-eabihf` target uses Thumb mode by default.
 
 Processors in this family include the Arm [Cortex-R52][cortex-r52]
 and [Cortex-R52+][cortex-r52-plus].
