@@ -169,9 +169,8 @@ fn main() {
 
     // Test that all binaries in rlibs produced by `rustc` have the same version.
     // Regression test for https://github.com/rust-lang/rust/issues/128419.
-    let sysroot = rustc().print("sysroot").run().stdout_utf8();
-    let target_sysroot = path(sysroot.trim()).join("lib/rustlib").join(target()).join("lib");
-    let rlibs = shallow_find_files(&target_sysroot, |path| has_extension(path, "rlib"));
+    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    let rlibs = shallow_find_files(sysroot_libs_dir.trim(), |path| has_extension(path, "rlib"));
 
     let output = cmd("otool").arg("-l").args(rlibs).run().stdout_utf8();
     let re = regex::Regex::new(r"(minos|version) ([0-9.]*)").unwrap();
