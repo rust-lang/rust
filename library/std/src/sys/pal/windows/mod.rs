@@ -334,7 +334,7 @@ pub fn dur2timeout(dur: Duration) -> u32 {
 /// this sequence of instructions will be treated as an access violation, which
 /// will still terminate the process but might run some exception handlers.
 ///
-/// https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+/// <https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail>
 #[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
     unsafe {
