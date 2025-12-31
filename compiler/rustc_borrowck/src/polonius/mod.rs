@@ -32,14 +32,6 @@
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/22/polonius-part-1/>
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/29/polonius-part-2/>
 //!
-//!
-//! Data flows like this:
-//! 1) during MIR typeck, record liveness data needed later: live region variances, as well as the
-//!    usual NLL liveness data (just computed on more locals). That's the main [PoloniusContext].
-//! 2) during region inference, that data and the NLL outlives constraints are used to create the
-//!    localized outlives constraints, as described above. That's the [PoloniusDiagnosticsContext].
-//! 3) transfer this back to the main borrowck procedure: it handles computing errors and
-//!    diagnostics, debugging and MIR dumping concerns.
 
 mod constraints;
 mod dump;
@@ -62,10 +54,15 @@ use crate::{BorrowSet, RegionInferenceContext};
 
 pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 
-/// This struct holds the liveness data created during MIR typeck, and which will be used later in
-/// the process, to lazily compute the polonius localized constraints.
+/// This struct holds the necessary
+///  - liveness data, created during MIR typeck, and which will be used to lazily compute the
+///    polonius localized constraints, during NLL region inference as well as MIR dumping,
+///  - data needed by the borrowck error computation and diagnostics.
 #[derive(Default)]
 pub(crate) struct PoloniusContext {
+    /// The graph from which we extract the localized outlives constraints.
+    graph: Option<LocalizedConstraintGraph>,
+
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
     live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
@@ -74,20 +71,6 @@ pub(crate) struct PoloniusContext {
     /// boring locals. A boring local is one whose type contains only such regions. Polonius
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
-    pub(crate) boring_nll_locals: FxHashSet<Local>,
-}
-
-/// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
-/// computed from the [PoloniusContext] when computing NLL regions.
-pub(crate) struct PoloniusDiagnosticsContext {
-    /// The graph from which we extract the localized outlives constraints.
-    graph: Option<LocalizedConstraintGraph>,
-
-    /// The expected edge direction per live region: the kind of directed edge we'll create as
-    /// liveness constraints depends on the variance of types with respect to each contained region.
-    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
-
-    /// The liveness data computed during MIR typeck: [PoloniusLivenessContext::boring_nll_locals].
     pub(crate) boring_nll_locals: FxHashSet<Local>,
 }
 
@@ -117,16 +100,16 @@ impl PoloniusContext {
     ///
     /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
-        self,
+        &mut self,
         regioncx: &mut RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
-    ) -> PoloniusDiagnosticsContext {
-        let PoloniusContext { live_region_variances, boring_nll_locals } = self;
-
+    ) {
         let liveness = regioncx.liveness_constraints();
 
-        let graph = if borrow_set.len() > 0 {
+        // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
+        // trace throughout localized constraints.
+        if borrow_set.len() > 0 {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
@@ -137,19 +120,16 @@ impl PoloniusContext {
             graph.traverse(
                 body,
                 liveness,
-                &live_region_variances,
+                &self.live_region_variances,
                 regioncx.universal_regions(),
                 borrow_set,
                 &mut visitor,
             );
             regioncx.record_live_loans(live_loans);
 
-            Some(graph)
-        } else {
-            None
-        };
-
-        PoloniusDiagnosticsContext { live_region_variances, graph, boring_nll_locals }
+            // The graph can be traversed again during MIR dumping, so we store it here.
+            self.graph = Some(graph);
+        }
     }
 }
 

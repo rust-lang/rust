@@ -10,7 +10,7 @@ use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusDiagnosticsContext};
+use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
@@ -22,7 +22,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
+    polonius_context: Option<&PoloniusContext>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
@@ -31,17 +31,17 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let Some(dumper) = MirDumper::new(tcx, "polonius", body) else { return };
 
-    let polonius_diagnostics =
-        polonius_diagnostics.expect("missing diagnostics context with `-Zpolonius=next`");
+    let polonius_context =
+        polonius_context.expect("missing polonius context with `-Zpolonius=next`");
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
     let mut collector = LocalizedOutlivesConstraintCollector { constraints: Vec::new() };
-    if let Some(graph) = &polonius_diagnostics.graph {
+    if let Some(graph) = &polonius_context.graph {
         graph.traverse(
             body,
             regioncx.liveness_constraints(),
-            &polonius_diagnostics.live_region_variances,
+            &polonius_context.live_region_variances,
             regioncx.universal_regions(),
             borrow_set,
             &mut collector,

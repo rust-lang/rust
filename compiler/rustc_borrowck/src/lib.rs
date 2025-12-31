@@ -62,10 +62,10 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
-use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
@@ -420,7 +420,7 @@ fn borrowck_check_region_constraints<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
-        polonius_diagnostics,
+        polonius_context,
     } = nll::compute_regions(
         root_cx,
         &infcx,
@@ -444,7 +444,7 @@ fn borrowck_check_region_constraints<'tcx>(
         &regioncx,
         &opt_closure_req,
         &borrow_set,
-        polonius_diagnostics.as_ref(),
+        polonius_context.as_ref(),
     );
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
@@ -486,7 +486,7 @@ fn borrowck_check_region_constraints<'tcx>(
             polonius_output: None,
             move_errors: Vec::new(),
             diags_buffer,
-            polonius_diagnostics: polonius_diagnostics.as_ref(),
+            polonius_context: polonius_context.as_ref(),
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -525,7 +525,7 @@ fn borrowck_check_region_constraints<'tcx>(
         move_errors: Vec::new(),
         diags_buffer,
         polonius_output: polonius_output.as_deref(),
-        polonius_diagnostics: polonius_diagnostics.as_ref(),
+        polonius_context: polonius_context.as_ref(),
     };
 
     // Compute and report region errors, if any.
@@ -775,7 +775,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
-    polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
+    polonius_context: Option<&'a PoloniusContext>,
 }
 
 // Check that:
