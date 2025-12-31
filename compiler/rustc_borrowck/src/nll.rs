@@ -22,10 +22,10 @@ use crate::borrow_set::BorrowSet;
 use crate::consumers::RustcFacts;
 use crate::diagnostics::RegionErrors;
 use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
+use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
-use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -46,7 +46,7 @@ pub(crate) struct NllOutput<'tcx> {
 
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
     /// localized typeck and liveness constraints.
-    pub polonius_diagnostics: Option<PoloniusDiagnosticsContext>,
+    pub polonius_context: Option<PoloniusContext>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -121,7 +121,7 @@ pub(crate) fn compute_regions<'tcx>(
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
-    polonius_context: Option<PoloniusContext>,
+    mut polonius_context: Option<PoloniusContext>,
 ) -> NllOutput<'tcx> {
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
@@ -153,9 +153,9 @@ pub(crate) fn compute_regions<'tcx>(
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
-    let polonius_diagnostics = polonius_context.map(|polonius_context| {
+    if let Some(polonius_context) = polonius_context.as_mut() {
         polonius_context.compute_loan_liveness(&mut regioncx, body, borrow_set)
-    });
+    }
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
@@ -188,7 +188,7 @@ pub(crate) fn compute_regions<'tcx>(
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
-        polonius_diagnostics,
+        polonius_context,
     }
 }
 
