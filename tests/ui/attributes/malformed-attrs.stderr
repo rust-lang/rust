@@ -26,14 +26,6 @@ error[E0463]: can't find crate for `wloop`
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: malformed `instruction_set` attribute input
-  --> $DIR/malformed-attrs.rs:112:1
-   |
-LL | #[instruction_set]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[instruction_set(set)]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
-
 error: malformed `patchable_function_entry` attribute input
   --> $DIR/malformed-attrs.rs:114:1
    |
@@ -455,6 +447,17 @@ LL | #[proc_macro = 18]
    | |            |
    | |            didn't expect any arguments here
    | help: must be of the form: `#[proc_macro]`
+
+error[E0539]: malformed `instruction_set` attribute input
+  --> $DIR/malformed-attrs.rs:112:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^
+   | |
+   | valid arguments are `arm::a32` or `arm::t32`
+   | help: must be of the form: `#[instruction_set(set)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0565]: malformed `coroutine` attribute input
   --> $DIR/malformed-attrs.rs:117:5
