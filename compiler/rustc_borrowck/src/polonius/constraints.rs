@@ -25,24 +25,17 @@ use crate::universal_regions::UniversalRegions;
 ///   of `q`. These depend on the liveness of the regions at these points, as well as their
 ///   variance.
 ///
-/// The `source` origin at `from` flows into the `target` origin at `to`.
-///
 /// This dual of NLL's [crate::constraints::OutlivesConstraint] therefore encodes the
 /// position-dependent outlives constraints used by Polonius, to model the flow-sensitive loan
 /// propagation via reachability within a graph of localized constraints.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct LocalizedOutlivesConstraint {
-    pub source: RegionVid,
-    pub from: PointIndex,
-    pub target: RegionVid,
-    pub to: PointIndex,
-}
-
-/// A container of [LocalizedOutlivesConstraint]s that can be turned into a traversable
-/// `rustc_data_structures` graph.
-#[derive(Clone, Default, Debug)]
-pub(crate) struct LocalizedOutlivesConstraintSet {
-    pub outlives: Vec<LocalizedOutlivesConstraint>,
+///
+/// That `LocalizedConstraintGraph` can create these edges on-demand during traversal, and we
+/// therefore model them as a pair of `LocalizedNode` vertices.
+///
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub(super) struct LocalizedNode {
+    pub region: RegionVid,
+    pub point: PointIndex,
 }
 
 /// The localized constraint graph indexes the physical and logical edges to lazily compute a given
@@ -56,13 +49,6 @@ pub(super) struct LocalizedConstraintGraph {
     /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
     /// can be big, and we don't need to create such a physical edge for every point in the CFG.
     logical_edges: FxHashMap<RegionVid, FxIndexSet<RegionVid>>,
-}
-
-/// A node in the graph to be traversed, one of the two vertices of a localized outlives constraint.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub(super) struct LocalizedNode {
-    pub region: RegionVid,
-    pub point: PointIndex,
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
