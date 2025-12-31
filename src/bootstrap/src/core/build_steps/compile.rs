@@ -1640,6 +1640,12 @@ pub struct GccCodegenBackendOutput {
     stamp: BuildStamp,
 }
 
+impl GccCodegenBackendOutput {
+    pub fn stamp(&self) -> &BuildStamp {
+        &self.stamp
+    }
+}
+
 /// Builds the GCC codegen backend (`cg_gcc`).
 /// Note that this **does not** build libgccjit, which is a dependency of cg_gcc.
 /// That has to be built separately, because a separate copy of libgccjit is required

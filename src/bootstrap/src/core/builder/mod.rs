@@ -967,6 +967,7 @@ impl<'a> Builder<'a> {
                 dist::Mingw,
                 dist::Rustc,
                 dist::CraneliftCodegenBackend,
+                dist::GccCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
