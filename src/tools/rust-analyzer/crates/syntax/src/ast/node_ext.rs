@@ -447,24 +447,23 @@ impl ast::UseTreeList {
 
 impl ast::Impl {
     pub fn self_ty(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), None) | (_, Some(t)) => Some(t),
-            _ => None,
-        }
+        self.target().1
     }
 
     pub fn trait_(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), Some(_)) => Some(t),
-            _ => None,
-        }
+        self.target().0
     }
 
     fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
-        let mut types = support::children(self.syntax());
-        let first = types.next();
-        let second = types.next();
-        (first, second)
+        let mut types = support::children(self.syntax()).peekable();
+        let for_kw = self.for_token();
+        let trait_ = types.next_if(|trait_: &ast::Type| {
+            for_kw.is_some_and(|for_kw| {
+                trait_.syntax().text_range().start() < for_kw.text_range().start()
+            })
+        });
+        let self_ty = types.next();
+        (trait_, self_ty)
     }
 
     pub fn for_trait_name_ref(name_ref: &ast::NameRef) -> Option<ast::Impl> {
