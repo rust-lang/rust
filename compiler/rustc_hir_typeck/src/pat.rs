@@ -996,20 +996,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_ty = self.tcx.types.str_;
         }
 
-        if self.tcx.features().string_deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
-        {
-            let tcx = self.tcx;
-            let expected = self.resolve_vars_if_possible(expected);
-            pat_ty = match expected.kind() {
-                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => expected,
-                ty::Str => Ty::new_static_str(tcx),
-                _ => pat_ty,
-            };
-        }
-
         // Somewhat surprising: in this case, the subtyping relation goes the
         // opposite way as the other cases. Actually what we really want is not
         // a subtyping relation at all but rather that there exists a LUB

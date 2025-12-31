@@ -150,7 +150,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut expect = self.literal_operand(test.span, Const::from_ty_value(tcx, value));
 
                 let mut place = place;
-                let mut block = block;
+
                 match cast_ty.kind() {
                     ty::Str => {
                         // String literal patterns may have type `str` if `deref_patterns` is
@@ -173,34 +173,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(re_erased, BorrowKind::Shared, place),
                         );
                         place = ref_place;
-                        cast_ty = ref_str_ty;
-                    }
-                    ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
-                        if !tcx.features().string_deref_patterns() {
-                            span_bug!(
-                                test.span,
-                                "matching on `String` went through without enabling string_deref_patterns"
-                            );
-                        }
-                        let re_erased = tcx.lifetimes.re_erased;
-                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                        let ref_str = self.temp(ref_str_ty, test.span);
-                        let eq_block = self.cfg.start_new_block();
-                        // `let ref_str: &str = <String as Deref>::deref(&place);`
-                        self.call_deref(
-                            block,
-                            eq_block,
-                            place,
-                            Mutability::Not,
-                            cast_ty,
-                            ref_str,
-                            test.span,
-                        );
-                        // Since we generated a `ref_str = <String as Deref>::deref(&place) -> eq_block` terminator,
-                        // we need to add all further statements to `eq_block`.
-                        // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
-                        block = eq_block;
-                        place = ref_str;
                         cast_ty = ref_str_ty;
                     }
                     &ty::Pat(base, _) => {

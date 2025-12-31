@@ -647,8 +647,6 @@ declare_features! (
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
     (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
-    /// Allows string patterns to dereference values to match them.
-    (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows `super let` statements.
     (unstable, super_let, "1.88.0", Some(139076)),
     /// Allows subtrait items to shadow supertrait items.
