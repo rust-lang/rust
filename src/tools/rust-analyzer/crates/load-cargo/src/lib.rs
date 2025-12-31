@@ -540,6 +540,20 @@ impl ProcMacroExpander for Expander {
         current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
         let mut cb = |req| match req {
+            SubRequest::LocalFileName { file_id } => {
+                let file = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+
+                let name = source_root
+                    .path_for_file(&file)
+                    .and_then(|path| path.clone().into_abs_path())
+                    .and_then(|path| {
+                        path.as_path().file_name().map(|filename| filename.to_owned())
+                    });
+
+                Ok(SubResponse::LocalFileNameResult { name })
+            }
             SubRequest::SourceText { file_id, start, end } => {
                 let file = FileId::from_raw(file_id);
                 let text = db.file_text(file).text(db);

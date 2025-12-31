@@ -217,6 +217,31 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
             _ => None,
         }
     }
+
+    fn local_file(&mut self, file_id: u32) -> Option<String> {
+        let req = bidirectional::BidirectionalMessage::SubRequest(
+            bidirectional::SubRequest::LocalFileName { file_id },
+        );
+
+        if req.write::<_, C>(&mut self.stdout.lock()).is_err() {
+            return Some(String::new());
+        }
+
+        let msg = match bidirectional::BidirectionalMessage::read::<_, C>(
+            &mut self.stdin.lock(),
+            self.buf,
+        ) {
+            Ok(msg) => msg,
+            _ => return None,
+        };
+
+        match msg {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::LocalFileNameResult { name },
+            )) => Some(name.unwrap_or_default()),
+            _ => None,
+        }
+    }
 }
 
 fn handle_expand_ra<C: Codec>(
