@@ -2604,20 +2604,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => expr,
         };
 
-        // FIXME(mgca): remove this delayed bug once we start checking this
-        // when lowering `Ty/ConstKind::Param`s more generally.
-        if let hir::ExprKind::Path(hir::QPath::Resolved(
-            _,
-            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-        )) = expr.kind
-        {
-            let e = tcx.dcx().span_delayed_bug(
-                expr.span,
-                "try_lower_anon_const_lit: received const param which shouldn't be possible",
-            );
-            return Some(ty::Const::new_error(tcx, e));
-        };
-
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
