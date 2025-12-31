@@ -827,7 +827,6 @@ pub enum PatKind<'tcx> {
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     ///   error.
-    /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: ty::Value<'tcx>,
     },

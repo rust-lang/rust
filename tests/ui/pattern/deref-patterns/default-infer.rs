@@ -1,5 +1,6 @@
 //@ check-pass
-#![feature(string_deref_patterns)]
+#![feature(deref_patterns)]
+#![expect(incomplete_features)]
 
 fn main() {
     match <_ as Default>::default() {
