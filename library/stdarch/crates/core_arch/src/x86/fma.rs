@@ -560,7 +560,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmadd_pd() {
+    const fn test_mm_fmadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -569,7 +569,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmadd_pd() {
+    const fn test_mm256_fmadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -578,7 +578,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmadd_ps() {
+    const fn test_mm_fmadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -587,7 +587,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmadd_ps() {
+    const fn test_mm256_fmadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -596,7 +596,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmadd_sd() {
+    const fn test_mm_fmadd_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -605,7 +605,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmadd_ss() {
+    const fn test_mm_fmadd_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -614,7 +614,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmaddsub_pd() {
+    const fn test_mm_fmaddsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -623,7 +623,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmaddsub_pd() {
+    const fn test_mm256_fmaddsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -632,7 +632,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmaddsub_ps() {
+    const fn test_mm_fmaddsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -641,7 +641,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmaddsub_ps() {
+    const fn test_mm256_fmaddsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -650,7 +650,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsub_pd() {
+    const fn test_mm_fmsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -659,7 +659,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmsub_pd() {
+    const fn test_mm256_fmsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -668,7 +668,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsub_ps() {
+    const fn test_mm_fmsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -677,7 +677,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmsub_ps() {
+    const fn test_mm256_fmsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -686,7 +686,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsub_sd() {
+    const fn test_mm_fmsub_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -695,7 +695,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsub_ss() {
+    const fn test_mm_fmsub_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -704,7 +704,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsubadd_pd() {
+    const fn test_mm_fmsubadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -713,7 +713,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmsubadd_pd() {
+    const fn test_mm256_fmsubadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -722,7 +722,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fmsubadd_ps() {
+    const fn test_mm_fmsubadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -731,7 +731,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fmsubadd_ps() {
+    const fn test_mm256_fmsubadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -740,7 +740,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmadd_pd() {
+    const fn test_mm_fnmadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -749,7 +749,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fnmadd_pd() {
+    const fn test_mm256_fnmadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -758,7 +758,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmadd_ps() {
+    const fn test_mm_fnmadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -767,7 +767,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fnmadd_ps() {
+    const fn test_mm256_fnmadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -776,7 +776,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmadd_sd() {
+    const fn test_mm_fnmadd_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -785,7 +785,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmadd_ss() {
+    const fn test_mm_fnmadd_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -794,7 +794,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmsub_pd() {
+    const fn test_mm_fnmsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -803,7 +803,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fnmsub_pd() {
+    const fn test_mm256_fnmsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -812,7 +812,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmsub_ps() {
+    const fn test_mm_fnmsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -821,7 +821,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm256_fnmsub_ps() {
+    const fn test_mm256_fnmsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -830,7 +830,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmsub_sd() {
+    const fn test_mm_fnmsub_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -839,7 +839,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    const unsafe fn test_mm_fnmsub_ss() {
+    const fn test_mm_fnmsub_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
