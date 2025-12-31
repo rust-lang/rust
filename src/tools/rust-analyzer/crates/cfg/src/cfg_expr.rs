@@ -96,12 +96,12 @@ impl CfgExpr {
     // FIXME: Parsing from `tt` is only used in a handful of places, reconsider
     // if we should switch them to AST.
     #[cfg(feature = "tt")]
-    pub fn parse<S: Copy>(tt: &tt::TopSubtree<S>) -> CfgExpr {
+    pub fn parse(tt: &tt::TopSubtree) -> CfgExpr {
         next_cfg_expr(&mut tt.iter()).unwrap_or(CfgExpr::Invalid)
     }
 
     #[cfg(feature = "tt")]
-    pub fn parse_from_iter<S: Copy>(tt: &mut tt::iter::TtIter<'_, S>) -> CfgExpr {
+    pub fn parse_from_iter(tt: &mut tt::iter::TtIter<'_>) -> CfgExpr {
         next_cfg_expr(tt).unwrap_or(CfgExpr::Invalid)
     }
 
@@ -149,7 +149,16 @@ fn next_cfg_expr_from_ast(
             if let Some(NodeOrToken::Token(literal)) = it.peek()
                 && matches!(literal.kind(), SyntaxKind::STRING)
             {
-                let literal = tt::token_to_literal(literal.text(), ()).symbol;
+                let dummy_span = span::Span {
+                    range: span::TextRange::empty(span::TextSize::new(0)),
+                    anchor: span::SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(0),
+                        ast_id: span::FIXUP_ERASED_FILE_AST_ID_MARKER,
+                    },
+                    ctx: span::SyntaxContext::root(span::Edition::Edition2015),
+                };
+                let literal =
+                    Symbol::intern(tt::token_to_literal(literal.text(), dummy_span).text());
                 it.next();
                 CfgAtom::KeyValue { key: name, value: literal.clone() }.into()
             } else {
@@ -179,7 +188,7 @@ fn next_cfg_expr_from_ast(
 }
 
 #[cfg(feature = "tt")]
-fn next_cfg_expr<S: Copy>(it: &mut tt::iter::TtIter<'_, S>) -> Option<CfgExpr> {
+fn next_cfg_expr(it: &mut tt::iter::TtIter<'_>) -> Option<CfgExpr> {
     use intern::sym;
     use tt::iter::TtElement;
 
@@ -189,20 +198,21 @@ fn next_cfg_expr<S: Copy>(it: &mut tt::iter::TtIter<'_, S>) -> Option<CfgExpr> {
         Some(_) => return Some(CfgExpr::Invalid),
     };
 
-    let ret = match it.peek() {
+    let mut it_clone = it.clone();
+    let ret = match it_clone.next() {
         Some(TtElement::Leaf(tt::Leaf::Punct(punct)))
             // Don't consume on e.g. `=>`.
             if punct.char == '='
                 && (punct.spacing == tt::Spacing::Alone
-                    || it.remaining().flat_tokens().get(1).is_none_or(|peek2| {
-                        !matches!(peek2, tt::TokenTree::Leaf(tt::Leaf::Punct(_)))
+                    || it_clone.peek().is_none_or(|peek2| {
+                        !matches!(peek2, tt::TtElement::Leaf(tt::Leaf::Punct(_)))
                     })) =>
         {
-            match it.remaining().flat_tokens().get(1) {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
+            match it_clone.next() {
+                Some(tt::TtElement::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
-                    CfgAtom::KeyValue { key: name, value: literal.symbol.clone() }.into()
+                    CfgAtom::KeyValue { key: name, value: Symbol::intern(literal.text()) }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }

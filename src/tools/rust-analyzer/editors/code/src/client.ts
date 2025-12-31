@@ -30,17 +30,24 @@ export async function createClient(
             },
             async configuration(
                 params: lc.ConfigurationParams,
-                token: vscode.CancellationToken,
-                next: lc.ConfigurationRequest.HandlerSignature,
+                _token: vscode.CancellationToken,
+                _next: lc.ConfigurationRequest.HandlerSignature,
             ) {
-                const resp = await next(params, token);
-                if (resp && Array.isArray(resp)) {
-                    return resp.map((val) => {
-                        return prepareVSCodeConfig(val);
-                    });
-                } else {
-                    return resp;
+                // The rust-analyzer LSP only ever asks for the "rust-analyzer"
+                // section, so we only need to support that. Instead of letting
+                // the vscode-languageclient handle it, use the `cfg` property
+                // in the config.
+                if (
+                    params.items.length !== 1 ||
+                    params.items[0]?.section !== "rust-analyzer" ||
+                    params.items[0]?.scopeUri !== undefined
+                ) {
+                    return new lc.ResponseError(
+                        lc.ErrorCodes.InvalidParams,
+                        'Only the "rust-analyzer" config section is supported.',
+                    );
                 }
+                return [prepareVSCodeConfig(config.cfg)];
             },
         },
         async handleDiagnostics(

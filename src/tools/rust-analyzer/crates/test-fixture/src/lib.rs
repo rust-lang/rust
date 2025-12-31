@@ -738,6 +738,7 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -760,6 +761,7 @@ struct Issue18089ProcMacroExpander;
 impl ProcMacroExpander for Issue18089ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -768,7 +770,7 @@ impl ProcMacroExpander for Issue18089ProcMacroExpander {
         _: Span,
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
-        let tt::TokenTree::Leaf(macro_name) = &subtree.0[2] else {
+        let Some(tt::TtElement::Leaf(macro_name)) = subtree.iter().nth(1) else {
             return Err(ProcMacroExpansionError::Panic("incorrect input".to_owned()));
         };
         Ok(quote! { call_site =>
@@ -795,6 +797,7 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         _: &TopSubtree,
         attrs: Option<&TopSubtree>,
         _: &Env,
@@ -818,6 +821,7 @@ struct Issue18840ProcMacroExpander;
 impl ProcMacroExpander for Issue18840ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         fn_: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -833,13 +837,14 @@ impl ProcMacroExpander for Issue18840ProcMacroExpander {
         // ```
 
         // The span that was created by the fixup infra.
-        let fixed_up_span = fn_.token_trees().flat_tokens()[5].first_span();
+        let mut iter = fn_.iter();
+        iter.nth(2);
+        let (_, mut fn_body) = iter.expect_subtree().unwrap();
+        let fixed_up_span = fn_body.nth(1).unwrap().first_span();
         let mut result =
             quote! {fixed_up_span => ::core::compile_error! { "my cool compile_error!" } };
         // Make it so we won't remove the top subtree when reversing fixups.
-        let top_subtree_delimiter_mut = result.top_subtree_delimiter_mut();
-        top_subtree_delimiter_mut.open = def_site;
-        top_subtree_delimiter_mut.close = def_site;
+        result.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(def_site));
         Ok(result)
     }
 
@@ -853,6 +858,7 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -891,6 +897,7 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -899,20 +906,22 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
-        let mut result = input.0.clone();
-        for it in &mut result {
-            if let TokenTree::Leaf(leaf) = it {
-                modify_leaf(leaf)
+        let mut result = input.clone();
+        for (idx, it) in input.as_token_trees().iter_flat_tokens().enumerate() {
+            if let TokenTree::Leaf(mut leaf) = it {
+                modify_leaf(&mut leaf);
+                result.set_token(idx, leaf);
             }
         }
-        return Ok(tt::TopSubtree(result));
+        return Ok(result);
 
         fn modify_leaf(leaf: &mut Leaf) {
             match leaf {
                 Leaf::Literal(it) => {
                     // XXX Currently replaces any literals with an empty string, but supporting
                     // "shortening" other literals would be nice.
-                    it.symbol = Symbol::empty();
+                    it.text_and_suffix = Symbol::empty();
+                    it.suffix_len = 0;
                 }
                 Leaf::Punct(_) => {}
                 Leaf::Ident(it) => {
@@ -933,6 +942,7 @@ struct Issue17479ProcMacroExpander;
 impl ProcMacroExpander for Issue17479ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -941,10 +951,11 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         _: Span,
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
-        let TokenTree::Leaf(Leaf::Literal(lit)) = &subtree.0[1] else {
+        let mut iter = subtree.iter();
+        let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = iter.next() else {
             return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
         };
-        let symbol = &lit.symbol;
+        let symbol = Symbol::intern(lit.text());
         let span = lit.span;
         Ok(quote! { span =>
             #symbol()
@@ -962,6 +973,7 @@ struct Issue18898ProcMacroExpander;
 impl ProcMacroExpander for Issue18898ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -972,10 +984,8 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let span = subtree
             .token_trees()
-            .flat_tokens()
-            .last()
-            .ok_or_else(|| ProcMacroExpansionError::Panic("malformed input".to_owned()))?
-            .first_span();
+            .last_span()
+            .ok_or_else(|| ProcMacroExpansionError::Panic("malformed input".to_owned()))?;
         let overly_long_subtree = quote! {span =>
             {
                 let a = 5;
@@ -1017,6 +1027,7 @@ struct DisallowCfgProcMacroExpander;
 impl ProcMacroExpander for DisallowCfgProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1025,7 +1036,7 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
         _: Span,
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
-        for tt in subtree.token_trees().flat_tokens() {
+        for tt in subtree.token_trees().iter_flat_tokens() {
             if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt
                 && (ident.sym == sym::cfg || ident.sym == sym::cfg_attr)
             {
@@ -1048,6 +1059,7 @@ struct GenerateSuffixedTypeProcMacroExpander;
 impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _attrs: Option<&TopSubtree>,
         _env: &Env,
@@ -1056,20 +1068,23 @@ impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
         _mixed_site: Span,
         _current_dir: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
-        let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[1] else {
+        let mut iter = subtree.iter();
+        let Some(TtElement::Leaf(tt::Leaf::Ident(ident))) = iter.next() else {
             return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
         };
 
         let ident = match ident.sym.as_str() {
             "struct" => {
-                let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[2] else {
+                let Some(TtElement::Leaf(tt::Leaf::Ident(ident))) = iter.next() else {
                     return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
                 };
                 ident
             }
 
             "enum" => {
-                let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[4] else {
+                iter.next();
+                let (_, mut iter) = iter.expect_subtree().unwrap();
+                let Some(TtElement::Leaf(tt::Leaf::Ident(ident))) = iter.next() else {
                     return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
                 };
                 ident

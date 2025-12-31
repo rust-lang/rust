@@ -1,8 +1,8 @@
 use rustc_type_ir::{solve::GoalSource, solve::inspect::GoalEvaluation};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::inspect::{InspectCandidate, InspectGoal};
+use crate::next_solver::{AnyImplId, infer::InferCtxt};
 use crate::next_solver::{DbInterner, Span};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,14 +76,31 @@ impl<'a, 'db> ProofTreeSerializer<'a, 'db> {
         use rustc_type_ir::solve::inspect::ProbeKind;
         match candidate.kind() {
             ProbeKind::TraitCandidate { source, .. } => {
+                use hir_def::{Lookup, src::HasSource};
                 use rustc_type_ir::solve::CandidateSource;
+                let db = self.infcx.interner.db;
                 match source {
-                    CandidateSource::Impl(impl_def_id) => {
-                        use hir_def::{Lookup, src::HasSource};
-                        let db = self.infcx.interner.db;
-                        let impl_src = impl_def_id.0.lookup(db).source(db);
-                        Some(impl_src.value.to_string())
-                    }
+                    CandidateSource::Impl(impl_def_id) => match impl_def_id {
+                        AnyImplId::ImplId(impl_def_id) => {
+                            let impl_src = impl_def_id.lookup(db).source(db);
+                            Some(impl_src.value.to_string())
+                        }
+                        AnyImplId::BuiltinDeriveImplId(impl_id) => {
+                            let impl_loc = impl_id.loc(db);
+                            let adt_src = match impl_loc.adt {
+                                hir_def::AdtId::StructId(adt) => {
+                                    adt.loc(db).source(db).value.to_string()
+                                }
+                                hir_def::AdtId::UnionId(adt) => {
+                                    adt.loc(db).source(db).value.to_string()
+                                }
+                                hir_def::AdtId::EnumId(adt) => {
+                                    adt.loc(db).source(db).value.to_string()
+                                }
+                            };
+                            Some(format!("#[derive(${})]\n{}", impl_loc.trait_.name(), adt_src))
+                        }
+                    },
                     _ => None,
                 }
             }

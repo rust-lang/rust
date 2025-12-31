@@ -380,12 +380,6 @@ These tests use the unstable command line option `query-dep-graph` to examine th
 
 Tests for `#[deprecated]` attribute and `deprecated_in_future` internal lint.
 
-## `tests/ui/deref-patterns/`: `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`
-
-Tests for `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`. See [Deref patterns | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/deref-patterns.html).
-
-**FIXME**: May have some overlap with `tests/ui/pattern/deref-patterns`.
-
 ## `tests/ui/derived-errors/`: Derived Error Messages
 
 Tests for quality of diagnostics involving suppression of cascading errors in some cases to avoid overwhelming the user.

@@ -8,7 +8,7 @@ use tt::IdentIsRaw;
 
 use crate::{name::Name, tt::TopSubtreeBuilder};
 
-pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
+pub(crate) fn dollar_crate(span: Span) -> tt::Ident {
     tt::Ident { sym: sym::dollar_crate, span, is_raw: tt::IdentIsRaw::No }
 }
 
@@ -163,7 +163,7 @@ impl ToTokenTree for crate::tt::SubtreeView<'_> {
 
 impl ToTokenTree for crate::tt::TopSubtree {
     fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
-        builder.extend_tt_dangerous(self.0);
+        builder.extend_with_tt(self.as_token_trees());
     }
 }
 
@@ -172,10 +172,9 @@ impl ToTokenTree for crate::tt::TtElement<'_> {
         match self {
             crate::tt::TtElement::Leaf(leaf) => builder.push(leaf.clone()),
             crate::tt::TtElement::Subtree(subtree, subtree_iter) => {
-                builder.extend_tt_dangerous(
-                    std::iter::once(crate::tt::TokenTree::Subtree(subtree.clone()))
-                        .chain(subtree_iter.remaining().flat_tokens().iter().cloned()),
-                );
+                builder.open(subtree.delimiter.kind, subtree.delimiter.open);
+                builder.extend_with_tt(subtree_iter.remaining());
+                builder.close(subtree.delimiter.close);
             }
         }
     }
@@ -200,16 +199,16 @@ impl<T: ToTokenTree + Clone> ToTokenTree for &T {
 }
 
 impl_to_to_tokentrees! {
-    span: u32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: usize => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: i32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
+    span: u32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: usize => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: i32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
-    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
+    span: &str => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
+    span: String => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
     span: Name => self {
         let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
         crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }

@@ -652,7 +652,7 @@ fn foo(u: U) { u.$0 }
     fn test_method_completion_only_fitting_impls() {
         check_no_kw(
             r#"
-struct A<T> {}
+struct A<T>(T);
 impl A<u32> {
     fn the_method(&self) {}
 }
@@ -662,6 +662,7 @@ impl A<i32> {
 fn foo(a: A<u32>) { a.$0 }
 "#,
             expect![[r#"
+                fd 0                  u32
                 me the_method() fn(&self)
             "#]],
         )

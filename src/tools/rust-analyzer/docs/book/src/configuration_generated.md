@@ -635,17 +635,6 @@ Default: `"client"`
 Controls file watching implementation.
 
 
-## rust-analyzer.gc.frequency {#gc.frequency}
-
-Default: `1000`
-
-This config controls the frequency in which rust-analyzer will perform its internal Garbage
-Collection. It is specified in revisions, roughly equivalent to number of changes. The default
-is 1000.
-
-Setting a smaller value may help limit peak memory usage at the expense of speed.
-
-
 ## rust-analyzer.gotoImplementations.filterAdjacentDerives {#gotoImplementations.filterAdjacentDerives}
 
 Default: `false`
@@ -1352,11 +1341,49 @@ Default: `false`
 Exclude tests from find-all-references and call-hierarchy.
 
 
+## rust-analyzer.rename.showConflicts {#rename.showConflicts}
+
+Default: `true`
+
+Whether to warn when a rename will cause conflicts (change the meaning of the code).
+
+
+## rust-analyzer.runnables.bench.command {#runnables.bench.command}
+
+Default: `"bench"`
+
+Subcommand used for bench runnables instead of `bench`.
+
+
+## rust-analyzer.runnables.bench.overrideCommand {#runnables.bench.overrideCommand}
+
+Default: `null`
+
+Override the command used for bench runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
+
+
 ## rust-analyzer.runnables.command {#runnables.command}
 
 Default: `null`
 
 Command to be executed instead of 'cargo' for runnables.
+
+
+## rust-analyzer.runnables.doctest.overrideCommand {#runnables.doctest.overrideCommand}
+
+Default: `null`
+
+Override the command used for bench runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.runnables.extraArgs {#runnables.extraArgs}
@@ -1383,6 +1410,25 @@ Unless the launched target uses a
 [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
 they will end up being interpreted as options to
 [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+
+
+## rust-analyzer.runnables.test.command {#runnables.test.command}
+
+Default: `"test"`
+
+Subcommand used for test runnables instead of `test`.
+
+
+## rust-analyzer.runnables.test.overrideCommand {#runnables.test.overrideCommand}
+
+Default: `null`
+
+Override the command used for test runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.rustc.source {#rustc.source}

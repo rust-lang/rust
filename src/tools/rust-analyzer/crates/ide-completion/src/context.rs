@@ -13,7 +13,7 @@ use hir::{
 };
 use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
-    helpers::is_editable_crate,
+    helpers::is_editable_crate, syntax_helpers::node_ext::is_in_macro_matcher,
 };
 use itertools::Either;
 use syntax::{
@@ -389,6 +389,7 @@ pub(crate) enum CompletionAnalysis<'db> {
         fake_attribute_under_caret: Option<ast::Attr>,
         extern_crate: Option<ast::ExternCrate>,
     },
+    MacroSegment,
 }
 
 /// Information about the field or method access we are completing.
@@ -729,7 +730,7 @@ impl<'db> CompletionContext<'db> {
             let prev_token = original_token.prev_token()?;
 
             // only has a single colon
-            if prev_token.kind() != T![:] {
+            if prev_token.kind() != T![:] && !is_in_macro_matcher(&original_token) {
                 return None;
             }
 

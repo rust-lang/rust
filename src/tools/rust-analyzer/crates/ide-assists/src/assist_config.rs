@@ -9,6 +9,7 @@ use ide_db::{
     SnippetCap,
     assists::ExprFillDefaultMode,
     imports::{import_assets::ImportPathConfig, insert_use::InsertUseConfig},
+    rename::RenameConfig,
 };
 
 use crate::AssistKind;
@@ -27,6 +28,7 @@ pub struct AssistConfig {
     pub code_action_grouping: bool,
     pub expr_fill_default: ExprFillDefaultMode,
     pub prefer_self_ty: bool,
+    pub show_rename_conflicts: bool,
 }
 
 impl AssistConfig {
@@ -45,5 +47,9 @@ impl AssistConfig {
             prefer_absolute: self.prefer_absolute,
             allow_unstable,
         }
+    }
+
+    pub fn rename_config(&self) -> RenameConfig {
+        RenameConfig { show_conflicts: self.show_rename_conflicts }
     }
 }

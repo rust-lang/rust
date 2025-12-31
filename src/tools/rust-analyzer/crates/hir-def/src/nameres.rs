@@ -87,6 +87,25 @@ use crate::{
 
 pub use self::path_resolution::ResolvePathResultPrefixInfo;
 
+#[cfg(test)]
+thread_local! {
+    /// HACK: In order to test builtin derive expansion, we gate their fast path with this atomic when cfg(test).
+    pub(crate) static ENABLE_BUILTIN_DERIVE_FAST_PATH: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(true) };
+}
+
+#[inline]
+#[cfg(test)]
+fn enable_builtin_derive_fast_path() -> bool {
+    ENABLE_BUILTIN_DERIVE_FAST_PATH.get()
+}
+
+#[inline(always)]
+#[cfg(not(test))]
+fn enable_builtin_derive_fast_path() -> bool {
+    true
+}
+
 const PREDEFINED_TOOLS: &[SmolStr] = &[
     SmolStr::new_static("clippy"),
     SmolStr::new_static("rustfmt"),
@@ -483,6 +502,7 @@ impl DefMap {
 }
 
 impl DefMap {
+    /// Returns all modules in the crate that are associated with the given file.
     pub fn modules_for_file<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
@@ -490,14 +510,31 @@ impl DefMap {
     ) -> impl Iterator<Item = ModuleId> + 'a {
         self.modules
             .iter()
-            .filter(move |(_id, data)| {
+            .filter(move |(_, data)| {
                 data.origin.file_id().map(|file_id| file_id.file_id(db)) == Some(file_id)
             })
-            .map(|(id, _data)| id)
+            .map(|(id, _)| id)
     }
 
     pub fn modules(&self) -> impl Iterator<Item = (ModuleId, &ModuleData)> + '_ {
         self.modules.iter()
+    }
+
+    /// Returns all inline modules (mod name { ... }) in the crate that are associated with the given macro expansion.
+    pub fn inline_modules_for_macro_file(
+        &self,
+        file_id: MacroCallId,
+    ) -> impl Iterator<Item = ModuleId> + '_ {
+        self.modules
+            .iter()
+            .filter(move |(_, data)| {
+                matches!(
+                    data.origin,
+                    ModuleOrigin::Inline { definition_tree_id, .. }
+                    if definition_tree_id.file_id().macro_file() == Some(file_id)
+                )
+            })
+            .map(|(id, _)| id)
     }
 
     pub fn derive_helpers_in_scope(
