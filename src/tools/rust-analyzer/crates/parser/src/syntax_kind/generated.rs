@@ -201,6 +201,7 @@ pub enum SyntaxKind {
     FN,
     FN_PTR_TYPE,
     FORMAT_ARGS_ARG,
+    FORMAT_ARGS_ARG_NAME,
     FORMAT_ARGS_EXPR,
     FOR_BINDER,
     FOR_EXPR,
@@ -373,6 +374,7 @@ impl SyntaxKind {
             | FN
             | FN_PTR_TYPE
             | FORMAT_ARGS_ARG
+            | FORMAT_ARGS_ARG_NAME
             | FORMAT_ARGS_EXPR
             | FOR_BINDER
             | FOR_EXPR

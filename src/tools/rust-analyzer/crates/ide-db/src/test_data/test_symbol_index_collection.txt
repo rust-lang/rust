@@ -734,11 +734,11 @@
             FileSymbol {
                 name: "generic_impl_fn",
                 def: Function(
-                    Function {
-                        id: FunctionId(
+                    FunctionId(
+                        FunctionId(
                             6402,
                         ),
-                    },
+                    ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
@@ -769,11 +769,11 @@
             FileSymbol {
                 name: "impl_fn",
                 def: Function(
-                    Function {
-                        id: FunctionId(
+                    FunctionId(
+                        FunctionId(
                             6401,
                         ),
-                    },
+                    ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
@@ -839,11 +839,11 @@
             FileSymbol {
                 name: "main",
                 def: Function(
-                    Function {
-                        id: FunctionId(
+                    FunctionId(
+                        FunctionId(
                             6400,
                         ),
-                    },
+                    ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
@@ -907,11 +907,11 @@
             FileSymbol {
                 name: "trait_fn",
                 def: Function(
-                    Function {
-                        id: FunctionId(
+                    FunctionId(
+                        FunctionId(
                             6403,
                         ),
-                    },
+                    ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(

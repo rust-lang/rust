@@ -1,12 +1,9 @@
 //! Lowering of `format_args!()`.
 
 use base_db::FxIndexSet;
-use hir_expand::name::{AsName, Name};
+use hir_expand::name::Name;
 use intern::{Symbol, sym};
-use syntax::{
-    AstPtr, AstToken as _,
-    ast::{self, HasName},
-};
+use syntax::{AstPtr, AstToken as _, ast};
 
 use crate::{
     builtin_type::BuiltinUint,
@@ -32,8 +29,8 @@ impl<'db> ExprCollector<'db> {
         let mut args = FormatArgumentsCollector::default();
         f.args().for_each(|arg| {
             args.add(FormatArgument {
-                kind: match arg.name() {
-                    Some(name) => FormatArgumentKind::Named(name.as_name()),
+                kind: match arg.arg_name() {
+                    Some(name) => FormatArgumentKind::Named(Name::new_root(name.name().text())),
                     None => FormatArgumentKind::Normal,
                 },
                 expr: self.collect_expr_opt(arg.expr()),

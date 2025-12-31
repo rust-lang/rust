@@ -24,8 +24,6 @@ pub use syntax::Edition;
 pub use text_size::{TextRange, TextSize};
 pub use vfs::FileId;
 
-pub type Span = SpanData<SyntaxContext>;
-
 impl Span {
     pub fn cover(self, other: Span) -> Span {
         if self.anchor != other.anchor {
@@ -61,13 +59,17 @@ impl Span {
         }
         Some(Span { range: self.range.cover(other.range), anchor: other.anchor, ctx: other.ctx })
     }
+
+    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
+        self.anchor == other.anchor && self.range == other.range
+    }
 }
 
 /// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs
 /// together. Positions in spans are relative to some [`SpanAnchor`] to make them more incremental
 /// friendly.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SpanData<Ctx> {
+pub struct Span {
     /// The text range of this span, relative to the anchor.
     /// We need the anchor for incrementality, as storing absolute ranges will require
     /// recomputation on every change in a file at all times.
@@ -75,10 +77,10 @@ pub struct SpanData<Ctx> {
     /// The anchor this span is relative to.
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
-    pub ctx: Ctx,
+    pub ctx: SyntaxContext,
 }
 
-impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
+impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             fmt::Debug::fmt(&self.anchor.file_id.file_id().index(), f)?;
@@ -95,12 +97,6 @@ impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
                 .field("ctx", &self.ctx)
                 .finish()
         }
-    }
-}
-
-impl<Ctx: Copy> SpanData<Ctx> {
-    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
-        self.anchor == other.anchor && self.range == other.range
     }
 }
 

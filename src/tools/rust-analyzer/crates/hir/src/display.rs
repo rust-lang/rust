@@ -2,19 +2,22 @@
 
 use either::Either;
 use hir_def::{
-    AdtId, GenericDefId,
+    AdtId, BuiltinDeriveImplId, FunctionId, GenericDefId, ImplId, ItemContainerId,
+    builtin_derive::BuiltinDeriveImplMethod,
     expr_store::ExpressionStore,
     hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_tree::FieldsShape,
     signatures::{StaticFlags, TraitFlags},
     type_ref::{TypeBound, TypeRef, TypeRefId},
 };
+use hir_expand::name::Name;
 use hir_ty::{
     GenericPredicates,
     db::HirDatabase,
     display::{
         HirDisplay, HirDisplayWithExpressionStore, HirFormatter, Result, SizedByDefault,
-        hir_display_with_store, write_bounds_like_dyn_trait_with_prefix, write_visibility,
+        hir_display_with_store, write_bounds_like_dyn_trait_with_prefix, write_params_bounds,
+        write_visibility,
     },
     next_solver::ClauseKind,
 };
@@ -22,25 +25,78 @@ use itertools::Itertools;
 use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
+    Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
     Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, Type,
     TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
+fn write_builtin_derive_impl_method<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    impl_: BuiltinDeriveImplId,
+    method: BuiltinDeriveImplMethod,
+) -> Result {
+    let db = f.db;
+    let loc = impl_.loc(db);
+    let (adt_params, _adt_params_store) = db.generic_params_and_store(loc.adt.into());
+
+    if f.show_container_bounds() && !adt_params.is_empty() {
+        f.write_str("impl")?;
+        write_generic_params(loc.adt.into(), f)?;
+        f.write_char(' ')?;
+        let trait_id = loc.trait_.get_id(f.lang_items());
+        if let Some(trait_id) = trait_id {
+            f.start_location_link(trait_id.into());
+        }
+        write!(f, "{}", Name::new_symbol_root(loc.trait_.name()).display(db, f.edition()))?;
+        if trait_id.is_some() {
+            f.end_location_link();
+        }
+        f.write_str(" for ")?;
+        f.start_location_link(loc.adt.into());
+        write!(f, "{}", Adt::from(loc.adt).name(db).display(db, f.edition()))?;
+        f.end_location_link();
+        write_generic_args(loc.adt.into(), f)?;
+        f.write_char('\n')?;
+    }
+
+    let Some(trait_method) = method.trait_method(db, impl_) else {
+        return write!(f, "fn {}(…)", method.name());
+    };
+    let has_written_where = write_function(f, trait_method)?;
+
+    if f.show_container_bounds() && !adt_params.is_empty() {
+        if !has_written_where {
+            f.write_str("\nwhere")?
+        }
+        write!(f, "\n    // Bounds from impl:")?;
+
+        let predicates =
+            hir_ty::builtin_derive::predicates(db, impl_).explicit_predicates().skip_binder();
+        write_params_bounds(f, predicates)?;
+    }
+
+    Ok(())
+}
+
 impl<'db> HirDisplay<'db> for Function {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
+        let id = match self.id {
+            AnyFunctionId::FunctionId(id) => id,
+            AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } => {
+                return write_builtin_derive_impl_method(f, impl_, method);
+            }
+        };
+
         let db = f.db;
-        let data = db.function_signature(self.id);
-        let container = self.as_assoc_item(db).map(|it| it.container(db));
-        let mut module = self.module(db);
+        let container = id.loc(db).container;
 
         // Write container (trait or impl)
         let container_params = match container {
-            Some(AssocItemContainer::Trait(trait_)) => {
-                let (params, params_store) = f.db.generic_params_and_store(trait_.id.into());
+            ItemContainerId::TraitId(trait_) => {
+                let (params, params_store) = f.db.generic_params_and_store(trait_.into());
                 if f.show_container_bounds() && !params.is_empty() {
-                    write_trait_header(&trait_, f)?;
+                    write_trait_header(trait_.into(), f)?;
                     f.write_char('\n')?;
                     has_disaplayable_predicates(f.db, &params, &params_store)
                         .then_some((params, params_store))
@@ -48,10 +104,10 @@ impl<'db> HirDisplay<'db> for Function {
                     None
                 }
             }
-            Some(AssocItemContainer::Impl(impl_)) => {
-                let (params, params_store) = f.db.generic_params_and_store(impl_.id.into());
+            ItemContainerId::ImplId(impl_) => {
+                let (params, params_store) = f.db.generic_params_and_store(impl_.into());
                 if f.show_container_bounds() && !params.is_empty() {
-                    write_impl_header(&impl_, f)?;
+                    write_impl_header(impl_, f)?;
                     f.write_char('\n')?;
                     has_disaplayable_predicates(f.db, &params, &params_store)
                         .then_some((params, params_store))
@@ -59,124 +115,20 @@ impl<'db> HirDisplay<'db> for Function {
                     None
                 }
             }
-            None => None,
+            _ => None,
         };
 
         // Write signature of the function
 
-        // Block-local impls are "hoisted" to the nearest (non-block) module.
-        if let Some(AssocItemContainer::Impl(_)) = container {
-            module = module.nearest_non_block_module(db);
-        }
-        let module_id = module.id;
-
-        write_visibility(module_id, self.visibility(db), f)?;
-
-        if data.is_default() {
-            f.write_str("default ")?;
-        }
-        if data.is_const() {
-            f.write_str("const ")?;
-        }
-        if data.is_async() {
-            f.write_str("async ")?;
-        }
-        // FIXME: This will show `unsafe` for functions that are `#[target_feature]` but not unsafe
-        // (they are conditionally unsafe to call). We probably should show something else.
-        if self.is_unsafe_to_call(db, None, f.edition()) {
-            f.write_str("unsafe ")?;
-        }
-        if let Some(abi) = &data.abi {
-            write!(f, "extern \"{}\" ", abi.as_str())?;
-        }
-        write!(f, "fn {}", data.name.display(f.db, f.edition()))?;
-
-        write_generic_params(GenericDefId::FunctionId(self.id), f)?;
-
-        f.write_char('(')?;
-
-        let mut first = true;
-        let mut skip_self = 0;
-        if let Some(self_param) = self.self_param(db) {
-            self_param.hir_fmt(f)?;
-            first = false;
-            skip_self = 1;
-        }
-
-        // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
-        let body = db.body(self.id.into());
-        for (type_ref, param) in data.params.iter().zip(self.assoc_fn_params(db)).skip(skip_self) {
-            if !first {
-                f.write_str(", ")?;
-            } else {
-                first = false;
-            }
-
-            let pat_id = body.params[param.idx - body.self_param.is_some() as usize];
-            let pat_str = body.pretty_print_pat(db, self.id.into(), pat_id, true, f.edition());
-            f.write_str(&pat_str)?;
-
-            f.write_str(": ")?;
-            type_ref.hir_fmt(f, &data.store)?;
-        }
-
-        if data.is_varargs() {
-            if !first {
-                f.write_str(", ")?;
-            }
-            f.write_str("...")?;
-        }
-
-        f.write_char(')')?;
-
-        // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
-        // Use ugly pattern match to strip the Future trait.
-        // Better way?
-        let ret_type = if !data.is_async() {
-            data.ret_type
-        } else if let Some(ret_type) = data.ret_type {
-            match &data.store[ret_type] {
-                TypeRef::ImplTrait(bounds) => match &bounds[0] {
-                    &TypeBound::Path(path, _) => Some(
-                        *data.store[path]
-                            .segments()
-                            .iter()
-                            .last()
-                            .unwrap()
-                            .args_and_bindings
-                            .unwrap()
-                            .bindings[0]
-                            .type_ref
-                            .as_ref()
-                            .unwrap(),
-                    ),
-                    _ => None,
-                },
-                _ => None,
-            }
-        } else {
-            None
-        };
-
-        if let Some(ret_type) = ret_type {
-            match &data.store[ret_type] {
-                TypeRef::Tuple(tup) if tup.is_empty() => {}
-                _ => {
-                    f.write_str(" -> ")?;
-                    ret_type.hir_fmt(f, &data.store)?;
-                }
-            }
-        }
-
-        // Write where clauses
-        let has_written_where = write_where_clause(GenericDefId::FunctionId(self.id), f)?;
+        let has_written_where = write_function(f, id)?;
         if let Some((container_params, container_params_store)) = container_params {
             if !has_written_where {
                 f.write_str("\nwhere")?;
             }
-            let container_name = match container.unwrap() {
-                AssocItemContainer::Trait(_) => "trait",
-                AssocItemContainer::Impl(_) => "impl",
+            let container_name = match container {
+                ItemContainerId::TraitId(_) => "trait",
+                ItemContainerId::ImplId(_) => "impl",
+                _ => unreachable!(),
             };
             write!(f, "\n    // Bounds from {container_name}:",)?;
             write_where_predicates(&container_params, &container_params_store, f)?;
@@ -185,14 +137,129 @@ impl<'db> HirDisplay<'db> for Function {
     }
 }
 
-fn write_impl_header<'db>(impl_: &Impl, f: &mut HirFormatter<'_, 'db>) -> Result {
+fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Result<bool> {
+    let db = f.db;
+    let func = Function::from(func_id);
+    let data = db.function_signature(func_id);
+
+    let mut module = func.module(db);
+    // Block-local impls are "hoisted" to the nearest (non-block) module.
+    if let ItemContainerId::ImplId(_) = func_id.loc(db).container {
+        module = module.nearest_non_block_module(db);
+    }
+    let module_id = module.id;
+
+    write_visibility(module_id, func.visibility(db), f)?;
+
+    if data.is_default() {
+        f.write_str("default ")?;
+    }
+    if data.is_const() {
+        f.write_str("const ")?;
+    }
+    if data.is_async() {
+        f.write_str("async ")?;
+    }
+    // FIXME: This will show `unsafe` for functions that are `#[target_feature]` but not unsafe
+    // (they are conditionally unsafe to call). We probably should show something else.
+    if func.is_unsafe_to_call(db, None, f.edition()) {
+        f.write_str("unsafe ")?;
+    }
+    if let Some(abi) = &data.abi {
+        write!(f, "extern \"{}\" ", abi.as_str())?;
+    }
+    write!(f, "fn {}", data.name.display(f.db, f.edition()))?;
+
+    write_generic_params(GenericDefId::FunctionId(func_id), f)?;
+
+    f.write_char('(')?;
+
+    let mut first = true;
+    let mut skip_self = 0;
+    if let Some(self_param) = func.self_param(db) {
+        self_param.hir_fmt(f)?;
+        first = false;
+        skip_self = 1;
+    }
+
+    // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
+    let body = db.body(func_id.into());
+    for (type_ref, param) in data.params.iter().zip(func.assoc_fn_params(db)).skip(skip_self) {
+        if !first {
+            f.write_str(", ")?;
+        } else {
+            first = false;
+        }
+
+        let pat_id = body.params[param.idx - body.self_param.is_some() as usize];
+        let pat_str = body.pretty_print_pat(db, func_id.into(), pat_id, true, f.edition());
+        f.write_str(&pat_str)?;
+
+        f.write_str(": ")?;
+        type_ref.hir_fmt(f, &data.store)?;
+    }
+
+    if data.is_varargs() {
+        if !first {
+            f.write_str(", ")?;
+        }
+        f.write_str("...")?;
+    }
+
+    f.write_char(')')?;
+
+    // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
+    // Use ugly pattern match to strip the Future trait.
+    // Better way?
+    let ret_type = if !data.is_async() {
+        data.ret_type
+    } else if let Some(ret_type) = data.ret_type {
+        match &data.store[ret_type] {
+            TypeRef::ImplTrait(bounds) => match &bounds[0] {
+                &TypeBound::Path(path, _) => Some(
+                    *data.store[path]
+                        .segments()
+                        .iter()
+                        .last()
+                        .unwrap()
+                        .args_and_bindings
+                        .unwrap()
+                        .bindings[0]
+                        .type_ref
+                        .as_ref()
+                        .unwrap(),
+                ),
+                _ => None,
+            },
+            _ => None,
+        }
+    } else {
+        None
+    };
+
+    if let Some(ret_type) = ret_type {
+        match &data.store[ret_type] {
+            TypeRef::Tuple(tup) if tup.is_empty() => {}
+            _ => {
+                f.write_str(" -> ")?;
+                ret_type.hir_fmt(f, &data.store)?;
+            }
+        }
+    }
+
+    // Write where clauses
+    let has_written_where = write_where_clause(GenericDefId::FunctionId(func_id), f)?;
+    Ok(has_written_where)
+}
+
+fn write_impl_header<'db>(impl_: ImplId, f: &mut HirFormatter<'_, 'db>) -> Result {
     let db = f.db;
 
     f.write_str("impl")?;
-    let def_id = GenericDefId::ImplId(impl_.id);
+    let def_id = GenericDefId::ImplId(impl_);
     write_generic_params(def_id, f)?;
 
-    let impl_data = db.impl_signature(impl_.id);
+    let impl_data = db.impl_signature(impl_);
     if let Some(target_trait) = &impl_data.target_trait {
         f.write_char(' ')?;
         hir_display_with_store(&impl_data.store[target_trait.path], &impl_data.store).hir_fmt(f)?;
@@ -200,14 +267,28 @@ fn write_impl_header<'db>(impl_: &Impl, f: &mut HirFormatter<'_, 'db>) -> Result
     }
 
     f.write_char(' ')?;
-    impl_.self_ty(db).hir_fmt(f)?;
+    Impl::from(impl_).self_ty(db).hir_fmt(f)?;
 
     Ok(())
 }
 
 impl<'db> HirDisplay<'db> for SelfParam {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        let data = f.db.function_signature(self.func);
+        let func = match self.func.id {
+            AnyFunctionId::FunctionId(id) => id,
+            AnyFunctionId::BuiltinDeriveImplMethod { method, .. } => match method {
+                BuiltinDeriveImplMethod::clone
+                | BuiltinDeriveImplMethod::fmt
+                | BuiltinDeriveImplMethod::hash
+                | BuiltinDeriveImplMethod::cmp
+                | BuiltinDeriveImplMethod::partial_cmp
+                | BuiltinDeriveImplMethod::eq => return f.write_str("&self"),
+                BuiltinDeriveImplMethod::default => {
+                    unreachable!("this trait method does not have a self param")
+                }
+            },
+        };
+        let data = f.db.function_signature(func);
         let param = *data.params.first().unwrap();
         match &data.store[param] {
             TypeRef::Path(p) if p.is_self_type() => f.write_str("self"),
@@ -553,6 +634,18 @@ impl<'db> HirDisplay<'db> for ConstParam {
 }
 
 fn write_generic_params<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -> Result {
+    write_generic_params_or_args(def, f, true)
+}
+
+fn write_generic_args<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -> Result {
+    write_generic_params_or_args(def, f, false)
+}
+
+fn write_generic_params_or_args<'db>(
+    def: GenericDefId,
+    f: &mut HirFormatter<'_, 'db>,
+    include_defaults: bool,
+) -> Result {
     let (params, store) = f.db.generic_params_and_store(def);
     if params.iter_lt().next().is_none()
         && params.iter_type_or_consts().all(|it| it.1.const_param().is_none())
@@ -587,7 +680,7 @@ fn write_generic_params<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -
                     }
                     delim(f)?;
                     write!(f, "{}", name.display(f.db, f.edition()))?;
-                    if let Some(default) = &ty.default {
+                    if include_defaults && let Some(default) = &ty.default {
                         f.write_str(" = ")?;
                         default.hir_fmt(f, &store)?;
                     }
@@ -597,7 +690,7 @@ fn write_generic_params<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -
                     write!(f, "const {}: ", name.display(f.db, f.edition()))?;
                     c.ty.hir_fmt(f, &store)?;
 
-                    if let Some(default) = &c.default {
+                    if include_defaults && let Some(default) = &c.default {
                         f.write_str(" = ")?;
                         default.hir_fmt(f, &store)?;
                     }
@@ -746,7 +839,7 @@ impl<'db> HirDisplay<'db> for TraitRef<'db> {
 impl<'db> HirDisplay<'db> for Trait {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         // FIXME(trait-alias) needs special handling to print the equal sign
-        write_trait_header(self, f)?;
+        write_trait_header(*self, f)?;
         let def_id = GenericDefId::TraitId(self.id);
         let has_where_clause = write_where_clause(def_id, f)?;
 
@@ -783,7 +876,7 @@ impl<'db> HirDisplay<'db> for Trait {
     }
 }
 
-fn write_trait_header<'db>(trait_: &Trait, f: &mut HirFormatter<'_, 'db>) -> Result {
+fn write_trait_header<'db>(trait_: Trait, f: &mut HirFormatter<'_, 'db>) -> Result {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
     let data = f.db.trait_signature(trait_.id);
     if data.flags.contains(TraitFlags::UNSAFE) {

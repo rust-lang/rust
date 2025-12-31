@@ -44,7 +44,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
     let label = format!("Rename to {}", d.suggested_text);
     let mut res = unresolved_fix("change_case", &label, frange.range);
     if ctx.resolve.should_resolve(&res.id) {
-        let source_change = def.rename(&ctx.sema, &d.suggested_text, RenameDefinition::Yes);
+        let source_change = def.rename(
+            &ctx.sema,
+            &d.suggested_text,
+            RenameDefinition::Yes,
+            &ctx.config.rename_config(),
+        );
         res.source_change = Some(source_change.ok().unwrap_or_default());
     }
 
@@ -1051,6 +1056,21 @@ fn QUX() {}
     non_snake_case
 )]
 fn foo(_HelloWorld: ()) {}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow_with_repr_c() {
+        check_diagnostics(
+            r#"
+#[repr(C)]
+struct FFI_Struct;
+
+#[repr(C)]
+enum FFI_Enum {
+    Field,
+}
         "#,
         );
     }

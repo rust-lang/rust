@@ -808,7 +808,11 @@ pub(crate) fn handle_will_rename_files(
             }
         })
         .filter_map(|(file_id, new_name)| {
-            snap.analysis.will_rename_file(file_id?, &new_name).ok()?
+            let file_id = file_id?;
+            let source_root = snap.analysis.source_root_id(file_id).ok();
+            snap.analysis
+                .will_rename_file(file_id, &new_name, &snap.config.rename(source_root))
+                .ok()?
         })
         .collect();
 

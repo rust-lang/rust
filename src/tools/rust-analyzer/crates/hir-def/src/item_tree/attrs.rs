@@ -18,7 +18,6 @@ use hir_expand::{
     name::Name,
 };
 use intern::{Interned, Symbol, sym};
-use span::Span;
 use syntax::{AstNode, T, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use tt::token_to_literal;
@@ -49,7 +48,7 @@ impl AttrsOrCfg {
         span_map: S,
     ) -> AttrsOrCfg
     where
-        S: syntax_bridge::SpanMapper<Span> + Copy,
+        S: syntax_bridge::SpanMapper + Copy,
     {
         let mut attrs = Vec::new();
         let result =
@@ -227,7 +226,7 @@ impl<'attr> AttrQuery<'attr> {
     }
 
     #[inline]
-    pub(crate) fn string_value_with_span(self) -> Option<(&'attr Symbol, span::Span)> {
+    pub(crate) fn string_value_with_span(self) -> Option<(&'attr str, span::Span)> {
         self.attrs().find_map(|attr| attr.string_value_with_span())
     }
 

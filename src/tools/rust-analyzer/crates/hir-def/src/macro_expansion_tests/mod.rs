@@ -16,7 +16,7 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
-use base_db::RootQueryDb;
+use base_db::{RootQueryDb, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{
     AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
@@ -53,6 +53,8 @@ use crate::{
 
 #[track_caller]
 fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    crate::nameres::ENABLE_BUILTIN_DERIVE_FAST_PATH.set(false);
+
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
     let def_map = crate_def_map(&db, krate);
@@ -80,10 +82,15 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
         .sorted_unstable_by_key(|(range, _)| range.start())
         .format_with("\n", |(range, err), format| format(&format_args!("{range:?}: {err}")))
         .to_string();
+
+    crate::nameres::ENABLE_BUILTIN_DERIVE_FAST_PATH.set(true);
+
     expect.assert_eq(&errors);
 }
 
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
+    crate::nameres::ENABLE_BUILTIN_DERIVE_FAST_PATH.set(false);
+
     let extra_proc_macros = vec![(
         r#"
 #[proc_macro_attribute]
@@ -246,6 +253,8 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
+    crate::nameres::ENABLE_BUILTIN_DERIVE_FAST_PATH.set(true);
+
     expect.indent(false);
     expect.assert_eq(&expanded_text);
 }
@@ -378,6 +387,7 @@ struct IdentityWhenValidProcMacroExpander;
 impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &base_db::Env,

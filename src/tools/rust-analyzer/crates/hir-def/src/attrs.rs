@@ -99,6 +99,20 @@ fn extract_ra_completions(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
     }
 }
 
+fn extract_ra_macro_style(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
+    let tt = TokenTreeChildren::new(&tt);
+    if let Ok(NodeOrToken::Token(option)) = Itertools::exactly_one(tt)
+        && option.kind().is_any_identifier()
+    {
+        match option.text() {
+            "braces" => attr_flags.insert(AttrFlags::MACRO_STYLE_BRACES),
+            "brackets" => attr_flags.insert(AttrFlags::MACRO_STYLE_BRACKETS),
+            "parentheses" => attr_flags.insert(AttrFlags::MACRO_STYLE_PARENTHESES),
+            _ => {}
+        }
+    }
+}
+
 fn extract_rustc_skip_during_method_dispatch(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
     let iter = TokenTreeChildren::new(&tt);
     for kind in iter {
@@ -163,6 +177,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
             2 => match path.segments[0].text() {
                 "rust_analyzer" => match path.segments[1].text() {
                     "completions" => extract_ra_completions(attr_flags, tt),
+                    "macro_style" => extract_ra_macro_style(attr_flags, tt),
                     _ => {}
                 },
                 _ => {}
@@ -188,6 +203,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "macro_export" => attr_flags.insert(AttrFlags::IS_MACRO_EXPORT),
                     "no_mangle" => attr_flags.insert(AttrFlags::NO_MANGLE),
+                    "pointee" => attr_flags.insert(AttrFlags::IS_POINTEE),
                     "non_exhaustive" => attr_flags.insert(AttrFlags::NON_EXHAUSTIVE),
                     "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
                     "bench" => attr_flags.insert(AttrFlags::IS_BENCH),
@@ -289,6 +305,11 @@ bitflags::bitflags! {
         const RUSTC_PAREN_SUGAR = 1 << 42;
         const RUSTC_COINDUCTIVE = 1 << 43;
         const RUSTC_FORCE_INLINE = 1 << 44;
+        const IS_POINTEE = 1 << 45;
+
+        const MACRO_STYLE_BRACES = 1 << 46;
+        const MACRO_STYLE_BRACKETS = 1 << 47;
+        const MACRO_STYLE_PARENTHESES = 1 << 48;
     }
 }
 

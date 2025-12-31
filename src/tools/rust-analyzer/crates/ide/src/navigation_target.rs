@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     AssocItem, Crate, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId,
-    InFile, LocalSource, ModuleSource, Semantics, Symbol, db::ExpandDatabase, sym,
+    InFile, LocalSource, ModuleSource, Name, Semantics, Symbol, db::ExpandDatabase, sym,
     symbols::FileSymbol,
 };
 use ide_db::{
@@ -198,6 +198,22 @@ impl NavigationTarget {
             value.name().map(|it| Symbol::intern(&it.text())).unwrap_or_else(|| sym::underscore);
 
         orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
+            |(FileRange { file_id, range: full_range }, focus_range)| {
+                NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
+            },
+        )
+    }
+
+    pub(crate) fn from_named_with_range(
+        db: &RootDatabase,
+        ranges: InFile<(TextRange, Option<TextRange>)>,
+        name: Option<Name>,
+        kind: SymbolKind,
+    ) -> UpmappingResult<NavigationTarget> {
+        let InFile { file_id, value: (full_range, focus_range) } = ranges;
+        let name = name.map(|name| name.symbol().clone()).unwrap_or_else(|| sym::underscore);
+
+        orig_range_with_focus_r(db, file_id, full_range, focus_range).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
             },
@@ -414,7 +430,13 @@ impl ToNavFromAst for hir::Trait {
 
 impl<D> TryToNav for D
 where
-    D: HasSource + ToNavFromAst + Copy + HasDocs + for<'db> HirDisplay<'db> + HasCrate,
+    D: HasSource
+        + ToNavFromAst
+        + Copy
+        + HasDocs
+        + for<'db> HirDisplay<'db>
+        + HasCrate
+        + hir::HasName,
     D::Ast: ast::HasName,
 {
     fn try_to_nav(
@@ -422,11 +444,19 @@ where
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let src = self.source(db)?;
+        let src = self.source_with_range(db)?;
         Some(
-            NavigationTarget::from_named(
+            NavigationTarget::from_named_with_range(
                 db,
-                src.as_ref().map(|it| it as &dyn ast::HasName),
+                src.map(|(full_range, node)| {
+                    (
+                        full_range,
+                        node.and_then(|node| {
+                            Some(ast::HasName::name(&node)?.syntax().text_range())
+                        }),
+                    )
+                }),
+                self.name(db),
                 D::KIND,
             )
             .map(|mut res| {
@@ -477,16 +507,16 @@ impl TryToNav for hir::Impl {
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let InFile { file_id, value } = self.source(db)?;
-        let derive_path = self.as_builtin_derive_path(db);
+        let InFile { file_id, value: (full_range, source) } = self.source_with_range(db)?;
 
-        let (file_id, focus, syntax) = match &derive_path {
-            Some(attr) => (attr.file_id.into(), None, attr.value.syntax()),
-            None => (file_id, value.self_ty(), value.syntax()),
-        };
-
-        Some(orig_range_with_focus(db, file_id, syntax, focus).map(
-            |(FileRange { file_id, range: full_range }, focus_range)| {
+        Some(
+            orig_range_with_focus_r(
+                db,
+                file_id,
+                full_range,
+                source.and_then(|source| Some(source.self_ty()?.syntax().text_range())),
+            )
+            .map(|(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget::from_syntax(
                     file_id,
                     sym::kw_impl,
@@ -494,8 +524,8 @@ impl TryToNav for hir::Impl {
                     full_range,
                     SymbolKind::Impl,
                 )
-            },
-        ))
+            }),
+        )
     }
 }
 

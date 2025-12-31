@@ -35,7 +35,8 @@ use arrayvec::ArrayVec;
 use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use intern::{Interned, Symbol};
+use intern::Interned;
+use itertools::Itertools;
 use mbe::{DelimiterKind, Punct};
 use parser::T;
 use smallvec::SmallVec;
@@ -416,47 +417,42 @@ impl fmt::Display for AttrInput {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&Symbol> {
+    pub fn string_value(&self) -> Option<&str> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text,
-                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-                ..
-            }) => Some(text),
+            AttrInput::Literal(
+                lit @ tt::Literal { kind: tt::LitKind::Str | tt::LitKind::StrRaw(_), .. },
+            ) => Some(lit.text()),
             _ => None,
         }
     }
 
     /// #[path = "string"]
-    pub fn string_value_with_span(&self) -> Option<(&Symbol, span::Span)> {
+    pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text,
-                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-                span,
-                suffix: _,
-            }) => Some((text, *span)),
+            AttrInput::Literal(
+                lit @ tt::Literal { kind: tt::LitKind::Str | tt::LitKind::StrRaw(_), span, .. },
+            ) => Some((lit.text(), *span)),
             _ => None,
         }
     }
 
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text, kind: tt::LitKind::StrRaw(_), ..
-            }) => Some(Cow::Borrowed(text.as_str())),
-            AttrInput::Literal(tt::Literal { symbol: text, kind: tt::LitKind::Str, .. }) => {
-                unescape(text.as_str())
+            AttrInput::Literal(lit @ tt::Literal { kind: tt::LitKind::StrRaw(_), .. }) => {
+                Some(Cow::Borrowed(lit.text()))
+            }
+            AttrInput::Literal(lit @ tt::Literal { kind: tt::LitKind::Str, .. }) => {
+                unescape(lit.text())
             }
             _ => None,
         }
     }
 
     /// #[path(ident)]
-    pub fn single_ident_value(&self) -> Option<&tt::Ident> {
+    pub fn single_ident_value(&self) -> Option<tt::Ident> {
         match self.input.as_deref()? {
-            AttrInput::TokenTree(tt) => match tt.token_trees().flat_tokens() {
-                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] => Some(ident),
+            AttrInput::TokenTree(tt) => match tt.token_trees().iter().collect_array() {
+                Some([tt::TtElement::Leaf(tt::Leaf::Ident(ident))]) => Some(ident),
                 _ => None,
             },
             _ => None,
@@ -492,7 +488,7 @@ fn parse_path_comma_token_tree<'a>(
     args.token_trees()
         .split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
         .filter_map(move |tts| {
-            let span = tts.flat_tokens().first()?.first_span();
+            let span = tts.first_span()?;
             Some((ModPath::from_tt(db, tts)?, span, tts))
         })
 }
@@ -611,16 +607,12 @@ impl AttrId {
         else {
             return derive_attr_range;
         };
-        let (Some(first_tt), Some(last_tt)) =
-            (derive_tts.flat_tokens().first(), derive_tts.flat_tokens().last())
+        let (Some(first_span), Some(last_span)) = (derive_tts.first_span(), derive_tts.last_span())
         else {
             return derive_attr_range;
         };
-        let start = first_tt.first_span().range.start();
-        let end = match last_tt {
-            tt::TokenTree::Leaf(it) => it.span().range.end(),
-            tt::TokenTree::Subtree(it) => it.delimiter.close.range.end(),
-        };
+        let start = first_span.range.start();
+        let end = last_span.range.end();
         TextRange::new(start, end)
     }
 }

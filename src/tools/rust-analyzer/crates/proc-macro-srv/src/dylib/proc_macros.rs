@@ -1,8 +1,6 @@
 //! Proc macro ABI
-
+use crate::{ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
 use proc_macro::bridge;
-
-use crate::{ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
@@ -22,6 +20,7 @@ impl ProcMacros {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<TokenStream<S>, crate::PanicMessage> {
         let parsed_attributes = attribute.unwrap_or_default();
 
@@ -32,7 +31,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, callback),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -41,7 +40,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, callback),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -50,7 +49,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, callback),
                         parsed_attributes,
                         macro_body,
                         cfg!(debug_assertions),
