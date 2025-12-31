@@ -81,7 +81,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
                 }
 
                 bidirectional::Request::ApiVersionCheck {} => {
-                    // bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION).write::<_, C>(stdout)
                     send_response::<C>(
                         &stdout,
                         bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
