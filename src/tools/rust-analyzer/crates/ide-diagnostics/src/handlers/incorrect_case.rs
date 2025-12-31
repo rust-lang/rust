@@ -1059,4 +1059,19 @@ fn foo(_HelloWorld: ()) {}
         "#,
         );
     }
+
+    #[test]
+    fn allow_with_repr_c() {
+        check_diagnostics(
+            r#"
+#[repr(C)]
+struct FFI_Struct;
+
+#[repr(C)]
+enum FFI_Enum {
+    Field,
+}
+        "#,
+        );
+    }
 }

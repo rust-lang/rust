@@ -108,7 +108,6 @@ use syntax::{
     ast::{self, AstNode},
 };
 
-// FIXME: Make this an enum
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticCode {
     RustcHardError(&'static str),
