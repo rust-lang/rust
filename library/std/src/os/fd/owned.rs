@@ -77,7 +77,11 @@ impl BorrowedFd<'_> {
     /// # Safety
     ///
     /// The resource pointed to by `fd` must remain open for the duration of
-    /// the returned `BorrowedFd`, and it must not have the value `-1`.
+    /// the returned `BorrowedFd`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the raw file descriptor has the value `-1`.
     #[inline]
     #[track_caller]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
@@ -177,6 +181,10 @@ impl FromRawFd for OwnedFd {
     /// [ownership][io-safety]. The resource must not require any cleanup other than `close`.
     ///
     /// [io-safety]: io#io-safety
+    ///
+    /// # Panics
+    ///
+    /// Panics if the raw file descriptor has the value `-1`.
     #[inline]
     #[track_caller]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
