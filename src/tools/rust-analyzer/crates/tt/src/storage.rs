@@ -353,7 +353,7 @@ const _: () = {
     assert!(size_of::<TokenTree<SpanStorage96>>() == 32);
 };
 
-/// `dispatch! {}`
+#[rust_analyzer::macro_style(braces)]
 macro_rules! dispatch {
     (
         match $scrutinee:expr => $tt:ident => $body:expr
@@ -561,7 +561,7 @@ impl TopSubtree {
     }
 }
 
-/// `dispatch_builder! {}`
+#[rust_analyzer::macro_style(braces)]
 macro_rules! dispatch_builder {
     (
         match $scrutinee:expr => $tt:ident => $body:expr

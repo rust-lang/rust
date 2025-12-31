@@ -3429,6 +3429,50 @@ impl Macro {
     pub fn is_derive(&self, db: &dyn HirDatabase) -> bool {
         matches!(self.kind(db), MacroKind::Derive | MacroKind::DeriveBuiltIn)
     }
+
+    pub fn preferred_brace_style(&self, db: &dyn HirDatabase) -> Option<MacroBraces> {
+        let attrs = self.attrs(db);
+        MacroBraces::extract(attrs.attrs)
+    }
+}
+
+// Feature: Macro Brace Style Attribute
+// Crate authors can declare the preferred brace style for their macro. This will affect how completion
+// insert calls to it.
+//
+// This is only supported on function-like macros.
+//
+// To do that, insert the `#[rust_analyzer::macro_style(style)]` attribute on the macro (for proc macros,
+// insert it for the macro's function). `style` can be one of:
+//
+//  - `braces` for `{...}` style.
+//  - `brackets` for `[...]` style.
+//  - `parentheses` for `(...)` style.
+//
+// Malformed attributes will be ignored without warnings.
+//
+// Note that users have no way to override this attribute, so be careful and only include things
+// users definitely do not want to be completed!
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroBraces {
+    Braces,
+    Brackets,
+    Parentheses,
+}
+
+impl MacroBraces {
+    fn extract(attrs: AttrFlags) -> Option<Self> {
+        if attrs.contains(AttrFlags::MACRO_STYLE_BRACES) {
+            Some(Self::Braces)
+        } else if attrs.contains(AttrFlags::MACRO_STYLE_BRACKETS) {
+            Some(Self::Brackets)
+        } else if attrs.contains(AttrFlags::MACRO_STYLE_PARENTHESES) {
+            Some(Self::Parentheses)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
