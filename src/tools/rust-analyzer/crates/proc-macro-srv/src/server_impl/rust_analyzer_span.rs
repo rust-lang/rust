@@ -127,13 +127,14 @@ impl server::Span for RaSpanServer<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span)
     }
-    fn file(&mut self, _: Self::Span) -> String {
-        // FIXME
-        String::new()
+    fn file(&mut self, span: Self::Span) -> String {
+        self.callback
+            .as_mut()
+            .map(|cb| cb.file(span.anchor.file_id.file_id().index()))
+            .unwrap_or_default()
     }
-    fn local_file(&mut self, _: Self::Span) -> Option<String> {
-        // FIXME
-        None
+    fn local_file(&mut self, span: Self::Span) -> Option<String> {
+        self.callback.as_mut().and_then(|cb| cb.local_file(span.anchor.file_id.file_id().index()))
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
         // FIXME, quote is incompatible with third-party tools

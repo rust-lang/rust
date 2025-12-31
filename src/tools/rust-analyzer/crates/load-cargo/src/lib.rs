@@ -546,6 +546,20 @@ impl ProcMacroExpander for Expander {
                 let slice = text.get(start as usize..end as usize).map(ToOwned::to_owned);
                 Ok(SubResponse::SourceTextResult { text: slice })
             }
+            SubRequest::FileName { file_id } => {
+                let file = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+
+                let name = source_root.path_for_file(&file).and_then(|path| {
+                    path.name_and_extension().map(|(name, ext)| match ext {
+                        Some(ext) => format!("{name}.{ext}"),
+                        None => name.to_owned(),
+                    })
+                });
+
+                Ok(SubResponse::FileNameResult { name: name.unwrap_or_default() })
+            }
         };
         match self.0.expand(
             subtree.view(),

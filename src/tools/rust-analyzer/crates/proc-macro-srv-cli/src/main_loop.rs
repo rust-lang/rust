@@ -167,6 +167,32 @@ struct ProcMacroClientHandle<'a, C: Codec> {
 }
 
 impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
+    fn file(&mut self, file_id: u32) -> String {
+        let req =
+            bidirectional::BidirectionalMessage::SubRequest(bidirectional::SubRequest::FileName {
+                file_id,
+            });
+
+        if req.write::<_, C>(&mut self.stdout.lock()).is_err() {
+            return String::new();
+        }
+
+        let msg = match bidirectional::BidirectionalMessage::read::<_, C>(
+            &mut self.stdin.lock(),
+            self.buf,
+        ) {
+            Ok(Some(msg)) => msg,
+            _ => return String::new(),
+        };
+
+        match msg {
+            bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::FileNameResult { name },
+            ) => name,
+            _ => String::new(),
+        }
+    }
+
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
         let req = bidirectional::BidirectionalMessage::SubRequest(
             bidirectional::SubRequest::SourceText { file_id, start, end },
