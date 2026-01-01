@@ -842,6 +842,21 @@ where
             }
         })
     }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+        if let ty::FRT(..) = goal.predicate.self_ty().kind() {
+            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+        } else {
+            Err(NoSolution)
+        }
+    }
 }
 
 /// Small helper function to change the `def_id` of a trait predicate - this is not normally
