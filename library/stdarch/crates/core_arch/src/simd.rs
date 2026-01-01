@@ -16,129 +16,223 @@ pub(crate) const unsafe fn simd_imin<T: Copy>(a: T, b: T) -> T {
     crate::intrinsics::simd::simd_select(mask, a, b)
 }
 
+/// SAFETY: All bits patterns must be valid
+pub(crate) unsafe trait SimdElement:
+    Copy + const PartialEq + crate::fmt::Debug
+{
+}
+
+unsafe impl SimdElement for u8 {}
+unsafe impl SimdElement for u16 {}
+unsafe impl SimdElement for u32 {}
+unsafe impl SimdElement for u64 {}
+
+unsafe impl SimdElement for i8 {}
+unsafe impl SimdElement for i16 {}
+unsafe impl SimdElement for i32 {}
+unsafe impl SimdElement for i64 {}
+
+unsafe impl SimdElement for f16 {}
+unsafe impl SimdElement for f32 {}
+unsafe impl SimdElement for f64 {}
+
+#[repr(simd)]
+#[derive(Copy)]
+pub(crate) struct Simd<T: SimdElement, const N: usize>([T; N]);
+
+impl<T: SimdElement, const N: usize> Simd<T, N> {
+    /// A value of this type where all elements are zeroed out.
+    // SAFETY: `T` implements `SimdElement`, so it is zeroable.
+    pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
+
+    #[inline(always)]
+    pub(crate) const fn from_array(elements: [T; N]) -> Self {
+        Self(elements)
+    }
+
+    // FIXME: Workaround rust@60637
+    #[inline(always)]
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    pub(crate) const fn splat(value: T) -> Self {
+        let one = Simd([value]);
+        // SAFETY: 0 is always in-bounds because we're shuffling
+        // a simd type with exactly one element.
+        unsafe { simd_shuffle!(one, one, [0; N]) }
+    }
+
+    /// Extract the element at position `index`.
+    /// `index` is not a constant so this is not efficient!
+    /// Use for testing only.
+    // FIXME: Workaround rust@60637
+    #[inline(always)]
+    pub(crate) const fn extract(&self, index: usize) -> T {
+        self.as_array()[index]
+    }
+
+    #[inline]
+    pub(crate) const fn as_array(&self) -> &[T; N] {
+        let simd_ptr: *const Self = self;
+        let array_ptr: *const [T; N] = simd_ptr.cast();
+        // SAFETY: We can always read the prefix of a simd type as an array.
+        // There might be more padding afterwards for some widths, but
+        // that's not a problem for reading less than that.
+        unsafe { &*array_ptr }
+    }
+}
+
+// `#[derive(Clone)]` causes ICE "Projecting into SIMD type core_arch::simd::Simd is banned by MCP#838"
+impl<T: SimdElement, const N: usize> Clone for Simd<T, N> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for Simd<T, N> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.as_array() == other.as_array()
+    }
+}
+
+impl<T: SimdElement, const N: usize> crate::fmt::Debug for Simd<T, N> {
+    #[inline]
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        debug_simd_finish(f, "Simd", self.as_array())
+    }
+}
+
+impl<const N: usize> Simd<f16, N> {
+    #[inline]
+    pub(crate) const fn to_bits(self) -> Simd<u16, N> {
+        assert!(size_of::<Self>() == size_of::<Simd<u16, N>>());
+        unsafe { crate::mem::transmute_copy(&self) }
+    }
+
+    #[inline]
+    pub(crate) const fn from_bits(bits: Simd<u16, N>) -> Self {
+        assert!(size_of::<Self>() == size_of::<Simd<u16, N>>());
+        unsafe { crate::mem::transmute_copy(&bits) }
+    }
+}
+
+impl<const N: usize> Simd<f32, N> {
+    #[inline]
+    pub(crate) const fn to_bits(self) -> Simd<u32, N> {
+        assert!(size_of::<Self>() == size_of::<Simd<u32, N>>());
+        unsafe { crate::mem::transmute_copy(&self) }
+    }
+
+    #[inline]
+    pub(crate) const fn from_bits(bits: Simd<u32, N>) -> Self {
+        assert!(size_of::<Self>() == size_of::<Simd<u32, N>>());
+        unsafe { crate::mem::transmute_copy(&bits) }
+    }
+}
+
+impl<const N: usize> Simd<f64, N> {
+    #[inline]
+    pub(crate) const fn to_bits(self) -> Simd<u64, N> {
+        assert!(size_of::<Self>() == size_of::<Simd<u64, N>>());
+        unsafe { crate::mem::transmute_copy(&self) }
+    }
+
+    #[inline]
+    pub(crate) const fn from_bits(bits: Simd<u64, N>) -> Self {
+        assert!(size_of::<Self>() == size_of::<Simd<u64, N>>());
+        unsafe { crate::mem::transmute_copy(&bits) }
+    }
+}
+
 macro_rules! simd_ty {
     ($id:ident [$elem_type:ty ; $len:literal]: $($param_name:ident),*) => {
-        #[repr(simd)]
-        #[derive(Copy, Clone)]
-        pub(crate) struct $id([$elem_type; $len]);
+        pub(crate) type $id = Simd<$elem_type, $len>;
 
-        #[allow(clippy::use_self)]
         impl $id {
-            /// A value of this type where all elements are zeroed out.
-            pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
-
             #[inline(always)]
             pub(crate) const fn new($($param_name: $elem_type),*) -> Self {
-                $id([$($param_name),*])
-            }
-            #[inline(always)]
-            pub(crate) const fn from_array(elements: [$elem_type; $len]) -> Self {
-                $id(elements)
-            }
-            // FIXME: Workaround rust@60637
-            #[inline(always)]
-            #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-            pub(crate) const fn splat(value: $elem_type) -> Self {
-                #[derive(Copy, Clone)]
-                #[repr(simd)]
-                struct JustOne([$elem_type; 1]);
-                let one = JustOne([value]);
-                // SAFETY: 0 is always in-bounds because we're shuffling
-                // a simd type with exactly one element.
-                unsafe { simd_shuffle!(one, one, [0; $len]) }
-            }
-
-            /// Extract the element at position `index`.
-            /// `index` is not a constant so this is not efficient!
-            /// Use for testing only.
-            // FIXME: Workaround rust@60637
-            #[inline(always)]
-            pub(crate) const fn extract(&self, index: usize) -> $elem_type {
-                self.as_array()[index]
-            }
-
-            #[inline]
-            pub(crate) const fn as_array(&self) -> &[$elem_type; $len] {
-                let simd_ptr: *const Self = self;
-                let array_ptr: *const [$elem_type; $len] = simd_ptr.cast();
-                // SAFETY: We can always read the prefix of a simd type as an array.
-                // There might be more padding afterwards for some widths, but
-                // that's not a problem for reading less than that.
-                unsafe { &*array_ptr }
-            }
-        }
-
-        #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-        const impl core::cmp::PartialEq for $id {
-            #[inline]
-            fn eq(&self, other: &Self) -> bool {
-                self.as_array() == other.as_array()
-            }
-        }
-
-        impl core::fmt::Debug for $id {
-            #[inline]
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                debug_simd_finish(f, stringify!($id), self.as_array())
+                Self([$($param_name),*])
             }
         }
     }
 }
 
+#[repr(simd)]
+#[derive(Copy)]
+pub(crate) struct SimdM<T: SimdElement, const N: usize>([T; N]);
+
+impl<T: SimdElement, const N: usize> SimdM<T, N> {
+    #[inline(always)]
+    const fn bool_to_internal(x: bool) -> T {
+        // SAFETY: `T` implements `SimdElement`, so all bit patterns are valid.
+        let zeros = const { unsafe { crate::mem::zeroed::<T>() } };
+        let ones = const {
+            // Ideally, this would be `transmute([0xFFu8; size_of::<T>()])`, but
+            // `size_of::<T>()` is not allowed to use a generic parameter there.
+            let mut r = crate::mem::MaybeUninit::<T>::uninit();
+            let mut i = 0;
+            while i < crate::mem::size_of::<T>() {
+                r.as_bytes_mut()[i] = crate::mem::MaybeUninit::new(0xFF);
+                i += 1;
+            }
+            unsafe { r.assume_init() }
+        };
+        [zeros, ones][x as usize]
+    }
+
+    // FIXME: Workaround rust@60637
+    #[inline(always)]
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    pub(crate) const fn splat(value: bool) -> Self {
+        let one = SimdM([Self::bool_to_internal(value)]);
+        // SAFETY: 0 is always in-bounds because we're shuffling
+        // a simd type with exactly one element.
+        unsafe { simd_shuffle!(one, one, [0; N]) }
+    }
+
+    #[inline]
+    pub(crate) const fn as_array(&self) -> &[T; N] {
+        let simd_ptr: *const Self = self;
+        let array_ptr: *const [T; N] = simd_ptr.cast();
+        // SAFETY: We can always read the prefix of a simd type as an array.
+        // There might be more padding afterwards for some widths, but
+        // that's not a problem for reading less than that.
+        unsafe { &*array_ptr }
+    }
+}
+
+// `#[derive(Clone)]` causes ICE "Projecting into SIMD type core_arch::simd::SimdM is banned by MCP#838"
+impl<T: SimdElement, const N: usize> Clone for SimdM<T, N> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for SimdM<T, N> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.as_array() == other.as_array()
+    }
+}
+
+impl<T: SimdElement, const N: usize> crate::fmt::Debug for SimdM<T, N> {
+    #[inline]
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        debug_simd_finish(f, "SimdM", self.as_array())
+    }
+}
+
 macro_rules! simd_m_ty {
     ($id:ident [$elem_type:ident ; $len:literal]: $($param_name:ident),*) => {
-        #[repr(simd)]
-        #[derive(Copy, Clone)]
-        pub(crate) struct $id([$elem_type; $len]);
+        pub(crate) type $id  = SimdM<$elem_type, $len>;
 
-        #[allow(clippy::use_self)]
         impl $id {
             #[inline(always)]
-            const fn bool_to_internal(x: bool) -> $elem_type {
-                [0 as $elem_type, !(0 as $elem_type)][x as usize]
-            }
-
-            #[inline(always)]
             pub(crate) const fn new($($param_name: bool),*) -> Self {
-                $id([$(Self::bool_to_internal($param_name)),*])
-            }
-
-            // FIXME: Workaround rust@60637
-            #[inline(always)]
-            #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-            pub(crate) const fn splat(value: bool) -> Self {
-                #[derive(Copy, Clone)]
-                #[repr(simd)]
-                struct JustOne([$elem_type; 1]);
-                let one = JustOne([Self::bool_to_internal(value)]);
-                // SAFETY: 0 is always in-bounds because we're shuffling
-                // a simd type with exactly one element.
-                unsafe { simd_shuffle!(one, one, [0; $len]) }
-            }
-
-            #[inline]
-            pub(crate) const fn as_array(&self) -> &[$elem_type; $len] {
-                let simd_ptr: *const Self = self;
-                let array_ptr: *const [$elem_type; $len] = simd_ptr.cast();
-                // SAFETY: We can always read the prefix of a simd type as an array.
-                // There might be more padding afterwards for some widths, but
-                // that's not a problem for reading less than that.
-                unsafe { &*array_ptr }
-            }
-        }
-
-        #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-        const impl core::cmp::PartialEq for $id {
-            #[inline]
-            fn eq(&self, other: &Self) -> bool {
-                self.as_array() == other.as_array()
-            }
-        }
-
-        impl core::fmt::Debug for $id {
-            #[inline]
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                debug_simd_finish(f, stringify!($id), self.as_array())
+                Self([$(Self::bool_to_internal($param_name)),*])
             }
         }
     }

@@ -135,6 +135,22 @@ macro_rules! types {
                 crate::core_arch::simd::debug_simd_finish(f, stringify!($name), self.as_array())
             }
         }
+
+        $(#[$stability])+
+        impl crate::convert::From<crate::core_arch::simd::Simd<$elem_type, $len>> for $name {
+            #[inline(always)]
+            fn from(simd: crate::core_arch::simd::Simd<$elem_type, $len>) -> Self {
+                unsafe { crate::mem::transmute(simd) }
+            }
+        }
+
+        $(#[$stability])+
+        impl crate::convert::From<$name> for crate::core_arch::simd::Simd<$elem_type, $len> {
+            #[inline(always)]
+            fn from(simd: $name) -> Self {
+                unsafe { crate::mem::transmute(simd) }
+            }
+        }
     )*);
 }
 

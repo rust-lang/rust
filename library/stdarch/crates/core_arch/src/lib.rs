@@ -37,7 +37,8 @@
     avx10_target_feature,
     const_trait_impl,
     const_cmp,
-    const_eval_select
+    const_eval_select,
+    maybe_uninit_as_bytes
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
@@ -87,4 +88,4 @@ pub mod arch {
 }
 
 #[allow(unused_imports)]
-use core::{array, convert, ffi, fmt, hint, intrinsics, marker, mem, ops, ptr, sync};
+use core::{array, cmp, convert, ffi, fmt, hint, intrinsics, marker, mem, ops, ptr, sync};
