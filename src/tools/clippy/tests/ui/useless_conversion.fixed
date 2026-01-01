@@ -442,3 +442,14 @@ fn issue14739() {
     let _ = R.map(|_x| 0);
     //~^ useless_conversion
 }
+
+fn issue16165() {
+    macro_rules! mac {
+        (iter $e:expr) => {
+            $e.iter()
+        };
+    }
+
+    for _ in mac!(iter [1, 2]) {}
+    //~^ useless_conversion
+}

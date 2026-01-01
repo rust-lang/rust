@@ -265,7 +265,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                EarlyBinder::bind(Ty::new_diverging_default(tcx))
+                EarlyBinder::bind(tcx.types.unit)
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {

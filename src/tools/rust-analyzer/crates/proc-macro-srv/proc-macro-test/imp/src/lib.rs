@@ -94,6 +94,11 @@ pub fn attr_error(args: TokenStream, item: TokenStream) -> TokenStream {
     format!("compile_error!(\"#[attr_error({})] {}\");", args, item).parse().unwrap()
 }
 
+#[proc_macro_derive(DeriveReemit, attributes(helper))]
+pub fn derive_reemit(item: TokenStream) -> TokenStream {
+    item
+}
+
 #[proc_macro_derive(DeriveEmpty)]
 pub fn derive_empty(_item: TokenStream) -> TokenStream {
     TokenStream::default()

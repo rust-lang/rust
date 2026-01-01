@@ -214,7 +214,7 @@ As a result of this assignment, the type of `u` is forced to be
 `Option<Vec<?V>>`, where `?V` represents the element type of the
 vector. This in turn implies that `?U` is [unified] to `Vec<?V>`.
 
-[unified]: ../type-checking.html
+[unified]: ../hir-typeck/summary.md
 
 Let's suppose that the type checker decides to revisit the
 "as-yet-unproven" trait obligation we saw before, `Vec<?T>:

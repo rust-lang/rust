@@ -16,7 +16,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -613,6 +613,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn scalable_alloca(&mut self, elt: u64, align: Align, element_ty: Ty<'_>) -> Self::Value {
+        let mut bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
+        let llvm_ty = match element_ty.kind() {
+            ty::Bool => bx.type_i1(),
+            ty::Int(int_ty) => self.cx.type_int_from_ty(*int_ty),
+            ty::Uint(uint_ty) => self.cx.type_uint_from_ty(*uint_ty),
+            ty::Float(float_ty) => self.cx.type_float_from_ty(*float_ty),
+            _ => unreachable!("scalable vectors can only contain a bool, int, uint or float"),
+        };
+
+        unsafe {
+            let ty = llvm::LLVMScalableVectorType(llvm_ty, elt.try_into().unwrap());
+            let alloca = llvm::LLVMBuildAlloca(&bx.llbuilder, ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
+        }
+    }
+
     fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
@@ -760,30 +779,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) {
-        let zero = self.const_usize(0);
-        let count = self.const_usize(count);
-
-        let header_bb = self.append_sibling_block("repeat_loop_header");
-        let body_bb = self.append_sibling_block("repeat_loop_body");
-        let next_bb = self.append_sibling_block("repeat_loop_next");
-
-        self.br(header_bb);
-
-        let mut header_bx = Self::build(self.cx, header_bb);
-        let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
-
-        let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
-        header_bx.cond_br(keep_going, body_bb, next_bb);
-
-        let mut body_bx = Self::build(self.cx, body_bb);
-        let dest_elem = dest.project_index(&mut body_bx, i);
-        cg_elem.val.store(&mut body_bx, dest_elem);
-
-        let next = body_bx.unchecked_uadd(i, self.const_usize(1));
-        body_bx.br(header_bb);
-        header_bx.add_incoming_to_phi(i, next, body_bb);
-
-        *self = Self::build(self.cx, next_bb);
+        if self.cx.sess().opts.optimize == OptLevel::No {
+            // To let debuggers single-step over lines like
+            //
+            //     let foo = ["bar"; 42];
+            //
+            // we need the debugger-friendly LLVM IR that `_unoptimized()`
+            // provides. The `_optimized()` version generates trickier LLVM IR.
+            // See PR #148058 for a failed attempt at handling that.
+            self.write_operand_repeatedly_unoptimized(cg_elem, count, dest);
+        } else {
+            self.write_operand_repeatedly_optimized(cg_elem, count, dest);
+        }
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -1417,14 +1424,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // Attributes on the function definition being called
             let fn_defn_attrs = self.cx.tcx.codegen_fn_attrs(instance.def_id());
             if let Some(fn_call_attrs) = fn_call_attrs
-                && !fn_call_attrs.target_features.is_empty()
                 // If there is an inline attribute and a target feature that matches
                 // we will add the attribute to the callsite otherwise we'll omit
                 // this and not add the attribute to prevent soundness issues.
                 && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, instance)
                 && self.cx.tcx.is_target_feature_call_safe(
-                    &fn_call_attrs.target_features,
                     &fn_defn_attrs.target_features,
+                    &fn_call_attrs.target_features.iter().cloned().chain(
+                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
+                            name: *feat,
+                            kind: TargetFeatureKind::Implied,
+                        })
+                    ).collect::<Vec<_>>(),
                 )
             {
                 attributes::apply_to_callsite(
@@ -1512,6 +1523,78 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
         self.set_metadata_node(inst, llvm::MD_unpredictable, &[]);
+    }
+
+    fn write_operand_repeatedly_optimized(
+        &mut self,
+        cg_elem: OperandRef<'tcx, &'ll Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, &'ll Value>,
+    ) {
+        let zero = self.const_usize(0);
+        let count = self.const_usize(count);
+
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
+
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
+        let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
+
+        let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
+        header_bx.cond_br(keep_going, body_bb, next_bb);
+
+        let mut body_bx = Self::build(self.cx, body_bb);
+        let dest_elem = dest.project_index(&mut body_bx, i);
+        cg_elem.val.store(&mut body_bx, dest_elem);
+
+        let next = body_bx.unchecked_uadd(i, self.const_usize(1));
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(i, next, body_bb);
+
+        *self = Self::build(self.cx, next_bb);
+    }
+
+    fn write_operand_repeatedly_unoptimized(
+        &mut self,
+        cg_elem: OperandRef<'tcx, &'ll Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, &'ll Value>,
+    ) {
+        let zero = self.const_usize(0);
+        let count = self.const_usize(count);
+        let start = dest.project_index(self, zero).val.llval;
+        let end = dest.project_index(self, count).val.llval;
+
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
+
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
+        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+
+        let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
+        header_bx.cond_br(keep_going, body_bb, next_bb);
+
+        let mut body_bx = Self::build(self.cx, body_bb);
+        let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        cg_elem
+            .val
+            .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
+
+        let next = body_bx.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current,
+            &[self.const_usize(1)],
+        );
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(current, next, body_bb);
+
+        *self = Self::build(self.cx, next_bb);
     }
 
     pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
@@ -1622,7 +1705,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_call<'b>(
+    pub(crate) fn check_call<'b>(
         &mut self,
         typ: &str,
         fn_ty: &'ll Type,

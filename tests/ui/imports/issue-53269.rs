@@ -1,3 +1,4 @@
+//@ edition:2015
 // Ambiguity between a `macro_rules` macro and a non-existent import recovered as `Res::Err`
 
 macro_rules! mac { () => () }

@@ -16,14 +16,21 @@ pub(super) fn type_decodable_derive(
     decodable_body(s, decoder_ty)
 }
 
-pub(super) fn meta_decodable_derive(
+pub(super) fn blob_decodable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
-    if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
-        s.add_impl_generic(parse_quote! { 'tcx });
-    }
-    s.add_impl_generic(parse_quote! { '__a });
-    let decoder_ty = quote! { DecodeContext<'__a, 'tcx> };
+    let decoder_ty = quote! { __D };
+    s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_span::BlobDecoder });
+    s.add_bounds(synstructure::AddBounds::Generics);
+
+    decodable_body(s, decoder_ty)
+}
+
+pub(super) fn lazy_decodable_derive(
+    mut s: synstructure::Structure<'_>,
+) -> proc_macro2::TokenStream {
+    let decoder_ty = quote! { __D };
+    s.add_impl_generic(parse_quote! { #decoder_ty: LazyDecoder });
     s.add_bounds(synstructure::AddBounds::Generics);
 
     decodable_body(s, decoder_ty)

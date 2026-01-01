@@ -30,6 +30,14 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
+pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
+    llvm::HasStringAttribute(llfn, name)
+}
+
+pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
+    llvm::RemoveStringAttrFromFn(llfn, name);
+}
+
 /// Get LLVM attribute for the provided inline heuristic.
 pub(crate) fn inline_attr<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
@@ -406,6 +414,10 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
+    }
+
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
+        to_add.push(llvm::CreateAttrString(cx.llcx, "offload-kernel"))
     }
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {

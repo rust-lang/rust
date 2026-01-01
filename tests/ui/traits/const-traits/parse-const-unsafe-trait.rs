@@ -1,5 +1,6 @@
 // Test that `const unsafe trait` and `const unsafe auto trait` works.
 
+//@ compile-flags: -Zparse-crate-root-only
 //@ check-pass
 
 #![feature(const_trait_impl)]

@@ -1,5 +1,5 @@
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{get_attr, higher, sym};
+use clippy_utils::{get_builtin_attr, higher, sym};
 use itertools::Itertools;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -319,6 +319,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 chain!(self, "let ConstArgKind::Anon({anon_const}) = {const_arg}.kind");
                 self.body(field!(anon_const.body));
             },
+            ConstArgKind::Struct(..) => chain!(self, "let ConstArgKind::Struct(..) = {const_arg}.kind"),
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
             ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
         }
@@ -723,7 +724,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Lit {{ ref {lit}, {negated} }}");
                 self.lit(lit);
             },
-            PatExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
             PatExprKind::Path(_) => self.maybe_path(pat),
         }
     }
@@ -793,9 +793,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Deref({pat})");
                 self.pat(pat);
             },
-            PatKind::Ref(pat, muta) => {
+            PatKind::Ref(pat, pinn, muta) => {
                 bind!(self, pat);
-                kind!("Ref({pat}, Mutability::{muta:?})");
+                kind!("Ref({pat}, Pinning::{pinn:?}, Mutability::{muta:?})");
                 self.pat(pat);
             },
             PatKind::Guard(pat, cond) => {
@@ -859,5 +859,5 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
-    get_attr(cx.sess(), attrs, sym::author).count() > 0
+    get_builtin_attr(cx.sess(), attrs, sym::author).count() > 0
 }

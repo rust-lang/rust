@@ -228,11 +228,15 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 .span
                 .find_ancestor_inside(extern_crate.span)
                 .unwrap_or(extern_crate.ident.span);
+
             self.r.lint_buffer.buffer_lint(
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
-                BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
+                crate::errors::ExternCrateNotIdiomatic {
+                    span: vis_span.between(ident_span),
+                    code: if vis_span.is_empty() { "use " } else { " use " },
+                },
             );
         }
     }
@@ -418,6 +422,7 @@ impl Resolver<'_, '_> {
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)
                             && !tcx.has_panic_handler(cnum)
+                            && tcx.externally_implementable_items(cnum).is_empty()
                     }) {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }

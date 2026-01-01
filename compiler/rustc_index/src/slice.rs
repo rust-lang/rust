@@ -181,9 +181,6 @@ impl<I: Idx, J: Idx> IndexSlice<I, J> {
     /// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`,
     /// assuming the values in `self` are a permutation of `0..self.len()`.
     ///
-    /// This is used to go between `memory_index` (source field order to memory order)
-    /// and `inverse_memory_index` (memory order to source field order).
-    /// See also `FieldsShape::Arbitrary::memory_index` for more details.
     // FIXME(eddyb) build a better abstraction for permutations, if possible.
     pub fn invert_bijective_mapping(&self) -> IndexVec<J, I> {
         debug_assert_eq!(

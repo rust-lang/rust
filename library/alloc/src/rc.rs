@@ -244,8 +244,8 @@
 use core::any::Any;
 use core::cell::{Cell, CloneFromCell};
 #[cfg(not(no_global_oom_handling))]
-use core::clone::CloneToUninit;
-use core::clone::UseCloned;
+use core::clone::TrivialClone;
+use core::clone::{CloneToUninit, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -1290,6 +1290,104 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     }
 }
 
+impl<T: ?Sized + CloneToUninit> Rc<T> {
+    /// Constructs a new `Rc<T>` with a clone of `value`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// use std::rc::Rc;
+    ///
+    /// let hello: Rc<str> = Rc::clone_from_ref("hello");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    pub fn clone_from_ref(value: &T) -> Rc<T> {
+        Rc::clone_from_ref_in(value, Global)
+    }
+
+    /// Constructs a new `Rc<T>` with a clone of `value`, returning an error if allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    ///
+    /// let hello: Rc<str> = Rc::try_clone_from_ref("hello")?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_clone_from_ref(value: &T) -> Result<Rc<T>, AllocError> {
+        Rc::try_clone_from_ref_in(value, Global)
+    }
+}
+
+impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
+    /// Constructs a new `Rc<T>` with a clone of `value` in the provided allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let hello: Rc<str, System> = Rc::clone_from_ref_in("hello", System);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn clone_from_ref_in(value: &T, alloc: A) -> Rc<T, A> {
+        // `in_progress` drops the allocation if we panic before finishing initializing it.
+        let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::new(value, alloc);
+
+        // Initialize with clone of value.
+        let initialized_clone = unsafe {
+            // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+            value.clone_to_uninit(in_progress.data_ptr().cast());
+            // Cast type of pointer, now that it is initialized.
+            in_progress.into_rc()
+        };
+
+        initialized_clone
+    }
+
+    /// Constructs a new `Rc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let hello: Rc<str, System> = Rc::try_clone_from_ref_in("hello", System)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_clone_from_ref_in(value: &T, alloc: A) -> Result<Rc<T, A>, AllocError> {
+        // `in_progress` drops the allocation if we panic before finishing initializing it.
+        let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::try_new(value, alloc)?;
+
+        // Initialize with clone of value.
+        let initialized_clone = unsafe {
+            // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+            value.clone_to_uninit(in_progress.data_ptr().cast());
+            // Cast type of pointer, now that it is initialized.
+            in_progress.into_rc()
+        };
+
+        Ok(initialized_clone)
+    }
+}
+
 impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     /// Converts to `Rc<[T]>`.
     ///
@@ -1969,22 +2067,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
 
         if Rc::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs.
-
-            let this_data_ref: &T = &**this;
-            // `in_progress` drops the allocation if we panic before finishing initializing it.
-            let mut in_progress: UniqueRcUninit<T, A> =
-                UniqueRcUninit::new(this_data_ref, this.alloc.clone());
-
-            // Initialize with clone of this.
-            let initialized_clone = unsafe {
-                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
-                // Cast type of pointer, now that it is initialized.
-                in_progress.into_rc()
-            };
-
-            // Replace `this` with newly constructed Rc.
-            *this = initialized_clone;
+            *this = Rc::clone_from_ref_in(&**this, this.alloc.clone());
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
 
@@ -2224,7 +2307,8 @@ impl<T> Rc<[T]> {
 
     /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
-    /// Unsafe because the caller must either take ownership or bind `T: Copy`
+    /// Unsafe because the caller must either take ownership, bind `T: Copy` or
+    /// bind `T: TrivialClone`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         unsafe {
@@ -2314,9 +2398,11 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
+impl<T: TrivialClone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
+        // SAFETY: `T` implements `TrivialClone`, so this is sound and equivalent
+        // to the above.
         unsafe { Rc::copy_from_slice(v) }
     }
 }
@@ -2331,14 +2417,14 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
     }
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
@@ -4355,16 +4441,15 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
 /// This is a helper for [`Rc::make_mut()`] to ensure correct cleanup on panic.
 /// It is nearly a duplicate of `UniqueRc<MaybeUninit<T>, A>` except that it allows `T: !Sized`,
 /// which `MaybeUninit` does not.
-#[cfg(not(no_global_oom_handling))]
 struct UniqueRcUninit<T: ?Sized, A: Allocator> {
     ptr: NonNull<RcInner<T>>,
     layout_for_value: Layout,
     alloc: Option<A>,
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
     /// Allocates a RcInner with layout suitable to contain `for_value` or a clone of it.
+    #[cfg(not(no_global_oom_handling))]
     fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
         let layout = Layout::for_value(for_value);
         let ptr = unsafe {
@@ -4375,6 +4460,20 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
             )
         };
         Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
+    }
+
+    /// Allocates a RcInner with layout suitable to contain `for_value` or a clone of it,
+    /// returning an error if allocation fails.
+    fn try_new(for_value: &T, alloc: A) -> Result<UniqueRcUninit<T, A>, AllocError> {
+        let layout = Layout::for_value(for_value);
+        let ptr = unsafe {
+            Rc::try_allocate_for_layout(
+                layout,
+                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
+            )?
+        };
+        Ok(Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) })
     }
 
     /// Returns the pointer to be written into to initialize the [`Rc`].
@@ -4399,7 +4498,6 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
     fn drop(&mut self) {
         // SAFETY:

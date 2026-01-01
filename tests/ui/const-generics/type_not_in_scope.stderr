@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `X` in this scope
+error[E0425]: cannot find type `X` in this scope
   --> $DIR/type_not_in_scope.rs:1:6
    |
 LL | impl X {
@@ -20,5 +20,5 @@ LL | fn getn<const N: cfg_attr>() -> [u8; N] {}
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0308, E0412, E0573.
+Some errors have detailed explanations: E0308, E0425, E0573.
 For more information about an error, try `rustc --explain E0308`.

@@ -1,15 +1,14 @@
 //! Span maps for real files and macro expansions.
 
-use span::{Span, SyntaxContext};
-use stdx::TupleExt;
+use span::Span;
 use syntax::{AstNode, TextRange, ast};
 use triomphe::Arc;
 
 pub use span::RealSpanMap;
 
-use crate::{HirFileId, MacroCallId, attrs::collect_attrs, db::ExpandDatabase};
+use crate::{HirFileId, MacroCallId, db::ExpandDatabase};
 
-pub type ExpansionSpanMap = span::SpanMap<SyntaxContext>;
+pub type ExpansionSpanMap = span::SpanMap;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,13 +27,13 @@ pub enum SpanMapRef<'a> {
     RealSpanMap(&'a RealSpanMap),
 }
 
-impl syntax_bridge::SpanMapper<Span> for SpanMap {
+impl syntax_bridge::SpanMapper for SpanMap {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
 
-impl syntax_bridge::SpanMapper<Span> for SpanMapRef<'_> {
+impl syntax_bridge::SpanMapper for SpanMapRef<'_> {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
@@ -110,26 +109,24 @@ pub(crate) fn real_span_map(
     // them anchors too, but only if they have no attributes attached, as those might be proc-macros
     // and using different anchors inside of them will prevent spans from being joinable.
     tree.items().for_each(|item| match &item {
-        ast::Item::ExternBlock(it)
-            if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) =>
-        {
+        ast::Item::ExternBlock(it) if ast::attrs_including_inner(it).next().is_none() => {
             if let Some(extern_item_list) = it.extern_item_list() {
                 pairs.extend(
                     extern_item_list.extern_items().map(ast::Item::from).map(item_to_entry),
                 );
             }
         }
-        ast::Item::Impl(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+        ast::Item::Impl(it) if ast::attrs_including_inner(it).next().is_none() => {
             if let Some(assoc_item_list) = it.assoc_item_list() {
                 pairs.extend(assoc_item_list.assoc_items().map(ast::Item::from).map(item_to_entry));
             }
         }
-        ast::Item::Module(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+        ast::Item::Module(it) if ast::attrs_including_inner(it).next().is_none() => {
             if let Some(item_list) = it.item_list() {
                 pairs.extend(item_list.items().map(item_to_entry));
             }
         }
-        ast::Item::Trait(it) if !collect_attrs(it).map(TupleExt::tail).any(|it| it.is_left()) => {
+        ast::Item::Trait(it) if ast::attrs_including_inner(it).next().is_none() => {
             if let Some(assoc_item_list) = it.assoc_item_list() {
                 pairs.extend(assoc_item_list.assoc_items().map(ast::Item::from).map(item_to_entry));
             }

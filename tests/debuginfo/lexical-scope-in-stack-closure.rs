@@ -4,60 +4,60 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print x
-// gdb-check:$1 = false
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$1 = false
+//@ gdb-command:continue
 
-// gdb-command:print x
-// gdb-check:$2 = false
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$2 = false
+//@ gdb-command:continue
 
-// gdb-command:print x
-// gdb-check:$3 = 1000
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$3 = 1000
+//@ gdb-command:continue
 
-// gdb-command:print x
-// gdb-check:$4 = 2.5
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$4 = 2.5
+//@ gdb-command:continue
 
-// gdb-command:print x
-// gdb-check:$5 = true
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$5 = true
+//@ gdb-command:continue
 
-// gdb-command:print x
-// gdb-check:$6 = false
-// gdb-command:continue
+//@ gdb-command:print x
+//@ gdb-check:$6 = false
+//@ gdb-command:continue
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v x
-// lldb-check:[...] false
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] false
+//@ lldb-command:continue
 
-// lldb-command:v x
-// lldb-check:[...] false
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] false
+//@ lldb-command:continue
 
-// lldb-command:v x
-// lldb-check:[...] 1000
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] 1000
+//@ lldb-command:continue
 
-// lldb-command:v x
-// lldb-check:[...] 2.5
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] 2.5
+//@ lldb-command:continue
 
-// lldb-command:v x
-// lldb-check:[...] true
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] true
+//@ lldb-command:continue
 
-// lldb-command:v x
-// lldb-check:[...] false
-// lldb-command:continue
+//@ lldb-command:v x
+//@ lldb-check:[...] false
+//@ lldb-command:continue
 
 fn main() {
 

@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Tests that two closures cannot simultaneously have mutable
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.

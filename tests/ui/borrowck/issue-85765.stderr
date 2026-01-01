@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*rofl` as mutable, as it is behind a `&` reference
   --> $DIR/issue-85765.rs:5:5
    |
 LL |     rofl.push(Vec::new());
-   |     ^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^ `rofl` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this binding's type
    |
@@ -13,7 +13,7 @@ error[E0594]: cannot assign to `*r`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:12:5
    |
 LL |     *r = 0;
-   |     ^^^^^^ `r` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^ `r` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -24,7 +24,7 @@ error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:19:5
    |
 LL |     *x = 1;
-   |     ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^ `x` is a `&` reference, so it cannot be written to
    |
 help: consider changing this binding's type
    |
@@ -35,7 +35,7 @@ error[E0594]: cannot assign to `*y`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:26:5
    |
 LL |     *y = 1;
-   |     ^^^^^^ `y` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^ `y` is a `&` reference, so it cannot be written to
    |
 help: consider changing this binding's type
    |

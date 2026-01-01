@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ run-pass
 #![allow(dead_code, unreachable_patterns)]
 #![allow(ellipsis_inclusive_range_patterns)]

@@ -6,7 +6,7 @@ use rustc_abi::{Align, CanonAbi, Size, X86Call};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, Env};
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
@@ -305,6 +305,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetFileInformationByHandle" => {
                 let [handle, info] = this.check_shim_sig_lenient(abi, sys_conv, link_name, args)?;
                 let res = this.GetFileInformationByHandle(handle, info)?;
+                this.write_scalar(res, dest)?;
+            }
+            "SetFileInformationByHandle" => {
+                let [handle, class, info, size] =
+                    this.check_shim_sig_lenient(abi, sys_conv, link_name, args)?;
+                let res = this.SetFileInformationByHandle(handle, class, info, size)?;
+                this.write_scalar(res, dest)?;
+            }
+            "FlushFileBuffers" => {
+                let [handle] = this.check_shim_sig_lenient(abi, sys_conv, link_name, args)?;
+                let res = this.FlushFileBuffers(handle)?;
                 this.write_scalar(res, dest)?;
             }
             "DeleteFileW" => {
@@ -826,7 +837,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // It was originally specified as part of the Itanium C++ ABI:
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
                 // MinGW implements _Unwind_RaiseException on top of SEH exceptions.
-                if this.tcx.sess.target.env != "gnu" {
+                if this.tcx.sess.target.env != Env::Gnu {
                     throw_unsup_format!(
                         "`_Unwind_RaiseException` is not supported on non-MinGW Windows",
                     );

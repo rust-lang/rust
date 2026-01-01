@@ -1,3 +1,5 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/121445>
+
 #![feature(never_type)]
 
 fn test2() {

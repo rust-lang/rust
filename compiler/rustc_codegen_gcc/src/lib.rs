@@ -18,7 +18,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
-#![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args)]
 
 // The rustc crates we need
 extern crate rustc_abi;
@@ -43,7 +43,7 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
-#[allow(unused_extern_crates)]
+#[expect(unused_extern_crates)]
 extern crate rustc_driver;
 
 mod abi;
@@ -69,13 +69,12 @@ mod type_;
 mod type_of;
 
 use std::any::Any;
+use std::ffi::CString;
 use std::fmt::Debug;
+use std::fs;
 use std::ops::Deref;
-use std::path::PathBuf;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::AtomicBool;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::Ordering;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
@@ -145,7 +144,7 @@ impl TargetInfo {
 
 #[derive(Clone)]
 pub struct LockedTargetInfo {
-    info: Arc<Mutex<IntoDynSyncSend<TargetInfo>>>,
+    info: Arc<Mutex<IntoDynSyncSend<Option<TargetInfo>>>>,
 }
 
 impl Debug for LockedTargetInfo {
@@ -156,17 +155,45 @@ impl Debug for LockedTargetInfo {
 
 impl LockedTargetInfo {
     fn cpu_supports(&self, feature: &str) -> bool {
-        self.info.lock().expect("lock").cpu_supports(feature)
+        self.info
+            .lock()
+            .expect("lock")
+            .as_ref()
+            .expect("target info not initialized")
+            .cpu_supports(feature)
     }
 
     fn supports_target_dependent_type(&self, typ: CType) -> bool {
-        self.info.lock().expect("lock").supports_target_dependent_type(typ)
+        self.info
+            .lock()
+            .expect("lock")
+            .as_ref()
+            .expect("target info not initialized")
+            .supports_target_dependent_type(typ)
     }
 }
 
 #[derive(Clone)]
 pub struct GccCodegenBackend {
     target_info: LockedTargetInfo,
+    lto_supported: Arc<AtomicBool>,
+}
+
+static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
+
+fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
+    if gccjit::is_loaded() {
+        // Do not load a libgccjit second time.
+        return;
+    }
+
+    let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
+
+    let string = CString::new(path).expect("string to libgccjit path");
+
+    if let Err(error) = gccjit::load(&string) {
+        panic!("Cannot load libgccjit.so: {}", error);
+    }
 }
 
 impl CodegenBackend for GccCodegenBackend {
@@ -178,10 +205,42 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, _sess: &Session) {
+    fn init(&self, sess: &Session) {
+        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+            let rustlib_path =
+                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            sysroot_path
+                .join(rustlib_path)
+                .join("codegen-backends")
+                .join("lib")
+                .join(sess.target.llvm_target.as_ref())
+                .join("libgccjit.so")
+        }
+
+        // We use all_paths() instead of only path() in case the path specified by --sysroot is
+        // invalid.
+        // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
+        for path in sess.opts.sysroot.all_paths() {
+            let libgccjit_target_lib_file = file_path(path, sess);
+            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                load_libgccjit_if_needed(&libgccjit_target_lib_file);
+                break;
+            }
+        }
+
+        if !gccjit::is_loaded() {
+            let mut paths = vec![];
+            for path in sess.opts.sysroot.all_paths() {
+                let libgccjit_target_lib_file = file_path(path, sess);
+                paths.push(libgccjit_target_lib_file);
+            }
+
+            panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
+        }
+
         #[cfg(feature = "master")]
         {
-            let target_cpu = target_cpu(_sess);
+            let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
@@ -189,11 +248,18 @@ impl CodegenBackend for GccCodegenBackend {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
 
-            **self.target_info.info.lock().expect("lock") = context.get_target_info();
+            *self.target_info.info.lock().expect("lock") =
+                IntoDynSyncSend(Some(context.get_target_info()));
         }
 
         #[cfg(feature = "master")]
-        gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        {
+            let lto_supported = gccjit::is_lto_supported();
+            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
+            self.lto_supported.store(lto_supported, Ordering::SeqCst);
+
+            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        }
 
         #[cfg(not(feature = "master"))]
         {
@@ -211,6 +277,9 @@ impl CodegenBackend for GccCodegenBackend {
                 .info
                 .lock()
                 .expect("lock")
+                .0
+                .as_ref()
+                .expect("target info not initialized")
                 .supports_128bit_integers
                 .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
@@ -276,10 +345,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         module_name: &str,
         methods: &[AllocatorMethod],
     ) -> Self::Module {
+        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
-            should_combine_object_files: false,
+            lto_mode: LtoMode::None,
+            lto_supported,
             temp_dir: None,
         };
 
@@ -294,7 +365,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, self.target_info.clone())
+        base::compile_codegen_unit(
+            tcx,
+            cgu_name,
+            self.target_info.clone(),
+            self.lto_supported.load(Ordering::SeqCst),
+        )
     }
 
     fn target_machine_factory(
@@ -308,12 +384,20 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum LtoMode {
+    None,
+    Thin,
+    Fat,
+}
+
 pub struct GccContext {
     context: Arc<SyncContext>,
     /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
     /// LTO.
     relocation_model: RelocModel,
-    should_combine_object_files: bool,
+    lto_mode: LtoMode,
+    lto_supported: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
@@ -417,15 +501,17 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     let info = {
         // Check whether the target supports 128-bit integers, and sized floating point types (like
         // Float16).
-        let context = Context::default();
-        Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
+        Arc::new(Mutex::new(IntoDynSyncSend(None)))
     };
     #[cfg(not(feature = "master"))]
-    let info = Arc::new(Mutex::new(IntoDynSyncSend(TargetInfo {
+    let info = Arc::new(Mutex::new(IntoDynSyncSend(Some(TargetInfo {
         supports_128bit_integers: AtomicBool::new(false),
-    })));
+    }))));
 
-    Box::new(GccCodegenBackend { target_info: LockedTargetInfo { info } })
+    Box::new(GccCodegenBackend {
+        lto_supported: Arc::new(AtomicBool::new(false)),
+        target_info: LockedTargetInfo { info },
+    })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {

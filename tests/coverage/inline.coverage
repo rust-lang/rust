@@ -18,7 +18,7 @@
    LL|      6|        display(xs);
    LL|     10|    } else if k < n {
    LL|     15|        for i in k..n {
-                               ^10^10
+                               ^10
    LL|     15|            swap(xs, i, k);
    LL|     15|            permutate(xs, k + 1);
    LL|     15|            swap(xs, i, k);
@@ -40,8 +40,8 @@
    LL|     30|}
    LL|       |
    LL|      6|fn display<T: Display>(xs: &[T]) {
-   LL|     24|    for x in xs {
-                      ^18
+   LL|     18|    for x in xs {
+                           ^6
    LL|     18|        print!("{}", x);
    LL|     18|    }
    LL|      6|    println!();

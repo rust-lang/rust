@@ -3,7 +3,7 @@ use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
     AstNode,
-    ast::{self, HasArgList, HasLoopBody, edit_in_place::Indent, make},
+    ast::{self, HasArgList, HasLoopBody, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -57,18 +57,22 @@ pub(crate) fn convert_iter_for_each_to_for(
         "Replace this `Iterator::for_each` with a for loop",
         range,
         |builder| {
+            let make = SyntaxFactory::with_mappings();
             let indent =
                 stmt.as_ref().map_or_else(|| method.indent_level(), ast::ExprStmt::indent_level);
 
             let block = match body {
-                ast::Expr::BlockExpr(block) => block,
-                _ => make::block_expr(Vec::new(), Some(body)),
+                ast::Expr::BlockExpr(block) => block.reset_indent(),
+                _ => make.block_expr(Vec::new(), Some(body.reset_indent().indent(1.into()))),
             }
-            .clone_for_update();
-            block.reindent_to(indent);
+            .indent(indent);
 
-            let expr_for_loop = make::expr_for_loop(param, receiver, block);
-            builder.replace(range, expr_for_loop.to_string())
+            let expr_for_loop = make.expr_for_loop(param, receiver, block);
+
+            let target_node = stmt.as_ref().map_or(method.syntax(), AstNode::syntax);
+            let mut editor = builder.make_editor(target_node);
+            editor.replace(target_node, expr_for_loop.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -165,7 +169,7 @@ fn is_ref_and_impls_iter_method(
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
 
     let has_wanted_method = ty
-        .iterate_method_candidates(sema.db, &scope, None, Some(&wanted_method), |func| {
+        .iterate_method_candidates(sema.db, &scope, Some(&wanted_method), |func| {
             if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
                 return Some(());
             }
@@ -186,7 +190,7 @@ fn impls_core_iter(sema: &hir::Semantics<'_, ide_db::RootDatabase>, iterable: &a
 
         let module = sema.scope(iterable.syntax())?.module();
 
-        let krate = module.krate();
+        let krate = module.krate(sema.db);
         let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
         cov_mark::hit!(test_already_impls_iterator);
         Some(it_typ.impls_trait(sema.db, iter_trait, &[]))
@@ -214,7 +218,7 @@ fn validate_method_call_expr(
 
     let it_type = sema.type_of_expr(&receiver)?.adjusted();
     let module = sema.scope(receiver.syntax())?.module();
-    let krate = module.krate();
+    let krate = module.krate(ctx.db());
 
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
     it_type.impls_trait(sema.db, iter_trait, &[]).then_some((expr, receiver))
@@ -281,15 +285,23 @@ fn main() {
             r#"
 //- minicore: iterators
 fn main() {
-    let it = core::iter::repeat(92);
-    it.$0for_each(|(x, y)| println!("x: {}, y: {}", x, y));
+    {
+        let it = core::iter::repeat(92);
+        it.$0for_each(|param| match param {
+            (x, y) => println!("x: {}, y: {}", x, y),
+        });
+    }
 }
 "#,
             r#"
 fn main() {
-    let it = core::iter::repeat(92);
-    for (x, y) in it {
-        println!("x: {}, y: {}", x, y)
+    {
+        let it = core::iter::repeat(92);
+        for param in it {
+            match param {
+                (x, y) => println!("x: {}, y: {}", x, y),
+            }
+        }
     }
 }
 "#,

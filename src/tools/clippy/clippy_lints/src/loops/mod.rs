@@ -26,6 +26,7 @@ mod while_let_on_iterator;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{higher, sym};
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
@@ -880,6 +881,46 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             missing_spin_loop::check(cx, condition, body);
             manual_while_let_some::check(cx, condition, body, span);
         }
+
+        if let ExprKind::MethodCall(path, recv, args, _) = expr.kind {
+            let name = path.ident.name;
+
+            let is_iterator_method = || {
+                cx.ty_based_def(expr)
+                    .assoc_fn_parent(cx)
+                    .is_diag_item(cx, sym::Iterator)
+            };
+
+            // is_iterator_method is a bit expensive, so we call it last in each match arm
+            match (name, args) {
+                (sym::for_each | sym::all | sym::any, [arg]) => {
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        unused_enumerate_index::check_method(cx, recv, arg, closure);
+                        never_loop::check_iterator_reduction(cx, expr, recv, closure);
+                    }
+                },
+
+                (sym::filter_map | sym::find_map | sym::flat_map | sym::map, [arg]) => {
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        unused_enumerate_index::check_method(cx, recv, arg, closure);
+                    }
+                },
+
+                (sym::try_for_each | sym::reduce, [arg]) | (sym::fold | sym::try_fold, [_, arg]) => {
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        never_loop::check_iterator_reduction(cx, expr, recv, closure);
+                    }
+                },
+
+                _ => {},
+            }
+        }
     }
 }
 
@@ -908,7 +949,7 @@ impl Loops {
         same_item_push::check(cx, pat, arg, body, expr, self.msrv);
         manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
-        unused_enumerate_index::check(cx, pat, arg, body);
+        unused_enumerate_index::check(cx, arg, pat, None, body);
         char_indices_as_byte_indices::check(cx, pat, arg, body);
     }
 

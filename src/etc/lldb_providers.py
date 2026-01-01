@@ -1,7 +1,6 @@
 from __future__ import annotations
-import re
 import sys
-from typing import List, TYPE_CHECKING, Generator
+from typing import Generator, List, TYPE_CHECKING
 
 from lldb import (
     SBData,
@@ -11,6 +10,8 @@ from lldb import (
     eBasicTypeUnsignedChar,
     eFormatChar,
 )
+
+from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
     from lldb import SBValue, SBType, SBTypeStaticField, SBTarget
@@ -204,6 +205,34 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
         return result.GetArrayType(int(length))
 
     return result
+
+
+def StructSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    # structs need the field name before the field value
+    output = (
+        f"{valobj.GetChildAtIndex(i).GetName()}:{child}"
+        for i, child in enumerate(aggregate_field_summary(valobj, _dict))
+    )
+
+    return "{" + ", ".join(output) + "}"
+
+
+def TupleSummaryProvider(valobj: SBValue, _dict: LLDBOpaque):
+    return "(" + ", ".join(aggregate_field_summary(valobj, _dict)) + ")"
+
+
+def aggregate_field_summary(valobj: SBValue, _dict) -> Generator[str, None, None]:
+    for i in range(0, valobj.GetNumChildren()):
+        child: SBValue = valobj.GetChildAtIndex(i)
+        summary = child.summary
+        if summary is None:
+            summary = child.value
+            if summary is None:
+                if is_tuple_fields(child):
+                    summary = TupleSummaryProvider(child, _dict)
+                else:
+                    summary = StructSummaryProvider(child, _dict)
+        yield summary
 
 
 def SizeSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -454,49 +483,55 @@ class MSVCStrSyntheticProvider:
             return "&str"
 
 
-def _getVariantName(variant) -> str:
+def _getVariantName(variant: SBValue) -> str:
     """
     Since the enum variant's type name is in the form `TheEnumName::TheVariantName$Variant`,
     we can extract `TheVariantName` from it for display purpose.
     """
     s = variant.GetType().GetName()
-    match = re.search(r"::([^:]+)\$Variant$", s)
-    return match.group(1) if match else ""
+    if not s.endswith("$Variant"):
+        return ""
+
+    # trim off path and "$Variant"
+    # len("$Variant") == 8
+    return s.rsplit("::", 1)[1][:-8]
 
 
 class ClangEncodedEnumProvider:
     """Pretty-printer for 'clang-encoded' enums support implemented in LLDB"""
 
+    valobj: SBValue
+    variant: SBValue
+    value: SBValue
+
     DISCRIMINANT_MEMBER_NAME = "$discr$"
     VALUE_MEMBER_NAME = "value"
+
+    __slots__ = ("valobj", "variant", "value")
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
         self.update()
 
     def has_children(self) -> bool:
-        return True
+        return self.value.MightHaveChildren()
 
     def num_children(self) -> int:
-        return 1
+        return self.value.GetNumChildren()
 
-    def get_child_index(self, _name: str) -> int:
-        return -1
+    def get_child_index(self, name: str) -> int:
+        return self.value.GetIndexOfChildWithName(name)
 
     def get_child_at_index(self, index: int) -> SBValue:
-        if index == 0:
-            value = self.variant.GetChildMemberWithName(
-                ClangEncodedEnumProvider.VALUE_MEMBER_NAME
-            )
-            return value.CreateChildAtOffset(
-                _getVariantName(self.variant), 0, value.GetType()
-            )
-        return None
+        return self.value.GetChildAtIndex(index)
 
     def update(self):
         all_variants = self.valobj.GetChildAtIndex(0)
         index = self._getCurrentVariantIndex(all_variants)
         self.variant = all_variants.GetChildAtIndex(index)
+        self.value = self.variant.GetChildMemberWithName(
+            ClangEncodedEnumProvider.VALUE_MEMBER_NAME
+        ).GetSyntheticValue()
 
     def _getCurrentVariantIndex(self, all_variants: SBValue) -> int:
         default_index = 0
@@ -514,6 +549,23 @@ class ClangEncodedEnumProvider:
         return default_index
 
 
+def ClangEncodedEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    enum_synth = ClangEncodedEnumProvider(valobj.GetNonSyntheticValue(), _dict)
+    variant = enum_synth.variant
+    name = _getVariantName(variant)
+
+    if valobj.GetNumChildren() == 0:
+        return name
+
+    child_name: str = valobj.GetChildAtIndex(0).name
+    if child_name == "0" or child_name == "__0":
+        # enum variant is a tuple struct
+        return name + TupleSummaryProvider(valobj, _dict)
+    else:
+        # enum variant is a regular struct
+        return name + StructSummaryProvider(valobj, _dict)
+
+
 class MSVCEnumSyntheticProvider:
     """
     Synthetic provider for sum-type enums on MSVC. For a detailed explanation of the internals,
@@ -522,12 +574,14 @@ class MSVCEnumSyntheticProvider:
     https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
     """
 
+    valobj: SBValue
+    variant: SBValue
+    value: SBValue
+
     __slots__ = ["valobj", "variant", "value"]
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
-        self.variant: SBValue
-        self.value: SBValue
         self.update()
 
     def update(self):
@@ -695,21 +749,6 @@ class MSVCEnumSyntheticProvider:
         return name
 
 
-def StructSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
-    output = []
-    for i in range(valobj.GetNumChildren()):
-        child: SBValue = valobj.GetChildAtIndex(i)
-        summary = child.summary
-        if summary is None:
-            summary = child.value
-            if summary is None:
-                summary = StructSummaryProvider(child, _dict)
-        summary = child.GetName() + ":" + summary
-        output.append(summary)
-
-    return "{" + ", ".join(output) + "}"
-
-
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
     variant_names: SBType = valobj.target.FindFirstType(
@@ -824,21 +863,6 @@ class MSVCTupleSyntheticProvider:
         # remove "tuple$<" and ">", str.removeprefix and str.removesuffix require python 3.9+
         name = name[7:-1].strip()
         return "(" + name + ")"
-
-
-def TupleSummaryProvider(valobj: SBValue, _dict: LLDBOpaque):
-    output: List[str] = []
-
-    for i in range(0, valobj.GetNumChildren()):
-        child: SBValue = valobj.GetChildAtIndex(i)
-        summary = child.summary
-        if summary is None:
-            summary = child.value
-            if summary is None:
-                summary = "{...}"
-        output.append(summary)
-
-    return "(" + ", ".join(output) + ")"
 
 
 class StdVecSyntheticProvider:

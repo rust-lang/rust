@@ -215,7 +215,13 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 }
 
-fn check_has_safety_comment<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, (span, help_span): (Span, Span), is_doc: bool) {
+#[expect(clippy::too_many_lines)]
+fn check_has_safety_comment<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &hir::Item<'tcx>,
+    (span, help_span): (Span, Span),
+    is_doc: bool,
+) {
     match &item.kind {
         ItemKind::Impl(Impl {
             of_trait: Some(of_trait),
@@ -236,12 +242,14 @@ fn check_has_safety_comment<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>
         ItemKind::Impl(_) => {},
         // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
         &ItemKind::Const(.., ct_rhs) => {
-                        if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, ct_rhs.hir_id()) {
+            if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, ct_rhs.hir_id()) {
                 let expr = const_item_rhs_to_expr(cx.tcx, ct_rhs);
-                if let Some(expr) = expr && !matches!(
-                    expr.kind, hir::ExprKind::Block(block, _)
-                    if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
-                ) {
+                if let Some(expr) = expr
+                    && !matches!(
+                        expr.kind, hir::ExprKind::Block(block, _)
+                        if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                    )
+                {
                     span_lint_and_then(
                         cx,
                         UNNECESSARY_SAFETY_COMMENT,
@@ -256,8 +264,8 @@ fn check_has_safety_comment<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>
                     );
                 }
             }
-        }
-         &ItemKind::Static(.., body) => {
+        },
+        &ItemKind::Static(.., body) => {
             if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                 let body = cx.tcx.hir_body(body);
                 if !matches!(

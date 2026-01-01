@@ -4,7 +4,7 @@ Rustdoc's HTML output includes a settings menu, and this chapter describes what
 each setting in this menu does.
 
 It can be accessed by clicking on the gear button
-(<i class="fa fa-cog" aria-hidden="true"></i>) in the upper right.
+(<i class="fas fa-gear" aria-hidden="true"></i>) in the upper right.
 
 ## Changing displayed theme
 

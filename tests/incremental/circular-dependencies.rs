@@ -6,12 +6,12 @@
 //@ [cfail2] compile-flags: --test --extern aux={{build-base}}/circular-dependencies/auxiliary/libcircular_dependencies_aux.rmeta -L dependency={{build-base}}/circular-dependencies
 
 pub struct Foo;
-//[cfail2]~^ NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
-//[cfail2]~| NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
-//[cfail2]~| NOTE this is the expected type `Foo`
-//[cfail2]~| NOTE this is the expected type `circular_dependencies::Foo`
-//[cfail2]~| NOTE this is the found type `Foo`
-//[cfail2]~| NOTE this is the found type `circular_dependencies::Foo`
+//[cfail2]~^ NOTE there are multiple different versions of crate `circular_dependencies` in the dependency graph
+//[cfail2]~| NOTE there are multiple different versions of crate `circular_dependencies` in the dependency graph
+//[cfail2]~| NOTE this is the expected type
+//[cfail2]~| NOTE this is the expected type
+//[cfail2]~| NOTE this is the found type
+//[cfail2]~| NOTE this is the found type
 
 pub fn consume_foo(_: Foo) {}
 //[cfail2]~^ NOTE function defined here
@@ -27,8 +27,6 @@ fn test() {
     //[cfail2]~| NOTE expected `circular_dependencies::Foo`, found `Foo`
     //[cfail2]~| NOTE arguments to this function are incorrect
     //[cfail2]~| NOTE function defined here
-    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
-    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
 
     consume_foo(aux::produce_foo());
     //[cfail2]~^ ERROR mismatched types [E0308]

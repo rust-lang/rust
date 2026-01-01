@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:22:9
+  --> $DIR/globs.rs:23:9
    |
 LL |     pub fn g() {}
    |     ---------- similarly named function `g` defined here
@@ -18,7 +18,7 @@ LL + use foo::f;
    |
 
 error[E0425]: cannot find function `g` in this scope
-  --> $DIR/globs.rs:15:5
+  --> $DIR/globs.rs:16:5
    |
 LL |       pub fn f() {}
    |       ---------- similarly named function `f` defined here
@@ -45,7 +45,7 @@ LL + use bar::g;
    |
 
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:61:12
+  --> $DIR/globs.rs:62:12
    |
 LL | n!(f);
    | -----
@@ -62,7 +62,7 @@ LL |         n!(f);
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:65:17
+  --> $DIR/globs.rs:66:17
    |
 LL | n!(f);
    | -----

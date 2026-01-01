@@ -16,10 +16,16 @@ error[E0425]: cannot find value `rest` in this scope
 LL |         [1, rest..] => println!("{rest}"),
    |             ^^^^ not found in this scope
    |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
 help: if you meant to collect the rest of the slice in `rest`, use the at operator
    |
 LL |         [1, rest @ ..] => println!("{rest}"),
    |                  +
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -         [1, rest..] => println!("{rest}"),
+LL +         [1, std::ops::RangeFrom { start: rest }] => println!("{rest}"),
+   |
 
 error[E0425]: cannot find value `rest` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:35
@@ -33,10 +39,16 @@ error[E0425]: cannot find value `tail` in this scope
 LL |         [_, ..tail] => println!("{tail}"),
    |               ^^^^ not found in this scope
    |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
 help: if you meant to collect the rest of the slice in `tail`, use the at operator
    |
 LL -         [_, ..tail] => println!("{tail}"),
 LL +         [_, tail @ ..] => println!("{tail}"),
+   |
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -         [_, ..tail] => println!("{tail}"),
+LL +         [_, std::ops::RangeTo { end: tail }] => println!("{tail}"),
    |
 
 error[E0425]: cannot find value `tail` in this scope
@@ -51,10 +63,16 @@ error[E0425]: cannot find value `tail` in this scope
 LL |         [_, ...tail] => println!("{tail}"),
    |                ^^^^ not found in this scope
    |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
 help: if you meant to collect the rest of the slice in `tail`, use the at operator
    |
 LL -         [_, ...tail] => println!("{tail}"),
 LL +         [_, tail @ ..] => println!("{tail}"),
+   |
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -         [_, ...tail] => println!("{tail}"),
+LL +         [_, std::ops::RangeToInclusive { end: tail }] => println!("{tail}"),
    |
 
 error[E0425]: cannot find value `tail` in this scope

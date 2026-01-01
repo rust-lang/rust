@@ -163,6 +163,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::offload
+        | sym::offset_of
         | sym::overflow_checks
         | sym::powf16
         | sym::powf32
@@ -213,6 +215,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_name
         | sym::ub_checks
         | sym::variant_count
+        | sym::vtable_for
         | sym::wrapping_add
         | sym::wrapping_mul
         | sym::wrapping_sub
@@ -288,6 +291,7 @@ pub(crate) fn check_intrinsic_type(
         sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
+        sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
@@ -311,6 +315,7 @@ pub(crate) fn check_intrinsic_type(
             let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
         }
+        sym::offload => (3, 0, vec![param(0), param(1)], param(2)),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,
@@ -637,6 +642,20 @@ pub(crate) fn check_intrinsic_type(
 
         sym::vtable_size | sym::vtable_align => {
             (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
+        }
+
+        sym::vtable_for => {
+            let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
+            let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
+            let dyn_metadata_args = tcx.mk_args(&[param(1).into()]);
+            let dyn_ty = Ty::new_adt(tcx, dyn_metadata_adt_ref, dyn_metadata_args);
+
+            let option_did = tcx.require_lang_item(LangItem::Option, span);
+            let option_adt_ref = tcx.adt_def(option_did);
+            let option_args = tcx.mk_args(&[dyn_ty.into()]);
+            let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
+
+            (2, 0, vec![], ret_ty)
         }
 
         // This type check is not particularly useful, but the `where` bounds

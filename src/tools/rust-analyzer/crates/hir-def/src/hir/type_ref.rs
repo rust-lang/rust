@@ -195,12 +195,16 @@ impl TypeRef {
         TypeRef::Tuple(ThinVec::new())
     }
 
-    pub fn walk(this: TypeRefId, map: &ExpressionStore, f: &mut impl FnMut(&TypeRef)) {
+    pub fn walk(this: TypeRefId, map: &ExpressionStore, f: &mut impl FnMut(TypeRefId, &TypeRef)) {
         go(this, f, map);
 
-        fn go(type_ref: TypeRefId, f: &mut impl FnMut(&TypeRef), map: &ExpressionStore) {
-            let type_ref = &map[type_ref];
-            f(type_ref);
+        fn go(
+            type_ref_id: TypeRefId,
+            f: &mut impl FnMut(TypeRefId, &TypeRef),
+            map: &ExpressionStore,
+        ) {
+            let type_ref = &map[type_ref_id];
+            f(type_ref_id, type_ref);
             match type_ref {
                 TypeRef::Fn(fn_) => {
                     fn_.params.iter().for_each(|&(_, param_type)| go(param_type, f, map))
@@ -224,7 +228,7 @@ impl TypeRef {
             };
         }
 
-        fn go_path(path: &Path, f: &mut impl FnMut(&TypeRef), map: &ExpressionStore) {
+        fn go_path(path: &Path, f: &mut impl FnMut(TypeRefId, &TypeRef), map: &ExpressionStore) {
             if let Some(type_ref) = path.type_anchor() {
                 go(type_ref, f, map);
             }

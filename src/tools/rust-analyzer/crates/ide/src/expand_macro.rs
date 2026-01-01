@@ -4,7 +4,7 @@ use ide_db::{
     FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
     syntax_helpers::prettify_macro_expansion,
 };
-use span::{SpanMap, SyntaxContext, TextRange, TextSize};
+use span::{SpanMap, TextRange, TextSize};
 use stdx::format_to;
 use syntax::{AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T, ast, ted};
 
@@ -26,9 +26,9 @@ pub struct ExpandedMacro {
 // ![Expand Macro Recursively](https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif)
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
-    let file_id = sema.attach_first_edition(position.file_id)?;
+    let file_id = sema.attach_first_edition(position.file_id);
     let file = sema.parse(file_id);
-    let krate = sema.file_to_module_def(file_id.file_id(db))?.krate().into();
+    let krate = sema.file_to_module_def(file_id.file_id(db))?.krate(db).into();
 
     let tok = pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
         SyntaxKind::IDENT => 1,
@@ -142,7 +142,7 @@ fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContext>,
+    result_span_map: &mut SpanMap,
     offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
     let ExpandResult { value: expanded, err } = match macro_call {
@@ -171,7 +171,7 @@ fn expand(
     sema: &Semantics<'_, RootDatabase>,
     expanded: SyntaxNode,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContext>,
+    result_span_map: &mut SpanMap,
     mut offset_in_original_node: i32,
 ) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
@@ -208,7 +208,7 @@ fn format(
     kind: SyntaxKind,
     file_id: FileId,
     expanded: SyntaxNode,
-    span_map: &SpanMap<SyntaxContext>,
+    span_map: &SpanMap,
     krate: Crate,
 ) -> String {
     let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();

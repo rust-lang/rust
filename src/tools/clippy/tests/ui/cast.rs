@@ -582,3 +582,13 @@ mod issue14150 {
         //~^ cast_possible_wrap
     }
 }
+
+fn issue16045() {
+    fn f() -> Result<(), ()> {
+        let val = Ok::<_, ()>(0u8);
+        _ = val? as i8;
+        //~^ cast_possible_wrap
+
+        Ok(())
+    }
+}

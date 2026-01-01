@@ -315,7 +315,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Path(_, _)
             | ExprKind::Ret(_)
             | ExprKind::Try(_)
-            | ExprKind::TryBlock(_)
+            | ExprKind::TryBlock(_, _)
             | ExprKind::Type(_, _)
             | ExprKind::Underscore
             | ExprKind::While(_, _, _)

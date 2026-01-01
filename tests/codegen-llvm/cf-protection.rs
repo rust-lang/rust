@@ -1,12 +1,12 @@
 // Test that the correct module flags are emitted with different control-flow protection flags.
 
 //@ add-minicore
-//@ revisions: undefined none branch return full
+//@ revisions: undefined none branch return_ full
 //@ needs-llvm-components: x86
 // [undefined] no extra compile-flags
 //@ [none] compile-flags: -Z cf-protection=none
 //@ [branch] compile-flags: -Z cf-protection=branch
-//@ [return] compile-flags: -Z cf-protection=return
+//@ [return_] compile-flags: -Z cf-protection=return
 //@ [full] compile-flags: -Z cf-protection=full
 //@ compile-flags: --target x86_64-unknown-linux-gnu
 
@@ -30,9 +30,9 @@ pub fn test() {}
 // branch: !"cf-protection-branch", i32 1
 // branch-NOT: !"cf-protection-return"
 
-// return-NOT: !"cf-protection-branch"
-// return: !"cf-protection-return", i32 1
-// return-NOT: !"cf-protection-branch"
+// return_-NOT: !"cf-protection-branch"
+// return_: !"cf-protection-return", i32 1
+// return_-NOT: !"cf-protection-branch"
 
 // full: !"cf-protection-branch", i32 1
 // full: !"cf-protection-return", i32 1

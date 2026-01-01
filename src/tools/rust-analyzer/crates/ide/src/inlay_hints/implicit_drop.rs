@@ -34,9 +34,10 @@ pub(super) fn hints(
     let def = sema.to_def(node)?;
     let def: DefWithBody = def.into();
 
-    let (hir, source_map) = sema.db.body_with_source_map(def.into());
+    let def = def.try_into().ok()?;
+    let (hir, source_map) = sema.db.body_with_source_map(def);
 
-    let mir = sema.db.mir_body(def.into()).ok()?;
+    let mir = sema.db.mir_body(def).ok()?;
 
     let local_to_binding = mir.local_to_binding_map();
 
@@ -46,7 +47,7 @@ pub(super) fn hints(
             if !place.projection.is_empty() {
                 continue; // Ignore complex cases for now
             }
-            if mir.locals[place.local].ty.as_adt().is_none() {
+            if mir.locals[place.local].ty.as_ref().as_adt().is_none() {
                 continue; // Arguably only ADTs have significant drop impls
             }
             let Some(&binding_idx) = local_to_binding.get(place.local) else {

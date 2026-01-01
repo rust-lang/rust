@@ -7,14 +7,16 @@
 // GenMC headers:
 #include "Verification/VerificationError.hpp"
 
+#include <format>
+#include <memory>
+#include <sstream>
 #include <string>
 
 /** Information about an error, formatted as a string to avoid having to share an error enum and
  * printing functionality with the Rust side. */
 static auto format_error(VerificationError err) -> std::unique_ptr<std::string> {
-    auto buf = std::string();
-    auto s = llvm::raw_string_ostream(buf);
-    s << err;
+    std::stringstream s;
+    s << std::format("{}", err);
     return std::make_unique<std::string>(s.str());
 }
 

@@ -179,8 +179,7 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
-        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+        reason: fcw!(EditionError 2018 "slug-of-edition-guide-page")
     };
 }
 ```

@@ -1,9 +1,10 @@
-//! Sanity checking performed by bootstrap before actually executing anything.
+//! Sanity checking and tool selection performed by bootstrap.
 //!
-//! This module contains the implementation of ensuring that the build
-//! environment looks reasonable before progressing. This will verify that
-//! various programs like git and python exist, along with ensuring that all C
-//! compilers for cross-compiling are found.
+//! This module ensures that the build environment is correctly set up before
+//! executing any build tasks. It verifies required programs exist (like git and
+//! cmake when needed), selects some tools based on the environment (like the
+//! Python interpreter), and validates that C compilers for cross-compiling are
+//! available.
 //!
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
@@ -27,19 +28,16 @@ pub struct Finder {
     path: OsString,
 }
 
-// During sanity checks, we search for target names to determine if they exist in the compiler's built-in
-// target list (`rustc --print target-list`). While a target name may be present in the stage2 compiler,
-// it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
-//
-// Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+/// During sanity checks, we search for target tuples to determine if they exist in the compiler's
+/// built-in target list (`rustc --print target-list`). While a target tuple may be present in the
+/// in-tree compiler, the stage 0 compiler might not yet know about it (assuming not operating with
+/// local-rebuild). In such cases, we handle the targets missing from stage 0 in this list.
+///
+/// Targets can be removed from this list during the usual release process bootstrap compiler bumps,
+/// when the newly-bumped stage 0 compiler now knows about the formerly-missing targets.
 const STAGE0_MISSING_TARGETS: &[&str] = &[
-    "aarch64-unknown-helenos",
-    "i686-unknown-helenos",
-    "x86_64-unknown-helenos",
-    "powerpc-unknown-helenos",
-    "sparc64-unknown-helenos",
     // just a dummy comment so the list doesn't get onelined
-    "riscv64gc-unknown-redox",
+    "riscv64im-unknown-none-elf",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -141,6 +139,7 @@ pub fn check(build: &mut Build) {
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
     let building_llvm = !build.config.llvm_from_ci
+        && !build.config.local_rebuild
         && build.hosts.iter().any(|host| {
             build.config.llvm_enabled(*host)
                 && build
@@ -183,12 +182,12 @@ than building it.
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.npm = build
+    build.config.yarn = build
         .config
-        .npm
+        .yarn
         .take()
         .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("npm"));
+        .or_else(|| cmd_finder.maybe_have("yarn"));
 
     build.config.gdb = build
         .config

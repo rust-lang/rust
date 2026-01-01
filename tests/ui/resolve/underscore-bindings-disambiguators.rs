@@ -1,3 +1,4 @@
+//@ edition:2015
 // Regression test for issue #144168 where some `_` bindings were incorrectly only allowed once per
 // module, failing with "error[E0428]: the name `_` is defined multiple times".
 

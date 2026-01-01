@@ -298,31 +298,21 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn handle_offset_of(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        let data = self.typeck_results().offset_of_data();
-        let &(container, ref indices) =
-            data.get(expr.hir_id).expect("no offset_of_data for offset_of");
+        let indices = self
+            .typeck_results()
+            .offset_of_data()
+            .get(expr.hir_id)
+            .expect("no offset_of_data for offset_of");
 
-        let body_did = self.typeck_results().hir_owner.to_def_id();
-        let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, body_did);
-
-        let mut current_ty = container;
-
-        for &(variant, field) in indices {
+        for &(current_ty, variant, field) in indices {
             match current_ty.kind() {
-                ty::Adt(def, args) => {
+                ty::Adt(def, _) => {
                     let field = &def.variant(variant).fields[field];
-
                     self.insert_def_id(field.did);
-                    let field_ty = field.ty(self.tcx, args);
-
-                    current_ty = self.tcx.normalize_erasing_regions(typing_env, field_ty);
                 }
                 // we don't need to mark tuple fields as live,
                 // but we may need to mark subfields
-                ty::Tuple(tys) => {
-                    current_ty =
-                        self.tcx.normalize_erasing_regions(typing_env, tys[field.as_usize()]);
-                }
+                ty::Tuple(_) => {}
                 _ => span_bug!(expr.span, "named field access on non-ADT"),
             }
         }
@@ -432,7 +422,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Trait(.., trait_item_refs) => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
-                        if matches!(self.tcx.def_kind(trait_item.owner_id), DefKind::AssocTy) {
+                        if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
                             self.check_def_id(trait_item.owner_id.to_def_id());
                         }
                     }
@@ -1189,7 +1179,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         // we have diagnosed them in the trait if they are unused,
         // for unused assoc items in unused trait,
         // we have diagnosed the unused trait.
-        if matches!(def_kind, DefKind::Impl { of_trait: false })
+        if def_kind == (DefKind::Impl { of_trait: false })
             || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
         {
             for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {

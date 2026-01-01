@@ -178,4 +178,11 @@ const fn uncalled_len() {
     //~^ incompatible_msrv
 }
 
+#[clippy::msrv = "1.0.0"]
+fn vec_macro() {
+    let _: Vec<u32> = vec![];
+    let _: Vec<u32> = vec![1; 3];
+    let _: Vec<u32> = vec![1, 2];
+}
+
 fn main() {}

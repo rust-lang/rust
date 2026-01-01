@@ -7,8 +7,8 @@ use span::{Edition, ErasedFileAstId};
 use crate::{
     item_tree::{
         Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree,
-        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawAttrs, RawVisibilityId, Static,
-        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawVisibilityId, Static, Struct,
+        Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
     },
     visibility::RawVisibility,
 };
@@ -85,9 +85,13 @@ impl Printer<'_> {
         }
     }
 
-    fn print_attrs(&mut self, attrs: &RawAttrs, inner: bool, separated_by: &str) {
+    fn print_attrs(&mut self, attrs: &AttrsOrCfg, inner: bool, separated_by: &str) {
+        let (cfg_disabled_expr, attrs) = match attrs {
+            AttrsOrCfg::Enabled { attrs } => (None, attrs),
+            AttrsOrCfg::CfgDisabled(inner_box) => (Some(&inner_box.0), &inner_box.1),
+        };
         let inner = if inner { "!" } else { "" };
-        for attr in &**attrs {
+        for attr in &*attrs.as_ref() {
             w!(
                 self,
                 "#{}[{}{}]{}",
@@ -96,6 +100,9 @@ impl Printer<'_> {
                 attr.input.as_ref().map(|it| it.to_string()).unwrap_or_default(),
                 separated_by,
             );
+        }
+        if let Some(expr) = cfg_disabled_expr {
+            w!(self, "#{inner}[cfg({expr})]{separated_by}");
         }
     }
 

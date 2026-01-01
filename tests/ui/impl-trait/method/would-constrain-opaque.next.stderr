@@ -1,5 +1,5 @@
 error[E0599]: no method named `method` found for reference `&_` in the current scope
-  --> $DIR/would-constrain-opaque.rs:28:11
+  --> $DIR/would-constrain-opaque.rs:29:11
    |
 LL |         x.method();
    |           ^^^^^^ method not found in `&_`
@@ -11,7 +11,7 @@ LL + use Trait;
    |
 
 error[E0599]: no method named `method` found for reference `&_` in the current scope
-  --> $DIR/would-constrain-opaque.rs:30:11
+  --> $DIR/would-constrain-opaque.rs:31:11
    |
 LL |         x.method();
    |           ^^^^^^ method not found in `&_`

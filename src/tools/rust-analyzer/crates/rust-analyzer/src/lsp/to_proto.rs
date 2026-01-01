@@ -119,7 +119,7 @@ pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSe
     }
 }
 
-pub(crate) fn documentation(documentation: Documentation) -> lsp_types::Documentation {
+pub(crate) fn documentation(documentation: Documentation<'_>) -> lsp_types::Documentation {
     let value = format_docs(&documentation);
     let markup_content = lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value };
     lsp_types::Documentation::MarkupContent(markup_content)
@@ -882,6 +882,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::ControlFlow => mods::CONTROL_FLOW,
             HlMod::CrateRoot => mods::CRATE_ROOT,
             HlMod::DefaultLibrary => mods::DEFAULT_LIBRARY,
+            HlMod::Deprecated => mods::DEPRECATED,
             HlMod::Definition => mods::DECLARATION,
             HlMod::Documentation => mods::DOCUMENTATION,
             HlMod::Injected => mods::INJECTED,
@@ -1560,6 +1561,9 @@ pub(crate) fn runnable(
 
             let target = spec.target.clone();
 
+            let override_command =
+                CargoTargetSpec::override_command(snap, Some(spec.clone()), &runnable.kind);
+
             let (cargo_args, executable_args) = CargoTargetSpec::runnable_args(
                 snap,
                 Some(spec.clone()),
@@ -1575,23 +1579,41 @@ pub(crate) fn runnable(
             let label = runnable.label(Some(&target));
             let location = location_link(snap, None, runnable.nav)?;
 
-            Ok(Some(lsp_ext::Runnable {
-                label,
-                location: Some(location),
-                kind: lsp_ext::RunnableKind::Cargo,
-                args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
-                    workspace_root: Some(workspace_root.into()),
-                    override_cargo: config.override_cargo,
-                    cargo_args,
-                    cwd: cwd.into(),
-                    executable_args,
-                    environment: spec
-                        .sysroot_root
-                        .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
-                        .into_iter()
-                        .collect(),
+            let environment = spec
+                .sysroot_root
+                .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
+                .into_iter()
+                .collect();
+
+            Ok(match override_command {
+                Some(override_command) => match override_command.split_first() {
+                    Some((program, args)) => Some(lsp_ext::Runnable {
+                        label,
+                        location: Some(location),
+                        kind: lsp_ext::RunnableKind::Shell,
+                        args: lsp_ext::RunnableArgs::Shell(lsp_ext::ShellRunnableArgs {
+                            environment,
+                            cwd: cwd.into(),
+                            program: program.to_string(),
+                            args: args.to_vec(),
+                        }),
+                    }),
+                    _ => None,
+                },
+                None => Some(lsp_ext::Runnable {
+                    label,
+                    location: Some(location),
+                    kind: lsp_ext::RunnableKind::Cargo,
+                    args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
+                        workspace_root: Some(workspace_root.into()),
+                        override_cargo: config.override_cargo,
+                        cargo_args,
+                        cwd: cwd.into(),
+                        executable_args,
+                        environment,
+                    }),
                 }),
-            }))
+            })
         }
         Some(TargetSpec::ProjectJson(spec)) => {
             let label = runnable.label(Some(&spec.label));
@@ -1974,7 +1996,7 @@ pub(crate) fn markup_content(
         ide::HoverDocFormat::Markdown => lsp_types::MarkupKind::Markdown,
         ide::HoverDocFormat::PlainText => lsp_types::MarkupKind::PlainText,
     };
-    let value = format_docs(&Documentation::new(markup.into()));
+    let value = format_docs(&Documentation::new_owned(markup.into()));
     lsp_types::MarkupContent { kind, value }
 }
 

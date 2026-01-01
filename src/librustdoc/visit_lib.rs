@@ -30,11 +30,12 @@ impl RustdocEffectiveVisibilities {
 
 pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
     assert!(!def_id.is_local());
+    let document_hidden = cx.document_hidden();
     LibEmbargoVisitor {
         tcx: cx.tcx,
         extern_public: &mut cx.cache.effective_visibilities.extern_public,
         visited_mods: Default::default(),
-        document_hidden: cx.render_options.document_hidden,
+        document_hidden,
     }
     .visit_item(def_id)
 }

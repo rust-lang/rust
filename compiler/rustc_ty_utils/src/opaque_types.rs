@@ -64,7 +64,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
-        let body = self.tcx.hir_body_owned_by(self.item).value;
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(self.item) else {
+            return;
+        };
+        let body = body.value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }

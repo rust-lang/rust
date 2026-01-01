@@ -1,0 +1,573 @@
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:70:10
+   |
+LL |     cfg!(r#crate);
+   |          ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:72:10
+   |
+LL |     cfg!(r#super);
+   |          ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:74:10
+   |
+LL |     cfg!(r#self);
+   |          ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:76:10
+   |
+LL |     cfg!(r#Self);
+   |          ^^^^^^
+
+error: `_` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:85:10
+   |
+LL |     cfg!(r#_);
+   |          ^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:88:7
+   |
+LL | #[cfg(r#crate)]
+   |       ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:91:7
+   |
+LL | #[cfg(r#super)]
+   |       ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:94:7
+   |
+LL | #[cfg(r#self)]
+   |       ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:97:7
+   |
+LL | #[cfg(r#Self)]
+   |       ^^^^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:100:12
+   |
+LL | #[cfg_attr(r#crate, cfg(r#crate))]
+   |            ^^^^^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:100:25
+   |
+LL | #[cfg_attr(r#crate, cfg(r#crate))]
+   |                         ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:104:12
+   |
+LL | #[cfg_attr(r#super, cfg(r#super))]
+   |            ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:104:25
+   |
+LL | #[cfg_attr(r#super, cfg(r#super))]
+   |                         ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:108:12
+   |
+LL | #[cfg_attr(r#self, cfg(r#self))]
+   |            ^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:108:24
+   |
+LL | #[cfg_attr(r#self, cfg(r#self))]
+   |                        ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:112:12
+   |
+LL | #[cfg_attr(r#Self, cfg(r#Self))]
+   |            ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:112:24
+   |
+LL | #[cfg_attr(r#Self, cfg(r#Self))]
+   |                        ^^^^^^
+
+error: `_` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:121:7
+   |
+LL | #[cfg(r#_)]
+   |       ^^^
+
+error: `_` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:127:12
+   |
+LL | #[cfg_attr(r#_, cfg(r#_))]
+   |            ^^^
+
+error: `_` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:127:21
+   |
+LL | #[cfg_attr(r#_, cfg(r#_))]
+   |                     ^^^
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:18:1
+   |
+LL | #[cfg(crate)]
+   | ^^^^^^-----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:20:1
+   |
+LL | #[cfg(super)]
+   | ^^^^^^-----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:22:1
+   |
+LL | #[cfg(self)]
+   | ^^^^^^----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:24:1
+   |
+LL | #[cfg(Self)]
+   | ^^^^^^----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:26:1
+   |
+LL | #[cfg_attr(crate, path = "foo")]
+   | ^^^^^^^^^^^-----^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:28:1
+   |
+LL | #[cfg_attr(super, path = "foo")]
+   | ^^^^^^^^^^^-----^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:30:1
+   |
+LL | #[cfg_attr(self, path = "foo")]
+   | ^^^^^^^^^^^----^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:32:1
+   |
+LL | #[cfg_attr(Self, path = "foo")]
+   | ^^^^^^^^^^^----^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:34:18
+   |
+LL | #[cfg_attr(true, cfg(crate))]
+   |                  ^^^^-----^
+   |                  |   |
+   |                  |   expected a valid identifier here
+   |                  help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:36:18
+   |
+LL | #[cfg_attr(true, cfg(super))]
+   |                  ^^^^-----^
+   |                  |   |
+   |                  |   expected a valid identifier here
+   |                  help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:38:18
+   |
+LL | #[cfg_attr(true, cfg(self))]
+   |                  ^^^^----^
+   |                  |   |
+   |                  |   expected a valid identifier here
+   |                  help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:40:18
+   |
+LL | #[cfg_attr(true, cfg(Self))]
+   |                  ^^^^----^
+   |                  |   |
+   |                  |   expected a valid identifier here
+   |                  help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:43:7
+   |
+LL | #[cfg(struct)]
+   |       ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found reserved keyword `priv`
+  --> $DIR/path-kw-as-cfg-pred.rs:45:7
+   |
+LL | #[cfg(priv)]
+   |       ^^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/path-kw-as-cfg-pred.rs:47:7
+   |
+LL | #[cfg(_)]
+   |       ^ expected identifier, found reserved identifier
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:49:12
+   |
+LL | #[cfg_attr(struct, path = "foo")]
+   |            ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | #[cfg_attr(r#struct, path = "foo")]
+   |            ++
+
+error: expected identifier, found reserved keyword `priv`
+  --> $DIR/path-kw-as-cfg-pred.rs:51:12
+   |
+LL | #[cfg_attr(priv, path = "foo")]
+   |            ^^^^ expected identifier, found reserved keyword
+   |
+help: escape `priv` to use it as an identifier
+   |
+LL | #[cfg_attr(r#priv, path = "foo")]
+   |            ++
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/path-kw-as-cfg-pred.rs:53:12
+   |
+LL | #[cfg_attr(_, path = "foo")]
+   |            ^ expected identifier, found reserved identifier
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:55:22
+   |
+LL | #[cfg_attr(true, cfg(struct))]
+   |                      ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found reserved keyword `priv`
+  --> $DIR/path-kw-as-cfg-pred.rs:57:22
+   |
+LL | #[cfg_attr(true, cfg(priv))]
+   |                      ^^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/path-kw-as-cfg-pred.rs:59:22
+   |
+LL | #[cfg_attr(true, cfg(_))]
+   |                      ^ expected identifier, found reserved identifier
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:88:1
+   |
+LL | #[cfg(r#crate)]
+   | ^^^^^^-------^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:91:1
+   |
+LL | #[cfg(r#super)]
+   | ^^^^^^-------^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:94:1
+   |
+LL | #[cfg(r#self)]
+   | ^^^^^^------^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:97:1
+   |
+LL | #[cfg(r#Self)]
+   | ^^^^^^------^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:100:1
+   |
+LL | #[cfg_attr(r#crate, cfg(r#crate))]
+   | ^^^^^^^^^^^-------^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:104:1
+   |
+LL | #[cfg_attr(r#super, cfg(r#super))]
+   | ^^^^^^^^^^^-------^^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:108:1
+   |
+LL | #[cfg_attr(r#self, cfg(r#self))]
+   | ^^^^^^^^^^^------^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:112:1
+   |
+LL | #[cfg_attr(r#Self, cfg(r#Self))]
+   | ^^^^^^^^^^^------^^^^^^^^^^^^^^^
+   | |          |
+   | |          expected a valid identifier here
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:7:9
+   |
+LL |         #[cfg($crate)]
+   |         ^^^^^^------^^
+   |         |     |
+   |         |     expected a valid identifier here
+   |         help: must be of the form: `#[cfg(predicate)]`
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:9:9
+   |
+LL |         #[cfg_attr($crate, path = "foo")]
+   |         ^^^^^^^^^^^------^^^^^^^^^^^^^^^^
+   |         |          |
+   |         |          expected a valid identifier here
+   |         help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/path-kw-as-cfg-pred.rs:11:26
+   |
+LL |         #[cfg_attr(true, cfg($crate))]
+   |                          ^^^^------^
+   |                          |   |
+   |                          |   expected a valid identifier here
+   |                          help: must be of the form: `cfg(predicate)`
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:14:9
+   |
+LL |         cfg!($crate);
+   |         ^^^^^------^
+   |         |    |
+   |         |    expected a valid identifier here
+   |         help: must be of the form: `cfg!(predicate)`
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+   = note: this error originates in the macro `cfg` which comes from the expansion of the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:65:5
+   |
+LL |     cfg!(crate);
+   |     ^^^^^-----^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:66:5
+   |
+LL |     cfg!(super);
+   |     ^^^^^-----^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:67:5
+   |
+LL |     cfg!(self);
+   |     ^^^^^----^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:68:5
+   |
+LL |     cfg!(Self);
+   |     ^^^^^----^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:70:5
+   |
+LL |     cfg!(r#crate);
+   |     ^^^^^-------^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:72:5
+   |
+LL |     cfg!(r#super);
+   |     ^^^^^-------^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:74:5
+   |
+LL |     cfg!(r#self);
+   |     ^^^^^------^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/path-kw-as-cfg-pred.rs:76:5
+   |
+LL |     cfg!(r#Self);
+   |     ^^^^^------^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg!(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:79:10
+   |
+LL |     cfg!(struct);
+   |          ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found reserved keyword `priv`
+  --> $DIR/path-kw-as-cfg-pred.rs:80:10
+   |
+LL |     cfg!(priv);
+   |          ^^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/path-kw-as-cfg-pred.rs:81:10
+   |
+LL |     cfg!(_);
+   |          ^ expected identifier, found reserved identifier
+
+error: aborting due to 64 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

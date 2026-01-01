@@ -1,5 +1,4 @@
-//! Tidy check to ensure that rustdoc templates didn't forget a `{# #}` to strip extra whitespace
-//! characters.
+//! Tidy check specific to the Javascript file that make up the static part of the generated rustdoc site.
 
 use std::ffi::OsStr;
 use std::io;

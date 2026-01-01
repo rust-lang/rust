@@ -10,37 +10,45 @@ extern "C" {
     fn rust_interesting_average(_: u64, ...) -> f64;
 
     fn rust_valist_interesting_average(_: u64, _: VaList) -> f64;
+
+    fn rust_va_list_next_i32(_: *mut VaList<'_>) -> i32;
 }
 
-pub unsafe extern "C" fn test_valist_forward(n: u64, mut ap: ...) -> f64 {
-    rust_valist_interesting_average(n, ap.as_va_list())
+pub unsafe extern "C" fn test_valist_forward(n: u64, ap: ...) -> f64 {
+    rust_valist_interesting_average(n, ap)
 }
 
-pub unsafe extern "C-unwind" fn c_unwind_can_forward(n: u64, mut ap: ...) -> f64 {
-    rust_valist_interesting_average(n, ap.as_va_list())
+pub unsafe extern "C-unwind" fn c_unwind_can_forward(n: u64, ap: ...) -> f64 {
+    rust_valist_interesting_average(n, ap)
 }
 
 pub unsafe extern "C" fn test_va_copy(_: u64, mut ap: ...) {
-    let mut ap2 = ap.clone();
-    assert_eq!(rust_valist_interesting_average(2, ap2.as_va_list()) as i64, 30);
+    let ap2 = ap.clone();
+    assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 30);
 
     // Advance one pair in the copy before checking
     let mut ap2 = ap.clone();
     let _ = ap2.arg::<u64>();
     let _ = ap2.arg::<f64>();
-    assert_eq!(rust_valist_interesting_average(2, ap2.as_va_list()) as i64, 50);
+    assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 50);
 
     // Advance one pair in the original
     let _ = ap.arg::<u64>();
     let _ = ap.arg::<f64>();
 
-    let mut ap2 = ap.clone();
-    assert_eq!(rust_valist_interesting_average(2, ap2.as_va_list()) as i64, 50);
+    let ap2 = ap.clone();
+    assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 50);
 
     let mut ap2 = ap.clone();
     let _ = ap2.arg::<u64>();
     let _ = ap2.arg::<f64>();
-    assert_eq!(rust_valist_interesting_average(2, ap2.as_va_list()) as i64, 70);
+    assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 70);
+}
+
+pub unsafe extern "C" fn test_ref(mut ap: ...) {
+    assert_eq!(rust_va_list_next_i32(&mut ap), 2);
+    assert_eq!(rust_va_list_next_i32(&mut ap), 4);
+    assert_eq!(rust_va_list_next_i32(&mut ap), 8);
 }
 
 pub fn main() {
@@ -84,5 +92,9 @@ pub fn main() {
 
     unsafe {
         test_va_copy(4, 10i64, 10f64, 20i64, 20f64, 30i64, 30f64, 40i64, 40f64);
+    }
+
+    unsafe {
+        test_ref(2, 4, 8);
     }
 }

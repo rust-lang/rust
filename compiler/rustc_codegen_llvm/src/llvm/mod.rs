@@ -6,7 +6,7 @@ use std::ptr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
-use rustc_abi::{Align, Size, WrappingRange};
+use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
@@ -41,6 +41,14 @@ pub(crate) fn AddFunctionAttributes<'ll>(
     unsafe {
         LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
+}
+
+pub(crate) fn HasStringAttribute<'ll>(llfn: &'ll Value, name: &str) -> bool {
+    unsafe { LLVMRustHasFnAttribute(llfn, name.as_c_char_ptr(), name.len()) }
+}
+
+pub(crate) fn RemoveStringAttrFromFn<'ll>(llfn: &'ll Value, name: &str) {
+    unsafe { LLVMRustRemoveFnAttribute(llfn, name.as_c_char_ptr(), name.len()) }
 }
 
 pub(crate) fn AddCallSiteAttributes<'ll>(
@@ -443,4 +451,15 @@ pub(crate) fn append_module_inline_asm<'ll>(llmod: &'ll Module, asm: &[u8]) {
     unsafe {
         LLVMAppendModuleInlineAsm(llmod, asm.as_ptr(), asm.len());
     }
+}
+
+/// Safe wrapper for `LLVMAddAlias2`
+pub(crate) fn add_alias<'ll>(
+    module: &'ll Module,
+    ty: &Type,
+    address_space: AddressSpace,
+    aliasee: &Value,
+    name: &CStr,
+) -> &'ll Value {
+    unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
 }

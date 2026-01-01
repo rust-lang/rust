@@ -482,6 +482,226 @@ fn foo() {}
 }
 
 #[test]
+fn completes_macro_segment() {
+    check(
+        r#"
+macro_rules! foo {
+    ($x:e$0) => ();
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check(
+        r#"
+macro_rules! foo {
+    ($x:$0) => ();
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check(
+        r#"
+macro_rules! foo {
+    ($($x:$0)*) => ();
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check(
+        r#"
+macro foo {
+    ($($x:$0)*) => ();
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check(
+        r#"
+macro foo($($x:$0)*) {
+    xxx;
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check_edit(
+        "expr",
+        r#"
+macro foo($($x:$0)*) {
+    xxx;
+}
+"#,
+        r#"
+macro foo($($x:expr)*) {
+    xxx;
+}
+"#,
+    );
+
+    check(
+        r#"
+macro_rules! foo {
+    ($fn : e$0) => ();
+}
+"#,
+        expect![[r#"
+            ba block
+            ba expr
+            ba expr_2021
+            ba ident
+            ba item
+            ba lifetime
+            ba literal
+            ba meta
+            ba pat
+            ba pat_param
+            ba path
+            ba stmt
+            ba tt
+            ba ty
+            ba vis
+        "#]],
+    );
+
+    check_edit(
+        "expr",
+        r#"
+macro foo($($x:ex$0)*) {
+    xxx;
+}
+"#,
+        r#"
+macro foo($($x:expr)*) {
+    xxx;
+}
+"#,
+    );
+}
+
+#[test]
+fn completes_in_macro_body() {
+    check(
+        r#"
+macro_rules! foo {
+    ($x:expr) => ($y:$0);
+}
+"#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+macro_rules! foo {
+    ($x:expr) => ({$y:$0});
+}
+"#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+macro foo {
+    ($x:expr) => ($y:$0);
+}
+"#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+macro foo($x:expr) {
+    $y:$0
+}
+"#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
 fn function_mod_share_name() {
     check_no_kw(
         r#"
@@ -942,6 +1162,15 @@ fn foo { crate::$0 }
     check_with_trigger_character(
         r#"
 fn foo { crate:$0 }
+"#,
+        Some(':'),
+        expect![""],
+    );
+
+    check_with_trigger_character(
+        r#"
+macro_rules! bar { ($($x:tt)*) => ($($x)*); }
+fn foo { bar!(crate:$0) }
 "#,
         Some(':'),
         expect![""],

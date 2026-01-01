@@ -6,11 +6,10 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_hash::FxHashSet;
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
-use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -19,6 +18,7 @@ use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -234,7 +234,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&self, name: &str) -> Scalar {
-        if self.eval_context_ref().tcx.sess.target.os == "windows" {
+        if self.eval_context_ref().tcx.sess.target.os == Os::Windows {
             panic!(
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
@@ -290,7 +290,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
-        if this.tcx.sess.target.os == "windows" {
+        if this.tcx.sess.target.os == Os::Windows {
             panic!(
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
@@ -471,6 +471,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )
     }
 
+    /// Call a function in an "empty" thread.
+    fn call_thread_root_function(
+        &mut self,
+        f: ty::Instance<'tcx>,
+        caller_abi: ExternAbi,
+        args: &[ImmTy<'tcx>],
+        dest: Option<&MPlaceTy<'tcx>>,
+        span: Span,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        assert!(this.active_thread_stack().is_empty());
+        assert!(this.active_thread_ref().origin_span.is_dummy());
+        this.active_thread_mut().origin_span = span;
+        this.call_function(f, caller_abi, args, dest, ReturnContinuation::Stop { cleanup: true })
+    }
+
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
     /// of `action` will be true if this is frozen, false if this is in an `UnsafeCell`.
     /// The range is relative to `place`.
@@ -566,13 +582,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_iter(
-                memory_index: &IndexVec<FieldIdx, u32>,
-            ) -> impl Iterator<Item = FieldIdx> + 'static {
-                let inverse_memory_index = memory_index.invert_bijective_mapping();
-                inverse_memory_index.into_iter()
-            }
-
             // Hook to detect `UnsafeCell`.
             fn visit_value(&mut self, v: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
@@ -646,7 +655,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 // Deduplicate these warnings *by shim* (not by span)
                 static DEDUP: Mutex<FxHashSet<String>> =
-                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                    Mutex::new(FxHashSet::with_hasher(FxBuildHasher));
                 let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
@@ -669,7 +678,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function used inside the shims of foreign functions to assert that the target OS
     /// is `target_os`. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
-    fn assert_target_os(&self, target_os: &str, name: &str) {
+    fn assert_target_os(&self, target_os: Os, name: &str) {
         assert_eq!(
             self.eval_context_ref().tcx.sess.target.os,
             target_os,
@@ -680,9 +689,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function used inside shims of foreign functions to check that the target OS
     /// is one of `target_oses`. It returns an error containing the `name` of the foreign function
     /// in a message if this is not the case.
-    fn check_target_os(&self, target_oses: &[&str], name: Symbol) -> InterpResult<'tcx> {
-        let target_os = self.eval_context_ref().tcx.sess.target.os.as_ref();
-        if !target_oses.contains(&target_os) {
+    fn check_target_os(&self, target_oses: &[Os], name: Symbol) -> InterpResult<'tcx> {
+        let target_os = &self.eval_context_ref().tcx.sess.target.os;
+        if !target_oses.contains(target_os) {
             throw_unsup_format!("`{name}` is not supported on {target_os}");
         }
         interp_ok(())
@@ -918,7 +927,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
     fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
         let this = self.eval_context_ref();
-        let wchar_t = if this.tcx.sess.target.os == "windows" {
+        let wchar_t = if this.tcx.sess.target.os == Os::Windows {
             // We don't have libc on Windows so we have to hard-code the type ourselves.
             this.machine.layouts.u16
         } else {
@@ -994,11 +1003,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    /// Lookup an array of immediates from any linker sections matching the provided predicate,
+    /// with the spans of where they were found.
     fn lookup_link_section(
         &mut self,
         include_name: impl Fn(&str) -> bool,
-    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1011,6 +1021,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             };
             if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
+                let span = tcx.def_span(def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
@@ -1018,12 +1029,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 match const_val.layout.ty.kind() {
                     ty::FnPtr(..) => {
-                        array.push(this.read_immediate(&const_val)?);
+                        array.push((this.read_immediate(&const_val)?, span));
                     }
                     ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
                         let mut elems = this.project_array_fields(&const_val)?;
                         while let Some((_idx, elem)) = elems.next(this)? {
-                            array.push(this.read_immediate(&elem)?);
+                            array.push((this.read_immediate(&elem)?, span));
                         }
                     }
                     _ =>

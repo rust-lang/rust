@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: you might be missing crate `core`
-  --> $DIR/issue-102156.rs:4:5
+  --> $DIR/issue-102156.rs:5:5
    |
 LL | use core::convert::{From, TryFrom};
    |     ^^^^
@@ -8,7 +8,7 @@ LL | use core::convert::{From, TryFrom};
    |     help: try using `std` instead of `core`: `std`
 
 error[E0433]: failed to resolve: you might be missing crate `core`
-  --> $DIR/issue-102156.rs:4:5
+  --> $DIR/issue-102156.rs:5:5
    |
 LL | use core::convert::{From, TryFrom};
    |     ^^^^

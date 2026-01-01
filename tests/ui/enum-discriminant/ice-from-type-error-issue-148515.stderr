@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0425]: cannot find type `Foo` in this scope
   --> $DIR/ice-from-type-error-issue-148515.rs:7:34
    |
 LL | fn test1(x: impl Iterator<Item = Foo>) {
    |                                  ^^^ not found in this scope
 
-error[E0412]: cannot find type `Foo` in this scope
+error[E0425]: cannot find type `Foo` in this scope
   --> $DIR/ice-from-type-error-issue-148515.rs:12:34
    |
 LL | fn test2(_: impl Iterator<Item = Foo>) {
@@ -20,5 +20,5 @@ LL |     0u8 == -3;
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0412, E0600.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0600.
+For more information about an error, try `rustc --explain E0425`.

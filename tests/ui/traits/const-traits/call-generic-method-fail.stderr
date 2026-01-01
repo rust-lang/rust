@@ -3,11 +3,6 @@ error[E0277]: the trait bound `T: [const] PartialEq` is not satisfied
    |
 LL |     *t == *t
    |     ^^^^^^^^
-   |
-note: trait `PartialEq` is implemented but not `const`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: trait `PartialEq` is implemented but not `const`
-  --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
 
 error: aborting due to 1 previous error
 

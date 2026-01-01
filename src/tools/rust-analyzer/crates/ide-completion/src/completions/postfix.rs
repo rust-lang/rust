@@ -8,15 +8,18 @@ use ide_db::{
     RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
+    syntax_helpers::suggest_name::NameGenerator,
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
+use itertools::Itertools;
 use stdx::never;
 use syntax::{
-    SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
-    T, TextRange, TextSize,
+    SmolStr,
+    SyntaxKind::{EXPR_STMT, STMT_LIST},
+    T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
-    match_ast,
+    format_smolstr, match_ast,
 };
 
 use crate::{
@@ -116,15 +119,20 @@ pub(crate) fn complete_postfix(
         if let Some(parent_expr) = ast::Expr::cast(parent) {
             is_in_cond = is_in_condition(&parent_expr);
         }
+        let placeholder = suggest_receiver_name(dot_receiver, "0", &ctx.sema);
         match &try_enum {
             Some(try_enum) if is_in_cond => match try_enum {
                 TryEnum::Result => {
-                    postfix_snippet("let", "let Ok(_)", &format!("let Ok($0) = {receiver_text}"))
-                        .add_to(acc, ctx.db);
+                    postfix_snippet(
+                        "let",
+                        "let Ok(_)",
+                        &format!("let Ok({placeholder}) = {receiver_text}"),
+                    )
+                    .add_to(acc, ctx.db);
                     postfix_snippet(
                         "letm",
                         "let Ok(mut _)",
-                        &format!("let Ok(mut $0) = {receiver_text}"),
+                        &format!("let Ok(mut {placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -132,13 +140,13 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "let",
                         "let Some(_)",
-                        &format!("let Some($0) = {receiver_text}"),
+                        &format!("let Some({placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                     postfix_snippet(
                         "letm",
                         "let Some(mut _)",
-                        &format!("let Some(mut $0) = {receiver_text}"),
+                        &format!("let Some(mut {placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -185,26 +193,29 @@ pub(crate) fn complete_postfix(
             }
         }
         if let Some(try_enum) = &try_enum {
+            let placeholder = suggest_receiver_name(dot_receiver, "1", &ctx.sema);
             match try_enum {
                 TryEnum::Result => {
                     postfix_snippet(
                         "ifl",
                         "if let Ok {}",
-                        &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("if let Ok({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "lete",
                         "let Ok else {}",
-                        &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                        &format!(
+                            "let Ok({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"
+                        ),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "while",
                         "while let Ok {}",
-                        &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("while let Ok({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -212,21 +223,23 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "ifl",
                         "if let Some {}",
-                        &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("if let Some({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "lete",
                         "let Some else {}",
-                        &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                        &format!(
+                            "let Some({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"
+                        ),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "while",
                         "while let Some {}",
-                        &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("while let Some({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -253,18 +266,15 @@ pub(crate) fn complete_postfix(
         }
     }
 
-    let mut block_should_be_wrapped = true;
-    if dot_receiver.syntax().kind() == BLOCK_EXPR {
-        block_should_be_wrapped = false;
-        if let Some(parent) = dot_receiver.syntax().parent()
-            && matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR)
-        {
-            block_should_be_wrapped = true;
-        }
+    let block_should_be_wrapped = if let ast::Expr::BlockExpr(block) = dot_receiver {
+        block.modifier().is_some() || !block.is_standalone()
+    } else {
+        true
     };
     {
         let (open_brace, close_brace) =
             if block_should_be_wrapped { ("{ ", " }") } else { ("", "") };
+        // FIXME: Why add parentheses
         let (open_paren, close_paren) = if is_in_cond { ("(", ")") } else { ("", "") };
         let unsafe_completion_string =
             format!("{open_paren}unsafe {open_brace}{receiver_text}{close_brace}{close_paren}");
@@ -301,6 +311,34 @@ pub(crate) fn complete_postfix(
             ),
         )
         .add_to(acc, ctx.db);
+    }
+}
+
+fn suggest_receiver_name(
+    receiver: &ast::Expr,
+    n: &str,
+    sema: &Semantics<'_, RootDatabase>,
+) -> SmolStr {
+    let placeholder = |name| format_smolstr!("${{{n}:{name}}}");
+
+    match receiver {
+        ast::Expr::PathExpr(path) => {
+            if let Some(name) = path.path().and_then(|it| it.as_single_name_ref()) {
+                return placeholder(name.text().as_str());
+            }
+        }
+        ast::Expr::RefExpr(it) => {
+            if let Some(receiver) = it.expr() {
+                return suggest_receiver_name(&receiver, n, sema);
+            }
+        }
+        _ => {}
+    }
+
+    let name = NameGenerator::new_with_names([].into_iter()).try_for_variable(receiver, sema);
+    match name {
+        Some(name) => placeholder(&name),
+        None => format_smolstr!("${n}"),
     }
 }
 
@@ -363,10 +401,18 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
         resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
     {
         found_ref_or_deref = true;
-        let exclusive = parent_ref_element.mut_token().is_some();
+        let last_child_or_token = parent_ref_element.syntax().last_child_or_token();
+        prefix.insert_str(
+            0,
+            parent_ref_element
+                .syntax()
+                .children_with_tokens()
+                .filter(|it| Some(it) != last_child_or_token.as_ref())
+                .format("")
+                .to_smolstr()
+                .as_str(),
+        );
         resulting_element = ast::Expr::from(parent_ref_element);
-
-        prefix.insert_str(0, if exclusive { "&mut " } else { "&" });
     }
 
     if !found_ref_or_deref {
@@ -440,7 +486,7 @@ fn add_custom_postfix_completions(
             let body = snippet.postfix_snippet(receiver_text);
             let mut builder =
                 postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
-            builder.documentation(Documentation::new(format!("```rust\n{body}\n```")));
+            builder.documentation(Documentation::new_owned(format!("```rust\n{body}\n```")));
             for import in imports.into_iter() {
                 builder.add_import(import);
             }
@@ -610,7 +656,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if let Some($1) = bar {
+    if let Some(${1:bar}) = bar {
     $0
 }
 }
@@ -660,7 +706,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if let Some($0) = bar
+    if let Some(${0:bar}) = bar
 }
 "#,
         );
@@ -676,7 +722,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if true && let Some($0) = bar
+    if true && let Some(${0:bar}) = bar
 }
 "#,
         );
@@ -692,7 +738,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if true && true && let Some($0) = bar
+    if true && true && let Some(${0:bar}) = bar
 }
 "#,
         );
@@ -712,7 +758,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    let Some($1) = bar else {
+    let Some(${1:bar}) = bar else {
     $2
 };
 $0
@@ -786,7 +832,7 @@ fn main() {
             r#"
 fn main() {
     let bar = &Some(true);
-    if let Some($1) = bar {
+    if let Some(${1:bar}) = bar {
     $0
 }
 }
@@ -841,6 +887,20 @@ fn main() {
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
             &format!("fn main() {{ let x = {kind} {{ if true {{1}} else {{2}} }} }}"),
         );
+
+        if kind == "const" {
+            check_edit(
+                kind,
+                r#"fn main() { unsafe {1}.$0 }"#,
+                &format!("fn main() {{ {kind} {{ unsafe {{1}} }} }}"),
+            );
+        } else {
+            check_edit(
+                kind,
+                r#"fn main() { const {1}.$0 }"#,
+                &format!("fn main() {{ {kind} {{ const {{1}} }} }}"),
+            );
+        }
 
         // completion will not be triggered
         check_edit(
@@ -995,6 +1055,20 @@ fn main() {
         );
 
         check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &raw mut 42.$0 }"#,
+            r#"fn main() { Ok(&raw mut 42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &raw const 42.$0 }"#,
+            r#"fn main() { Ok(&raw const 42) }"#,
+        );
+
+        check_edit_with_config(
             CompletionConfig { snippets: vec![snippet], ..TEST_CONFIG },
             "ok",
             r#"
@@ -1017,6 +1091,55 @@ fn main() {
     Ok(&a.a)
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn postfix_custom_snippets_completion_for_reference_expr() {
+        // https://github.com/rust-lang/rust-analyzer/issues/21035
+        let snippet = Snippet::new(
+            &[],
+            &["group".into()],
+            &["(${receiver})".into()],
+            "",
+            &[],
+            crate::SnippetScope::Expr,
+        )
+        .unwrap();
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &[1, 2, 3].g$0 }"#,
+            r#"fn main() { (&[1, 2, 3]) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &&foo(a, b, 1+1).$0 }"#,
+            r#"fn main() { (&&foo(a, b, 1+1)) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &mut Foo { a: 1, b: 2, c: 3 }.$0 }"#,
+            r#"fn main() { (&mut Foo { a: 1, b: 2, c: 3 }) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &raw mut Foo::new().$0 }"#,
+            r#"fn main() { (&raw mut Foo::new()) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &raw const Foo::bar::SOME_CONST.$0 }"#,
+            r#"fn main() { (&raw const Foo::bar::SOME_CONST) }"#,
         );
     }
 

@@ -27,7 +27,7 @@ params: [
 body:
     Expr {
         ty: bool
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+        temp_scope_id: 28
         span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
         kind: 
             Scope {
@@ -36,7 +36,7 @@ body:
                 value:
                     Expr {
                         ty: bool
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                        temp_scope_id: 28
                         span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
                         kind: 
                             Block {
@@ -48,7 +48,7 @@ body:
                                 expr:
                                     Expr {
                                         ty: bool
-                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                        temp_scope_id: 4
                                         span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
                                         kind: 
                                             Scope {
@@ -57,14 +57,14 @@ body:
                                                 value:
                                                     Expr {
                                                         ty: bool
-                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                        temp_scope_id: 4
                                                         span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
                                                         kind: 
                                                             Match {
                                                                 scrutinee:
                                                                     Expr {
                                                                         ty: Foo
-                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                        temp_scope_id: 5
                                                                         span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
                                                                         kind: 
                                                                             Scope {
@@ -73,7 +73,7 @@ body:
                                                                                 value:
                                                                                     Expr {
                                                                                         ty: Foo
-                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                                        temp_scope_id: 5
                                                                                         span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
                                                                                         kind: 
                                                                                             VarRef {
@@ -95,7 +95,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 13397682652773712997 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 13397682652773712997 }
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
@@ -109,7 +109,7 @@ body:
                                                                                                                 did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
                                                                                                                 variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], tainted: None, flags:  }]
                                                                                                                 flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 7908585036048874241 }
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7908585036048874241 }
                                                                                                         args: []
                                                                                                         variant_index: 0
                                                                                                         subpatterns: []
@@ -124,7 +124,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(14)), backwards_incompatible: None }
+                                                                                temp_scope_id: 15
                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -133,7 +133,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(14)), backwards_incompatible: None }
+                                                                                                temp_scope_id: 15
                                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0) }, neg: false)
@@ -157,7 +157,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 13397682652773712997 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 13397682652773712997 }
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
@@ -176,7 +176,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(20)), backwards_incompatible: None }
+                                                                                temp_scope_id: 21
                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -185,7 +185,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(20)), backwards_incompatible: None }
+                                                                                                temp_scope_id: 21
                                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0) }, neg: false)
@@ -209,7 +209,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 13397682652773712997 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 13397682652773712997 }
                                                                                         args: []
                                                                                         variant_index: 1
                                                                                         subpatterns: []
@@ -220,7 +220,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(26)), backwards_incompatible: None }
+                                                                                temp_scope_id: 27
                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -229,7 +229,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(26)), backwards_incompatible: None }
+                                                                                                temp_scope_id: 27
                                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0) }, neg: false)
@@ -258,7 +258,7 @@ params: [
 body:
     Expr {
         ty: ()
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+        temp_scope_id: 2
         span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
         kind: 
             Scope {
@@ -267,7 +267,7 @@ body:
                 value:
                     Expr {
                         ty: ()
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                        temp_scope_id: 2
                         span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
                         kind: 
                             Block {

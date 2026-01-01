@@ -10,7 +10,7 @@ error: literal out of range for `u8`
 LL |         1..=256 => {}
    |             ^^^ this value does not fit into the type `u8` whose range is `0..=255`
 
-error[E0030]: lower range bound must be less than or equal to upper
+error[E0030]: lower bound for range pattern must be less than or equal to upper bound
   --> $DIR/validate-range-endpoints.rs:17:9
    |
 LL |         1..=TOO_BIG => {}

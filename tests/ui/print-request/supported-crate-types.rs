@@ -17,9 +17,11 @@
 
 //@[wasm] compile-flags: --target=wasm32-unknown-unknown --print=supported-crate-types -Zunstable-options
 //@[wasm] needs-llvm-components: webassembly
+//@[wasm] ignore-backends: gcc
 
 //@[musl] compile-flags: --target=x86_64-unknown-linux-musl --print=supported-crate-types -Zunstable-options
 //@[musl] needs-llvm-components: x86
+//@[musl] ignore-backends: gcc
 
 //@[linux] compile-flags: --target=x86_64-unknown-linux-gnu --print=supported-crate-types -Zunstable-options
 //@[linux] needs-llvm-components: x86

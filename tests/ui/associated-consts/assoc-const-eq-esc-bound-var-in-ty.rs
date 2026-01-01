@@ -8,7 +8,7 @@ trait Trait<'a> {
     const K: &'a ();
 }
 
-fn take(_: impl for<'r> Trait<'r, K = { &() }>) {}
+fn take(_: impl for<'r> Trait<'r, K = const { &() }>) {}
 //~^ ERROR the type of the associated constant `K` cannot capture late-bound generic parameters
 //~| NOTE its type cannot capture the late-bound lifetime parameter `'r`
 //~| NOTE the late-bound lifetime parameter `'r` is defined here

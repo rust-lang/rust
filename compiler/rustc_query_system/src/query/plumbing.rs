@@ -7,10 +7,12 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
+use hashbrown::HashTable;
 use hashbrown::hash_table::Entry;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::sync::LockGuard;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
@@ -63,21 +65,32 @@ where
         self.active.lock_shards().all(|shard| shard.is_empty())
     }
 
-    pub fn try_collect_active_jobs<Qcx: Copy>(
+    pub fn collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
         make_query: fn(Qcx, K) -> QueryStackFrame<I>,
         jobs: &mut QueryMap<I>,
+        require_complete: bool,
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        // We use try_lock_shards here since we are called from the
-        // deadlock handler, and this shouldn't be locked.
-        for shard in self.active.try_lock_shards() {
-            for (k, v) in shard?.iter() {
+        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<I>)>>| {
+            for (k, v) in iter.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    active.push((*k, (*job).clone()));
+                    active.push((*k, job.clone()));
                 }
+            }
+        };
+
+        if require_complete {
+            for shard in self.active.lock_shards() {
+                collect(shard);
+            }
+        } else {
+            // We use try_lock_shards here since we are called from the
+            // deadlock handler, and this shouldn't be locked.
+            for shard in self.active.try_lock_shards() {
+                collect(shard?);
             }
         }
 
@@ -271,7 +284,7 @@ where
 {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let query_map = qcx.collect_active_jobs().ok().expect("failed to collect active queries");
+    let query_map = qcx.collect_active_jobs(false).ok().expect("failed to collect active queries");
 
     let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error.lift(qcx)), None)

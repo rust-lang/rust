@@ -3,7 +3,7 @@
 //! This library, provided by the standard distribution, provides the types
 //! consumed in the interfaces of procedurally defined macro definitions such as
 //! function-like macros `#[proc_macro]`, macro attributes `#[proc_macro_attribute]` and
-//! custom derive attributes`#[proc_macro_derive]`.
+//! custom derive attributes `#[proc_macro_derive]`.
 //!
 //! See [the book] for more.
 //!
@@ -22,7 +22,6 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
@@ -211,7 +210,6 @@ impl FromStr for TokenStream {
 /// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             Some(ts) => write!(f, "{}", ts.to_string()),
@@ -220,7 +218,7 @@ impl fmt::Display for TokenStream {
     }
 }
 
-/// Prints token in a form convenient for debugging.
+/// Prints tokens in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -572,7 +570,7 @@ impl Span {
     /// This path should not be embedded in the output of the macro; prefer `file()` instead.
     #[stable(feature = "proc_macro_span_file", since = "1.88.0")]
     pub fn local_file(&self) -> Option<PathBuf> {
-        self.0.local_file().map(|s| PathBuf::from(s))
+        self.0.local_file().map(PathBuf::from)
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -751,7 +749,6 @@ impl From<Literal> for TokenTree {
 /// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for TokenTree {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TokenTree::Group(t) => write!(f, "{t}"),
@@ -889,7 +886,6 @@ impl Group {
 /// with `Delimiter::None` delimiters.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Group {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", TokenStream::from(TokenTree::from(self.clone())))
     }
@@ -1594,11 +1590,17 @@ impl fmt::Debug for Literal {
     }
 }
 
-/// Tracked access to environment variables.
-#[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
-pub mod tracked_env {
+#[unstable(
+    feature = "proc_macro_tracked_path",
+    issue = "99515",
+    implied_by = "proc_macro_tracked_env"
+)]
+/// Functionality for adding environment state to the build dependency info.
+pub mod tracked {
+
     use std::env::{self, VarError};
     use std::ffi::OsStr;
+    use std::path::Path;
 
     /// Retrieve an environment variable and add it to build dependency info.
     /// The build system executing the compiler will know that the variable was accessed during
@@ -1606,25 +1608,20 @@ pub mod tracked_env {
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
-    pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
+    pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
         let value = crate::bridge::client::FreeFunctions::injected_env_var(key)
             .map_or_else(|| env::var(key), Ok);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }
-}
 
-/// Tracked access to additional files.
-#[unstable(feature = "track_path", issue = "99515")]
-pub mod tracked_path {
-
-    /// Track a file explicitly.
+    /// Track a file or directory explicitly.
     ///
     /// Commonly used for tracking asset preprocessing.
-    #[unstable(feature = "track_path", issue = "99515")]
-    pub fn path<P: AsRef<str>>(path: P) {
-        let path: &str = path.as_ref();
+    #[unstable(feature = "proc_macro_tracked_path", issue = "99515")]
+    pub fn path<P: AsRef<Path>>(path: P) {
+        let path: &str = path.as_ref().to_str().unwrap();
         crate::bridge::client::FreeFunctions::track_path(path);
     }
 }

@@ -5,7 +5,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![recursion_limit = "512"]
 #![allow(
     clippy::missing_errors_doc,
@@ -50,6 +50,7 @@ extern crate rustc_span;
 extern crate rustc_trait_selection;
 
 pub mod ast_utils;
+#[deny(missing_docs)]
 pub mod attrs;
 mod check_proc_macro;
 pub mod comparisons;
@@ -131,9 +132,12 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeResPath};
+use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
+
+/// Methods on `Vec` that also exists on slices.
+pub const VEC_METHODS_SHADOWING_SLICE_METHODS: [Symbol; 3] = [sym::as_ptr, sym::is_empty, sym::len];
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
@@ -300,6 +304,22 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks is `expr` is `None`
+pub fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+}
+
+/// If `expr` is `Some(inner)`, returns `inner`
+pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(e, [arg]) = expr.kind
+        && e.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+    {
+        Some(arg)
+    } else {
+        None
+    }
+}
+
 /// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
@@ -318,6 +338,25 @@ pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
+}
+
+/// If `pat` is:
+/// - `Some(inner)`, returns `inner`
+///    - it will _usually_ contain just one element, but could have two, given patterns like
+///      `Some(inner, ..)` or `Some(.., inner)`
+/// - `Some`, returns `[]`
+/// - otherwise, returns `None`
+pub fn as_some_pattern<'a, 'hir>(cx: &LateContext<'_>, pat: &'a Pat<'hir>) -> Option<&'a [Pat<'hir>]> {
+    if let PatKind::TupleStruct(ref qpath, inner, _) = pat.kind
+        && cx
+            .qpath_res(qpath, pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, OptionSome)
+    {
+        Some(inner)
+    } else {
+        None
+    }
 }
 
 /// Checks if the `pat` is `None`.
@@ -1462,7 +1501,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Missing => unreachable!(),
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
-        PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
+        PatKind::Box(pat) | PatKind::Ref(pat, _, _) => is_refutable(cx, pat),
         PatKind::Expr(PatExpr {
             kind: PatExprKind::Path(qpath),
             hir_id,
@@ -1612,7 +1651,7 @@ pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> 
 }
 
 pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
-    while let PatKind::Ref(subpat, _) = pat.kind {
+    while let PatKind::Ref(subpat, _, _) = pat.kind {
         pat = subpat;
     }
     pat
@@ -2157,7 +2196,7 @@ where
 /// references removed.
 pub fn peel_hir_pat_refs<'a>(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
     fn peel<'a>(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
-        if let PatKind::Ref(pat, _) = pat.kind {
+        if let PatKind::Ref(pat, _, _) = pat.kind {
             peel(pat, count + 1)
         } else {
             (pat, count)
@@ -2451,7 +2490,7 @@ pub enum DefinedTy<'tcx> {
     /// in the context of its definition site. We also track the `def_id` of its
     /// definition site.
     ///
-    /// WARNING: As the `ty` in in the scope of the definition, not of the function
+    /// WARNING: As the `ty` is in the scope of the definition, not of the function
     /// using it, you must be very careful with how you use it. Using it in the wrong
     /// scope easily results in ICEs.
     Mir {
@@ -2680,7 +2719,6 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtx
             moved_before_use,
             same_ctxt,
         },
-        Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir_root_module()),
             child_id: HirId::INVALID,
@@ -2782,11 +2820,7 @@ pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     pat: &'a Pat<'hir>,
     else_body: &Expr<'_>,
 ) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind
-        && cx
-            .qpath_res(&pat_path, pat.hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionSome)
+    if let Some([inner_pat]) = as_some_pattern(cx, pat)
         && !is_refutable(cx, inner_pat)
         && let else_body = peel_blocks(else_body)
         && let ExprKind::Ret(Some(ret_val)) = else_body.kind

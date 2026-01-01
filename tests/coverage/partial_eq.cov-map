@@ -11,19 +11,18 @@ Number of file 0 mappings: 4
 Highest counter ID seen: c0
 
 Function name: partial_eq::main
-Raw bytes (49): 0x[01, 01, 00, 09, 01, 11, 01, 00, 0a, 01, 01, 09, 00, 16, 01, 00, 19, 00, 25, 01, 01, 09, 00, 16, 01, 00, 19, 00, 25, 01, 02, 05, 00, 0d, 01, 01, 09, 00, 1b, 01, 03, 09, 00, 26, 01, 02, 01, 00, 02]
+Raw bytes (44): 0x[01, 01, 00, 08, 01, 11, 01, 00, 0a, 01, 01, 09, 00, 16, 01, 00, 19, 00, 25, 01, 01, 09, 00, 16, 01, 00, 19, 00, 25, 01, 02, 05, 00, 0d, 01, 04, 09, 00, 26, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/partial_eq.rs
 Number of expressions: 0
-Number of file 0 mappings: 9
+Number of file 0 mappings: 8
 - Code(Counter(0)) at (prev + 17, 1) to (start + 0, 10)
 - Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
 - Code(Counter(0)) at (prev + 0, 25) to (start + 0, 37)
 - Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
 - Code(Counter(0)) at (prev + 0, 25) to (start + 0, 37)
 - Code(Counter(0)) at (prev + 2, 5) to (start + 0, 13)
-- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 27)
-- Code(Counter(0)) at (prev + 3, 9) to (start + 0, 38)
+- Code(Counter(0)) at (prev + 4, 9) to (start + 0, 38)
 - Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 

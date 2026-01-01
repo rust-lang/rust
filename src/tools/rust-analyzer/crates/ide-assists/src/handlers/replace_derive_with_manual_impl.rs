@@ -69,7 +69,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let args = attr.token_tree()?;
 
     let current_module = ctx.sema.scope(adt.syntax())?.module();
-    let current_crate = current_module.krate();
+    let current_crate = current_module.krate(ctx.db());
     let current_edition = current_crate.edition(ctx.db());
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_crate));
 
@@ -193,7 +193,7 @@ fn impl_def_from_trait(
     let target_scope = sema.scope(annotated_name.syntax())?;
 
     // Keep assoc items of local crates even if they have #[doc(hidden)] attr.
-    let ignore_items = if trait_.module(sema.db).krate().origin(sema.db).is_local() {
+    let ignore_items = if trait_.module(sema.db).krate(sema.db).origin(sema.db).is_local() {
         IgnoreAssocItems::No
     } else {
         IgnoreAssocItems::DocHiddenAttrPresent

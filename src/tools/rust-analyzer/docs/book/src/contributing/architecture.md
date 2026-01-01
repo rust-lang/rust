@@ -10,7 +10,7 @@ See also these implementation-related blog posts:
 
 * <https://rust-analyzer.github.io/blog/2019/11/13/find-usages.html>
 * <https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html>
-* <https://rust-analyzer.github.io/blog/2020/09/16/challeging-LR-parsing.html>
+* <https://rust-analyzer.github.io/blog/2020/09/16/challenging-LR-parsing.html>
 * <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
 * <https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html>
 
@@ -19,8 +19,6 @@ For older, by now mostly outdated stuff, see the [guide](./guide.md) and [anothe
 ## Bird's Eye View
 
 ![](https://user-images.githubusercontent.com/4789492/107129398-0ab70f00-687a-11eb-9bfc-d4eb023aec06.png)
-
-<!-- toc -->
 
 On the highest level, rust-analyzer is a thing which accepts input source code from the client and produces a structured semantic model of the code.
 
@@ -120,7 +118,7 @@ See [#93](https://github.com/rust-lang/rust-analyzer/pull/93) for an example PR 
 **Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer. It knows nothing about salsa or LSP.
 This is important because it is possible to make useful tooling using only the syntax tree.
 Without semantic information, you don't need to be able to _build_ code, which makes the tooling more robust.
-See also https://mlfbrown.com/paper.pdf.
+See also <https://mlfbrown.com/paper.pdf>.
 You can view the `syntax` crate as an entry point to rust-analyzer.
 `syntax` crate is an **API Boundary**.
 

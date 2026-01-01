@@ -109,7 +109,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        Self::alloca_size(bx, layout.size, layout)
+        if layout.is_runtime_sized() {
+            Self::alloca_runtime_sized(bx, layout)
+        } else {
+            Self::alloca_size(bx, layout.size, layout)
+        }
     }
 
     pub fn alloca_size<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -145,6 +149,18 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         } else {
             bug!("unexpected layout `{:#?}` in PlaceRef::len", self.layout)
         }
+    }
+
+    fn alloca_runtime_sized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+    ) -> Self {
+        let (element_count, ty) = layout.ty.scalable_vector_element_count_and_type(bx.tcx());
+        PlaceValue::new_sized(
+            bx.scalable_alloca(element_count as u64, layout.align.abi, ty),
+            layout.align.abi,
+        )
+        .with_type(layout)
     }
 }
 

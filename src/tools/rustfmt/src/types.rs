@@ -8,8 +8,7 @@ use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
 use crate::config::{IndentStyle, StyleEdition, TypeDensity};
 use crate::expr::{
-    ExprType, RhsAssignKind, format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple,
-    rewrite_unary_prefix,
+    ExprType, RhsAssignKind, format_expr, rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix,
 };
 use crate::lists::{
     ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
@@ -1031,13 +1030,6 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
             ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
-            ast::TyKind::Typeof(ref anon_const) => rewrite_call(
-                context,
-                "typeof",
-                &[anon_const.value.clone()],
-                self.span,
-                shape,
-            ),
             ast::TyKind::Pat(ref ty, ref pat) => {
                 let ty = ty.rewrite_result(context, shape)?;
                 let pat = pat.rewrite_result(context, shape)?;

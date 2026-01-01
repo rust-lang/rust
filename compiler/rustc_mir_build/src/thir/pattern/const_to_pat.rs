@@ -28,7 +28,7 @@ use crate::errors::{
     PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
+impl<'tcx> PatCtxt<'tcx> {
     /// Converts a constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
@@ -64,7 +64,7 @@ struct ConstToPat<'tcx> {
 }
 
 impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+    fn new(pat_ctxt: &PatCtxt<'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat { tcx: pat_ctxt.tcx, typing_env: pat_ctxt.typing_env, span, id, c }
     }
@@ -187,7 +187,7 @@ impl<'tcx> ConstToPat<'tcx> {
         }
 
         // Wrap the pattern in a marker node to indicate that it is the result of lowering a
-        // constant. This is used for diagnostics, and for unsafety checking of inline const blocks.
+        // constant. This is used for diagnostics.
         let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
         Box::new(Pat { kind, ty, span: self.span })
     }
@@ -239,14 +239,14 @@ impl<'tcx> ConstToPat<'tcx> {
                 return self.mk_err(tcx.dcx().create_err(err), ty);
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
+                let (&variant_index, fields) = cv.to_branch().split_first().unwrap();
+                let variant_index = VariantIdx::from_u32(variant_index.to_leaf().to_u32());
                 PatKind::Variant {
                     adt_def: *adt_def,
                     args,
                     variant_index,
                     subpatterns: self.field_pats(
-                        fields.iter().copied().zip(
+                        fields.iter().map(|ct| ct.to_value().valtree).zip(
                             adt_def.variants()[variant_index]
                                 .fields
                                 .iter()
@@ -258,28 +258,32 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Adt(def, args) => {
                 assert!(!def.is_union()); // Valtree construction would never succeed for unions.
                 PatKind::Leaf {
-                    subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(
-                        def.non_enum_variant().fields.iter().map(|field| field.ty(tcx, args)),
-                    )),
+                    subpatterns: self.field_pats(
+                        cv.to_branch().iter().map(|ct| ct.to_value().valtree).zip(
+                            def.non_enum_variant().fields.iter().map(|field| field.ty(tcx, args)),
+                        ),
+                    ),
                 }
             }
             ty::Tuple(fields) => PatKind::Leaf {
-                subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter())),
+                subpatterns: self.field_pats(
+                    cv.to_branch().iter().map(|ct| ct.to_value().valtree).zip(fields.iter()),
+                ),
             },
             ty::Slice(elem_ty) => PatKind::Slice {
                 prefix: cv
-                    .unwrap_branch()
+                    .to_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(val.to_value().valtree, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
             },
             ty::Array(elem_ty, _) => PatKind::Array {
                 prefix: cv
-                    .unwrap_branch()
+                    .to_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(val.to_value().valtree, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -312,7 +316,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
             },
             ty::Float(flt) => {
-                let v = cv.unwrap_leaf();
+                let v = cv.to_leaf();
                 let is_nan = match flt {
                     ty::FloatTy::F16 => v.to_f16().is_nan(),
                     ty::FloatTy::F32 => v.to_f32().is_nan(),

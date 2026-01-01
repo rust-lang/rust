@@ -15,18 +15,18 @@ use crate::{fmt, ops, slice, str};
 //   actually reference libstd or liballoc in intra-doc links. so, the best we can do is remove the
 //   links to `CString` and `String` for now until a solution is developed
 
-/// Representation of a borrowed C string.
+/// A dynamically-sized view of a C string.
 ///
-/// This type represents a borrowed reference to a nul-terminated
+/// The type `&CStr` represents a reference to a borrowed nul-terminated
 /// array of bytes. It can be constructed safely from a <code>&[[u8]]</code>
 /// slice, or unsafely from a raw `*const c_char`. It can be expressed as a
 /// literal in the form `c"Hello world"`.
 ///
-/// The `CStr` can then be converted to a Rust <code>&[str]</code> by performing
+/// The `&CStr` can then be converted to a Rust <code>&[str]</code> by performing
 /// UTF-8 validation, or into an owned `CString`.
 ///
 /// `&CStr` is to `CString` as <code>&[str]</code> is to `String`: the former
-/// in each pair are borrowed references; the latter are owned
+/// in each pair are borrowing references; the latter are owned
 /// strings.
 ///
 /// Note that this structure does **not** have a guaranteed layout (the `repr(transparent)`
@@ -647,6 +647,17 @@ impl CStr {
     #[inline]
     pub fn display(&self) -> impl fmt::Display {
         crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    }
+
+    /// Returns the same string as a string slice `&CStr`.
+    ///
+    /// This method is redundant when used directly on `&CStr`, but
+    /// it helps dereferencing other string-like types to string slices,
+    /// for example references to `Box<CStr>` or `Arc<CStr>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_c_str(&self) -> &CStr {
+        self
     }
 }
 

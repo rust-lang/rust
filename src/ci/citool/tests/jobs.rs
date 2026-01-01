@@ -46,11 +46,11 @@ fn pr_jobs() {
 }
 
 #[test]
-fn master_jobs() {
-    let stdout = get_matrix("push", "commit", "refs/heads/master");
+fn main_jobs() {
+    let stdout = get_matrix("push", "commit", "refs/heads/main");
     insta::assert_snapshot!(stdout, @r#"
     jobs=[]
-    run_type=master
+    run_type=main
     "#);
 }
 

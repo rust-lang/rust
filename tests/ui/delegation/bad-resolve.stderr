@@ -53,7 +53,13 @@ LL |     fn bar() {}
    |     -------- similarly named associated function `bar` defined here
 ...
 LL |     reuse <F as Trait>::baz;
-   |                         ^^^ help: an associated function with a similar name exists: `bar`
+   |                         ^^^
+   |
+help: an associated function with a similar name exists
+   |
+LL -     reuse <F as Trait>::baz;
+LL +     reuse <F as Trait>::bar;
+   |
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/bad-resolve.rs:35:11
@@ -68,7 +74,13 @@ LL |     fn foo(&self, x: i32) -> i32 { x }
    |     ---------------------------- similarly named associated function `foo` defined here
 ...
 LL |     reuse Trait::foo2 { self.0 }
-   |                  ^^^^ help: an associated function with a similar name exists: `foo`
+   |                  ^^^^
+   |
+help: an associated function with a similar name exists
+   |
+LL -     reuse Trait::foo2 { self.0 }
+LL +     reuse Trait::foo { self.0 }
+   |
 
 error[E0046]: not all trait items implemented, missing: `Type`
   --> $DIR/bad-resolve.rs:22:1

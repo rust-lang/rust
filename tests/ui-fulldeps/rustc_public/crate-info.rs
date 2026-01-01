@@ -38,12 +38,12 @@ fn test_stable_mir() -> ControlFlow<()> {
 
     // Find items in the local crate.
     let items = rustc_public::all_local_items();
-    assert!(get_item(&items, (DefKind::Fn, "foo::bar")).is_some());
+    assert!(get_item(&items, (DefKind::Fn, "input::foo::bar")).is_some());
 
     // Find the `std` crate and assert that there is only one of it.
     assert!(rustc_public::find_crates("std").len() == 1);
 
-    let bar = get_item(&items, (DefKind::Fn, "bar")).unwrap();
+    let bar = get_item(&items, (DefKind::Fn, "input::bar")).unwrap();
     let body = bar.expect_body();
     assert_eq!(body.locals().len(), 2);
     assert_eq!(body.blocks.len(), 1);
@@ -58,7 +58,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let foo_bar = get_item(&items, (DefKind::Fn, "foo_bar")).unwrap();
+    let foo_bar = get_item(&items, (DefKind::Fn, "input::foo_bar")).unwrap();
     let body = foo_bar.expect_body();
     assert_eq!(body.locals().len(), 5);
     assert_eq!(body.blocks.len(), 4);
@@ -68,7 +68,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let types = get_item(&items, (DefKind::Fn, "types")).unwrap();
+    let types = get_item(&items, (DefKind::Fn, "input::types")).unwrap();
     let body = types.expect_body();
     assert_eq!(body.locals().len(), 6);
     assert_matches!(
@@ -85,15 +85,15 @@ fn test_stable_mir() -> ControlFlow<()> {
     );
     assert_matches!(
         body.locals()[3].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(
-            rustc_public::ty::RigidTy::Int(rustc_public::ty::IntTy::I32)
-        )
+        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Int(
+            rustc_public::ty::IntTy::I32
+        ))
     );
     assert_matches!(
         body.locals()[4].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(
-            rustc_public::ty::RigidTy::Uint(rustc_public::ty::UintTy::U64)
-        )
+        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Uint(
+            rustc_public::ty::UintTy::U64
+        ))
     );
     assert_matches!(
         body.locals()[5].ty.kind(),
@@ -102,7 +102,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         ))
     );
 
-    let drop = get_item(&items, (DefKind::Fn, "drop")).unwrap();
+    let drop = get_item(&items, (DefKind::Fn, "input::drop")).unwrap();
     let body = drop.expect_body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
@@ -111,7 +111,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let assert = get_item(&items, (DefKind::Fn, "assert")).unwrap();
+    let assert = get_item(&items, (DefKind::Fn, "input::assert")).unwrap();
     let body = assert.expect_body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
@@ -120,7 +120,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let monomorphic = get_item(&items, (DefKind::Fn, "monomorphic")).unwrap();
+    let monomorphic = get_item(&items, (DefKind::Fn, "input::monomorphic")).unwrap();
     let instance = Instance::try_from(monomorphic.clone()).unwrap();
     for block in instance.body().unwrap().blocks {
         match &block.terminator.kind {
@@ -140,11 +140,11 @@ fn test_stable_mir() -> ControlFlow<()> {
         }
     }
 
-    let foo_const = get_item(&items, (DefKind::Const, "FOO")).unwrap();
+    let foo_const = get_item(&items, (DefKind::Const, "input::FOO")).unwrap();
     // Ensure we don't panic trying to get the body of a constant.
     foo_const.expect_body();
 
-    let locals_fn = get_item(&items, (DefKind::Fn, "locals")).unwrap();
+    let locals_fn = get_item(&items, (DefKind::Fn, "input::locals")).unwrap();
     let body = locals_fn.expect_body();
     assert_eq!(body.locals().len(), 4);
     assert_matches!(
@@ -154,15 +154,15 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert_eq!(body.arg_locals().len(), 2);
     assert_matches!(
         body.arg_locals()[0].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(
-            rustc_public::ty::RigidTy::Int(rustc_public::ty::IntTy::I32)
-        )
+        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Int(
+            rustc_public::ty::IntTy::I32
+        ))
     );
     assert_matches!(
         body.arg_locals()[1].ty.kind(),
-        rustc_public::ty::TyKind::RigidTy(
-            rustc_public::ty::RigidTy::Uint(rustc_public::ty::UintTy::U64)
-        )
+        rustc_public::ty::TyKind::RigidTy(rustc_public::ty::RigidTy::Uint(
+            rustc_public::ty::UintTy::U64
+        ))
     );
     assert_eq!(body.inner_locals().len(), 1);
     // If conditions have an extra inner local to hold their results

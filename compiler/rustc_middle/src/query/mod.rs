@@ -76,7 +76,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
@@ -1312,8 +1312,9 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Return the set of (transitive) callees that may result in a recursive call to `key`.
-    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
+    /// Return the set of (transitive) callees that may result in a recursive call to `key`,
+    /// if we were able to walk all callees.
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
         fatal_cycle
         arena_cache
         desc { |tcx|
@@ -1406,12 +1407,6 @@ rustc_queries! {
     /// Converts a type-level constant value into a MIR constant value.
     query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue {
         desc { "converting type-level constant value to MIR constant value"}
-    }
-
-    /// Destructures array, ADT or tuple constants into the constants
-    /// of their fields.
-    query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
-        desc { "destructuring type level constant"}
     }
 
     // FIXME get rid of this with valtrees
@@ -2752,6 +2747,18 @@ rustc_queries! {
     query sanitizer_settings_for(key: LocalDefId) -> SanitizerFnAttrs {
         desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
         feedable
+    }
+
+    query check_externally_implementable_items(_: ()) {
+        desc { "check externally implementable items" }
+    }
+
+    /// Returns a list of all `externally implementable items` crate.
+    query externally_implementable_items(cnum: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
+        arena_cache
+        desc { "looking up the externally implementable items of a crate" }
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        separate_provide_extern
     }
 }
 

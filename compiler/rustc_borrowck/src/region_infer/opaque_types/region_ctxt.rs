@@ -27,7 +27,7 @@ pub(super) struct RegionCtxt<'a, 'tcx> {
     pub(super) constraint_sccs: ConstraintSccs,
     pub(super) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
     pub(super) rev_scc_graph: ReverseSccGraph,
-    pub(super) scc_values: RegionValues<ConstraintSccIndex>,
+    pub(super) scc_values: RegionValues<'tcx, ConstraintSccIndex>,
 }
 
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {

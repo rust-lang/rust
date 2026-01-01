@@ -36,9 +36,13 @@ LL |     println!("{}", scores.sum::<i32>());
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `i32` implements `Sum<&i32>`
-   |
    = note: `i32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:12:10
    |
@@ -72,9 +76,13 @@ LL |             .sum::<i32>(),
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `i32` implements `Sum<&i32>`
-   |
    = note: `i32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:25:14
    |
@@ -115,9 +123,13 @@ LL |             .sum::<i32>(),
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `i32` implements `Sum<&i32>`
-   |
    = note: `i32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:33:14
    |
@@ -149,9 +161,13 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `i32` implements `Sum<&i32>`
-   |
    = note: `i32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:38:38
    |
@@ -181,9 +197,13 @@ LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `i32` implements `Sum<&i32>`
-   |
    = note: `i32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:39:33
    |

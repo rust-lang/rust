@@ -1,0 +1,13 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/ice-inconsistent-resolution-149821.rs:10:9
+   |
+LL |         extern crate std as core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_other_core! {}
+   | --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

@@ -2,6 +2,12 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
@@ -11,15 +17,23 @@ use hir_expand::proc_macro::{
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
+    base_db::{
+        CrateGraphBuilder, Env, ProcMacroLoadingError, SourceDatabase, SourceRoot, SourceRootId,
+    },
     prime_caches,
 };
 use itertools::Itertools;
-use proc_macro_api::{MacroDylib, ProcMacroClient};
+use proc_macro_api::{
+    MacroDylib, ProcMacroClient,
+    bidirectional_protocol::{
+        msg::{SubRequest, SubResponse},
+        reject_subrequests,
+    },
+};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
-    AbsPath, AbsPathBuf, VfsPath,
+    AbsPath, AbsPathBuf, FileId, VfsPath,
     file_set::FileSetConfig,
     loader::{Handle, LoadingProgress},
 };
@@ -96,12 +110,13 @@ pub fn load_workspace_into_db(
     tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
-            it.and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into)).map_err(
-                |e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()),
-            )
+            it.and_then(|it| {
+                ProcMacroClient::spawn(&it, extra_env, ws.toolchain.as_ref()).map_err(Into::into)
+            })
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
         }),
         ProcMacroServerChoice::Explicit(path) => {
-            Some(ProcMacroClient::spawn(path, extra_env).map_err(|e| {
+            Some(ProcMacroClient::spawn(path, extra_env, ws.toolchain.as_ref()).map_err(|e| {
                 ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
             }))
         }
@@ -418,7 +433,7 @@ pub fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib).map_err(|e| {
+        let vec = server.load_dylib(dylib, Some(&mut reject_subrequests)).map_err(|e| {
             ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
         })?;
         if vec.is_empty() {
@@ -515,14 +530,23 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::TopSubtree<Span>,
-        attrs: Option<&tt::TopSubtree<Span>>,
+        db: &dyn SourceDatabase,
+        subtree: &tt::TopSubtree,
+        attrs: Option<&tt::TopSubtree>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
-    ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
+        let mut cb = |req| match req {
+            SubRequest::SourceText { file_id, start, end } => {
+                let file = FileId::from_raw(file_id);
+                let text = db.file_text(file).text(db);
+                let slice = text.get(start as usize..end as usize).map(ToOwned::to_owned);
+                Ok(SubResponse::SourceTextResult { text: slice })
+            }
+        };
         match self.0.expand(
             subtree.view(),
             attrs.map(|attrs| attrs.view()),
@@ -531,6 +555,7 @@ impl ProcMacroExpander for Expander {
             call_site,
             mixed_site,
             current_dir,
+            Some(&mut cb),
         ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err)),

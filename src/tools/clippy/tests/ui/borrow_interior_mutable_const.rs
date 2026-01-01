@@ -4,6 +4,7 @@
 #![allow(
     clippy::declare_interior_mutable_const,
     clippy::out_of_bounds_indexing,
+    const_item_interior_mutations,
     const_item_mutation,
     unconditional_panic
 )]

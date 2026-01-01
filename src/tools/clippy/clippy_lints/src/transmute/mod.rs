@@ -18,8 +18,11 @@ mod wrong_transmute;
 use clippy_config::Conf;
 use clippy_utils::is_in_const_context;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::sugg::Sugg;
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 
@@ -435,10 +438,11 @@ declare_clippy_lint! {
     /// to infer a technically correct yet unexpected type.
     ///
     /// ### Example
-    /// ```no_run
+    /// ```
     /// # unsafe {
+    /// let mut x: i32 = 0;
     /// // Avoid "naked" calls to `transmute()`!
-    /// let x: i32 = std::mem::transmute([1u16, 2u16]);
+    /// x = std::mem::transmute([1u16, 2u16]);
     ///
     /// // `first_answers` is intended to transmute a slice of bool to a slice of u8.
     /// // But the programmer forgot to index the first element of the outer slice,
@@ -449,7 +453,7 @@ declare_clippy_lint! {
     /// # }
     /// ```
     /// Use instead:
-    /// ```no_run
+    /// ```
     /// # unsafe {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     ///
@@ -489,6 +493,32 @@ impl Transmute {
     pub fn new(conf: &'static Conf) -> Self {
         Self { msrv: conf.msrv }
     }
+
+    /// When transmuting, a struct containing a single field works like the field.
+    /// This function extracts the field type and the expression to get the field.
+    fn extract_struct_field<'tcx>(
+        cx: &LateContext<'tcx>,
+        e: &'tcx Expr<'_>,
+        outer_type: Ty<'tcx>,
+        outer: &'tcx Expr<'tcx>,
+    ) -> (Ty<'tcx>, Sugg<'tcx>) {
+        let mut applicability = Applicability::MachineApplicable;
+        let outer_sugg = Sugg::hir_with_context(cx, outer, e.span.ctxt(), "..", &mut applicability);
+        if let ty::Adt(struct_def, struct_args) = *outer_type.kind()
+            && struct_def.is_struct()
+            && let mut fields = struct_def.all_fields()
+            && let Some(first) = fields.next()
+            && fields.next().is_none()
+            && first.vis.is_accessible_from(cx.tcx.parent_module(outer.hir_id), cx.tcx)
+        {
+            (
+                first.ty(cx.tcx, struct_args),
+                Sugg::NonParen(format!("{}.{}", outer_sugg.maybe_paren(), first.name).into()),
+            )
+        } else {
+            (outer_type, outer_sugg)
+        }
+    }
 }
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -515,14 +545,17 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 return;
             }
 
+            // A struct having a single pointer can be treated like a pointer.
+            let (from_field_ty, from_field_expr) = Self::extract_struct_field(cx, e, from_ty, arg);
+
             let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                 | crosspointer_transmute::check(cx, e, from_ty, to_ty)
                 | transmuting_null::check(cx, e, arg, to_ty)
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
-                | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
+                | transmute_ptr_to_ref::check(cx, e, from_field_ty, to_ty, from_field_expr.clone(), path, self.msrv)
                 | missing_transmute_annotations::check(cx, path, arg, from_ty, to_ty, e.hir_id)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
-                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, self.msrv)
+                | transmute_ptr_to_ptr::check(cx, e, from_field_ty, to_ty, from_field_expr, self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
                 | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)

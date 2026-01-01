@@ -8,18 +8,6 @@ LL | const C1: &'static mut [usize] = &mut [];
    = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
    = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0080]: constructing invalid value: encountered mutable reference in `const` value
-  --> $DIR/issue-17718-const-bad-values.rs:11:1
-   |
-LL | const C2: &'static mut i32 = unsafe { &mut S };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $PTR, align: $PTR) {
-               HEX_DUMP
-           }
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0080, E0764.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0764`.

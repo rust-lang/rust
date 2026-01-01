@@ -305,7 +305,7 @@ impl TargetKind {
 
     /// If this is a valid cargo target, returns the name cargo uses in command line arguments
     /// and output, otherwise None.
-    /// https://docs.rs/cargo_metadata/latest/cargo_metadata/enum.TargetKind.html
+    /// <https://docs.rs/cargo_metadata/latest/cargo_metadata/enum.TargetKind.html>
     pub fn as_cargo_target(self) -> Option<&'static str> {
         match self {
             TargetKind::Bin => Some("bin"),

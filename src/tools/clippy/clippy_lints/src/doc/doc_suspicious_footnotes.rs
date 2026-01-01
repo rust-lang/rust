@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::attr::AttributeExt as _;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_errors::Applicability;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrStyle, Attribute};
 use rustc_lint::{LateContext, LintContext};
-use rustc_resolve::rustdoc::DocFragmentKind;
 
 use std::ops::Range;
 
@@ -43,13 +43,24 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                 span,
                 "looks like a footnote ref, but has no matching footnote",
                 |diag| {
-                    if this_fragment.kind == DocFragmentKind::SugaredDoc {
-                        let (doc_attr, (_, doc_attr_comment_kind), attr_style) = attrs
+                    if let DocFragmentKind::Sugared(_) = this_fragment.kind {
+                        let (doc_attr, doc_attr_comment_kind, attr_style) = attrs
                             .iter()
-                            .filter(|attr| attr.span().overlaps(this_fragment.span))
+                            .filter(|attr| {
+                                matches!(
+                                    attr,
+                                    Attribute::Parsed(AttributeKind::DocComment { span, .. })
+                                    if span.overlaps(this_fragment.span),
+                                )
+                            })
                             .rev()
                             .find_map(|attr| {
-                                Some((attr, attr.doc_str_and_comment_kind()?, attr.doc_resolution_scope()?))
+                                let (_, fragment) = attr.doc_str_and_fragment_kind()?;
+                                let fragment = match fragment {
+                                    DocFragmentKind::Sugared(kind) => kind,
+                                    DocFragmentKind::Raw(_) => CommentKind::Line,
+                                };
+                                Some((attr, fragment, attr.doc_resolution_scope()?))
                             })
                             .unwrap();
                         let (to_add, terminator) = match (doc_attr_comment_kind, attr_style) {

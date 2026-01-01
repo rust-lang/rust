@@ -87,7 +87,7 @@ impl HtmlWithLimit {
     pub(super) fn close_tag(&mut self) {
         if let Some(tag_name) = self.unclosed_tags.pop() {
             // Close the most recently opened tag.
-            write!(self.buf, "</{tag_name}>").unwrap()
+            write!(self.buf, "</{tag_name}>").expect("infallible string operation");
         }
         // There are valid cases where `close_tag()` is called without
         // there being any tags to close. For example, this occurs when
@@ -99,7 +99,7 @@ impl HtmlWithLimit {
     /// Write all queued tags and add them to the `unclosed_tags` list.
     fn flush_queue(&mut self) {
         for tag_name in self.queued_tags.drain(..) {
-            write!(self.buf, "<{tag_name}>").unwrap();
+            write!(self.buf, "<{tag_name}>").expect("infallible string operation");
 
             self.unclosed_tags.push(tag_name);
         }

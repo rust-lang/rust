@@ -22,6 +22,8 @@ wasmparser = { version = "0.236", default-features = false, features = ["std", "
 
 # Shared with bootstrap and compiletest
 build_helper = { path = "../../build_helper" }
+# Shared with rustdoc
+rustdoc-json-types = { path = "../../rustdoc-json-types" }
 
 [lib]
 crate-type = ["lib", "dylib"]

@@ -129,6 +129,7 @@ pub enum TokenType {
     // Keyword-like symbols.
     // tidy-alphabetical-start
     SymAttSyntax,
+    SymBikeshed,
     SymClobberAbi,
     SymInlateout,
     SymInout,
@@ -142,6 +143,7 @@ pub enum TokenType {
     SymNull,
     SymOptions,
     SymOut,
+    SymPin,
     SymPreservesFlags,
     SymPure,
     SymReadonly,
@@ -555,6 +557,7 @@ macro_rules! exp {
     (Yield)          => { exp!(@kw, Yield,      KwYield) };
 
     (AttSyntax)      => { exp!(@sym, att_syntax,      SymAttSyntax) };
+    (Bikeshed)       => { exp!(@sym, bikeshed,        SymBikeshed) };
     (ClobberAbi)     => { exp!(@sym, clobber_abi,     SymClobberAbi) };
     (Inlateout)      => { exp!(@sym, inlateout,       SymInlateout) };
     (Inout)          => { exp!(@sym, inout,           SymInout) };
@@ -568,6 +571,7 @@ macro_rules! exp {
     (Null)           => { exp!(@sym, null,            SymNull) };
     (Options)        => { exp!(@sym, options,         SymOptions) };
     (Out)            => { exp!(@sym, out,             SymOut) };
+    (Pin)            => { exp!(@sym, pin,             SymPin) };
     (PreservesFlags) => { exp!(@sym, preserves_flags, SymPreservesFlags) };
     (Pure)           => { exp!(@sym, pure,            SymPure) };
     (Readonly)       => { exp!(@sym, readonly,        SymReadonly) };

@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add `ItemKind::Attribute`.
-pub const FORMAT_VERSION: u32 = 56;
+// Latest feature: Add `ExternCrate::path`.
+pub const FORMAT_VERSION: u32 = 57;
 
 /// The root of the emitted JSON blob.
 ///
@@ -135,6 +135,12 @@ pub struct ExternalCrate {
     pub name: String,
     /// The root URL at which the crate's documentation lives.
     pub html_root_url: Option<String>,
+
+    /// A path from where this crate was loaded.
+    ///
+    /// This will typically be a `.rlib` or `.rmeta`. It can be used to determine which crate
+    /// this was in terms of whatever build-system invoked rustc.
+    pub path: PathBuf,
 }
 
 /// Information about an external (not defined in the local crate) [`Item`].

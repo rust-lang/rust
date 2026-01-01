@@ -9,12 +9,13 @@ use std::{fmt, mem, ops};
 use itertools::Either;
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::attrs::AttributeKind;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_hir as hir;
+use rustc_hir::Attribute;
+use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
-use {rustc_ast as ast, rustc_hir as hir};
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::display::{Joined as _, MaybeDisplay, Wrapped};
 use crate::html::escape::Escape;
@@ -22,21 +23,11 @@ use crate::html::escape::Escape;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Cfg {
-    /// Accepts all configurations.
-    True,
-    /// Denies all configurations.
-    False,
-    /// A generic configuration option, e.g., `test` or `target_os = "linux"`.
-    Cfg(Symbol, Option<Symbol>),
-    /// Negates a configuration requirement, i.e., `not(x)`.
-    Not(Box<Cfg>),
-    /// Union of a list of configuration requirements, i.e., `any(...)`.
-    Any(Vec<Cfg>),
-    /// Intersection of a list of configuration requirements, i.e., `all(...)`.
-    All(Vec<Cfg>),
-}
+#[derive(Clone, Debug, Hash)]
+// Because `CfgEntry` includes `Span`, we must NEVER use `==`/`!=` operators on `Cfg` and instead
+// use `is_equivalent_to`.
+#[cfg_attr(test, derive(PartialEq))]
+pub(crate) struct Cfg(CfgEntry);
 
 #[derive(PartialEq, Debug)]
 pub(crate) struct InvalidCfgError {
@@ -44,27 +35,95 @@ pub(crate) struct InvalidCfgError {
     pub(crate) span: Span,
 }
 
+/// Whether the configuration consists of just `Cfg` or `Not`.
+fn is_simple_cfg(cfg: &CfgEntry) -> bool {
+    match cfg {
+        CfgEntry::Bool(..)
+        | CfgEntry::NameValue { .. }
+        | CfgEntry::Not(..)
+        | CfgEntry::Version(..) => true,
+        CfgEntry::All(..) | CfgEntry::Any(..) => false,
+    }
+}
+
+/// Returns `false` if is `Any`, otherwise returns `true`.
+fn is_all_cfg(cfg: &CfgEntry) -> bool {
+    match cfg {
+        CfgEntry::Bool(..)
+        | CfgEntry::NameValue { .. }
+        | CfgEntry::Not(..)
+        | CfgEntry::Version(..)
+        | CfgEntry::All(..) => true,
+        CfgEntry::Any(..) => false,
+    }
+}
+
+fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashSet<NameValueCfg>) -> Option<CfgEntry> {
+    match cfg {
+        CfgEntry::Bool(..) => Some(cfg.clone()),
+        CfgEntry::NameValue { .. } => {
+            if !hidden.contains(&NameValueCfg::from(cfg)) {
+                Some(cfg.clone())
+            } else {
+                None
+            }
+        }
+        CfgEntry::Not(cfg, _) => {
+            if let Some(cfg) = strip_hidden(cfg, hidden) {
+                Some(CfgEntry::Not(Box::new(cfg), DUMMY_SP))
+            } else {
+                None
+            }
+        }
+        CfgEntry::Any(cfgs, _) => {
+            let cfgs =
+                cfgs.iter().filter_map(|cfg| strip_hidden(cfg, hidden)).collect::<ThinVec<_>>();
+            if cfgs.is_empty() { None } else { Some(CfgEntry::Any(cfgs, DUMMY_SP)) }
+        }
+        CfgEntry::All(cfgs, _) => {
+            let cfgs =
+                cfgs.iter().filter_map(|cfg| strip_hidden(cfg, hidden)).collect::<ThinVec<_>>();
+            if cfgs.is_empty() { None } else { Some(CfgEntry::All(cfgs, DUMMY_SP)) }
+        }
+        CfgEntry::Version(..) => {
+            // FIXME: Should be handled.
+            Some(cfg.clone())
+        }
+    }
+}
+
+fn should_capitalize_first_letter(cfg: &CfgEntry) -> bool {
+    match cfg {
+        CfgEntry::Bool(..) | CfgEntry::Not(..) | CfgEntry::Version(..) => true,
+        CfgEntry::Any(sub_cfgs, _) | CfgEntry::All(sub_cfgs, _) => {
+            sub_cfgs.first().map(should_capitalize_first_letter).unwrap_or(false)
+        }
+        CfgEntry::NameValue { name, .. } => {
+            *name == sym::debug_assertions || *name == sym::target_endian
+        }
+    }
+}
+
 impl Cfg {
     /// Parses a `MetaItemInner` into a `Cfg`.
     fn parse_nested(
         nested_cfg: &MetaItemInner,
-        exclude: &FxHashSet<Cfg>,
+        exclude: &FxHashSet<NameValueCfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             MetaItemInner::MetaItem(cfg) => Cfg::parse_without(cfg, exclude),
-            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => match *b {
-                true => Ok(Some(Cfg::True)),
-                false => Ok(Some(Cfg::False)),
-            },
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
+                Ok(Some(Cfg(CfgEntry::Bool(*b, DUMMY_SP))))
+            }
             MetaItemInner::Lit(lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
             }
         }
     }
 
-    pub(crate) fn parse_without(
+    fn parse_without(
         cfg: &MetaItem,
-        exclude: &FxHashSet<Cfg>,
+        exclude: &FxHashSet<NameValueCfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
@@ -77,13 +136,23 @@ impl Cfg {
         };
         match cfg.kind {
             MetaItemKind::Word => {
-                let cfg = Cfg::Cfg(name, None);
-                if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+                if exclude.contains(&NameValueCfg::new(name)) {
+                    Ok(None)
+                } else {
+                    Ok(Some(Cfg(CfgEntry::NameValue { name, value: None, span: DUMMY_SP })))
+                }
             }
             MetaItemKind::NameValue(ref lit) => match lit.kind {
                 LitKind::Str(value, _) => {
-                    let cfg = Cfg::Cfg(name, Some(value));
-                    if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+                    if exclude.contains(&NameValueCfg::new_value(name, value)) {
+                        Ok(None)
+                    } else {
+                        Ok(Some(Cfg(CfgEntry::NameValue {
+                            name,
+                            value: Some(value),
+                            span: DUMMY_SP,
+                        })))
+                    }
                 }
                 _ => Err(InvalidCfgError {
                     // FIXME: if the main #[cfg] syntax decided to support non-string literals,
@@ -97,8 +166,12 @@ impl Cfg {
                 let mut sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
-                    sym::all => sub_cfgs.try_fold(Cfg::True, |x, y| Ok(x & y?)),
-                    sym::any => sub_cfgs.try_fold(Cfg::False, |x, y| Ok(x | y?)),
+                    sym::all => {
+                        sub_cfgs.try_fold(Cfg(CfgEntry::Bool(true, DUMMY_SP)), |x, y| Ok(x & y?))
+                    }
+                    sym::any => {
+                        sub_cfgs.try_fold(Cfg(CfgEntry::Bool(false, DUMMY_SP)), |x, y| Ok(x | y?))
+                    }
                     sym::not => {
                         if orig_len == 1 {
                             let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
@@ -132,40 +205,10 @@ impl Cfg {
         Self::parse_nested(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
-    /// Checks whether the given configuration can be matched in the current session.
-    ///
-    /// Equivalent to `attr::cfg_matches`.
-    pub(crate) fn matches(&self, psess: &ParseSess) -> bool {
-        match *self {
-            Cfg::False => false,
-            Cfg::True => true,
-            Cfg::Not(ref child) => !child.matches(psess),
-            Cfg::All(ref sub_cfgs) => sub_cfgs.iter().all(|sub_cfg| sub_cfg.matches(psess)),
-            Cfg::Any(ref sub_cfgs) => sub_cfgs.iter().any(|sub_cfg| sub_cfg.matches(psess)),
-            Cfg::Cfg(name, value) => psess.config.contains(&(name, value)),
-        }
-    }
-
-    /// Whether the configuration consists of just `Cfg` or `Not`.
-    fn is_simple(&self) -> bool {
-        match self {
-            Cfg::False | Cfg::True | Cfg::Cfg(..) | Cfg::Not(..) => true,
-            Cfg::All(..) | Cfg::Any(..) => false,
-        }
-    }
-
-    /// Whether the configuration consists of just `Cfg`, `Not` or `All`.
-    fn is_all(&self) -> bool {
-        match self {
-            Cfg::False | Cfg::True | Cfg::Cfg(..) | Cfg::Not(..) | Cfg::All(..) => true,
-            Cfg::Any(..) => false,
-        }
-    }
-
     /// Renders the configuration for human display, as a short HTML description.
     pub(crate) fn render_short_html(&self) -> String {
-        let mut msg = Display(self, Format::ShortHtml).to_string();
-        if self.should_capitalize_first_letter()
+        let mut msg = Display(&self.0, Format::ShortHtml).to_string();
+        if should_capitalize_first_letter(&self.0)
             && let Some(i) = msg.find(|c: char| c.is_ascii_alphanumeric())
         {
             msg[i..i + 1].make_ascii_uppercase();
@@ -183,9 +226,9 @@ impl Cfg {
         };
 
         let mut msg = if matches!(format, Format::LongHtml) {
-            format!("Available{on}<strong>{}</strong>", Display(self, format))
+            format!("Available{on}<strong>{}</strong>", Display(&self.0, format))
         } else {
-            format!("Available{on}{}", Display(self, format))
+            format!("Available{on}{}", Display(&self.0, format))
         };
         if self.should_append_only_to_description() {
             msg.push_str(" only");
@@ -205,27 +248,19 @@ impl Cfg {
         self.render_long_inner(Format::LongPlain)
     }
 
-    fn should_capitalize_first_letter(&self) -> bool {
-        match *self {
-            Cfg::False | Cfg::True | Cfg::Not(..) => true,
-            Cfg::Any(ref sub_cfgs) | Cfg::All(ref sub_cfgs) => {
-                sub_cfgs.first().map(Cfg::should_capitalize_first_letter).unwrap_or(false)
-            }
-            Cfg::Cfg(name, _) => name == sym::debug_assertions || name == sym::target_endian,
-        }
-    }
-
     fn should_append_only_to_description(&self) -> bool {
-        match self {
-            Cfg::False | Cfg::True => false,
-            Cfg::Any(..) | Cfg::All(..) | Cfg::Cfg(..) => true,
-            Cfg::Not(box Cfg::Cfg(..)) => true,
-            Cfg::Not(..) => false,
+        match self.0 {
+            CfgEntry::Any(..)
+            | CfgEntry::All(..)
+            | CfgEntry::NameValue { .. }
+            | CfgEntry::Version(..)
+            | CfgEntry::Not(box CfgEntry::NameValue { .. }, _) => true,
+            CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
         }
     }
 
     fn should_use_with_in_description(&self) -> bool {
-        matches!(self, Cfg::Cfg(sym::target_feature, _))
+        matches!(self.0, CfgEntry::NameValue { name, .. } if name == sym::target_feature)
     }
 
     /// Attempt to simplify this cfg by assuming that `assume` is already known to be true, will
@@ -234,22 +269,22 @@ impl Cfg {
     ///
     /// See `tests::test_simplify_with` for examples.
     pub(crate) fn simplify_with(&self, assume: &Self) -> Option<Self> {
-        if self == assume {
+        if self.0.is_equivalent_to(&assume.0) {
             None
-        } else if let Cfg::All(a) = self {
-            let mut sub_cfgs: Vec<Cfg> = if let Cfg::All(b) = assume {
-                a.iter().filter(|a| !b.contains(a)).cloned().collect()
+        } else if let CfgEntry::All(a, _) = &self.0 {
+            let mut sub_cfgs: ThinVec<CfgEntry> = if let CfgEntry::All(b, _) = &assume.0 {
+                a.iter().filter(|a| !b.iter().any(|b| a.is_equivalent_to(b))).cloned().collect()
             } else {
-                a.iter().filter(|&a| a != assume).cloned().collect()
+                a.iter().filter(|&a| !a.is_equivalent_to(&assume.0)).cloned().collect()
             };
             let len = sub_cfgs.len();
             match len {
                 0 => None,
-                1 => sub_cfgs.pop(),
-                _ => Some(Cfg::All(sub_cfgs)),
+                1 => sub_cfgs.pop().map(Cfg),
+                _ => Some(Cfg(CfgEntry::All(sub_cfgs, DUMMY_SP))),
             }
-        } else if let Cfg::All(b) = assume
-            && b.contains(self)
+        } else if let CfgEntry::All(b, _) = &assume.0
+            && b.iter().any(|b| b.is_equivalent_to(&self.0))
         {
             None
         } else {
@@ -258,81 +293,54 @@ impl Cfg {
     }
 
     fn omit_preposition(&self) -> bool {
-        matches!(self, Cfg::True | Cfg::False)
+        matches!(self.0, CfgEntry::Bool(..))
     }
 
-    pub(crate) fn strip_hidden(&self, hidden: &FxHashSet<Cfg>) -> Option<Self> {
-        match self {
-            Self::True | Self::False => Some(self.clone()),
-            Self::Cfg(..) => {
-                if !hidden.contains(self) {
-                    Some(self.clone())
-                } else {
-                    None
-                }
-            }
-            Self::Not(cfg) => {
-                if let Some(cfg) = cfg.strip_hidden(hidden) {
-                    Some(Self::Not(Box::new(cfg)))
-                } else {
-                    None
-                }
-            }
-            Self::Any(cfgs) => {
-                let cfgs =
-                    cfgs.iter().filter_map(|cfg| cfg.strip_hidden(hidden)).collect::<Vec<_>>();
-                if cfgs.is_empty() { None } else { Some(Self::Any(cfgs)) }
-            }
-            Self::All(cfgs) => {
-                let cfgs =
-                    cfgs.iter().filter_map(|cfg| cfg.strip_hidden(hidden)).collect::<Vec<_>>();
-                if cfgs.is_empty() { None } else { Some(Self::All(cfgs)) }
-            }
-        }
+    pub(crate) fn inner(&self) -> &CfgEntry {
+        &self.0
     }
 }
 
 impl ops::Not for Cfg {
     type Output = Cfg;
     fn not(self) -> Cfg {
-        match self {
-            Cfg::False => Cfg::True,
-            Cfg::True => Cfg::False,
-            Cfg::Not(cfg) => *cfg,
-            s => Cfg::Not(Box::new(s)),
-        }
+        Cfg(match self.0 {
+            CfgEntry::Bool(v, s) => CfgEntry::Bool(!v, s),
+            CfgEntry::Not(cfg, _) => *cfg,
+            s => CfgEntry::Not(Box::new(s), DUMMY_SP),
+        })
     }
 }
 
 impl ops::BitAndAssign for Cfg {
     fn bitand_assign(&mut self, other: Cfg) {
-        match (self, other) {
-            (Cfg::False, _) | (_, Cfg::True) => {}
-            (s, Cfg::False) => *s = Cfg::False,
-            (s @ Cfg::True, b) => *s = b,
-            (Cfg::All(a), Cfg::All(ref mut b)) => {
+        match (&mut self.0, other.0) {
+            (CfgEntry::Bool(false, _), _) | (_, CfgEntry::Bool(true, _)) => {}
+            (s, CfgEntry::Bool(false, _)) => *s = CfgEntry::Bool(false, DUMMY_SP),
+            (s @ CfgEntry::Bool(true, _), b) => *s = b,
+            (CfgEntry::All(a, _), CfgEntry::All(ref mut b, _)) => {
                 for c in b.drain(..) {
-                    if !a.contains(&c) {
+                    if !a.iter().any(|a| a.is_equivalent_to(&c)) {
                         a.push(c);
                     }
                 }
             }
-            (Cfg::All(a), ref mut b) => {
-                if !a.contains(b) {
-                    a.push(mem::replace(b, Cfg::True));
+            (CfgEntry::All(a, _), ref mut b) => {
+                if !a.iter().any(|a| a.is_equivalent_to(b)) {
+                    a.push(mem::replace(b, CfgEntry::Bool(true, DUMMY_SP)));
                 }
             }
-            (s, Cfg::All(mut a)) => {
-                let b = mem::replace(s, Cfg::True);
-                if !a.contains(&b) {
+            (s, CfgEntry::All(mut a, _)) => {
+                let b = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
+                if !a.iter().any(|a| a.is_equivalent_to(&b)) {
                     a.push(b);
                 }
-                *s = Cfg::All(a);
+                *s = CfgEntry::All(a, DUMMY_SP);
             }
             (s, b) => {
-                if *s != b {
-                    let a = mem::replace(s, Cfg::True);
-                    *s = Cfg::All(vec![a, b]);
+                if !s.is_equivalent_to(&b) {
+                    let a = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
+                    *s = CfgEntry::All(thin_vec![a, b], DUMMY_SP);
                 }
             }
         }
@@ -349,32 +357,34 @@ impl ops::BitAnd for Cfg {
 
 impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
-        match (self, other) {
-            (Cfg::True, _) | (_, Cfg::False) | (_, Cfg::True) => {}
-            (s @ Cfg::False, b) => *s = b,
-            (Cfg::Any(a), Cfg::Any(ref mut b)) => {
+        match (&mut self.0, other.0) {
+            (CfgEntry::Bool(true, _), _)
+            | (_, CfgEntry::Bool(false, _))
+            | (_, CfgEntry::Bool(true, _)) => {}
+            (s @ CfgEntry::Bool(false, _), b) => *s = b,
+            (CfgEntry::Any(a, _), CfgEntry::Any(ref mut b, _)) => {
                 for c in b.drain(..) {
-                    if !a.contains(&c) {
+                    if !a.iter().any(|a| a.is_equivalent_to(&c)) {
                         a.push(c);
                     }
                 }
             }
-            (Cfg::Any(a), ref mut b) => {
-                if !a.contains(b) {
-                    a.push(mem::replace(b, Cfg::True));
+            (CfgEntry::Any(a, _), ref mut b) => {
+                if !a.iter().any(|a| a.is_equivalent_to(b)) {
+                    a.push(mem::replace(b, CfgEntry::Bool(true, DUMMY_SP)));
                 }
             }
-            (s, Cfg::Any(mut a)) => {
-                let b = mem::replace(s, Cfg::True);
-                if !a.contains(&b) {
+            (s, CfgEntry::Any(mut a, _)) => {
+                let b = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
+                if !a.iter().any(|a| a.is_equivalent_to(&b)) {
                     a.push(b);
                 }
-                *s = Cfg::Any(a);
+                *s = CfgEntry::Any(a, DUMMY_SP);
             }
             (s, b) => {
-                if *s != b {
-                    let a = mem::replace(s, Cfg::True);
-                    *s = Cfg::Any(vec![a, b]);
+                if !s.is_equivalent_to(&b) {
+                    let a = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
+                    *s = CfgEntry::Any(thin_vec![a, b], DUMMY_SP);
                 }
             }
         }
@@ -417,7 +427,7 @@ impl Format {
 }
 
 /// Pretty-print wrapper for a `Cfg`. Also indicates what form of rendering should be used.
-struct Display<'a>(&'a Cfg, Format);
+struct Display<'a>(&'a CfgEntry, Format);
 
 impl Display<'_> {
     fn code_wrappers(&self) -> Wrapped<&'static str> {
@@ -427,17 +437,21 @@ impl Display<'_> {
     fn display_sub_cfgs(
         &self,
         fmt: &mut fmt::Formatter<'_>,
-        sub_cfgs: &[Cfg],
+        sub_cfgs: &[CfgEntry],
         separator: &str,
     ) -> fmt::Result {
         use fmt::Display as _;
 
         let short_longhand = self.1.is_long() && {
-            let all_crate_features =
-                sub_cfgs.iter().all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
-            let all_target_features = sub_cfgs
-                .iter()
-                .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
+            let all_crate_features = sub_cfgs.iter().all(|sub_cfg| {
+                matches!(sub_cfg, CfgEntry::NameValue { name: sym::feature, value: Some(_), .. })
+            });
+            let all_target_features = sub_cfgs.iter().all(|sub_cfg| {
+                matches!(
+                    sub_cfg,
+                    CfgEntry::NameValue { name: sym::target_feature, value: Some(_), .. }
+                )
+            });
 
             if all_crate_features {
                 fmt.write_str("crate features ")?;
@@ -454,14 +468,14 @@ impl Display<'_> {
             sub_cfgs
                 .iter()
                 .map(|sub_cfg| {
-                    if let Cfg::Cfg(_, Some(feat)) = sub_cfg
+                    if let CfgEntry::NameValue { value: Some(feat), .. } = sub_cfg
                         && short_longhand
                     {
                         Either::Left(self.code_wrappers().wrap(feat))
                     } else {
                         Either::Right(
                             Wrapped::with_parens()
-                                .when(!sub_cfg.is_all())
+                                .when(!is_all_cfg(sub_cfg))
                                 .wrap(Display(sub_cfg, self.1)),
                         )
                     }
@@ -476,35 +490,41 @@ impl Display<'_> {
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            Cfg::Not(box Cfg::Any(sub_cfgs)) => {
-                let separator =
-                    if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
+        match &self.0 {
+            CfgEntry::Not(box CfgEntry::Any(sub_cfgs, _), _) => {
+                let separator = if sub_cfgs.iter().all(is_simple_cfg) { " nor " } else { ", nor " };
                 fmt.write_str("neither ")?;
 
                 sub_cfgs
                     .iter()
                     .map(|sub_cfg| {
                         Wrapped::with_parens()
-                            .when(!sub_cfg.is_all())
+                            .when(!is_all_cfg(sub_cfg))
                             .wrap(Display(sub_cfg, self.1))
                     })
                     .joined(separator, fmt)
             }
-            Cfg::Not(box simple @ Cfg::Cfg(..)) => write!(fmt, "non-{}", Display(simple, self.1)),
-            Cfg::Not(box c) => write!(fmt, "not ({})", Display(c, self.1)),
-
-            Cfg::Any(sub_cfgs) => {
-                let separator = if sub_cfgs.iter().all(Cfg::is_simple) { " or " } else { ", or " };
-                self.display_sub_cfgs(fmt, sub_cfgs, separator)
+            CfgEntry::Not(box simple @ CfgEntry::NameValue { .. }, _) => {
+                write!(fmt, "non-{}", Display(simple, self.1))
             }
-            Cfg::All(sub_cfgs) => self.display_sub_cfgs(fmt, sub_cfgs, " and "),
+            CfgEntry::Not(box c, _) => write!(fmt, "not ({})", Display(c, self.1)),
 
-            Cfg::True => fmt.write_str("everywhere"),
-            Cfg::False => fmt.write_str("nowhere"),
+            CfgEntry::Any(sub_cfgs, _) => {
+                let separator = if sub_cfgs.iter().all(is_simple_cfg) { " or " } else { ", or " };
+                self.display_sub_cfgs(fmt, sub_cfgs.as_slice(), separator)
+            }
+            CfgEntry::All(sub_cfgs, _) => self.display_sub_cfgs(fmt, sub_cfgs.as_slice(), " and "),
 
-            &Cfg::Cfg(name, value) => {
-                let human_readable = match (name, value) {
+            CfgEntry::Bool(v, _) => {
+                if *v {
+                    fmt.write_str("everywhere")
+                } else {
+                    fmt.write_str("nowhere")
+                }
+            }
+
+            &CfgEntry::NameValue { name, value, .. } => {
+                let human_readable = match (*name, value) {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
@@ -572,8 +592,12 @@ impl fmt::Display for Display<'_> {
                         "sgx" => "SGX",
                         _ => "",
                     },
-                    (sym::target_endian, Some(endian)) => return write!(fmt, "{endian}-endian"),
-                    (sym::target_pointer_width, Some(bits)) => return write!(fmt, "{bits}-bit"),
+                    (sym::target_endian, Some(endian)) => {
+                        return write!(fmt, "{endian}-endian");
+                    }
+                    (sym::target_pointer_width, Some(bits)) => {
+                        return write!(fmt, "{bits}-bit");
+                    }
                     (sym::target_feature, Some(feat)) => match self.1 {
                         Format::LongHtml => {
                             return write!(fmt, "target feature <code>{feat}</code>");
@@ -601,7 +625,43 @@ impl fmt::Display for Display<'_> {
                         .fmt(fmt)
                 }
             }
+
+            CfgEntry::Version(..) => {
+                // FIXME: Should we handle it?
+                Ok(())
+            }
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct NameValueCfg {
+    name: Symbol,
+    value: Option<Symbol>,
+}
+
+impl NameValueCfg {
+    fn new(name: Symbol) -> Self {
+        Self { name, value: None }
+    }
+
+    fn new_value(name: Symbol, value: Symbol) -> Self {
+        Self { name, value: Some(value) }
+    }
+}
+
+impl<'a> From<&'a CfgEntry> for NameValueCfg {
+    fn from(cfg: &'a CfgEntry) -> Self {
+        match cfg {
+            CfgEntry::NameValue { name, value, .. } => NameValueCfg { name: *name, value: *value },
+            _ => NameValueCfg { name: sym::empty, value: None },
+        }
+    }
+}
+
+impl<'a> From<&'a attrs::CfgInfo> for NameValueCfg {
+    fn from(cfg: &'a attrs::CfgInfo) -> Self {
+        Self { name: cfg.name, value: cfg.value.map(|(value, _)| value) }
     }
 }
 
@@ -610,7 +670,7 @@ impl fmt::Display for Display<'_> {
 pub(crate) struct CfgInfo {
     /// List of currently active `doc(auto_cfg(hide(...)))` cfgs, minus currently active
     /// `doc(auto_cfg(show(...)))` cfgs.
-    hidden_cfg: FxHashSet<Cfg>,
+    hidden_cfg: FxHashSet<NameValueCfg>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
     current_cfg: Cfg,
@@ -626,11 +686,11 @@ impl Default for CfgInfo {
     fn default() -> Self {
         Self {
             hidden_cfg: FxHashSet::from_iter([
-                Cfg::Cfg(sym::test, None),
-                Cfg::Cfg(sym::doc, None),
-                Cfg::Cfg(sym::doctest, None),
+                NameValueCfg::new(sym::test),
+                NameValueCfg::new(sym::doc),
+                NameValueCfg::new(sym::doctest),
             ]),
-            current_cfg: Cfg::True,
+            current_cfg: Cfg(CfgEntry::Bool(true, DUMMY_SP)),
             auto_cfg_active: true,
             parent_is_doc_cfg: false,
         }
@@ -662,33 +722,26 @@ fn show_hide_show_conflict_error(
 fn handle_auto_cfg_hide_show(
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
-    sub_attr: &MetaItemInner,
-    is_show: bool,
+    attr: &CfgHideShow,
     new_show_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
     new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
 ) {
-    if let MetaItemInner::MetaItem(item) = sub_attr
-        && let MetaItemKind::List(items) = &item.kind
-    {
-        for item in items {
-            // FIXME: Report in case `Cfg::parse` reports an error?
-            if let Ok(Cfg::Cfg(key, value)) = Cfg::parse(item) {
-                if is_show {
-                    if let Some(span) = new_hide_attrs.get(&(key, value)) {
-                        show_hide_show_conflict_error(tcx, item.span(), *span);
-                    } else {
-                        new_show_attrs.insert((key, value), item.span());
-                    }
-                    cfg_info.hidden_cfg.remove(&Cfg::Cfg(key, value));
-                } else {
-                    if let Some(span) = new_show_attrs.get(&(key, value)) {
-                        show_hide_show_conflict_error(tcx, item.span(), *span);
-                    } else {
-                        new_hide_attrs.insert((key, value), item.span());
-                    }
-                    cfg_info.hidden_cfg.insert(Cfg::Cfg(key, value));
-                }
+    for value in &attr.values {
+        let simple = NameValueCfg::from(value);
+        if attr.kind == HideOrShow::Show {
+            if let Some(span) = new_hide_attrs.get(&(simple.name, simple.value)) {
+                show_hide_show_conflict_error(tcx, value.span_for_name_and_value(), *span);
+            } else {
+                new_show_attrs.insert((simple.name, simple.value), value.span_for_name_and_value());
             }
+            cfg_info.hidden_cfg.remove(&simple);
+        } else {
+            if let Some(span) = new_show_attrs.get(&(simple.name, simple.value)) {
+                show_hide_show_conflict_error(tcx, value.span_for_name_and_value(), *span);
+            } else {
+                new_hide_attrs.insert((simple.name, simple.value), value.span_for_name_and_value());
+            }
+            cfg_info.hidden_cfg.insert(simple);
         }
     }
 }
@@ -709,7 +762,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     fn check_changed_auto_active_status(
         changed_auto_active_status: &mut Option<rustc_span::Span>,
-        attr: &ast::MetaItem,
+        attr_span: Span,
         cfg_info: &mut CfgInfo,
         tcx: TyCtxt<'_>,
         new_value: bool,
@@ -719,14 +772,14 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 tcx.sess
                     .dcx()
                     .struct_span_err(
-                        vec![*first_change, attr.span],
+                        vec![*first_change, attr_span],
                         "`auto_cfg` was disabled and enabled more than once on the same item",
                     )
                     .emit();
                 return true;
             }
         } else {
-            *changed_auto_active_status = Some(attr.span);
+            *changed_auto_active_status = Some(attr_span);
         }
         cfg_info.auto_cfg_active = new_value;
         false
@@ -737,28 +790,21 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     let mut doc_cfg = attrs
         .clone()
-        .filter(|attr| attr.has_name(sym::doc))
-        .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-        .filter(|attr| attr.has_name(sym::cfg))
+        .filter_map(|attr| match attr {
+            Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => Some(d),
+            _ => None,
+        })
         .peekable();
     // If the item uses `doc(cfg(...))`, then we ignore the other `cfg(...)` attributes.
     if doc_cfg.peek().is_some() {
-        let sess = tcx.sess;
         // We overwrite existing `cfg`.
         if !cfg_info.parent_is_doc_cfg {
-            cfg_info.current_cfg = Cfg::True;
+            cfg_info.current_cfg = Cfg(CfgEntry::Bool(true, DUMMY_SP));
             cfg_info.parent_is_doc_cfg = true;
         }
         for attr in doc_cfg {
-            if let Some(cfg_mi) =
-                attr.meta_item().and_then(|attr| rustc_expand::config::parse_cfg_old(attr, sess))
-            {
-                match Cfg::parse(cfg_mi) {
-                    Ok(new_cfg) => cfg_info.current_cfg &= new_cfg,
-                    Err(e) => {
-                        sess.dcx().span_err(e.span, e.msg);
-                    }
-                }
+            for new_cfg in attr.cfg.clone() {
+                cfg_info.current_cfg &= Cfg(new_cfg);
             }
         }
     } else {
@@ -769,71 +815,47 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // We get all `doc(auto_cfg)`, `cfg` and `target_feature` attributes.
     for attr in attrs {
-        if let Some(ident) = attr.ident()
-            && ident.name == sym::doc
-            && let Some(attrs) = attr.meta_item_list()
-        {
-            for attr in attrs.iter().filter(|attr| attr.has_name(sym::auto_cfg)) {
-                let MetaItemInner::MetaItem(attr) = attr else {
-                    continue;
-                };
-                match &attr.kind {
-                    MetaItemKind::Word => {
-                        if check_changed_auto_active_status(
-                            &mut changed_auto_active_status,
-                            attr,
-                            cfg_info,
-                            tcx,
-                            true,
-                        ) {
-                            return None;
-                        }
-                    }
-                    MetaItemKind::NameValue(lit) => {
-                        if let LitKind::Bool(value) = lit.kind {
-                            if check_changed_auto_active_status(
-                                &mut changed_auto_active_status,
-                                attr,
-                                cfg_info,
-                                tcx,
-                                value,
-                            ) {
-                                return None;
-                            }
-                        }
-                    }
-                    MetaItemKind::List(sub_attrs) => {
-                        if check_changed_auto_active_status(
-                            &mut changed_auto_active_status,
-                            attr,
-                            cfg_info,
-                            tcx,
-                            true,
-                        ) {
-                            return None;
-                        }
-                        for sub_attr in sub_attrs.iter() {
-                            if let Some(ident) = sub_attr.ident()
-                                && (ident.name == sym::show || ident.name == sym::hide)
-                            {
-                                handle_auto_cfg_hide_show(
-                                    tcx,
-                                    cfg_info,
-                                    &sub_attr,
-                                    ident.name == sym::show,
-                                    &mut new_show_attrs,
-                                    &mut new_hide_attrs,
-                                );
-                            }
-                        }
-                    }
+        if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+            for (new_value, span) in &d.auto_cfg_change {
+                if check_changed_auto_active_status(
+                    &mut changed_auto_active_status,
+                    *span,
+                    cfg_info,
+                    tcx,
+                    *new_value,
+                ) {
+                    return None;
+                }
+            }
+            if let Some((_, span)) = d.auto_cfg.first() {
+                if check_changed_auto_active_status(
+                    &mut changed_auto_active_status,
+                    *span,
+                    cfg_info,
+                    tcx,
+                    true,
+                ) {
+                    return None;
+                }
+                for (value, _) in &d.auto_cfg {
+                    handle_auto_cfg_hide_show(
+                        tcx,
+                        cfg_info,
+                        value,
+                        &mut new_show_attrs,
+                        &mut new_hide_attrs,
+                    );
                 }
             }
         } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
             // Treat `#[target_feature(enable = "feat")]` attributes as if they were
             // `#[doc(cfg(target_feature = "feat"))]` attributes as well.
             for (feature, _) in features {
-                cfg_info.current_cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
+                cfg_info.current_cfg &= Cfg(CfgEntry::NameValue {
+                    name: sym::target_feature,
+                    value: Some(*feature),
+                    span: DUMMY_SP,
+                });
             }
             continue;
         } else if !cfg_info.parent_is_doc_cfg
@@ -851,7 +873,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     if !cfg_info.auto_cfg_active && !cfg_info.parent_is_doc_cfg {
         None
     } else if cfg_info.parent_is_doc_cfg {
-        if cfg_info.current_cfg == Cfg::True {
+        if matches!(cfg_info.current_cfg.0, CfgEntry::Bool(true, _)) {
             None
         } else {
             Some(Arc::new(cfg_info.current_cfg.clone()))
@@ -859,9 +881,9 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     } else {
         // If `doc(auto_cfg)` feature is enabled, we want to collect all `cfg` items, we remove the
         // hidden ones afterward.
-        match cfg_info.current_cfg.strip_hidden(&cfg_info.hidden_cfg) {
-            None | Some(Cfg::True) => None,
-            Some(cfg) => Some(Arc::new(cfg)),
+        match strip_hidden(&cfg_info.current_cfg.0, &cfg_info.hidden_cfg) {
+            None | Some(CfgEntry::Bool(true, _)) => None,
+            Some(cfg) => Some(Arc::new(Cfg(cfg))),
         }
     }
 }

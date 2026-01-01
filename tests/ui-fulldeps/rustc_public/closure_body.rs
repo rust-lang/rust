@@ -52,7 +52,7 @@ fn check_incr_closure_body(body: Body) {
         panic!("expected FnDef");
     };
 
-    assert_eq!(def_id.name(), "incr");
+    assert_eq!(def_id.name(), "crate_closure_body::incr");
 }
 
 fn main() {

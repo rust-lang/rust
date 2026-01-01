@@ -6,15 +6,15 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print fun(45, true)
-// gdb-check:$1 = true
-// gdb-command:print fun(444, false)
-// gdb-check:$2 = false
+//@ gdb-command:print fun(45, true)
+//@ gdb-check:$1 = true
+//@ gdb-command:print fun(444, false)
+//@ gdb-check:$2 = false
 
-// gdb-command:print r.get_x()
-// gdb-check:$3 = 4
+//@ gdb-command:print r.get_x()
+//@ gdb-check:$3 = 4
 
 #![allow(dead_code, unused_variables)]
 

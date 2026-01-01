@@ -31,6 +31,7 @@ use libc::fstatat64;
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
+    target_os = "wasi",
     all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
@@ -47,6 +48,7 @@ use libc::readdir as readdir64;
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
+    target_os = "wasi",
 )))]
 use libc::readdir_r as readdir64_r;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
@@ -80,8 +82,11 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+#[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
+#[cfg(target_os = "wasi")]
+use crate::os::wasi::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
@@ -92,8 +97,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
-use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
 use crate::{mem, ptr};
 
 pub struct File(FileDesc);
@@ -285,6 +289,7 @@ unsafe impl Sync for Dir {}
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
+    target_os = "wasi",
 ))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -310,6 +315,7 @@ pub struct DirEntry {
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
+    target_os = "wasi",
 ))]
 struct dirent64_min {
     d_ino: u64,
@@ -335,6 +341,7 @@ struct dirent64_min {
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
+    target_os = "wasi",
 )))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -480,7 +487,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(any(target_os = "netbsd", target_os = "nto", target_os = "aix")))]
+#[cfg(not(any(target_os = "netbsd", target_os = "nto", target_os = "aix", target_os = "wasi")))]
 impl FileAttr {
     #[cfg(not(any(
         target_os = "vxworks",
@@ -595,18 +602,18 @@ impl FileAttr {
     }
 }
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "wasi"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec)
+        SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_atim.tv_sec, self.stat.st_atim.tv_nsec)
+        SystemTime::new(self.stat.st_atim.tv_sec, self.stat.st_atim.tv_nsec.into())
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_ctim.tv_sec, self.stat.st_ctim.tv_nsec)
+        SystemTime::new(self.stat.st_ctim.tv_sec, self.stat.st_ctim.tv_nsec.into())
     }
 }
 
@@ -632,6 +639,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
+    #[cfg(not(target_os = "wasi"))]
     pub fn mode(&self) -> u32 {
         self.mode as u32
     }
@@ -715,6 +723,7 @@ impl Iterator for ReadDir {
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
+        target_os = "wasi",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         use crate::sys::os::{errno, set_errno};
@@ -812,6 +821,7 @@ impl Iterator for ReadDir {
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
+        target_os = "wasi",
     )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -1002,6 +1012,7 @@ impl DirEntry {
         target_os = "solaris",
         target_os = "vita",
         target_os = "vxworks",
+        target_os = "wasi",
         target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
@@ -1057,6 +1068,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "wasi",
     )))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
@@ -1073,6 +1085,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "wasi",
     ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
@@ -1121,6 +1134,7 @@ impl OpenOptions {
     pub fn custom_flags(&mut self, flags: i32) {
         self.custom_flags = flags;
     }
+    #[cfg(not(target_os = "wasi"))]
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1291,6 +1305,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1316,6 +1331,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1332,6 +1348,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1357,6 +1374,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1373,6 +1391,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1414,6 +1433,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1433,6 +1453,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1474,6 +1495,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1493,6 +1515,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1518,6 +1541,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1769,6 +1793,7 @@ impl DirBuilder {
         run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
     }
 
+    #[cfg(not(target_os = "wasi"))]
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -2061,12 +2086,25 @@ pub fn symlink(original: &CStr, link: &CStr) -> io::Result<()> {
 
 pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
     cfg_select! {
-        any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70") => {
-            // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
-            // it implementation-defined whether `link` follows symlinks, so rely on the
-            // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
-            // Android has `linkat` on newer versions, but we happen to know `link`
-            // always has the correct behavior, so it's here as well.
+        any(
+            // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead.
+            // POSIX leaves it implementation-defined whether `link` follows
+            // symlinks, so rely on the `symlink_hard_link` test in
+            // library/std/src/fs/tests.rs to check the behavior.
+            target_os = "vxworks",
+            target_os = "redox",
+            target_os = "espidf",
+            // Android has `linkat` on newer versions, but we happen to know
+            // `link` always has the correct behavior, so it's here as well.
+            target_os = "android",
+            // wasi-sdk-29-and-prior have a buggy `linkat` so use `link` instead
+            // until wasi-sdk is updated (see WebAssembly/wasi-libc#690)
+            target_os = "wasi",
+            // Other misc platforms
+            target_os = "horizon",
+            target_os = "vita",
+            target_env = "nto70",
+        ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
         }
         _ => {
@@ -2138,7 +2176,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 
 fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
-       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
+       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems") => {
             let _ = (p, times, follow_symlinks);
             Err(io::const_error!(
                 io::ErrorKind::Unsupported,
@@ -2217,7 +2255,7 @@ pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
     set_times_impl(p, times, false)
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(target_os = "espidf", target_os = "wasi"))]
 fn open_to_and_set_permissions(
     to: &Path,
     _reader_metadata: &crate::fs::Metadata,
@@ -2228,7 +2266,7 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(target_os = "espidf"))]
+#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
 fn open_to_and_set_permissions(
     to: &Path,
     reader_metadata: &crate::fs::Metadata,
@@ -2302,7 +2340,7 @@ mod cfm {
     }
 }
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) use cfm::CachedFileMetadata;
+pub(in crate::sys) use cfm::CachedFileMetadata;
 
 #[cfg(not(target_vendor = "apple"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -2376,6 +2414,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
+#[cfg(not(target_os = "wasi"))]
 pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2383,12 +2422,13 @@ pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     })
 }
 
+#[cfg(not(target_os = "wasi"))]
 pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
     cvt(unsafe { libc::fchown(fd, uid as libc::uid_t, gid as libc::gid_t) })?;
     Ok(())
 }
 
-#[cfg(not(target_os = "vxworks"))]
+#[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2402,7 +2442,7 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
-#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
+#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks", target_os = "wasi")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
 }
@@ -2413,6 +2453,7 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
+#[cfg(not(target_os = "wasi"))]
 pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())
@@ -2451,11 +2492,11 @@ mod remove_dir_impl {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
 
-    use super::{Dir, DirEntry, InnerReadDir, ReadDir, lstat};
+    use super::{
+        AsRawFd, Dir, DirEntry, FromRawFd, InnerReadDir, IntoRawFd, OwnedFd, RawFd, ReadDir, lstat,
+    };
     use crate::ffi::CStr;
     use crate::io;
-    use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
-    use crate::os::unix::prelude::{OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
@@ -2543,6 +2584,16 @@ mod remove_dir_impl {
 
         // open the directory passing ownership of the fd
         let (dir, fd) = fdreaddir(fd)?;
+
+        // For WASI all directory entries for this directory are read first
+        // before any removal is done. This works around the fact that the
+        // WASIp1 API for reading directories is not well-designed for handling
+        // mutations between invocations of reading a directory. By reading all
+        // the entries at once this ensures that, at least without concurrent
+        // modifications, it should be possible to delete everything.
+        #[cfg(target_os = "wasi")]
+        let dir = dir.collect::<Vec<_>>();
+
         for child in dir {
             let child = child?;
             let child_name = child.name_cstr();

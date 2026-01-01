@@ -53,7 +53,7 @@ fn rustc_discover_host_tuple(
 }
 
 fn cargo_config_build_target(config: &CargoConfigFile) -> Option<Vec<String>> {
-    match parse_json_cargo_config_build_target(config) {
+    match parse_toml_cargo_config_build_target(config) {
         Ok(v) => v,
         Err(e) => {
             tracing::debug!("Failed to discover cargo config build target {e:?}");
@@ -63,18 +63,44 @@ fn cargo_config_build_target(config: &CargoConfigFile) -> Option<Vec<String>> {
 }
 
 // Parses `"build.target = [target-tuple, target-tuple, ...]"` or `"build.target = "target-tuple"`
-fn parse_json_cargo_config_build_target(
+fn parse_toml_cargo_config_build_target(
     config: &CargoConfigFile,
 ) -> anyhow::Result<Option<Vec<String>>> {
-    let target = config.get("build").and_then(|v| v.as_object()).and_then(|m| m.get("target"));
-    match target {
-        Some(serde_json::Value::String(s)) => Ok(Some(vec![s.to_owned()])),
-        Some(v) => serde_json::from_value(v.clone())
-            .map(Option::Some)
-            .context("Failed to parse `build.target` as an array of target"),
-        // t`error: config value `build.target` is not set`, in which case we
-        // don't wanna log the error
-        None => Ok(None),
+    let Some(config_reader) = config.read() else {
+        return Ok(None);
+    };
+    let Some(target) = config_reader.get_spanned(["build", "target"]) else {
+        return Ok(None);
+    };
+
+    // if the target ends with `.json`, join it to the config file's parent dir.
+    // See https://github.com/rust-lang/cargo/blob/f7acf448fc127df9a77c52cc2bba027790ac4931/src/cargo/core/compiler/compile_kind.rs#L171-L192
+    let join_to_origin_if_json_path = |s: &str, spanned: &toml::Spanned<toml::de::DeValue<'_>>| {
+        if s.ends_with(".json") {
+            config_reader
+                .get_origin_root(spanned)
+                .map(|p| p.join(s).to_string())
+                .unwrap_or_else(|| s.to_owned())
+        } else {
+            s.to_owned()
+        }
+    };
+
+    let parse_err = "Failed to parse `build.target` as an array of target";
+
+    match target.as_ref() {
+        toml::de::DeValue::String(s) => {
+            Ok(Some(vec![join_to_origin_if_json_path(s.as_ref(), target)]))
+        }
+        toml::de::DeValue::Array(arr) => arr
+            .iter()
+            .map(|v| {
+                let s = v.as_ref().as_str().context(parse_err)?;
+                Ok(join_to_origin_if_json_path(s, v))
+            })
+            .collect::<anyhow::Result<_>>()
+            .map(Option::Some),
+        _ => Err(anyhow::anyhow!(parse_err)),
     }
 }
 

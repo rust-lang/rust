@@ -1,7 +1,7 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+    Abi, Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
         data_layout: "E-m:e-p:32:32-Fn32-i64:64-n32".into(),
         arch: Arch::PowerPC,
         options: TargetOptions {
-            abi: "spe".into(),
+            abi: Abi::Spe,
             endian: Endian::Big,
             features: "+secure-plt,+msync".into(),
             mcount: "_mcount".into(),

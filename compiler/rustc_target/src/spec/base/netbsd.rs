@@ -1,8 +1,8 @@
-use crate::spec::{RelroLevel, TargetOptions, cvs};
+use crate::spec::{Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "netbsd".into(),
+        os: Os::NetBsd,
         dynamic_linking: true,
         families: cvs!["unix"],
         no_default_libraries: false,

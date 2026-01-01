@@ -25,6 +25,13 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>>;
 
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value;
+
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
@@ -36,10 +43,10 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         vtable_byte_offset: u64,
         typeid: Self::Metadata,
     ) -> Self::Value;
-    /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
+    /// Trait method used to inject `va_start` on the "spoofed" `VaList` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;
-    /// Trait method used to inject `va_end` on the "spoofed" `VaListImpl` before
+    /// Trait method used to inject `va_end` on the "spoofed" `VaList` before
     /// Rust defined C-variadic functions return.
     fn va_end(&mut self, val: Self::Value) -> Self::Value;
 }

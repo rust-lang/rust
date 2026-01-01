@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, never, select};
-use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
+use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -74,7 +74,7 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
 enum Event {
     Lsp(lsp_server::Message),
     Task(Task),
-    QueuedTask(QueuedTask),
+    DeferredTask(DeferredTask),
     Vfs(vfs::loader::Message),
     Flycheck(FlycheckMessage),
     TestResult(CargoTestMessage),
@@ -89,7 +89,7 @@ impl fmt::Display for Event {
             Event::Task(_) => write!(f, "Event::Task"),
             Event::Vfs(_) => write!(f, "Event::Vfs"),
             Event::Flycheck(_) => write!(f, "Event::Flycheck"),
-            Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
+            Event::DeferredTask(_) => write!(f, "Event::DeferredTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
             Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
@@ -98,7 +98,7 @@ impl fmt::Display for Event {
 }
 
 #[derive(Debug)]
-pub(crate) enum QueuedTask {
+pub(crate) enum DeferredTask {
     CheckIfIndexed(lsp_types::Url),
     CheckProcMacroSources(Vec<FileId>),
 }
@@ -164,7 +164,7 @@ impl fmt::Debug for Event {
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
-            Event::QueuedTask(it) => fmt::Debug::fmt(it, f),
+            Event::DeferredTask(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
             Event::TestResult(it) => fmt::Debug::fmt(it, f),
@@ -279,7 +279,7 @@ impl GlobalState {
                 task.map(Event::Task),
 
             recv(self.deferred_task_queue.receiver) -> task =>
-                task.map(Event::QueuedTask),
+                task.map(Event::DeferredTask),
 
             recv(self.fmt_pool.receiver) -> task =>
                 task.map(Event::Task),
@@ -323,12 +323,12 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => self.on_notification(not),
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::QueuedTask(task) => {
+            Event::DeferredTask(task) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
-                self.handle_queued_task(task);
-                // Coalesce multiple task events into one loop turn
+                self.handle_deferred_task(task);
+                // Coalesce multiple deferred task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
-                    self.handle_queued_task(task);
+                    self.handle_deferred_task(task);
                 }
             }
             Event::Task(task) => {
@@ -341,20 +341,23 @@ impl GlobalState {
                     self.handle_task(&mut prime_caches_progress, task);
                 }
 
+                let title = "Indexing";
+                let cancel_token = Some("rustAnalyzer/cachePriming".to_owned());
+
+                let mut last_report = None;
                 for progress in prime_caches_progress {
-                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
-                            state = Progress::Begin;
-                            message = None;
-                            fraction = 0.0;
-                            title = "Indexing";
+                            self.report_progress(
+                                title,
+                                Progress::Begin,
+                                None,
+                                Some(0.0),
+                                cancel_token.clone(),
+                            );
                         }
                         PrimeCachesProgress::Report(report) => {
-                            state = Progress::Report;
-                            title = report.work_type;
-
-                            message = match &*report.crates_currently_indexing {
+                            let message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
                                     "{}/{} ({})",
                                     report.crates_done,
@@ -371,46 +374,80 @@ impl GlobalState {
                                 _ => None,
                             };
 
-                            fraction = Progress::fraction(report.crates_done, report.crates_total);
+                            // Don't send too many notifications while batching, sending progress reports
+                            // serializes notifications on the mainthread at the moment which slows us down
+                            last_report = Some((
+                                message,
+                                Progress::fraction(report.crates_done, report.crates_total),
+                                report.work_type,
+                            ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            state = Progress::End;
-                            message = None;
-                            fraction = 1.0;
-                            title = "Indexing";
-
-                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
+                            self.analysis_host.trigger_garbage_collection();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
                                     .request_op("restart after cancellation".to_owned(), ());
                             }
+                            if let Some((message, fraction, title)) = last_report.take() {
+                                self.report_progress(
+                                    title,
+                                    Progress::Report,
+                                    message,
+                                    Some(fraction),
+                                    cancel_token.clone(),
+                                );
+                            }
+                            self.report_progress(
+                                title,
+                                Progress::End,
+                                None,
+                                Some(1.0),
+                                cancel_token.clone(),
+                            );
                         }
                     };
-
+                }
+                if let Some((message, fraction, title)) = last_report.take() {
                     self.report_progress(
                         title,
-                        state,
+                        Progress::Report,
                         message,
                         Some(fraction),
-                        Some("rustAnalyzer/cachePriming".to_owned()),
+                        cancel_token.clone(),
                     );
                 }
             }
             Event::Vfs(message) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
-                self.handle_vfs_msg(message);
+                let mut last_progress_report = None;
+                self.handle_vfs_msg(message, &mut last_progress_report);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
-                    self.handle_vfs_msg(message);
+                    self.handle_vfs_msg(message, &mut last_progress_report);
+                }
+                if let Some((message, fraction)) = last_progress_report {
+                    self.report_progress(
+                        "Roots Scanned",
+                        Progress::Report,
+                        Some(message),
+                        Some(fraction),
+                        None,
+                    );
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
-                self.handle_flycheck_msg(message);
+                let mut cargo_finished = false;
+                self.handle_flycheck_msg(message, &mut cargo_finished);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
-                    self.handle_flycheck_msg(message);
+                    self.handle_flycheck_msg(message, &mut cargo_finished);
+                }
+                if cargo_finished {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
                 }
             }
             Event::TestResult(message) => {
@@ -452,7 +489,11 @@ impl GlobalState {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
-                if self.config.prefill_caches() {
+                // delay initial cache priming until proc macros are loaded, or we will load up a bunch of garbage into salsa
+                let proc_macros_loaded = self.config.prefill_caches()
+                    && (!self.config.expand_proc_macros()
+                        || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false));
+                if proc_macros_loaded {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
                 }
             }
@@ -494,7 +535,19 @@ impl GlobalState {
             if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
             }
+
+            let current_revision = self.analysis_host.raw_database().nonce_and_revision().1;
+            // no work is currently being done, now we can block a bit and clean up our garbage
+            if self.task_pool.handle.is_empty()
+                && self.fmt_pool.handle.is_empty()
+                && current_revision != self.last_gc_revision
+            {
+                self.analysis_host.trigger_garbage_collection();
+                self.last_gc_revision = current_revision;
+            }
         }
+
+        self.cleanup_discover_handles();
 
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             for file_id in diagnostic_changes {
@@ -771,33 +824,34 @@ impl GlobalState {
                 self.report_progress("Fetching", state, msg, None, None);
             }
             Task::DiscoverLinkedProjects(arg) => {
-                if let Some(cfg) = self.config.discover_workspace_config()
-                    && !self.discover_workspace_queue.op_in_progress()
-                {
+                if let Some(cfg) = self.config.discover_workspace_config() {
                     // the clone is unfortunately necessary to avoid a borrowck error when
                     // `self.report_progress` is called later
                     let title = &cfg.progress_label.clone();
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
-                    self.report_progress(title, Progress::Begin, None, None, None);
-                    self.discover_workspace_queue
-                        .request_op("Discovering workspace".to_owned(), ());
-                    let _ = self.discover_workspace_queue.should_start_op();
+                    if self.discover_jobs_active == 0 {
+                        self.report_progress(title, Progress::Begin, None, None, None);
+                    }
+                    self.discover_jobs_active += 1;
 
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    let handle = discover.spawn(
-                        arg,
-                        &std::env::current_dir()
-                            .expect("Failed to get cwd during project discovery"),
-                    );
-                    self.discover_handle = Some(handle.unwrap_or_else(|e| {
-                        panic!("Failed to spawn project discovery command: {e}")
-                    }));
+                    let handle = discover
+                        .spawn(
+                            arg,
+                            &std::env::current_dir()
+                                .expect("Failed to get cwd during project discovery"),
+                        )
+                        .unwrap_or_else(|e| {
+                            panic!("Failed to spawn project discovery command: {e}")
+                        });
+
+                    self.discover_handles.push(handle);
                 }
             }
             Task::FetchBuildData(progress) => {
@@ -846,7 +900,11 @@ impl GlobalState {
         }
     }
 
-    fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+    fn handle_vfs_msg(
+        &mut self,
+        message: vfs::loader::Message,
+        last_progress_report: &mut Option<(String, f64)>,
+    ) {
         let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
@@ -859,7 +917,8 @@ impl GlobalState {
                         // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
                         self.minicore.minicore_text = contents
                             .as_ref()
-                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                            .and_then(|contents| str::from_utf8(contents).ok())
+                            .map(triomphe::Arc::from);
                     }
 
                     let path = VfsPath::from(path);
@@ -903,20 +962,48 @@ impl GlobalState {
                     );
                 }
 
-                self.report_progress(
-                    "Roots Scanned",
-                    state,
-                    Some(message),
-                    Some(Progress::fraction(n_done, n_total)),
-                    None,
-                );
+                match state {
+                    Progress::Begin => self.report_progress(
+                        "Roots Scanned",
+                        state,
+                        Some(message),
+                        Some(Progress::fraction(n_done, n_total)),
+                        None,
+                    ),
+                    // Don't send too many notifications while batching, sending progress reports
+                    // serializes notifications on the mainthread at the moment which slows us down
+                    Progress::Report => {
+                        if last_progress_report.is_none() {
+                            self.report_progress(
+                                "Roots Scanned",
+                                state,
+                                Some(message.clone()),
+                                Some(Progress::fraction(n_done, n_total)),
+                                None,
+                            );
+                        }
+
+                        *last_progress_report =
+                            Some((message, Progress::fraction(n_done, n_total)));
+                    }
+                    Progress::End => {
+                        last_progress_report.take();
+                        self.report_progress(
+                            "Roots Scanned",
+                            state,
+                            Some(message),
+                            Some(Progress::fraction(n_done, n_total)),
+                            None,
+                        )
+                    }
+                }
             }
         }
     }
 
-    fn handle_queued_task(&mut self, task: QueuedTask) {
+    fn handle_deferred_task(&mut self, task: DeferredTask) {
         match task {
-            QueuedTask::CheckIfIndexed(uri) => {
+            DeferredTask::CheckIfIndexed(uri) => {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
@@ -940,7 +1027,7 @@ impl GlobalState {
                     }
                 });
             }
-            QueuedTask::CheckProcMacroSources(modified_rust_files) => {
+            DeferredTask::CheckProcMacroSources(modified_rust_files) => {
                 let analysis = AssertUnwindSafe(self.snapshot().analysis);
                 self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
                     move |sender| {
@@ -969,25 +1056,43 @@ impl GlobalState {
             .expect("No title could be found; this is a bug");
         match message {
             DiscoverProjectMessage::Finished { project, buildfile } => {
-                self.discover_handle = None;
-                self.report_progress(&title, Progress::End, None, None, None);
-                self.discover_workspace_queue.op_completed(());
+                self.discover_jobs_active = self.discover_jobs_active.saturating_sub(1);
+                if self.discover_jobs_active == 0 {
+                    self.report_progress(&title, Progress::End, None, None, None);
+                }
 
                 let mut config = Config::clone(&*self.config);
                 config.add_discovered_project_from_command(project, buildfile);
                 self.update_configuration(config);
             }
             DiscoverProjectMessage::Progress { message } => {
-                self.report_progress(&title, Progress::Report, Some(message), None, None)
+                if self.discover_jobs_active > 0 {
+                    self.report_progress(&title, Progress::Report, Some(message), None, None)
+                }
             }
             DiscoverProjectMessage::Error { error, source } => {
-                self.discover_handle = None;
                 let message = format!("Project discovery failed: {error}");
-                self.discover_workspace_queue.op_completed(());
                 self.show_and_log_error(message.clone(), source);
-                self.report_progress(&title, Progress::End, Some(message), None, None)
+
+                self.discover_jobs_active = self.discover_jobs_active.saturating_sub(1);
+                if self.discover_jobs_active == 0 {
+                    self.report_progress(&title, Progress::End, Some(message), None, None)
+                }
             }
         }
+    }
+
+    /// Drop any discover command processes that have exited, due to
+    /// finishing or erroring.
+    fn cleanup_discover_handles(&mut self) {
+        let mut active_handles = vec![];
+
+        for mut discover_handle in self.discover_handles.drain(..) {
+            if !discover_handle.handle.has_exited() {
+                active_handles.push(discover_handle);
+            }
+        }
+        self.discover_handles = active_handles;
     }
 
     fn handle_cargo_test_msg(&mut self, message: CargoTestMessage) {
@@ -1021,7 +1126,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
+    fn handle_flycheck_msg(&mut self, message: FlycheckMessage, cargo_finished: &mut bool) {
         match message {
             FlycheckMessage::AddDiagnostic {
                 id,
@@ -1079,6 +1184,7 @@ impl GlobalState {
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                     flycheck::Progress::DidFailToRestart(err) => {
@@ -1089,6 +1195,7 @@ impl GlobalState {
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                 };
@@ -1232,6 +1339,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
             //
             .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
+            .on::<RETRY, lsp_ext::GetFailedObligations>(handlers::get_failed_obligations)
             .finish();
     }
 

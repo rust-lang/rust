@@ -9,7 +9,7 @@ use serde_derive::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    command::{CargoParser, CommandHandle},
+    command::{CommandHandle, JsonLinesParser},
     flycheck::CargoOptions,
 };
 
@@ -57,7 +57,7 @@ impl CargoTestOutputParser {
     }
 }
 
-impl CargoParser<CargoTestMessage> for CargoTestOutputParser {
+impl JsonLinesParser<CargoTestMessage> for CargoTestOutputParser {
     fn from_line(&self, line: &str, _error: &mut String) -> Option<CargoTestMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();

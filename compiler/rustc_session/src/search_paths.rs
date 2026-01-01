@@ -71,7 +71,6 @@ pub enum PathKind {
     Crate,
     Dependency,
     Framework,
-    ExternFlag,
     All,
 }
 

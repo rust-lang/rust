@@ -1,0 +1,46 @@
+error: missing pattern for `...` argument
+  --> $DIR/parse-errors.rs:11:28
+   |
+LL |     unsafe extern "C" fn f(...) {
+   |                            ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+note: the lint level is defined here
+  --> $DIR/parse-errors.rs:7:9
+   |
+LL | #![deny(varargs_without_pattern)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL |     unsafe extern "C" fn f(_: ...) {
+   |                            ++
+
+error: missing pattern for `...` argument
+  --> $DIR/parse-errors.rs:14:32
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL |         unsafe extern "C" fn f(_: ...) {}
+   |                                ++
+
+error: missing pattern for `...` argument
+  --> $DIR/parse-errors.rs:20:32
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL |         unsafe extern "C" fn f(_: ...) {}
+   |                                ++
+
+error: aborting due to 3 previous errors
+

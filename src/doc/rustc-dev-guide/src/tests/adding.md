@@ -1,7 +1,7 @@
 # Adding new tests
 
 **In general, we expect every PR that fixes a bug in rustc to come accompanied
-by a regression test of some kind.** This test should fail in master but pass
+by a regression test of some kind.** This test should fail in `main` but pass
 after the PR. These tests are really useful for preventing us from repeating the
 mistakes of the past.
 

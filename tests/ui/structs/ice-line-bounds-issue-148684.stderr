@@ -1,0 +1,15 @@
+error[E0423]: expected function, tuple struct or tuple variant, found struct `A`
+  --> $DIR/ice-line-bounds-issue-148684.rs:7:5
+   |
+LL | / struct A {
+LL | |     b: Vec<u8>,
+LL | |     c: usize,
+LL | | }
+   | |_- `A` defined here
+...
+LL |       A(2, vec![])
+   |       ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

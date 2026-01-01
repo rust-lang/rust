@@ -7,7 +7,7 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort
 
 #![crate_type = "lib"]
 #![feature(unsized_fn_params)]
@@ -25,6 +25,7 @@ pub fn emptyfn() {
 // CHECK-LABEL: array_char
 #[no_mangle]
 pub fn array_char(f: fn(*const char)) {
+    // CHECK-DAG: .seh_endprologue
     let a = ['c'; 1];
     let b = ['d'; 3];
     let c = ['e'; 15];
@@ -38,11 +39,14 @@ pub fn array_char(f: fn(*const char)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: array_u8_1
 #[no_mangle]
 pub fn array_u8_1(f: fn(*const u8)) {
+    // CHECK-DAG: .seh_endprologue
     let a = [0u8; 1];
     f(&a as *const _);
 
@@ -54,11 +58,14 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: array_u8_small:
 #[no_mangle]
 pub fn array_u8_small(f: fn(*const u8)) {
+    // CHECK-DAG: .seh_endprologue
     let a = [0u8; 2];
     let b = [0u8; 7];
     f(&a as *const _);
@@ -71,11 +78,14 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: array_u8_large:
 #[no_mangle]
 pub fn array_u8_large(f: fn(*const u8)) {
+    // CHECK-DAG: .seh_endprologue
     let a = [0u8; 9];
     f(&a as *const _);
 
@@ -87,6 +97,8 @@ pub fn array_u8_large(f: fn(*const u8)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 #[derive(Copy, Clone)]
@@ -95,6 +107,7 @@ pub struct ByteSizedNewtype(u8);
 // CHECK-LABEL: array_bytesizednewtype_9:
 #[no_mangle]
 pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
+    // CHECK-DAG: .seh_endprologue
     let a = [ByteSizedNewtype(0); 9];
     f(&a as *const _);
 
@@ -106,11 +119,14 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: local_var_addr_used_indirectly
 #[no_mangle]
 pub fn local_var_addr_used_indirectly(f: fn(bool)) {
+    // CHECK-DAG: .seh_endprologue
     let a = 5;
     let a_addr = &a as *const _ as usize;
     f(a_addr & 0x10 == 0);
@@ -133,6 +149,8 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: local_string_addr_taken
@@ -143,31 +161,11 @@ pub fn local_string_addr_taken(f: fn(&String)) {
     f(&x);
 
     // Taking the address of the local variable `x` leads to stack smash
-    // protection with the `strong` heuristic, but not with the `basic`
-    // heuristic. It does not matter that the reference is not mut.
-    //
-    // An interesting note is that a similar function in C++ *would* be
-    // protected by the `basic` heuristic, because `std::string` has a char
-    // array internally as a small object optimization:
-    // ```
-    // cat <<EOF | clang++ -O2 -fstack-protector -S -x c++ - -o - | grep stack_chk
-    // #include <string>
-    // void f(void (*g)(const std::string&)) {
-    //     std::string x;
-    //     g(x);
-    // }
-    // EOF
-    // ```
-    //
+    // protection. It does not matter that the reference is not mut.
 
-    // We should have a __security_check_cookie call in `all` and `strong` modes but
-    // LLVM does not support generating stack protectors in functions with funclet
-    // based EH personalities.
-    // https://github.com/llvm/llvm-project/blob/37fd3c96b917096d8a550038f6e61cdf0fc4174f/llvm/lib/CodeGen/StackProtector.cpp#L103C1-L109C4
-    // all-NOT: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-
-    // basic-NOT: __security_check_cookie
+    // all: __security_check_cookie
+    // strong: __security_check_cookie
+    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -187,6 +185,7 @@ impl SelfByRef for i32 {
 // CHECK-LABEL: local_var_addr_taken_used_locally_only
 #[no_mangle]
 pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32)) {
+    // CHECK-DAG: .seh_endprologue
     let x = factory();
     let g = x.f();
     sink(g);
@@ -201,6 +200,8 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 pub struct Gigastruct {
@@ -214,6 +215,7 @@ pub struct Gigastruct {
 // CHECK-LABEL: local_large_var_moved
 #[no_mangle]
 pub fn local_large_var_moved(f: fn(Gigastruct)) {
+    // CHECK-DAG: .seh_endprologue
     let x = Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 };
     f(x);
 
@@ -238,11 +240,14 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: local_large_var_cloned
 #[no_mangle]
 pub fn local_large_var_cloned(f: fn(Gigastruct)) {
+    // CHECK-DAG: .seh_endprologue
     f(Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 });
 
     // A new instance of `Gigastruct` is passed to `f()`, without any apparent
@@ -267,6 +272,8 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 extern "C" {
@@ -300,6 +307,7 @@ extern "C" {
 // CHECK-LABEL: alloca_small_compile_time_constant_arg
 #[no_mangle]
 pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
+    // CHECK-DAG: .seh_endprologue
     f(unsafe { alloca(8) });
 
     // all: __security_check_cookie
@@ -307,11 +315,14 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: alloca_large_compile_time_constant_arg
 #[no_mangle]
 pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
+    // CHECK-DAG: .seh_endprologue
     f(unsafe { alloca(9) });
 
     // all: __security_check_cookie
@@ -319,11 +330,14 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // CHECK-LABEL: alloca_dynamic_arg
 #[no_mangle]
 pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
+    // CHECK-DAG: .seh_endprologue
     f(unsafe { alloca(n) });
 
     // all: __security_check_cookie
@@ -331,18 +345,19 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }
 
 // The question then is: in what ways can Rust code generate array-`alloca`
 // LLVM instructions? This appears to only be generated by
 // rustc_codegen_ssa::traits::Builder::array_alloca() through
-// rustc_codegen_ssa::mir::operand::OperandValue::store_unsized(). FWICT
-// this is support for the "unsized locals" unstable feature:
-// https://doc.rust-lang.org/unstable-book/language-features/unsized-locals.html.
+// rustc_codegen_ssa::mir::operand::OperandValue::store_unsized().
 
 // CHECK-LABEL: unsized_fn_param
 #[no_mangle]
 pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
+    // CHECK-DAG: .seh_endprologue
     let n = if l { 1 } else { 2 };
     f(*Box::<[u8]>::from(&s[0..n])); // slice-copy with Box::from
 
@@ -353,14 +368,11 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // alloca, and is therefore not protected by the `strong` or `basic`
     // heuristics.
 
-    // We should have a __security_check_cookie call in `all` and `strong` modes but
-    // LLVM does not support generating stack protectors in functions with funclet
-    // based EH personalities.
-    // https://github.com/llvm/llvm-project/blob/37fd3c96b917096d8a550038f6e61cdf0fc4174f/llvm/lib/CodeGen/StackProtector.cpp#L103C1-L109C4
     // all-NOT: __security_check_cookie
     // strong-NOT: __security_check_cookie
-
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endproc
 }

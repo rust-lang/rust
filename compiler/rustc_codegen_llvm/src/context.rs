@@ -29,12 +29,13 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Abi, Arch, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
+use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
@@ -100,6 +101,8 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    /// Cache instances of intrinsics
+    pub intrinsic_instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
@@ -156,6 +159,12 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache of Objective-C selector references
     pub objc_selrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
+
+    /// Globals shared by the offloading runtime
+    pub offload_globals: RefCell<Option<OffloadGlobals<'ll>>>,
+
+    /// Cache of kernel-specific globals
+    pub offload_kernel_cache: RefCell<FxHashMap<String, OffloadKernelGlobals<'ll>>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -335,9 +344,9 @@ pub(crate) unsafe fn create_module<'ll>(
 
     // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
     if sess.target.is_like_msvc
-        || (sess.target.options.os == "windows"
-            && sess.target.options.env == "gnu"
-            && sess.target.options.abi == "llvm")
+        || (sess.target.options.os == Os::Windows
+            && sess.target.options.env == Env::Gnu
+            && sess.target.options.abi == Abi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
@@ -620,6 +629,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 tls_model,
                 codegen_unit,
                 instances: Default::default(),
+                intrinsic_instances: Default::default(),
                 vtables: Default::default(),
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),
@@ -639,6 +649,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 objc_class_t: Cell::new(None),
                 objc_classrefs: Default::default(),
                 objc_selrefs: Default::default(),
+                offload_globals: Default::default(),
+                offload_kernel_cache: Default::default(),
             },
             PhantomData,
         )
@@ -669,7 +681,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// This corresponds to the `-fobjc-abi-version=` flag in Clang / GCC.
     pub(crate) fn objc_abi_version(&self) -> u32 {
         assert!(self.tcx.sess.target.is_like_darwin);
-        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == "macos" {
+        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == Os::MacOs {
             // 32-bit x86 macOS uses ABI version 1 (a.k.a. the "fragile ABI").
             1
         } else {
@@ -710,7 +722,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             },
         );
 
-        if self.tcx.sess.target.env == "sim" {
+        if self.tcx.sess.target.env == Env::Sim {
             llvm::add_module_flag_u32(
                 self.llmod,
                 llvm::ModuleFlagMergeBehavior::Error,
@@ -790,6 +802,16 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         }
+    }
+
+    pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
+        let mut functions = vec![];
+        let mut func = unsafe { llvm::LLVMGetFirstFunction(self.llmod()) };
+        while let Some(f) = func {
+            functions.push(f);
+            func = unsafe { llvm::LLVMGetNextFunction(f) }
+        }
+        functions
     }
 }
 
@@ -963,7 +985,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             return eh_catch_typeinfo;
         }
         let tcx = self.tcx;
-        assert!(self.sess().target.os == "emscripten");
+        assert!(self.sess().target.os == Os::Emscripten);
         let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
             Some(def_id) => self.get_static(def_id),
             _ => {

@@ -7,9 +7,7 @@ use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{
-    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
-};
+use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
@@ -62,8 +60,6 @@ pub(crate) struct DocContext<'tcx> {
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
     pub(crate) auto_traits: Vec<DefId>,
-    /// The options given to rustdoc that could be relevant to a pass.
-    pub(crate) render_options: RenderOptions,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     pub(crate) cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -139,6 +135,16 @@ impl<'tcx> DocContext<'tcx> {
     pub(crate) fn is_json_output(&self) -> bool {
         self.output_format.is_json() && !self.show_coverage
     }
+
+    /// If `--document-private-items` was passed to rustdoc.
+    pub(crate) fn document_private(&self) -> bool {
+        self.cache.document_private
+    }
+
+    /// If `--document-hidden-items` was passed to rustdoc.
+    pub(crate) fn document_hidden(&self) -> bool {
+        self.cache.document_hidden
+    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
@@ -154,22 +160,13 @@ pub(crate) fn new_dcx(
     let translator = rustc_driver::default_translator();
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+            HumanReadableErrorType { short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .ui_testing(unstable_opts.ui_testing),
-            ),
-            HumanReadableErrorType::Default { short } => Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map.map(|sm| sm as _))
-                    .short_message(short)
-                    .diagnostic_width(diagnostic_width)
-                    .track_diagnostics(unstable_opts.track_diagnostics)
-                    .theme(OutputTheme::Ascii)
                     .ui_testing(unstable_opts.ui_testing),
             ),
         },
@@ -379,7 +376,6 @@ pub(crate) fn run_global_ctxt(
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
         output_format,
-        render_options,
         show_coverage,
     };
 
@@ -416,14 +412,6 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    // Process all of the crate attributes, extracting plugin metadata along
-    // with the passes which we are supposed to run.
-    for attr in krate.module.attrs.lists(sym::doc) {
-        if attr.is_word() && attr.has_name(sym::document_private_items) {
-            ctxt.render_options.document_private = true;
-        }
-    }
-
     info!("Executing passes");
 
     let mut visited = FxHashMap::default();
@@ -432,9 +420,9 @@ pub(crate) fn run_global_ctxt(
     for p in passes::defaults(show_coverage) {
         let run = match p.condition {
             Always => true,
-            WhenDocumentPrivate => ctxt.render_options.document_private,
-            WhenNotDocumentPrivate => !ctxt.render_options.document_private,
-            WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
+            WhenDocumentPrivate => ctxt.document_private(),
+            WhenNotDocumentPrivate => !ctxt.document_private(),
+            WhenNotDocumentHidden => !ctxt.document_hidden(),
         };
         if run {
             debug!("running pass {}", p.pass.name);
@@ -452,7 +440,8 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
+    krate =
+        tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
     let mut collector =
         LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
@@ -460,7 +449,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.dcx().abort_if_errors();
 
-    (krate, ctxt.render_options, ctxt.cache, expanded_macros)
+    (krate, render_options, ctxt.cache, expanded_macros)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

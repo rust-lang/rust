@@ -224,5 +224,17 @@ error: redundant pattern matching, consider using `is_none()`
 LL |         let _ = matches!(*p, None);
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `(*p).is_none()`
 
-error: aborting due to 31 previous errors
+error: redundant pattern matching, consider using `is_some()`
+  --> tests/ui/redundant_pattern_matching_option.rs:209:16
+   |
+LL |         if let Some(_) = x? {
+   |         -------^^^^^^^----- help: try: `if x?.is_some()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> tests/ui/redundant_pattern_matching_option.rs:229:16
+   |
+LL |         if let Some(_) = x.await {
+   |         -------^^^^^^^---------- help: try: `if x.await.is_some()`
+
+error: aborting due to 33 previous errors
 

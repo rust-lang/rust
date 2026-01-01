@@ -8,9 +8,9 @@ use genmc_sys::{
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::{throw_machine_stop, throw_ub_format, throw_unsup_format};
+use rustc_middle::{throw_ub_format, throw_unsup_format};
 // FIXME(genmc,tracing): Implement some work-around for enabling debug/trace level logging (currently disabled statically in rustc).
-use tracing::{debug, info};
+use tracing::debug;
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{
@@ -61,12 +61,6 @@ pub enum ExitType {
 struct ExitStatus {
     exit_code: i32,
     exit_type: ExitType,
-}
-
-impl ExitStatus {
-    fn do_leak_check(self) -> bool {
-        matches!(self.exit_type, ExitType::MainThreadFinish)
-    }
 }
 
 /// State that is reset at the start of every execution.
@@ -223,8 +217,6 @@ impl GenmcCtx {
 
     /// Inform GenMC that the program's execution has ended.
     ///
-    /// This function must be called even when the execution is blocked
-    /// (i.e., it returned a `InterpErrorKind::MachineStop` with error kind `TerminationInfo::GenmcBlockedExecution`).
     /// Don't call this function if an error was found.
     ///
     /// GenMC detects certain errors only when the execution ends.
@@ -410,8 +402,20 @@ impl GenmcCtx {
 
         // FIXME(genmc): remove once GenMC supports failure memory ordering in `compare_exchange`.
         let (effective_failure_ordering, _) = upgraded_success_ordering.split_memory_orderings();
-        // Return a warning if the actual orderings don't match the upgraded ones.
-        if success != upgraded_success_ordering || effective_failure_ordering != fail {
+
+        // Return a warning if we cannot explore all behaviors of this operation.
+        // Only emit this if the operation is "in user code": walk up across `#[track_caller]`
+        // frames, then check if the next frame is local.
+        let show_warning = || {
+            ecx.active_thread_stack()
+                .iter()
+                .rev()
+                .find(|f| !f.instance().def.requires_caller_location(*ecx.tcx))
+                .is_none_or(|f| ecx.machine.is_local(f.instance()))
+        };
+        if (success != upgraded_success_ordering || effective_failure_ordering != fail)
+            && show_warning()
+        {
             static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
             ecx.dedup_diagnostic(&DEDUP, |_first| {
                 NonHaltingDiagnostic::GenmcCompareExchangeOrderingMismatch {
@@ -423,7 +427,7 @@ impl GenmcCtx {
             });
         }
         // FIXME(genmc): remove once GenMC implements spurious failures for `compare_exchange_weak`.
-        if can_fail_spuriously {
+        if can_fail_spuriously && show_warning() {
             static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
             ecx.dedup_diagnostic(&DEDUP, |_first| NonHaltingDiagnostic::GenmcCompareExchangeWeak);
         }
@@ -600,9 +604,11 @@ impl GenmcCtx {
             genmc_size,
             alignment.bytes(),
         );
+        if chosen_address == 0 {
+            throw_exhaust!(AddressSpaceFull);
+        }
 
-        // Non-global addresses should not be in the global address space or null.
-        assert_ne!(0, chosen_address, "GenMC malloc returned nullptr.");
+        // Non-global addresses should not be in the global address space.
         assert_eq!(0, chosen_address & GENMC_GLOBAL_ADDRESSES_MASK);
         // Sanity check the address alignment:
         assert!(
@@ -630,15 +636,14 @@ impl GenmcCtx {
             !self.get_alloc_data_races(),
             "memory deallocation with data race checking disabled."
         );
-        if self
+        let free_result = self
             .handle
             .borrow_mut()
             .pin_mut()
-            .handle_free(self.active_thread_genmc_tid(machine), address.bytes())
-        {
+            .handle_free(self.active_thread_genmc_tid(machine), address.bytes());
+        if let Some(error) = free_result.as_ref() {
             // FIXME(genmc): improve error handling.
-            // An error was detected, so we get the error string from GenMC.
-            throw_ub_format!("{}", self.try_get_error().unwrap());
+            throw_ub_format!("{}", error.to_string_lossy());
         }
 
         interp_ok(())
@@ -694,39 +699,37 @@ impl GenmcCtx {
     }
 
     /// Handle a call to `libc::exit` or the exit of the main thread.
-    /// Unless an error is returned, the program should continue executing (in a different thread, chosen by the next scheduling call).
+    /// Unless an error is returned, the program should continue executing (in a different thread,
+    /// chosen by the next scheduling call).
     pub(crate) fn handle_exit<'tcx>(
         &self,
         thread: ThreadId,
         exit_code: i32,
         exit_type: ExitType,
     ) -> InterpResult<'tcx> {
-        // Calling `libc::exit` doesn't do cleanup, so we skip the leak check in that case.
-        let exit_status = ExitStatus { exit_code, exit_type };
-
         if let Some(old_exit_status) = self.exec_state.exit_status.get() {
             throw_ub_format!(
-                "`exit` called twice, first with status {old_exit_status:?}, now with status {exit_status:?}",
+                "`exit` called twice, first with exit code {old_exit_code}, now with status {exit_code}",
+                old_exit_code = old_exit_status.exit_code,
             );
         }
 
-        // FIXME(genmc): Add a flag to continue exploration even when the program exits with a non-zero exit code.
-        if exit_code != 0 {
-            info!("GenMC: 'exit' called with non-zero argument, aborting execution.");
-            let leak_check = exit_status.do_leak_check();
-            throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check });
+        match exit_type {
+            ExitType::ExitCalled => {
+                // `exit` kills the current thread; we have to tell GenMC about this.
+                let thread_infos = self.exec_state.thread_id_manager.borrow();
+                let genmc_tid = thread_infos.get_genmc_tid(thread);
+                self.handle.borrow_mut().pin_mut().handle_thread_kill(genmc_tid);
+            }
+            ExitType::MainThreadFinish => {
+                // The main thread has already exited so we don't call `handle_thread_kill` again.
+                assert_eq!(thread, ThreadId::MAIN_THREAD);
+            }
         }
-
-        if matches!(exit_type, ExitType::ExitCalled) {
-            let thread_infos = self.exec_state.thread_id_manager.borrow();
-            let genmc_tid = thread_infos.get_genmc_tid(thread);
-
-            self.handle.borrow_mut().pin_mut().handle_thread_kill(genmc_tid);
-        } else {
-            assert_eq!(thread, ThreadId::MAIN_THREAD);
-        }
-        // We continue executing now, so we store the exit status.
-        self.exec_state.exit_status.set(Some(exit_status));
+        // To cover all possible behaviors, we have to continue execution the other threads:
+        // whatever they do next could also have happened before the `exit` call. So we just
+        // remember the exit status and use it when the other threads are done.
+        self.exec_state.exit_status.set(Some(ExitStatus { exit_code, exit_type }));
         interp_ok(())
     }
 }

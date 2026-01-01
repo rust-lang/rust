@@ -706,12 +706,9 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {
-                if let Some(placeholder) = self.placeholder {
-                    // We replace these with infer (which is passed in from an infcx).
-                    placeholder
-                } else {
-                    return Err(());
-                }
+                let Some(placeholder) = self.placeholder else { return Err(()) };
+                // We replace these with infer (which is passed in from an infcx).
+                placeholder
             }
 
             Alias(Opaque, AliasTy { def_id, .. }) => {

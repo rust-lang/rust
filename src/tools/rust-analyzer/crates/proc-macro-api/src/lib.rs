@@ -5,14 +5,29 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
+#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
+#![cfg_attr(
+    feature = "sysroot-abi",
+    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
+)]
+#![allow(internal_features)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
+pub mod bidirectional_protocol;
 pub mod legacy_protocol;
 mod process;
+pub mod transport;
 
 use paths::{AbsPath, AbsPathBuf};
+use semver::Version;
 use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
-use crate::process::ProcMacroServerProcess;
+pub use crate::transport::codec::Codec;
+use crate::{bidirectional_protocol::SubCallback, process::ProcMacroServerProcess};
 
 /// The versions of the server protocol
 pub mod version {
@@ -115,8 +130,9 @@ impl ProcMacroClient {
         env: impl IntoIterator<
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
+        version: Option<&Version>,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(process_path, env)?;
+        let process = ProcMacroServerProcess::run(process_path, env, version)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
@@ -126,9 +142,13 @@ impl ProcMacroClient {
     }
 
     /// Loads a proc-macro dylib into the server process returning a list of `ProcMacro`s loaded.
-    pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
+    pub fn load_dylib(
+        &self,
+        dylib: MacroDylib,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let macros = self.process.find_proc_macros(&dylib.path)?;
+        let macros = self.process.find_proc_macros(&dylib.path, callback)?;
 
         let dylib_path = Arc::new(dylib.path);
         let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
@@ -172,44 +192,31 @@ impl ProcMacro {
     }
 
     /// On some server versions, the fixup ast id is different than ours. So change it to match.
-    fn change_fixup_to_match_old_server(&self, tt: &mut tt::TopSubtree<Span>) {
+    fn change_fixup_to_match_old_server(&self, tt: &mut tt::TopSubtree) {
         const OLD_FIXUP_AST_ID: ErasedFileAstId = ErasedFileAstId::from_raw(!0 - 1);
-        let change_ast_id = |ast_id: &mut ErasedFileAstId| {
+        tt.change_every_ast_id(|ast_id| {
             if *ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
                 *ast_id = OLD_FIXUP_AST_ID;
             } else if *ast_id == OLD_FIXUP_AST_ID {
                 // Swap between them, that means no collision plus the change can be reversed by doing itself.
                 *ast_id = FIXUP_ERASED_FILE_AST_ID_MARKER;
             }
-        };
-
-        for tt in &mut tt.0 {
-            match tt {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { span, .. }))
-                | tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { span, .. }))
-                | tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { span, .. })) => {
-                    change_ast_id(&mut span.anchor.ast_id);
-                }
-                tt::TokenTree::Subtree(subtree) => {
-                    change_ast_id(&mut subtree.delimiter.open.anchor.ast_id);
-                    change_ast_id(&mut subtree.delimiter.close.anchor.ast_id);
-                }
-            }
-        }
+        });
     }
 
     /// Expands the procedural macro by sending an expansion request to the server.
     /// This includes span information and environmental context.
     pub fn expand(
         &self,
-        subtree: tt::SubtreeView<'_, Span>,
-        attr: Option<tt::SubtreeView<'_, Span>>,
+        subtree: tt::SubtreeView<'_>,
+        attr: Option<tt::SubtreeView<'_>>,
         env: Vec<(String, String)>,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
-    ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
         let (mut subtree, mut attr) = (subtree, attr);
         let (mut subtree_changed, mut attr_changed);
         if self.needs_fixup_change() {
@@ -224,7 +231,7 @@ impl ProcMacro {
             }
         }
 
-        legacy_protocol::expand(
+        self.process.expand(
             self,
             subtree,
             attr,
@@ -233,6 +240,7 @@ impl ProcMacro {
             call_site,
             mixed_site,
             current_dir,
+            callback,
         )
     }
 }

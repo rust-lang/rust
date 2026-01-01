@@ -150,7 +150,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();
         // Take care when binding is `ref`
         let sugg = if let PatKind::Binding(
-            BindingMode(ByRef::Yes(_,ref_mutability), binding_mutability),
+            BindingMode(ByRef::Yes(_, ref_mutability), binding_mutability),
             _hir_id,
             ident,
             subpattern,

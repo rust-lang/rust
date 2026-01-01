@@ -6,6 +6,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
@@ -50,7 +51,7 @@ pub use ascii::is_ascii_simple;
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::{range, try_range};
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 pub use iter::ArrayWindows;
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
@@ -841,8 +842,8 @@ impl<T> [T] {
     /// Gets a reference to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -860,8 +861,8 @@ impl<T> [T] {
     /// Gets a mutable reference to the slice's underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -1619,13 +1620,15 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
+    /// Panics if `N` is zero.
+    ///
+    /// Note that this check is against a const generic parameter, not a runtime
+    /// value, and thus a particular monomorphization will either always panic
+    /// or it will never panic.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_windows)]
     /// let slice = [0, 1, 2, 3];
     /// let mut iter = slice.array_windows();
     /// assert_eq!(iter.next().unwrap(), &[0, 1]);
@@ -1635,7 +1638,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`windows`]: slice::windows
-    #[unstable(feature = "array_windows", issue = "75027")]
+    #[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
@@ -3890,30 +3893,8 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        // The panic code path was put into a cold function to not bloat the
-        // call site.
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
-        #[cfg_attr(panic = "immediate-abort", inline)]
-        #[track_caller]
-        const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
-            const_panic!(
-                "copy_from_slice: source slice length does not match destination slice length",
-                "copy_from_slice: source slice length ({src_len}) does not match destination slice length ({dst_len})",
-                src_len: usize,
-                dst_len: usize,
-            )
-        }
-
-        if self.len() != src.len() {
-            len_mismatch_fail(self.len(), src.len());
-        }
-
-        // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
-        // checked to have the same length. The slices cannot overlap because
-        // mutable references are exclusive.
-        unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(), self.as_mut_ptr(), self.len());
-        }
+        // SAFETY: `T` implements `Copy`.
+        unsafe { copy_from_slice_impl(self, src) }
     }
 
     /// Copies elements from one part of the slice to another part of itself,
@@ -4927,6 +4908,28 @@ impl<T> [T] {
 
         if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
     }
+
+    /// Returns the same slice `&[T]`.
+    ///
+    /// This method is redundant when used directly on `&[T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `Arc<[T]>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns the same slice `&mut [T]`.
+    ///
+    /// This method is redundant when used directly on `&mut [T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `MutexGuard<[T]>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        self
+    }
 }
 
 impl<T> [MaybeUninit<T>] {
@@ -5123,6 +5126,38 @@ impl [f64] {
     }
 }
 
+/// Copies `src` to `dest`.
+///
+/// # Safety
+/// `T` must implement one of `Copy` or `TrivialClone`.
+#[track_caller]
+const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
+    // The panic code path was put into a cold function to not bloat the
+    // call site.
+    #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+    #[cfg_attr(panic = "immediate-abort", inline)]
+    #[track_caller]
+    const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
+        const_panic!(
+            "copy_from_slice: source slice length does not match destination slice length",
+            "copy_from_slice: source slice length ({src_len}) does not match destination slice length ({dst_len})",
+            src_len: usize,
+            dst_len: usize,
+        )
+    }
+
+    if dest.len() != src.len() {
+        len_mismatch_fail(dest.len(), src.len());
+    }
+
+    // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
+    // checked to have the same length. The slices cannot overlap because
+    // mutable references are exclusive.
+    unsafe {
+        ptr::copy_nonoverlapping(src.as_ptr(), dest.as_mut_ptr(), dest.len());
+    }
+}
+
 trait CloneFromSpec<T> {
     fn spec_clone_from(&mut self, src: &[T]);
 }
@@ -5147,11 +5182,14 @@ where
 
 impl<T> CloneFromSpec<T> for [T]
 where
-    T: Copy,
+    T: TrivialClone,
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {
-        self.copy_from_slice(src);
+        // SAFETY: `T` implements `TrivialClone`.
+        unsafe {
+            copy_from_slice_impl(self, src);
+        }
     }
 }
 

@@ -85,7 +85,7 @@ fn wide_aes_output_type<'a, 'gcc, 'tcx>(
     (aes_output_type.as_type(), field1, field2)
 }
 
-#[cfg_attr(not(feature = "master"), allow(unused_variables))]
+#[cfg_attr(not(feature = "master"), expect(unused_variables))]
 pub fn adjust_function<'gcc>(
     context: &'gcc Context<'gcc>,
     func_name: &str,
@@ -1573,14 +1573,25 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.tileloadd64" => "__builtin_trap",
         "llvm.x86.tilerelease" => "__builtin_trap",
         "llvm.x86.tilestored64" => "__builtin_trap",
+        "llvm.x86.tileloaddrs64" => "__builtin_trap",
         "llvm.x86.tileloaddt164" => "__builtin_trap",
+        "llvm.x86.tileloaddrst164" => "__builtin_trap",
         "llvm.x86.tilezero" => "__builtin_trap",
+        "llvm.x86.tilemovrow" => "__builtin_trap",
+        "llvm.x86.tdpbhf8ps" => "__builtin_trap",
+        "llvm.x86.tdphbf8ps" => "__builtin_trap",
+        "llvm.x86.tdpbf8ps" => "__builtin_trap",
+        "llvm.x86.tdphf8ps" => "__builtin_trap",
         "llvm.x86.tdpbf16ps" => "__builtin_trap",
         "llvm.x86.tdpbssd" => "__builtin_trap",
         "llvm.x86.tdpbsud" => "__builtin_trap",
         "llvm.x86.tdpbusd" => "__builtin_trap",
         "llvm.x86.tdpbuud" => "__builtin_trap",
         "llvm.x86.tdpfp16ps" => "__builtin_trap",
+        "llvm.x86.tmmultf32ps" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phh" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phl" => "__builtin_trap",
+        "llvm.x86.tcvtrowd2ps" => "__builtin_trap",
         "llvm.x86.tcmmimfp16ps" => "__builtin_trap",
         "llvm.x86.tcmmrlfp16ps" => "__builtin_trap",
 

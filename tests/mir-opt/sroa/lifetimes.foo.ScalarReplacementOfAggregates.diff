@@ -17,23 +17,22 @@
       let mut _17: &std::boxed::Box<dyn std::fmt::Display>;
       let mut _18: core::fmt::rt::Argument<'_>;
       let mut _19: &u32;
-      let mut _20: &[&str; 3];
-      let _21: &[&str; 3];
-      let _22: [&str; 3];
-      let mut _23: &[core::fmt::rt::Argument<'_>; 2];
-      let _24: &[core::fmt::rt::Argument<'_>; 2];
-      let mut _26: &std::boxed::Box<dyn std::fmt::Display>;
-      let mut _27: &u32;
-      let mut _28: bool;
+      let mut _20: &[u8; 7];
+      let _21: &[u8; 7];
+      let mut _22: &[core::fmt::rt::Argument<'_>; 2];
+      let _23: &[core::fmt::rt::Argument<'_>; 2];
+      let mut _24: &std::boxed::Box<dyn std::fmt::Display>;
+      let mut _25: &u32;
+      let mut _26: bool;
+      let mut _27: isize;
+      let mut _28: isize;
       let mut _29: isize;
-      let mut _30: isize;
-      let mut _31: isize;
-+     let _32: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
-+     let _33: u32;
++     let _30: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
++     let _31: u32;
       scope 1 {
 -         debug foo => _1;
-+         debug ((foo: Foo<T>).0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>) => _32;
-+         debug ((foo: Foo<T>).1: u32) => _33;
++         debug ((foo: Foo<T>).0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>) => _30;
++         debug ((foo: Foo<T>).1: u32) => _31;
           let _5: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
           scope 2 {
               debug x => _5;
@@ -44,16 +43,15 @@
                       debug x => _8;
                       let _8: std::boxed::Box<dyn std::fmt::Display>;
                       let _12: (&std::boxed::Box<dyn std::fmt::Display>, &u32);
-+                     let _34: &std::boxed::Box<dyn std::fmt::Display>;
-+                     let _35: &u32;
++                     let _32: &std::boxed::Box<dyn std::fmt::Display>;
++                     let _33: &u32;
                       scope 5 {
 -                         debug args => _12;
-+                         debug ((args: (&Box<dyn std::fmt::Display>, &u32)).0: &std::boxed::Box<dyn std::fmt::Display>) => _34;
-+                         debug ((args: (&Box<dyn std::fmt::Display>, &u32)).1: &u32) => _35;
++                         debug ((args: (&Box<dyn std::fmt::Display>, &u32)).0: &std::boxed::Box<dyn std::fmt::Display>) => _32;
++                         debug ((args: (&Box<dyn std::fmt::Display>, &u32)).1: &u32) => _33;
                           let _15: [core::fmt::rt::Argument<'_>; 2];
                           scope 6 {
                               debug args => _15;
-                              let mut _25: &[&str; 3];
                           }
                       }
                   }
@@ -62,10 +60,10 @@
       }
   
       bb0: {
-          _28 = const false;
+          _26 = const false;
 -         StorageLive(_1);
-+         StorageLive(_32);
-+         StorageLive(_33);
++         StorageLive(_30);
++         StorageLive(_31);
 +         nop;
           StorageLive(_2);
           StorageLive(_3);
@@ -79,17 +77,17 @@
           _2 = Result::<Box<dyn std::fmt::Display>, <T as Err>::Err>::Ok(move _3);
           StorageDead(_3);
 -         _1 = Foo::<T> { x: move _2, y: const 7_u32 };
-+         _32 = move _2;
-+         _33 = const 7_u32;
++         _30 = move _2;
++         _31 = const 7_u32;
 +         nop;
           StorageDead(_2);
           StorageLive(_5);
-          _28 = const true;
+          _26 = const true;
 -         _5 = move (_1.0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>);
-+         _5 = move _32;
++         _5 = move _30;
           StorageLive(_6);
 -         _6 = copy (_1.1: u32);
-+         _6 = copy _33;
++         _6 = copy _31;
           _7 = discriminant(_5);
           switchInt(move _7) -> [0: bb2, otherwise: bb7];
       }
@@ -101,25 +99,25 @@
           StorageLive(_10);
           StorageLive(_11);
 -         StorageLive(_12);
-+         StorageLive(_34);
-+         StorageLive(_35);
++         StorageLive(_32);
++         StorageLive(_33);
 +         nop;
           StorageLive(_13);
           _13 = &_8;
           StorageLive(_14);
           _14 = &_6;
 -         _12 = (move _13, move _14);
-+         _34 = move _13;
-+         _35 = move _14;
++         _32 = move _13;
++         _33 = move _14;
 +         nop;
           StorageDead(_14);
           StorageDead(_13);
           StorageLive(_15);
           StorageLive(_16);
           StorageLive(_17);
--         _26 = copy (_12.0: &std::boxed::Box<dyn std::fmt::Display>);
-+         _26 = copy _34;
-          _17 = &(*_26);
+-         _24 = copy (_12.0: &std::boxed::Box<dyn std::fmt::Display>);
++         _24 = copy _32;
+          _17 = &(*_24);
           _16 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _17) -> [return: bb3, unwind unreachable];
       }
   
@@ -127,9 +125,9 @@
           StorageDead(_17);
           StorageLive(_18);
           StorageLive(_19);
--         _27 = copy (_12.1: &u32);
-+         _27 = copy _35;
-          _19 = &(*_27);
+-         _25 = copy (_12.1: &u32);
++         _25 = copy _33;
+          _19 = &(*_25);
           _18 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _19) -> [return: bb4, unwind unreachable];
       }
   
@@ -140,19 +138,18 @@
           StorageDead(_16);
           StorageLive(_20);
           StorageLive(_21);
-          _25 = const foo::<T>::promoted[0];
-          _21 = &(*_25);
+          _21 = const b"\xc0\x01 \xc0\x01\n\x00";
           _20 = &(*_21);
+          StorageLive(_22);
           StorageLive(_23);
-          StorageLive(_24);
-          _24 = &_15;
-          _23 = &(*_24);
-          _11 = core::fmt::rt::<impl Arguments<'_>>::new_v1::<3, 2>(move _20, move _23) -> [return: bb5, unwind unreachable];
+          _23 = &_15;
+          _22 = &(*_23);
+          _11 = Arguments::<'_>::new::<7, 2>(move _20, move _22) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
-          StorageDead(_24);
           StorageDead(_23);
+          StorageDead(_22);
           StorageDead(_21);
           StorageDead(_20);
           _10 = _eprint(move _11) -> [return: bb6, unwind unreachable];
@@ -162,8 +159,8 @@
           StorageDead(_11);
           StorageDead(_15);
 -         StorageDead(_12);
-+         StorageDead(_34);
-+         StorageDead(_35);
++         StorageDead(_32);
++         StorageDead(_33);
 +         nop;
           StorageDead(_10);
           _9 = const ();
@@ -184,16 +181,16 @@
   
       bb9: {
           StorageDead(_6);
-          _29 = discriminant(_5);
-          switchInt(move _29) -> [0: bb10, otherwise: bb11];
+          _27 = discriminant(_5);
+          switchInt(move _27) -> [0: bb10, otherwise: bb11];
       }
   
       bb10: {
-          _28 = const false;
+          _26 = const false;
           StorageDead(_5);
 -         StorageDead(_1);
-+         StorageDead(_32);
-+         StorageDead(_33);
++         StorageDead(_30);
++         StorageDead(_31);
 +         nop;
           return;
       }
@@ -201,5 +198,9 @@
       bb11: {
           drop(_5) -> [return: bb10, unwind unreachable];
       }
+  }
+  
+  ALLOC0 (size: 7, align: 1) {
+      c0 01 20 c0 01 0a 00                            │ .. ....
   }
   

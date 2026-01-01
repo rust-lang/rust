@@ -13,8 +13,8 @@ extern crate rustc_middle;
 
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate rustc_span;
 extern crate rustc_public;
+extern crate rustc_span;
 
 use rustc_public::{
     ty::{Abi, ForeignItemKind},
@@ -40,7 +40,7 @@ fn test_foreign() -> ControlFlow<()> {
     assert_eq!(c_items.len(), 3);
     for item in c_items {
         let kind = item.kind();
-        match item.name().as_str() {
+        match item.trimmed_name().as_str() {
             "foo" => assert_matches!(kind, ForeignItemKind::Fn(..)),
             "bar" => assert_matches!(kind, ForeignItemKind::Static(..)),
             "Baz" => assert_matches!(kind, ForeignItemKind::Type(..)),

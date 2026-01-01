@@ -1,3 +1,4 @@
+//@ edition:2015
 // --force-warn $LINT casuses $LINT to warn despite --cap-lints
 // set to allow
 //@ compile-flags: --cap-lints allow  --force-warn bare_trait_objects

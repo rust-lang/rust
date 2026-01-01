@@ -35,3 +35,28 @@ fn main() {
     let _ = 2 * dur1 - dur2;
     //~^ unchecked_time_subtraction
 }
+
+fn issue16230() {
+    use std::ops::Sub as _;
+
+    Duration::ZERO.sub(Duration::MAX);
+    //~^ unchecked_time_subtraction
+
+    let _ = Duration::ZERO - Duration::MAX;
+    //~^ unchecked_time_subtraction
+}
+
+fn issue16234() {
+    use std::ops::Sub as _;
+
+    macro_rules! duration {
+        ($secs:expr) => {
+            Duration::from_secs($secs)
+        };
+    }
+
+    duration!(0).sub(duration!(1));
+    //~^ unchecked_time_subtraction
+    let _ = duration!(0) - duration!(1);
+    //~^ unchecked_time_subtraction
+}

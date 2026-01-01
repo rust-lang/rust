@@ -806,7 +806,7 @@ fn f() {
     _ = (x, y);
     let x = Foo;
     let y = &mut *x;
-               //^^ 💡 error: cannot mutate immutable variable `x`
+               // ^ 💡 error: cannot mutate immutable variable `x`
     _ = (x, y);
     let x = Foo;
       //^ 💡 warn: unused variable
@@ -815,13 +815,13 @@ fn f() {
                           //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     _ = (x, y);
     let ref mut y = *x;
-                  //^^ 💡 error: cannot mutate immutable variable `x`
+                  // ^ 💡 error: cannot mutate immutable variable `x`
     _ = y;
     let (ref mut y, _) = *x;
-                       //^^ 💡 error: cannot mutate immutable variable `x`
+                       // ^ 💡 error: cannot mutate immutable variable `x`
     _ = y;
     match *x {
-        //^^ 💡 error: cannot mutate immutable variable `x`
+        // ^ 💡 error: cannot mutate immutable variable `x`
         (ref y, 5) => _ = y,
         (_, ref mut y) => _ = y,
     }
@@ -995,6 +995,10 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
         }
                     "#,
         );
+        // FIXME: There should be no "unused variable" here, and there should be a mutability error,
+        // but our MIR infra is horribly broken and due to the order in which expressions are lowered
+        // there is no `StorageLive` for `x` in the closure (in fact, `x` should not even be a variable
+        // of the closure, the environment should be, but as I said, our MIR infra is horribly broken).
         check_diagnostics(
             r#"
 //- minicore: copy, fn
@@ -1003,8 +1007,8 @@ fn f() {
         || {
             || {
                 let x = 2;
+                 // ^ 💡 warn: unused variable
                 || { || { x = 5; } }
-                        //^^^^^ 💡 error: cannot mutate immutable variable `x`
             }
         }
     };
@@ -1130,7 +1134,7 @@ fn f() {
   //^^^^^^^ 💡 error: cannot mutate immutable variable `x`
     let x = Box::new(5);
     let closure = || *x = 2;
-                    //^ 💡 error: cannot mutate immutable variable `x`
+                   //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     _ = closure;
 }
 "#,

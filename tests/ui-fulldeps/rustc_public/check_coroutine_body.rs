@@ -29,11 +29,7 @@ fn test_coroutine_body() -> ControlFlow<()> {
     if let Some(body) = crate_items.iter().find_map(|item| {
         let item_ty = item.ty();
         if let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &item_ty.kind() {
-            if def.0.name() == "gbc::{closure#0}".to_string() {
-                def.body()
-            } else {
-                None
-            }
+            if def.0.trimmed_name() == "gbc::{closure#0}".to_string() { def.body() } else { None }
         } else {
             None
         }
@@ -51,26 +47,23 @@ fn check_coroutine_body(body: Body) {
     let local_3 = &body.locals()[3].ty;
     let local_4 = &body.locals()[4].ty;
 
-    let TyKind::RigidTy(RigidTy::Adt(def, ..)) = &ret_ty.kind()
-    else {
+    let TyKind::RigidTy(RigidTy::Adt(def, ..)) = &ret_ty.kind() else {
         panic!("Expected RigidTy::Adt, got: {:#?}", ret_ty);
     };
 
     assert_eq!("std::task::Poll", def.0.name());
 
-    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_3.kind()
-    else {
+    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_3.kind() else {
         panic!("Expected RigidTy::Coroutine, got: {:#?}", local_3);
     };
 
-    assert_eq!("gbc::{closure#0}::{closure#0}", def.0.name());
+    assert_eq!("crate_coroutine_body::gbc::{closure#0}::{closure#0}", def.0.name());
 
-    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_4.kind()
-    else {
+    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_4.kind() else {
         panic!("Expected RigidTy::Coroutine, got: {:#?}", local_4);
     };
 
-    assert_eq!("gbc::{closure#0}::{closure#0}", def.0.name());
+    assert_eq!("crate_coroutine_body::gbc::{closure#0}::{closure#0}", def.0.name());
 }
 
 fn main() {

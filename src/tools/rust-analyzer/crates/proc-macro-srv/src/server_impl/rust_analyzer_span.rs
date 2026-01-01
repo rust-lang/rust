@@ -10,17 +10,18 @@ use std::{
 };
 
 use intern::Symbol;
-use proc_macro::bridge::{self, server};
-use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
-use tt::{TextRange, TextSize};
+use proc_macro::bridge::server;
+use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TextRange, TextSize};
 
-use crate::server_impl::{from_token_tree, literal_from_str, token_stream::TokenStreamBuilder};
-
-type TokenStream = crate::server_impl::TokenStream<Span>;
+use crate::{
+    ProcMacroClientHandle,
+    bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
+    server_impl::literal_from_str,
+};
 
 pub struct FreeFunctions;
 
-pub struct RaSpanServer {
+pub struct RaSpanServer<'a> {
     // FIXME: Report this back to the caller to track as dependencies
     pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
     // FIXME: Report this back to the caller to track as dependencies
@@ -28,16 +29,17 @@ pub struct RaSpanServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
+    pub callback: Option<ProcMacroClientHandle<'a>>,
 }
 
-impl server::Types for RaSpanServer {
+impl server::Types for RaSpanServer<'_> {
     type FreeFunctions = FreeFunctions;
-    type TokenStream = TokenStream;
+    type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 }
 
-impl server::FreeFunctions for RaSpanServer {
+impl server::FreeFunctions for RaSpanServer<'_> {
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
@@ -49,19 +51,16 @@ impl server::FreeFunctions for RaSpanServer {
         self.tracked_paths.insert(path.into());
     }
 
-    fn literal_from_str(
-        &mut self,
-        s: &str,
-    ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, ()> {
         literal_from_str(s, self.call_site)
     }
 
-    fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {
+    fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {
         // FIXME handle diagnostic
     }
 }
 
-impl server::TokenStream for RaSpanServer {
+impl server::TokenStream for RaSpanServer<'_> {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -77,11 +76,9 @@ impl server::TokenStream for RaSpanServer {
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
     }
-    fn from_token_tree(
-        &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
-    ) -> Self::TokenStream {
-        from_token_tree(tree)
+
+    fn from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
+        Self::TokenStream::new(vec![tree])
     }
 
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
@@ -96,16 +93,17 @@ impl server::TokenStream for RaSpanServer {
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
+        trees: Vec<TokenTree<Self::Span>>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::default();
-        if let Some(base) = base {
-            builder.push(base);
+        match base {
+            Some(mut base) => {
+                for tt in trees {
+                    base.push_tree(tt);
+                }
+                base
+            }
+            None => Self::TokenStream::new(trees),
         }
-        for tree in trees {
-            builder.push(self.from_token_tree(tree));
-        }
-        builder.build()
     }
 
     fn concat_streams(
@@ -113,27 +111,19 @@ impl server::TokenStream for RaSpanServer {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::default();
-        if let Some(base) = base {
-            builder.push(base);
+        let mut stream = base.unwrap_or_default();
+        for s in streams {
+            stream.push_stream(s);
         }
-        for stream in streams {
-            builder.push(stream);
-        }
-        builder.build()
+        stream
     }
 
-    fn into_trees(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        stream.into_bridge(&mut |first, second| {
-            server::Span::join(self, first, second).unwrap_or(first)
-        })
+    fn into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
+        (*stream.0).clone()
     }
 }
 
-impl server::Span for RaSpanServer {
+impl server::Span for RaSpanServer<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span)
     }
@@ -161,9 +151,12 @@ impl server::Span for RaSpanServer {
     ///
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
-    fn source_text(&mut self, _span: Self::Span) -> Option<String> {
-        // FIXME requires db, needs special handling wrt fixup spans
-        None
+    fn source_text(&mut self, span: Self::Span) -> Option<String> {
+        let file_id = span.anchor.file_id;
+        let start: u32 = span.range.start().into();
+        let end: u32 = span.range.end().into();
+
+        self.callback.as_mut()?.source_text(file_id.file_id().index(), start, end)
     }
 
     fn parent(&mut self, _span: Self::Span) -> Option<Self::Span> {
@@ -281,16 +274,16 @@ impl server::Span for RaSpanServer {
     }
 }
 
-impl server::Symbol for RaSpanServer {
+impl server::Symbol for RaSpanServer<'_> {
     fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
         // FIXME: nfc-normalize and validate idents
         Ok(<Self as server::Server>::intern_symbol(string))
     }
 }
 
-impl server::Server for RaSpanServer {
-    fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
-        bridge::ExpnGlobals {
+impl server::Server for RaSpanServer<'_> {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
             def_site: self.def_site,
             call_site: self.call_site,
             mixed_site: self.mixed_site,
@@ -303,99 +296,5 @@ impl server::Server for RaSpanServer {
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
         f(symbol.as_str())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use span::{EditionedFileId, FileId, SyntaxContext};
-
-    use super::*;
-
-    #[test]
-    fn test_ra_server_to_string() {
-        let span = Span {
-            range: TextRange::empty(TextSize::new(0)),
-            anchor: span::SpanAnchor {
-                file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ROOT_ERASED_FILE_AST_ID,
-            },
-            ctx: SyntaxContext::root(span::Edition::CURRENT),
-        };
-        let s = TokenStream {
-            token_trees: vec![
-                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("struct"),
-                    span,
-                    is_raw: tt::IdentIsRaw::No,
-                })),
-                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("T"),
-                    span,
-                    is_raw: tt::IdentIsRaw::No,
-                })),
-                tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter {
-                        open: span,
-                        close: span,
-                        kind: tt::DelimiterKind::Brace,
-                    },
-                    len: 1,
-                }),
-                tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                    kind: tt::LitKind::Str,
-                    symbol: Symbol::intern("string"),
-                    suffix: None,
-                    span,
-                })),
-            ],
-        };
-
-        assert_eq!(s.to_string(), "struct T {\"string\"}");
-    }
-
-    #[test]
-    fn test_ra_server_from_str() {
-        let span = Span {
-            range: TextRange::empty(TextSize::new(0)),
-            anchor: span::SpanAnchor {
-                file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ROOT_ERASED_FILE_AST_ID,
-            },
-            ctx: SyntaxContext::root(span::Edition::CURRENT),
-        };
-        let subtree_paren_a = vec![
-            tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: span,
-                    close: span,
-                    kind: tt::DelimiterKind::Parenthesis,
-                },
-                len: 1,
-            }),
-            tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                is_raw: tt::IdentIsRaw::No,
-                sym: Symbol::intern("a"),
-                span,
-            })),
-        ];
-
-        let t1 = TokenStream::from_str("(a)", span).unwrap();
-        assert_eq!(t1.token_trees.len(), 2);
-        assert!(t1.token_trees == subtree_paren_a);
-
-        let t2 = TokenStream::from_str("(a);", span).unwrap();
-        assert_eq!(t2.token_trees.len(), 3);
-        assert!(t2.token_trees[0..2] == subtree_paren_a);
-
-        let underscore = TokenStream::from_str("_", span).unwrap();
-        assert!(
-            underscore.token_trees[0]
-                == tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("_"),
-                    span,
-                    is_raw: tt::IdentIsRaw::No,
-                }))
-        );
     }
 }

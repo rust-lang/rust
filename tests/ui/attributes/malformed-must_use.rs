@@ -1,4 +1,4 @@
-#[must_use()] //~ ERROR valid forms for the attribute are `#[must_use = "reason"]` and `#[must_use]`
+#[must_use()] //~ ERROR malformed
 struct Test;
 
 fn main() {}

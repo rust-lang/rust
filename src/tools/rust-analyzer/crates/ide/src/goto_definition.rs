@@ -16,15 +16,12 @@ use ide_db::{
     defs::{Definition, IdentClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
+    syntax_helpers::node_ext::find_loops,
 };
 use itertools::Itertools;
-use span::{Edition, FileId};
+use span::FileId;
 use syntax::{
-    AstNode, AstToken,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T, TextRange,
-    ast::{self, HasLoopBody},
-    match_ast,
+    AstNode, AstToken, SyntaxKind::*, SyntaxNode, SyntaxToken, T, TextRange, ast, match_ast,
 };
 
 #[derive(Debug)]
@@ -50,8 +47,7 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = &Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
-    let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let edition = sema.attach_first_edition(file_id).edition(db);
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
         | INT_NUMBER
@@ -140,7 +136,7 @@ pub(crate) fn goto_definition(
             if let Definition::ExternCrateDecl(crate_def) = def {
                 return crate_def
                     .resolved_crate(db)
-                    .map(|it| it.root_module().to_nav(sema.db))
+                    .map(|it| it.root_module(db).to_nav(db))
                     .into_iter()
                     .flatten()
                     .collect();
@@ -245,7 +241,7 @@ fn try_lookup_include_path(
     Some(NavigationTarget {
         file_id,
         full_range: TextRange::new(0.into(), size),
-        name: path.into(),
+        name: hir::Symbol::intern(&path),
         alias: None,
         focus_range: None,
         kind: None,
@@ -263,7 +259,7 @@ fn try_lookup_macro_def_in_macro_use(
     let extern_crate = sema.to_def(&extern_crate)?;
     let krate = extern_crate.resolved_crate(sema.db)?;
 
-    for mod_def in krate.root_module().declarations(sema.db) {
+    for mod_def in krate.root_module(sema.db).declarations(sema.db) {
         if let ModuleDef::Macro(mac) = mod_def
             && mac.name(sema.db).as_str() == token.text()
             && let Some(nav) = mac.try_to_nav(sema)
@@ -511,51 +507,6 @@ fn nav_for_branch_exit_points(
     Some(navs)
 }
 
-pub(crate) fn find_loops(
-    sema: &Semantics<'_, RootDatabase>,
-    token: &SyntaxToken,
-) -> Option<Vec<ast::Expr>> {
-    let parent = token.parent()?;
-    let lbl = match_ast! {
-        match parent {
-            ast::BreakExpr(break_) => break_.lifetime(),
-            ast::ContinueExpr(continue_) => continue_.lifetime(),
-            _ => None,
-        }
-    };
-    let label_matches =
-        |it: Option<ast::Label>| match (lbl.as_ref(), it.and_then(|it| it.lifetime())) {
-            (Some(lbl), Some(it)) => lbl.text() == it.text(),
-            (None, _) => true,
-            (Some(_), None) => false,
-        };
-
-    let find_ancestors = |token: SyntaxToken| {
-        for anc in sema.token_ancestors_with_macros(token).filter_map(ast::Expr::cast) {
-            let node = match &anc {
-                ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => anc,
-                ast::Expr::WhileExpr(while_) if label_matches(while_.label()) => anc,
-                ast::Expr::ForExpr(for_) if label_matches(for_.label()) => anc,
-                ast::Expr::BlockExpr(blk)
-                    if blk.label().is_some() && label_matches(blk.label()) =>
-                {
-                    anc
-                }
-                _ => continue,
-            };
-
-            return Some(node);
-        }
-        None
-    };
-
-    sema.descend_into_macros(token.clone())
-        .into_iter()
-        .filter_map(find_ancestors)
-        .collect_vec()
-        .into()
-}
-
 fn nav_for_break_points(
     sema: &Semantics<'_, RootDatabase>,
     token: &SyntaxToken,
@@ -563,7 +514,6 @@ fn nav_for_break_points(
     let db = sema.db;
 
     let navs = find_loops(sema, token)?
-        .into_iter()
         .filter_map(|expr| {
             let file_id = sema.hir_file_for(expr.syntax());
             let expr_in_file = InFile::new(file_id, expr.clone());
@@ -598,7 +548,13 @@ fn expr_to_nav(
     let value_range = value.syntax().text_range();
     let navs = navigation_target::orig_range_with_focus_r(db, file_id, value_range, focus_range);
     navs.map(|(hir::FileRangeWrapper { file_id, range }, focus_range)| {
-        NavigationTarget::from_syntax(file_id, "<expr>".into(), focus_range, range, kind)
+        NavigationTarget::from_syntax(
+            file_id,
+            hir::Symbol::intern("<expr>"),
+            focus_range,
+            range,
+            kind,
+        )
     })
 }
 
@@ -607,7 +563,6 @@ mod tests {
     use crate::{GotoDefinitionConfig, fixture};
     use ide_db::{FileRange, MiniCore};
     use itertools::Itertools;
-    use syntax::SmolStr;
 
     const TEST_CONFIG: GotoDefinitionConfig<'_> =
         GotoDefinitionConfig { minicore: MiniCore::default() };
@@ -658,7 +613,7 @@ mod tests {
         let Some(target) = navs.into_iter().next() else {
             panic!("expected single navigation target but encountered none");
         };
-        assert_eq!(target.name, SmolStr::new_inline(expected_name));
+        assert_eq!(target.name, hir::Symbol::intern(expected_name));
     }
 
     #[test]

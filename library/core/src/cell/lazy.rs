@@ -134,6 +134,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         // SAFETY:
         // This invalidates any mutable references to the data. The resulting
@@ -164,7 +165,6 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
     /// use std::cell::LazyCell;
     ///
     /// let mut lazy = LazyCell::new(|| 92);
@@ -175,7 +175,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
     pub fn force_mut(this: &mut LazyCell<T, F>) -> &mut T {
         #[cold]
         /// # Safety
@@ -263,8 +263,6 @@ impl<T, F> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
-    ///
     /// use std::cell::LazyCell;
     ///
     /// let mut lazy = LazyCell::new(|| 92);
@@ -275,7 +273,7 @@ impl<T, F> LazyCell<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
     pub fn get_mut(this: &mut LazyCell<T, F>) -> Option<&mut T> {
         let state = this.state.get_mut();
         match state {
@@ -290,8 +288,6 @@ impl<T, F> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
-    ///
     /// use std::cell::LazyCell;
     ///
     /// let lazy = LazyCell::new(|| 92);
@@ -301,7 +297,7 @@ impl<T, F> LazyCell<T, F> {
     /// assert_eq!(LazyCell::get(&lazy), Some(&92));
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
     pub fn get(this: &LazyCell<T, F>) -> Option<&T> {
         // SAFETY:
         // This is sound for the same reason as in `force`: once the state is

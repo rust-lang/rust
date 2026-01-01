@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::peel_blocks;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
+use clippy_utils::{is_none_expr, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::LangItem::OptionSome;
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind
         && let body = cx.tcx.hir_body(body)
         // And finally we check that we return a `None` in the "else case".
-        && peel_blocks(body.value).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+        && is_none_expr(cx, peel_blocks(body.value))
     {
         let msg = "called `map_or_else(|_| None, Some)` on a `Result` value";
         let self_snippet = snippet(cx, recv.span, "..");

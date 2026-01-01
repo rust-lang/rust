@@ -1,5 +1,5 @@
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:47:5
+  --> $DIR/coerce-loop-issue-122561.rs:49:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -7,13 +7,13 @@ LL |     while true {
    = note: `#[warn(while_true)]` on by default
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:71:5
+  --> $DIR/coerce-loop-issue-122561.rs:73:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:41:24
+  --> $DIR/coerce-loop-issue-122561.rs:43:24
    |
 LL | fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
    |                        ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
@@ -25,7 +25,7 @@ LL | fn for_in_arg(a: &[(); for x in 0..2 {} /* `usize` value */]) -> bool {
    |                                         +++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:4:5
+  --> $DIR/coerce-loop-issue-122561.rs:6:5
    |
 LL |   fn for_infinite() -> bool {
    |                        ---- expected `bool` because of return type
@@ -43,7 +43,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:11:5
+  --> $DIR/coerce-loop-issue-122561.rs:13:5
    |
 LL |   fn for_finite() -> String {
    |                      ------ expected `String` because of return type
@@ -61,7 +61,7 @@ LL +     /* `String` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:18:5
+  --> $DIR/coerce-loop-issue-122561.rs:20:5
    |
 LL |   fn for_zero_times() -> bool {
    |                          ---- expected `bool` because of return type
@@ -79,7 +79,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:25:5
+  --> $DIR/coerce-loop-issue-122561.rs:27:5
    |
 LL |   fn for_never_type() -> ! {
    |                          - expected `!` because of return type
@@ -98,7 +98,7 @@ LL +     /* `loop {}` or `panic!("...")` */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:33:32
+  --> $DIR/coerce-loop-issue-122561.rs:35:32
    |
 LL | fn for_single_line() -> bool { for i in 0.. { return false; } }
    |                         ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
@@ -112,7 +112,7 @@ LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` val
    |                                                               ++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:47:5
+  --> $DIR/coerce-loop-issue-122561.rs:49:5
    |
 LL |   fn while_inifinite() -> bool {
    |                           ---- expected `bool` because of return type
@@ -131,7 +131,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:56:5
+  --> $DIR/coerce-loop-issue-122561.rs:58:5
    |
 LL |   fn while_finite() -> bool {
    |                        ---- expected `bool` because of return type
@@ -151,7 +151,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:64:5
+  --> $DIR/coerce-loop-issue-122561.rs:66:5
    |
 LL |   fn while_zero_times() -> bool {
    |                            ---- expected `bool` because of return type
@@ -169,7 +169,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:71:5
+  --> $DIR/coerce-loop-issue-122561.rs:73:5
    |
 LL |   fn while_never_type() -> ! {
    |                            - expected `!` because of return type
@@ -188,7 +188,7 @@ LL +     /* `loop {}` or `panic!("...")` */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:85:5
+  --> $DIR/coerce-loop-issue-122561.rs:87:5
    |
 LL | /     for i in 0.. {
 LL | |
@@ -203,7 +203,7 @@ LL +     /* `i32` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:92:9
+  --> $DIR/coerce-loop-issue-122561.rs:94:9
    |
 LL | /         for i in 0..5 {
 LL | |
@@ -218,7 +218,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:98:9
+  --> $DIR/coerce-loop-issue-122561.rs:100:9
    |
 LL | /         while false {
 LL | |
@@ -233,7 +233,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:104:23
+  --> $DIR/coerce-loop-issue-122561.rs:106:23
    |
 LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
    |                       ^^^^^^^^^^^^^^^^ expected `usize`, found `()`

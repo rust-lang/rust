@@ -16,7 +16,7 @@ error[E0576]: cannot find function `method` in this scope
 LL |     method(..): Send,
    |     ^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `method` in this scope
+error[E0425]: cannot find type `method` in this scope
   --> $DIR/not-a-method.rs:36:5
    |
 LL |     method(): Send,
@@ -36,5 +36,5 @@ LL |     method(..): Send,
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0412, E0573, E0575, E0576.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0573, E0575, E0576.
+For more information about an error, try `rustc --explain E0425`.

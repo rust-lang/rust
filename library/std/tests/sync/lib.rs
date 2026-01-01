@@ -1,4 +1,3 @@
-#![feature(lazy_get)]
 #![feature(mapped_lock_guards)]
 #![feature(mpmc_channel)]
 #![feature(once_cell_try)]

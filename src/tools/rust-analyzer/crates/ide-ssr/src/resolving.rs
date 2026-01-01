@@ -228,12 +228,10 @@ impl<'db> ResolutionScope<'db> {
         let resolved_qualifier = self.scope.speculative_resolve(&path.qualifier()?)?;
         if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
             let name = path.segment()?.name_ref()?;
-            let module = self.scope.module();
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 &self.scope,
                 &self.scope.visible_traits().0,
-                Some(module),
                 None,
                 |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;

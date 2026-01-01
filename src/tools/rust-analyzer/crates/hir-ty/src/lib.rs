@@ -2,6 +2,8 @@
 //! information and various assists.
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 // FIXME: We used to import `rustc_*` deps from `rustc_private` with `feature = "in-rust-tree" but
 // temporarily switched to crates.io versions due to hardships that working on them from rustc
@@ -23,6 +25,7 @@ extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
 extern crate self as hir_ty;
 
+pub mod builtin_derive;
 mod infer;
 mod inhabitedness;
 mod lower;
@@ -47,6 +50,7 @@ pub mod method_resolution;
 pub mod mir;
 pub mod primitive;
 pub mod traits;
+pub mod upvars;
 
 #[cfg(test)]
 mod test_db;
@@ -59,15 +63,15 @@ use hir_def::{CallableDefId, TypeOrConstParamId, type_ref::Rawness};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
+use macros::GenericTypeVisitable;
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
     BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
-    inherent::{IntoKind, SliceLike, Ty as _},
+    inherent::{IntoKind, Ty as _},
 };
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
-use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -75,8 +79,8 @@ use crate::{
     infer::unify::InferenceTable,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
-        CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, FnSig, PolyFnSig, Predicate,
-        Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
+        CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, FnSig, GenericArgs,
+        PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
     },
 };
 
@@ -86,16 +90,15 @@ pub use infer::{
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
     closure::analysis::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, could_unify_deeply,
+    could_coerce, could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
-    LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
+    GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
     associated_type_shorthand_candidates, diagnostics::*,
 };
-pub use method_resolution::check_orphan_rules;
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
-pub use traits::TraitEnvironment;
+pub use traits::{ParamEnvAndCrate, check_orphan_rules};
 pub use utils::{
     TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
     is_fn_unsafe_to_call, target_feature_is_safe_in_target,
@@ -104,7 +107,7 @@ pub use utils::{
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub enum MemoryMap<'db> {
     #[default]
     Empty,
@@ -112,7 +115,7 @@ pub enum MemoryMap<'db> {
     Complex(Box<ComplexMemoryMap<'db>>),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub struct ComplexMemoryMap<'db> {
     memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
     vtable: VTableMap<'db>,
@@ -134,7 +137,7 @@ impl ComplexMemoryMap<'_> {
 }
 
 impl<'db> MemoryMap<'db> {
-    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError<'db>> {
+    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -150,8 +153,8 @@ impl<'db> MemoryMap<'db> {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError<'db>>,
-    ) -> Result<FxHashMap<usize, usize>, MirEvalError<'db>> {
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
         let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
@@ -333,9 +336,9 @@ impl FnAbi {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum ImplTraitId<'db> {
-    ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx<'db>),
-    TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx<'db>),
+pub enum ImplTraitId {
+    ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx),
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
@@ -468,34 +471,34 @@ where
     Canonical {
         value,
         max_universe: rustc_type_ir::UniverseIndex::ZERO,
-        variables: CanonicalVars::new_from_iter(interner, error_replacer.vars),
+        variables: CanonicalVars::new_from_slice(&error_replacer.vars),
     }
 }
 
 /// To be used from `hir` only.
 pub fn callable_sig_from_fn_trait<'db>(
     self_ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
     db: &'db dyn HirDatabase,
 ) -> Option<(FnTrait, PolyFnSig<'db>)> {
-    let krate = trait_env.krate;
-    let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
+    let mut table = InferenceTable::new(db, trait_env.param_env, trait_env.krate, None);
+    let lang_items = table.interner().lang_items();
+
+    let fn_once_trait = FnTrait::FnOnce.get_id(lang_items)?;
     let output_assoc_type = fn_once_trait
         .trait_items(db)
         .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
-
-    let mut table = InferenceTable::new(db, trait_env.clone(), None);
 
     // Register two obligations:
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.next_ty_var();
-    let args = [self_ty, args_ty];
-    let trait_ref = TraitRef::new(table.interner(), fn_once_trait.into(), args);
+    let args = GenericArgs::new_from_slice(&[self_ty.into(), args_ty.into()]);
+    let trait_ref = TraitRef::new_from_args(table.interner(), fn_once_trait.into(), args);
     let projection = Ty::new_alias(
         table.interner(),
         rustc_type_ir::AliasTyKind::Projection,
-        AliasTy::new(table.interner(), output_assoc_type.into(), args),
+        AliasTy::new_from_args(table.interner(), output_assoc_type.into(), args),
     );
 
     let pred = Predicate::upcast_from(trait_ref, table.interner());
@@ -503,8 +506,8 @@ pub fn callable_sig_from_fn_trait<'db>(
         table.register_obligation(pred);
         let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
-            let fn_x_trait = fn_x.get_id(db, krate)?;
-            let trait_ref = TraitRef::new(table.interner(), fn_x_trait.into(), args);
+            let fn_x_trait = fn_x.get_id(lang_items)?;
+            let trait_ref = TraitRef::new_from_args(table.interner(), fn_x_trait.into(), args);
             if !table
                 .try_obligation(Predicate::upcast_from(trait_ref, table.interner()))
                 .no_solution()
@@ -568,6 +571,35 @@ where
     let mut collector = ParamCollector { params: FxHashSet::default() };
     value.visit_with(&mut collector);
     Vec::from_iter(collector.params)
+}
+
+struct TypeInferenceVarCollector<'db> {
+    type_inference_vars: Vec<Ty<'db>>,
+}
+
+impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollector<'db> {
+    type Result = ();
+
+    fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
+        use crate::rustc_type_ir::Flags;
+        if ty.is_ty_var() {
+            self.type_inference_vars.push(ty);
+        } else if ty.flags().intersects(rustc_type_ir::TypeFlags::HAS_TY_INFER) {
+            ty.super_visit_with(self);
+        } else {
+            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
+            // that there are no placeholders.
+        }
+    }
+}
+
+pub fn collect_type_inference_vars<'db, T>(value: &T) -> Vec<Ty<'db>>
+where
+    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
+{
+    let mut collector = TypeInferenceVarCollector { type_inference_vars: vec![] };
+    value.visit_with(&mut collector);
+    collector.type_inference_vars
 }
 
 pub fn known_const_to_ast<'db>(

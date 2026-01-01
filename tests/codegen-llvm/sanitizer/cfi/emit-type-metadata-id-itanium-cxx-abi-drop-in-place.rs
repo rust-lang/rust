@@ -9,7 +9,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: define{{.*}}4core3ptr47drop_in_place$LT$dyn$u20$core..marker..Send$GT$
+// CHECK-LABEL: define{{.*}}4core3ptr13drop_in_placeDNtNtB4_6marker4Send
 // CHECK-SAME:  {{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 // CHECK:       call i1 @llvm.type.test(ptr {{%.+}}, metadata !"_ZTSFvPu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops4drop4Dropu6regionEE")
 
@@ -20,7 +20,7 @@ struct PresentDrop;
 
 impl Drop for PresentDrop {
     fn drop(&mut self) {}
-    // CHECK: define{{.*}}4core3ptr{{[0-9]+}}drop_in_place$LT${{.*}}PresentDrop$GT${{.*}}!type ![[TYPE1]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+    // CHECK: define{{.*}}4core3ptr{{[0-9]+}}drop_in_place{{.*}}PresentDrop{{.*}}!type ![[TYPE1]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 }
 
 pub fn foo() {

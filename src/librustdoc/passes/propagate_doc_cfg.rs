@@ -1,8 +1,7 @@
 //! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
 
-use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_hir::{AttrArgs, Attribute};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_span::symbol::sym;
 
 use crate::clean::inline::{load_attrs, merge_attrs};
@@ -30,59 +29,22 @@ struct CfgPropagator<'a, 'tcx> {
     cfg_info: CfgInfo,
 }
 
-/// Returns true if the provided `token` is a `cfg` ident.
-fn is_cfg_token(token: &TokenTree) -> bool {
-    // We only keep `doc(cfg)` items.
-    matches!(token, TokenTree::Token(Token { kind: TokenKind::Ident(sym::cfg, _,), .. }, _,),)
-}
-
-/// We only want to keep `#[cfg()]` and `#[doc(cfg())]` attributes so we rebuild a vec of
-/// `TokenTree` with only the tokens we're interested into.
-fn filter_non_cfg_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> {
-    let mut tokens = Vec::with_capacity(args_tokens.len());
-    let mut skip_next_delimited = false;
-    for token in args_tokens.iter() {
-        match token {
-            TokenTree::Delimited(..) => {
-                if !skip_next_delimited {
-                    tokens.push(token.clone());
-                }
-                skip_next_delimited = false;
-            }
-            token if is_cfg_token(token) => {
-                skip_next_delimited = false;
-                tokens.push(token.clone());
-            }
-            _ => {
-                skip_next_delimited = true;
-            }
-        }
-    }
-    tokens
-}
-
 /// This function goes through the attributes list (`new_attrs`) and extract the `cfg` tokens from
 /// it and put them into `attrs`.
 fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
     for attr in new_attrs {
-        if attr.is_doc_comment().is_some() {
-            continue;
-        }
-        let mut attr = attr.clone();
-        if let Attribute::Unparsed(ref mut normal) = attr
-            && let [ident] = &*normal.path.segments
+        if let Attribute::Parsed(AttributeKind::Doc(d)) = attr
+            && !d.cfg.is_empty()
         {
-            let ident = ident.name;
-            if ident == sym::doc
-                && let AttrArgs::Delimited(args) = &mut normal.args
-            {
-                let tokens = filter_non_cfg_tokens_from_list(&args.tokens);
-                args.tokens = TokenStream::new(tokens);
-                attrs.push(attr);
-            } else if ident == sym::cfg_trace {
-                // If it's a `cfg()` attribute, we keep it.
-                attrs.push(attr);
-            }
+            let mut new_attr = DocAttribute::default();
+            new_attr.cfg = d.cfg.clone();
+            attrs.push(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))));
+        } else if let Attribute::Unparsed(normal) = attr
+            && let [ident] = &*normal.path.segments
+            && ident.name == sym::cfg_trace
+        {
+            // If it's a `cfg()` attribute, we keep it.
+            attrs.push(attr.clone());
         }
     }
 }

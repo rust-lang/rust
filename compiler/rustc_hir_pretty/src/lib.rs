@@ -180,6 +180,8 @@ impl<'a> State<'a> {
             Node::ConstArg(a) => self.print_const_arg(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(a),
+            // FIXME(mgca): proper printing for struct exprs
+            Node::ConstArgExprField(_) => self.word("/* STRUCT EXPR */"),
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
@@ -445,11 +447,6 @@ impl<'a> State<'a> {
                 self.print_const_arg(length);
                 self.word("]");
             }
-            hir::TyKind::Typeof(ref e) => {
-                self.word("typeof(");
-                self.print_anon_const(e);
-                self.word(")");
-            }
             hir::TyKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
@@ -690,7 +687,7 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("union");
                 self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }
-            hir::ItemKind::Impl(hir::Impl { generics, of_trait, self_ty, items }) => {
+            hir::ItemKind::Impl(hir::Impl { generics, of_trait, self_ty, items, constness }) => {
                 let (cb, ib) = self.head("");
 
                 let impl_generics = |this: &mut Self| {
@@ -702,9 +699,13 @@ impl<'a> State<'a> {
                 };
 
                 match of_trait {
-                    None => impl_generics(self),
+                    None => {
+                        if let hir::Constness::Const = constness {
+                            self.word_nbsp("const");
+                        }
+                        impl_generics(self)
+                    }
                     Some(&hir::TraitImplHeader {
-                        constness,
                         safety,
                         polarity,
                         defaultness,
@@ -1136,6 +1137,8 @@ impl<'a> State<'a> {
 
     fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
         match &const_arg.kind {
+            // FIXME(mgca): proper printing for struct exprs
+            ConstArgKind::Struct(..) => self.word("/* STRUCT EXPR */"),
             ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
             ConstArgKind::Error(_, _) => self.word("/*ERROR*/"),
@@ -1877,7 +1880,6 @@ impl<'a> State<'a> {
                 }
                 self.print_literal(lit);
             }
-            hir::PatExprKind::ConstBlock(c) => self.print_inline_const(c),
             hir::PatExprKind::Path(qpath) => self.print_qpath(qpath, true),
         }
     }
@@ -2028,9 +2030,15 @@ impl<'a> State<'a> {
                 self.print_pat(inner);
                 self.pclose();
             }
-            PatKind::Ref(inner, mutbl) => {
+            PatKind::Ref(inner, pinned, mutbl) => {
                 let is_range_inner = matches!(inner.kind, PatKind::Range(..));
                 self.word("&");
+                if pinned.is_pinned() {
+                    self.word("pin ");
+                    if mutbl.is_not() {
+                        self.word("const ");
+                    }
+                }
                 self.word(mutbl.prefix_str());
                 if is_range_inner {
                     self.popen();

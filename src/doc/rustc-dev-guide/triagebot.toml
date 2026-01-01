@@ -53,10 +53,6 @@ allow-unauthenticated = [
 # Documentation at: https://forge.rust-lang.org/triagebot/note.html
 [note]
 
-# Prevents mentions in commits to avoid users being spammed
-# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
-[no-mentions]
-
 # Canonicalize issue numbers to avoid closing the wrong issue
 # when commits are included in subtrees, as well as warning links in commits.
 # Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html

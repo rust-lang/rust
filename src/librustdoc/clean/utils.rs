@@ -6,6 +6,8 @@ use std::{ascii, mem};
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
@@ -26,6 +28,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::display::Joined as _;
+use crate::formats::item_type::ItemType;
 
 #[cfg(test)]
 mod tests;
@@ -45,7 +48,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 if cx.tcx.is_compiler_builtins(it.item_id.krate()) {
                     cx.cache.masked_crates.insert(it.item_id.krate());
                 } else if it.is_extern_crate()
-                    && it.attrs.has_doc_flag(sym::masked)
+                    && it.attrs.has_doc_flag(|d| d.masked.is_some())
                     && let Some(def_id) = it.item_id.as_def_id()
                     && let Some(local_def_id) = def_id.as_local()
                     && let Some(cnum) = cx.tcx.extern_mod_stmt_cnum(local_def_id)
@@ -303,7 +306,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
+        PatKind::Box(p) | PatKind::Ref(p, _, _) | PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::TupleStruct(p, ..) | PatKind::Expr(PatExpr { kind: PatExprKind::Path(p), .. }) => {
             qpath_to_string(p)
         }
@@ -354,7 +357,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
-            cv.valtree.unwrap_leaf().to_string()
+            cv.to_leaf().to_string()
         }
         _ => n.to_string(),
     }
@@ -496,7 +499,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
 
     let (kind, did) = match res {
         Res::Def(
-            kind @ (AssocTy
+            AssocTy
             | AssocFn
             | AssocConst
             | Variant
@@ -511,9 +514,9 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Const
             | Static { .. }
             | Macro(..)
-            | TraitAlias),
+            | TraitAlias,
             did,
-        ) => (kind.into(), did),
+        ) => (ItemType::from_def_id(did, cx.tcx), did),
 
         _ => panic!("register_res: unexpected {res:?}"),
     };
@@ -561,24 +564,17 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
     }
 }
 
-/// Checks for the existence of `hidden` in the attribute below if `flag` is `sym::hidden`:
-///
-/// ```
-/// #[doc(hidden)]
-/// pub fn foo() {}
-/// ```
-///
 /// This function exists because it runs on `hir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
-pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
-    attrs_have_doc_flag(tcx.get_attrs(did, sym::doc), flag)
-}
-
-pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
-    flag: Symbol,
+pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(
+    tcx: TyCtxt<'_>,
+    did: DefId,
+    callback: F,
 ) -> bool {
-    attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))
+    tcx.get_all_attrs(did).iter().any(|attr| match attr {
+        Attribute::Parsed(AttributeKind::Doc(d)) => callback(d),
+        _ => false,
+    })
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links

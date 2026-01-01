@@ -491,7 +491,7 @@ pub(crate) mod rustc {
         ) -> Result<Self, Err> {
             // This constructor does not support non-`FieldsShape::Arbitrary`
             // layouts.
-            let FieldsShape::Arbitrary { offsets, memory_index } = layout.fields() else {
+            let FieldsShape::Arbitrary { offsets, in_memory_order } = layout.fields() else {
                 return Err(Err::NotYetSupported);
             };
 
@@ -519,8 +519,7 @@ pub(crate) mod rustc {
             }
 
             // Append the fields, in memory order, to the layout.
-            let inverse_memory_index = memory_index.invert_bijective_mapping();
-            for &field_idx in inverse_memory_index.iter() {
+            for &field_idx in in_memory_order.iter() {
                 // Add interfield padding.
                 let padding_needed = offsets[field_idx] - size;
                 let padding = Self::padding(padding_needed.bytes_usize());

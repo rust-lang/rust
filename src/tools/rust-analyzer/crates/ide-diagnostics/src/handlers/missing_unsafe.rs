@@ -296,8 +296,12 @@ fn main() {
 #[rustc_deprecated_safe_2024]
 fn set_var() {}
 
+#[rustc_deprecated_safe_2024(audit_that = "something")]
+fn set_var2() {}
+
 fn main() {
     set_var();
+    set_var2();
 }
 "#,
         );
@@ -1092,6 +1096,21 @@ fn main() {
     requires_target_feature();
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn multiple_target_feature_enable() {
+        check_diagnostics(
+            r#"
+#[target_feature(enable = "avx2,fma")]
+fn foo() {}
+
+#[target_feature(enable = "avx2", enable = "fma")]
+fn bar() {
+    foo();
+}
+        "#,
         );
     }
 }

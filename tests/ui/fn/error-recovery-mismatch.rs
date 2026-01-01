@@ -1,3 +1,4 @@
+//@ edition:2015
 // Used to ICE due to a size mismatch between the actual fake signature of `fold` and the
 // generated signature used reporting the parameter mismatch at the call site.
 // See issue #135124

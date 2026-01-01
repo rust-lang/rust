@@ -49,7 +49,7 @@ LL +     fn fun();
    |
 help: ... and declare the trait to be const instead
    |
-LL | const trait NonConst {
+LL | const fn main() {}
    | +++++
 
 error: aborting due to 4 previous errors

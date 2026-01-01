@@ -11,14 +11,14 @@ use core::option::Option;
 #[no_mangle]
 pub fn u64_opt_as_slice(o: &Option<u64>) -> &[u64] {
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[LEN:.+]] = load i64
     // CHECK-SAME: !range ![[META_U64:[0-9]+]],
     // CHECK-SAME: !noundef
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[T0:.+]] = insertvalue { ptr, i64 } poison, ptr %{{.+}}, 0
@@ -31,13 +31,13 @@ pub fn u64_opt_as_slice(o: &Option<u64>) -> &[u64] {
 #[no_mangle]
 pub fn nonzero_u64_opt_as_slice(o: &Option<NonZero<u64>>) -> &[NonZero<u64>] {
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[NZ:.+]] = icmp ne i64 %{{.+}}, 0
     // CHECK-NEXT: %[[LEN:.+]] = zext i1 %[[NZ]] to i64
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[T0:.+]] = insertvalue { ptr, i64 } poison, ptr %o, 0
@@ -50,7 +50,7 @@ pub fn nonzero_u64_opt_as_slice(o: &Option<NonZero<u64>>) -> &[NonZero<u64>] {
 #[no_mangle]
 pub fn u8_opt_as_slice(o: &Option<u8>) -> &[u8] {
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[TAG:.+]] = load i8
@@ -58,7 +58,7 @@ pub fn u8_opt_as_slice(o: &Option<u8>) -> &[u8] {
     // CHECK-SAME: !noundef
     // CHECK: %[[LEN:.+]] = zext{{.*}} i8 %[[TAG]] to i64
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: %[[T0:.+]] = insertvalue { ptr, i64 } poison, ptr %{{.+}}, 0

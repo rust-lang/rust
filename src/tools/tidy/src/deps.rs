@@ -1,6 +1,7 @@
 //! Checks the licenses of third-party dependencies.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 use std::fs::{File, read_dir};
 use std::io::Write;
 use std::path::Path;
@@ -13,6 +14,25 @@ use crate::diagnostics::{RunningCheck, TidyCtx};
 
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
+
+#[derive(Clone, Copy)]
+struct ListLocation {
+    path: &'static str,
+    line: u32,
+}
+
+impl Display for ListLocation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.path, self.line)
+    }
+}
+
+/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
+macro_rules! location {
+    (+ $offset:literal) => {
+        ListLocation { path: file!(), line: line!() + $offset }
+    };
+}
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
@@ -42,6 +62,7 @@ const LICENSES: &[&str] = &[
     "MIT/Apache-2.0",
     "Unlicense OR MIT",
     "Unlicense/MIT",
+    "Zlib",                                                // foldhash (FIXME: see PERMITTED_STDLIB_DEPENDENCIES)
     // tidy-alphabetical-end
 ];
 
@@ -55,6 +76,7 @@ const LICENSES_TOOLS: &[&str] = &[
     "0BSD",
     "Apache-2.0 AND ISC",
     "Apache-2.0 OR BSL-1.0",  // BSL is not acceptable, but we use it under Apache-2.0
+    "Apache-2.0 OR GPL-2.0-only",
     "Apache-2.0 WITH LLVM-exception",
     "Apache-2.0",
     "BSD-2-Clause",
@@ -84,6 +106,8 @@ pub(crate) struct WorkspaceInfo<'a> {
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
 }
+
+const WORKSPACE_LOCATION: ListLocation = location!(+4);
 
 /// The workspaces to check for licensing and optionally permitted dependencies.
 // FIXME auto detect all cargo workspaces
@@ -167,12 +191,6 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &["src/tools/rustc-perf"],
     },
     WorkspaceInfo {
-        path: "src/tools/test-float-parse",
-        exceptions: EXCEPTIONS,
-        crates_and_deps: None,
-        submodules: &[],
-    },
-    WorkspaceInfo {
         path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
         exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
         crates_and_deps: None,
@@ -226,10 +244,14 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
 
 const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     // tidy-alphabetical-start
-    ("cssparser", "MPL-2.0"),
-    ("cssparser-macros", "MPL-2.0"),
-    ("dtoa-short", "MPL-2.0"),
-    ("mdbook", "MPL-2.0"),
+    ("font-awesome-as-a-crate", "CC-BY-4.0 AND MIT"),
+    ("mdbook-core", "MPL-2.0"),
+    ("mdbook-driver", "MPL-2.0"),
+    ("mdbook-html", "MPL-2.0"),
+    ("mdbook-markdown", "MPL-2.0"),
+    ("mdbook-preprocessor", "MPL-2.0"),
+    ("mdbook-renderer", "MPL-2.0"),
+    ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
 
@@ -245,19 +267,6 @@ const EXCEPTIONS_GCC: ExceptionList = &[
 const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[];
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
-
-#[derive(Clone, Copy)]
-struct ListLocation {
-    path: &'static str,
-    line: u32,
-}
-
-/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
-macro_rules! location {
-    (+ $offset:literal) => {
-        ListLocation { path: file!(), line: line!() + $offset }
-    };
-}
 
 const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 
@@ -279,10 +288,10 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "ar_archive_writer",
     "arrayref",
     "arrayvec",
-    "autocfg",
     "bitflags",
     "blake3",
     "block-buffer",
+    "block2",
     "bstr",
     "cc",
     "cfg-if",
@@ -303,6 +312,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "derive-where",
     "derive_setters",
     "digest",
+    "dispatch2",
     "displaydoc",
     "dissimilar",
     "dyn-clone",
@@ -359,11 +369,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "miniz_oxide",
     "nix",
     "nu-ansi-term",
+    "objc2",
+    "objc2-encode",
     "object",
     "odht",
     "once_cell",
     "once_cell_polyfill",
-    "overload",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
@@ -416,6 +427,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha2",
     "sharded-slab",
     "shlex",
+    "simd-adler32",
     "smallvec",
     "stable_deref_trait",
     "stacker",
@@ -454,16 +466,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-script",
     "unicode-security",
     "unicode-width",
-    "unicode-xid",
     "utf8parse",
     "valuable",
     "version_check",
     "wasi",
     "wasm-encoder",
     "wasmparser",
-    "winapi",
-    "winapi-i686-pc-windows-gnu",
-    "winapi-x86_64-pc-windows-gnu",
     "windows",
     "windows-collections",
     "windows-core",
@@ -509,6 +517,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "compiler_builtins",
     "dlmalloc",
+    "foldhash", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "fortanix-sgx-abi",
     "getopts",
     "gimli",
@@ -530,6 +539,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "unwinding",
     "vex-sdk",
     "wasi",
+    "windows-link",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -591,6 +601,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "region",
     "rustc-hash",
     "serde",
+    "serde_core",
     "serde_derive",
     "smallvec",
     "stable_deref_trait",
@@ -642,6 +653,13 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
+        // Check for packages which have been moved into a different workspace and not updated
+        let absolute_root =
+            if path == "." { root.to_path_buf() } else { t!(std::path::absolute(root.join(path))) };
+        let absolute_root_real = t!(std::path::absolute(&metadata.workspace_root));
+        if absolute_root_real != absolute_root {
+            check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
+        }
         check_license_exceptions(&metadata, path, exceptions, &mut check);
         if let Some((crates, permitted_deps, location)) = crates_and_deps {
             let descr = crates.get(0).unwrap_or(&path);

@@ -396,6 +396,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) -> Self::Result {
         walk_expr_field(self, field)
     }
+    fn visit_const_arg_expr_field(&mut self, field: &'v ConstArgExprField<'v>) -> Self::Result {
+        walk_const_arg_expr_field(self, field)
+    }
     fn visit_pattern_type_pattern(&mut self, p: &'v TyPat<'v>) -> Self::Result {
         walk_ty_pat(self, p)
     }
@@ -532,7 +535,7 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> 
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::Result {
-    let Item { owner_id: _, kind, span: _, vis_span: _, has_delayed_lints: _ } = item;
+    let Item { owner_id: _, kind, span: _, vis_span: _, has_delayed_lints: _, eii: _ } = item;
     try_visit!(visitor.visit_id(item.hir_id()));
     match *kind {
         ItemKind::ExternCrate(orig_name, ident) => {
@@ -594,10 +597,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
-        ItemKind::Impl(Impl { generics, of_trait, self_ty, items }) => {
+        ItemKind::Impl(Impl { generics, of_trait, self_ty, items, constness: _ }) => {
             try_visit!(visitor.visit_generics(generics));
             if let Some(TraitImplHeader {
-                constness: _,
                 safety: _,
                 polarity: _,
                 defaultness: _,
@@ -752,7 +754,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
         }
         PatKind::Box(ref subpattern)
         | PatKind::Deref(ref subpattern)
-        | PatKind::Ref(ref subpattern, _) => {
+        | PatKind::Ref(ref subpattern, _, _) => {
             try_visit!(visitor.visit_pat(subpattern));
         }
         PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
@@ -790,7 +792,6 @@ pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>)
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
         PatExprKind::Lit { lit, negated } => visitor.visit_lit(*hir_id, *lit, *negated),
-        PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, *span),
     }
 }
@@ -955,6 +956,17 @@ pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField
     try_visit!(visitor.visit_ident(*ident));
     visitor.visit_expr(*expr)
 }
+
+pub fn walk_const_arg_expr_field<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    field: &'v ConstArgExprField<'v>,
+) -> V::Result {
+    let ConstArgExprField { hir_id, field, expr, span: _ } = field;
+    try_visit!(visitor.visit_id(*hir_id));
+    try_visit!(visitor.visit_ident(*field));
+    visitor.visit_const_arg_unambig(*expr)
+}
+
 /// We track whether an infer var is from a [`Ty`], [`ConstArg`], or [`GenericArg`] so that
 /// HIR visitors overriding [`Visitor::visit_infer`] can determine what kind of infer is being visited
 pub enum InferKind<'hir> {
@@ -1030,7 +1042,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
             }
             try_visit!(visitor.visit_lifetime(lifetime));
         }
-        TyKind::Typeof(ref expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::InferDelegation(..) | TyKind::Err(_) => {}
         TyKind::Pat(ty, pat) => {
             try_visit!(visitor.visit_ty_unambig(ty));
@@ -1070,6 +1081,15 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     let ConstArg { hir_id, kind } = const_arg;
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
+        ConstArgKind::Struct(qpath, field_exprs) => {
+            try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
+
+            for field_expr in *field_exprs {
+                try_visit!(visitor.visit_const_arg_expr_field(field_expr));
+            }
+
+            V::Result::output()
+        }
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
         ConstArgKind::Error(_, _) => V::Result::output(), // errors and spans are not important

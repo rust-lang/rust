@@ -350,7 +350,7 @@ fn main() {
 fn hover_closure() {
     check(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;
@@ -3280,7 +3280,7 @@ fn test_hover_no_memory_layout() {
 
     check_hover_no_memory_layout(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;
@@ -8199,19 +8199,31 @@ fn main() {
 
 #[test]
 fn hover_underscore_type() {
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: _$0 = 0;
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: (_$0,) = (0,);
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
 }
 
@@ -11166,6 +11178,63 @@ fn foo() {
             ---
 
             no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn hover_trait_impl_shows_generic_args() {
+    // Single generic arg
+    check(
+        r#"
+trait Foo<T> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<()> for T {
+    fn fo$0o(&self) {}
+}
+
+fn bar() {
+    ().foo();
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<()> for T
+            fn foo(&self)
+            ```
+        "#]],
+    );
+
+    // Multiple generic args
+    check(
+        r#"
+trait Foo<A, B> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<i32, u64> for T {
+    fn fo$0o(&self) {}
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<i32, u64> for T
+            fn foo(&self)
+            ```
         "#]],
     );
 }

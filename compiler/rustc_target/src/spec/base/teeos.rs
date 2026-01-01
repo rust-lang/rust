@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, TargetOptions, add_link_args};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelroLevel, TargetOptions, add_link_args,
+};
 
 pub(crate) fn opts() -> TargetOptions {
     let lld_args = &["-zmax-page-size=4096", "-znow", "-ztext", "--execute-only"];
@@ -8,8 +10,7 @@ pub(crate) fn opts() -> TargetOptions {
     add_link_args(&mut pre_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), cc_args);
 
     TargetOptions {
-        os: "teeos".into(),
-        vendor: "unknown".into(),
+        os: Os::TeeOs,
         dynamic_linking: true,
         linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         // rpath hardcodes -Wl, so it can't be used together with ld.lld.

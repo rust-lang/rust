@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::byte_char_slices)]
 
 fn main() {

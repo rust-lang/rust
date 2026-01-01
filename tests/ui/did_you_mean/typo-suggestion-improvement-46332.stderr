@@ -5,7 +5,13 @@ LL | struct TyUint {}
    | ------------- similarly named struct `TyUint` defined here
 ...
 LL |     TyUInt {};
-   |     ^^^^^^ help: a struct with a similar name exists (notice the capitalization): `TyUint`
+   |     ^^^^^^
+   |
+help: a struct with a similar name exists (notice the capitalization)
+   |
+LL -     TyUInt {};
+LL +     TyUint {};
+   |
 
 error: aborting due to 1 previous error
 

@@ -47,8 +47,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 triomphe.workspace = true
-toml = "0.8.23"
-nohash-hasher.workspace = true
+toml.workspace = true
 walkdir = "2.5.0"
 semver.workspace = true
 memchr = "2.7.5"
@@ -61,7 +60,6 @@ hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
 ide-db.workspace = true
-intern.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
 ide.workspace = true
@@ -100,12 +98,16 @@ syntax-bridge.workspace = true
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["stdx/force-always-assert"]
 in-rust-tree = [
-  "syntax/in-rust-tree",
-  "parser/in-rust-tree",
-  "hir/in-rust-tree",
+  "cfg/in-rust-tree",
   "hir-def/in-rust-tree",
   "hir-ty/in-rust-tree",
+  "hir/in-rust-tree",
+  "ide-ssr/in-rust-tree",
+  "ide/in-rust-tree",
   "load-cargo/in-rust-tree",
+  "parser/in-rust-tree",
+  "proc-macro-api/in-rust-tree",
+  "syntax/in-rust-tree",
 ]
 dhat = ["dep:dhat"]
 

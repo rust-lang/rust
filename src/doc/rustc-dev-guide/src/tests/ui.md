@@ -12,7 +12,7 @@ the resulting program](#controlling-passfail-expectations) to verify its
 behavior.
 
 For a survey of each subdirectory's purpose under `tests/ui`, consult the
-[SUMMARY.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/SUMMARY.md).
+[README.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/README.md).
 This is useful if you write a new test, and are looking for a category to
 place it in.
 

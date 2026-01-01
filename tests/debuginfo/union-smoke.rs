@@ -4,20 +4,20 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print u
-// gdb-check:$1 = union_smoke::U {a: (2, 2), b: 514}
-// gdb-command:print union_smoke::SU
-// gdb-check:$2 = union_smoke::U {a: (1, 1), b: 257}
+//@ gdb-command:run
+//@ gdb-command:print u
+//@ gdb-check:$1 = union_smoke::U {a: (2, 2), b: 514}
+//@ gdb-command:print union_smoke::SU
+//@ gdb-check:$2 = union_smoke::U {a: (1, 1), b: 257}
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
-// lldb-command:v u
-// lldb-check:[...] { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
+//@ lldb-command:run
+//@ lldb-command:v u
+//@ lldb-check:[...] { a = ('\x02', '\x02') { 0 = '\x02' 1 = '\x02' } b = 514 }
 
-// lldb-command:print union_smoke::SU
-// lldb-check:[...] { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
+//@ lldb-command:print union_smoke::SU
+//@ lldb-check:[...] { a = ('\x01', '\x01') { 0 = '\x01' 1 = '\x01' } b = 257 }
 
 #![allow(unused)]
 

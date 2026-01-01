@@ -1,4 +1,4 @@
-use hir_def::db::DefDatabase;
+use hir_def::{HasModule, db::DefDatabase};
 use hir_expand::EditionedFileId;
 use span::Edition;
 use syntax::{TextRange, TextSize};
@@ -15,12 +15,12 @@ use crate::{
 
 use super::{MirEvalError, interpret_mir};
 
-fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError<'_>> {
+fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
     crate::attach_db(db, || {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let module_id = db.module_for_file(file_id.file_id(db));
         let def_map = module_id.def_map(db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
         let func_id = scope
             .declarations()
             .find_map(|x| match x {
@@ -39,8 +39,12 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         let body = db
             .monomorphized_mir_body(
                 func_id.into(),
-                GenericArgs::new_from_iter(interner, []),
-                db.trait_environment(func_id.into()),
+                GenericArgs::empty(interner).store(),
+                crate::ParamEnvAndCrate {
+                    param_env: db.trait_environment(func_id.into()),
+                    krate: func_id.krate(db),
+                }
+                .store(),
             )
             .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
@@ -87,7 +91,7 @@ fn check_pass_and_stdio(
                         line_index(range.end())
                     )
                 };
-                let krate = db.module_for_file(file_id.file_id(&db)).krate();
+                let krate = db.module_for_file(file_id.file_id(&db)).krate(&db);
                 e.pretty_print(
                     &mut err,
                     &db,
@@ -119,7 +123,7 @@ fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: 
 
 fn check_error_with(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    expect_err: impl FnOnce(MirEvalError<'_>) -> bool,
+    expect_err: impl FnOnce(MirEvalError) -> bool,
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     crate::attach_db(&db, || {
@@ -544,7 +548,7 @@ fn main() {
 fn for_loop() {
     check_pass(
         r#"
-//- minicore: iterator, add
+//- minicore: iterator, add, builtin_impls
 fn should_not_reach() {
     _ // FIXME: replace this function with panic when that works
 }
@@ -706,7 +710,7 @@ fn main() {
 fn closure_state() {
     check_pass(
         r#"
-//- minicore: fn, add, copy
+//- minicore: fn, add, copy, builtin_impls
 fn should_not_reach() {
     _ // FIXME: replace this function with panic when that works
 }

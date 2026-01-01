@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
 };
@@ -27,6 +27,7 @@ enum NonAsmTypeReason<'tcx> {
     InvalidElement(DefId, Ty<'tcx>),
     NotSizedPtr(Ty<'tcx>),
     EmptySIMDArray(Ty<'tcx>),
+    Tainted(ErrorGuaranteed),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -93,6 +94,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
             }
             ty::Adt(adt, args) if adt.repr().simd() => {
+                if !adt.is_struct() {
+                    let guar = self.fcx.dcx().span_delayed_bug(
+                        span,
+                        format!("repr(simd) should only be used on structs, got {}", adt.descr()),
+                    );
+                    return Err(NonAsmTypeReason::Tainted(guar));
+                }
+
                 let fields = &adt.non_enum_variant().fields;
                 if fields.is_empty() {
                     return Err(NonAsmTypeReason::EmptySIMDArray(ty));
@@ -112,13 +121,12 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 len,
                             )
                         };
-                        if let Some(len) = len.try_to_target_usize(self.tcx()) {
-                            (len, ty)
-                        } else {
+                        let Some(len) = len.try_to_target_usize(self.tcx()) else {
                             return Err(NonAsmTypeReason::UnevaluatedSIMDArrayLength(
                                 field.did, len,
                             ));
-                        }
+                        };
+                        (len, ty)
                     }
                     _ => (fields.len() as u64, elem_ty),
                 };
@@ -170,19 +178,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
             ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::MaybeUninit) => {
-                let fields = &adt.non_enum_variant().fields;
-                let ty = fields[FieldIdx::ONE].ty(self.tcx(), args);
-                // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
-                // If so, just get it from the args.
-                let ty::Adt(ty, args) = ty.kind() else {
-                    unreachable!("expected first field of `MaybeUninit` to be an ADT")
-                };
-                assert!(
-                    ty.is_manually_drop(),
-                    "expected first field of `MaybeUninit` to be `ManuallyDrop`"
-                );
-                let fields = &ty.non_enum_variant().fields;
-                let ty = fields[FieldIdx::ZERO].ty(self.tcx(), args);
+                let ty = args.type_at(0);
                 self.get_asm_ty(expr.span, ty)
             }
             _ => self.get_asm_ty(expr.span, ty),
@@ -233,6 +229,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     NonAsmTypeReason::EmptySIMDArray(ty) => {
                         let msg = format!("use of empty SIMD vector `{ty}`");
                         self.fcx.dcx().struct_span_err(expr.span, msg).emit();
+                    }
+                    NonAsmTypeReason::Tainted(_error_guard) => {
+                        // An error has already been reported.
                     }
                 }
                 return None;

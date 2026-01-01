@@ -105,6 +105,14 @@ fn correct3() {
     }
 }
 
+fn with_adjustment(f: &unsafe fn()) {
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        f();
+        f();
+    }
+}
+
 fn issue10064() {
     unsafe fn read_char_bad(ptr: *const u8) -> char {
         unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
@@ -206,6 +214,234 @@ async fn issue13879() {
     unsafe {
         //~^ multiple_unsafe_ops_per_block
         Some(foo_unchecked()).unwrap_unchecked().await;
+    }
+}
+
+fn issue16076() {
+    #[derive(Clone, Copy)]
+    union U {
+        i: u32,
+        f: f32,
+    }
+
+    let u = U { i: 0 };
+
+    // Taking a raw pointer to a place is safe since Rust 1.92
+    unsafe {
+        _ = &raw const u.i;
+        _ = &raw const u.i;
+    }
+
+    // Taking a reference to a union field is not safe
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        _ = &u.i;
+        _ = &u.i;
+    }
+
+    // Check that we still check and lint the prefix of the raw pointer to a field access
+    #[expect(clippy::deref_addrof)]
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        _ = &raw const (*&raw const u).i;
+        _ = &raw const (*&raw const u).i;
+    }
+
+    union V {
+        u: U,
+    }
+
+    // Taking a raw pointer to a union field of an union field (etc.) is safe
+    let v = V { u };
+    unsafe {
+        _ = &raw const v.u.i;
+        _ = &raw const v.u.i;
+    }
+
+    // Check that unions in structs work properly as well
+    struct T {
+        u: U,
+    }
+    let t = T { u };
+    unsafe {
+        _ = &raw const t.u.i;
+        _ = &raw const t.u.i;
+    }
+
+    // As well as structs in unions
+    #[derive(Clone, Copy)]
+    struct X {
+        i: i32,
+    }
+    union Z {
+        x: X,
+    }
+    let z = Z { x: X { i: 0 } };
+    unsafe {
+        _ = &raw const z.x.i;
+        _ = &raw const z.x.i;
+    }
+
+    // If a field needs to be adjusted then it is accessed
+    struct S {
+        i: i32,
+    }
+    union W<'a> {
+        s: &'a S,
+    }
+    let s = S { i: 0 };
+    let w = W { s: &s };
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        _ = &raw const w.s.i;
+        _ = &raw const w.s.i;
+    }
+}
+
+fn check_closures() {
+    unsafe fn apply(f: impl Fn()) {
+        todo!()
+    }
+    unsafe fn f(_x: i32) {
+        todo!()
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        apply(|| f(0));
+    }
+}
+
+fn issue16116() {
+    unsafe fn foo() -> u32 {
+        0
+    }
+
+    // Do not lint even though `format!` expansion
+    // contains unsafe calls.
+    unsafe {
+        let _ = format!("{}", foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        let _ = format!("{}", foo());
+        let _ = format!("{}", foo());
+    }
+
+    // Do not lint: only one `assert!()` argument is unsafe
+    unsafe {
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+    }
+
+    // Each argument of a macro call may count as an unsafe operation.
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(foo(), 0, "{}", foo()); // One unsafe operation
+    }
+
+    macro_rules! twice {
+        ($e:expr) => {{
+            $e;
+            $e;
+        }};
+    }
+
+    // Do not lint, a repeated argument used twice by a macro counts
+    // as at most one unsafe operation.
+    unsafe {
+        twice!(foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        twice!(foo());
+        twice!(foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+    }
+
+    macro_rules! unsafe_twice {
+        ($e:expr) => {
+            unsafe {
+                $e;
+                $e;
+            }
+        };
+    };
+
+    // A macro whose expansion contains unsafe blocks will not
+    // check inside the blocks.
+    unsafe {
+        unsafe_twice!(foo());
+    }
+
+    macro_rules! double_non_arg_unsafe {
+        () => {{
+            _ = str::from_utf8_unchecked(&[]);
+            _ = str::from_utf8_unchecked(&[]);
+        }};
+    }
+
+    // Do not lint: each unsafe expression contained in the
+    // macro expansion will count towards the macro call.
+    unsafe {
+        double_non_arg_unsafe!();
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        double_non_arg_unsafe!();
+        double_non_arg_unsafe!();
+    }
+
+    // Do not lint: the inner macro call counts as one unsafe op.
+    unsafe {
+        assert_eq!(double_non_arg_unsafe!(), ());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(double_non_arg_unsafe!(), ());
+        assert_eq!(double_non_arg_unsafe!(), ());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!((double_non_arg_unsafe!(), double_non_arg_unsafe!()), ((), ()));
+    }
+
+    macro_rules! unsafe_with_arg {
+        ($e:expr) => {{
+            _ = str::from_utf8_unchecked(&[]);
+            $e;
+        }};
+    }
+
+    // A confusing situation: the macro call counts towards two unsafe calls,
+    // one coming from inside the macro itself, and one coming from its argument.
+    // The error message may seem a bit strange as both the macro call and its
+    // argument will be marked as counting as unsafe ops, but a short investigation
+    // in those rare situations should sort it out easily.
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        unsafe_with_arg!(foo());
+    }
+
+    macro_rules! ignore {
+        ($e: expr) => {};
+    }
+
+    // Another surprising case is when the macro argument is not
+    // used in the expansion, but in this case we won't see the
+    // unsafe operation at all.
+    unsafe {
+        ignore!(foo());
+        ignore!(foo());
     }
 }
 

@@ -1795,7 +1795,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(ty),
                 hir::Path { segments: [segment], .. },
             ))
-            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
+            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment))
                 if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
                     && let Ok(pick) = self.probe_for_name(
                         Mode::Path,
@@ -1805,12 +1805,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self_ty,
                         expr.hir_id,
                         ProbeScope::TraitsInScope,
-                    )
-                {
-                    (pick.item, segment)
-                } else {
-                    return false;
-                }
+                    ) =>
+            {
+                (pick.item, segment)
             }
             hir::ExprKind::Path(QPath::Resolved(
                 None,
@@ -1821,16 +1818,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if old_item_name != segment.ident.name {
                     return false;
                 }
-                if let Some(item) = self
+                let Some(item) = self
                     .tcx
                     .associated_items(self.tcx.parent(old_def_id))
                     .filter_by_name_unhygienic(capitalized_name)
                     .next()
-                {
-                    (*item, segment)
-                } else {
+                else {
                     return false;
-                }
+                };
+                (*item, segment)
             }
             _ => return false,
         };
@@ -2106,14 +2102,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )),
         );
 
-        let (article, kind, variant, sugg_operator) =
-            if self.tcx.is_diagnostic_item(sym::Result, adt.did()) {
-                ("a", "Result", "Err", ret_ty_matches(sym::Result))
-            } else if self.tcx.is_diagnostic_item(sym::Option, adt.did()) {
-                ("an", "Option", "None", ret_ty_matches(sym::Option))
-            } else {
-                return false;
-            };
+        let (article, kind, variant, sugg_operator) = if self.tcx.is_diagnostic_item(sym::Result, adt.did())
+            // Do not suggest `.expect()` in const context where it's not available. rust-lang/rust#149316
+            && !self.tcx.hir_is_inside_const_context(expr.hir_id)
+        {
+            ("a", "Result", "Err", ret_ty_matches(sym::Result))
+        } else if self.tcx.is_diagnostic_item(sym::Option, adt.did()) {
+            ("an", "Option", "None", ret_ty_matches(sym::Option))
+        } else {
+            return false;
+        };
         if is_ctor || !self.may_coerce(args.type_at(0), expected) {
             return false;
         }

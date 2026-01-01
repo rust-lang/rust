@@ -9,7 +9,6 @@
 #![expect(incomplete_features)] // `unsafe_fields` is incomplete for the time being
 #![feature(unsafe_fields)] // `clone()` cannot be derived automatically on unsafe fields
 
-
 #[derive(Copy)]
 struct Qux;
 

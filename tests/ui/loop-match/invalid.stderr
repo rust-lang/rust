@@ -121,7 +121,7 @@ LL ~                 State::A => State::B,
 LL ~                 State::B | State::C => todo!(),
    |
 
-error[E0579]: lower range bound must be less than upper
+error[E0579]: lower bound for range pattern must be less than upper bound
   --> $DIR/invalid.rs:204:17
    |
 LL |                 4.0..3.0 => {

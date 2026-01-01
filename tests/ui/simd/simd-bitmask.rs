@@ -1,5 +1,6 @@
 //@run-pass
-#![feature(repr_simd, core_intrinsics)]
+//@ compile-flags: --cfg minisimd_const
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -7,7 +8,7 @@ use minisimd::*;
 
 use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
 
-fn main() {
+const fn bitmask() {
     unsafe {
         let v = Simd::<i8, 4>([-1, 0, -1, 0]);
         let i: u8 = simd_bitmask(v);
@@ -67,4 +68,9 @@ fn main() {
         let r = simd_select_bitmask(mask, a, b);
         assert_eq!(r.into_array(), e);
     }
+}
+
+fn main() {
+    const { bitmask() };
+    bitmask();
 }

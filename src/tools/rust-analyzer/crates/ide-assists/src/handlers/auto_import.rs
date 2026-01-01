@@ -114,7 +114,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     proposed_imports.sort_by_key(|import| {
         Reverse(relevance_score(ctx, import, expected.as_ref(), current_module.as_ref()))
     });
-    let edition = current_module.map(|it| it.krate().edition(ctx.db())).unwrap_or(Edition::CURRENT);
+    let edition =
+        current_module.map(|it| it.krate(ctx.db()).edition(ctx.db())).unwrap_or(Edition::CURRENT);
 
     let group_label = group_label(import_assets.import_candidate());
     for import in proposed_imports {
@@ -316,11 +317,11 @@ fn module_distance_heuristic(db: &dyn HirDatabase, current: &Module, item: &Modu
     let distinct_length = current_path.len() + item_path.len() - 2 * prefix_length;
 
     // cost of importing from another crate
-    let crate_boundary_cost = if current.krate() == item.krate() {
+    let crate_boundary_cost = if current.krate(db) == item.krate(db) {
         0
-    } else if item.krate().origin(db).is_local() {
+    } else if item.krate(db).origin(db).is_local() {
         2
-    } else if item.krate().is_builtin(db) {
+    } else if item.krate(db).is_builtin(db) {
         3
     } else {
         4

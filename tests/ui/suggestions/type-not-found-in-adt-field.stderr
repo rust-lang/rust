@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Someunknownname` in this scope
+error[E0425]: cannot find type `Someunknownname` in this scope
   --> $DIR/type-not-found-in-adt-field.rs:2:12
    |
 LL |     m: Vec<Someunknownname<String, ()>>,
    |            ^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `K` in this scope
+error[E0425]: cannot find type `K` in this scope
   --> $DIR/type-not-found-in-adt-field.rs:6:8
    |
 LL |     m: K,
@@ -17,4 +17,4 @@ LL | struct OtherStruct<K> {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

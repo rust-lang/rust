@@ -221,12 +221,12 @@ fn get_default_constructor(
     let krate = ctx
         .sema
         .file_to_module_def(d.file.original_file(ctx.sema.db).file_id(ctx.sema.db))?
-        .krate();
-    let module = krate.root_module();
+        .krate(ctx.sema.db);
+    let module = krate.root_module(ctx.sema.db);
 
     // Look for a ::new() associated function
     let has_new_func = ty
-        .iterate_assoc_items(ctx.sema.db, krate, |assoc_item| {
+        .iterate_assoc_items(ctx.sema.db, |assoc_item| {
             if let AssocItem::Function(func) = assoc_item
                 && func.name(ctx.sema.db) == sym::new
                 && func.assoc_fn_params(ctx.sema.db).is_empty()

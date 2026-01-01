@@ -15,8 +15,8 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind,
-    UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param, RangeLimits,
+    StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -85,8 +85,15 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub fn parse_expr_anon_const(&mut self) -> PResult<'a, AnonConst> {
-        self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
+    pub fn parse_expr_anon_const(
+        &mut self,
+        mgca_disambiguation: impl FnOnce(&Self, &Expr) -> MgcaDisambiguation,
+    ) -> PResult<'a, AnonConst> {
+        self.parse_expr().map(|value| AnonConst {
+            id: DUMMY_NODE_ID,
+            mgca_disambiguation: mgca_disambiguation(self, &value),
+            value,
+        })
     }
 
     fn parse_expr_catch_underscore(
@@ -863,14 +870,15 @@ impl<'a> Parser<'a> {
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             (ast::BorrowKind::Raw, mutability)
-        } else if let Some((ast::Pinnedness::Pinned, mutbl)) = self.parse_pin_and_mut() {
-            // `pin [ const | mut ]`.
-            // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
-            // need to gate it here.
-            (ast::BorrowKind::Pin, mutbl)
         } else {
-            // `mut?`
-            (ast::BorrowKind::Ref, self.parse_mutability())
+            match self.parse_pin_and_mut() {
+                // `mut?`
+                (ast::Pinnedness::Not, mutbl) => (ast::BorrowKind::Ref, mutbl),
+                // `pin [ const | mut ]`.
+                // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
+                // need to gate it here.
+                (ast::Pinnedness::Pinned, mutbl) => (ast::BorrowKind::Pin, mutbl),
+            }
         }
     }
 
@@ -1513,7 +1521,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo, false)
+                this.parse_const_block(lo)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -1614,7 +1622,18 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = self.parse_expr_anon_const()?;
+                let count = if self.token.is_keyword(kw::Const)
+                    && self.look_ahead(1, |t| *t == token::OpenBrace)
+                {
+                    // While we could just disambiguate `Direct` from `AnonConst` by
+                    // treating all const block exprs as `AnonConst`, that would
+                    // complicate the DefCollector and likely all other visitors.
+                    // So we strip the const blockiness and just store it as a block
+                    // in the AST with the extra disambiguator on the AnonConst
+                    self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?
+                } else {
+                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
+                };
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {
@@ -3081,7 +3100,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 
@@ -3543,15 +3562,20 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
-    /// Parses a `try {...}` expression (`try` token already eaten).
+    /// Parses a `try {...}` or `try bikeshed Ty {...}` expression (`try` token already eaten).
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, Box<Expr>> {
+        let annotation =
+            if self.eat_keyword(exp!(Bikeshed)) { Some(self.parse_ty()?) } else { None };
+
         let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {
             Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
         } else {
             let span = span_lo.to(body.span);
-            self.psess.gated_spans.gate(sym::try_blocks, span);
-            Ok(self.mk_expr_with_attrs(span, ExprKind::TryBlock(body), attrs))
+            let gate_sym =
+                if annotation.is_none() { sym::try_blocks } else { sym::try_blocks_heterogeneous };
+            self.psess.gated_spans.gate(gate_sym, span);
+            Ok(self.mk_expr_with_attrs(span, ExprKind::TryBlock(body, annotation), attrs))
         }
     }
 
@@ -3568,7 +3592,11 @@ impl<'a> Parser<'a> {
 
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
-            && self.look_ahead(1, |t| *t == token::OpenBrace || t.is_metavar_block())
+            && self.look_ahead(1, |t| {
+                *t == token::OpenBrace
+                    || t.is_metavar_block()
+                    || t.kind == TokenKind::Ident(sym::bikeshed, IdentIsRaw::No)
+            })
             && self.token_uninterpolated_span().at_least_rust_2018()
     }
 
@@ -4263,7 +4291,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
             | ExprKind::Gen(_, _, _, _)
-            | ExprKind::TryBlock(_)
+            | ExprKind::TryBlock(_, _)
             | ExprKind::Underscore
             | ExprKind::Path(_, _)
             | ExprKind::Break(_, _)

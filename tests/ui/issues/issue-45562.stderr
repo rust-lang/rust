@@ -2,7 +2,7 @@ error: const items should never be `#[no_mangle]`
   --> $DIR/issue-45562.rs:5:14
    |
 LL | #[no_mangle] pub const RAH: usize = 5;
-   |              ---------^^^^^^^^^^^^^^^^
+   |              ----------^^^^^^^^^^^^^^^
    |              |
    |              help: try a static value: `pub static`
    |

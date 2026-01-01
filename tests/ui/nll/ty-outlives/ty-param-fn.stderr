@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:9:5
+  --> $DIR/ty-param-fn.rs:10:5
    |
 LL | fn no_region<'a, T>(x: Box<T>) -> Box<Debug + 'a>
    |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
@@ -13,7 +13,7 @@ LL |     T: Debug + 'a,
    |              ++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:24:5
+  --> $DIR/ty-param-fn.rs:25:5
    |
 LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>
    |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...

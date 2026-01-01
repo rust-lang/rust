@@ -6,14 +6,17 @@ mod simd;
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::{FieldIdx, HasDataLayout, Size};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, Ty, TyCtxt};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -36,22 +39,24 @@ enum MulAddType {
 
 #[derive(Copy, Clone)]
 pub(crate) enum MinMax {
-    /// The IEEE `Minimum` operation - see `f32::minimum` etc
+    /// The IEEE-2019 `minimum` operation - see `f32::minimum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Minimum,
-    /// The IEEE `MinNum` operation - see `f32::min` etc
+    /// The IEEE-2008 `minNum` operation with the SNaN handling of the
+    /// IEEE-2019 `minimumNumber` operation - see `f32::min` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
-    /// and is one argument is NaN, the other one is returned.
-    MinNum,
-    /// The IEEE `Maximum` operation - see `f32::maximum` etc
+    /// and if one argument is NaN (quiet or signaling), the other one is returned.
+    MinimumNumber,
+    /// The IEEE-2019 `maximum` operation - see `f32::maximum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Maximum,
-    /// The IEEE `MaxNum` operation - see `f32::max` etc
+    /// The IEEE-2008 `maxNum` operation with the SNaN handling of the
+    /// IEEE-2019 `maximumNumber` operation - see `f32::max` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
-    /// and is one argument is NaN, the other one is returned.
-    MaxNum,
+    /// and if one argument is NaN (quiet or signaling), the other one is returned.
+    MaximumNumber,
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -203,6 +208,63 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let val = layout.align.bytes();
                 self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
             }
+            sym::offset_of => {
+                let tp_ty = instance.args.type_at(0);
+
+                let variant = self.read_scalar(&args[0])?.to_u32()?;
+                let field = self.read_scalar(&args[1])?.to_u32()? as usize;
+
+                let layout = self.layout_of(tp_ty)?;
+                let cx = ty::layout::LayoutCx::new(*self.tcx, self.typing_env);
+
+                let layout = layout.for_variant(&cx, VariantIdx::from_u32(variant));
+                let offset = layout.fields.offset(field).bytes();
+
+                self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
+            }
+            sym::vtable_for => {
+                let tp_ty = instance.args.type_at(0);
+                let result_ty = instance.args.type_at(1);
+
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tcx, result_ty)?;
+                let ty::Dynamic(preds, _) = result_ty.kind() else {
+                    span_bug!(
+                        self.find_closest_untracked_caller_location(),
+                        "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
+                    );
+                };
+
+                let (infcx, param_env) =
+                    self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+
+                let ocx = ObligationCtxt::new(&infcx);
+                ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {
+                    let pred = pred.with_self_ty(tcx, tp_ty);
+                    // Lifetimes can only be 'static because of the bound on T
+                    let pred = pred.fold_with(&mut ty::BottomUpFolder {
+                        tcx,
+                        ty_op: |ty| ty,
+                        lt_op: |lt| {
+                            if lt == tcx.lifetimes.re_erased { tcx.lifetimes.re_static } else { lt }
+                        },
+                        ct_op: |ct| ct,
+                    });
+                    Obligation::new(tcx, ObligationCause::dummy(), param_env, pred)
+                }));
+                let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+                // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
+                let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
+
+                if regions_are_valid && type_impls_trait {
+                    let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
+                    self.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    // Write `None`
+                    self.write_discriminant(FIRST_VARIANT, dest)?;
+                }
+            }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
                 let ty = match tp_ty.kind() {
@@ -332,29 +394,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;
                 self.exact_div(&l, &r, dest)?;
-            }
-            sym::rotate_left | sym::rotate_right => {
-                // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
-                // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                let layout_val = self.layout_of(instance_args.type_at(0))?;
-                let val = self.read_scalar(&args[0])?;
-                let val_bits = val.to_bits(layout_val.size)?; // sign is ignored here
-
-                let layout_raw_shift = self.layout_of(self.tcx.types.u32)?;
-                let raw_shift = self.read_scalar(&args[1])?;
-                let raw_shift_bits = raw_shift.to_bits(layout_raw_shift.size)?;
-
-                let width_bits = u128::from(layout_val.size.bits());
-                let shift_bits = raw_shift_bits % width_bits;
-                let inv_shift_bits = (width_bits - shift_bits) % width_bits;
-                let result_bits = if intrinsic_name == sym::rotate_left {
-                    (val_bits << shift_bits) | (val_bits >> inv_shift_bits)
-                } else {
-                    (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
-                };
-                let truncated_bits = layout_val.size.truncate(result_bits);
-                let result = Scalar::from_uint(truncated_bits, layout_val.size);
-                self.write_scalar(result, dest)?;
             }
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
@@ -533,10 +572,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minnumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::MinNum, dest)?,
-            sym::minnumf32 => self.float_minmax_intrinsic::<Single>(args, MinMax::MinNum, dest)?,
-            sym::minnumf64 => self.float_minmax_intrinsic::<Double>(args, MinMax::MinNum, dest)?,
-            sym::minnumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::MinNum, dest)?,
+            sym::minnumf16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumber, dest)?
+            }
+            sym::minnumf32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumber, dest)?
+            }
+            sym::minnumf64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumber, dest)?
+            }
+            sym::minnumf128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumber, dest)?
+            }
 
             sym::minimumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Minimum, dest)?,
             sym::minimumf32 => {
@@ -547,10 +594,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
 
-            sym::maxnumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::MaxNum, dest)?,
-            sym::maxnumf32 => self.float_minmax_intrinsic::<Single>(args, MinMax::MaxNum, dest)?,
-            sym::maxnumf64 => self.float_minmax_intrinsic::<Double>(args, MinMax::MaxNum, dest)?,
-            sym::maxnumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::MaxNum, dest)?,
+            sym::maxnumf16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumber, dest)?
+            }
+            sym::maxnumf32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumber, dest)?
+            }
+            sym::maxnumf64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumber, dest)?
+            }
+            sym::maxnumf128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumber, dest)?
+            }
 
             sym::maximumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Maximum, dest)?,
             sym::maximumf32 => {
@@ -806,7 +861,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             } else {
                 // unsigned
-                if matches!(mir_op, BinOp::Add) {
+                if mir_op == BinOp::Add {
                     // max unsigned
                     Scalar::from_uint(size.unsigned_int_max(), size)
                 } else {
@@ -975,16 +1030,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = a.to_float()?;
         let b: F = b.to_float()?;
-        let res = if matches!(op, MinMax::MinNum | MinMax::MaxNum) && a == b {
+        let res = if matches!(op, MinMax::MinimumNumber | MinMax::MaximumNumber) && a == b {
             // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
             // Let the machine decide which one to return.
             M::equal_float_min_max(self, a, b)
         } else {
             let result = match op {
                 MinMax::Minimum => a.minimum(b),
-                MinMax::MinNum => a.min(b),
+                MinMax::MinimumNumber => a.min(b),
                 MinMax::Maximum => a.maximum(b),
-                MinMax::MaxNum => a.max(b),
+                MinMax::MaximumNumber => a.max(b),
             };
             self.adjust_nan(result, &[a, b])
         };

@@ -4,7 +4,6 @@
 // optimizations so it doesn't need to worry about them adding more flags.
 
 #![crate_type = "lib"]
-#![feature(unchecked_shifts)]
 #![feature(core_intrinsics)]
 
 // CHECK-LABEL: @unchecked_shl_unsigned_same

@@ -1,5 +1,5 @@
 warning: ambiguous glob re-exports
-  --> $DIR/ambiguous-17.rs:3:9
+  --> $DIR/ambiguous-17.rs:4:9
    |
 LL | pub use evp::*;
    |         ^^^^^^ the name `id` in the value namespace is first re-exported here
@@ -9,7 +9,7 @@ LL | pub use handwritten::*;
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
 error: `id` is ambiguous
-  --> $DIR/ambiguous-17.rs:25:5
+  --> $DIR/ambiguous-17.rs:26:5
    |
 LL |     id();
    |     ^^ ambiguous name
@@ -18,13 +18,13 @@ LL |     id();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-17.rs:3:9
+  --> $DIR/ambiguous-17.rs:4:9
    |
 LL | pub use evp::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
 note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-17.rs:4:9
+  --> $DIR/ambiguous-17.rs:5:9
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error: aborting due to 1 previous error; 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 error: `id` is ambiguous
-  --> $DIR/ambiguous-17.rs:25:5
+  --> $DIR/ambiguous-17.rs:26:5
    |
 LL |     id();
    |     ^^ ambiguous name
@@ -44,13 +44,13 @@ LL |     id();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-17.rs:3:9
+  --> $DIR/ambiguous-17.rs:4:9
    |
 LL | pub use evp::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
 note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-17.rs:4:9
+  --> $DIR/ambiguous-17.rs:5:9
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^

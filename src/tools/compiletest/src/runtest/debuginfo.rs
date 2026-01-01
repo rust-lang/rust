@@ -8,7 +8,7 @@ use tracing::debug;
 
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
-use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
+use crate::debuggers::extract_gdb_version;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -90,7 +90,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.as_path(),
+            self.config.target_run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -122,13 +122,15 @@ impl TestCx<'_> {
         let exe_file = self.make_exe_name();
 
         let debugger_run_result;
-        if is_android_gdb_target(&self.config.target) {
+        // If bootstrap gave us an `--android-cross-path`, assume the target
+        // needs Android-specific handling.
+        if let Some(android_cross_path) = self.config.android_cross_path.as_deref() {
             cmds = cmds.replace("run", "continue");
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", &self.config.android_cross_path));
+            script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
@@ -148,12 +150,16 @@ impl TestCx<'_> {
             debug!("script_str = {}", script_str);
             self.dump_output_file(&script_str, "debugger.script");
 
-            let adb_path = &self.config.adb_path;
+            // Note: when `--android-cross-path` is specified, we expect both `adb_path` and
+            // `adb_test_dir` to be available.
+            let adb_path = self.config.adb_path.as_ref().expect("`adb_path` must be specified");
+            let adb_test_dir =
+                self.config.adb_test_dir.as_ref().expect("`adb_test_dir` must be specified");
 
             Command::new(adb_path)
                 .arg("push")
                 .arg(&exe_file)
-                .arg(&self.config.adb_test_dir)
+                .arg(adb_test_dir)
                 .status()
                 .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
@@ -165,9 +171,9 @@ impl TestCx<'_> {
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
                  gdbserver{} :5039 {}/{}",
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 if self.config.target.contains("aarch64") { "64" } else { "" },
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 exe_file.file_name().unwrap()
             );
 
@@ -313,7 +319,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
+                self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {
@@ -326,9 +332,9 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_lldb_test(&self) {
-        if self.config.lldb_python_dir.is_none() {
-            self.fatal("Can't run LLDB test because LLDB's python path is not set.");
-        }
+        let Some(ref lldb) = self.config.lldb else {
+            self.fatal("Can't run LLDB test because LLDB's path is not set.");
+        };
 
         // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
@@ -434,7 +440,7 @@ impl TestCx<'_> {
         let debugger_script = self.make_out_name("debugger.script");
 
         // Let LLDB execute the script via lldb_batchmode.py
-        let debugger_run_result = self.run_lldb(&exe_file, &debugger_script);
+        let debugger_run_result = self.run_lldb(lldb, &exe_file, &debugger_script);
 
         if !debugger_run_result.status.success() {
             self.fatal_proc_rec("Error while running LLDB", &debugger_run_result);
@@ -445,23 +451,23 @@ impl TestCx<'_> {
         }
     }
 
-    fn run_lldb(&self, test_executable: &Utf8Path, debugger_script: &Utf8Path) -> ProcRes {
-        // Prepare the lldb_batchmode which executes the debugger script
-        let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
+    fn run_lldb(
+        &self,
+        lldb: &Utf8Path,
+        test_executable: &Utf8Path,
+        debugger_script: &Utf8Path,
+    ) -> ProcRes {
+        // Path containing `lldb_batchmode.py`, so that the `script` command can import it.
+        let pythonpath = self.config.src_root.join("src/etc");
 
-        // FIXME: `PYTHONPATH` takes precedence over the flag...?
-        let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
-            format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
-        } else {
-            self.config.lldb_python_dir.clone().unwrap()
-        };
-        self.run_command_to_procres(
-            Command::new(&self.config.python)
-                .arg(&lldb_script_path)
-                .arg(test_executable)
-                .arg(debugger_script)
-                .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
-                .env("PYTHONPATH", pythonpath),
-        )
+        let mut cmd = Command::new(lldb);
+        cmd.arg("--one-line")
+            .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
+            .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
+            .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
+            .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
+            .env("PYTHONPATH", pythonpath);
+
+        self.run_command_to_procres(&mut cmd)
     }
 }

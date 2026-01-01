@@ -1,6 +1,11 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
-use rustc_middle::mir::coverage::BasicCoverageBlock;
+use rustc_middle::mir;
+use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
 use rustc_span::{ExpnId, ExpnKind, Span};
+
+use crate::coverage::from_mir;
+use crate::coverage::graph::CoverageGraph;
+use crate::coverage::hir_info::ExtractedHirInfo;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SpanWithBcb {
@@ -66,10 +71,24 @@ pub(crate) struct ExpnNode {
     /// This links an expansion node to its parent in the tree.
     pub(crate) call_site_expn_id: Option<ExpnId>,
 
+    /// Holds the function signature span, if it belongs to this expansion.
+    /// Used by special-case code in span refinement.
+    pub(crate) fn_sig_span: Option<Span>,
+    /// Holds the function body span, if it belongs to this expansion.
+    /// Used by special-case code in span refinement.
+    pub(crate) body_span: Option<Span>,
+
     /// Spans (and their associated BCBs) belonging to this expansion.
     pub(crate) spans: Vec<SpanWithBcb>,
     /// Expansions whose call-site is in this expansion.
     pub(crate) child_expn_ids: FxIndexSet<ExpnId>,
+
+    /// Branch spans (recorded during MIR building) belonging to this expansion.
+    pub(crate) branch_spans: Vec<BranchSpan>,
+
+    /// Hole spans belonging to this expansion, to be carved out from the
+    /// code spans during span refinement.
+    pub(crate) hole_spans: Vec<Span>,
 }
 
 impl ExpnNode {
@@ -86,19 +105,34 @@ impl ExpnNode {
             call_site,
             call_site_expn_id,
 
+            fn_sig_span: None,
+            body_span: None,
+
             spans: vec![],
             child_expn_ids: FxIndexSet::default(),
+
+            branch_spans: vec![],
+
+            hole_spans: vec![],
         }
     }
 }
 
-/// Given a collection of span/BCB pairs from potentially-different syntax contexts,
+/// Extracts raw span/BCB pairs from potentially-different syntax contexts, and
 /// arranges them into an "expansion tree" based on their expansion call-sites.
-pub(crate) fn build_expn_tree(spans: impl IntoIterator<Item = SpanWithBcb>) -> ExpnTree {
+pub(crate) fn build_expn_tree(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    graph: &CoverageGraph,
+) -> ExpnTree {
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+
     let mut nodes = FxIndexMap::default();
     let new_node = |&expn_id: &ExpnId| ExpnNode::new(expn_id);
 
-    for span_with_bcb in spans {
+    for from_mir::RawSpanFromMir { raw_span, bcb } in raw_spans {
+        let span_with_bcb = SpanWithBcb { span: raw_span, bcb };
+
         // Create a node for this span's enclosing expansion, and add the span to it.
         let expn_id = span_with_bcb.span.ctxt().outer_expn();
         let node = nodes.entry(expn_id).or_insert_with_key(new_node);
@@ -120,6 +154,38 @@ pub(crate) fn build_expn_tree(spans: impl IntoIterator<Item = SpanWithBcb>) -> E
 
             prev = expn_id;
             curr_expn_id = node.call_site_expn_id;
+        }
+    }
+
+    // If we have a span for the function signature, associate it with the
+    // corresponding expansion tree node.
+    if let Some(fn_sig_span) = hir_info.fn_sig_span
+        && let Some(node) = nodes.get_mut(&fn_sig_span.ctxt().outer_expn())
+    {
+        node.fn_sig_span = Some(fn_sig_span);
+    }
+
+    // Also associate the body span with its expansion tree node.
+    let body_span = hir_info.body_span;
+    if let Some(node) = nodes.get_mut(&body_span.ctxt().outer_expn()) {
+        node.body_span = Some(body_span);
+    }
+
+    // Associate each hole span (extracted from HIR) with its corresponding
+    // expansion tree node.
+    for &hole_span in &hir_info.hole_spans {
+        let expn_id = hole_span.ctxt().outer_expn();
+        let Some(node) = nodes.get_mut(&expn_id) else { continue };
+        node.hole_spans.push(hole_span);
+    }
+
+    // Associate each branch span (recorded during MIR building) with its
+    // corresponding expansion tree node.
+    if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
+        for branch_span in &coverage_info_hi.branch_spans {
+            if let Some(node) = nodes.get_mut(&branch_span.span.ctxt().outer_expn()) {
+                node.branch_spans.push(BranchSpan::clone(branch_span));
+            }
         }
     }
 

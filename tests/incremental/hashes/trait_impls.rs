@@ -569,7 +569,7 @@ impl AddNoMangleToMethod for Foo {
     // -------------------------
     // -------------------------
     // -------------------------
-    // ---------
+    // -----------------
     fn add_no_mangle_to_method(&self) { }
 }
 
@@ -583,7 +583,7 @@ impl AddNoMangleToMethod for Foo {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     fn add_no_mangle_to_method(&self) { }
 }
 

@@ -5,11 +5,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::is_res_used;
-use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable};
+use clippy_utils::{as_some_pattern, get_enclosing_loop_or_multi_call_closure, higher, is_refutable};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, LetStmt, Mutability, PatKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, LetStmt, Mutability, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
@@ -19,8 +19,7 @@ use rustc_span::symbol::sym;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::WhileLet { if_then, let_pat, let_expr, label, .. }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
-        && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
-        && cx.qpath_res(pat_path, let_pat.hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+        && let Some(some_pat) = as_some_pattern(cx, let_pat)
         // check for call to `Iterator::next`
         && let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind
         && method_name.ident.name == sym::next
@@ -44,26 +43,26 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         };
 
         // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
-        // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
+        // passed by reference. TODO: If the struct can be partially moved from and the struct isn't used
         // afterwards a mutable borrow of a field isn't necessary.
-        let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
+        let iterator_by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
             || !iter_expr_struct.can_move
             || !iter_expr_struct.fields.is_empty()
             || needs_mutable_borrow(cx, &iter_expr_struct, expr)
         {
-            ".by_ref()"
+            make_iterator_snippet(cx, iter_expr, &iterator)
         } else {
-            ""
+            iterator.into_owned()
         };
 
-        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
         span_lint_and_sugg(
             cx,
             WHILE_LET_ON_ITERATOR,
             expr.span.with_hi(let_expr.span.hi()),
             "this loop could be written as a `for` loop",
             "try",
-            format!("{loop_label}for {loop_var} in {iterator}{by_ref}"),
+            format!("{loop_label}for {loop_var} in {iterator_by_ref}"),
             applicability,
         );
     }
@@ -354,5 +353,24 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         };
         v.visit_expr(cx.tcx.hir_body(cx.enclosing_body.unwrap()).value)
             .is_break()
+    }
+}
+
+/// Constructs the transformed iterator expression for the suggestion.
+/// Returns `iterator.by_ref()` unless the last deref adjustment targets an unsized type,
+/// in which case it applies all derefs (e.g., `&mut **iterator` or `&mut ***iterator`).
+fn make_iterator_snippet<'tcx>(cx: &LateContext<'tcx>, iter_expr: &Expr<'tcx>, iterator: &str) -> String {
+    if let Some((n, adjust)) = cx
+        .typeck_results()
+        .expr_adjustments(iter_expr)
+        .iter()
+        .take_while(|x| matches!(x.kind, Adjust::Deref(_)))
+        .enumerate()
+        .last()
+        && !adjust.target.is_sized(cx.tcx, cx.typing_env())
+    {
+        format!("&mut {:*<n$}{iterator}", '*', n = n + 1)
+    } else {
+        format!("{iterator}.by_ref()")
     }
 }

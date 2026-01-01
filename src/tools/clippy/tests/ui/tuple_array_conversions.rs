@@ -116,3 +116,26 @@ fn msrv_juust_right() {
     let x = &[1, 2];
     let x = (x[0], x[1]);
 }
+
+fn issue16192() {
+    fn do_something(tuple: (u32, u32)) {}
+    fn produce_array() -> [u32; 2] {
+        [1, 2]
+    }
+
+    let [a, b] = produce_array();
+    for tuple in [(a, b), (b, a)] {
+        do_something(tuple);
+    }
+
+    let [a, b] = produce_array();
+    let x = b;
+    do_something((a, b));
+
+    let [a, b] = produce_array();
+    do_something((b, a));
+
+    let [a, b] = produce_array();
+    do_something((a, b));
+    //~^ tuple_array_conversions
+}

@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;
 use rustc_middle::mir::{
-    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Body, CastKind, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
@@ -150,7 +150,7 @@ fn check_rvalue<'tcx>(
             CastKind::PointerCoercion(
                 PointerCoercion::UnsafeFnPointer
                 | PointerCoercion::ClosureFnPointer(_)
-                | PointerCoercion::ReifyFnPointer,
+                | PointerCoercion::ReifyFnPointer(_),
                 _,
             ),
             _,
@@ -194,8 +194,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::RuntimeChecks(_), _)
-        | Rvalue::ShallowInitBox(_, _) => Ok(()),
+        Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, cx.tcx);
             if ty.is_integral() || ty.is_bool() {
@@ -278,6 +277,7 @@ fn check_operand<'tcx>(
             Some(_) => Err((span, "cannot access `static` items in const fn".into())),
             None => Ok(()),
         },
+        Operand::RuntimeChecks(..) => Ok(()),
     }
 }
 

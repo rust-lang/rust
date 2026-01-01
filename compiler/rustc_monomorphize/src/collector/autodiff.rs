@@ -7,6 +7,8 @@ use crate::collector::{MonoItems, create_fn_mono_item};
 // mono so this does not interfere in `autodiff` intrinsics
 // codegen process. If they are unused, LLVM will remove them when
 // compiling with O3.
+// FIXME(autodiff): Remove this whole file, as per discussion in
+// https://github.com/rust-lang/rust/pull/149033#discussion_r2535465880
 pub(crate) fn collect_autodiff_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,

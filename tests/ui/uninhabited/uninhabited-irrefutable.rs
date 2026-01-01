@@ -34,5 +34,5 @@ fn main() {
     //~| NOTE for more information
     //~| NOTE pattern `Foo::A(_)` is currently uninhabited
     //~| NOTE the matched value is of type `Foo`
-    //~| HELP you might want to use `let else`
+    //~| HELP you might want to use `let...else`
 }

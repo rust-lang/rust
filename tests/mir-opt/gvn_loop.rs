@@ -16,9 +16,9 @@ fn loop_deref_mut(val: &mut Value) -> Value {
     // CHECK-LABEL: fn loop_deref_mut(
     // CHECK: [[VAL_REF:_.*]] = get::<Value>(
     // CHECK: [[V:_.*]] = copy (((*[[VAL_REF]]) as V0).0: i32);
-    // CEHCK-NOT: copy (*[[VAL_REF]]);
+    // CHECK-NOT: copy (*[[VAL_REF]]);
     // CHECK: [[RET:_*]] = Value::V0(copy [[V]]);
-    // CEHCK-NOT: copy (*[[VAL_REF]]);
+    // CHECK-NOT: copy (*[[VAL_REF]]);
     // CHECK: _0 = move [[RET]]
     let val_alias: &Value = get(val);
     let mut stop = false;

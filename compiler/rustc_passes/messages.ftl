@@ -96,57 +96,24 @@ passes_deprecated_annotation_has_no_effect =
 passes_deprecated_attribute =
     deprecated attribute must be paired with either stable or unstable attribute
 
+passes_diagnostic_diagnostic_on_const_only_for_trait_impls =
+    `#[diagnostic::on_const]` can only be applied to trait impls
+    .label = not a trait impl
+
 passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
     `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
 
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
 
-passes_doc_alias_bad_char =
-    {$char_} character isn't allowed in {$attr_str}
-
 passes_doc_alias_bad_location =
-    {$attr_str} isn't allowed on {$location}
-
-passes_doc_alias_duplicated = doc alias is duplicated
-    .label = first defined here
-
-passes_doc_alias_empty =
-    {$attr_str} attribute cannot have empty value
-
-passes_doc_alias_malformed =
-    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+    `#[doc(alias = "...")]` isn't allowed on {$location}
 
 passes_doc_alias_not_an_alias =
-    {$attr_str} is the same as the item's name
-
-passes_doc_alias_not_string_literal =
-    `#[doc(alias("a"))]` expects string literals
-
-passes_doc_alias_start_end =
-    {$attr_str} cannot start or end with ' '
+    `#[doc(alias = "{$attr_str}"]` is the same as the item's name
 
 passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
-
-passes_doc_attribute_not_attribute =
-    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
-    .help = only existing builtin attributes are allowed in core/std
-
-passes_doc_auto_cfg_expects_hide_or_show =
-    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
-
-passes_doc_auto_cfg_hide_show_expects_list =
-    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
-
-passes_doc_auto_cfg_hide_show_unexpected_item =
-    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
-
-passes_doc_auto_cfg_wrong_literal =
-    expected boolean for `#[doc(auto_cfg = ...)]`
-
-passes_doc_expect_str =
-    doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]
 
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
@@ -167,18 +134,11 @@ passes_doc_inline_only_use =
     .not_a_use_item_label = not a `use` item
     .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
 
-passes_doc_invalid =
-    invalid `doc` attribute
-
 passes_doc_keyword_attribute_empty_mod =
     `#[doc({$attr_name} = "...")]` should be used on empty modules
 
 passes_doc_keyword_attribute_not_mod =
     `#[doc({$attr_name} = "...")]` should be used on modules
-
-passes_doc_keyword_not_keyword =
-    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
 
 passes_doc_keyword_only_impl =
     `#[doc(keyword = "...")]` should be used on impl blocks
@@ -200,43 +160,20 @@ passes_doc_rust_logo =
 passes_doc_search_unbox_invalid =
     `#[doc(search_unbox)]` should be used on generic structs and enums
 
-passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
-
-passes_doc_test_takes_list =
-    `#[doc(test(...)]` takes a list of attributes
-
-passes_doc_test_unknown =
-    unknown `doc(test)` attribute `{$path}`
-
-passes_doc_test_unknown_any =
-    unknown `doc` attribute `{$path}`
-
-passes_doc_test_unknown_include =
-    unknown `doc` attribute `{$path}`
-    .suggestion = use `doc = include_str!` instead
-
-passes_doc_test_unknown_passes =
-    unknown `doc` attribute `{$path}`
-    .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
-    .label = no longer functions
-    .help = you may want to use `doc(document_private_items)`
-    .no_op_note = `doc({$path})` is now a no-op
-
-passes_doc_test_unknown_plugins =
-    unknown `doc` attribute `{$path}`
-    .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
-    .label = no longer functions
-    .no_op_note = `doc({$path})` is now a no-op
-
-passes_doc_test_unknown_spotlight =
-    unknown `doc` attribute `{$path}`
-    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
-    .suggestion = use `notable_trait` instead
-    .no_op_note = `doc(spotlight)` is now a no-op
-
 passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
+
+passes_duplicate_eii_impls =
+    multiple implementations of `#[{$name}]`
+    .first = first implemented here in crate `{$first_crate}`
+    .second = also implemented here in crate `{$second_crate}`
+    .note = in addition to these two, { $num_additional_crates ->
+         [one] another implementation was found in crate {$additional_crate_names}
+         *[other] more implementations were also found in the following crates: {$additional_crate_names}
+    }
+
+    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
 
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been enabled
@@ -271,6 +208,22 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_eii_fn_with_track_caller =
+    `#[{$name}]` is not allowed to have `#[track_caller]`
+    .label = `#[{$name}]` is not allowed to have `#[track_caller]`
+
+passes_eii_impl_not_function =
+    `eii_macro_for` is only valid on functions
+
+passes_eii_impl_requires_unsafe =
+    `#[{$name}]` is unsafe to implement
+passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+passes_eii_without_impl =
+    `#[{$name}]` required, but not found
+    .label = expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`
+    .help = expected at least one implementation in crate `{$current_crate_name}` or any of its dependencies
+
 passes_enum_variant_same_name =
     it is impossible to refer to the {$dead_descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
 
@@ -283,14 +236,17 @@ passes_feature_previously_declared =
 passes_feature_stable_twice =
     feature `{$feature}` is declared stable since {$since}, but was previously declared stable since {$prev_since}
 
+passes_function_not_found_in_trait = function not found in this trait
+
+passes_function_not_have_default_implementation = function doesn't have a default implementation
+    .note = required by this annotation
+
+passes_functions_names_duplicated = functions names are duplicated
+    .note = all `#[rustc_must_implement_one_of]` arguments must be unique
+
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
-
-passes_ignored_attr_with_macro =
-    `#[{$sym}]` is ignored on struct fields, match arms and macro defs
-    .warn = {-passes_previously_accepted}
-    .note = {-passes_see_issue(issue: "80564")}
 
 passes_ignored_derived_impls =
     `{$name}` has {$trait_list_len ->
@@ -410,6 +366,8 @@ passes_missing_panic_handler =
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
 
+passes_misspelled_feature = there is a feature with a similar name: `{$actual_name}`
+
 passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
     .label = `{$no_mangle_attr}` is ignored
     .note = `{$export_name_attr}` takes precedence
@@ -420,13 +378,15 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
+passes_must_implement_not_function = not a function
+
+passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
+
+passes_must_implement_not_function_span_note = required by this annotation
+
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
-
-passes_no_link =
-    attribute should be applied to an `extern crate` item
-    .label = not an `extern crate` item
 
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`
@@ -523,20 +483,10 @@ passes_rustc_legacy_const_generics_index_exceed =
         *[other] arguments
     }
 
-passes_rustc_legacy_const_generics_index_negative =
-    arguments should be non-negative integers
-
 passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter
 
-passes_rustc_lint_opt_deny_field_access =
-    `#[rustc_lint_opt_deny_field_access]` should be applied to a field
-    .label = not a field
-
-passes_rustc_lint_opt_ty =
-    `#[rustc_lint_opt_ty]` should be applied to a struct
-    .label = not a struct
 
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
@@ -547,21 +497,6 @@ passes_sanitize_attribute_not_allowed =
     .not_fn_impl_mod = not a function, impl block, or module
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
-
-passes_should_be_applied_to_fn =
-    attribute should be applied to a function definition
-    .label = {$on_crate ->
-        [true] cannot be applied to crates
-        *[false] not a function definition
-    }
-
-passes_should_be_applied_to_static =
-    attribute should be applied to a static
-    .label = not a static
-
-passes_should_be_applied_to_trait =
-    attribute should be applied to a trait
-    .label = not a trait
 
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...

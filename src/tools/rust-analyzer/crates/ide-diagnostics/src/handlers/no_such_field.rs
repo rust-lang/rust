@@ -102,7 +102,8 @@ fn missing_record_expr_field_fixes(
     let indent = IndentLevel::from_node(last_field_syntax);
 
     let mut new_field = new_field.to_string();
-    if usage_file_id != def_file_id {
+    // FIXME: check submodule instead of FileId
+    if usage_file_id != def_file_id && !matches!(def_id, hir::VariantDef::Variant(_)) {
         new_field = format!("pub(crate) {new_field}");
     }
     new_field = format!("\n{indent}{new_field}");
@@ -352,6 +353,34 @@ pub struct Foo {
 pub struct Foo {
     bar: i32,
     pub(crate) baz: bool
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_add_enum_variant_field_in_other_file_from_usage() {
+        check_fix(
+            r#"
+//- /main.rs
+mod foo;
+
+fn main() {
+    foo::Foo::Variant { bar: 3, $0baz: false};
+}
+//- /foo.rs
+pub enum Foo {
+    Variant {
+        bar: i32
+    }
+}
+"#,
+            r#"
+pub enum Foo {
+    Variant {
+        bar: i32,
+        baz: bool
+    }
 }
 "#,
         )

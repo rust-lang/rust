@@ -6,8 +6,6 @@
 
 #[doc(test(no_crate_inject))]
 //~^ ERROR can only be applied at the crate level
-//~| HELP to apply to the crate, use an inner attribute
-//~| SUGGESTION !
 #[doc(inline)]
 //~^ ERROR can only be applied to a `use` item
 pub fn foo() {}

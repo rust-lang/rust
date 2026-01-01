@@ -1,7 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
-use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{EmissionGuarantee, MultiSpan};
@@ -92,7 +92,9 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
-    if def.repr().simd() {
+    if let Some(scalable) = def.repr().scalable {
+        check_scalable_vector(tcx, span, def_id, scalable);
+    } else if def.repr().simd() {
         check_simd(tcx, span, def_id);
     }
 
@@ -802,6 +804,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
+            check_diagnostic_attrs(tcx, def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
@@ -824,7 +827,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
-            check_on_unimplemented(tcx, def_id);
+            check_diagnostic_attrs(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
@@ -1112,7 +1115,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     })
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_diagnostic_attrs(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // an error would be reported if this fails.
     let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
 }
@@ -1337,9 +1340,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let attr_span = tcx
-                .get_attr(trait_ref.def_id, sym::rustc_must_implement_one_of)
-                .map(|attr| attr.span());
+            let attr_span = find_attr!(tcx.get_all_attrs(trait_ref.def_id), AttributeKind::RustcMustImplementOneOf {attr_span, ..} => *attr_span);
 
             missing_items_must_implement_one_of_err(
                 tcx,
@@ -1420,6 +1421,100 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 )
                 .emit();
                 return;
+            }
+        }
+    }
+}
+
+#[tracing::instrument(skip(tcx), level = "debug")]
+fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalable: ScalableElt) {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty::Adt(def, args) = ty.kind() else { return };
+    if !def.is_struct() {
+        tcx.dcx().delayed_bug("`rustc_scalable_vector` applied to non-struct");
+        return;
+    }
+
+    let fields = &def.non_enum_variant().fields;
+    match scalable {
+        ScalableElt::ElementCount(..) if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("scalable vector types' only field must be a primitive scalar type");
+            err.emit();
+            return;
+        }
+        ScalableElt::ElementCount(..) if fields.len() >= 2 => {
+            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            return;
+        }
+        ScalableElt::Container if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        _ => {}
+    }
+
+    match scalable {
+        ScalableElt::ElementCount(..) => {
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args);
+
+            // Check that `element_ty` only uses types valid in the lanes of a scalable vector
+            // register: scalar types which directly match a "machine" type - integers, floats and
+            // bools
+            match element_ty.kind() {
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool => (),
+                _ => {
+                    let mut err = tcx.dcx().struct_span_err(
+                        span,
+                        "element type of a scalable vector must be a primitive scalar",
+                    );
+                    err.help("only `u*`, `i*`, `f*` and `bool` types are accepted");
+                    err.emit();
+                }
+            }
+        }
+        ScalableElt::Container => {
+            let mut prev_field_ty = None;
+            for field in fields.iter() {
+                let element_ty = field.ty(tcx, args);
+                if let ty::Adt(def, _) = element_ty.kind()
+                    && def.repr().scalable()
+                {
+                    match def
+                        .repr()
+                        .scalable
+                        .expect("`repr().scalable.is_some()` != `repr().scalable()`")
+                    {
+                        ScalableElt::ElementCount(_) => { /* expected field */ }
+                        ScalableElt::Container => {
+                            tcx.dcx().span_err(
+                                tcx.def_span(field.did),
+                                "scalable vector structs cannot contain other scalable vector structs",
+                            );
+                            break;
+                        }
+                    }
+                } else {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "scalable vector structs can only have scalable vector fields",
+                    );
+                    break;
+                }
+
+                if let Some(prev_ty) = prev_field_ty.replace(element_ty)
+                    && prev_ty != element_ty
+                {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "all fields in a scalable vector struct must be the same type",
+                    );
+                    break;
+                }
             }
         }
     }
@@ -1542,22 +1637,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
     // For each field, figure out if it has "trivial" layout (i.e., is a 1-ZST).
-    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
-    // fields or `repr(C)`. We call those fields "unsuited".
     struct FieldInfo<'tcx> {
         span: Span,
         trivial: bool,
-        unsuited: Option<UnsuitedInfo<'tcx>>,
-    }
-    struct UnsuitedInfo<'tcx> {
-        /// The source of the problem, a type that is found somewhere within the field type.
         ty: Ty<'tcx>,
-        reason: UnsuitedReason,
-    }
-    enum UnsuitedReason {
-        NonExhaustive,
-        PrivateField,
-        ReprC,
     }
 
     let field_infos = adt.all_fields().map(|field| {
@@ -1566,60 +1649,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
-        if !trivial {
-            // No need to even compute `unsuited`.
-            return FieldInfo { span, trivial, unsuited: None };
-        }
-
-        fn check_unsuited<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            typing_env: ty::TypingEnv<'tcx>,
-            ty: Ty<'tcx>,
-        ) -> ControlFlow<UnsuitedInfo<'tcx>> {
-            // We can encounter projections during traversal, so ensure the type is normalized.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
-            match ty.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
-                ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
-                ty::Adt(def, args) => {
-                    if !def.did().is_local()
-                        && !find_attr!(
-                            tcx.get_all_attrs(def.did()),
-                            AttributeKind::PubTransparent(_)
-                        )
-                    {
-                        let non_exhaustive = def.is_variant_list_non_exhaustive()
-                            || def
-                                .variants()
-                                .iter()
-                                .any(ty::VariantDef::is_field_list_non_exhaustive);
-                        let has_priv = def.all_fields().any(|f| !f.vis.is_public());
-                        if non_exhaustive || has_priv {
-                            return ControlFlow::Break(UnsuitedInfo {
-                                ty,
-                                reason: if non_exhaustive {
-                                    UnsuitedReason::NonExhaustive
-                                } else {
-                                    UnsuitedReason::PrivateField
-                                },
-                            });
-                        }
-                    }
-                    if def.repr().c() {
-                        return ControlFlow::Break(UnsuitedInfo {
-                            ty,
-                            reason: UnsuitedReason::ReprC,
-                        });
-                    }
-                    def.all_fields()
-                        .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_unsuited(tcx, typing_env, t))
-                }
-                _ => ControlFlow::Continue(()),
-            }
-        }
-
-        FieldInfo { span, trivial, unsuited: check_unsuited(tcx, typing_env, ty).break_value() }
+        FieldInfo { span, trivial, ty }
     });
 
     let non_trivial_fields = field_infos
@@ -1637,10 +1667,63 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
+    // fields or `repr(C)`. We call those fields "unsuited".
+    struct UnsuitedInfo<'tcx> {
+        /// The source of the problem, a type that is found somewhere within the field type.
+        ty: Ty<'tcx>,
+        reason: UnsuitedReason,
+    }
+    enum UnsuitedReason {
+        NonExhaustive,
+        PrivateField,
+        ReprC,
+    }
+
+    fn check_unsuited<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> ControlFlow<UnsuitedInfo<'tcx>> {
+        // We can encounter projections during traversal, so ensure the type is normalized.
+        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        match ty.kind() {
+            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
+            ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
+            ty::Adt(def, args) => {
+                if !def.did().is_local()
+                    && !find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::PubTransparent(_))
+                {
+                    let non_exhaustive = def.is_variant_list_non_exhaustive()
+                        || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
+                    let has_priv = def.all_fields().any(|f| !f.vis.is_public());
+                    if non_exhaustive || has_priv {
+                        return ControlFlow::Break(UnsuitedInfo {
+                            ty,
+                            reason: if non_exhaustive {
+                                UnsuitedReason::NonExhaustive
+                            } else {
+                                UnsuitedReason::PrivateField
+                            },
+                        });
+                    }
+                }
+                if def.repr().c() {
+                    return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
+                }
+                def.all_fields()
+                    .map(|field| field.ty(tcx, args))
+                    .try_for_each(|t| check_unsuited(tcx, typing_env, t))
+            }
+            _ => ControlFlow::Continue(()),
+        }
+    }
+
     let mut prev_unsuited_1zst = false;
     for field in field_infos {
-        if let Some(unsuited) = field.unsuited {
-            assert!(field.trivial);
+        if field.trivial
+            && let Some(unsuited) = check_unsuited(tcx, typing_env, field.ty).break_value()
+        {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {

@@ -2,7 +2,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::mem;
 use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 
 // Note: this file is currently reused in other `std::os::{platform}::ffi` modules to reduce duplication.
 // Keep this in mind when applying changes to this file that only apply to `unix`.

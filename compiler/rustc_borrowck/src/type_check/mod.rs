@@ -258,7 +258,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     ///
     /// To keep everything in sync, do not insert this set
     /// directly. Instead, use the `placeholder_region` helper.
-    pub(crate) placeholder_indices: PlaceholderIndices,
+    pub(crate) placeholder_indices: PlaceholderIndices<'tcx>,
 
     /// Each time we add a placeholder to `placeholder_indices`, we
     /// also create a corresponding "representative" region vid for
@@ -289,7 +289,7 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     pub(crate) fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
     ) -> ty::Region<'tcx> {
         let placeholder_index = self.placeholder_indices.insert(placeholder);
         match self.placeholder_index_to_region.get(placeholder_index) {
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // element, so we require the `Copy` trait.
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
-                        Operand::Copy(..) | Operand::Constant(..) => {
+                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
                             // These are always okay: direct use of a const, or a value that can
                             // evidently be copied.
                         }
@@ -1046,8 +1046,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => {}
-
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
                     ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [*ty]);
@@ -1061,7 +1059,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             Rvalue::Cast(cast_kind, op, ty) => {
                 match *cast_kind {
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, coercion_source) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::ReifyFnPointer(target_safety),
+                        coercion_source,
+                    ) => {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_ty = op.ty(self.body, tcx);
                         let mut src_sig = src_ty.fn_sig(tcx);
@@ -1076,6 +1077,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         {
                             src_sig = safe_sig;
+                        }
+
+                        if src_sig.safety().is_safe() && target_safety.is_unsafe() {
+                            src_sig = tcx.safe_to_unsafe_sig(src_sig);
                         }
 
                         // HACK: This shouldn't be necessary... We can remove this when we actually
@@ -1106,7 +1111,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.prove_predicate(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
                                 location.to_locations(),
-                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion,
+                                    unsize_to: None,
+                                },
                             );
 
                             let src_ty = self.normalize(src_ty, location);
@@ -1114,7 +1123,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 src_ty,
                                 *ty,
                                 location.to_locations(),
-                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion,
+                                    unsize_to: None,
+                                },
                             ) {
                                 span_mirbug!(
                                     self,
@@ -1135,7 +1148,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             ty::ClauseKind::WellFormed(src_ty.into()),
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         );
 
                         // The type that we see in the fcx is like
@@ -1148,7 +1165,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             src_ty,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1177,7 +1198,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1210,7 +1235,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1239,6 +1268,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             trait_ref,
                             location.to_locations(),
                             ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
                                 is_implicit_coercion,
                                 unsize_to: Some(unsize_to),
                             },
@@ -1264,7 +1294,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1327,7 +1361,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
+                            ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
+                            },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1484,55 +1522,90 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 trait_ref,
                                 location.to_locations(),
                                 ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
                                     is_implicit_coercion: true,
                                     unsize_to: None,
                                 },
                             );
-                        } else if let ty::Dynamic(src_tty, _src_lt) =
+                        } else if let ty::Dynamic(src_tty, src_lt) =
                             *self.struct_tail(src.ty, location).kind()
                             && let ty::Dynamic(dst_tty, dst_lt) =
                                 *self.struct_tail(dst.ty, location).kind()
-                            && src_tty.principal().is_some()
-                            && dst_tty.principal().is_some()
                         {
-                            // This checks (lifetime part of) vtable validity for pointer casts,
-                            // which is irrelevant when there are aren't principal traits on
-                            // both sides (aka only auto traits).
-                            //
-                            // Note that other checks (such as denying `dyn Send` -> `dyn
-                            // Debug`) are in `rustc_hir_typeck`.
+                            match (src_tty.principal(), dst_tty.principal()) {
+                                (Some(_), Some(_)) => {
+                                    // This checks (lifetime part of) vtable validity for pointer casts,
+                                    // which is irrelevant when there are aren't principal traits on
+                                    // both sides (aka only auto traits).
+                                    //
+                                    // Note that other checks (such as denying `dyn Send` -> `dyn
+                                    // Debug`) are in `rustc_hir_typeck`.
 
-                            // Remove auto traits.
-                            // Auto trait checks are handled in `rustc_hir_typeck` as FCW.
-                            let src_obj = Ty::new_dynamic(
-                                tcx,
-                                tcx.mk_poly_existential_predicates(
-                                    &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                                    // Remove auto traits.
+                                    // Auto trait checks are handled in `rustc_hir_typeck`.
+                                    let src_obj = Ty::new_dynamic(
+                                        tcx,
+                                        tcx.mk_poly_existential_predicates(
+                                            &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        src_lt,
+                                    );
+                                    let dst_obj = Ty::new_dynamic(
+                                        tcx,
+                                        tcx.mk_poly_existential_predicates(
+                                            &dst_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        dst_lt,
+                                    );
+
+                                    debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
+
+                                    // Trait parameters are invariant, the only part that actually has
+                                    // subtyping here is the lifetime bound of the dyn-type.
+                                    //
+                                    // For example in `dyn Trait<'a> + 'b <: dyn Trait<'c> + 'd`  we would
+                                    // require that `'a == 'c` but only that `'b: 'd`.
+                                    //
+                                    // We must not allow freely casting lifetime bounds of dyn-types as it
+                                    // may allow for inaccessible VTable methods being callable: #136702
+                                    self.sub_types(
+                                        src_obj,
+                                        dst_obj,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast {
+                                            is_raw_ptr_dyn_type_cast: true,
+                                            is_implicit_coercion: false,
+                                            unsize_to: None,
+                                        },
+                                    )
+                                    .unwrap();
+                                }
+                                (None, None) => {
+                                    // The principalless (no non-auto traits) case:
+                                    // You can only cast `dyn Send + 'long` to `dyn Send + 'short`.
+                                    self.constraints.outlives_constraints.push(
+                                        OutlivesConstraint {
+                                            sup: src_lt.as_var(),
+                                            sub: dst_lt.as_var(),
+                                            locations: location.to_locations(),
+                                            span: location.to_locations().span(self.body),
+                                            category: ConstraintCategory::Cast {
+                                                is_raw_ptr_dyn_type_cast: true,
+                                                is_implicit_coercion: false,
+                                                unsize_to: None,
+                                            },
+                                            variance_info: ty::VarianceDiagInfo::default(),
+                                            from_closure: false,
+                                        },
+                                    );
+                                }
+                                (None, Some(_)) => bug!(
+                                    "introducing a principal should have errored in HIR typeck"
                                 ),
-                                // FIXME: Once we disallow casting `*const dyn Trait + 'short`
-                                // to `*const dyn Trait + 'long`, then this can just be `src_lt`.
-                                dst_lt,
-                            );
-                            let dst_obj = Ty::new_dynamic(
-                                tcx,
-                                tcx.mk_poly_existential_predicates(
-                                    &dst_tty.without_auto_traits().collect::<Vec<_>>(),
-                                ),
-                                dst_lt,
-                            );
-
-                            debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
-
-                            self.sub_types(
-                                src_obj,
-                                dst_obj,
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_implicit_coercion: false,
-                                    unsize_to: None,
-                                },
-                            )
-                            .unwrap();
+                                (Some(_), None) => {
+                                    bug!("dropping the principal should have been an unsizing cast")
+                                }
+                            }
                         }
                     }
                     CastKind::Transmute => {
@@ -1633,8 +1706,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
+            | Rvalue::Discriminant(..) => {}
         }
     }
 
@@ -2202,7 +2274,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

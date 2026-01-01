@@ -1,3 +1,6 @@
+use std::ffi::CString;
+
+use rustc_abi::AddressSpace;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
@@ -7,6 +10,7 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
+use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
 
@@ -40,6 +44,9 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         llvm::set_linkage(g, base::linkage_to_llvm(linkage));
         llvm::set_visibility(g, base::visibility_to_llvm(visibility));
         self.assume_dso_local(g, false);
+
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        self.add_aliases(g, &attrs.foreign_item_symbol_aliases);
 
         self.instances.borrow_mut().insert(instance, g);
     }
@@ -78,11 +85,31 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         self.assume_dso_local(lldecl, false);
 
+        self.add_aliases(lldecl, &attrs.foreign_item_symbol_aliases);
+
         self.instances.borrow_mut().insert(instance, lldecl);
     }
 }
 
 impl CodegenCx<'_, '_> {
+    fn add_aliases(&self, aliasee: &llvm::Value, aliases: &[(Symbol, Linkage, Visibility)]) {
+        let ty = self.get_type_of_global(aliasee);
+
+        for (alias, linkage, visibility) in aliases {
+            tracing::debug!("ALIAS: {alias:?} {linkage:?} {visibility:?}");
+            let lldecl = llvm::add_alias(
+                self.llmod,
+                ty,
+                AddressSpace::ZERO,
+                aliasee,
+                &CString::new(alias.as_str()).unwrap(),
+            );
+
+            llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
+            llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
+        }
+    }
+
     /// Whether a definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     /// Marks the local as DSO if so.

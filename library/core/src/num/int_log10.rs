@@ -1,9 +1,11 @@
 //! These functions compute the integer logarithm of their type, assuming
 //! that someone has already checked that the value is strictly positive.
 
+use crate::num::NonZero;
+
 // 0 < val <= u8::MAX
 #[inline]
-pub(super) const fn u8(val: u8) -> u32 {
+const fn u8_impl(val: u8) -> u32 {
     let val = val as u32;
 
     // For better performance, avoid branches by assembling the solution
@@ -45,13 +47,13 @@ const fn less_than_5(val: u32) -> u32 {
 
 // 0 < val <= u16::MAX
 #[inline]
-pub(super) const fn u16(val: u16) -> u32 {
+const fn u16_impl(val: u16) -> u32 {
     less_than_5(val as u32)
 }
 
 // 0 < val <= u32::MAX
 #[inline]
-pub(super) const fn u32(mut val: u32) -> u32 {
+const fn u32_impl(mut val: u32) -> u32 {
     let mut log = 0;
     if val >= 100_000 {
         val /= 100_000;
@@ -62,7 +64,7 @@ pub(super) const fn u32(mut val: u32) -> u32 {
 
 // 0 < val <= u64::MAX
 #[inline]
-pub(super) const fn u64(mut val: u64) -> u32 {
+const fn u64_impl(mut val: u64) -> u32 {
     let mut log = 0;
     if val >= 10_000_000_000 {
         val /= 10_000_000_000;
@@ -77,66 +79,87 @@ pub(super) const fn u64(mut val: u64) -> u32 {
 
 // 0 < val <= u128::MAX
 #[inline]
-pub(super) const fn u128(mut val: u128) -> u32 {
+const fn u128_impl(mut val: u128) -> u32 {
     let mut log = 0;
     if val >= 100_000_000_000_000_000_000_000_000_000_000 {
         val /= 100_000_000_000_000_000_000_000_000_000_000;
         log += 32;
-        return log + u32(val as u32);
+        return log + u32_impl(val as u32);
     }
     if val >= 10_000_000_000_000_000 {
         val /= 10_000_000_000_000_000;
         log += 16;
     }
-    log + u64(val as u64)
+    log + u64_impl(val as u64)
 }
 
-#[cfg(target_pointer_width = "16")]
-#[inline]
-pub(super) const fn usize(val: usize) -> u32 {
-    u16(val as _)
+macro_rules! define_unsigned_ilog10 {
+    ($($ty:ident => $impl_fn:ident,)*) => {$(
+        #[inline]
+        pub(super) const fn $ty(val: NonZero<$ty>) -> u32 {
+            let result = $impl_fn(val.get());
+
+            // SAFETY: Integer logarithm is monotonic non-decreasing, so the computed `result` cannot
+            // exceed the value produced for the maximum input.
+            unsafe { crate::hint::assert_unchecked(result <= const { $impl_fn($ty::MAX) }) };
+
+            result
+        }
+    )*};
 }
 
-#[cfg(target_pointer_width = "32")]
-#[inline]
-pub(super) const fn usize(val: usize) -> u32 {
-    u32(val as _)
+define_unsigned_ilog10! {
+    u8 => u8_impl,
+    u16 => u16_impl,
+    u32 => u32_impl,
+    u64 => u64_impl,
+    u128 => u128_impl,
 }
 
-#[cfg(target_pointer_width = "64")]
 #[inline]
-pub(super) const fn usize(val: usize) -> u32 {
-    u64(val as _)
+pub(super) const fn usize(val: NonZero<usize>) -> u32 {
+    #[cfg(target_pointer_width = "16")]
+    let impl_fn = u16;
+
+    #[cfg(target_pointer_width = "32")]
+    let impl_fn = u32;
+
+    #[cfg(target_pointer_width = "64")]
+    let impl_fn = u64;
+
+    // SAFETY: We have selected the correct `impl_fn`, so the converting `val` to the argument is
+    // safe.
+    impl_fn(unsafe { NonZero::new_unchecked(val.get() as _) })
 }
 
-// 0 < val <= i8::MAX
-#[inline]
-pub(super) const fn i8(val: i8) -> u32 {
-    u8(val as u8)
+macro_rules! define_signed_ilog10 {
+    ($($ty:ident => $impl_fn:ident,)*) => {$(
+        // 0 < val <= $ty::MAX
+        #[inline]
+        pub(super) const fn $ty(val: $ty) -> Option<u32> {
+            if val > 0 {
+                let result = $impl_fn(val.cast_unsigned());
+
+                // SAFETY: Integer logarithm is monotonic non-decreasing, so the computed `result`
+                // cannot exceed the value produced for the maximum input.
+                unsafe {
+                    crate::hint::assert_unchecked(result <= const { $impl_fn($ty::MAX.cast_unsigned()) });
+                }
+
+                Some(result)
+            } else {
+                None
+            }
+        }
+    )*};
 }
 
-// 0 < val <= i16::MAX
-#[inline]
-pub(super) const fn i16(val: i16) -> u32 {
-    u16(val as u16)
-}
-
-// 0 < val <= i32::MAX
-#[inline]
-pub(super) const fn i32(val: i32) -> u32 {
-    u32(val as u32)
-}
-
-// 0 < val <= i64::MAX
-#[inline]
-pub(super) const fn i64(val: i64) -> u32 {
-    u64(val as u64)
-}
-
-// 0 < val <= i128::MAX
-#[inline]
-pub(super) const fn i128(val: i128) -> u32 {
-    u128(val as u128)
+define_signed_ilog10! {
+    i8 => u8_impl,
+    i16 => u16_impl,
+    i32 => u32_impl,
+    i64 => u64_impl,
+    i128 => u128_impl,
 }
 
 /// Instantiate this panic logic once, rather than for all the ilog methods

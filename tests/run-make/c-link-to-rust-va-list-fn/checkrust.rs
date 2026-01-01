@@ -2,7 +2,7 @@
 #![feature(c_variadic)]
 #![feature(cfg_select)]
 
-use std::ffi::{CStr, CString, VaList, VaListImpl, c_char, c_double, c_int, c_long, c_longlong};
+use std::ffi::{CStr, CString, VaList, c_char, c_double, c_int, c_long, c_longlong};
 
 macro_rules! continue_if {
     ($cond:expr) => {
@@ -58,11 +58,8 @@ pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == 16);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Skip Me!"));
-    ap.with_copy(
-        |mut ap| {
-            if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
-        },
-    )
+    let mut ap = ap.clone();
+    if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
 }
 
 #[unsafe(no_mangle)]
@@ -153,8 +150,8 @@ pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
 unsafe extern "C" {
     fn test_variadic(_: c_int, ...) -> usize;
     fn test_va_list_by_value(_: VaList) -> usize;
-    fn test_va_list_by_pointer(_: *mut VaListImpl) -> usize;
-    fn test_va_list_by_pointer_pointer(_: *mut *mut VaListImpl) -> usize;
+    fn test_va_list_by_pointer(_: *mut VaList) -> usize;
+    fn test_va_list_by_pointer_pointer(_: *mut *mut VaList) -> usize;
 }
 
 #[unsafe(no_mangle)]
@@ -165,7 +162,7 @@ extern "C" fn run_test_variadic() -> usize {
 #[unsafe(no_mangle)]
 extern "C" fn run_test_va_list_by_value() -> usize {
     unsafe extern "C" fn helper(mut ap: ...) -> usize {
-        unsafe { test_va_list_by_value(ap.as_va_list()) }
+        unsafe { test_va_list_by_value(ap) }
     }
 
     unsafe { helper(1 as c_longlong, 2 as c_int, 3 as c_longlong) }

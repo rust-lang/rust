@@ -24,6 +24,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
+                if let mir::Operand::Constant(const_op) = operand {
+                    let val = self.eval_mir_constant(&const_op);
+                    if val.all_bytes_uninit(self.cx.tcx()) {
+                        return;
+                    }
+                }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
                 // `BackendRepr::Scalar | BackendRepr::ScalarPair`. This ensures we match the MIR
@@ -399,7 +405,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
                         OperandValue::Immediate(lladdr)
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
@@ -609,30 +615,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef {
                     val: OperandValue::Immediate(discr),
                     layout: self.cx.layout_of(discr_ty),
-                    move_annotation: None,
-                }
-            }
-
-            mir::Rvalue::NullaryOp(ref null_op, ty) => {
-                let ty = self.monomorphize(ty);
-                let layout = bx.cx().layout_of(ty);
-                let val = match null_op {
-                    mir::NullOp::OffsetOf(fields) => {
-                        let val = bx
-                            .tcx()
-                            .offset_of_subfield(bx.typing_env(), layout, fields.iter())
-                            .bytes();
-                        bx.cx().const_usize(val)
-                    }
-                    mir::NullOp::RuntimeChecks(kind) => {
-                        let val = kind.value(bx.tcx().sess);
-                        bx.cx().const_bool(val)
-                    }
-                };
-                let tcx = self.cx.tcx();
-                OperandRef {
-                    val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(null_op.ty(tcx)),
                     move_annotation: None,
                 }
             }

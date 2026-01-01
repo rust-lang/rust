@@ -1,4 +1,4 @@
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for uclibc Linux on ARMv7 without NEON,
 // thumb-mode or hardfloat.
@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             cpu: "generic".into(),

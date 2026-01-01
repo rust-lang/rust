@@ -1,8 +1,8 @@
-use crate::spec::{RelroLevel, TargetOptions, cvs};
+use crate::spec::{Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "freebsd".into(),
+        os: Os::FreeBsd,
         dynamic_linking: true,
         families: cvs!["unix"],
         has_rpath: true,

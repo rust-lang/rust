@@ -59,7 +59,7 @@ fn main() -> Result<(), ()> {
         }
     }
 
-    let local_node_modules = npm::install(&config.rust_src, &config.out_dir, &config.npm)
+    let local_node_modules = npm::install(&config.rust_src, &config.out_dir, &config.yarn)
         .expect("unable to install browser-ui-test");
 
     let mut command = Command::new(&config.nodejs);

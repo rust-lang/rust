@@ -1,0 +1,45 @@
+error: `id` is ambiguous
+  --> $DIR/ambiguous-2.rs:7:18
+   |
+LL |     ambiguous_1::id();
+   |                  ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-1.rs:13:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^
+note: `id` could also refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-1.rs:15:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: `id` is ambiguous
+  --> $DIR/ambiguous-2.rs:7:18
+   |
+LL |     ambiguous_1::id();
+   |                  ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-1.rs:13:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^
+note: `id` could also refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-1.rs:15:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

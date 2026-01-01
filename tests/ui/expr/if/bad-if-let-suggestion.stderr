@@ -27,7 +27,13 @@ LL | fn a() {
    | ------ similarly named function `a` defined here
 ...
 LL |     if (i + j) = i {}
-   |         ^ help: a function with a similar name exists: `a`
+   |         ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (a + j) = i {}
+   |
 
 error[E0425]: cannot find value `j` in this scope
   --> $DIR/bad-if-let-suggestion.rs:9:13
@@ -36,7 +42,13 @@ LL | fn a() {
    | ------ similarly named function `a` defined here
 ...
 LL |     if (i + j) = i {}
-   |             ^ help: a function with a similar name exists: `a`
+   |             ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (i + a) = i {}
+   |
 
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:9:18
@@ -45,7 +57,13 @@ LL | fn a() {
    | ------ similarly named function `a` defined here
 ...
 LL |     if (i + j) = i {}
-   |                  ^ help: a function with a similar name exists: `a`
+   |                  ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (i + j) = a {}
+   |
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/bad-if-let-suggestion.rs:16:8
@@ -54,7 +72,13 @@ LL | fn a() {
    | ------ similarly named function `a` defined here
 ...
 LL |     if x[0] = 1 {}
-   |        ^ help: a function with a similar name exists: `a`
+   |        ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if x[0] = 1 {}
+LL +     if a[0] = 1 {}
+   |
 
 error[E0308]: mismatched types
   --> $DIR/bad-if-let-suggestion.rs:2:8

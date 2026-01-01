@@ -1,3 +1,5 @@
+//@ edition:2015
+
 #![feature(decl_macro)]
 #![allow(unused)]
 

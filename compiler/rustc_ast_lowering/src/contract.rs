@@ -23,7 +23,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // The order in which things are lowered is important! I.e to
         // refer to variables in contract_decls from postcond/precond,
         // we must lower it first!
-        let contract_decls = self.lower_stmts(&contract.declarations).0;
+        let contract_decls = self.lower_decls(contract);
 
         match (&contract.requires, &contract.ensures) {
             (Some(req), Some(ens)) => {
@@ -121,6 +121,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.expr_block(wrapped_body)
             }
             (None, None) => body(self),
+        }
+    }
+
+    fn lower_decls(&mut self, contract: &rustc_ast::FnContract) -> &'hir [rustc_hir::Stmt<'hir>] {
+        let (decls, decls_tail) = self.lower_stmts(&contract.declarations);
+
+        if let Some(e) = decls_tail {
+            // include the tail expression in the declaration statements
+            let tail = self.stmt_expr(e.span, *e);
+            self.arena.alloc_from_iter(decls.into_iter().map(|d| *d).chain([tail].into_iter()))
+        } else {
+            decls
         }
     }
 

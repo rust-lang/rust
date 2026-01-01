@@ -1,0 +1,22 @@
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid-repr-simd-on-enum-148634.rs:6:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+...
+LL | enum Es {}
+   | ---------- not a struct
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/invalid-repr-simd-on-enum-148634.rs:6:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+...
+LL | enum Es {}
+   | ------- zero-variant enum
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0084, E0517.
+For more information about an error, try `rustc --explain E0084`.

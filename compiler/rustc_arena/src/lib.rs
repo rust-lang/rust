@@ -16,7 +16,6 @@
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
-#![feature(maybe_uninit_slice)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(unwrap_infallible)]

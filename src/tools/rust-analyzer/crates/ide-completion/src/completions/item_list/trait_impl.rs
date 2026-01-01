@@ -344,7 +344,13 @@ fn get_transformed_fn(
                         }
                         _ => None,
                     })?;
-                    ted::replace(ty.syntax(), output.syntax());
+                    if let ast::Type::TupleType(ty) = &output
+                        && ty.fields().next().is_none()
+                    {
+                        ted::remove(fn_.ret_type()?.syntax());
+                    } else {
+                        ted::replace(ty.syntax(), output.syntax());
+                    }
                 }
                 _ => (),
             }
@@ -1614,6 +1620,35 @@ trait DesugaredAsyncTrait {
 
 impl DesugaredAsyncTrait for () {
     async fn foo(&self) -> usize {
+    $0
+}
+}
+"#,
+        );
+
+        check_edit(
+            "async fn foo",
+            r#"
+//- minicore: future, send, sized
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = ()> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    $0
+}
+"#,
+            r#"
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = ()> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    async fn foo(&self) {
     $0
 }
 }

@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `clippy`
-  --> $DIR/tool-mod-child.rs:2:5
+  --> $DIR/tool-mod-child.rs:3:5
    |
 LL | use clippy::a::b;
    |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
@@ -10,7 +10,7 @@ LL + extern crate clippy;
    |
 
 error[E0432]: unresolved import `clippy`
-  --> $DIR/tool-mod-child.rs:1:5
+  --> $DIR/tool-mod-child.rs:2:5
    |
 LL | use clippy::a;
    |     ^^^^^^ use of unresolved module or unlinked crate `clippy`
@@ -21,7 +21,7 @@ LL + extern crate clippy;
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rustdoc`
-  --> $DIR/tool-mod-child.rs:5:5
+  --> $DIR/tool-mod-child.rs:6:5
    |
 LL | use rustdoc::a::b;
    |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`
@@ -32,7 +32,7 @@ LL + extern crate rustdoc;
    |
 
 error[E0432]: unresolved import `rustdoc`
-  --> $DIR/tool-mod-child.rs:4:5
+  --> $DIR/tool-mod-child.rs:5:5
    |
 LL | use rustdoc::a;
    |     ^^^^^^^ use of unresolved module or unlinked crate `rustdoc`

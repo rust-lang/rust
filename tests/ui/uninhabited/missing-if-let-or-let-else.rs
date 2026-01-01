@@ -6,14 +6,14 @@ fn a() {
 }
 fn b() {
     let Some(x) = foo() { //~ ERROR expected one of
-        //~^ HELP you might have meant to use `let else`
+        //~^ HELP you might have meant to use `let...else`
         return;
     }
 }
 fn c() {
     let Some(x) = foo() { //~ ERROR expected one of
         //~^ HELP you might have meant to use `if let`
-        //~| HELP alternatively, you might have meant to use `let else`
+        //~| HELP alternatively, you might have meant to use `let...else`
         // The parser check happens pre-macro-expansion, so we don't know for sure.
         println!("{x}");
     }

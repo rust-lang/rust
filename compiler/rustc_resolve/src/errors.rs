@@ -1,9 +1,10 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
+    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::late::PatternSource;
@@ -812,6 +813,14 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) ident: Ident,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(resolve_private_extern_crate_reexport, code = E0365)]
+pub(crate) struct PrivateExternCrateReexport {
+    pub ident: Ident,
+    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
+    pub sugg: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[help(resolve_consider_adding_macro_export)]
 pub(crate) struct ConsiderAddingMacroExport {
@@ -1359,3 +1368,121 @@ pub(crate) struct UnusedMacroUse;
 #[diag(resolve_macro_use_deprecated)]
 #[help]
 pub(crate) struct MacroUseDeprecated;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_is_private)]
+pub(crate) struct MacroIsPrivate {
+    pub ident: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_macro_definition)]
+pub(crate) struct UnusedMacroDefinition {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_rule_never_used)]
+pub(crate) struct MacroRuleNeverUsed {
+    pub n: usize,
+    pub name: Symbol,
+}
+
+pub(crate) struct UnstableFeature {
+    pub msg: DiagMessage,
+}
+
+impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(self.msg);
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_extern_crate_not_idiomatic)]
+pub(crate) struct ExternCrateNotIdiomatic {
+    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub code: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_out_of_scope_macro_calls)]
+#[help]
+pub(crate) struct OutOfScopeMacroCalls {
+    #[label]
+    pub span: Span,
+    pub path: String,
+    pub location: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_redundant_import_visibility)]
+pub(crate) struct RedundantImportVisibility {
+    #[note]
+    pub span: Span,
+    #[help]
+    pub help: (),
+    pub import_vis: String,
+    pub max_vis: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unknown_diagnostic_attribute)]
+pub(crate) struct UnknownDiagnosticAttribute {
+    #[subdiagnostic]
+    pub typo: Option<UnknownDiagnosticAttributeTypoSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unknown_diagnostic_attribute_typo_sugg,
+    style = "verbose",
+    code = "{typo_name}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
+    #[primary_span]
+    pub span: Span,
+    pub typo_name: Symbol,
+}
+
+// FIXME: Make this properly translatable.
+pub(crate) struct Ambiguity {
+    pub ident: Ident,
+    pub kind: &'static str,
+    pub b1_note: Spanned<String>,
+    pub b1_help_msgs: Vec<String>,
+    pub b2_note: Spanned<String>,
+    pub b2_help_msgs: Vec<String>,
+}
+
+impl Ambiguity {
+    fn decorate<'a>(self, diag: &mut Diag<'a, impl EmissionGuarantee>) {
+        diag.primary_message(format!("`{}` is ambiguous", self.ident));
+        diag.span_label(self.ident.span, "ambiguous name");
+        diag.note(format!("ambiguous because of {}", self.kind));
+        diag.span_note(self.b1_note.span, self.b1_note.node);
+        for help_msg in self.b1_help_msgs {
+            diag.help(help_msg);
+        }
+        diag.span_note(self.b2_note.span, self.b2_note.node);
+        for help_msg in self.b2_help_msgs {
+            diag.help(help_msg);
+        }
+    }
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, "").with_span(self.ident.span).with_code(E0659);
+        self.decorate(&mut diag);
+        diag
+    }
+}
+
+impl<'a> LintDiagnostic<'a, ()> for Ambiguity {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        self.decorate(diag);
+    }
+}

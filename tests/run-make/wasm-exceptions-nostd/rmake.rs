@@ -1,4 +1,4 @@
-//@ only-wasm32-bare
+//@ only-wasm32-unknown-unknown
 
 use std::path::Path;
 

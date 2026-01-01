@@ -44,7 +44,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
     }
 }
 
-/// The first pass over the crate simply builds up the set of inferreds.
+// The first pass over the crate simply builds up the set of inferreds.
 
 pub(crate) struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,

@@ -251,7 +251,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 let mut transient = DenseBitSet::new_filled(ccx.body.local_decls.len());
                 // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
                 for (bb, data) in traversal::reachable(&ccx.body) {
-                    if matches!(data.terminator().kind, TerminatorKind::Return) {
+                    if data.terminator().kind == TerminatorKind::Return {
                         let location = ccx.body.terminator_loc(bb);
                         maybe_storage_live.seek_after_primary_effect(location);
                         // If a local may be live here, it is definitely not transient.
@@ -627,7 +627,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     | PointerCoercion::ArrayToPointer
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
-                    | PointerCoercion::ReifyFnPointer,
+                    | PointerCoercion::ReifyFnPointer(_),
                     _,
                 ),
                 _,
@@ -645,7 +645,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::RuntimeChecks(_), _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {
@@ -886,6 +885,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             feature,
                             ..
                         }) => {
+                            // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]`
+                            // if the callee is safe to expose, to avoid bypassing recursive stability.
+                            // This is not ideal since it means the user sees an error, not the macro
+                            // author, but that's also the case if one forgets to set
+                            // `#[allow_internal_unstable]` in the first place.
+                            if self.span.allows_unstable(feature) && is_const_stable {
+                                return;
+                            }
+
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,

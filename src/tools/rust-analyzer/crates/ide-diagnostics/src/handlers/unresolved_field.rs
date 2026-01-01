@@ -83,7 +83,7 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Opti
         make::ty("()")
     };
 
-    if !is_editable_crate(target_module.krate(), ctx.sema.db)
+    if !is_editable_crate(target_module.krate(ctx.sema.db), ctx.sema.db)
         || SyntaxKind::from_keyword(field_name, ctx.edition).is_some()
     {
         return None;

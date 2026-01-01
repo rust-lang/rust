@@ -1,0 +1,16 @@
+error[E0282]: type annotations needed
+  --> $DIR/never-type-inference-fail.rs:4:9
+   |
+LL |     let x = panic!();
+   |         ^
+LL |     x.clone();
+   |     - type must be known at this point
+   |
+help: consider giving `x` an explicit type
+   |
+LL |     let x: /* Type */ = panic!();
+   |          ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,3 +1,4 @@
+//@ edition:2015
 // Testing token span hygiene.
 
 //@ proc-macro: mixed-site-span.rs

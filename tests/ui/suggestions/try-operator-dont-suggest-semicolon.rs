@@ -12,7 +12,7 @@ fn main() -> Result<(), ()> {
     // Here, we do want to suggest a semicolon:
     let x = Ok(42);
     if true {
-    //~^ NOTE: expected this to be `()`
+    //~^ NOTE: `if` expressions without `else` arms expect their inner expression to be `()`
         x?
         //~^ ERROR: mismatched types [E0308]
         //~| NOTE: expected `()`, found integer

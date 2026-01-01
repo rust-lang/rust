@@ -2,20 +2,13 @@
 //@ only-arm
 //@ ignore-thumb (this test uses arm assembly)
 //@ only-eabihf (the assembly below requires float hardware support)
+#![feature(c_variadic, c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //
 // Clang and gcc reject defining functions with a non-default calling convention and a variable
 // argument list, so C programs that use multiple c-variadic calling conventions are unlikely
 // to come up. Here we validate that our codegen backends do in fact generate correct code.
-
-extern "C" {
-    fn variadic_c(_: f64, _: ...) -> f64;
-}
-
-extern "aapcs" {
-    fn variadic_aapcs(_: f64, _: ...) -> f64;
-}
 
 fn main() {
     unsafe {
@@ -51,10 +44,11 @@ fn main() {
 //
 // > This section applies only to non-variadic functions. For a variadic function the base standard
 // > is always used both for argument passing and result return.
-core::arch::global_asm!(
-    r#"
-{variadic_c}:
-{variadic_aapcs}:
+
+#[unsafe(naked)]
+unsafe extern "aapcs" fn variadic_aapcs(_: f64, _: ...) -> f64 {
+    core::arch::naked_asm!(
+        r#"
         sub     sp, sp, #12
         stmib   sp, {{r2, r3}}
         vmov    d0, r0, r1
@@ -71,6 +65,10 @@ core::arch::global_asm!(
         add     sp, sp, #12
         bx      lr
     "#,
-    variadic_c = sym variadic_c,
-    variadic_aapcs = sym variadic_aapcs,
-);
+    )
+}
+
+#[unsafe(naked)]
+unsafe extern "C" fn variadic_c(_: f64, _: ...) -> f64 {
+    core::arch::naked_asm!("b {}", sym variadic_aapcs)
+}

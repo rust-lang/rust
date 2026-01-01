@@ -7,7 +7,6 @@
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
-#![feature(asm_cfg)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
 #![feature(macro_metavar_expr_concat)]
@@ -56,8 +55,8 @@ pub mod arm;
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 pub mod aarch64;
 
-#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
-pub mod aarch64_linux;
+#[cfg(all(target_arch = "aarch64", target_feature = "outline-atomics"))]
+pub mod aarch64_outline_atomics;
 
 #[cfg(all(
     kernel_user_helpers,

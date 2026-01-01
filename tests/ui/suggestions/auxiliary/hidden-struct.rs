@@ -33,3 +33,6 @@ impl Marker for hidden::Foo {}
 impl Marker for hidden1::Bar {}
 impl Marker for Baz {}
 impl Marker for Quux {}
+
+
+pub use crate as library;

@@ -1,10 +1,11 @@
-use crate::spec::{Arch, FramePointer, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, FramePointer, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnullvm::opts();
     base.max_atomic_width = Some(128);
-    base.features = "+v8a,+neon,+fp-armv8".into();
+    base.features = "+v8a,+neon,+outline-atomics".into();
     base.linker = Some("aarch64-w64-mingw32-clang".into());
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "arm64pe"]);
 
     // Microsoft recommends enabling frame pointers on Arm64 Windows.
     // From https://learn.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions?view=msvc-170#integer-registers
@@ -17,7 +18,7 @@ pub(crate) fn target() -> Target {
         metadata: TargetMetadata {
             description: Some("ARM64 MinGW (Windows 10+), LLVM ABI".into()),
             tier: Some(2),
-            host_tools: Some(false),
+            host_tools: Some(true),
             std: Some(true),
         },
         pointer_width: 64,

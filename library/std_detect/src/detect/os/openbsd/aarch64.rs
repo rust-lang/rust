@@ -31,7 +31,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // the feature is available.
     let aa64pfr0 = sysctl64(&[libc::CTL_MACHDEP, CPU_ID_AA64PFR0]);
 
-    super::aarch64::parse_system_registers(aa64isar0, aa64isar1, aa64mmfr2, aa64pfr0)
+    crate::detect::aarch64::parse_system_registers(aa64isar0, aa64isar1, aa64mmfr2, aa64pfr0)
 }
 
 #[inline]

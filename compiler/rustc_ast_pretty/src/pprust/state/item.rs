@@ -1,6 +1,6 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
-use rustc_ast::{self as ast, ModKind, TraitAlias};
+use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -305,7 +305,7 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items }) => {
+            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items, constness }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
 
@@ -321,17 +321,12 @@ impl<'a> State<'a> {
                 };
 
                 if let Some(box of_trait) = of_trait {
-                    let ast::TraitImplHeader {
-                        defaultness,
-                        safety,
-                        constness,
-                        polarity,
-                        ref trait_ref,
-                    } = *of_trait;
+                    let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
+                        *of_trait;
                     self.print_defaultness(defaultness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(constness);
+                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }
@@ -339,6 +334,7 @@ impl<'a> State<'a> {
                     self.space();
                     self.word_space("for");
                 } else {
+                    self.print_constness(*constness);
                     impl_generics(self);
                 }
 
@@ -675,9 +671,24 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
-        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque } = func;
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impls } =
+            func;
 
         self.print_define_opaques(define_opaque.as_deref());
+
+        for EiiImpl { eii_macro_path, impl_safety, .. } in eii_impls {
+            self.word("#[");
+            if let Safety::Unsafe(..) = impl_safety {
+                self.word("unsafe");
+                self.popen();
+            }
+            self.print_path(eii_macro_path, false, 0);
+            if let Safety::Unsafe(..) = impl_safety {
+                self.pclose();
+            }
+            self.word("]");
+            self.hardbreak();
+        }
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
 

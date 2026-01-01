@@ -17,8 +17,8 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![feature(array_windows)]
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
 #![feature(if_let_guard)]
@@ -39,6 +39,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
+pub use unicode_width::UNICODE_VERSION;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -221,99 +222,269 @@ pub fn with_metavar_spans<R>(f: impl FnOnce(&MetavarSpansMap) -> R) -> R {
     with_session_globals(|session_globals| f(&session_globals.metavar_spans))
 }
 
-// FIXME: We should use this enum or something like it to get rid of the
-// use of magic `/rust/1.x/...` paths across the board.
+bitflags::bitflags! {
+    /// Scopes used to determined if it need to apply to `--remap-path-prefix`
+    #[derive(Debug, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, Hash)]
+    pub struct RemapPathScopeComponents: u8 {
+        /// Apply remappings to the expansion of `std::file!()` macro
+        const MACRO = 1 << 0;
+        /// Apply remappings to printed compiler diagnostics
+        const DIAGNOSTICS = 1 << 1;
+        /// Apply remappings to debug information
+        const DEBUGINFO = 1 << 3;
+        /// Apply remappings to coverage information
+        const COVERAGE = 1 << 4;
+
+        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries and objects are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
+    }
+}
+
+impl<E: Encoder> Encodable<E> for RemapPathScopeComponents {
+    #[inline]
+    fn encode(&self, s: &mut E) {
+        s.emit_u8(self.bits());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for RemapPathScopeComponents {
+    #[inline]
+    fn decode(s: &mut D) -> RemapPathScopeComponents {
+        RemapPathScopeComponents::from_bits(s.read_u8())
+            .expect("invalid bits for RemapPathScopeComponents")
+    }
+}
+
+/// A self-contained "real" filename.
+///
+/// It is produced by `SourceMap::to_real_filename`.
+///
+/// `RealFileName` represents a filename that may have been (partly) remapped
+/// by `--remap-path-prefix` and `-Zremap-path-scope`.
+///
+/// It also contains an embedabble component which gives a working directory
+/// and a maybe-remapped maybe-aboslote name. This is useful for debuginfo where
+/// some formats and tools highly prefer absolute paths.
+///
+/// ## Consistency across compiler sessions
+///
+/// The type-system, const-eval and other parts of the compiler rely on `FileName`
+/// and by extension `RealFileName` to be consistent across compiler sessions.
+///
+/// Otherwise unsoudness (like rust-lang/rust#148328) may occur.
+///
+/// As such this type is self-sufficient and consistent in it's output.
+///
+/// The [`RealFileName::path`] and [`RealFileName::embeddable_name`] methods
+/// are guaranteed to always return the same output across compiler sessions.
+///
+/// ## Usage
+///
+/// Creation of a [`RealFileName`] should be done using
+/// [`FilePathMapping::to_real_filename`][rustc_span::source_map::FilePathMapping::to_real_filename].
+///
+/// Retrieving a path can be done in two main ways:
+///  - by using [`RealFileName::path`] with a given scope (should be preferred)
+///  - or by using [`RealFileName::embeddable_name`] with a given scope
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable)]
-pub enum RealFileName {
-    LocalPath(PathBuf),
-    /// For remapped paths (namely paths into libstd that have been mapped
-    /// to the appropriate spot on the local host's file system, and local file
-    /// system paths that have been remapped with `FilePathMapping`),
-    Remapped {
-        /// `local_path` is the (host-dependent) local path to the file. This is
-        /// None if the file was imported from another crate
-        local_path: Option<PathBuf>,
-        /// `virtual_name` is the stable path rustc will store internally within
-        /// build artifacts.
-        virtual_name: PathBuf,
-    },
+pub struct RealFileName {
+    /// The local name (always present in the original crate)
+    local: Option<InnerRealFileName>,
+    /// The maybe remapped part. Correspond to `local` when no remapped happened.
+    maybe_remapped: InnerRealFileName,
+    /// The remapped scopes. Any active scope MUST use `maybe_virtual`
+    scopes: RemapPathScopeComponents,
+}
+
+/// The inner workings of `RealFileName`.
+///
+/// It contains the `name`, `working_directory` and `embeddable_name` components.
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable, Hash)]
+struct InnerRealFileName {
+    /// The name.
+    name: PathBuf,
+    /// The working directory associated with the embeddable name.
+    working_directory: PathBuf,
+    /// The embeddable name.
+    embeddable_name: PathBuf,
 }
 
 impl Hash for RealFileName {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // To prevent #70924 from happening again we should only hash the
-        // remapped (virtualized) path if that exists. This is because
-        // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
-        // remain stable even if the corresponding local_path changes
-        self.remapped_path_if_available().hash(state)
+        // remapped path if that exists. This is because remapped paths to
+        // sysroot crates (/rust/$hash or /rust/$version) remain stable even
+        // if the corresponding local path changes.
+        if !self.was_fully_remapped() {
+            self.local.hash(state);
+        }
+        self.maybe_remapped.hash(state);
+        self.scopes.bits().hash(state);
     }
 }
 
 impl RealFileName {
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path(&self) -> Option<&Path> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path, virtual_name: _ } => local_path.as_deref(),
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn into_local_path(self) -> Option<PathBuf> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
-        }
-    }
-
-    /// Returns the path suitable for embedding into build artifacts. This would still
-    /// be a local path if it has not been remapped. A remapped path will not correspond
-    /// to a valid file system path: see `local_path_if_available()` for something that
-    /// is more likely to return paths into the local host file system.
-    pub fn remapped_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: _, virtual_name: p } => p,
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists. Otherwise returns the remapped name.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(path)
-            | RealFileName::Remapped { local_path: None, virtual_name: path }
-            | RealFileName::Remapped { local_path: Some(path), virtual_name: _ } => path,
-        }
-    }
-
-    /// Return the path remapped or not depending on the [`FileNameDisplayPreference`].
+    /// Returns the associated path for the given remapping scope.
     ///
-    /// For the purpose of this function, local and short preference are equal.
-    pub fn to_path(&self, display_pref: FileNameDisplayPreference) -> &Path {
-        match display_pref {
-            FileNameDisplayPreference::Local | FileNameDisplayPreference::Short => {
-                self.local_path_if_available()
-            }
-            FileNameDisplayPreference::Remapped => self.remapped_path_if_available(),
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    #[inline]
+    pub fn path(&self, scope: RemapPathScopeComponents) -> &Path {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            local_name.name.as_path()
+        } else {
+            self.maybe_remapped.name.as_path()
         }
     }
 
-    pub fn to_string_lossy(&self, display_pref: FileNameDisplayPreference) -> Cow<'_, str> {
+    /// Returns the working directory and embeddable path for the given remapping scope.
+    ///
+    /// Useful for embedding a mostly abosolute path (modulo remapping) in the compiler outputs.
+    ///
+    /// The embedabble path is not guaranteed to be an absolute path, nor is it garuenteed
+    /// that the working directory part is always a prefix of embeddable path.
+    ///
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    #[inline]
+    pub fn embeddable_name(&self, scope: RemapPathScopeComponents) -> (&Path, &Path) {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::embeddable_path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            (&local_name.working_directory, &local_name.embeddable_name)
+        } else {
+            (&self.maybe_remapped.working_directory, &self.maybe_remapped.embeddable_name)
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
+    pub fn local_path(&self) -> Option<&Path> {
+        if self.was_not_remapped() {
+            Some(&self.maybe_remapped.name)
+        } else if let Some(local) = &self.local {
+            Some(&local.name)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
+    pub fn into_local_path(self) -> Option<PathBuf> {
+        if self.was_not_remapped() {
+            Some(self.maybe_remapped.name)
+        } else if let Some(local) = self.local {
+            Some(local.name)
+        } else {
+            None
+        }
+    }
+
+    /// Returns whenever the filename was remapped.
+    #[inline]
+    pub(crate) fn was_remapped(&self) -> bool {
+        !self.scopes.is_empty()
+    }
+
+    /// Returns whenever the filename was fully remapped.
+    #[inline]
+    fn was_fully_remapped(&self) -> bool {
+        self.scopes.is_all()
+    }
+
+    /// Returns whenever the filename was not remapped.
+    #[inline]
+    fn was_not_remapped(&self) -> bool {
+        self.scopes.is_empty()
+    }
+
+    /// Returns an empty `RealFileName`
+    ///
+    /// Useful as the working directory input to `SourceMap::to_real_filename`.
+    #[inline]
+    pub fn empty() -> RealFileName {
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            },
+            scopes: RemapPathScopeComponents::empty(),
+        }
+    }
+
+    /// Returns a `RealFileName` that is completely remapped without any local components.
+    ///
+    /// Only exposed for the purpose of `-Zsimulate-remapped-rust-src-base`.
+    pub fn from_virtual_path(path: &Path) -> RealFileName {
+        let name = InnerRealFileName {
+            name: path.to_owned(),
+            embeddable_name: path.to_owned(),
+            working_directory: PathBuf::new(),
+        };
+        RealFileName { local: None, maybe_remapped: name, scopes: RemapPathScopeComponents::all() }
+    }
+
+    /// Update the filename for encoding in the crate metadata.
+    ///
+    /// Currently it's about removing the local part when the filename
+    /// is either fully remapped or not remapped at all.
+    #[inline]
+    pub fn update_for_crate_metadata(&mut self) {
+        if self.was_fully_remapped() || self.was_not_remapped() {
+            // NOTE: This works because when the filename is fully
+            // remapped, we don't care about the `local` part,
+            // and when the filename is not remapped at all,
+            // `maybe_remapped` and `local` are equal.
+            self.local = None;
+        }
+    }
+
+    /// Internal routine to display the filename.
+    ///
+    /// Users should always use the `RealFileName::path` method or `FileName` methods instead.
+    fn to_string_lossy<'a>(&'a self, display_pref: FileNameDisplayPreference) -> Cow<'a, str> {
         match display_pref {
-            FileNameDisplayPreference::Local => self.local_path_if_available().to_string_lossy(),
-            FileNameDisplayPreference::Remapped => {
-                self.remapped_path_if_available().to_string_lossy()
+            FileNameDisplayPreference::Remapped => self.maybe_remapped.name.to_string_lossy(),
+            FileNameDisplayPreference::Local => {
+                self.local.as_ref().unwrap_or(&self.maybe_remapped).name.to_string_lossy()
             }
             FileNameDisplayPreference::Short => self
-                .local_path_if_available()
+                .maybe_remapped
+                .name
                 .file_name()
                 .map_or_else(|| "".into(), |f| f.to_string_lossy()),
+            FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
         }
     }
 }
@@ -339,38 +510,18 @@ pub enum FileName {
     InlineAsm(Hash64),
 }
 
-impl From<PathBuf> for FileName {
-    fn from(p: PathBuf) -> Self {
-        FileName::Real(RealFileName::LocalPath(p))
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameEmbeddablePreference {
-    /// If a remapped path is available, only embed the `virtual_path` and omit the `local_path`.
-    ///
-    /// Otherwise embed the local-path into the `virtual_path`.
-    RemappedOnly,
-    /// Embed the original path as well as its remapped `virtual_path` component if available.
-    LocalAndRemapped,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameDisplayPreference {
-    /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for paths that get embedded into files produced by the compiler.
-    Remapped,
-    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Local,
-    /// Display only the filename, as a way to reduce the verbosity of the output.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Short,
-}
-
 pub struct FileNameDisplay<'a> {
     inner: &'a FileName,
     display_pref: FileNameDisplayPreference,
+}
+
+// Internal enum. Should not be exposed.
+#[derive(Clone, Copy)]
+enum FileNameDisplayPreference {
+    Remapped,
+    Local,
+    Short,
+    Scope(RemapPathScopeComponents),
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
@@ -417,18 +568,34 @@ impl FileName {
         }
     }
 
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 
-    /// This may include transient local filesystem information.
-    /// Must not be embedded in build outputs.
-    pub fn prefer_local(&self) -> FileNameDisplay<'_> {
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
+    pub fn prefer_local_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
 
-    pub fn display(&self, display_pref: FileNameDisplayPreference) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref }
+    /// Returns a short (either the filename or an empty string).
+    #[inline]
+    pub fn short(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Short }
+    }
+
+    /// Returns a `Display`-able path for the given scope.
+    #[inline]
+    pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
@@ -473,7 +640,8 @@ impl FileName {
 
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    ///
+    /// Avoid embedding this in build artifacts.
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),
@@ -1296,18 +1464,49 @@ impl<E: SpanEncoder> Encodable<E> for AttrId {
     }
 }
 
-/// This trait is used to allow decoder specific encodings of certain types.
-/// It is similar to rustc_type_ir's TyDecoder.
-pub trait SpanDecoder: Decoder {
-    fn decode_span(&mut self) -> Span;
+pub trait BlobDecoder: Decoder {
     fn decode_symbol(&mut self) -> Symbol;
     fn decode_byte_symbol(&mut self) -> ByteSymbol;
+    fn decode_def_index(&mut self) -> DefIndex;
+}
+
+/// This trait is used to allow decoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyDecoder.
+///
+/// Specifically for metadata, an important note is that spans can only be decoded once
+/// some other metadata is already read.
+/// Spans have to be properly mapped into the decoding crate's sourcemap,
+/// and crate numbers have to be converted sometimes.
+/// This can only be done once the `CrateRoot` is available.
+///
+/// As such, some methods that used to be in the `SpanDecoder` trait
+/// are now in the `BlobDecoder` trait. This hierarchy is not mirrored for `Encoder`s.
+/// `BlobDecoder` has methods for deserializing types that are more complex than just those
+/// that can be decoded with `Decoder`, but which can be decoded on their own, *before* any other metadata is.
+/// Importantly, that means that types that can be decoded with `BlobDecoder` can show up in the crate root.
+/// The place where this distinction is relevant is in `rustc_metadata` where metadata is decoded using either the
+/// `MetadataDecodeContext` or the `BlobDecodeContext`.
+pub trait SpanDecoder: BlobDecoder {
+    fn decode_span(&mut self) -> Span;
     fn decode_expn_id(&mut self) -> ExpnId;
     fn decode_syntax_context(&mut self) -> SyntaxContext;
     fn decode_crate_num(&mut self) -> CrateNum;
-    fn decode_def_index(&mut self) -> DefIndex;
     fn decode_def_id(&mut self) -> DefId;
     fn decode_attr_id(&mut self) -> AttrId;
+}
+
+impl BlobDecoder for MemDecoder<'_> {
+    fn decode_symbol(&mut self) -> Symbol {
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        ByteSymbol::intern(self.read_byte_str())
+    }
+
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
 }
 
 impl SpanDecoder for MemDecoder<'_> {
@@ -1316,14 +1515,6 @@ impl SpanDecoder for MemDecoder<'_> {
         let hi = Decodable::decode(self);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
-    }
-
-    fn decode_symbol(&mut self) -> Symbol {
-        Symbol::intern(self.read_str())
-    }
-
-    fn decode_byte_symbol(&mut self) -> ByteSymbol {
-        ByteSymbol::intern(self.read_byte_str())
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -1336,10 +1527,6 @@ impl SpanDecoder for MemDecoder<'_> {
 
     fn decode_crate_num(&mut self) -> CrateNum {
         CrateNum::from_u32(self.read_u32())
-    }
-
-    fn decode_def_index(&mut self) -> DefIndex {
-        panic!("cannot decode `DefIndex` with `MemDecoder`");
     }
 
     fn decode_def_id(&mut self) -> DefId {
@@ -1357,13 +1544,13 @@ impl<D: SpanDecoder> Decodable<D> for Span {
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for Symbol {
+impl<D: BlobDecoder> Decodable<D> for Symbol {
     fn decode(s: &mut D) -> Symbol {
         s.decode_symbol()
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for ByteSymbol {
+impl<D: BlobDecoder> Decodable<D> for ByteSymbol {
     fn decode(s: &mut D) -> ByteSymbol {
         s.decode_byte_symbol()
     }
@@ -1387,7 +1574,7 @@ impl<D: SpanDecoder> Decodable<D> for CrateNum {
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for DefIndex {
+impl<D: BlobDecoder> Decodable<D> for DefIndex {
     fn decode(s: &mut D) -> DefIndex {
         s.decode_def_index()
     }
@@ -1723,8 +1910,10 @@ pub struct SourceFile {
     pub external_src: FreezeLock<ExternalSource>,
     /// The start position of this source in the `SourceMap`.
     pub start_pos: BytePos,
-    /// The byte length of this source.
-    pub source_len: RelativeBytePos,
+    /// The byte length of this source after normalization.
+    pub normalized_source_len: RelativeBytePos,
+    /// The byte length of this source before normalization.
+    pub unnormalized_source_len: u32,
     /// Locations of lines beginnings in the source code.
     pub lines: FreezeLock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
@@ -1748,7 +1937,8 @@ impl Clone for SourceFile {
             checksum_hash: self.checksum_hash,
             external_src: self.external_src.clone(),
             start_pos: self.start_pos,
-            source_len: self.source_len,
+            normalized_source_len: self.normalized_source_len,
+            unnormalized_source_len: self.unnormalized_source_len,
             lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
@@ -1764,7 +1954,8 @@ impl<S: SpanEncoder> Encodable<S> for SourceFile {
         self.src_hash.encode(s);
         self.checksum_hash.encode(s);
         // Do not encode `start_pos` as it's global state for this session.
-        self.source_len.encode(s);
+        self.normalized_source_len.encode(s);
+        self.unnormalized_source_len.encode(s);
 
         // We are always in `Lines` form by the time we reach here.
         assert!(self.lines.read().is_lines());
@@ -1837,7 +2028,8 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);
         let checksum_hash: Option<SourceFileHash> = Decodable::decode(d);
-        let source_len: RelativeBytePos = Decodable::decode(d);
+        let normalized_source_len: RelativeBytePos = Decodable::decode(d);
+        let unnormalized_source_len = Decodable::decode(d);
         let lines = {
             let num_lines: u32 = Decodable::decode(d);
             if num_lines > 0 {
@@ -1859,7 +2051,8 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
         SourceFile {
             name,
             start_pos: BytePos::from_u32(0),
-            source_len,
+            normalized_source_len,
+            unnormalized_source_len,
             src: None,
             src_hash,
             checksum_hash,
@@ -1959,12 +2152,17 @@ impl SourceFile {
                 SourceFileHash::new_in_memory(checksum_hash_kind, src.as_bytes())
             }
         });
+        // Capture the original source length before normalization.
+        let unnormalized_source_len = u32::try_from(src.len()).map_err(|_| OffsetOverflowError)?;
+        if unnormalized_source_len > Self::MAX_FILE_SIZE {
+            return Err(OffsetOverflowError);
+        }
+
         let normalized_pos = normalize_src(&mut src);
 
         let stable_id = StableSourceFileId::from_filename_in_current_crate(&name);
-        let source_len = src.len();
-        let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
-        if source_len > Self::MAX_FILE_SIZE {
+        let normalized_source_len = u32::try_from(src.len()).map_err(|_| OffsetOverflowError)?;
+        if normalized_source_len > Self::MAX_FILE_SIZE {
             return Err(OffsetOverflowError);
         }
 
@@ -1977,7 +2175,8 @@ impl SourceFile {
             checksum_hash,
             external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             start_pos: BytePos::from_u32(0),
-            source_len: RelativeBytePos::from_u32(source_len),
+            normalized_source_len: RelativeBytePos::from_u32(normalized_source_len),
+            unnormalized_source_len,
             lines: FreezeLock::frozen(SourceFileLines::Lines(lines)),
             multibyte_chars,
             normalized_pos,
@@ -2161,7 +2360,7 @@ impl SourceFile {
 
     #[inline]
     pub fn end_position(&self) -> BytePos {
-        self.absolute_position(self.source_len)
+        self.absolute_position(self.normalized_source_len)
     }
 
     /// Finds the line containing the given position. The return value is the
@@ -2197,7 +2396,7 @@ impl SourceFile {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.source_len.to_u32() == 0
+        self.normalized_source_len.to_u32() == 0
     }
 
     /// Calculates the original byte position relative to the start of the file

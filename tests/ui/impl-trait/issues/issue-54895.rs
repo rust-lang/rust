@@ -17,7 +17,6 @@ impl<'a> Trait<'a> for X {
 
 fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
     //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-    //[edition2024]~^^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
     X(())
 }
 

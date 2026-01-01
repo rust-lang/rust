@@ -217,7 +217,7 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    #[rustc_const_stable(feature = "const_mul_add", since = "CURRENT_RUSTC_VERSION")]
     pub const fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
@@ -252,7 +252,8 @@ impl f64 {
         core::f64::math::div_euclid(self, rhs)
     }
 
-    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+    /// Calculates the least nonnegative remainder of `self` when divided by
+    /// `rhs`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
     /// most cases. However, due to a floating point round-off error it can
@@ -295,6 +296,11 @@ impl f64 {
     /// It might have a different sequence of rounding operations than `powf`,
     /// so the results are not guaranteed to agree.
     ///
+    /// Note that this function is special in that it can return non-NaN results for NaN inputs. For
+    /// example, `f64::powi(f64::NAN, 0)` returns `1.0`. However, if an input is a *signaling*
+    /// NaN, then the result is non-deterministically either a NaN or the result that the
+    /// corresponding quiet NaN would produce.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
@@ -308,6 +314,7 @@ impl f64 {
     /// assert!(abs_difference <= 1e-14);
     ///
     /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
+    /// assert_eq!(f64::powi(0.0, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -318,6 +325,11 @@ impl f64 {
     }
 
     /// Raises a number to a floating point power.
+    ///
+    /// Note that this function is special in that it can return non-NaN results for NaN inputs. For
+    /// example, `f64::powf(f64::NAN, 0.0)` returns `1.0`. However, if an input is a *signaling*
+    /// NaN, then the result is non-deterministically either a NaN or the result that the
+    /// corresponding quiet NaN would produce.
     ///
     /// # Unspecified precision
     ///
@@ -333,6 +345,7 @@ impl f64 {
     ///
     /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
     /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
+    /// assert_eq!(f64::powf(0.0, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]

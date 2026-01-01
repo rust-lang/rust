@@ -1,7 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]

@@ -6,10 +6,7 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{
-    DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
-    db::DefDatabase,
-};
+use hir::{DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, Semantics};
 use ide_db::{
     FileRange, FxIndexSet, MiniCore, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -138,8 +135,7 @@ pub(crate) fn hover(
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
-    let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let edition = sema.attach_first_edition(file_id).edition(db);
     let display_target = sema.first_crate(file_id)?.to_display_target(db);
     let mut res = if range.is_empty() {
         hover_offset(
@@ -522,9 +518,8 @@ fn notable_traits<'db>(
         return Vec::new();
     }
 
-    db.notable_traits_in_deps(ty.krate(db).into())
-        .iter()
-        .flat_map(|it| &**it)
+    ty.krate(db)
+        .notable_traits_in_deps(db)
         .filter_map(move |&trait_| {
             let trait_ = trait_.into();
             ty.impls_trait(db, trait_, &[]).then(|| {
@@ -677,10 +672,10 @@ fn walk_and_push_ty(
         } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
             push_new_def(trait_.into());
         } else if let Some(tp) = t.as_type_param(db) {
-            let sized_trait = LangItem::Sized.resolve_trait(db, t.krate(db).into());
+            let sized_trait = hir::Trait::lang(db, t.krate(db), hir::LangItem::Sized);
             tp.trait_bounds(db)
                 .into_iter()
-                .filter(|&it| Some(it.into()) != sized_trait)
+                .filter(|&it| Some(it) != sized_trait)
                 .for_each(|it| push_new_def(it.into()));
         }
     });

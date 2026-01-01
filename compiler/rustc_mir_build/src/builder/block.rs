@@ -39,7 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: Option<ExprId>,
         region_scope: Scope,
     ) -> BlockAnd<()> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
 
         // This convoluted structure is to avoid using recursion as we walk down a list
         // of statements. Basically, the structure we get back is something like:

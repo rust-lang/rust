@@ -1,12 +1,11 @@
 use std::any::Any;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::{env, io};
 
 use rand::{RngCore, rng};
-use rustc_ast::NodeId;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -14,25 +13,23 @@ use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{
-    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
-};
+use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    LintEmitter, TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
+use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -41,8 +38,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
-    SwitchWithOptPath,
+    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -160,20 +156,6 @@ pub struct Session {
     pub invocation_temp: Option<String>,
 }
 
-impl LintEmitter for &'_ Session {
-    type Id = NodeId;
-
-    fn emit_node_span_lint(
-        self,
-        lint: &'static rustc_lint_defs::Lint,
-        node_id: Self::Id,
-        span: impl Into<rustc_errors::MultiSpan>,
-        decorator: impl for<'a> rustc_errors::LintDiagnostic<'a, ()> + DynSend + 'static,
-    ) {
-        self.psess.buffer_lint(lint, span, node_id, decorator);
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum CodegenUnits {
     /// Specified by the user. In this case we try fairly hard to produce the
@@ -207,7 +189,11 @@ impl Session {
     }
 
     pub fn local_crate_source_file(&self) -> Option<RealFileName> {
-        Some(self.source_map().path_mapping().to_real_filename(self.io.input.opt_path()?))
+        Some(
+            self.source_map()
+                .path_mapping()
+                .to_real_filename(self.source_map().working_dir(), self.io.input.opt_path()?),
+        )
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
@@ -382,7 +368,7 @@ impl Session {
     }
 
     pub fn is_wasi_reactor(&self) -> bool {
-        self.target.options.os == "wasi"
+        self.target.options.os == Os::Wasi
             && matches!(
                 self.opts.unstable_opts.wasi_exec_model,
                 Some(config::WasiExecModel::Reactor)
@@ -594,14 +580,6 @@ impl Session {
 
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
-        // Autodiff currently requires fat-lto to have access to the llvm-ir of all (indirectly) used functions and types.
-        // fat-lto is the easiest solution to this requirement, but quite expensive.
-        // FIXME(autodiff): Make autodiff also work with embed-bc instead of fat-lto.
-        // Don't apply fat-lto to proc-macro crates as they cannot use fat-lto without -Zdylib-lto
-        if self.opts.autodiff_enabled() && !self.opts.crate_types.contains(&CrateType::ProcMacro) {
-            return config::Lto::Fat;
-        }
-
         // If our target has codegen requirements ignore the command line
         if self.target.requires_lto {
             return config::Lto::Fat;
@@ -869,21 +847,6 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn filename_display_preference(
-        &self,
-        scope: RemapPathScopeComponents,
-    ) -> FileNameDisplayPreference {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to `Session::filename_display_preference`"
-        );
-        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
-            FileNameDisplayPreference::Remapped
-        } else {
-            FileNameDisplayPreference::Local
-        }
-    }
-
     /// Get the deployment target on Apple platforms based on the standard environment variables,
     /// or fall back to the minimum version supported by `rustc`.
     ///
@@ -955,7 +918,7 @@ fn default_emitter(
 
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
+            HumanReadableErrorType { short, unicode } => {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -971,20 +934,6 @@ fn default_emitter(
                                 .ignore_directory_in_diagnostics_source_blocks
                                 .clone(),
                         );
-                Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
-            }
-            HumanReadableErrorType::Default { short } => {
-                let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map)
-                    .short_message(short)
-                    .diagnostic_width(sopts.diagnostic_width)
-                    .macro_backtrace(macro_backtrace)
-                    .track_diagnostics(track_diagnostics)
-                    .terminal_url(terminal_url)
-                    .theme(OutputTheme::Ascii)
-                    .ignored_directories_in_source_blocks(
-                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -1495,14 +1444,9 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+            HumanReadableErrorType { short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .short_message(short),
-            ),
-            HumanReadableErrorType::Default { short } => Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(OutputTheme::Ascii)
                     .short_message(short),
             ),
         },
@@ -1518,47 +1462,4 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         }
     };
     emitter
-}
-
-pub trait RemapFileNameExt {
-    type Output<'a>
-    where
-        Self: 'a;
-
-    /// Returns a possibly remapped filename based on the passed scope and remap cli options.
-    ///
-    /// One and only one scope should be passed to this method, it will panic otherwise.
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
-}
-
-impl RemapFileNameExt for rustc_span::FileName {
-    type Output<'a> = rustc_span::FileNameDisplay<'a>;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.prefer_remapped_unconditionally()
-        } else {
-            self.prefer_local()
-        }
-    }
-}
-
-impl RemapFileNameExt for rustc_span::RealFileName {
-    type Output<'a> = &'a Path;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.remapped_path_if_available()
-        } else {
-            self.local_path_if_available()
-        }
-    }
 }

@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, Size};
+use rustc_abi::Size;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
@@ -13,7 +13,9 @@ pub mod diagnostics;
 mod foreign_access_skipping;
 mod perms;
 mod tree;
+mod tree_visitor;
 mod unimap;
+mod wildcard;
 
 #[cfg(test)]
 mod exhaustive;
@@ -54,17 +56,13 @@ impl<'tcx> Tree {
             interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes(),
         );
-        // TODO: for now we bail out on wildcard pointers. Eventually we should
-        // handle them as much as we can.
-        let tag = match prov {
-            ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return interp_ok(()),
-        };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_user_relevant_span();
         self.perform_access(
-            tag,
-            Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
+            prov,
+            range,
+            access_kind,
+            diagnostics::AccessCause::Explicit(access_kind),
             global,
             alloc_id,
             span,
@@ -79,19 +77,9 @@ impl<'tcx> Tree {
         size: Size,
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
-        // TODO: for now we bail out on wildcard pointers. Eventually we should
-        // handle them as much as we can.
-        let tag = match prov {
-            ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return interp_ok(()),
-        };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_user_relevant_span();
-        self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
-    }
-
-    pub fn expose_tag(&mut self, _tag: BorTag) {
-        // TODO
+        self.dealloc(prov, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
     /// A tag just lost its protector.
@@ -108,8 +96,11 @@ impl<'tcx> Tree {
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         let span = machine.current_user_relevant_span();
-        // `None` makes it the magic on-protector-end operation
-        self.perform_access(tag, None, global, alloc_id, span)
+        self.perform_protector_end_access(tag, global, alloc_id, span)?;
+
+        self.update_exposure_for_protector_release(tag);
+
+        interp_ok(())
     }
 }
 
@@ -229,38 +220,27 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr(), 0) {
-            Ok(data) => {
-                // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
-                // After all, the pointer may be lazily initialized outside this initial range.
-                data
-            }
-            Err(_) => {
-                assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
-                // This pointer doesn't come with an AllocId, so there's no
-                // memory to do retagging in.
-                trace!(
-                    "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
-                    new_tag,
-                    place.ptr(),
-                    place.layout.ty,
-                );
-                log_creation(this, None)?;
-                // Keep original provenance.
-                return interp_ok(place.ptr().provenance);
-            }
+        // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
+        // After all, the pointer may be lazily initialized outside this initial range.
+        let Ok((alloc_id, base_offset, parent_prov)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+        else {
+            assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
+            // This pointer doesn't come with an AllocId, so there's no
+            // memory to do retagging in.
+            let new_prov = place.ptr().provenance;
+            trace!("reborrow of size 0: reusing {:?} (pointee {})", place.ptr(), place.layout.ty,);
+            log_creation(this, None)?;
+            // Keep original provenance.
+            return interp_ok(new_prov);
         };
-        log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
+        let new_prov = Provenance::Concrete { alloc_id, tag: new_tag };
 
-        let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return interp_ok(place.ptr().provenance), // TODO: handle wildcard pointers
-            ProvenanceExtra::Concrete(tag) => tag,
-        };
+        log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             new_tag,
-            orig_tag,
+            parent_prov,
             place.layout.ty,
             interpret::Pointer::new(alloc_id, base_offset),
             ptr_size.bytes()
@@ -291,7 +271,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
-            return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
+            return interp_ok(Some(new_prov));
         }
 
         let protected = new_perm.protector.is_some();
@@ -356,8 +336,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 tree_borrows.perform_access(
-                    orig_tag,
-                    Some((range_in_alloc, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
+                    parent_prov,
+                    range_in_alloc,
+                    AccessKind::Read,
+                    diagnostics::AccessCause::Reborrow,
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
                     this.machine.current_user_relevant_span(),
@@ -377,11 +359,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         }
-
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
             base_offset,
-            orig_tag,
+            parent_prov,
             new_tag,
             inside_perms,
             new_perm.outside_perm,
@@ -390,7 +371,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
         drop(tree_borrows);
 
-        interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
+        interp_ok(Some(new_prov))
     }
 
     fn tb_retag_place(
@@ -468,16 +449,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let options = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
-        let retag_fields = options.retag_fields;
-        let mut visitor = RetagVisitor { ecx: this, kind, retag_fields };
+        let mut visitor = RetagVisitor { ecx: this, kind };
         return visitor.visit_value(place);
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'tcx> {
             ecx: &'ecx mut MiriInterpCx<'tcx>,
             kind: RetagKind,
-            retag_fields: RetagFields,
         }
         impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -545,22 +523,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         self.walk_value(place)?;
                     }
                     _ => {
-                        // Not a reference/pointer/box. Only recurse if configured appropriately.
-                        let recurse = match self.retag_fields {
-                            RetagFields::No => false,
-                            RetagFields::Yes => true,
-                            RetagFields::OnlyScalar => {
-                                // Matching `ArgAbi::new` at the time of writing, only fields of
-                                // `Scalar` and `ScalarPair` ABI are considered.
-                                matches!(
-                                    place.layout.backend_repr,
-                                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
-                                )
-                            }
-                        };
-                        if recurse {
-                            self.walk_value(place)?;
-                        }
+                        // Not a reference/pointer/box. Recurse.
+                        self.walk_value(place)?;
                     }
                 }
                 interp_ok(())
@@ -606,7 +570,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // uncovers a non-supported `extern static`.
                 let alloc_extra = this.get_alloc_extra(alloc_id)?;
                 trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
-                alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
+
+                let global = this.machine.borrow_tracker.as_ref().unwrap();
+                let protected_tags = &global.borrow().protected_tags;
+                let protected = protected_tags.contains_key(&tag);
+                alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag, protected);
             }
             AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
                 // No tree borrows on these allocations.
@@ -636,8 +604,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
-            _ => {
-                eprintln!("Can't give the name {name} to Wildcard pointer");
+            Some(Provenance::Wildcard) => {
+                eprintln!("Can't give the name {name} to wildcard pointer");
+                return interp_ok(());
+            }
+            None => {
+                eprintln!("Can't give the name {name} to pointer without provenance");
                 return interp_ok(());
             }
         };

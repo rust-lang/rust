@@ -284,7 +284,7 @@ and instead produce a test harness. See the [Tests chapter](tests/index.md)
 for more information about tests.
 
 <a id="option-target"></a>
-## `--target`: select a target triple to build
+## `--target`: select a target tuple to build
 
 This controls which [target](targets/index.md) to produce.
 

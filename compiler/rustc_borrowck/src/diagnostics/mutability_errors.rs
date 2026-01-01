@@ -142,12 +142,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } else {
                     item_msg = access_place_desc;
                     let local_info = self.body.local_decls[local].local_info();
-                    if let LocalInfo::StaticRef { def_id, .. } = *local_info {
-                        let static_name = &self.infcx.tcx.item_name(def_id);
-                        reason = format!(", as `{static_name}` is an immutable static item");
-                    } else {
+                    let LocalInfo::StaticRef { def_id, .. } = *local_info else {
                         bug!("is_ref_to_static return true, but not ref to static?");
-                    }
+                    };
+                    let static_name = &self.infcx.tcx.item_name(def_id);
+                    reason = format!(", as `{static_name}` is an immutable static item");
                 }
             }
             PlaceRef { local, projection: [proj_base @ .., ProjectionElem::Deref] } => {
@@ -213,7 +212,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             AccessKind::Mutate => {
                 err = self.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
-                acted_on = "written";
+                acted_on = "written to";
                 span
             }
             AccessKind::MutableBorrow => {
@@ -518,8 +517,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         err.span_label(
                             span,
                             format!(
-                                "`{name}` is a `{pointer_sigil}` {pointer_desc}, \
-                                 so the data it refers to cannot be {acted_on}",
+                                "`{name}` is a `{pointer_sigil}` {pointer_desc}, so it cannot be \
+                                 {acted_on}",
                             ),
                         );
 
@@ -542,7 +541,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
-            PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
+            PlaceRef { local, projection: [.., ProjectionElem::Deref] } => {
                 err.span_label(span, format!("cannot {act}"));
 
                 match opt_source {
@@ -559,11 +558,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ));
                         self.suggest_map_index_mut_alternatives(ty, &mut err, span);
                     }
-                    _ => (),
+                    _ => {
+                        let local = &self.body.local_decls[local];
+                        match local.local_info() {
+                            LocalInfo::StaticRef { def_id, .. } => {
+                                let span = self.infcx.tcx.def_span(def_id);
+                                err.span_label(span, format!("this `static` cannot be {acted_on}"));
+                            }
+                            LocalInfo::ConstRef { def_id } => {
+                                let span = self.infcx.tcx.def_span(def_id);
+                                err.span_label(span, format!("this `const` cannot be {acted_on}"));
+                            }
+                            LocalInfo::BlockTailTemp(_) | LocalInfo::Boring
+                                if !local.source_info.span.overlaps(span) =>
+                            {
+                                err.span_label(
+                                    local.source_info.span,
+                                    format!("this cannot be {acted_on}"),
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
 
-            _ => {
+            PlaceRef { local, .. } => {
+                let local = &self.body.local_decls[local];
+                if !local.source_info.span.overlaps(span) {
+                    err.span_label(local.source_info.span, format!("this cannot be {acted_on}"));
+                }
                 err.span_label(span, format!("cannot {act}"));
             }
         }
@@ -772,11 +796,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
-                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _, _), .. },
                 ..
             })
             | hir::Node::Param(Param {
-                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _, _), .. },
                 ..
             }) = node
         {
@@ -1173,6 +1197,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             );
             return;
         }
+
+        // Do not suggest changing type if that is not under user control.
+        if self.is_closure_arg_with_non_locally_decided_type(local) {
+            return;
+        }
+
         let decl_span = local_decl.source_info.span;
 
         let (amp_mut_sugg, local_var_ty_info) = match *local_decl.local_info() {
@@ -1475,6 +1505,60 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             Applicability::HasPlaceholders,
         );
     }
+
+    /// Returns `true` if `local` is an argument in a closure passed to a
+    /// function defined in another crate.
+    ///
+    /// For example, in the following code this function returns `true` for `x`
+    /// since `Option::inspect()` is not defined in the current crate:
+    ///
+    /// ```text
+    /// some_option.as_mut().inspect(|x| {
+    /// ```
+    fn is_closure_arg_with_non_locally_decided_type(&self, local: Local) -> bool {
+        // We don't care about regular local variables, only args.
+        if self.body.local_kind(local) != LocalKind::Arg {
+            return false;
+        }
+
+        // Make sure we are inside a closure.
+        let InstanceKind::Item(body_def_id) = self.body.source.instance else {
+            return false;
+        };
+        let Some(Node::Expr(hir::Expr { hir_id: body_hir_id, kind, .. })) =
+            self.infcx.tcx.hir_get_if_local(body_def_id)
+        else {
+            return false;
+        };
+        let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind else {
+            return false;
+        };
+
+        // Check if the method/function that our closure is passed to is defined
+        // in another crate.
+        let Node::Expr(closure_parent) = self.infcx.tcx.parent_hir_node(*body_hir_id) else {
+            return false;
+        };
+        match closure_parent.kind {
+            ExprKind::MethodCall(method, _, _, _) => self
+                .infcx
+                .tcx
+                .typeck(method.hir_id.owner.def_id)
+                .type_dependent_def_id(closure_parent.hir_id)
+                .is_some_and(|def_id| !def_id.is_local()),
+            ExprKind::Call(func, _) => self
+                .infcx
+                .tcx
+                .typeck(func.hir_id.owner.def_id)
+                .node_type_opt(func.hir_id)
+                .and_then(|ty| match ty.kind() {
+                    ty::FnDef(def_id, _) => Some(def_id),
+                    _ => None,
+                })
+                .is_some_and(|def_id| !def_id.is_local()),
+            _ => false,
+        }
+    }
 }
 
 struct BindingFinder {
@@ -1494,7 +1578,7 @@ impl<'tcx> Visitor<'tcx> for BindingFinder {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> Self::Result {
-        if let hir::Pat { kind: hir::PatKind::Ref(_, _), span, .. } = param.pat
+        if let hir::Pat { kind: hir::PatKind::Ref(_, _, _), span, .. } = param.pat
             && *span == self.span
         {
             ControlFlow::Break(param.hir_id)

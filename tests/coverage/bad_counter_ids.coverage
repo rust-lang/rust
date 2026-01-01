@@ -21,7 +21,6 @@
    LL|      1|fn eq_good_message() {
    LL|      1|    println!("b");
    LL|      1|    assert_eq!(Foo(1), Foo(1), "message b");
-                                             ^0
    LL|      1|}
    LL|       |
    LL|      1|fn ne_good() {
@@ -32,7 +31,6 @@
    LL|      1|fn ne_good_message() {
    LL|      1|    println!("d");
    LL|      1|    assert_ne!(Foo(1), Foo(3), "message d");
-                                             ^0
    LL|      1|}
    LL|       |
    LL|      1|fn eq_bad() {

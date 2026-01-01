@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: build rustc_llvm
+---
+[Build] compile::Rustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({build::compiler/rustc_llvm})

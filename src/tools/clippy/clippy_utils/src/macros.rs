@@ -3,7 +3,7 @@
 use std::sync::{Arc, OnceLock};
 
 use crate::visitors::{Descend, for_each_expr_without_closures};
-use crate::{get_unique_attr, sym};
+use crate::{get_unique_builtin_attr, sym};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
@@ -42,7 +42,7 @@ pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     } else {
         // Allow users to tag any macro as being format!-like
         // TODO: consider deleting FORMAT_MACRO_DIAG_ITEMS and using just this method
-        get_unique_attr(cx.sess(), cx.tcx.get_all_attrs(macro_def_id), sym::format_args).is_some()
+        get_unique_builtin_attr(cx.sess(), cx.tcx.get_all_attrs(macro_def_id), sym::format_args).is_some()
     }
 }
 

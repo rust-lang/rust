@@ -1,0 +1,4 @@
+error: using the autodiff feature requires setting `lto="fat"` in your Cargo.toml
+
+error: aborting due to 1 previous error
+

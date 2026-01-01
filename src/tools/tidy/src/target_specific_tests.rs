@@ -52,8 +52,12 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
             }
         });
 
-        // Skip run-make tests as revisions are not supported.
-        if entry.path().strip_prefix(tests_path).is_ok_and(|rest| rest.starts_with("run-make")) {
+        // Skip run-make/run-make-cargo tests as revisions are not supported.
+        if entry
+            .path()
+            .strip_prefix(tests_path)
+            .is_ok_and(|rest| rest.starts_with("run-make") || rest.starts_with("run-make-cargo"))
+        {
             return;
         }
 

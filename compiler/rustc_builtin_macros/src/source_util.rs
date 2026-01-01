@@ -68,13 +68,10 @@ pub(crate) fn expand_file(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    use rustc_session::RemapFileNameExt;
-    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_span::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
-        Symbol::intern(
-            &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
-        ),
+        Symbol::intern(&loc.file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
     )))
 }
 
@@ -147,9 +144,7 @@ pub(crate) fn expand_include<'cx>(
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,
-                // Don't strip frontmatter for backward compatibility, `---` may be the start of a
-                // manifold negation. FIXME: Ideally, we wouldn't strip shebangs here either.
-                StripTokens::Shebang,
+                StripTokens::Nothing,
                 Some(self.span),
             ));
             let expr = parse_expr(&mut p).ok()?;

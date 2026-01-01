@@ -3,6 +3,8 @@
 use std::fmt;
 
 use rustc_hir::def::{CtorOf, DefKind, MacroKinds};
+use rustc_hir::def_id::DefId;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
@@ -147,17 +149,10 @@ impl<'a> From<&'a clean::Item> for ItemType {
     }
 }
 
-impl From<DefKind> for ItemType {
-    fn from(other: DefKind) -> Self {
-        Self::from_def_kind(other, None)
-    }
-}
-
 impl ItemType {
-    /// Depending on the parent kind, some variants have a different translation (like a `Method`
-    /// becoming a `TyMethod`).
-    pub(crate) fn from_def_kind(kind: DefKind, parent_kind: Option<DefKind>) -> Self {
-        match kind {
+    pub(crate) fn from_def_id(def_id: DefId, tcx: TyCtxt<'_>) -> Self {
+        let def_kind = tcx.def_kind(def_id);
+        match def_kind {
             DefKind::Enum => Self::Enum,
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
@@ -176,8 +171,13 @@ impl ItemType {
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
             DefKind::AssocTy => Self::AssocType,
-            DefKind::AssocFn if let Some(DefKind::Trait) = parent_kind => Self::TyMethod,
-            DefKind::AssocFn => Self::Method,
+            DefKind::AssocFn => {
+                if tcx.associated_item(def_id).defaultness(tcx).has_value() {
+                    Self::Method
+                } else {
+                    Self::TyMethod
+                }
+            }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
             DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
             DefKind::AssocConst => Self::AssocConst,

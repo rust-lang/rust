@@ -44,7 +44,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
     let label = format!("Rename to {}", d.suggested_text);
     let mut res = unresolved_fix("change_case", &label, frange.range);
     if ctx.resolve.should_resolve(&res.id) {
-        let source_change = def.rename(&ctx.sema, &d.suggested_text, RenameDefinition::Yes);
+        let source_change = def.rename(
+            &ctx.sema,
+            &d.suggested_text,
+            RenameDefinition::Yes,
+            &ctx.config.rename_config(),
+        );
         res.source_change = Some(source_change.ok().unwrap_or_default());
     }
 
@@ -439,10 +444,27 @@ fn f((_O): u8) {}
     #[test]
     fn ignores_no_mangle_items() {
         cov_mark::check!(extern_func_no_mangle_ignored);
+        cov_mark::check!(no_mangle_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
 #[no_mangle]
 extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+#[no_mangle]
+static lower_case: () = ();
+            "#,
+        );
+    }
+
+    #[test]
+    fn ignores_unsafe_no_mangle_items() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        cov_mark::check!(no_mangle_static_incorrect_case_ignored);
+        check_diagnostics(
+            r#"
+#[unsafe(no_mangle)]
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+#[unsafe(no_mangle)]
+static lower_case: () = ();
             "#,
         );
     }
@@ -983,7 +1005,8 @@ mod OtherBadCase;
  // ^^^^^^^^^^^^ 💡 error: Module `OtherBadCase` should have snake_case name, e.g. `other_bad_case`
 
 //- /BAD_CASE/OtherBadCase.rs
-#![deny(non_snake_case)]
+#![allow(non_snake_case)]
+#![deny(non_snake_case)] // The lint level has been overridden.
 
 fn FOO() {}
 // ^^^ 💡 error: Function `FOO` should have snake_case name, e.g. `foo`
@@ -1033,6 +1056,21 @@ fn QUX() {}
     non_snake_case
 )]
 fn foo(_HelloWorld: ()) {}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow_with_repr_c() {
+        check_diagnostics(
+            r#"
+#[repr(C)]
+struct FFI_Struct;
+
+#[repr(C)]
+enum FFI_Enum {
+    Field,
+}
         "#,
         );
     }

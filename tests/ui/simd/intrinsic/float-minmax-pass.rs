@@ -1,9 +1,10 @@
 //@ run-pass
 //@ ignore-emscripten
+//@ compile-flags: --cfg minisimd_const
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 #![allow(non_camel_case_types)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
@@ -12,7 +13,7 @@ use minisimd::*;
 
 use std::intrinsics::simd::*;
 
-fn main() {
+const fn minmax() {
     let x = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
     let y = f32x4::from_array([2.0, 1.0, 4.0, 3.0]);
 
@@ -46,4 +47,9 @@ fn main() {
         let maxn = simd_fmax(y, n);
         assert_eq!(maxn, y);
     }
+}
+
+fn main() {
+    const { minmax() };
+    minmax();
 }

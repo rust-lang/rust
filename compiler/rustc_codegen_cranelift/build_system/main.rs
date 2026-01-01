@@ -59,11 +59,6 @@ fn main() {
     }
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
-    // Force incr comp even in release mode unless in CI or incremental builds are explicitly disabled
-    if env::var_os("CARGO_BUILD_INCREMENTAL").is_none() {
-        env::set_var("CARGO_BUILD_INCREMENTAL", "true");
-    }
-
     let mut args = env::args().skip(1);
     let command = match args.next().as_deref() {
         Some("prepare") => Command::Prepare,
@@ -79,7 +74,7 @@ fn main() {
         }
     };
 
-    let mut out_dir = PathBuf::from(".");
+    let mut out_dir = std::env::current_dir().unwrap();
     let mut download_dir = None;
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;

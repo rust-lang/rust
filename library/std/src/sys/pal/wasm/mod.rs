@@ -18,8 +18,6 @@
 
 #[path = "../unsupported/os.rs"]
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 

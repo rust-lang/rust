@@ -1,25 +1,7 @@
 use rand::RngCore;
 
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
 use crate::assert_matches::assert_matches;
-use crate::char::MAX_LEN_UTF8;
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
-use crate::fs::TryLockError;
-use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -174,7 +156,7 @@ fn file_test_io_non_positional_read() {
 #[test]
 fn file_test_io_seek_and_tell_smoke_test() {
     let message = "ten-four";
-    let mut read_mem = [0; MAX_LEN_UTF8];
+    let mut read_mem = [0; char::MAX_LEN_UTF8];
     let set_cursor = 4 as u64;
     let tell_pos_pre_read;
     let tell_pos_post_read;
@@ -223,15 +205,23 @@ fn file_test_io_seek_and_write() {
 }
 
 #[test]
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
+#[cfg_attr(
+    not(any(
+        windows,
+        target_os = "aix",
+        target_os = "cygwin",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "hurd",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_vendor = "apple",
+    )),
+    should_panic
+)]
 fn file_lock_multiple_shared() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_multiple_shared_test.txt");
@@ -248,15 +238,23 @@ fn file_lock_multiple_shared() {
 }
 
 #[test]
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
+#[cfg_attr(
+    not(any(
+        windows,
+        target_os = "aix",
+        target_os = "cygwin",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "hurd",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_vendor = "apple",
+    )),
+    should_panic
+)]
 fn file_lock_blocking() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_blocking_test.txt");
@@ -274,15 +272,23 @@ fn file_lock_blocking() {
 }
 
 #[test]
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
+#[cfg_attr(
+    not(any(
+        windows,
+        target_os = "aix",
+        target_os = "cygwin",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "hurd",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_vendor = "apple",
+    )),
+    should_panic
+)]
 fn file_lock_drop() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_dup_test.txt");
@@ -297,15 +303,23 @@ fn file_lock_drop() {
 }
 
 #[test]
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
+#[cfg_attr(
+    not(any(
+        windows,
+        target_os = "aix",
+        target_os = "cygwin",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "hurd",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_vendor = "apple",
+    )),
+    should_panic
+)]
 fn file_lock_dup() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_dup_test.txt");
@@ -405,7 +419,7 @@ fn file_test_io_seek_shakedown() {
     let chunk_one: &str = "qwer";
     let chunk_two: &str = "asdf";
     let chunk_three: &str = "zxcv";
-    let mut read_mem = [0; MAX_LEN_UTF8];
+    let mut read_mem = [0; char::MAX_LEN_UTF8];
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_rt_io_file_test_seek_shakedown.txt");
     {
@@ -782,7 +796,7 @@ fn file_test_directoryinfo_readdir() {
         check!(w.write(msg));
     }
     let files = check!(fs::read_dir(dir));
-    let mut mem = [0; MAX_LEN_UTF8];
+    let mut mem = [0; char::MAX_LEN_UTF8];
     for f in files {
         let f = f.unwrap().path();
         {
@@ -1253,7 +1267,7 @@ fn readlink_not_symlink() {
 }
 
 #[test]
-#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
+#[cfg_attr(target_os = "android", ignore = "Android SELinux rules prevent creating hardlinks")]
 fn links_work() {
     let tmpdir = tmpdir();
     let input = tmpdir.join("in.txt");
@@ -1749,7 +1763,7 @@ fn metadata_access_times() {
 
 /// Test creating hard links to symlinks.
 #[test]
-#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
+#[cfg_attr(target_os = "android", ignore = "Android SELinux rules prevent creating hardlinks")]
 fn symlink_hard_link() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {

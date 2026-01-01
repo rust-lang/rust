@@ -314,14 +314,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.block.get_function()
     }
 
-    fn function_call(
+    pub fn function_call(
         &mut self,
-        func: RValue<'gcc>,
+        func: Function<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
     ) -> RValue<'gcc> {
-        // TODO(antoyo): remove when the API supports a different type for functions.
-        let func: Function<'gcc> = self.cx.rvalue_as_function(func);
         let args = self.check_call("call", func, args);
 
         // gccjit requires to use the result of functions, even when it's not used.
@@ -500,12 +498,12 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 }
 
 fn set_rvalue_location<'a, 'gcc, 'tcx>(
-    bx: &mut Builder<'a, 'gcc, 'tcx>,
+    _bx: &mut Builder<'a, 'gcc, 'tcx>,
     rvalue: RValue<'gcc>,
 ) -> RValue<'gcc> {
-    if bx.location.is_some() {
-        #[cfg(feature = "master")]
-        rvalue.set_location(bx.location.unwrap());
+    #[cfg(feature = "master")]
+    if let Some(location) = _bx.location {
+        rvalue.set_location(location);
     }
     rvalue
 }
@@ -514,6 +512,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     type CodegenCx = CodegenCx<'gcc, 'tcx>;
 
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
+        *cx.current_func.borrow_mut() = Some(block.get_function());
         Builder::with_cx(cx, block)
     }
 
@@ -668,32 +667,38 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn add(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_add(a, b)
+        self.assign_to_var(self.gcc_add(a, b))
     }
 
     fn fadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a + b
+        self.assign_to_var(a + b)
     }
 
     // TODO(antoyo): should we also override the `unchecked_` versions?
     fn sub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_sub(a, b)
+        self.assign_to_var(self.gcc_sub(a, b))
     }
 
     fn fsub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a - b
+        self.assign_to_var(a - b)
     }
 
     fn mul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_mul(a, b)
+        self.assign_to_var(self.gcc_mul(a, b))
     }
 
     fn fmul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.cx.context.new_binary_op(self.location, BinaryOp::Mult, a.get_type(), a, b)
+        self.assign_to_var(self.cx.context.new_binary_op(
+            self.location,
+            BinaryOp::Mult,
+            a.get_type(),
+            a,
+            b,
+        ))
     }
 
     fn udiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_udiv(a, b)
+        self.assign_to_var(self.gcc_udiv(a, b))
     }
 
     fn exactudiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -702,11 +707,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
         let b = self.gcc_int_cast(b, b_type);
-        self.gcc_udiv(a, b)
+        self.assign_to_var(self.gcc_udiv(a, b))
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_sdiv(a, b)
+        self.assign_to_var(self.gcc_sdiv(a, b))
     }
 
     fn exactsdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -715,19 +720,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // should be the same.
         let typ = a.get_type().to_signed(self);
         let b = self.gcc_int_cast(b, typ);
-        self.gcc_sdiv(a, b)
+        self.assign_to_var(self.gcc_sdiv(a, b))
     }
 
     fn fdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a / b
+        self.assign_to_var(a / b)
     }
 
     fn urem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_urem(a, b)
+        self.assign_to_var(self.gcc_urem(a, b))
     }
 
     fn srem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_srem(a, b)
+        self.assign_to_var(self.gcc_srem(a, b))
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -865,22 +870,26 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rvalue_location(self, lhs + rhs)
+        let result = set_rvalue_location(self, lhs + rhs);
+        self.assign_to_var(result)
     }
 
     fn fsub_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rvalue_location(self, lhs - rhs)
+        let result = set_rvalue_location(self, lhs - rhs);
+        self.assign_to_var(result)
     }
 
     fn fmul_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rvalue_location(self, lhs * rhs)
+        let result = set_rvalue_location(self, lhs * rhs);
+        self.assign_to_var(result)
     }
 
     fn fdiv_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        set_rvalue_location(self, lhs / rhs)
+        let result = set_rvalue_location(self, lhs / rhs);
+        self.assign_to_var(result)
     }
 
     fn frem_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -892,22 +901,22 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn fadd_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs + rhs
+        self.assign_to_var(lhs + rhs)
     }
 
     fn fsub_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs - rhs
+        self.assign_to_var(lhs - rhs)
     }
 
     fn fmul_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs * rhs
+        self.assign_to_var(lhs * rhs)
     }
 
     fn fdiv_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs / rhs
+        self.assign_to_var(lhs / rhs)
     }
 
     fn frem_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -931,6 +940,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.current_func()
             .new_local(self.location, ty, format!("stack_var_{}", self.next_value_counter()))
             .get_address(self.location)
+    }
+
+    fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
+        todo!()
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
@@ -1471,7 +1484,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         variable.to_rvalue()
     }
 
-    #[allow(dead_code)]
     fn va_arg(&mut self, _list: RValue<'gcc>, _ty: Type<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
@@ -1752,6 +1764,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
+            // TODO(antoyo): remove when the API supports a different type for functions.
+            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
             self.function_call(func, args, funclet)
         } else {
             // If it's a not function that was defined, it's a function pointer.
@@ -2409,6 +2423,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let res = then_vals | else_vals;
         self.bitcast_if_needed(res, result_type)
     }
+
+    // GCC doesn't like deeply nested expressions.
+    // By assigning intermediate expressions to a variable, this allow us to avoid deeply nested
+    // expressions and GCC will use much less RAM.
+    fn assign_to_var(&self, value: RValue<'gcc>) -> RValue<'gcc> {
+        let var = self.current_func().new_local(self.location, value.get_type(), "opResult");
+        self.llbb().add_assignment(self.location, var, value);
+        var.to_rvalue()
+    }
 }
 
 fn difference_or_zero<'gcc>(
@@ -2498,7 +2521,7 @@ impl ToGccComp for RealPredicate {
 }
 
 #[repr(C)]
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 enum MemOrdering {
     __ATOMIC_RELAXED,
     __ATOMIC_CONSUME,

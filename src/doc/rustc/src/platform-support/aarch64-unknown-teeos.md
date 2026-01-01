@@ -5,7 +5,7 @@
 Target for the TEEOS operating system.
 
 TEEOS is a mini os run in TrustZone, for trusted/security apps. The kernel of TEEOS is HongMeng/ChCore micro kernel. The libc for TEEOS is a part of musl.
-It's very small that there is no RwLock, no network, no stdin, and no file system for apps in TEEOS.
+It's very small that there is no network, no stdin, and no file system for apps in TEEOS.
 
 Some abbreviation:
 

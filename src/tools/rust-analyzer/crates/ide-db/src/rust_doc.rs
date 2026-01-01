@@ -33,7 +33,7 @@ pub fn is_rust_fence(s: &str) -> bool {
 
 const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
-pub fn format_docs(src: &Documentation) -> String {
+pub fn format_docs(src: &Documentation<'_>) -> String {
     format_docs_(src.as_str())
 }
 

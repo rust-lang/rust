@@ -40,7 +40,7 @@ use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::coercion::{CoerceMany, DynamicCoerceMany};
+use crate::coercion::CoerceMany;
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
-            && self.expr_guaranteed_to_constitute_read_for_never(expr)
+            && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
@@ -320,7 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // diverging would be unsound since we may never actually read the `!`.
         // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
-            && self.expr_guaranteed_to_constitute_read_for_never(expr)
+            && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
@@ -337,199 +337,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("... {:?}, expected is {:?}", ty, expected);
 
         ty
-    }
-
-    /// Whether this expression constitutes a read of value of the type that
-    /// it evaluates to.
-    ///
-    /// This is used to determine if we should consider the block to diverge
-    /// if the expression evaluates to `!`, and if we should insert a `NeverToAny`
-    /// coercion for values of type `!`.
-    ///
-    /// This function generally returns `false` if the expression is a place
-    /// expression and the *parent* expression is the scrutinee of a match or
-    /// the pointee of an `&` addr-of expression, since both of those parent
-    /// expressions take a *place* and not a value.
-    pub(super) fn expr_guaranteed_to_constitute_read_for_never(
-        &self,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> bool {
-        // We only care about place exprs. Anything else returns an immediate
-        // which would constitute a read. We don't care about distinguishing
-        // "syntactic" place exprs since if the base of a field projection is
-        // not a place then it would've been UB to read from it anyways since
-        // that constitutes a read.
-        if !expr.is_syntactic_place_expr() {
-            return true;
-        }
-
-        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
-        match parent_node {
-            hir::Node::Expr(parent_expr) => {
-                match parent_expr.kind {
-                    // Addr-of, field projections, and LHS of assignment don't constitute reads.
-                    // Assignment does call `drop_in_place`, though, but its safety
-                    // requirements are not the same.
-                    ExprKind::AddrOf(..) | hir::ExprKind::Field(..) => false,
-
-                    // Place-preserving expressions only constitute reads if their
-                    // parent expression constitutes a read.
-                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) => {
-                        self.expr_guaranteed_to_constitute_read_for_never(expr)
-                    }
-
-                    ExprKind::Assign(lhs, _, _) => {
-                        // Only the LHS does not constitute a read
-                        expr.hir_id != lhs.hir_id
-                    }
-
-                    // See note on `PatKind::Or` below for why this is `all`.
-                    ExprKind::Match(scrutinee, arms, _) => {
-                        assert_eq!(scrutinee.hir_id, expr.hir_id);
-                        arms.iter()
-                            .all(|arm| self.pat_guaranteed_to_constitute_read_for_never(arm.pat))
-                    }
-                    ExprKind::Let(hir::LetExpr { init, pat, .. }) => {
-                        assert_eq!(init.hir_id, expr.hir_id);
-                        self.pat_guaranteed_to_constitute_read_for_never(*pat)
-                    }
-
-                    // Any expression child of these expressions constitute reads.
-                    ExprKind::Array(_)
-                    | ExprKind::Call(_, _)
-                    | ExprKind::Use(_, _)
-                    | ExprKind::MethodCall(_, _, _, _)
-                    | ExprKind::Tup(_)
-                    | ExprKind::Binary(_, _, _)
-                    | ExprKind::Unary(_, _)
-                    | ExprKind::Cast(_, _)
-                    | ExprKind::DropTemps(_)
-                    | ExprKind::If(_, _, _)
-                    | ExprKind::Closure(_)
-                    | ExprKind::Block(_, _)
-                    | ExprKind::AssignOp(_, _, _)
-                    | ExprKind::Index(_, _, _)
-                    | ExprKind::Break(_, _)
-                    | ExprKind::Ret(_)
-                    | ExprKind::Become(_)
-                    | ExprKind::InlineAsm(_)
-                    | ExprKind::Struct(_, _, _)
-                    | ExprKind::Repeat(_, _)
-                    | ExprKind::Yield(_, _) => true,
-
-                    // These expressions have no (direct) sub-exprs.
-                    ExprKind::ConstBlock(_)
-                    | ExprKind::Loop(_, _, _, _)
-                    | ExprKind::Lit(_)
-                    | ExprKind::Path(_)
-                    | ExprKind::Continue(_)
-                    | ExprKind::OffsetOf(_, _)
-                    | ExprKind::Err(_) => unreachable!("no sub-expr expected for {:?}", expr.kind),
-                }
-            }
-
-            // If we have a subpattern that performs a read, we want to consider this
-            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
-            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. }) => {
-                assert_eq!(target.hir_id, expr.hir_id);
-                self.pat_guaranteed_to_constitute_read_for_never(*pat)
-            }
-
-            // These nodes (if they have a sub-expr) do constitute a read.
-            hir::Node::Block(_)
-            | hir::Node::Arm(_)
-            | hir::Node::ExprField(_)
-            | hir::Node::AnonConst(_)
-            | hir::Node::ConstBlock(_)
-            | hir::Node::ConstArg(_)
-            | hir::Node::Stmt(_)
-            | hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
-                ..
-            })
-            | hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Const(..), ..
-            })
-            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => true,
-
-            hir::Node::TyPat(_) | hir::Node::Pat(_) => {
-                self.dcx().span_delayed_bug(expr.span, "place expr not allowed in pattern");
-                true
-            }
-
-            // These nodes do not have direct sub-exprs.
-            hir::Node::Param(_)
-            | hir::Node::Item(_)
-            | hir::Node::ForeignItem(_)
-            | hir::Node::TraitItem(_)
-            | hir::Node::ImplItem(_)
-            | hir::Node::Variant(_)
-            | hir::Node::Field(_)
-            | hir::Node::PathSegment(_)
-            | hir::Node::Ty(_)
-            | hir::Node::AssocItemConstraint(_)
-            | hir::Node::TraitRef(_)
-            | hir::Node::PatField(_)
-            | hir::Node::PatExpr(_)
-            | hir::Node::LetStmt(_)
-            | hir::Node::Synthetic
-            | hir::Node::Err(_)
-            | hir::Node::Ctor(_)
-            | hir::Node::Lifetime(_)
-            | hir::Node::GenericParam(_)
-            | hir::Node::Crate(_)
-            | hir::Node::Infer(_)
-            | hir::Node::WherePredicate(_)
-            | hir::Node::PreciseCapturingNonLifetimeArg(_)
-            | hir::Node::OpaqueTy(_) => {
-                unreachable!("no sub-expr expected for {parent_node:?}")
-            }
-        }
-    }
-
-    /// Whether this pattern constitutes a read of value of the scrutinee that
-    /// it is matching against. This is used to determine whether we should
-    /// perform `NeverToAny` coercions.
-    ///
-    /// See above for the nuances of what happens when this returns true.
-    pub(super) fn pat_guaranteed_to_constitute_read_for_never(&self, pat: &hir::Pat<'_>) -> bool {
-        match pat.kind {
-            // Does not constitute a read.
-            hir::PatKind::Wild => false,
-
-            // Might not constitute a read, since the condition might be false.
-            hir::PatKind::Guard(_, _) => true,
-
-            // This is unnecessarily restrictive when the pattern that doesn't
-            // constitute a read is unreachable.
-            //
-            // For example `match *never_ptr { value => {}, _ => {} }` or
-            // `match *never_ptr { _ if false => {}, value => {} }`.
-            //
-            // It is however fine to be restrictive here; only returning `true`
-            // can lead to unsoundness.
-            hir::PatKind::Or(subpats) => {
-                subpats.iter().all(|pat| self.pat_guaranteed_to_constitute_read_for_never(pat))
-            }
-
-            // Does constitute a read, since it is equivalent to a discriminant read.
-            hir::PatKind::Never => true,
-
-            // All of these constitute a read, or match on something that isn't `!`,
-            // which would require a `NeverToAny` coercion.
-            hir::PatKind::Missing
-            | hir::PatKind::Binding(_, _, _, _)
-            | hir::PatKind::Struct(_, _, _)
-            | hir::PatKind::TupleStruct(_, _, _)
-            | hir::PatKind::Tuple(_, _)
-            | hir::PatKind::Box(_)
-            | hir::PatKind::Ref(_, _)
-            | hir::PatKind::Deref(_)
-            | hir::PatKind::Expr(_)
-            | hir::PatKind::Range(_, _, _)
-            | hir::PatKind::Slice(_, _, _)
-            | hir::PatKind::Err(_) => true,
-        }
     }
 
     #[instrument(skip(self, expr), level = "debug")]
@@ -1420,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
         let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
+        let mut coerce = CoerceMany::with_capacity(coerce_to_ty, 2);
 
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
@@ -1874,7 +1681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .to_option(self)
                 .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
-            let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+            let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
 
             for e in args {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -2384,7 +2191,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
-        } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
+        } else if adt_kind != AdtKind::Union
+            && !remaining_fields.is_empty()
+            //~ non_exhaustive already reported, which will only happen for extern modules
+            && !variant.field_list_has_applicable_non_exhaustive()
+        {
             debug!(?remaining_fields);
             let private_fields: Vec<&ty::FieldDef> = variant
                 .fields
@@ -3369,6 +3180,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(within_macro_span, "due to this macro variable");
         }
 
+        // Check if there is an associated function with the same name.
+        if let Some(def_id) = base_ty.peel_refs().ty_adt_def().map(|d| d.did()) {
+            for impl_def_id in self.tcx.inherent_impls(def_id) {
+                for item in self.tcx.associated_items(impl_def_id).in_definition_order() {
+                    if let ExprKind::Field(base_expr, _) = expr.kind
+                        && item.name() == field.name
+                        && matches!(item.kind, ty::AssocKind::Fn { has_self: false, .. })
+                    {
+                        err.span_label(field.span, "this is an associated function, not a method");
+                        err.note("found the following associated function; to be used as method, it must have a `self` parameter");
+                        let impl_ty = self.tcx.type_of(impl_def_id).instantiate_identity();
+                        err.span_note(
+                            self.tcx.def_span(item.def_id),
+                            format!("the candidate is defined in an impl for the type `{impl_ty}`"),
+                        );
+
+                        let ty_str = match base_ty.peel_refs().kind() {
+                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
+                            _ => base_ty.peel_refs().to_string(),
+                        };
+                        err.multipart_suggestion(
+                            "use associated function syntax instead",
+                            vec![
+                                (base_expr.span, ty_str),
+                                (base_expr.span.between(field.span), "::".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                        return err;
+                    }
+                }
+            }
+        }
+
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
@@ -3884,10 +3729,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let container = self.lower_ty(container).normalized;
-
+        let mut current_container = self.lower_ty(container).normalized;
         let mut field_indices = Vec::with_capacity(fields.len());
-        let mut current_container = container;
         let mut fields = fields.into_iter();
 
         while let Some(&field) = fields.next() {
@@ -3975,7 +3818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Save the index of all fields regardless of their visibility in case
                     // of error recovery.
-                    field_indices.push((index, subindex));
+                    field_indices.push((current_container, index, subindex));
                     current_container = field_ty;
 
                     continue;
@@ -4010,7 +3853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
-                        field_indices.push((FIRST_VARIANT, index));
+                        field_indices.push((current_container, FIRST_VARIANT, index));
                         current_container = field_ty;
 
                         continue;
@@ -4031,7 +3874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
 
-                            field_indices.push((FIRST_VARIANT, index.into()));
+                            field_indices.push((current_container, FIRST_VARIANT, index.into()));
                             current_container = field_ty;
 
                             continue;
@@ -4046,10 +3889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             break;
         }
 
-        self.typeck_results
-            .borrow_mut()
-            .offset_of_data_mut()
-            .insert(expr.hir_id, (container, field_indices));
+        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, field_indices);
 
         self.tcx.types.usize
     }

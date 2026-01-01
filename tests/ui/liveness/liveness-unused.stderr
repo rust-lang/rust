@@ -283,5 +283,21 @@ LL |     a = b;
    |
    = help: maybe it is overwritten before being read?
 
-error: aborting due to 34 previous errors; 1 warning emitted
+error: variable `a` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:247:12
+   |
+LL | fn f10b<T>(mut a: Box<T>, b: Box<T>) {
+   |            ^^^^^
+   |
+   = note: consider using `_a` instead
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:248:5
+   |
+LL |     a = b;
+   |     ^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: aborting due to 36 previous errors; 1 warning emitted
 

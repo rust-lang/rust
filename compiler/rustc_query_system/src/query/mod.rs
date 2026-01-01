@@ -161,7 +161,10 @@ pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn collect_active_jobs(self) -> Result<QueryMap<Self::QueryInfo>, QueryMap<Self::QueryInfo>>;
+    fn collect_active_jobs(
+        self,
+        require_complete: bool,
+    ) -> Result<QueryMap<Self::QueryInfo>, QueryMap<Self::QueryInfo>>;
 
     fn lift_query_info(self, info: &Self::QueryInfo) -> QueryStackFrameExtra;
 

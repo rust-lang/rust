@@ -8,11 +8,13 @@ use std::sync::mpsc::{Receiver, channel};
 use askama::Template;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, FileName, Symbol, sym};
+use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Symbol};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -203,52 +205,54 @@ impl<'tcx> Context<'tcx> {
             // `record_extern_fqn` correctly points to external items.
             render_redirect_pages = true;
         }
-        let mut title = String::new();
-        if !is_module {
-            title.push_str(it.name.unwrap().as_str());
-        }
-        let short_title;
-        let short_title = if is_module {
-            let module_name = self.current.last().unwrap();
-            short_title = if it.is_crate() {
-                format!("Crate {module_name}")
-            } else {
-                format!("Module {module_name}")
-            };
-            &short_title[..]
-        } else {
-            it.name.as_ref().unwrap().as_str()
-        };
-        if !it.is_fake_item() {
-            if !is_module {
-                title.push_str(" in ");
-            }
-            // No need to include the namespace for primitive types and keywords
-            title.push_str(&join_path_syms(&self.current));
-        };
-        title.push_str(" - Rust");
-        let tyname = it.type_();
-        let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
-        let desc = if !desc.is_empty() {
-            desc
-        } else if it.is_crate() {
-            format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
-        } else {
-            format!(
-                "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
-                name = it.name.as_ref().unwrap(),
-                krate = self.shared.layout.krate,
-            )
-        };
-        let name;
-        let tyname_s = if it.is_crate() {
-            name = format!("{tyname} crate");
-            name.as_str()
-        } else {
-            tyname.as_str()
-        };
 
         if !render_redirect_pages {
+            let mut title = String::new();
+            if !is_module {
+                title.push_str(it.name.unwrap().as_str());
+            }
+            let short_title;
+            let short_title = if is_module {
+                let module_name = self.current.last().unwrap();
+                short_title = if it.is_crate() {
+                    format!("Crate {module_name}")
+                } else {
+                    format!("Module {module_name}")
+                };
+                &short_title[..]
+            } else {
+                it.name.as_ref().unwrap().as_str()
+            };
+            if !it.is_fake_item() {
+                if !is_module {
+                    title.push_str(" in ");
+                }
+                // No need to include the namespace for primitive types and keywords
+                title.push_str(&join_path_syms(&self.current));
+            };
+            title.push_str(" - Rust");
+            let tyname = it.type_();
+            let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
+            let desc = if !desc.is_empty() {
+                desc
+            } else if it.is_crate() {
+                format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
+            } else {
+                format!(
+                    "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
+                    name = it.name.as_ref().unwrap(),
+                    krate = self.shared.layout.krate,
+                )
+            };
+
+            let name;
+            let tyname_s = if it.is_crate() {
+                name = format!("{tyname} crate");
+                name.as_str()
+            } else {
+                tyname.as_str()
+            };
+
             let content = print_item(self, it);
             let page = layout::Page {
                 css_class: tyname_s,
@@ -258,7 +262,9 @@ impl<'tcx> Context<'tcx> {
                 short_title,
                 description: &desc,
                 resource_suffix: &self.shared.resource_suffix,
-                rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
+                rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), |d| {
+                    d.rust_logo.is_some()
+                }),
             };
             layout::render(
                 &self.shared.layout,
@@ -359,7 +365,10 @@ impl<'tcx> Context<'tcx> {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match span.filename(self.sess()) {
-            FileName::Real(ref path) => path.local_path_if_available().to_path_buf(),
+            FileName::Real(ref path) => path
+                .local_path()
+                .unwrap_or(path.path(RemapPathScopeComponents::MACRO))
+                .to_path_buf(),
             _ => return None,
         };
         let file = &file;
@@ -493,10 +502,12 @@ impl<'tcx> Context<'tcx> {
         } = options;
 
         let src_root = match krate.src(tcx) {
-            FileName::Real(ref p) => match p.local_path_if_available().parent() {
-                Some(p) => p.to_path_buf(),
-                None => PathBuf::new(),
-            },
+            FileName::Real(ref p) => {
+                match p.local_path().unwrap_or(p.path(RemapPathScopeComponents::MACRO)).parent() {
+                    Some(p) => p.to_path_buf(),
+                    None => PathBuf::new(),
+                }
+            }
             _ => PathBuf::new(),
         };
         // If user passed in `--playground-url` arg, we fill in crate name here
@@ -520,27 +531,25 @@ impl<'tcx> Context<'tcx> {
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
-        for attr in krate.module.attrs.lists(sym::doc) {
-            match (attr.name(), attr.value_str()) {
-                (Some(sym::html_favicon_url), Some(s)) => {
-                    layout.favicon = s.to_string();
-                }
-                (Some(sym::html_logo_url), Some(s)) => {
-                    layout.logo = s.to_string();
-                }
-                (Some(sym::html_playground_url), Some(s)) => {
-                    playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name(tcx)),
-                        url: s.to_string(),
-                    });
-                }
-                (Some(sym::issue_tracker_base_url), Some(s)) => {
-                    issue_tracker_base_url = Some(s.to_string());
-                }
-                (Some(sym::html_no_source), None) if attr.is_word() => {
-                    include_sources = false;
-                }
-                _ => {}
+        for attr in &krate.module.attrs.other_attrs {
+            let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
+            if let Some((html_favicon_url, _)) = d.html_favicon_url {
+                layout.favicon = html_favicon_url.to_string();
+            }
+            if let Some((html_logo_url, _)) = d.html_logo_url {
+                layout.logo = html_logo_url.to_string();
+            }
+            if let Some((html_playground_url, _)) = d.html_playground_url {
+                playground = Some(markdown::Playground {
+                    crate_name: Some(krate.name(tcx)),
+                    url: html_playground_url.to_string(),
+                });
+            }
+            if let Some((s, _)) = d.issue_tracker_base_url {
+                issue_tracker_base_url = Some(s.to_string());
+            }
+            if d.html_no_source.is_some() {
+                include_sources = false;
             }
         }
 
@@ -643,7 +652,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             resource_suffix: &shared.resource_suffix,
-            rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
+            rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), |d| d.rust_logo.is_some()),
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = String::new();

@@ -8,15 +8,12 @@ LL | #![feature(non_lifetime_binders)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0309]: the placeholder type `F` may not live long enough
-  --> $DIR/type-match-with-late-bound.rs:8:1
+  --> $DIR/type-match-with-late-bound.rs:8:32
    |
-LL |   async fn walk2<'a, T: 'a>(_: T)
-   |   ^              -- the placeholder type `F` must be valid for the lifetime `'a` as defined here...
-   |  _|
-   | |
-LL | | where
-LL | |     for<F> F: 'a,
-   | |_________________^ ...so that the type `F` will meet its required lifetime bounds...
+LL | async fn walk2<'a, T: 'a>(_: T)
+   |                --              ^ ...so that the type `F` will meet its required lifetime bounds...
+   |                |
+   |                the placeholder type `F` must be valid for the lifetime `'a` as defined here...
    |
 note: ...that is required by this bound
   --> $DIR/type-match-with-late-bound.rs:10:15

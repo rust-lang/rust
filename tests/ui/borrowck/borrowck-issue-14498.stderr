@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `***p`, which is behind a `&` reference
   --> $DIR/borrowck-issue-14498.rs:16:5
    |
 LL |     ***p = 2;
-   |     ^^^^^^^^ `p` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^ `p` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |

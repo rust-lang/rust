@@ -798,6 +798,10 @@ fn print_crate_info(
                 let calling_conventions = rustc_abi::all_names();
                 println_info!("{}", calling_conventions.join("\n"));
             }
+            BackendHasZstd => {
+                let has_zstd: bool = codegen_backend.has_zstd();
+                println_info!("{has_zstd}");
+            }
             RelocationModels
             | CodeModels
             | TlsModels
@@ -1527,14 +1531,14 @@ fn report_ice(
                         .map(PathBuf::from)
                         .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
                 });
-                dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
                 None
             }
         }
     } else {
-        dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
         None
     };
+
+    dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
 
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
         dcx.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });

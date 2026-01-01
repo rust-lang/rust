@@ -4,10 +4,13 @@ error[E0576]: cannot find associated type `X` in trait `A`
 LL |     type Output;
    |     ------------ associated type `Output` defined here
 LL |     fn a(&self) -> <Self as A>::X;
-   |                                 ^
-   |                                 |
-   |                                 not found in `A`
-   |                                 help: maybe you meant this associated type: `Output`
+   |                                 ^ not found in `A`
+   |
+help: maybe you meant this associated type
+   |
+LL -     fn a(&self) -> <Self as A>::X;
+LL +     fn a(&self) -> <Self as A>::Output;
+   |
 
 error: aborting due to 1 previous error
 

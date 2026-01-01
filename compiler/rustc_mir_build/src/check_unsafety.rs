@@ -410,14 +410,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
             }
-            PatKind::ExpandedConstant { def_id, .. } => {
-                if let Some(def) = def_id.as_local()
-                    && matches!(self.tcx.def_kind(def_id), DefKind::InlineConst)
-                {
-                    self.visit_inner_body(def);
-                }
-                visit::walk_pat(self, pat);
-            }
             _ => {
                 visit::walk_pat(self, pat);
             }
@@ -477,7 +469,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Box { .. }
             | ExprKind::If { .. }
             | ExprKind::InlineAsm { .. }
-            | ExprKind::OffsetOf { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Use { .. } => {
                 // We don't need to save the old value and restore it

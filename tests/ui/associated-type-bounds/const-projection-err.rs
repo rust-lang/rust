@@ -1,9 +1,5 @@
-//@ revisions: stock gce
-
 #![feature(associated_const_equality, min_generic_const_args)]
 #![allow(incomplete_features)]
-
-#![cfg_attr(gce, feature(generic_const_exprs))]
 
 trait TraitWAssocConst {
     #[type_const]

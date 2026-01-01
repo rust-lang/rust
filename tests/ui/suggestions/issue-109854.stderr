@@ -23,6 +23,10 @@ note: associated function defined here
 help: remove the extra arguments
    |
 LL -     generate_setter,
+LL -     r#"
+LL - pub(crate) struct Person<T: Clone> {}
+LL - "#,
+LL -      r#""#,
 LL +     /* usize */,
    |
 

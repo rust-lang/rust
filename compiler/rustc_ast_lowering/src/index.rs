@@ -125,9 +125,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
-    /// Because we want to track parent items and so forth, enable
-    /// deep walking so that we walk nested items in the context of
-    /// their outer items.
+    // Because we want to track parent items and so forth, enable
+    // deep walking so that we walk nested items in the context of
+    // their outer items.
 
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
@@ -279,6 +279,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_expr_field(this, field);
         });
+    }
+
+    fn visit_const_arg_expr_field(&mut self, field: &'hir ConstArgExprField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::ConstArgExprField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_const_arg_expr_field(this, field);
+        })
     }
 
     fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {

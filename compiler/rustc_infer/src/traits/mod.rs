@@ -37,6 +37,8 @@ use crate::infer::InferCtxt;
 #[derive(Clone, TypeFoldable, TypeVisitable)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
+    /// FIXME: we shouldn't ignore the cause but instead change the affected visitors
+    /// to only visit predicates manually.
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub cause: ObligationCause<'tcx>,

@@ -5,11 +5,14 @@ use std::io::{self, Read};
 use object::read::{Object, ObjectSection};
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct RustCInfo {
+    #[allow(dead_code)]
     pub version: (usize, usize, usize),
+    #[allow(dead_code)]
     pub channel: String,
+    #[allow(dead_code)]
     pub commit: Option<String>,
+    #[allow(dead_code)]
     pub date: Option<String>,
     // something like "rustc 1.58.1 (db9d1b20b 2022-01-20)"
     pub version_string: String,

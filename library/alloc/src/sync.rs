@@ -11,8 +11,8 @@
 use core::any::Any;
 use core::cell::CloneFromCell;
 #[cfg(not(no_global_oom_handling))]
-use core::clone::CloneToUninit;
-use core::clone::UseCloned;
+use core::clone::TrivialClone;
+use core::clone::{CloneToUninit, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -1440,6 +1440,104 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     }
 }
 
+impl<T: ?Sized + CloneToUninit> Arc<T> {
+    /// Constructs a new `Arc<T>` with a clone of `value`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// use std::sync::Arc;
+    ///
+    /// let hello: Arc<str> = Arc::clone_from_ref("hello");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    pub fn clone_from_ref(value: &T) -> Arc<T> {
+        Arc::clone_from_ref_in(value, Global)
+    }
+
+    /// Constructs a new `Arc<T>` with a clone of `value`, returning an error if allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::sync::Arc;
+    ///
+    /// let hello: Arc<str> = Arc::try_clone_from_ref("hello")?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_clone_from_ref(value: &T) -> Result<Arc<T>, AllocError> {
+        Arc::try_clone_from_ref_in(value, Global)
+    }
+}
+
+impl<T: ?Sized + CloneToUninit, A: Allocator> Arc<T, A> {
+    /// Constructs a new `Arc<T>` with a clone of `value` in the provided allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let hello: Arc<str, System> = Arc::clone_from_ref_in("hello", System);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn clone_from_ref_in(value: &T, alloc: A) -> Arc<T, A> {
+        // `in_progress` drops the allocation if we panic before finishing initializing it.
+        let mut in_progress: UniqueArcUninit<T, A> = UniqueArcUninit::new(value, alloc);
+
+        // Initialize with clone of value.
+        let initialized_clone = unsafe {
+            // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+            value.clone_to_uninit(in_progress.data_ptr().cast());
+            // Cast type of pointer, now that it is initialized.
+            in_progress.into_arc()
+        };
+
+        initialized_clone
+    }
+
+    /// Constructs a new `Arc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let hello: Arc<str, System> = Arc::try_clone_from_ref_in("hello", System)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_clone_from_ref_in(value: &T, alloc: A) -> Result<Arc<T, A>, AllocError> {
+        // `in_progress` drops the allocation if we panic before finishing initializing it.
+        let mut in_progress: UniqueArcUninit<T, A> = UniqueArcUninit::try_new(value, alloc)?;
+
+        // Initialize with clone of value.
+        let initialized_clone = unsafe {
+            // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+            value.clone_to_uninit(in_progress.data_ptr().cast());
+            // Cast type of pointer, now that it is initialized.
+            in_progress.into_arc()
+        };
+
+        Ok(initialized_clone)
+    }
+}
+
 impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     /// Converts to `Arc<[T]>`.
     ///
@@ -2156,7 +2254,8 @@ impl<T> Arc<[T]> {
 
     /// Copy elements from slice into newly allocated `Arc<[T]>`
     ///
-    /// Unsafe because the caller must either take ownership or bind `T: Copy`.
+    /// Unsafe because the caller must either take ownership, bind `T: Copy` or
+    /// bind `T: TrivialClone`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         unsafe {
@@ -2248,9 +2347,11 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> ArcFromSlice<T> for Arc<[T]> {
+impl<T: TrivialClone> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
+        // SAFETY: `T` implements `TrivialClone`, so this is sound and equivalent
+        // to the above.
         unsafe { Arc::copy_from_slice(v) }
     }
 }
@@ -2322,10 +2423,10 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
     }
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Arc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
@@ -2401,19 +2502,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
         // deallocated.
         if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists, so we must clone.
-
-            let this_data_ref: &T = &**this;
-            // `in_progress` drops the allocation if we panic before finishing initializing it.
-            let mut in_progress: UniqueArcUninit<T, A> =
-                UniqueArcUninit::new(this_data_ref, this.alloc.clone());
-
-            let initialized_clone = unsafe {
-                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
-                // Cast type of pointer, now that it is initialized.
-                in_progress.into_arc()
-            };
-            *this = initialized_clone;
+            *this = Arc::clone_from_ref_in(&**this, this.alloc.clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
@@ -4132,16 +4221,15 @@ fn data_offset_align(align: usize) -> usize {
 /// but will deallocate it (without dropping the value) when dropped.
 ///
 /// This is a helper for [`Arc::make_mut()`] to ensure correct cleanup on panic.
-#[cfg(not(no_global_oom_handling))]
 struct UniqueArcUninit<T: ?Sized, A: Allocator> {
     ptr: NonNull<ArcInner<T>>,
     layout_for_value: Layout,
     alloc: Option<A>,
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     /// Allocates an ArcInner with layout suitable to contain `for_value` or a clone of it.
+    #[cfg(not(no_global_oom_handling))]
     fn new(for_value: &T, alloc: A) -> UniqueArcUninit<T, A> {
         let layout = Layout::for_value(for_value);
         let ptr = unsafe {
@@ -4152,6 +4240,20 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
             )
         };
         Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
+    }
+
+    /// Allocates an ArcInner with layout suitable to contain `for_value` or a clone of it,
+    /// returning an error if allocation fails.
+    fn try_new(for_value: &T, alloc: A) -> Result<UniqueArcUninit<T, A>, AllocError> {
+        let layout = Layout::for_value(for_value);
+        let ptr = unsafe {
+            Arc::try_allocate_for_layout(
+                layout,
+                |layout_for_arcinner| alloc.allocate(layout_for_arcinner),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const ArcInner<T>),
+            )?
+        };
+        Ok(Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) })
     }
 
     /// Returns the pointer to be written into to initialize the [`Arc`].
@@ -4750,7 +4852,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 }
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueArc<T> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]

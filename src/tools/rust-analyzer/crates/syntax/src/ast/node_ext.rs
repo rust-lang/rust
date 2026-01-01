@@ -10,7 +10,7 @@ use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, T, TokenText,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
     ast::{
         self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
         HasTypeBounds, SyntaxNode, support,
@@ -447,24 +447,23 @@ impl ast::UseTreeList {
 
 impl ast::Impl {
     pub fn self_ty(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), None) | (_, Some(t)) => Some(t),
-            _ => None,
-        }
+        self.target().1
     }
 
     pub fn trait_(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), Some(_)) => Some(t),
-            _ => None,
-        }
+        self.target().0
     }
 
     fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
-        let mut types = support::children(self.syntax());
-        let first = types.next();
-        let second = types.next();
-        (first, second)
+        let mut types = support::children(self.syntax()).peekable();
+        let for_kw = self.for_token();
+        let trait_ = types.next_if(|trait_: &ast::Type| {
+            for_kw.is_some_and(|for_kw| {
+                trait_.syntax().text_range().start() < for_kw.text_range().start()
+            })
+        });
+        let self_ty = types.next();
+        (trait_, self_ty)
     }
 
     pub fn for_trait_name_ref(name_ref: &ast::NameRef) -> Option<ast::Impl> {
@@ -813,13 +812,16 @@ pub enum TypeBoundKind {
 }
 
 impl ast::TypeBound {
-    pub fn kind(&self) -> TypeBoundKind {
+    pub fn kind(&self) -> Option<TypeBoundKind> {
         if let Some(path_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::PathType(self.for_binder(), path_type)
+            Some(TypeBoundKind::PathType(self.for_binder(), path_type))
+        } else if let Some(for_binder) = support::children::<ast::ForType>(&self.syntax).next() {
+            let Some(ast::Type::PathType(path_type)) = for_binder.ty() else { return None };
+            Some(TypeBoundKind::PathType(for_binder.for_binder(), path_type))
         } else if let Some(args) = self.use_bound_generic_args() {
-            TypeBoundKind::Use(args)
+            Some(TypeBoundKind::Use(args))
         } else if let Some(lifetime) = self.lifetime() {
-            TypeBoundKind::Lifetime(lifetime)
+            Some(TypeBoundKind::Lifetime(lifetime))
         } else {
             unreachable!()
         }
@@ -1093,6 +1095,16 @@ impl ast::MatchGuard {
     }
 }
 
+impl ast::MatchArm {
+    pub fn parent_match(&self) -> ast::MatchExpr {
+        self.syntax()
+            .parent()
+            .and_then(|it| it.parent())
+            .and_then(ast::MatchExpr::cast)
+            .expect("MatchArms are always nested in MatchExprs")
+    }
+}
+
 impl From<ast::Item> for ast::AnyHasAttrs {
     fn from(node: ast::Item) -> Self {
         Self::new(node)
@@ -1105,6 +1117,15 @@ impl From<ast::AssocItem> for ast::AnyHasAttrs {
     }
 }
 
+impl ast::FormatArgsArgName {
+    /// This is not a [`ast::Name`], because the name may be a keyword.
+    pub fn name(&self) -> SyntaxToken {
+        let name = self.syntax.first_token().unwrap();
+        assert!(name.kind().is_any_identifier());
+        name
+    }
+}
+
 impl ast::OrPat {
     pub fn leading_pipe(&self) -> Option<SyntaxToken> {
         self.syntax
@@ -1112,5 +1133,41 @@ impl ast::OrPat {
             .find(|it| !it.kind().is_trivia())
             .and_then(NodeOrToken::into_token)
             .filter(|it| it.kind() == T![|])
+    }
+}
+
+/// An iterator over the elements in an [`ast::TokenTree`].
+///
+/// Does not yield trivia or the delimiters.
+#[derive(Clone)]
+pub struct TokenTreeChildren {
+    iter: SyntaxElementChildren,
+}
+
+impl TokenTreeChildren {
+    #[inline]
+    pub fn new(tt: &ast::TokenTree) -> Self {
+        let mut iter = tt.syntax.children_with_tokens();
+        iter.next(); // Bump the opening delimiter.
+        Self { iter }
+    }
+}
+
+impl Iterator for TokenTreeChildren {
+    type Item = NodeOrToken<ast::TokenTree, SyntaxToken>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.find_map(|item| match item {
+            NodeOrToken::Node(node) => ast::TokenTree::cast(node).map(NodeOrToken::Node),
+            NodeOrToken::Token(token) => {
+                let kind = token.kind();
+                (!matches!(
+                    kind,
+                    SyntaxKind::WHITESPACE | SyntaxKind::COMMENT | T![')'] | T![']'] | T!['}']
+                ))
+                .then_some(NodeOrToken::Token(token))
+            }
+        })
     }
 }

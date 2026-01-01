@@ -43,7 +43,7 @@ pub use self::lower::{
     hir_assoc_type_binding_to_ast, hir_generic_arg_to_ast, hir_segment_to_ast_segment,
 };
 
-/// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
+/// A wrapper around [`span::SyntaxContext`] that is intended only for comparisons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HygieneId(span::SyntaxContext);
 

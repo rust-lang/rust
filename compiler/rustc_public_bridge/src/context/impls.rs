@@ -10,7 +10,9 @@ use rustc_hir::{Attribute, LangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
-use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,
+};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
@@ -21,7 +23,7 @@ use rustc_middle::ty::{
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_span::{FileNameDisplayPreference, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
 use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
@@ -264,8 +266,14 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         if trimmed {
             with_forced_trimmed_paths!(self.tcx.def_path_str(def_id))
         } else {
-            with_no_trimmed_paths!(self.tcx.def_path_str(def_id))
+            // For local definitions, we need to prepend with crate name.
+            with_resolve_crate_name!(with_no_trimmed_paths!(self.tcx.def_path_str(def_id)))
         }
+    }
+
+    /// Returns the parent of the given `DefId`.
+    pub fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        self.tcx.opt_parent(def_id)
     }
 
     /// Return registered tool attributes with the given attribute name.
@@ -316,12 +324,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Return filename from given `Span`, for diagnostic purposes.
     pub fn get_filename(&self, span: Span) -> String {
-        self.tcx
-            .sess
-            .source_map()
-            .span_to_filename(span)
-            .display(FileNameDisplayPreference::Local)
-            .to_string()
+        self.tcx.sess.source_map().span_to_filename(span).prefer_local_unconditionally().to_string()
     }
 
     /// Return lines corresponding to this `Span`.
@@ -719,9 +722,9 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
                 self.tcx.def_path_str_with_args(instance.def_id(), instance.args)
             )
         } else {
-            with_no_trimmed_paths!(
+            with_resolve_crate_name!(with_no_trimmed_paths!(
                 self.tcx.def_path_str_with_args(instance.def_id(), instance.args)
-            )
+            ))
         }
     }
 

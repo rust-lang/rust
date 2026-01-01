@@ -17,7 +17,7 @@ ci_dir=$(cd $(dirname $0) && pwd)/..
 # On the beta channel we'll be automatically calculating the prerelease version
 # via the git history, so unshallow our shallow clone from CI.
 if [ "$(releaseChannel)" = "beta" ]; then
-  git fetch origin --unshallow beta HEAD
+  git fetch origin --unshallow beta main
 fi
 
 function fetch_github_commit_archive {

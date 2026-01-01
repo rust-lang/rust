@@ -1,0 +1,152 @@
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-pattern.rs:63:22
+   |
+LL |     let &pin mut Foo(ref mut x) = foo_mut;
+   |                      ^^^^^^^^^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn by_ref_non_pinned_non_unpin<T: std::marker::Unpin>(foo_mut: &pin mut Foo<T>, foo_const: &pin const Foo<T>) {
+   |                                 ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-pattern.rs:67:24
+   |
+LL |     let &pin const Foo(ref x) = foo_const;
+   |                        ^^^^^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn by_ref_non_pinned_non_unpin<T: std::marker::Unpin>(foo_mut: &pin mut Foo<T>, foo_const: &pin const Foo<T>) {
+   |                                 ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-pattern.rs:91:15
+   |
+LL |     (&pin mut x,): &'a mut (&'a pin mut Foo<T>,),
+   |               ^ within `Foo<T>`, the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required because it appears within the type `Foo<T>`
+  --> $DIR/pin-pattern.rs:11:8
+   |
+LL | struct Foo<T>(T);
+   |        ^^^
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn tuple_ref_pin_mut_pat_and_mut_of_tuple_pin_mut_ty<'a, T: std::marker::Unpin>(
+   |                                                           ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/pin-pattern.rs:97:6
+   |
+LL |     (&pin mut x,): &'a mut &'a pin mut (Foo<T>,),
+   |      ^^^^^^^^^^    ----------------------------- expected due to this
+   |      |
+   |      expected `Foo<T>`, found `Pin<&mut _>`
+   |
+   = note: expected struct `Foo<T>`
+              found struct `Pin<&mut _>`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pin-pattern.rs:97:6
+   |
+LL |     (&pin mut x,): &'a mut &'a pin mut (Foo<T>,),
+   |      ^^^^^^^^^^
+help: consider removing `&pin mut` from the pattern
+   |
+LL -     (&pin mut x,): &'a mut &'a pin mut (Foo<T>,),
+LL +     (x,): &'a mut &'a pin mut (Foo<T>,),
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pin-pattern.rs:103:5
+   |
+LL |     &pin mut (x,): &'a mut (&'a pin mut Foo<T>,),
+   |     ^^^^^^^^^^^^^  ----------------------------- expected due to this
+   |     |
+   |     expected `&mut (Pin<&mut Foo<T>>,)`, found `Pin<&mut _>`
+   |
+   = note: expected mutable reference `&'a mut (Pin<&'a mut Foo<T>>,)`
+                         found struct `Pin<&mut _>`
+
+error[E0308]: mismatched types
+  --> $DIR/pin-pattern.rs:109:5
+   |
+LL |     &pin mut (x,): &'a mut &'a pin mut (Foo<T>,),
+   |     ^^^^^^^^^^^^^  ----------------------------- expected due to this
+   |     |
+   |     expected `&mut Pin<&mut (Foo<T>,)>`, found `Pin<&mut _>`
+   |
+   = note: expected mutable reference `&'a mut Pin<&'a mut (Foo<T>,)>`
+                         found struct `Pin<&mut _>`
+
+error[E0507]: cannot move out of `foo_mut.pointer` which is behind a mutable reference
+  --> $DIR/pin-pattern.rs:45:27
+   |
+LL |     let &pin mut Foo(x) = foo_mut;
+   |                      -    ^^^^^^^
+   |                      |
+   |                      data moved here
+   |                      move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |
+help: consider removing the pinned mutable borrow
+   |
+LL -     let &pin mut Foo(x) = foo_mut;
+LL +     let Foo(x) = foo_mut;
+   |
+
+error[E0507]: cannot move out of `foo_const.pointer` which is behind a shared reference
+  --> $DIR/pin-pattern.rs:49:29
+   |
+LL |     let &pin const Foo(x) = foo_const;
+   |                        -    ^^^^^^^^^
+   |                        |
+   |                        data moved here
+   |                        move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |
+help: consider removing the pinned borrow
+   |
+LL -     let &pin const Foo(x) = foo_const;
+LL +     let Foo(x) = foo_const;
+   |
+
+error: cannot explicitly dereference within an implicitly-borrowing pattern
+  --> $DIR/pin-pattern.rs:83:7
+   |
+LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |       ^^^^^^^^ reference pattern not allowed when implicitly borrowing
+   |
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
+  --> $DIR/pin-pattern.rs:83:6
+   |
+LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |      ^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&mut _`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
+   |
+LL |     (&mut (&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |      ++++
+
+error[E0507]: cannot move out of a mutable reference
+  --> $DIR/pin-pattern.rs:83:5
+   |
+LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |     ^^^^^^^^^^^-^^^^
+   |                |
+   |                data moved here
+   |                move occurs because `x` has type `Foo<T>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     ((&pin mut ref x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |                +++
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0507.
+For more information about an error, try `rustc --explain E0277`.

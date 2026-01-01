@@ -213,6 +213,7 @@ impl AnnotateSnippetEmitter {
                 file_ann.swap(0, pos);
             }
 
+            let file_ann_len = file_ann.len();
             for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate() {
                 if should_show_source_code(&self.ignored_directories_in_source_blocks, sm, &file) {
                     if let Some(snippet) = self.annotated_snippet(annotations, &file.name, sm) {
@@ -240,6 +241,7 @@ impl AnnotateSnippetEmitter {
                     // ╰ warning: this was previously accepted
                     if let Some(c) = children.first()
                         && (!c.span.has_primary_spans() && !c.span.has_span_labels())
+                        && file_idx == file_ann_len - 1
                     {
                         group = group.element(Padding);
                     }
@@ -301,17 +303,6 @@ impl AnnotateSnippetEmitter {
             }
         }
 
-        let suggestions_expected = suggestions
-            .iter()
-            .filter(|s| {
-                matches!(
-                    s.style,
-                    SuggestionStyle::HideCodeInline
-                        | SuggestionStyle::ShowCode
-                        | SuggestionStyle::ShowAlways
-                )
-            })
-            .count();
         for suggestion in suggestions {
             match suggestion.style {
                 SuggestionStyle::CompletelyHidden => {
@@ -350,22 +341,27 @@ impl AnnotateSnippetEmitter {
                                 "all spans must be disjoint",
                             );
 
+                            let lo = subst.parts.iter().map(|part| part.span.lo()).min()?;
+                            let lo_file = sm.lookup_source_file(lo);
+                            let hi = subst.parts.iter().map(|part| part.span.hi()).max()?;
+                            let hi_file = sm.lookup_source_file(hi);
+
+                            // The different spans might belong to different contexts, if so ignore suggestion.
+                            if lo_file.stable_id != hi_file.stable_id {
+                                return None;
+                            }
+
+                            // We can't splice anything if the source is unavailable.
+                            if !sm.ensure_source_file_source_present(&lo_file) {
+                                return None;
+                            }
+
                             // Account for cases where we are suggesting the same code that's already
                             // there. This shouldn't happen often, but in some cases for multipart
                             // suggestions it's much easier to handle it here than in the origin.
                             subst.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
-                            let item_span = subst.parts.first()?;
-                            let file = sm.lookup_source_file(item_span.span.lo());
-                            if should_show_source_code(
-                                &self.ignored_directories_in_source_blocks,
-                                sm,
-                                &file,
-                            ) {
-                                Some(subst)
-                            } else {
-                                None
-                            }
+                            if subst.parts.is_empty() { None } else { Some(subst) }
                         })
                         .collect::<Vec<_>>();
 
@@ -519,12 +515,6 @@ impl AnnotateSnippetEmitter {
             }
         }
 
-        // FIXME: This hack should be removed once annotate_snippets is the
-        // default emitter.
-        if suggestions_expected > 0 && report.is_empty() {
-            group = group.element(Padding);
-        }
-
         if !group.is_empty() {
             report.push(group);
         }
@@ -626,7 +616,7 @@ impl AnnotateSnippetEmitter {
                     report.push(std::mem::replace(&mut group, Group::with_level(level.clone())));
                 }
 
-                if !line_tracker.contains(&lo.line) {
+                if !line_tracker.contains(&lo.line) && (i == 0 || hi.line <= lo.line) {
                     line_tracker.push(lo.line);
                     // ╭▸ $SRC_DIR/core/src/option.rs:594:0 (<- It adds *this*)
                     // ⸬  $SRC_DIR/core/src/option.rs:602:4
@@ -735,6 +725,14 @@ fn collect_annotations(
             }
         }
     }
+
+    // Sort annotations within each file by line number
+    for (_, ann) in output.iter_mut() {
+        ann.sort_by_key(|a| {
+            let lo = sm.lookup_char_pos(a.span.lo());
+            lo.line
+        });
+    }
     output
 }
 
@@ -745,14 +743,20 @@ fn shrink_file(
 ) -> Option<(Span, String, usize)> {
     let lo_byte = spans.iter().map(|s| s.lo()).min()?;
     let lo_loc = sm.lookup_char_pos(lo_byte);
-    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
 
     let hi_byte = spans.iter().map(|s| s.hi()).max()?;
     let hi_loc = sm.lookup_char_pos(hi_byte);
-    let hi = lo_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
+
+    if lo_loc.file.stable_id != hi_loc.file.stable_id {
+        // this may happen when spans cross file boundaries due to macro expansion.
+        return None;
+    }
+
+    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
+    let hi = hi_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
 
     let bounding_span = Span::with_root_ctxt(lo, hi);
-    let source = sm.span_to_snippet(bounding_span).unwrap_or_default();
+    let source = sm.span_to_snippet(bounding_span).ok()?;
     let offset_line = sm.doctest_offset_line(file_name, lo_loc.line);
 
     Some((bounding_span, source, offset_line))

@@ -17,8 +17,8 @@ fn main() {
     let c: core::range::RangeInclusive<u8> = 4..=5;
     let d: core::range::RangeToInclusive<u8> = ..=3;
 
-    let _: core::range::IterRangeFrom<u8> = a.into_iter();
-    let _: core::range::IterRange<u8> = b.into_iter();
-    let _: core::range::IterRangeInclusive<u8> = c.into_iter();
+    let _: core::range::RangeFromIter<u8> = a.into_iter();
+    let _: core::range::RangeIter<u8> = b.into_iter();
+    let _: core::range::RangeInclusiveIter<u8> = c.into_iter();
     // RangeToInclusive has no Iterator implementation
 }

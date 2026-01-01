@@ -27,7 +27,7 @@ use syntax::{
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::{Removable, SyntaxEditor},
+    syntax_editor::{Element, Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -57,6 +57,14 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
+    if stmt_list
+        .syntax()
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
+    {
+        return None;
+    }
 
     if let Some(expr) = stmt_list.tail_expr() {
         if has_anything_else(expr.syntax()) {
@@ -93,16 +101,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
 }
 
 pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
-    attrs.iter().any(|attr| {
-        let path = attr.path();
-        (|| {
-            Some(
-                path.segments().first()?.as_str().starts_with("test")
-                    || path.segments().last()?.as_str().ends_with("test"),
-            )
-        })()
-        .unwrap_or_default()
-    })
+    attrs.is_test()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -128,7 +127,7 @@ pub fn filter_assoc_items(
         .copied()
         .filter(|assoc_item| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
-                && assoc_item.attrs(sema.db).has_doc_hidden()
+                && assoc_item.attrs(sema.db).is_doc_hidden()
             {
                 if let hir::AssocItem::Function(f) = assoc_item
                     && !f.has_body(sema.db)
@@ -383,6 +382,28 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
         },
         _ => None,
     }
+}
+
+pub(crate) fn insert_attributes(
+    before: impl Element,
+    edit: &mut SyntaxEditor,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+) {
+    let mut attrs = attrs.into_iter().peekable();
+    if attrs.peek().is_none() {
+        return;
+    }
+    let elem = before.syntax_element();
+    let indent = IndentLevel::from_element(&elem);
+    let whitespace = format!("\n{indent}");
+    edit.insert_all(
+        syntax::syntax_editor::Position::before(elem),
+        attrs
+            .flat_map(|attr| {
+                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
+            })
+            .collect(),
+    );
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
@@ -1072,6 +1093,18 @@ fn test_string_prefix() {
     assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
 }
 
+pub(crate) fn add_group_separators(s: &str, group_size: usize) -> String {
+    let mut chars = Vec::new();
+    for (i, ch) in s.chars().filter(|&ch| ch != '_').rev().enumerate() {
+        if i > 0 && i % group_size == 0 && ch != '-' {
+            chars.push('_');
+        }
+        chars.push(ch);
+    }
+
+    chars.into_iter().rev().collect()
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
@@ -1153,6 +1186,15 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
         }
         expr = rest?;
     }
+}
+
+pub(crate) fn is_selected(
+    it: &impl AstNode,
+    selection: syntax::TextRange,
+    allow_empty: bool,
+) -> bool {
+    selection.intersect(it.syntax().text_range()).is_some_and(|it| !it.is_empty())
+        || allow_empty && it.syntax().text_range().contains_range(selection)
 }
 
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {

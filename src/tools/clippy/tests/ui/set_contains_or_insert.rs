@@ -164,3 +164,24 @@ fn main() {
     should_not_warn_hashset();
     should_not_warn_btreeset();
 }
+
+fn issue15990(s: &mut HashSet<usize>, v: usize) {
+    if !s.contains(&v) {
+        s.clear();
+        s.insert(v);
+    }
+
+    fn borrow_as_mut(v: usize, s: &mut HashSet<usize>) {
+        s.clear();
+    }
+    if !s.contains(&v) {
+        borrow_as_mut(v, s);
+        s.insert(v);
+    }
+
+    if !s.contains(&v) {
+        //~^ set_contains_or_insert
+        let _readonly_access = s.contains(&v);
+        s.insert(v);
+    }
+}

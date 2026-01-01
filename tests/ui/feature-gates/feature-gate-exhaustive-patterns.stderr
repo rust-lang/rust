@@ -7,7 +7,7 @@ LL |     let Ok(_x) = &foo();
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `&Result<u32, !>`
-help: you might want to use `let else` to handle the variant that isn't matched
+help: you might want to use `let...else` to handle the variant that isn't matched
    |
 LL |     let Ok(_x) = &foo() else { todo!() };
    |                         ++++++++++++++++

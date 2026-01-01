@@ -299,6 +299,7 @@ impl<T> RwLock<T> {
     /// assert_eq!(lock.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn set(&self, value: T) -> Result<(), PoisonError<T>> {
         if mem::needs_drop::<T>() {
             // If the contained value has non-trivial destructor, we
@@ -337,6 +338,7 @@ impl<T> RwLock<T> {
     /// assert_eq!(lock.get_cloned().unwrap(), 11);
     /// ```
     #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn replace(&self, value: T) -> LockResult<T> {
         match self.write() {
             Ok(mut guard) => Ok(mem::replace(&mut *guard, value)),
@@ -389,6 +391,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             self.inner.read();
@@ -435,6 +438,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             if self.inner.try_read() {
@@ -479,6 +483,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             self.inner.write();
@@ -526,6 +531,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             if self.inner.try_write() {

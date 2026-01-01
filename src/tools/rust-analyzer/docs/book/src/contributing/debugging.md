@@ -57,13 +57,13 @@ To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</k
 
 - Go back to the `[Extension Development Host]` instance and hover over a Rust variable and your breakpoint should hit.
 
-If you need to debug the server from the very beginning, including its initialization code, you can use the `--wait-dbg` command line argument or `RA_WAIT_DBG` environment variable. The server will spin at the beginning of the `try_main` function (see `crates\rust-analyzer\src\bin\main.rs`)
+If you need to debug the server from the very beginning, including its initialization code, you can use the `--wait-dbg` command line argument or `RA_WAIT_DBG` environment variable. The server will spin at the beginning of the `try_main` function (see `crates/rust-analyzer/src/bin/main.rs`)
 
 ```rust
-    let mut d = 4;
-    while d == 4 { // set a breakpoint here and change the value
-        d = 4;
-    }
+let mut d = 4;
+while d == 4 { // set a breakpoint here and change the value
+    d = 4;
+}
 ```
 
 However for this to work, you will need to enable debug_assertions in your build

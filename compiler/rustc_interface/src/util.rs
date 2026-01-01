@@ -252,7 +252,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
                                 let query_map = rustc_span::set_session_globals_then(unsafe { &*(session_globals as *const SessionGlobals) }, || {
                                     // Ensure there was no errors collecting all active jobs.
                                     // We need the complete map to ensure we find a cycle to break.
-                                    QueryCtxt::new(tcx).collect_active_jobs().expect("failed to collect active queries in deadlock handler")
+                                    QueryCtxt::new(tcx).collect_active_jobs(false).expect("failed to collect active queries in deadlock handler")
                                 });
                                 break_query_cycles(query_map, &registry);
                             })
@@ -339,7 +339,7 @@ pub fn get_codegen_backend(
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
-            "dummy" => || Box::new(DummyCodegenBackend),
+            "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -352,7 +352,9 @@ pub fn get_codegen_backend(
     unsafe { load() }
 }
 
-struct DummyCodegenBackend;
+pub struct DummyCodegenBackend {
+    pub target_config_override: Option<Box<dyn Fn(&Session) -> TargetConfig>>,
+}
 
 impl CodegenBackend for DummyCodegenBackend {
     fn locale_resource(&self) -> &'static str {
@@ -364,15 +366,20 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
+        if let Some(target_config_override) = &self.target_config_override {
+            return target_config_override(sess);
+        }
+
+        let abi_required_features = sess.target.abi_required_features();
         let (target_features, unstable_target_features) = cfg_target_feature::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
                 // This is a standin for the list of features a backend is expected to enable.
                 // It would be better to parse target.features instead and handle implied features,
-                // but target.features is a list of LLVM target features, not Rust target features.
-                // The dummy backend doesn't know the mapping between LLVM and Rust target features.
-                sess.target.abi_required_features().required.contains(&feature)
+                // but target.features doesn't contain features that are enabled by default for an
+                // architecture or target cpu.
+                abi_required_features.required.contains(&feature)
             },
         );
 

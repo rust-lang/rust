@@ -54,7 +54,9 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![dyn] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_bounds(p, allow_bounds),
-        T![ident] if !p.edition().at_least_2018() && is_dyn_weak(p) => dyn_trait_type_weak(p),
+        T![ident] if !p.current_edition().at_least_2018() && is_dyn_weak(p) => {
+            dyn_trait_type_weak(p)
+        }
         _ if paths::is_path_start(p) => path_or_macro_type(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {

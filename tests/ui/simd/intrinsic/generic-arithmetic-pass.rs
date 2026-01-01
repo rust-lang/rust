@@ -1,8 +1,9 @@
 //@ run-pass
 //@ ignore-backends: gcc
+//@ compile-flags: --cfg minisimd_const
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -20,7 +21,7 @@ macro_rules! all_eq {
 
 use std::intrinsics::simd::*;
 
-fn main() {
+const fn arithmetic() {
     let x1 = i32x4::from_array([1, 2, 3, 4]);
     let y1 = U32::<4>::from_array([1, 2, 3, 4]);
     let z1 = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
@@ -223,4 +224,9 @@ fn main() {
         all_eq!(simd_cttz(x1), i32x4::from_array([0, 1, 0, 2]));
         all_eq!(simd_cttz(y1), U32::<4>::from_array([0, 1, 0, 2]));
     }
+}
+
+fn main() {
+    const { arithmetic() };
+    arithmetic();
 }

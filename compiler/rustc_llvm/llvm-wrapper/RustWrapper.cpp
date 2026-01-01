@@ -39,6 +39,16 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
 
+// Some of the functions below rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/Utils/ModuleUtils.h"
+#endif
+
 // for raw `write` in the bad-alloc handler
 #ifdef _MSC_VER
 #include <io.h>
@@ -144,9 +154,76 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
-extern "C" void LLVMRustOffloadMapper(LLVMModuleRef M, LLVMValueRef OldFn,
-                                      LLVMValueRef NewFn) {
-  llvm::Module *module = llvm::unwrap(M);
+// Some of the functions here rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
+static Error writeFile(StringRef Filename, StringRef Data) {
+  Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
+      FileOutputBuffer::create(Filename, Data.size());
+  if (!OutputOrErr)
+    return OutputOrErr.takeError();
+  std::unique_ptr<FileOutputBuffer> Output = std::move(*OutputOrErr);
+  llvm::copy(Data, Output->getBufferStart());
+  if (Error E = Output->commit())
+    return E;
+  return Error::success();
+}
+
+// This is the first of many steps in creating a binary using llvm offload,
+// to run code on the gpu. Concrete, it replaces the following binary use:
+// clang-offload-packager -o host.out
+//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
+// The input module is the rust code compiled for a gpu target like amdgpu.
+// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
+                                     const char *HostOutPath) {
+  std::string Storage;
+  llvm::raw_string_ostream OS1(Storage);
+  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
+  OS1.flush();
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
+
+  SmallVector<char, 1024> BinaryData;
+  raw_svector_ostream OS2(BinaryData);
+
+  OffloadBinary::OffloadingImage ImageBinary{};
+  ImageBinary.TheImageKind = object::IMG_Bitcode;
+  ImageBinary.Image = std::move(MB);
+  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
+
+  std::string TripleStr = TM.getTargetTriple().str();
+  llvm::StringRef CPURef = TM.getTargetCPU();
+  ImageBinary.StringData["triple"] = TripleStr;
+  ImageBinary.StringData["arch"] = CPURef;
+  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
+  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
+    // Offload binary has invalid size alignment
+    return false;
+  OS2 << Buffer;
+  if (Error E = writeFile(HostOutPath,
+                          StringRef(BinaryData.begin(), BinaryData.size())))
+    return false;
+  return true;
+}
+
+extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
+                                                   const char *HostOutPath) {
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  if (!MBOrErr) {
+    auto E = MBOrErr.getError();
+    auto _B = errorCodeToError(E);
+    return false;
+  }
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  Module *M = unwrap(HostM);
+  StringRef SectionName = ".llvm.offloading";
+  Align Alignment = Align(8);
+  llvm::embedBufferInModule(*M, Buf, SectionName, Alignment);
+  return true;
+}
+
+extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
 
@@ -165,6 +242,7 @@ extern "C" void LLVMRustOffloadMapper(LLVMModuleRef M, LLVMValueRef OldFn,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
 }
+#endif
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
                                               size_t NameLen) {
@@ -1461,16 +1539,8 @@ extern "C" uint64_t LLVMRustModuleCost(LLVMModuleRef M) {
   return std::distance(std::begin(f), std::end(f));
 }
 
-extern "C" void LLVMRustModuleInstructionStats(LLVMModuleRef M,
-                                               RustStringRef Str) {
-  auto OS = RawRustStringOstream(Str);
-  auto JOS = llvm::json::OStream(OS);
-  auto Module = unwrap(M);
-
-  JOS.object([&] {
-    JOS.attribute("module", Module->getName());
-    JOS.attribute("total", Module->getInstructionCount());
-  });
+extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
+  return unwrap(M)->getInstructionCount();
 }
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
@@ -1701,18 +1771,6 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
 }
-
-#ifdef ENZYME
-extern "C" {
-extern llvm::cl::opt<unsigned> EnzymeMaxTypeDepth;
-}
-
-extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() { return EnzymeMaxTypeDepth; }
-#else
-extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() {
-  return 6; // Default fallback depth
-}
-#endif
 
 // Statically assert that the fixed metadata kind IDs declared in
 // `metadata_kind.rs` match the ones actually used by LLVM.

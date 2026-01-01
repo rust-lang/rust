@@ -1,6 +1,4 @@
 //@only-target: linux android illumos
-//~^ERROR: deadlocked
-//~^^ERROR: deadlocked
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
@@ -38,7 +36,7 @@ fn main() {
 
     let thread2 = thread::spawn(move || {
         let sized_8_data = (u64::MAX - 1).to_ne_bytes();
-        // Write u64::MAX - 1, so the all subsequent write will block.
+        // Write u64::MAX - 1, so that all subsequent writes will block.
         let res: i64 = unsafe {
             // This `write` will initially blocked, then get unblocked by thread3, then get blocked again
             // because the `write` in thread1 executes first.

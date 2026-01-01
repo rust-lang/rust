@@ -351,6 +351,8 @@ pub struct CrateData<Id> {
     /// declared in source via `extern crate test`.
     pub dependencies: Vec<Dependency<Id>>,
     pub origin: CrateOrigin,
+    /// Extra crate-level attributes, including the surrounding `#![]`.
+    pub crate_attrs: Box<[Box<str>]>,
     pub is_proc_macro: bool,
     /// The working directory to run proc-macros in invoked in the context of this crate.
     /// This is the workspace root of the cargo workspace for workspace members, the crate manifest
@@ -460,6 +462,61 @@ pub struct Crate {
     pub env: Env,
 }
 
+impl Crate {
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
+    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Vec<Crate> {
+        // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
+        // and removing that is a bit difficult.
+        let mut worklist = vec![self];
+        let mut deps_seen = FxHashSet::default();
+        let mut deps = Vec::new();
+
+        while let Some(krate) = worklist.pop() {
+            if !deps_seen.insert(krate) {
+                continue;
+            }
+            deps.push(krate);
+
+            worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
+        }
+        deps
+    }
+
+    /// Returns all transitive reverse dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
+    pub fn transitive_rev_deps(self, db: &dyn RootQueryDb) -> Box<[Crate]> {
+        let mut worklist = vec![self];
+        let mut rev_deps = FxHashSet::default();
+        rev_deps.insert(self);
+
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        db.all_crates().iter().for_each(|&krate| {
+            krate
+                .data(db)
+                .dependencies
+                .iter()
+                .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
+        });
+
+        while let Some(krate) = worklist.pop() {
+            if let Some(crate_rev_deps) = inverted_graph.get(&krate) {
+                crate_rev_deps
+                    .iter()
+                    .copied()
+                    .filter(|&rev_dep| rev_deps.insert(rev_dep))
+                    .for_each(|rev_dep| worklist.push(rev_dep));
+            }
+        }
+
+        rev_deps.into_iter().collect::<Box<_>>()
+    }
+}
+
 /// The mapping from [`UniqueCrateData`] to their [`Crate`] input.
 #[derive(Debug, Default)]
 pub struct CratesMap(DashMap<UniqueCrateData, Crate, BuildHasherDefault<FxHasher>>);
@@ -475,6 +532,7 @@ impl CrateGraphBuilder {
         mut potential_cfg_options: Option<CfgOptions>,
         mut env: Env,
         origin: CrateOrigin,
+        crate_attrs: Vec<String>,
         is_proc_macro: bool,
         proc_macro_cwd: Arc<AbsPathBuf>,
         ws_data: Arc<CrateWorkspaceData>,
@@ -484,12 +542,17 @@ impl CrateGraphBuilder {
         if let Some(potential_cfg_options) = &mut potential_cfg_options {
             potential_cfg_options.shrink_to_fit();
         }
+        let crate_attrs: Vec<_> = crate_attrs
+            .into_iter()
+            .map(|raw_attr| format!("#![{raw_attr}]").into_boxed_str())
+            .collect();
         self.arena.alloc(CrateBuilder {
             basic: CrateData {
                 root_file_id,
                 edition,
                 dependencies: Vec::new(),
                 origin,
+                crate_attrs: crate_attrs.into_boxed_slice(),
                 is_proc_macro,
                 proc_macro_cwd,
             },
@@ -593,6 +656,7 @@ impl CrateGraphBuilder {
                 edition: krate.basic.edition,
                 is_proc_macro: krate.basic.is_proc_macro,
                 origin: krate.basic.origin.clone(),
+                crate_attrs: krate.basic.crate_attrs.clone(),
                 root_file_id: krate.basic.root_file_id,
                 proc_macro_cwd: krate.basic.proc_macro_cwd.clone(),
             };
@@ -802,36 +866,10 @@ impl CrateGraphBuilder {
     }
 }
 
-pub(crate) fn transitive_rev_deps(db: &dyn RootQueryDb, of: Crate) -> FxHashSet<Crate> {
-    let mut worklist = vec![of];
-    let mut rev_deps = FxHashSet::default();
-    rev_deps.insert(of);
-
-    let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
-    db.all_crates().iter().for_each(|&krate| {
-        krate
-            .data(db)
-            .dependencies
-            .iter()
-            .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
-    });
-
-    while let Some(krate) = worklist.pop() {
-        if let Some(crate_rev_deps) = inverted_graph.get(&krate) {
-            crate_rev_deps
-                .iter()
-                .copied()
-                .filter(|&rev_dep| rev_deps.insert(rev_dep))
-                .for_each(|rev_dep| worklist.push(rev_dep));
-        }
-    }
-
-    rev_deps
-}
-
-impl BuiltCrateData {
-    pub fn root_file_id(&self, db: &dyn salsa::Database) -> EditionedFileId {
-        EditionedFileId::new(db, self.root_file_id, self.edition)
+impl Crate {
+    pub fn root_file_id(self, db: &dyn salsa::Database) -> EditionedFileId {
+        let data = self.data(db);
+        EditionedFileId::new(db, data.root_file_id, data.edition, self)
     }
 }
 
@@ -866,6 +904,10 @@ impl Env {
 
     pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
         self.entries.insert(k.into(), v.into())
+    }
+
+    pub fn contains_key(&self, arg: &str) -> bool {
+        self.entries.contains_key(arg)
     }
 }
 
@@ -942,6 +984,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -955,6 +998,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -968,6 +1012,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1001,6 +1046,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1014,6 +1060,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1042,6 +1089,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1055,6 +1103,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1068,6 +1117,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1096,6 +1146,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1109,6 +1160,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),

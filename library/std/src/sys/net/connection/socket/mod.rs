@@ -9,7 +9,7 @@ use crate::net::{
 };
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::sys::net::connection::each_addr;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
 
@@ -22,13 +22,9 @@ cfg_select! {
         mod solid;
         pub use solid::*;
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         pub use unix::*;
-    }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use wasip2::*;
     }
     target_os = "windows" => {
         mod windows;

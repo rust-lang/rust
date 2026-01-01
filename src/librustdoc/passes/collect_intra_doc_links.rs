@@ -203,43 +203,6 @@ pub(crate) enum UrlFragment {
     UserWritten(String),
 }
 
-impl UrlFragment {
-    /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) {
-        s.push('#');
-        match self {
-            &UrlFragment::Item(def_id) => {
-                let kind = match tcx.def_kind(def_id) {
-                    DefKind::AssocFn => {
-                        if tcx.associated_item(def_id).defaultness(tcx).has_value() {
-                            "method."
-                        } else {
-                            "tymethod."
-                        }
-                    }
-                    DefKind::AssocConst => "associatedconstant.",
-                    DefKind::AssocTy => "associatedtype.",
-                    DefKind::Variant => "variant.",
-                    DefKind::Field => {
-                        let parent_id = tcx.parent(def_id);
-                        if tcx.def_kind(parent_id) == DefKind::Variant {
-                            s.push_str("variant.");
-                            s.push_str(tcx.item_name(parent_id).as_str());
-                            ".field."
-                        } else {
-                            "structfield."
-                        }
-                    }
-                    kind => bug!("unexpected associated item kind: {kind:?}"),
-                };
-                s.push_str(kind);
-                s.push_str(tcx.item_name(def_id).as_str());
-            }
-            UrlFragment::UserWritten(raw) => s.push_str(raw),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) struct ResolutionInfo {
     item_id: DefId,
@@ -938,14 +901,18 @@ pub(crate) struct PreprocessedMarkdownLink(
 
 /// Returns:
 /// - `None` if the link should be ignored.
-/// - `Some(Err)` if the link should emit an error
-/// - `Some(Ok)` if the link is valid
+/// - `Some(Err(_))` if the link should emit an error
+/// - `Some(Ok(_))` if the link is valid
 ///
 /// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
 fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
+    // IMPORTANT: To be kept in sync with the corresponding function in `rustc_resolve::rustdoc`.
+    // Namely, whenever this function returns a successful result for a given input,
+    // the rustc counterpart *MUST* return a link that's equal to `PreprocessingInfo.path_str`!
+
     // certain link kinds cannot have their path be urls,
     // so they should not be ignored, no matter how much they look like urls.
     // e.g. [https://example.com/] is not a link to example.com.
@@ -1070,7 +1037,7 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 impl LinkCollector<'_, '_> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
-        if !self.cx.render_options.document_private
+        if !self.cx.document_private()
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
@@ -1215,7 +1182,6 @@ impl LinkCollector<'_, '_> {
             || !did.is_local()
     }
 
-    #[allow(rustc::potential_query_instability)]
     pub(crate) fn resolve_ambiguities(&mut self) {
         let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
@@ -2400,7 +2366,7 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
             diag.span_label(sp, "this item is private");
         }
 
-        let note_msg = if cx.render_options.document_private {
+        let note_msg = if cx.document_private() {
             "this link resolves only because you passed `--document-private-items`, but will break without"
         } else {
             "this link will resolve properly if you pass `--document-private-items`"

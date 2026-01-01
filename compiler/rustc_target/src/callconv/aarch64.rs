@@ -3,19 +3,20 @@ use std::iter;
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::spec::{HasTargetSpec, Target};
+use crate::spec::{Abi, HasTargetSpec, Target};
 
 /// Indicates the variant of the AArch64 ABI we are compiling for.
 /// Used to accommodate Apple and Microsoft's deviations from the usual AAPCS ABI.
 ///
 /// Corresponds to Clang's `AArch64ABIInfo::ABIKind`.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum AbiKind {
     AAPCS,
     DarwinPCS,
     Win64,
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -33,7 +34,7 @@ where
             RegKind::Integer => false,
             // The softfloat ABI treats floats like integers, so they
             // do not get homogeneous aggregate treatment.
-            RegKind::Float => cx.target_spec().abi != "softfloat",
+            RegKind::Float => cx.target_spec().abi != Abi::SoftFloat,
             RegKind::Vector => size.bits() == 64 || size.bits() == 128,
         };
 
@@ -42,7 +43,7 @@ where
 }
 
 fn softfloat_float_abi<Ty>(target: &Target, arg: &mut ArgAbi<'_, Ty>) {
-    if target.abi != "softfloat" {
+    if target.abi != Abi::SoftFloat {
         return;
     }
     // Do *not* use the float registers for passing arguments, as that would make LLVM pick the ABI
@@ -73,12 +74,13 @@ fn softfloat_float_abi<Ty>(target: &Target, arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !ret.layout.is_sized() {
+    if !ret.layout.is_sized() || ret.layout.is_scalable_vector() {
         // Not touching this...
         return;
     }
@@ -105,12 +107,13 @@ where
     ret.make_indirect();
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !arg.layout.is_sized() {
+    if !arg.layout.is_sized() || arg.layout.is_scalable_vector() {
         // Not touching this...
         return;
     }

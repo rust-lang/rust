@@ -1178,6 +1178,10 @@ where
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
     }
 
+    fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
+        this.ty.is_scalable_vector()
+    }
+
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().flags.contains(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS))
@@ -1392,37 +1396,3 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
 }
 
 impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
-
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn offset_of_subfield<I>(
-        self,
-        typing_env: ty::TypingEnv<'tcx>,
-        mut layout: TyAndLayout<'tcx>,
-        indices: I,
-    ) -> Size
-    where
-        I: Iterator<Item = (VariantIdx, FieldIdx)>,
-    {
-        let cx = LayoutCx::new(self, typing_env);
-        let mut offset = Size::ZERO;
-
-        for (variant, field) in indices {
-            layout = layout.for_variant(&cx, variant);
-            let index = field.index();
-            offset += layout.fields.offset(index);
-            layout = layout.field(&cx, index);
-            if !layout.is_sized() {
-                // If it is not sized, then the tail must still have at least a known static alignment.
-                let tail = self.struct_tail_for_codegen(layout.ty, typing_env);
-                if !matches!(tail.kind(), ty::Slice(..)) {
-                    bug!(
-                        "offset of not-statically-aligned field (type {:?}) cannot be computed statically",
-                        layout.ty
-                    );
-                }
-            }
-        }
-
-        offset
-    }
-}

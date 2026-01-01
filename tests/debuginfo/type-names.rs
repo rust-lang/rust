@@ -11,266 +11,266 @@
 
 // === GDB TESTS ==================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
 // STRUCTS
-// gdb-command:whatis simple_struct
-// gdb-check:type = type_names::Struct1
+//@ gdb-command:whatis simple_struct
+//@ gdb-check:type = type_names::Struct1
 
-// gdb-command:whatis generic_struct1
-// gdb-check:type = type_names::GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
+//@ gdb-command:whatis generic_struct1
+//@ gdb-check:type = type_names::GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
 
-// gdb-command:whatis generic_struct2
-// gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "system" fn(isize) -> usize>
+//@ gdb-command:whatis generic_struct2
+//@ gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "system" fn(isize) -> usize>
 
-// gdb-command:whatis mod_struct
-// gdb-check:type = type_names::mod1::Struct2
+//@ gdb-command:whatis mod_struct
+//@ gdb-check:type = type_names::mod1::Struct2
 
 // ENUMS
-// gdb-command:whatis simple_enum_1
-// gdb-check:type = type_names::Enum1
+//@ gdb-command:whatis simple_enum_1
+//@ gdb-check:type = type_names::Enum1
 
-// gdb-command:whatis simple_enum_2
-// gdb-check:type = type_names::Enum1
+//@ gdb-command:whatis simple_enum_2
+//@ gdb-check:type = type_names::Enum1
 
-// gdb-command:whatis simple_enum_3
-// gdb-check:type = type_names::mod1::Enum2
+//@ gdb-command:whatis simple_enum_3
+//@ gdb-check:type = type_names::mod1::Enum2
 
-// gdb-command:whatis generic_enum_1
-// gdb-check:type = type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>
+//@ gdb-command:whatis generic_enum_1
+//@ gdb-check:type = type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>
 
-// gdb-command:whatis generic_enum_2
-// gdb-check:type = type_names::mod1::mod2::Enum3<type_names::Struct1>
+//@ gdb-command:whatis generic_enum_2
+//@ gdb-check:type = type_names::mod1::mod2::Enum3<type_names::Struct1>
 
 // TUPLES
-// gdb-command:whatis tuple1
-// gdb-check:type = (u32, type_names::Struct1, type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>)
+//@ gdb-command:whatis tuple1
+//@ gdb-check:type = (u32, type_names::Struct1, type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>)
 
-// gdb-command:whatis tuple2
-// gdb-check:type = ((type_names::Struct1, type_names::mod1::mod2::Struct3), type_names::mod1::Enum2, char)
+//@ gdb-command:whatis tuple2
+//@ gdb-check:type = ((type_names::Struct1, type_names::mod1::mod2::Struct3), type_names::mod1::Enum2, char)
 
 // BOX
-// gdb-command:whatis box1
-// gdb-check:type = (alloc::boxed::Box<f32, alloc::alloc::Global>, i32)
+//@ gdb-command:whatis box1
+//@ gdb-check:type = (alloc::boxed::Box<f32, alloc::alloc::Global>, i32)
 
-// gdb-command:whatis box2
-// gdb-check:type = (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>, alloc::alloc::Global>, i32)
+//@ gdb-command:whatis box2
+//@ gdb-check:type = (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>, alloc::alloc::Global>, i32)
 
 // REFERENCES
-// gdb-command:whatis ref1
-// gdb-check:type = (&type_names::Struct1, i32)
+//@ gdb-command:whatis ref1
+//@ gdb-check:type = (&type_names::Struct1, i32)
 
-// gdb-command:whatis ref2
-// gdb-check:type = (&type_names::GenericStruct<char, type_names::Struct1>, i32)
+//@ gdb-command:whatis ref2
+//@ gdb-check:type = (&type_names::GenericStruct<char, type_names::Struct1>, i32)
 
-// gdb-command:whatis mut_ref1
-// gdb-check:type = (&mut type_names::Struct1, i32)
+//@ gdb-command:whatis mut_ref1
+//@ gdb-check:type = (&mut type_names::Struct1, i32)
 
-// gdb-command:whatis mut_ref2
-// gdb-check:type = (&mut type_names::GenericStruct<type_names::mod1::Enum2, f64>, i32)
+//@ gdb-command:whatis mut_ref2
+//@ gdb-check:type = (&mut type_names::GenericStruct<type_names::mod1::Enum2, f64>, i32)
 
 // RAW POINTERS
-// gdb-command:whatis mut_ptr1
-// gdb-check:type = (*mut type_names::Struct1, isize)
+//@ gdb-command:whatis mut_ptr1
+//@ gdb-check:type = (*mut type_names::Struct1, isize)
 
-// gdb-command:whatis mut_ptr2
-// gdb-check:type = (*mut isize, isize)
+//@ gdb-command:whatis mut_ptr2
+//@ gdb-check:type = (*mut isize, isize)
 
-// gdb-command:whatis mut_ptr3
-// gdb-check:type = (*mut type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+//@ gdb-command:whatis mut_ptr3
+//@ gdb-check:type = (*mut type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
 
-// gdb-command:whatis const_ptr1
-// gdb-check:type = (*const type_names::Struct1, isize)
+//@ gdb-command:whatis const_ptr1
+//@ gdb-check:type = (*const type_names::Struct1, isize)
 
-// gdb-command:whatis const_ptr2
-// gdb-check:type = (*const isize, isize)
+//@ gdb-command:whatis const_ptr2
+//@ gdb-check:type = (*const isize, isize)
 
-// gdb-command:whatis const_ptr3
-// gdb-check:type = (*const type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+//@ gdb-command:whatis const_ptr3
+//@ gdb-check:type = (*const type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
 
 // VECTORS
-// gdb-command:whatis fixed_size_vec1
-// gdb-check:type = ([type_names::Struct1; 3], i16)
+//@ gdb-command:whatis fixed_size_vec1
+//@ gdb-check:type = ([type_names::Struct1; 3], i16)
 
-// gdb-command:whatis fixed_size_vec2
-// gdb-check:type = ([usize; 3], i16)
+//@ gdb-command:whatis fixed_size_vec2
+//@ gdb-check:type = ([usize; 3], i16)
 
-// gdb-command:whatis slice1
-// gdb-check:type = &[usize]
+//@ gdb-command:whatis slice1
+//@ gdb-check:type = &[usize]
 
-// gdb-command:whatis slice2
-// gdb-check:type = &mut [type_names::mod1::Enum2]
+//@ gdb-command:whatis slice2
+//@ gdb-check:type = &mut [type_names::mod1::Enum2]
 
 // TRAITS
-// gdb-command:whatis box_trait
-// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait1, alloc::alloc::Global>
+//@ gdb-command:whatis box_trait
+//@ gdb-check:type = alloc::boxed::Box<dyn type_names::Trait1, alloc::alloc::Global>
 
-// gdb-command:whatis ref_trait
-// gdb-check:type = &dyn type_names::Trait1
+//@ gdb-command:whatis ref_trait
+//@ gdb-check:type = &dyn type_names::Trait1
 
-// gdb-command:whatis mut_ref_trait
-// gdb-check:type = &mut dyn type_names::Trait1
+//@ gdb-command:whatis mut_ref_trait
+//@ gdb-check:type = &mut dyn type_names::Trait1
 
-// gdb-command:whatis generic_box_trait
-// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait2<i32, type_names::mod1::Struct2>, alloc::alloc::Global>
+//@ gdb-command:whatis generic_box_trait
+//@ gdb-check:type = alloc::boxed::Box<dyn type_names::Trait2<i32, type_names::mod1::Struct2>, alloc::alloc::Global>
 
-// gdb-command:whatis generic_ref_trait
-// gdb-check:type = &dyn type_names::Trait2<type_names::Struct1, type_names::Struct1>
+//@ gdb-command:whatis generic_ref_trait
+//@ gdb-check:type = &dyn type_names::Trait2<type_names::Struct1, type_names::Struct1>
 
-// gdb-command:whatis generic_mut_ref_trait
-// gdb-check:type = &mut dyn type_names::Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
+//@ gdb-command:whatis generic_mut_ref_trait
+//@ gdb-check:type = &mut dyn type_names::Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
 
-// gdb-command:whatis no_principal_trait
-// gdb-check:type = alloc::boxed::Box<(dyn core::marker::Send + core::marker::Sync), alloc::alloc::Global>
+//@ gdb-command:whatis no_principal_trait
+//@ gdb-check:type = alloc::boxed::Box<(dyn core::marker::Send + core::marker::Sync), alloc::alloc::Global>
 
-// gdb-command:whatis has_associated_type_trait
-// gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)
+//@ gdb-command:whatis has_associated_type_trait
+//@ gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)
 
-// gdb-command:whatis has_associated_type_but_no_generics_trait
-// gdb-check:type = &dyn type_names::TraitNoGenericsButWithAssocType<Output=isize>
+//@ gdb-command:whatis has_associated_type_but_no_generics_trait
+//@ gdb-check:type = &dyn type_names::TraitNoGenericsButWithAssocType<Output=isize>
 
 // BARE FUNCTIONS
-// gdb-command:whatis rust_fn
-// gdb-check:type = (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
+//@ gdb-command:whatis rust_fn
+//@ gdb-check:type = (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
 
-// gdb-command:whatis extern_c_fn
-// gdb-check:type = (extern "C" fn(isize), usize)
+//@ gdb-command:whatis extern_c_fn
+//@ gdb-check:type = (extern "C" fn(isize), usize)
 
-// gdb-command:whatis unsafe_fn
-// gdb-check:type = (unsafe fn(core::result::Result<char, f64>), usize)
+//@ gdb-command:whatis unsafe_fn
+//@ gdb-check:type = (unsafe fn(core::result::Result<char, f64>), usize)
 
-// gdb-command:whatis rust_fn_with_return_value
-// gdb-check:type = (fn(f64) -> usize, usize)
+//@ gdb-command:whatis rust_fn_with_return_value
+//@ gdb-check:type = (fn(f64) -> usize, usize)
 
-// gdb-command:whatis extern_c_fn_with_return_value
-// gdb-check:type = (extern "C" fn() -> type_names::Struct1, usize)
+//@ gdb-command:whatis extern_c_fn_with_return_value
+//@ gdb-check:type = (extern "C" fn() -> type_names::Struct1, usize)
 
-// gdb-command:whatis unsafe_fn_with_return_value
-// gdb-check:type = (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
+//@ gdb-command:whatis unsafe_fn_with_return_value
+//@ gdb-check:type = (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
 
-// gdb-command:whatis generic_function_int
-// gdb-check:type = (fn(isize) -> isize, usize)
+//@ gdb-command:whatis generic_function_int
+//@ gdb-check:type = (fn(isize) -> isize, usize)
 
-// gdb-command:whatis generic_function_struct3
-// gdb-check:type = (fn(type_names::mod1::mod2::Struct3) -> type_names::mod1::mod2::Struct3, usize)
+//@ gdb-command:whatis generic_function_struct3
+//@ gdb-check:type = (fn(type_names::mod1::mod2::Struct3) -> type_names::mod1::mod2::Struct3, usize)
 
-// gdb-command:whatis variadic_function
-// gdb-check:type = (unsafe extern "C" fn(*const u8, ...) -> isize, usize)
+//@ gdb-command:whatis variadic_function
+//@ gdb-check:type = (unsafe extern "C" fn(*const u8, ...) -> isize, usize)
 
 // CLOSURES
-// gdb-command:whatis closure1
-// gdb-check:type = (type_names::main::{closure_env#0}, usize)
+//@ gdb-command:whatis closure1
+//@ gdb-check:type = (type_names::main::{closure_env#0}, usize)
 
-// gdb-command:whatis closure2
-// gdb-check:type = (type_names::main::{closure_env#1}, usize)
+//@ gdb-command:whatis closure2
+//@ gdb-check:type = (type_names::main::{closure_env#1}, usize)
 
 // FOREIGN TYPES
-// gdb-command:whatis foreign1
-// gdb-check:type = *mut type_names::{extern#0}::ForeignType1
+//@ gdb-command:whatis foreign1
+//@ gdb-check:type = *mut type_names::{extern#0}::ForeignType1
 
-// gdb-command:whatis foreign2
-// gdb-check:type = *mut type_names::mod1::{extern#0}::ForeignType2
+//@ gdb-command:whatis foreign2
+//@ gdb-check:type = *mut type_names::mod1::{extern#0}::ForeignType2
 
 // === CDB TESTS ==================================================================================
 
 // Note: `/n` causes the wildcard matches to be sorted to avoid depending on order in PDB which
 // can be arbitrary.
 
-// cdb-command: g
+//@ cdb-command: g
 
 // STRUCTS
 // 0-sized structs appear to be optimized away in some cases, so only check the structs that do
 // actually appear.
-// cdb-command:dv /t /n *_struct
+//@ cdb-command:dv /t /n *_struct
 
 // ENUMS
-// cdb-command:dv /t /n *_enum_*
-// cdb-check:union enum2$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > generic_enum_1 = [...]
-// cdb-check:union enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > generic_enum_2 = [...]
-// cdb-check:union enum2$<type_names::Enum1> simple_enum_1 = [...]
-// cdb-check:union enum2$<type_names::Enum1> simple_enum_2 = [...]
-// cdb-check:union enum2$<type_names::mod1::Enum2> simple_enum_3 = [...]
+//@ cdb-command:dv /t /n *_enum_*
+//@ cdb-check:union enum2$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > generic_enum_1 = [...]
+//@ cdb-check:union enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > generic_enum_2 = [...]
+//@ cdb-check:union enum2$<type_names::Enum1> simple_enum_1 = [...]
+//@ cdb-check:union enum2$<type_names::Enum1> simple_enum_2 = [...]
+//@ cdb-check:union enum2$<type_names::mod1::Enum2> simple_enum_3 = [...]
 
 // TUPLES
-// cdb-command:dv /t /n tuple*
-// cdb-check:struct tuple$<u32,type_names::Struct1,enum2$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > > tuple1 = [...]
-// cdb-check:struct tuple$<tuple$<type_names::Struct1,type_names::mod1::mod2::Struct3>,enum2$<type_names::mod1::Enum2>,char> tuple2 = [...]
+//@ cdb-command:dv /t /n tuple*
+//@ cdb-check:struct tuple$<u32,type_names::Struct1,enum2$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > > tuple1 = [...]
+//@ cdb-check:struct tuple$<tuple$<type_names::Struct1,type_names::mod1::mod2::Struct3>,enum2$<type_names::mod1::Enum2>,char> tuple2 = [...]
 
 // BOX
-// cdb-command:dv /t /n box*
-// cdb-check:struct tuple$<alloc::boxed::Box<f32,alloc::alloc::Global>,i32> box1 = [...]
-// cdb-check:struct tuple$<alloc::boxed::Box<enum2$<type_names::mod1::mod2::Enum3<f32> >,alloc::alloc::Global>,i32> box2 = [...]
+//@ cdb-command:dv /t /n box*
+//@ cdb-check:struct tuple$<alloc::boxed::Box<f32,alloc::alloc::Global>,i32> box1 = [...]
+//@ cdb-check:struct tuple$<alloc::boxed::Box<enum2$<type_names::mod1::mod2::Enum3<f32> >,alloc::alloc::Global>,i32> box2 = [...]
 
 // REFERENCES
-// cdb-command:dv /t /n *ref*
-// cdb-check:struct tuple$<ref_mut$<type_names::Struct1>,i32> mut_ref1 = [...]
-// cdb-check:struct tuple$<ref_mut$<type_names::GenericStruct<enum2$<type_names::mod1::Enum2>,f64> >,i32> mut_ref2 = [...]
-// cdb-check:struct tuple$<ref$<type_names::Struct1>,i32> ref1 = [...]
-// cdb-check:struct tuple$<ref$<type_names::GenericStruct<char,type_names::Struct1> >,i32> ref2 = [...]
+//@ cdb-command:dv /t /n *ref*
+//@ cdb-check:struct tuple$<ref_mut$<type_names::Struct1>,i32> mut_ref1 = [...]
+//@ cdb-check:struct tuple$<ref_mut$<type_names::GenericStruct<enum2$<type_names::mod1::Enum2>,f64> >,i32> mut_ref2 = [...]
+//@ cdb-check:struct tuple$<ref$<type_names::Struct1>,i32> ref1 = [...]
+//@ cdb-check:struct tuple$<ref$<type_names::GenericStruct<char,type_names::Struct1> >,i32> ref2 = [...]
 
 // RAW POINTERS
-// cdb-command:dv /t /n *_ptr*
-// cdb-check:struct tuple$<ptr_const$<type_names::Struct1>,isize> const_ptr1 = [...]
-// cdb-check:struct tuple$<ptr_const$<isize>,isize> const_ptr2 = [...]
-// cdb-check:struct tuple$<ptr_const$<enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> const_ptr3 = [...]
-// cdb-check:struct tuple$<ptr_mut$<type_names::Struct1>,isize> mut_ptr1 = [...]
-// cdb-check:struct tuple$<ptr_mut$<isize>,isize> mut_ptr2 = [...]
-// cdb-check:struct tuple$<ptr_mut$<enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> mut_ptr3 = [...]
+//@ cdb-command:dv /t /n *_ptr*
+//@ cdb-check:struct tuple$<ptr_const$<type_names::Struct1>,isize> const_ptr1 = [...]
+//@ cdb-check:struct tuple$<ptr_const$<isize>,isize> const_ptr2 = [...]
+//@ cdb-check:struct tuple$<ptr_const$<enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> const_ptr3 = [...]
+//@ cdb-check:struct tuple$<ptr_mut$<type_names::Struct1>,isize> mut_ptr1 = [...]
+//@ cdb-check:struct tuple$<ptr_mut$<isize>,isize> mut_ptr2 = [...]
+//@ cdb-check:struct tuple$<ptr_mut$<enum2$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> mut_ptr3 = [...]
 
 // VECTORS
-// cdb-command:dv /t /n *vec*
-// cdb-check:struct tuple$<array$<type_names::Struct1,3>,i16> fixed_size_vec1 = [...]
-// cdb-check:struct tuple$<array$<usize,3>,i16> fixed_size_vec2 = [...]
-// cdb-check:struct alloc::vec::Vec<usize,alloc::alloc::Global> vec1 = [...]
-// cdb-check:struct alloc::vec::Vec<enum2$<type_names::mod1::Enum2>,alloc::alloc::Global> vec2 = [...]
-// cdb-command:dv /t /n slice*
-// cdb-check:struct ref$<slice2$<usize> > slice1 = [...]
-// cdb-check:struct ref_mut$<slice2$<enum2$<type_names::mod1::Enum2> > > slice2 = [...]
+//@ cdb-command:dv /t /n *vec*
+//@ cdb-check:struct tuple$<array$<type_names::Struct1,3>,i16> fixed_size_vec1 = [...]
+//@ cdb-check:struct tuple$<array$<usize,3>,i16> fixed_size_vec2 = [...]
+//@ cdb-check:struct alloc::vec::Vec<usize,alloc::alloc::Global> vec1 = [...]
+//@ cdb-check:struct alloc::vec::Vec<enum2$<type_names::mod1::Enum2>,alloc::alloc::Global> vec2 = [...]
+//@ cdb-command:dv /t /n slice*
+//@ cdb-check:struct ref$<slice2$<usize> > slice1 = [...]
+//@ cdb-check:struct ref_mut$<slice2$<enum2$<type_names::mod1::Enum2> > > slice2 = [...]
 
 // TRAITS
-// cdb-command:dv /t /n *_trait
+//@ cdb-command:dv /t /n *_trait
 
-// cdb-check:struct alloc::boxed::Box<dyn$<type_names::Trait1>,alloc::alloc::Global> box_trait = [...]
-// cdb-check:struct alloc::boxed::Box<dyn$<type_names::Trait2<i32,type_names::mod1::Struct2> >,alloc::alloc::Global> generic_box_trait = [...]
-// cdb-check:struct ref_mut$<dyn$<type_names::Trait2<type_names::mod1::mod2::Struct3,type_names::GenericStruct<usize,isize> > > > generic_mut_ref_trait = [...]
-// cdb-check:struct ref$<dyn$<type_names::Trait2<type_names::Struct1,type_names::Struct1> > > generic_ref_trait = [...]
-// cdb-check:struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > > has_associated_type_but_no_generics_trait = struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > >
-// cdb-check:struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> > has_associated_type_trait = struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> >
-// cdb-check:struct ref_mut$<dyn$<type_names::Trait1> > mut_ref_trait = [...]
-// cdb-check:struct alloc::boxed::Box<dyn$<core::marker::Send,core::marker::Sync>,alloc::alloc::Global> no_principal_trait = [...]
-// cdb-check:struct ref$<dyn$<type_names::Trait1> > ref_trait = [...]
+//@ cdb-check:struct alloc::boxed::Box<dyn$<type_names::Trait1>,alloc::alloc::Global> box_trait = [...]
+//@ cdb-check:struct alloc::boxed::Box<dyn$<type_names::Trait2<i32,type_names::mod1::Struct2> >,alloc::alloc::Global> generic_box_trait = [...]
+//@ cdb-check:struct ref_mut$<dyn$<type_names::Trait2<type_names::mod1::mod2::Struct3,type_names::GenericStruct<usize,isize> > > > generic_mut_ref_trait = [...]
+//@ cdb-check:struct ref$<dyn$<type_names::Trait2<type_names::Struct1,type_names::Struct1> > > generic_ref_trait = [...]
+//@ cdb-check:struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > > has_associated_type_but_no_generics_trait = struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > >
+//@ cdb-check:struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> > has_associated_type_trait = struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> >
+//@ cdb-check:struct ref_mut$<dyn$<type_names::Trait1> > mut_ref_trait = [...]
+//@ cdb-check:struct alloc::boxed::Box<dyn$<core::marker::Send,core::marker::Sync>,alloc::alloc::Global> no_principal_trait = [...]
+//@ cdb-check:struct ref$<dyn$<type_names::Trait1> > ref_trait = [...]
 
 // BARE FUNCTIONS
-// cdb-command:dv /t /n *_fn*
-// cdb-check:struct tuple$<void (*)(isize),usize> extern_c_fn = [...]
-// cdb-check:struct tuple$<type_names::Struct1 (*)(),usize> extern_c_fn_with_return_value = [...]
-// cdb-check:struct tuple$<void (*)(enum2$<core::option::Option<isize> >,enum2$<core::option::Option<ref$<type_names::mod1::Struct2> > >),usize> rust_fn = [...]
-// cdb-check:struct tuple$<usize (*)(f64),usize> rust_fn_with_return_value = [...]
-// cdb-check:struct tuple$<void (*)(enum2$<core::result::Result<char,f64> >),usize> unsafe_fn = [...]
-// cdb-check:struct tuple$<type_names::mod1::Struct2 (*)(type_names::GenericStruct<u16,u8>),usize> unsafe_fn_with_return_value = [...]
-// cdb-command:dv /t /n *_function*
-// cdb-check:struct tuple$<isize (*)(isize),usize> generic_function_int = [...]
-// cdb-check:struct tuple$<type_names::mod1::mod2::Struct3 (*)(type_names::mod1::mod2::Struct3),usize> generic_function_struct3 = [...]
-// cdb-check:struct tuple$<isize (*)(ptr_const$<u8>, ...),usize> variadic_function = [...]
-// cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn")
-// cdb-check:Return Type: void
-// cdb-check:Parameter Types: enum2$<core::option::Option<isize> >,enum2$<core::option::Option<ref$<type_names::mod1::Struct2> > >
-// cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn_with_return_value")
-// cdb-check:Return Type: usize
-// cdb-check:Parameter Types: f64
-// cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("extern_c_fn_with_return_value")
-// cdb-check:Return Type: type_names::Struct1
-// cdb-check:Parameter Types:
+//@ cdb-command:dv /t /n *_fn*
+//@ cdb-check:struct tuple$<void (*)(isize),usize> extern_c_fn = [...]
+//@ cdb-check:struct tuple$<type_names::Struct1 (*)(),usize> extern_c_fn_with_return_value = [...]
+//@ cdb-check:struct tuple$<void (*)(enum2$<core::option::Option<isize> >,enum2$<core::option::Option<ref$<type_names::mod1::Struct2> > >),usize> rust_fn = [...]
+//@ cdb-check:struct tuple$<usize (*)(f64),usize> rust_fn_with_return_value = [...]
+//@ cdb-check:struct tuple$<void (*)(enum2$<core::result::Result<char,f64> >),usize> unsafe_fn = [...]
+//@ cdb-check:struct tuple$<type_names::mod1::Struct2 (*)(type_names::GenericStruct<u16,u8>),usize> unsafe_fn_with_return_value = [...]
+//@ cdb-command:dv /t /n *_function*
+//@ cdb-check:struct tuple$<isize (*)(isize),usize> generic_function_int = [...]
+//@ cdb-check:struct tuple$<type_names::mod1::mod2::Struct3 (*)(type_names::mod1::mod2::Struct3),usize> generic_function_struct3 = [...]
+//@ cdb-check:struct tuple$<isize (*)(ptr_const$<u8>, ...),usize> variadic_function = [...]
+//@ cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn")
+//@ cdb-check:Return Type: void
+//@ cdb-check:Parameter Types: enum2$<core::option::Option<isize> >,enum2$<core::option::Option<ref$<type_names::mod1::Struct2> > >
+//@ cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn_with_return_value")
+//@ cdb-check:Return Type: usize
+//@ cdb-check:Parameter Types: f64
+//@ cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("extern_c_fn_with_return_value")
+//@ cdb-check:Return Type: type_names::Struct1
+//@ cdb-check:Parameter Types:
 
 // CLOSURES
-// cdb-command:dv /t /n closure*
-// cdb-check:struct tuple$<type_names::main::closure_env$0,usize> closure1 = [...]
-// cdb-check:struct tuple$<type_names::main::closure_env$1,usize> closure2 = [...]
+//@ cdb-command:dv /t /n closure*
+//@ cdb-check:struct tuple$<type_names::main::closure_env$0,usize> closure1 = [...]
+//@ cdb-check:struct tuple$<type_names::main::closure_env$1,usize> closure2 = [...]
 
 // FOREIGN TYPES
-// cdb-command:dv /t /n foreign*
-// cdb-check:struct type_names::extern$0::ForeignType1 * foreign1 = [...]
-// cdb-check:struct type_names::mod1::extern$0::ForeignType2 * foreign2 = [...]
+//@ cdb-command:dv /t /n foreign*
+//@ cdb-check:struct type_names::extern$0::ForeignType1 * foreign1 = [...]
+//@ cdb-check:struct type_names::mod1::extern$0::ForeignType2 * foreign2 = [...]
 
 #![allow(unused_variables)]
 #![feature(extern_types)]

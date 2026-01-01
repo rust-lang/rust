@@ -36,9 +36,8 @@ use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys::cvt;
 use crate::sys::net::Socket;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner, cvt};
 use crate::time::Duration;
 
 /// A Unix stream socket.
@@ -58,6 +57,13 @@ use crate::time::Duration;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # `SOCK_CLOEXEC`
+///
+/// On platforms that support it, we pass the close-on-exec flag to atomically create the socket and
+/// set it as CLOEXEC. On Linux, this was added in 2.6.27. See [`socket(2)`] for more information.
+///
+/// [`socket(2)`]: https://www.man7.org/linux/man-pages/man2/socket.2.html#:~:text=SOCK_CLOEXEC
 ///
 /// # `SIGPIPE`
 ///

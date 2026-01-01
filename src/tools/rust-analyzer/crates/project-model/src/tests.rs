@@ -199,6 +199,15 @@ fn rust_project_cfg_groups() {
 }
 
 #[test]
+fn rust_project_crate_attrs() {
+    let (crate_graph, _proc_macros) = load_rust_project("crate-attrs.json");
+    check_crate_graph(
+        crate_graph,
+        expect_file!["../test_data/output/rust_project_crate_attrs.txt"],
+    );
+}
+
+#[test]
 fn crate_graph_dedup_identical() {
     let (mut crate_graph, proc_macros) = load_cargo("regex-metadata.json");
 

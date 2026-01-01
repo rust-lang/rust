@@ -78,6 +78,8 @@ xflags::xflags! {
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
+            /// Skip lang items fetching.
+            optional --skip-lang-items
             /// Skip body lowering.
             optional --skip-lowering
             /// Skip type inference.
@@ -256,6 +258,7 @@ pub struct AnalysisStats {
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
     pub skip_lowering: bool,
+    pub skip_lang_items: bool,
     pub skip_inference: bool,
     pub skip_mir_stats: bool,
     pub skip_data_layout: bool,

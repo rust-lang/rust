@@ -1,13 +1,12 @@
-use std::slice;
-
 use ide_db::assists::GroupLabel;
+use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::ast::HasVisibility;
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{add_method_to_adt, find_struct_impl},
+    utils::{add_method_to_adt, find_struct_impl, is_selected},
 };
 
 // Assist: generate_enum_is_method
@@ -41,20 +40,21 @@ use crate::{
 // ```
 pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
-    let variant_name = variant.name()?;
     let parent_enum = ast::Adt::Enum(variant.parent_enum());
-    let pattern_suffix = match variant.kind() {
-        ast::StructKind::Record(_) => " { .. }",
-        ast::StructKind::Tuple(_) => "(..)",
-        ast::StructKind::Unit => "",
-    };
-
+    let variants = variant
+        .parent_enum()
+        .variant_list()?
+        .variants()
+        .filter(|it| is_selected(it, ctx.selection_trimmed(), true))
+        .collect::<Vec<_>>();
+    let methods = variants.iter().map(Method::new).collect::<Option<Vec<_>>>()?;
     let enum_name = parent_enum.name()?;
     let enum_lowercase_name = to_lower_snake_case(&enum_name.to_string()).replace('_', " ");
-    let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
+    let fn_names = methods.iter().map(|it| it.fn_name.clone()).collect::<Vec<_>>();
+    stdx::never!(variants.is_empty());
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(ctx, &parent_enum, slice::from_ref(&fn_name))?;
+    let impl_def = find_struct_impl(ctx, &parent_enum, &fn_names)?;
 
     let target = variant.syntax().text_range();
     acc.add_group(
@@ -64,19 +64,45 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>
         target,
         |builder| {
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
-            let method = format!(
-                "    /// Returns `true` if the {enum_lowercase_name} is [`{variant_name}`].
+            let method = methods
+                .iter()
+                .map(|Method { pattern_suffix, fn_name, variant_name }| {
+                    format!(
+                        "    \
+    /// Returns `true` if the {enum_lowercase_name} is [`{variant_name}`].
     ///
     /// [`{variant_name}`]: {enum_name}::{variant_name}
     #[must_use]
     {vis}fn {fn_name}(&self) -> bool {{
         matches!(self, Self::{variant_name}{pattern_suffix})
     }}",
-            );
+                    )
+                })
+                .join("\n\n");
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);
         },
     )
+}
+
+struct Method {
+    pattern_suffix: &'static str,
+    fn_name: String,
+    variant_name: ast::Name,
+}
+
+impl Method {
+    fn new(variant: &ast::Variant) -> Option<Self> {
+        let pattern_suffix = match variant.kind() {
+            ast::StructKind::Record(_) => " { .. }",
+            ast::StructKind::Tuple(_) => "(..)",
+            ast::StructKind::Unit => "",
+        };
+
+        let variant_name = variant.name()?;
+        let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
+        Some(Method { pattern_suffix, fn_name, variant_name })
+    }
 }
 
 #[cfg(test)]
@@ -108,6 +134,42 @@ impl Variant {
     #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_is_from_multiple_variant() {
+        check_assist(
+            generate_enum_is_method,
+            r#"
+enum Variant {
+    Undefined,
+    $0Minor,
+    M$0ajor,
+}"#,
+            r#"enum Variant {
+    Undefined,
+    Minor,
+    Major,
+}
+
+impl Variant {
+    /// Returns `true` if the variant is [`Minor`].
+    ///
+    /// [`Minor`]: Variant::Minor
+    #[must_use]
+    fn is_minor(&self) -> bool {
+        matches!(self, Self::Minor)
+    }
+
+    /// Returns `true` if the variant is [`Major`].
+    ///
+    /// [`Major`]: Variant::Major
+    #[must_use]
+    fn is_major(&self) -> bool {
+        matches!(self, Self::Major)
     }
 }"#,
         );

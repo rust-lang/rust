@@ -5,7 +5,7 @@ The THIR ("Typed High-Level Intermediate Representation"), previously called HAI
 [type checking]. It is (as of <!-- date-check --> January 2024) used for
 [MIR construction], [exhaustiveness checking], and [unsafety checking].
 
-[type checking]: ./type-checking.md
+[type checking]: ./hir-typeck/summary.md
 [MIR construction]: ./mir/construction.md
 [exhaustiveness checking]: ./pat-exhaustive-checking.md
 [unsafety checking]: ./unsafety-checking.md

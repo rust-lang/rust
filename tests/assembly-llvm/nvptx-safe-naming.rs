@@ -1,5 +1,5 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -Z unstable-options -Clinker-flavor=llbc
+//@ compile-flags: --crate-type cdylib
 //@ only-nvptx64
 //@ revisions: LLVM20 LLVM21
 //@ [LLVM21] min-llvm-version: 21
@@ -12,7 +12,7 @@
 extern crate breakpoint_panic_handler;
 
 // Verify function name doesn't contain unacceaptable characters.
-// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:[a-zA-Z0-9$_]+square[a-zA-Z0-9$_]+]]
+// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:[a-zA-Z0-9$_]+square]]
 
 // CHECK-LABEL: .visible .entry top_kernel(
 #[no_mangle]

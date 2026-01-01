@@ -405,7 +405,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         imm
                     }
                 }
-                BackendRepr::ScalarPair(_, _) | BackendRepr::Memory { .. } => bug!(),
+                BackendRepr::ScalarPair(_, _)
+                | BackendRepr::Memory { .. }
+                | BackendRepr::ScalableVector { .. } => bug!(),
             })
         };
 
@@ -692,7 +694,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
             BackendRepr::ScalarPair(a, b) => {
                 OperandValueBuilder::Pair(Either::Right(a), Either::Right(b))
             }
-            BackendRepr::SimdVector { .. } => OperandValueBuilder::Vector(Either::Right(())),
+            BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+                OperandValueBuilder::Vector(Either::Right(()))
+            }
             BackendRepr::Memory { .. } => {
                 bug!("Cannot use non-ZST Memory-ABI type in operand builder: {layout:?}");
             }
@@ -1050,6 +1054,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let move_annotation = self.move_copy_annotation_instance(bx, place.as_ref(), kind);
 
                 OperandRef { move_annotation, ..self.codegen_consume(bx, place.as_ref()) }
+            }
+
+            mir::Operand::RuntimeChecks(checks) => {
+                let layout = bx.layout_of(bx.tcx().types.bool);
+                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let x = Scalar::from_bool(checks.value(bx.tcx().sess));
+                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let val = OperandValue::Immediate(llval);
+                OperandRef { val, layout, move_annotation: None }
             }
 
             mir::Operand::Constant(ref constant) => {

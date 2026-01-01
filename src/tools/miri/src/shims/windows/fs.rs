@@ -5,8 +5,10 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bitflags::bitflags;
+use rustc_abi::Size;
+use rustc_target::spec::Os;
 
-use crate::shims::files::{FileDescription, FileHandle};
+use crate::shims::files::{FdId, FileDescription, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
 
@@ -24,8 +26,9 @@ impl FileDescription for DirHandle {
         interp_ok(self.path.metadata())
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -50,8 +53,9 @@ impl FileDescription for MetadataHandle {
         interp_ok(Ok(self.meta.clone()))
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -164,7 +168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use CreationDisposition::*;
 
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "CreateFileW");
+        this.assert_target_os(Os::Windows, "CreateFileW");
         this.check_no_isolation("`CreateFileW`")?;
 
         // This function appears to always set the error to 0. This is important for some flag
@@ -309,7 +313,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetFileInformationByHandle");
+        this.assert_target_os(Os::Windows, "GetFileInformationByHandle");
         this.check_no_isolation("`GetFileInformationByHandle`")?;
 
         let file = this.read_handle(file, "GetFileInformationByHandle")?;
@@ -318,11 +322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.windows_ty_layout("BY_HANDLE_FILE_INFORMATION"),
         )?;
 
-        let fd_num = if let Handle::File(fd_num) = file {
-            fd_num
-        } else {
-            this.invalid_handle("GetFileInformationByHandle")?
-        };
+        let Handle::File(fd_num) = file else { this.invalid_handle("GetFileInformationByHandle")? };
 
         let Some(desc) = this.machine.fds.get(fd_num) else {
             this.invalid_handle("GetFileInformationByHandle")?
@@ -373,13 +373,130 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(this.eval_windows("c", "TRUE"))
     }
 
+    fn SetFileInformationByHandle(
+        &mut self,
+        file: &OpTy<'tcx>,             // HANDLE
+        class: &OpTy<'tcx>,            // FILE_INFO_BY_HANDLE_CLASS
+        file_information: &OpTy<'tcx>, // LPVOID
+        buffer_size: &OpTy<'tcx>,      // DWORD
+    ) -> InterpResult<'tcx, Scalar> {
+        // ^ Returns BOOL (i32 on Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os(Os::Windows, "SetFileInformationByHandle");
+        this.check_no_isolation("`SetFileInformationByHandle`")?;
+
+        let class = this.read_scalar(class)?.to_u32()?;
+        let buffer_size = this.read_scalar(buffer_size)?.to_u32()?;
+        let file_information = this.read_pointer(file_information)?;
+        this.check_ptr_access(
+            file_information,
+            Size::from_bytes(buffer_size),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
+
+        let file = this.read_handle(file, "SetFileInformationByHandle")?;
+        let Handle::File(fd_num) = file else { this.invalid_handle("SetFileInformationByHandle")? };
+        let Some(desc) = this.machine.fds.get(fd_num) else {
+            this.invalid_handle("SetFileInformationByHandle")?
+        };
+        let file = desc.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!(
+                "`SetFileInformationByHandle` is only supported on file-backed file descriptors"
+            )
+        })?;
+
+        if class == this.eval_windows_u32("c", "FileEndOfFileInfo") {
+            let place = this
+                .ptr_to_mplace(file_information, this.windows_ty_layout("FILE_END_OF_FILE_INFO"));
+            let new_len =
+                this.read_scalar(&this.project_field_named(&place, "EndOfFile")?)?.to_i64()?;
+            match file.file.set_len(new_len.try_into().unwrap()) {
+                Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+                Err(e) => {
+                    this.set_last_error(e)?;
+                    interp_ok(this.eval_windows("c", "FALSE"))
+                }
+            }
+        } else if class == this.eval_windows_u32("c", "FileAllocationInfo") {
+            // On Windows, files are somewhat similar to a `Vec` in that they have a separate
+            // "length" (called "EOF position") and "capacity" (called "allocation size").
+            // Growing the allocation size is largely a performance hint which we can
+            // ignore -- it can also be directly queried, but we currently do not support that.
+            // So we only need to do something if this operation shrinks the allocation size
+            // so far that it affects the EOF position.
+            let place = this
+                .ptr_to_mplace(file_information, this.windows_ty_layout("FILE_ALLOCATION_INFO"));
+            let new_alloc_size: u64 = this
+                .read_scalar(&this.project_field_named(&place, "AllocationSize")?)?
+                .to_i64()?
+                .try_into()
+                .unwrap();
+            let old_len = match file.file.metadata() {
+                Ok(m) => m.len(),
+                Err(e) => {
+                    this.set_last_error(e)?;
+                    return interp_ok(this.eval_windows("c", "FALSE"));
+                }
+            };
+            if new_alloc_size < old_len {
+                match file.file.set_len(new_alloc_size) {
+                    Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+                    Err(e) => {
+                        this.set_last_error(e)?;
+                        interp_ok(this.eval_windows("c", "FALSE"))
+                    }
+                }
+            } else {
+                interp_ok(this.eval_windows("c", "TRUE"))
+            }
+        } else {
+            throw_unsup_format!(
+                "SetFileInformationByHandle: Unsupported `FileInformationClass` value {}",
+                class
+            )
+        }
+    }
+
+    fn FlushFileBuffers(
+        &mut self,
+        file: &OpTy<'tcx>, // HANDLE
+    ) -> InterpResult<'tcx, Scalar> {
+        // ^ returns BOOL (i32 on Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os(Os::Windows, "FlushFileBuffers");
+
+        let file = this.read_handle(file, "FlushFileBuffers")?;
+        let Handle::File(fd_num) = file else { this.invalid_handle("FlushFileBuffers")? };
+        let Some(desc) = this.machine.fds.get(fd_num) else {
+            this.invalid_handle("FlushFileBuffers")?
+        };
+        let file = desc.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!(
+                "`FlushFileBuffers` is only supported on file-backed file descriptors"
+            )
+        })?;
+
+        if !file.writable {
+            this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+            return interp_ok(this.eval_windows("c", "FALSE"));
+        }
+
+        match file.file.sync_all() {
+            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Err(e) => {
+                this.set_last_error(e)?;
+                interp_ok(this.eval_windows("c", "FALSE"))
+            }
+        }
+    }
+
     fn DeleteFileW(
         &mut self,
         file_name: &OpTy<'tcx>, // LPCWSTR
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "DeleteFileW");
+        this.assert_target_os(Os::Windows, "DeleteFileW");
         this.check_no_isolation("`DeleteFileW`")?;
 
         let file_name = this.read_path_from_wide_str(this.read_pointer(file_name)?)?;
@@ -445,10 +562,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("`NtWriteFile` `Key` parameter is non-null, which is unsupported");
         }
 
-        let fd = match handle {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("NtWriteFile")?,
-        };
+        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
 
         let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtWriteFile")? };
 
@@ -558,10 +672,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let io_status_info = this.project_field_named(&io_status_block, "Information")?;
 
-        let fd = match handle {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("NtWriteFile")?,
-        };
+        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
 
         let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtReadFile")? };
 
@@ -617,10 +728,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let new_fp_ptr = this.read_pointer(new_fp)?;
         let move_method = this.read_scalar(move_method)?.to_u32()?;
 
-        let fd = match file {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("SetFilePointerEx")?,
-        };
+        let Handle::File(fd) = file else { this.invalid_handle("SetFilePointerEx")? };
 
         let Some(desc) = this.machine.fds.get(fd) else {
             throw_unsup_format!("`SetFilePointerEx` is only supported on file backed handles");

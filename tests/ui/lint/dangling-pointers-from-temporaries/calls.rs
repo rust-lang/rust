@@ -25,12 +25,12 @@ fn ok() {
 fn not_ok() {
     {
         let ptr = cstring().as_ptr();
-        //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+        //~^ ERROR dangling pointer
         consume(ptr);
     }
     consume({
         let ptr = cstring().as_ptr();
-        //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+        //~^ ERROR dangling pointer
         ptr
     });
     consume({
@@ -39,11 +39,11 @@ fn not_ok() {
         //^ FIXME: should error
     });
     let _ptr: *const u8 = cstring().as_ptr().cast();
-    //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+    //~^ ERROR dangling pointer
     let _ptr: *const u8 = { cstring() }.as_ptr().cast();
-    //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+    //~^ ERROR dangling pointer
     let _ptr: *const u8 = { cstring().as_ptr() }.cast();
-    //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+    //~^ ERROR dangling pointer
 }
 
 fn main() {

@@ -38,7 +38,7 @@ path = [
     "triagebot.toml",
     "typos.toml",
     "package.json",
-    "package-lock.json",
+    "yarn.lock",
     "x",
     "x.ps1",
     "x.py",

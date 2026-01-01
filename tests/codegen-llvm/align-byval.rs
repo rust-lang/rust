@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 //@ add-minicore
 //@ revisions:m68k x86_64-linux x86_64-windows i686-linux i686-windows
-
+//@ compile-flags: -Copt-level=1 -Cno-prepopulate-passes
 //@[m68k] compile-flags: --target m68k-unknown-linux-gnu
 //@[m68k] needs-llvm-components: m68k
 //@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu

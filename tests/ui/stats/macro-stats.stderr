@@ -2,7 +2,7 @@ macro-stats ====================================================================
 macro-stats MACRO EXPANSION STATS: macro_stats
 macro-stats Macro Name                         Uses      Lines  Avg Lines      Bytes  Avg Bytes
 macro-stats -----------------------------------------------------------------------------------
-macro-stats #[derive(Clone)]                      8         64        8.0      1_788      223.5
+macro-stats #[derive(Clone)]                      8         67        8.4      1_879      234.9
 macro-stats #[derive(PartialOrd)]                 1         17       17.0        675      675.0
 macro-stats #[derive(Hash)]                       2         17        8.5        577      288.5
 macro-stats q!                                    1         26       26.0        519      519.0

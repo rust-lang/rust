@@ -12,7 +12,7 @@
    LL|      1|    println!(
    LL|       |        // Keep this on a separate line, to distinguish instrumentation of
    LL|       |        // `println!` from instrumentation of its arguments.
-   LL|      1|        "hello"
+   LL|       |        "hello"
    LL|       |    );
    LL|      1|}
 

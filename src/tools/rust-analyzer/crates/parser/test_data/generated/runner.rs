@@ -265,6 +265,10 @@ mod ok {
     #[test]
     fn for_type() { run_and_expect_no_errors("test_data/parser/inline/ok/for_type.rs"); }
     #[test]
+    fn format_args_named_arg_keyword() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/format_args_named_arg_keyword.rs");
+    }
+    #[test]
     fn frontmatter() { run_and_expect_no_errors("test_data/parser/inline/ok/frontmatter.rs"); }
     #[test]
     fn full_range_expr() {
@@ -321,6 +325,10 @@ mod ok {
     }
     #[test]
     fn impl_item_neg() { run_and_expect_no_errors("test_data/parser/inline/ok/impl_item_neg.rs"); }
+    #[test]
+    fn impl_item_never_type() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/impl_item_never_type.rs");
+    }
     #[test]
     fn impl_trait_type() {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_trait_type.rs");

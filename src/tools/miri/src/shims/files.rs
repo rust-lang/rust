@@ -14,7 +14,7 @@ use crate::*;
 
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
-/// for sorting things. So instead we generate a unique id per file description is the name
+/// for sorting things. So instead we generate a unique id per file description which is the same
 /// for all `dup`licates and is never reused.
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FdId(usize);
@@ -107,10 +107,10 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
     ) -> InterpResult<'tcx, io::Result<()>> {
         match Rc::into_inner(self.0) {
             Some(fd) => {
-                // Remove entry from the global epoll_event_interest table.
-                ecx.machine.epoll_interests.remove(fd.id);
+                // There might have been epolls interested in this FD. Remove that.
+                ecx.machine.epoll_interests.remove_epolls(fd.id);
 
-                fd.inner.close(communicate_allowed, ecx)
+                fd.inner.destroy(fd.id, communicate_allowed, ecx)
             }
             None => {
                 // Not the last reference.
@@ -183,9 +183,12 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot seek on {}", self.name());
     }
 
-    /// Close the file descriptor.
-    fn close<'tcx>(
+    /// Destroys the file description. Only called when the last duplicate file descriptor is closed.
+    ///
+    /// `self_addr` is the address that this file description used to be stored at.
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>>
@@ -362,8 +365,9 @@ impl FileDescription for FileHandle {
         interp_ok((&mut &self.file).seek(offset))
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

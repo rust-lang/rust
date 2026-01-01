@@ -12,7 +12,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
-use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING_USAGE;
+use rustc_lint::builtin::RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
@@ -709,7 +709,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         };
 
         self.tcx.emit_node_span_lint(
-            SUPERTRAIT_ITEM_SHADOWING_USAGE,
+            RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
             segment.hir_id,
             segment.ident.span,
             SupertraitItemShadowing { shadower, shadowee, item: segment.ident.name, subtrait },

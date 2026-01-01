@@ -1,8 +1,8 @@
 error[E0271]: type mismatch resolving `A == B`
-  --> $DIR/more-object-bound.rs:12:5
+  --> $DIR/more-object-bound.rs:12:17
    |
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ types differ
    |
    = note: required because it appears within the type `dyn Trait<A = A, B = B>`
 note: required by a bound in `foo`

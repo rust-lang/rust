@@ -19,7 +19,7 @@ use span::Edition;
 use stdx::TupleExt;
 
 use crate::{
-    AdtId, LocalModuleId, ModuleDefId,
+    AdtId, ModuleDefId, ModuleId,
     db::DefDatabase,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
@@ -85,10 +85,7 @@ impl PerNs {
         db: &dyn DefDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
-        self.macros = self.macros.filter(|def| {
-            let this = MacroSubNs::from_id(db, def.def);
-            sub_namespace_match(Some(this), expected)
-        });
+        self.macros = self.macros.filter(|def| sub_namespace_match(db, def.def, expected));
 
         self
     }
@@ -100,7 +97,7 @@ impl DefMap {
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
         // module to import to
-        original_module: LocalModuleId,
+        original_module: ModuleId,
         // pub(path)
         //     ^^^^ this
         visibility: &RawVisibility,
@@ -133,8 +130,8 @@ impl DefMap {
                 // DefMap they're written in, so we restrict them when that happens.
                 if let Visibility::Module(m, mv) = vis {
                     // ...unless we're resolving visibility for an associated item in an impl.
-                    if self.block_id() != m.block && !within_impl {
-                        vis = Visibility::Module(self.module_id(Self::ROOT), mv);
+                    if self.block_id() != m.block(db) && !within_impl {
+                        vis = Visibility::Module(self.root, mv);
                         tracing::debug!(
                             "visibility {:?} points outside DefMap, adjusting to {:?}",
                             m,
@@ -145,7 +142,7 @@ impl DefMap {
                 vis
             }
             RawVisibility::PubSelf(explicitness) => {
-                Visibility::Module(self.module_id(original_module), *explicitness)
+                Visibility::Module(original_module, *explicitness)
             }
             RawVisibility::Public => Visibility::Public,
             RawVisibility::PubCrate => Visibility::PubCrate(self.krate),
@@ -161,7 +158,7 @@ impl DefMap {
         db: &dyn DefDatabase,
         mode: ResolveMode,
         // module to import to
-        mut original_module: LocalModuleId,
+        mut original_module: ModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
         // Pass `MacroSubNs` if we know we're resolving macro names and which kind of macro we're
@@ -201,17 +198,17 @@ impl DefMap {
 
         loop {
             match current_map.block {
-                Some(block) if original_module == Self::ROOT => {
+                Some(block) if original_module == current_map.root => {
                     // Block modules "inherit" names from its parent module.
-                    original_module = block.parent.local_id;
-                    current_map = block.parent.def_map(db, current_map.krate);
+                    original_module = block.parent;
+                    current_map = block.parent.def_map(db);
                 }
                 // Proper (non-block) modules, including those in block `DefMap`s, don't.
                 _ => {
-                    if original_module != Self::ROOT && current_map.block.is_some() {
+                    if original_module != current_map.root && current_map.block.is_some() {
                         // A module inside a block. Do not resolve items declared in upper blocks, but we do need to get
                         // the prelude items (which are not inserted into blocks because they can be overridden there).
-                        original_module = Self::ROOT;
+                        original_module = current_map.root;
                         current_map = crate_def_map(db, self.krate);
 
                         let new = current_map.resolve_path_fp_in_all_preludes(
@@ -248,7 +245,7 @@ impl DefMap {
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
         mode: ResolveMode,
-        original_module: LocalModuleId,
+        original_module: ModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
         expected_macro_subns: Option<MacroSubNs>,
@@ -258,15 +255,15 @@ impl DefMap {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     cov_mark::hit!(macro_dollar_crate_self);
-                    PerNs::types(self.crate_root().into(), Visibility::Public, None)
+                    PerNs::types(self.crate_root(db).into(), Visibility::Public, None)
                 } else {
                     let def_map = crate_def_map(db, krate);
-                    let module = def_map.module_id(Self::ROOT);
+                    let module = def_map.root;
                     cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public, None)
                 }
             }
-            PathKind::Crate => PerNs::types(self.crate_root().into(), Visibility::Public, None),
+            PathKind::Crate => PerNs::types(self.crate_root(db).into(), Visibility::Public, None),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -313,14 +310,10 @@ impl DefMap {
             }
             PathKind::Super(lvl) => {
                 let mut local_id = original_module;
-                let mut ext;
                 let mut def_map = self;
 
                 // Adjust `local_id` to `self`, i.e. the nearest non-block module.
-                if def_map.module_id(local_id).is_block_module() {
-                    (ext, local_id) = adjust_to_nearest_non_block_module(db, def_map, local_id);
-                    def_map = ext;
-                }
+                (def_map, local_id) = adjust_to_nearest_non_block_module(db, def_map, local_id);
 
                 // Go up the module tree but skip block modules as `super` always refers to the
                 // nearest non-block module.
@@ -328,21 +321,14 @@ impl DefMap {
                     // Loop invariant: at the beginning of each loop, `local_id` must refer to a
                     // non-block module.
                     if let Some(parent) = def_map.modules[local_id].parent {
-                        local_id = parent;
-                        if def_map.module_id(local_id).is_block_module() {
-                            (ext, local_id) =
-                                adjust_to_nearest_non_block_module(db, def_map, local_id);
-                            def_map = ext;
-                        }
+                        (def_map, local_id) =
+                            adjust_to_nearest_non_block_module(db, def_map, parent);
                     } else {
                         stdx::always!(def_map.block.is_none());
                         tracing::debug!("super path in root module");
                         return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                     }
                 }
-
-                let module = def_map.module_id(local_id);
-                stdx::never!(module.is_block_module());
 
                 if self.block != def_map.block {
                     // If we have a different `DefMap` from `self` (the original `DefMap` we started
@@ -361,7 +347,7 @@ impl DefMap {
                     );
                 }
 
-                PerNs::types(module.into(), Visibility::Public, None)
+                PerNs::types(local_id.into(), Visibility::Public, None)
             }
             PathKind::Abs => match self.resolve_path_abs(local_def_map, &mut segments, path) {
                 Either::Left(it) => it,
@@ -388,7 +374,7 @@ impl DefMap {
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
         mode: ResolveMode,
-        original_module: LocalModuleId,
+        original_module: ModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
@@ -470,7 +456,7 @@ impl DefMap {
         mut curr_per_ns: PerNs,
         path: &ModPath,
         shadow: BuiltinShadowMode,
-        original_module: LocalModuleId,
+        original_module: ModuleId,
     ) -> ResolvePathResult {
         while let Some((i, segment)) = segments.next() {
             let curr = match curr_per_ns.take_types_full() {
@@ -488,7 +474,7 @@ impl DefMap {
 
             curr_per_ns = match curr.def {
                 ModuleDefId::ModuleId(module) => {
-                    if module.krate != self.krate {
+                    if module.krate(db) != self.krate {
                         // FIXME: Inefficient
                         let path = ModPath::from_segments(
                             PathKind::SELF,
@@ -504,7 +490,7 @@ impl DefMap {
                             LocalDefMap::EMPTY,
                             db,
                             mode,
-                            module.local_id,
+                            module,
                             &path,
                             shadow,
                             None,
@@ -521,11 +507,11 @@ impl DefMap {
                     }
 
                     let def_map;
-                    let module_data = if module.block == self.block_id() {
-                        &self[module.local_id]
+                    let module_data = if module.block(db) == self.block_id() {
+                        &self[module]
                     } else {
                         def_map = module.def_map(db);
-                        &def_map[module.local_id]
+                        &def_map[module]
                     };
 
                     // Since it is a qualified path here, it should not contains legacy macros
@@ -652,7 +638,7 @@ impl DefMap {
         &self,
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
-        module: LocalModuleId,
+        module: ModuleId,
         name: &Name,
         shadow: BuiltinShadowMode,
         expected_macro_subns: Option<MacroSubNs>,
@@ -668,9 +654,7 @@ impl DefMap {
             // FIXME: shadowing
             .and_then(|it| it.last())
             .copied()
-            .filter(|&id| {
-                sub_namespace_match(Some(MacroSubNs::from_id(db, id)), expected_macro_subns)
-            })
+            .filter(|&id| sub_namespace_match(db, id, expected_macro_subns))
             .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public, None));
         let from_scope = self[module].scope.get(name).filter_macro(db, expected_macro_subns);
         let from_builtin = match self.block {
@@ -689,7 +673,7 @@ impl DefMap {
         };
 
         let extern_prelude = || {
-            if self.block.is_some() && module == DefMap::ROOT {
+            if self.block.is_some() && module == self.root {
                 // Don't resolve extern prelude in pseudo-modules of blocks, because
                 // they might been shadowed by local names.
                 return PerNs::none();
@@ -698,7 +682,7 @@ impl DefMap {
         };
         let macro_use_prelude = || self.resolve_in_macro_use_prelude(name);
         let prelude = || {
-            if self.block.is_some() && module == DefMap::ROOT {
+            if self.block.is_some() && module == self.root {
                 return PerNs::none();
             }
             self.resolve_in_prelude(db, name)
@@ -751,18 +735,18 @@ impl DefMap {
         &self,
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
-        module: LocalModuleId,
+        module: ModuleId,
         name: &Name,
     ) -> PerNs {
         let from_crate_root = match self.block {
             Some(_) => {
-                let def_map = self.crate_root().def_map(db);
-                def_map[Self::ROOT].scope.get(name)
+                let def_map = self.crate_root(db).def_map(db);
+                def_map[def_map.root].scope.get(name)
             }
-            None => self[Self::ROOT].scope.get(name),
+            None => self[self.root].scope.get(name),
         };
         let from_extern_prelude = || {
-            if self.block.is_some() && module == DefMap::ROOT {
+            if self.block.is_some() && module == self.root {
                 // Don't resolve extern prelude in pseudo-module of a block.
                 return PerNs::none();
             }
@@ -775,14 +759,14 @@ impl DefMap {
     fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {
         if let Some((prelude, _use)) = self.prelude {
             let keep;
-            let def_map = if prelude.krate == self.krate {
+            let def_map = if prelude.krate(db) == self.krate {
                 self
             } else {
                 // Extend lifetime
                 keep = prelude.def_map(db);
                 keep
             };
-            def_map[prelude.local_id].scope.get(name)
+            def_map[prelude].scope.get(name)
         } else {
             PerNs::none()
         }
@@ -790,23 +774,23 @@ impl DefMap {
 }
 
 /// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
+#[inline]
 fn adjust_to_nearest_non_block_module<'db>(
     db: &'db dyn DefDatabase,
-    def_map: &'db DefMap,
-    mut local_id: LocalModuleId,
-) -> (&'db DefMap, LocalModuleId) {
-    // INVARIANT: `local_id` in `def_map` must be a block module.
-    stdx::always!(def_map.module_id(local_id).is_block_module());
-
-    // This needs to be a local variable due to our mighty lifetime.
-    let mut def_map = def_map;
-    loop {
-        let BlockInfo { parent, .. } = def_map.block.expect("block module without parent module");
-
-        def_map = parent.def_map(db, def_map.krate);
-        local_id = parent.local_id;
-        if !parent.is_block_module() {
+    mut def_map: &'db DefMap,
+    mut local_id: ModuleId,
+) -> (&'db DefMap, ModuleId) {
+    if def_map.root_module_id() != local_id {
+        // if we aren't the root, we are either not a block module, or a non-block module inside a
+        // block def map.
+        return (def_map, local_id);
+    }
+    while let Some(BlockInfo { parent, .. }) = def_map.block {
+        def_map = parent.def_map(db);
+        local_id = parent;
+        if def_map.root_module_id() != local_id {
             return (def_map, local_id);
         }
     }
+    (def_map, local_id)
 }

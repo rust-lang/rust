@@ -196,10 +196,10 @@ enum CaptureKind {
 
 impl CaptureKind {
     fn for_config(config: &Config) -> Self {
-        if config.nocapture {
-            Self::None
-        } else {
+        if config.capture {
             Self::Capture { buf: output_capture::CaptureBuf::new() }
+        } else {
+            Self::None
         }
     }
 
@@ -339,15 +339,6 @@ pub(crate) struct CollectedTestDesc {
     pub(crate) ignore: bool,
     pub(crate) ignore_message: Option<Cow<'static, str>>,
     pub(crate) should_fail: ShouldFail,
-}
-
-/// Whether console output should be colored or not.
-#[derive(Copy, Clone, Default, Debug)]
-pub enum ColorConfig {
-    #[default]
-    AutoColor,
-    AlwaysColor,
-    NeverColor,
 }
 
 /// Tests with `//@ should-fail` are tests of compiletest itself, and should

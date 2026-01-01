@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{AsAssocItem, HasVisibility, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasVisibility, Semantics};
 use ide_db::{
     FxHashMap, RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},
@@ -413,6 +413,10 @@ fn highlight_name_ref(
             if is_from_builtin_crate {
                 h |= HlMod::DefaultLibrary;
             }
+            let is_deprecated = resolved_krate.attrs(sema.db).is_deprecated();
+            if is_deprecated {
+                h |= HlMod::Deprecated;
+            }
             h |= HlMod::CrateRoot;
             h
         }
@@ -483,20 +487,25 @@ pub(super) fn highlight_def(
     is_ref: bool,
 ) -> Highlight {
     let db = sema.db;
-    let mut h = match def {
-        Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
-        Definition::Field(_) | Definition::TupleField(_) => {
-            Highlight::new(HlTag::Symbol(SymbolKind::Field))
+    let (mut h, attrs) = match def {
+        Definition::Macro(m) => {
+            (Highlight::new(HlTag::Symbol(m.kind(sema.db).into())), Some(m.attrs(sema.db)))
         }
-        Definition::Crate(_) => {
-            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot
+        Definition::Field(field) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::Field)), Some(field.attrs(sema.db)))
         }
+        Definition::TupleField(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Field)), None),
+        Definition::Crate(krate) => (
+            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot,
+            Some(krate.attrs(sema.db)),
+        ),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root() {
+            if module.is_crate_root(db) {
                 h |= HlMod::CrateRoot;
             }
-            h
+
+            (h, Some(module.attrs(sema.db)))
         }
         Definition::Function(func) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
@@ -544,7 +553,7 @@ pub(super) fn highlight_def(
                 h |= HlMod::Const;
             }
 
-            h
+            (h, Some(func.attrs(sema.db)))
         }
         Definition::Adt(adt) => {
             let h = match adt {
@@ -553,9 +562,11 @@ pub(super) fn highlight_def(
                 hir::Adt::Union(_) => HlTag::Symbol(SymbolKind::Union),
             };
 
-            Highlight::new(h)
+            (Highlight::new(h), Some(adt.attrs(sema.db)))
         }
-        Definition::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
+        Definition::Variant(variant) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::Variant)), Some(variant.attrs(sema.db)))
+        }
         Definition::Const(konst) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const)) | HlMod::Const;
             if let Some(item) = konst.as_assoc_item(db) {
@@ -573,9 +584,11 @@ pub(super) fn highlight_def(
                 }
             }
 
-            h
+            (h, Some(konst.attrs(sema.db)))
         }
-        Definition::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
+        Definition::Trait(trait_) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::Trait)), Some(trait_.attrs(sema.db)))
+        }
         Definition::TypeAlias(type_) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
 
@@ -594,10 +607,12 @@ pub(super) fn highlight_def(
                 }
             }
 
-            h
+            (h, Some(type_.attrs(sema.db)))
         }
-        Definition::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
-        Definition::BuiltinLifetime(_) => Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam)),
+        Definition::BuiltinType(_) => (Highlight::new(HlTag::BuiltinType), None),
+        Definition::BuiltinLifetime(_) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam)), None)
+        }
         Definition::Static(s) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
 
@@ -608,18 +623,23 @@ pub(super) fn highlight_def(
                 }
             }
 
-            h
+            (h, Some(s.attrs(sema.db)))
         }
-        Definition::SelfType(_) => Highlight::new(HlTag::Symbol(SymbolKind::Impl)),
-        Definition::GenericParam(it) => match it {
-            hir::GenericParam::TypeParam(_) => Highlight::new(HlTag::Symbol(SymbolKind::TypeParam)),
-            hir::GenericParam::ConstParam(_) => {
-                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam)) | HlMod::Const
-            }
-            hir::GenericParam::LifetimeParam(_) => {
-                Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam))
-            }
-        },
+        Definition::SelfType(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Impl)), None),
+        Definition::GenericParam(it) => (
+            match it {
+                hir::GenericParam::TypeParam(_) => {
+                    Highlight::new(HlTag::Symbol(SymbolKind::TypeParam))
+                }
+                hir::GenericParam::ConstParam(_) => {
+                    Highlight::new(HlTag::Symbol(SymbolKind::ConstParam)) | HlMod::Const
+                }
+                hir::GenericParam::LifetimeParam(_) => {
+                    Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam))
+                }
+            },
+            None,
+        ),
         Definition::Local(local) => {
             let tag = if local.is_self(db) {
                 HlTag::Symbol(SymbolKind::SelfParam)
@@ -639,7 +659,7 @@ pub(super) fn highlight_def(
             if ty.as_callable(db).is_some() || ty.impls_fnonce(db) {
                 h |= HlMod::Callable;
             }
-            h
+            (h, None)
         }
         Definition::ExternCrateDecl(extern_crate) => {
             let mut highlight =
@@ -647,16 +667,20 @@ pub(super) fn highlight_def(
             if extern_crate.alias(db).is_none() {
                 highlight |= HlMod::Library;
             }
-            highlight
+            (highlight, Some(extern_crate.attrs(sema.db)))
         }
-        Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
-        Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)),
-        Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
-        Definition::DeriveHelper(_) => Highlight::new(HlTag::Symbol(SymbolKind::DeriveHelper)),
+        Definition::Label(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Label)), None),
+        Definition::BuiltinAttr(_) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)), None)
+        }
+        Definition::ToolModule(_) => (Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)), None),
+        Definition::DeriveHelper(_) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::DeriveHelper)), None)
+        }
         Definition::InlineAsmRegOrRegClass(_) => {
-            Highlight::new(HlTag::Symbol(SymbolKind::InlineAsmRegOrRegClass))
+            (Highlight::new(HlTag::Symbol(SymbolKind::InlineAsmRegOrRegClass)), None)
         }
-        Definition::InlineAsmOperand(_) => Highlight::new(HlTag::Symbol(SymbolKind::Local)),
+        Definition::InlineAsmOperand(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Local)), None),
     };
 
     let def_crate = def.krate(db);
@@ -674,6 +698,12 @@ pub(super) fn highlight_def(
 
     if is_from_builtin_crate {
         h |= HlMod::DefaultLibrary;
+    }
+
+    if let Some(attrs) = attrs
+        && attrs.is_deprecated()
+    {
+        h |= HlMod::Deprecated;
     }
 
     h
@@ -717,10 +747,11 @@ fn highlight_method_call(
         h |= HlMod::Trait;
     }
 
-    let def_crate = func.module(sema.db).krate();
+    let def_crate = func.module(sema.db).krate(sema.db);
     let is_from_other_crate = krate.as_ref().map_or(false, |krate| def_crate != *krate);
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
+    let is_deprecated = func.attrs(sema.db).is_deprecated();
 
     if is_from_other_crate {
         h |= HlMod::Library;
@@ -730,6 +761,10 @@ fn highlight_method_call(
 
     if is_from_builtin_crate {
         h |= HlMod::DefaultLibrary;
+    }
+
+    if is_deprecated {
+        h |= HlMod::Deprecated;
     }
 
     if let Some(self_param) = func.self_param(sema.db) {

@@ -3,8 +3,8 @@ use std::num::NonZero;
 use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_hash::FxHashSet;
 use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -32,10 +32,10 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
-    Deadlock,
-    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
-    /// No leak checks should be performed if this happens, since they would give false positives.
-    GenmcBlockedExecution,
+    /// All threads are blocked.
+    GlobalDeadlock,
+    /// Some thread discovered a deadlock condition (e.g. in a mutex with reentrancy checking).
+    LocalDeadlock,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -79,9 +79,8 @@ impl fmt::Display for TerminationInfo {
                 ),
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
-            Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcBlockedExecution =>
-                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
+            GlobalDeadlock => write!(f, "the evaluated program deadlocked"),
+            LocalDeadlock => write!(f, "a thread deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -226,19 +225,20 @@ pub fn prune_stacktrace<'tcx>(
     }
 }
 
-/// Emit a custom diagnostic without going through the miri-engine machinery.
+/// Report the result of a Miri execution.
 ///
-/// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
-pub fn report_error<'tcx>(
+/// Returns `Some` if this was regular program termination with a given exit code and a `bool`
+/// indicating whether a leak check should happen; `None` otherwise.
+pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    e: InterpErrorInfo<'tcx>,
+    res: InterpErrorInfo<'tcx>,
 ) -> Option<(i32, bool)> {
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut labels = vec![];
 
-    let (title, helps) = if let MachineStop(info) = e.kind() {
+    let (title, helps) = if let MachineStop(info) = res.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
@@ -249,16 +249,38 @@ pub fn report_error<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
-            Deadlock => {
+            LocalDeadlock => {
                 labels.push(format!("this thread got stuck here"));
                 None
             }
-            GenmcBlockedExecution => {
-                // This case should only happen in GenMC mode.
-                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                // The program got blocked by GenMC without finishing the execution.
-                // No cleanup code was executed, so we don't do any leak checks.
-                return Some((0, false));
+            GlobalDeadlock => {
+                // Global deadlocks are reported differently: just show all blocked threads.
+                // The "active" thread might actually be terminated, so we ignore it.
+                let mut any_pruned = false;
+                for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
+                    let stacktrace = Frame::generate_stacktrace_from_stack(stack);
+                    let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
+                    any_pruned |= was_pruned;
+                    report_msg(
+                        DiagLevel::Error,
+                        format!("the evaluated program deadlocked"),
+                        vec![format!(
+                            "thread `{}` got stuck here",
+                            ecx.machine.threads.get_thread_display_name(thread)
+                        )],
+                        vec![],
+                        vec![],
+                        &stacktrace,
+                        Some(thread),
+                        &ecx.machine,
+                    )
+                }
+                if any_pruned {
+                    ecx.tcx.dcx().note(
+                        "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace"
+                    );
+                }
+                return None;
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -334,7 +356,7 @@ pub fn report_error<'tcx>(
         };
         (title, helps)
     } else {
-        let title = match e.kind() {
+        let title = match res.kind() {
             UndefinedBehavior(ValidationError(validation_err))
                 if matches!(
                     validation_err.kind,
@@ -344,7 +366,7 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
@@ -363,15 +385,19 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
         };
         #[rustfmt::skip]
-        let helps = match e.kind() {
+        let helps = match res.kind() {
             Unsupported(_) =>
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
+                ],
+            ResourceExhaustion(ResourceExhaustionInfo::AddressSpaceFull) if ecx.machine.data_race.as_genmc_ref().is_some() =>
+                vec![
+                    note!("in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused")
                 ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
@@ -415,14 +441,12 @@ pub fn report_error<'tcx>(
     };
 
     let stacktrace = ecx.generate_stacktrace();
-    let (stacktrace, mut any_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
-
-    let mut show_all_threads = false;
+    let (stacktrace, pruned) = prune_stacktrace(stacktrace, &ecx.machine);
 
     // We want to dump the allocation if this is `InvalidUninitBytes`.
     // Since `format_interp_error` consumes `e`, we compute the outut early.
     let mut extra = String::new();
-    match e.kind() {
+    match res.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
@@ -432,15 +456,6 @@ pub fn report_error<'tcx>(
             .unwrap();
             writeln!(extra, "{:?}", ecx.dump_alloc(*alloc_id)).unwrap();
         }
-        MachineStop(info) => {
-            let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
-            match info {
-                TerminationInfo::Deadlock => {
-                    show_all_threads = true;
-                }
-                _ => {}
-            }
-        }
         _ => {}
     }
 
@@ -448,10 +463,14 @@ pub fn report_error<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
-        labels.push(format!("{} occurred here", title.unwrap_or("error")));
+        labels.push(format!(
+            "{} occurred {}",
+            title.unwrap_or("error"),
+            if stacktrace.is_empty() { "due to this code" } else { "here" }
+        ));
     }
 
     report_msg(
@@ -467,28 +486,8 @@ pub fn report_error<'tcx>(
 
     eprint!("{extra}"); // newlines are already in the string
 
-    if show_all_threads {
-        for (thread, stack) in ecx.machine.threads.all_stacks() {
-            if thread != ecx.active_thread() {
-                let stacktrace = Frame::generate_stacktrace_from_stack(stack);
-                let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
-                any_pruned |= was_pruned;
-                report_msg(
-                    DiagLevel::Error,
-                    format!("the evaluated program deadlocked"),
-                    vec![format!("this thread got stuck here")],
-                    vec![],
-                    vec![],
-                    &stacktrace,
-                    Some(thread),
-                    &ecx.machine,
-                )
-            }
-        }
-    }
-
     // Include a note like `std` does when we omit frames from a backtrace
-    if any_pruned {
+    if pruned {
         ecx.tcx.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
@@ -549,7 +548,7 @@ pub fn report_leaks<'tcx>(
 /// We want to present a multi-line span message for some errors. Diagnostics do not support this
 /// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
 /// additional `span_label` or `note` call.
-pub fn report_msg<'tcx>(
+fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
     span_msg: Vec<String>,
@@ -559,7 +558,14 @@ pub fn report_msg<'tcx>(
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
 ) {
-    let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
+    let span = match stacktrace.first() {
+        Some(fi) => fi.span,
+        None =>
+            match thread {
+                Some(thread_id) => machine.threads.thread_ref(thread_id).origin_span,
+                None => DUMMY_SP,
+            },
+    };
     let sess = machine.tcx.sess;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
@@ -570,7 +576,7 @@ pub fn report_msg<'tcx>(
     err.span(span);
 
     // Show main message.
-    if span != DUMMY_SP {
+    if !span.is_dummy() {
         for line in span_msg {
             err.span_label(span, line);
         }
@@ -623,10 +629,16 @@ pub fn report_msg<'tcx>(
                 err.subdiagnostic(frame_info.as_note(machine.tcx));
             } else {
                 let sm = sess.source_map();
-                let span = sm.span_to_embeddable_string(frame_info.span);
+                let span = sm.span_to_diagnostic_string(frame_info.span);
                 err.note(format!("{frame_info} at {span}"));
             }
         }
+    } else if stacktrace.len() == 0 && !span.is_dummy() {
+        err.note(format!(
+            "this {} occurred while pushing a call frame onto an empty stack",
+            level.to_str()
+        ));
+        err.note("the span indicates which code caused the function to be called, but may not be the literal call site");
     }
 
     err.emit();
@@ -889,6 +901,6 @@ pub struct SpanDedupDiagnostic(Mutex<FxHashSet<Span>>);
 
 impl SpanDedupDiagnostic {
     pub const fn new() -> Self {
-        Self(Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher)))
+        Self(Mutex::new(FxHashSet::with_hasher(FxBuildHasher)))
     }
 }

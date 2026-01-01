@@ -8,7 +8,7 @@ LL |     for (_k, v) in map.iter() {
    |                    this iterator yields `&` references
 ...
 LL |         v.v += 1;
-   |         ^^^^^^^^ `v` is a `&` reference, so the data it refers to cannot be written
+   |         ^^^^^^^^ `v` is a `&` reference, so it cannot be written to
 
 error: aborting due to 1 previous error
 

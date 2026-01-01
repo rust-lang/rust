@@ -19,9 +19,9 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
-    AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
-    PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
-    UndefinedBehaviorInfo, UnsupportedOpInfo, interp_ok, read_target_uint, write_target_uint,
+    AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer, Provenance,
+    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    interp_ok, read_target_uint, write_target_uint,
 };
 use crate::ty;
 
@@ -601,14 +601,13 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         })?;
         if !Prov::OFFSET_IS_ADDR && !self.provenance.range_empty(range, cx) {
             // Find the provenance.
-            let (offset, _prov) = self
+            let (prov_range, _prov) = self
                 .provenance
-                .range_ptrs_get(range, cx)
-                .first()
-                .copied()
+                .get_range(range, cx)
+                .next()
                 .expect("there must be provenance somewhere here");
-            let start = offset.max(range.start); // the pointer might begin before `range`!
-            let end = (offset + cx.pointer_size()).min(range.end()); // the pointer might end after `range`!
+            let start = prov_range.start.max(range.start); // the pointer might begin before `range`!
+            let end = prov_range.end().min(range.end()); // the pointer might end after `range`!
             return Err(AllocError::ReadPointerAsInt(Some(BadBytesAccess {
                 access: range,
                 bad: AllocRange::from(start..end),
@@ -630,7 +629,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> &mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
 
         &mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
@@ -643,7 +642,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> *mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
         // Crucially, we go via `AllocBytes::as_mut_ptr`, not `AllocBytes::deref_mut`.
@@ -711,57 +710,14 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         if read_provenance {
             assert_eq!(range.size, cx.data_layout().pointer_size());
 
-            // When reading data with provenance, the easy case is finding provenance exactly where we
-            // are reading, then we can put data and provenance back together and return that.
-            if let Some(prov) = self.provenance.get_ptr(range.start) {
-                // Now we can return the bits, with their appropriate provenance.
+            if let Some(prov) = self.provenance.read_ptr(range.start, cx)? {
+                // Assemble the bits with their provenance.
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));
-                return Ok(Scalar::from_pointer(ptr, cx));
+                Ok(Scalar::from_pointer(ptr, cx))
+            } else {
+                // Return raw bits without provenance.
+                Ok(Scalar::from_uint(bits, range.size))
             }
-            // The other easy case is total absence of provenance.
-            if self.provenance.range_empty(range, cx) {
-                return Ok(Scalar::from_uint(bits, range.size));
-            }
-            // If we get here, we have to check per-byte provenance, and join them together.
-            let prov = 'prov: {
-                if !Prov::OFFSET_IS_ADDR {
-                    // FIXME(#146291): We need to ensure that we don't mix different pointers with
-                    // the same provenance.
-                    return Err(AllocError::ReadPartialPointer(range.start));
-                }
-                // Initialize with first fragment. Must have index 0.
-                let Some((mut joint_prov, 0)) = self.provenance.get_byte(range.start, cx) else {
-                    break 'prov None;
-                };
-                // Update with the remaining fragments.
-                for offset in Size::from_bytes(1)..range.size {
-                    // Ensure there is provenance here and it has the right index.
-                    let Some((frag_prov, frag_idx)) =
-                        self.provenance.get_byte(range.start + offset, cx)
-                    else {
-                        break 'prov None;
-                    };
-                    // Wildcard provenance is allowed to come with any index (this is needed
-                    // for Miri's native-lib mode to work).
-                    if u64::from(frag_idx) != offset.bytes() && Some(frag_prov) != Prov::WILDCARD {
-                        break 'prov None;
-                    }
-                    // Merge this byte's provenance with the previous ones.
-                    joint_prov = match Prov::join(joint_prov, frag_prov) {
-                        Some(prov) => prov,
-                        None => break 'prov None,
-                    };
-                }
-                break 'prov Some(joint_prov);
-            };
-            if prov.is_none() && !Prov::OFFSET_IS_ADDR {
-                // There are some bytes with provenance here but overall the provenance does not add up.
-                // We need `OFFSET_IS_ADDR` to fall back to no-provenance here; without that option, we must error.
-                return Err(AllocError::ReadPartialPointer(range.start));
-            }
-            // We can use this provenance.
-            let ptr = Pointer::new(prov, Size::from_bytes(bits));
-            return Ok(Scalar::from_maybe_pointer(ptr, cx));
         } else {
             // We are *not* reading a pointer.
             // If we can just ignore provenance or there is none, that's easy.
@@ -816,7 +772,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// Write "uninit" to the given memory range.
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
         self.mark_init(range, false);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
     }
 
     /// Mark all bytes in the given range as initialised and reset the provenance
@@ -831,21 +787,28 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             size: Size::from_bytes(self.len()),
         });
         self.mark_init(range, true);
-        self.provenance.write_wildcards(cx, range);
+        self.provenance.write_wildcards(cx, &self.bytes, range);
     }
 
     /// Remove all provenance in the given memory range.
     pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
     }
 
     pub fn provenance_merge_bytes(&mut self, cx: &impl HasDataLayout) -> bool {
         self.provenance.merge_bytes(cx)
     }
 
+    pub fn provenance_prepare_copy(
+        &self,
+        range: AllocRange,
+        cx: &impl HasDataLayout,
+    ) -> ProvenanceCopy<Prov> {
+        self.provenance.prepare_copy(range, &self.bytes, cx)
+    }
+
     /// Applies a previously prepared provenance copy.
-    /// The affected range, as defined in the parameters to `provenance().prepare_copy` is expected
-    /// to be clear of provenance.
+    /// The affected range is expected to be clear of provenance.
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.

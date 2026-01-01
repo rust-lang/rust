@@ -58,12 +58,8 @@ pub(crate) fn ssr_assists(
 mod tests {
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
-    use ide_db::{
-        FileRange, FxHashSet, RootDatabase, base_db::salsa::Durability,
-        symbol_index::SymbolsDatabase,
-    };
+    use ide_db::{FileRange, FxHashSet, LocalRoots, RootDatabase, base_db::salsa::Setter as _};
     use test_fixture::WithFixture;
-    use triomphe::Arc;
 
     use super::ssr_assists;
 
@@ -74,7 +70,7 @@ mod tests {
         let (mut db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let mut local_roots = FxHashSet::default();
         local_roots.insert(test_fixture::WORKSPACE);
-        db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
         ssr_assists(
             &db,
             &resolve,

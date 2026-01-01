@@ -86,6 +86,16 @@ fn main() {
     f(&mut std::array::from_fn(|i| i * i) as *mut [usize; 9]);
     //~^ ref_as_ptr
 
+    let x = (10, 20);
+    let _ = &x as *const _;
+    //~^ ref_as_ptr
+    let _ = &x.0 as *const _;
+    //~^ ref_as_ptr
+
+    let x = Box::new(10);
+    let _ = &*x as *const _;
+    //~^ ref_as_ptr
+
     let _ = &String::new() as *const _;
     let _ = &mut String::new() as *mut _;
     const FOO: *const String = &String::new() as *const _;

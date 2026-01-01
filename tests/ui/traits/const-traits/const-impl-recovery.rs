@@ -1,12 +1,14 @@
 #![feature(const_trait_impl)]
 
+//@ check-pass
+
 const trait Foo {}
 
-const impl Foo for i32 {} //~ ERROR: expected identifier, found keyword
+const impl Foo for i32 {}
 
 const trait Bar {}
 
-const impl<T: Foo> Bar for T {} //~ ERROR: expected identifier, found keyword
+const impl<T: Foo> Bar for T {}
 
 const fn still_implements<T: Bar>() {}
 

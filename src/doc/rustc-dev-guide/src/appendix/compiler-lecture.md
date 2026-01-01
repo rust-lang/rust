@@ -6,6 +6,7 @@ These are videos where various experts explain different parts of the compiler:
 - [January 2019: Tom Tromey discusses debugging support in rustc](https://www.youtube.com/watch?v=elBxMRSNYr4)
 - [June 2019: Responsive compilers - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=N6b44kMS6OM)
 - [June 2019: Things I Learned (TIL) - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=LIYkT3p5gTs)
+- [October 2022: Rustc Explore](https://www.youtube.com/playlist?list=PL85XCvVPmGQj3-MujOJ0jcoSqQ6Yi6Rkk)
 
 ## Rust Analyzer
 - [January 2019: How Salsa Works](https://www.youtube.com/watch?v=_muY4HjSqVw)

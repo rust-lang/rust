@@ -1,5 +1,3 @@
-use core::f32;
-
 use super::sqrtf;
 
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]

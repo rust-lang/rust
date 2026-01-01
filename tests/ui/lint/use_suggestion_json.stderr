@@ -2,81 +2,77 @@
   "$message_type": "diagnostic",
   "message": "cannot find type `Iter` in this scope",
   "code": {
-    "code": "E0412",
-    "explanation": "A used type name is not in scope.
+    "code": "E0425",
+    "explanation": "An unresolved name was used.
 
 Erroneous code examples:
 
-```compile_fail,E0412
-impl Something {} // error: type name `Something` is not in scope
+```compile_fail,E0425
+something_that_doesnt_exist::foo;
+// error: unresolved name `something_that_doesnt_exist::foo`
 
 // or:
 
 trait Foo {
-    fn bar(N); // error: type name `N` is not in scope
+    fn bar() {
+        Self; // error: unresolved name `Self`
+    }
 }
 
 // or:
 
-fn foo(x: T) {} // type name `T` is not in scope
+let x = unknown_variable;  // error: unresolved name `unknown_variable`
 ```
 
-To fix this error, please verify you didn't misspell the type name, you did
-declare it or imported it into the scope. Examples:
+Please verify that the name wasn't misspelled and ensure that the
+identifier being referred to is valid for the given situation. Example:
 
 ```
-struct Something;
-
-impl Something {} // ok!
-
-// or:
-
-trait Foo {
-    type N;
-
-    fn bar(_: Self::N); // ok!
-}
-
-// or:
-
-fn foo<T>(x: T) {} // ok!
-```
-
-Another case that causes this error is when a type is imported into a parent
-module. To fix this, you can follow the suggestion and use File directly or
-`use super::File;` which will import the types from the parent namespace. An
-example that causes this error is below:
-
-```compile_fail,E0412
-use std::fs::File;
-
-mod foo {
-    fn some_function(f: File) {}
+enum something_that_does_exist {
+    Foo,
 }
 ```
 
-```
-use std::fs::File;
+Or:
 
-mod foo {
-    // either
-    use super::File;
-    // or
-    // use std::fs::File;
-    fn foo(f: File) {}
-}
-# fn main() {} // don't insert it for us; that'll break imports
 ```
+mod something_that_does_exist {
+    pub static foo : i32 = 0i32;
+}
+
+something_that_does_exist::foo; // ok!
+```
+
+Or:
+
+```
+let unknown_variable = 12u32;
+let x = unknown_variable; // ok!
+```
+
+If the item is not defined in the current module, it must be imported using a
+`use` statement, like so:
+
+```
+# mod foo { pub fn bar() {} }
+# fn main() {
+use foo::bar;
+bar();
+# }
+```
+
+If the item you are importing is not defined in some super-module of the
+current module, then it must also be declared as public (e.g., `pub fn`).
 "
   },
   "level": "error",
   "spans": [
     {
       "file_name": "$DIR/use_suggestion_json.rs",
-      "byte_start": 564,
-      "byte_end": 568,
-      "line_start": 12,
-      "line_end": 12,
+      "byte_start": 581,
+      "byte_end": 585,
+      "line_start": 13,
+      "line_end": 13,
       "column_start": 12,
       "column_end": 16,
       "is_primary": true,
@@ -101,10 +97,10 @@ mod foo {
       "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -124,10 +120,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -147,10 +143,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -170,10 +166,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -193,10 +189,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -216,10 +212,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -239,10 +235,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -262,10 +258,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -285,10 +281,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -308,10 +304,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -331,10 +327,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -354,10 +350,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -377,10 +373,10 @@ mod foo {
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 541,
-          "byte_end": 541,
-          "line_start": 11,
-          "line_end": 11,
+          "byte_start": 558,
+          "byte_end": 558,
+          "line_start": 12,
+          "line_end": 12,
           "column_start": 1,
           "column_end": 1,
           "is_primary": true,
@@ -403,8 +399,8 @@ mod foo {
       "rendered": null
     }
   ],
-  "rendered": "\u001b[1m\u001b[91merror[E0412]\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
-  \u001b[1m\u001b[94m--> \u001b[0m$DIR/use_suggestion_json.rs:12:12
+  "rendered": "\u001b[1m\u001b[91merror[E0425]\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
+  \u001b[1m\u001b[94m--> \u001b[0m$DIR/use_suggestion_json.rs:13:12
    \u001b[1m\u001b[94m|\u001b[0m
 \u001b[1m\u001b[94mLL\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     let x: Iter;
    \u001b[1m\u001b[94m|\u001b[0m            \u001b[1m\u001b[91m^^^^\u001b[0m \u001b[1m\u001b[91mnot found in this scope\u001b[0m
@@ -436,11 +432,11 @@ mod foo {
 }
 {
   "$message_type": "diagnostic",
-  "message": "For more information about this error, try `rustc --explain E0412`.",
+  "message": "For more information about this error, try `rustc --explain E0425`.",
   "code": null,
   "level": "failure-note",
   "spans": [],
   "children": [],
-  "rendered": "\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m
+  "rendered": "\u001b[1mFor more information about this error, try `rustc --explain E0425`.\u001b[0m
 "
 }

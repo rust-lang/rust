@@ -798,6 +798,14 @@ impl<T> UefiBox<T> {
     pub(crate) fn as_mut_ptr(&mut self) -> *mut T {
         self.inner.as_ptr().cast()
     }
+
+    pub(crate) fn as_ptr(&self) -> *const T {
+        self.inner.as_ptr().cast()
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.size
+    }
 }
 
 impl<T> Drop for UefiBox<T> {

@@ -2,7 +2,7 @@
 
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::sym;
@@ -72,8 +72,7 @@ declare_lint! {
     "The `expr` fragment specifier will accept more expressions in the 2024 edition. \
     To keep the existing behavior, use the `expr_2021` fragment specifier.",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "Migration Guide <https://doc.rust-lang.org/edition-guide/rust-2024/macro-fragment-specifiers.html>",
+        reason: fcw!(EditionSemanticsChange 2024 "macro-fragment-specifiers"),
     };
 }
 
@@ -121,10 +120,8 @@ impl Expr2024 {
 
     fn check_ident_token(&mut self, cx: &crate::EarlyContext<'_>, token: &Token) {
         debug!("check_ident_token: {:?}", token);
-        let (sym, edition) = match token.kind {
-            TokenKind::Ident(sym, _) => (sym, Edition::Edition2024),
-            _ => return,
-        };
+        let TokenKind::Ident(sym, _) = token.kind else { return };
+        let edition = Edition::Edition2024;
 
         debug!("token.span.edition(): {:?}", token.span.edition());
         if token.span.edition() >= edition {

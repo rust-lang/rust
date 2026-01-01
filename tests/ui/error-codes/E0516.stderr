@@ -2,13 +2,9 @@ error[E0516]: `typeof` is a reserved keyword but unimplemented
   --> $DIR/E0516.rs:2:12
    |
 LL |     let x: typeof(92) = 92;
-   |            ^^^^^^^^^^ reserved keyword
+   |            ^^^^^^^^^^
    |
-help: consider replacing `typeof(...)` with an actual type
-   |
-LL -     let x: typeof(92) = 92;
-LL +     let x: i32 = 92;
-   |
+   = note: consider replacing `typeof(...)` with an actual type
 
 error: aborting due to 1 previous error
 

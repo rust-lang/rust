@@ -9,6 +9,6 @@ trait Trait {
     //~^ ERROR using function pointers as const generic parameters is forbidden
 }
 
-fn take(_: impl Trait<F = { || {} }>) {}
+fn take(_: impl Trait<F = const { || {} }>) {}
 
 fn main() {}

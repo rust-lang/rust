@@ -824,7 +824,7 @@ struct PlaceCtxt<'a, Cx: PatCx> {
 impl<'a, Cx: PatCx> Copy for PlaceCtxt<'a, Cx> {}
 impl<'a, Cx: PatCx> Clone for PlaceCtxt<'a, Cx> {
     fn clone(&self) -> Self {
-        Self { cx: self.cx, ty: self.ty }
+        *self
     }
 }
 

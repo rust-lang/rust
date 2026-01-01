@@ -1,3 +1,5 @@
+use std::iter;
+
 use tracing::debug;
 
 use super::{
@@ -6,6 +8,7 @@ use super::{
 };
 use crate::error::TypeError;
 use crate::inherent::*;
+use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
@@ -218,4 +221,76 @@ where
         }
         _ => structurally_relate_consts(relation, a, b),
     }
+}
+
+pub fn combine_ty_args<Infcx, I, R>(
+    infcx: &Infcx,
+    relation: &mut R,
+    a_ty: I::Ty,
+    b_ty: I::Ty,
+    variances: I::VariancesOf,
+    a_args: I::GenericArgs,
+    b_args: I::GenericArgs,
+    mk: impl FnOnce(I::GenericArgs) -> I::Ty,
+) -> RelateResult<I, I::Ty>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    R: PredicateEmittingRelation<Infcx>,
+{
+    let cx = infcx.cx();
+    let mut has_unconstrained_bivariant_arg = false;
+    let args = iter::zip(a_args.iter(), b_args.iter()).enumerate().map(|(i, (a, b))| {
+        let variance = variances.get(i).unwrap();
+        let variance_info = match variance {
+            ty::Invariant => {
+                VarianceDiagInfo::Invariant { ty: a_ty, param_index: i.try_into().unwrap() }
+            }
+            ty::Covariant | ty::Contravariant => VarianceDiagInfo::default(),
+            ty::Bivariant => {
+                let has_non_region_infer = |arg: I::GenericArg| {
+                    arg.has_non_region_infer()
+                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                };
+                if has_non_region_infer(a) || has_non_region_infer(b) {
+                    has_unconstrained_bivariant_arg = true;
+                }
+                VarianceDiagInfo::default()
+            }
+        };
+        relation.relate_with_variance(variance, variance_info, a, b)
+    });
+    let args = cx.mk_args_from_iter(args)?;
+
+    // In general, we do not check whether all types which occur during
+    // type checking are well-formed. We only check wf of user-provided types
+    // and when actually using a type, e.g. for method calls.
+    //
+    // This means that when subtyping, we may end up with unconstrained
+    // inference variables if a generalized type has bivariant parameters.
+    // A parameter may only be bivariant if it is constrained by a projection
+    // bound in a where-clause. As an example, imagine a type:
+    //
+    //     struct Foo<A, B> where A: Iterator<Item = B> {
+    //         data: A
+    //     }
+    //
+    // here, `A` will be covariant, but `B` is unconstrained. However, whatever it is,
+    // for `Foo` to be WF, it must be equal to `A::Item`.
+    //
+    // If we have an input `Foo<?A, ?B>`, then after generalization we will wind
+    // up with a type like `Foo<?C, ?D>`. When we enforce `Foo<?A, ?B> <: Foo<?C, ?D>`,
+    // we will wind up with the requirement that `?A <: ?C`, but no particular
+    // relationship between `?B` and `?D` (after all, these types may be completely
+    // different). If we do nothing else, this may mean that `?D` goes unconstrained
+    // (as in #41677). To avoid this we emit a `WellFormed` when relating types with
+    // bivariant arguments.
+    if has_unconstrained_bivariant_arg {
+        relation.register_predicates([
+            ty::ClauseKind::WellFormed(a_ty.into()),
+            ty::ClauseKind::WellFormed(b_ty.into()),
+        ]);
+    }
+
+    if a_args == args { Ok(a_ty) } else { Ok(mk(args)) }
 }

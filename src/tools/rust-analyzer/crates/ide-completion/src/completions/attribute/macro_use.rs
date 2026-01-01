@@ -15,7 +15,7 @@ pub(super) fn complete_macro_use(
     let Some(extern_crate) = ctx.sema.to_def(extern_crate) else { return };
     let Some(krate) = extern_crate.resolved_crate(ctx.db) else { return };
 
-    for mod_def in krate.root_module().declarations(ctx.db) {
+    for mod_def in krate.root_module(ctx.db).declarations(ctx.db) {
         if let ModuleDef::Macro(mac) = mod_def {
             let mac_name = mac.name(ctx.db);
             let mac_name = mac_name.as_str();

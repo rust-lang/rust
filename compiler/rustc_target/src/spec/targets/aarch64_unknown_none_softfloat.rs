@@ -7,22 +7,23 @@
 // For example, `-C target-cpu=cortex-a53`.
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
-    TargetMetadata, TargetOptions,
+    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType,
+    Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
-        abi: "softfloat".into(),
+        abi: Abi::SoftFloat,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features: "+v8a,+strict-align,-neon,-fp-armv8".into(),
+        features: "+v8a,+strict-align,-neon".into(),
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
+        default_uwtable: true,
         ..Default::default()
     };
     Target {

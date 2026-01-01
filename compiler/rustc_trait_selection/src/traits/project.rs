@@ -2055,6 +2055,9 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 
 // Get obligations corresponding to the predicates from the where-clause of the
 // associated type itself.
+//
+// This is necessary for soundness until we properly handle implied bounds on binders.
+// see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
 // FIXME(mgca): While this supports constants, it is only used for types by default right now
 fn assoc_term_own_obligations<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,

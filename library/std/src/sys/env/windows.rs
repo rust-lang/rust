@@ -8,30 +8,6 @@ pub struct Env {
     iter: EnvIterator,
 }
 
-// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
-pub struct EnvStrDebug<'a> {
-    iter: &'a EnvIterator,
-}
-
-impl fmt::Debug for EnvStrDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { iter } = self;
-        let iter: EnvIterator = (*iter).clone();
-        let mut list = f.debug_list();
-        for (a, b) in iter {
-            list.entry(&(a.to_str().unwrap(), b.to_str().unwrap()));
-        }
-        list.finish()
-    }
-}
-
-impl Env {
-    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
-        let Self { base: _, iter } = self;
-        EnvStrDebug { iter }
-    }
-}
-
 impl fmt::Debug for Env {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { base: _, iter } = self;

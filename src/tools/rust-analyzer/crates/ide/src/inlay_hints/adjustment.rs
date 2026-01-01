@@ -216,15 +216,13 @@ pub(super) fn hints(
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
             tooltip: Some(config.lazy_tooltip(|| {
-                hir::attach_db(sema.db, || {
-                    InlayTooltip::Markdown(format!(
-                        "`{}` → `{}`\n\n**{}**\n\n{}",
-                        source.display(sema.db, display_target),
-                        target.display(sema.db, display_target),
-                        coercion,
-                        detailed_tooltip
-                    ))
-                })
+                InlayTooltip::Markdown(format!(
+                    "`{}` → `{}`\n\n**{}**\n\n{}",
+                    source.display(sema.db, display_target),
+                    target.display(sema.db, display_target),
+                    coercion,
+                    detailed_tooltip
+                ))
             })),
         };
         if postfix { &mut post } else { &mut pre }.label.append_part(label);
@@ -352,7 +350,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn, builtin_impls
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -466,9 +464,8 @@ impl core::ops::IndexMut for Struct {}
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn, builtin_impls
 fn main() {
-
     Struct.consume();
     Struct.by_ref();
   //^^^^^^.&

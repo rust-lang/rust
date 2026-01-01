@@ -163,6 +163,31 @@ mod tests {
     }
 
     #[test]
+    fn remove_parens_prefix_with_ret_like_prefix() {
+        check_assist(remove_parentheses, r#"fn f() { !$0(return) }"#, r#"fn f() { !return }"#);
+        // `break`, `continue` behave the same under prefix operators
+        check_assist(remove_parentheses, r#"fn f() { !$0(break) }"#, r#"fn f() { !break }"#);
+        check_assist(remove_parentheses, r#"fn f() { !$0(continue) }"#, r#"fn f() { !continue }"#);
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { !$0(return false) }"#,
+            r#"fn f() { !return false }"#,
+        );
+
+        // Binary operators should still allow removal unless a ret-like expression is immediately followed by `||` or `&&`.
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { true || $0(return) }"#,
+            r#"fn f() { true || return }"#,
+        );
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { cond && $0(return) }"#,
+            r#"fn f() { cond && return }"#,
+        );
+    }
+
+    #[test]
     fn remove_parens_return_with_value_followed_by_block() {
         check_assist(
             remove_parentheses,
@@ -220,6 +245,79 @@ mod tests {
             remove_parentheses,
             r#"fn f() { &$0(return ()) }"#,
             r#"fn f() { &return () }"#,
+        );
+    }
+
+    #[test]
+    fn remove_parens_return_in_unary_not() {
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { cond && !$0(return) }"#,
+            r#"fn f() { cond && !return }"#,
+        );
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { cond && !$0(return false) }"#,
+            r#"fn f() { cond && !return false }"#,
+        );
+    }
+
+    #[test]
+    fn remove_parens_return_in_disjunction_with_closure_risk() {
+        // `return` may only be blocked when it would form `return ||` or `return &&`
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && $0(return) || true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && !$0(return) || true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && $0(return false) || true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && !$0(return false) || true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && $0(return) && true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && !$0(return) && true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && $0(return false) && true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = true && !$0(return false) && true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = $0(return) || true; }"#,
+        );
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"fn f() { let _x = $0(return) && true; }"#,
+        );
+    }
+
+    #[test]
+    fn remove_parens_return_in_disjunction_is_ok() {
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { let _x = true || $0(return); }"#,
+            r#"fn f() { let _x = true || return; }"#,
+        );
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { let _x = true && $0(return); }"#,
+            r#"fn f() { let _x = true && return; }"#,
         );
     }
 

@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-    cvs,
+    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             // of functionality post load, so we still declare it as `cfg!(target_os = "psx")`.
             //
             // See <https://github.com/rust-lang/rust/pull/131168> for details.
-            os: "psx".into(),
+            os: Os::Psx,
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),

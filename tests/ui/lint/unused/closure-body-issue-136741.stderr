@@ -43,6 +43,7 @@ help: remove these parentheses
    |
 LL -     let _ = (0..).find(|n| (
 LL -         n % 2 == 0
+LL -     ));
 LL +     let _ = (0..).find(|n| n % 2 == 0);
    |
 

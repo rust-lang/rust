@@ -4,7 +4,7 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
-use std::{iter, ops::ControlFlow};
+use std::iter;
 
 use base_db::RootQueryDb as _;
 use hir::{
@@ -13,7 +13,7 @@ use hir::{
 };
 use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
-    helpers::is_editable_crate,
+    helpers::is_editable_crate, syntax_helpers::node_ext::is_in_macro_matcher,
 };
 use itertools::Either;
 use syntax::{
@@ -21,7 +21,6 @@ use syntax::{
     SyntaxKind::{self, *},
     SyntaxToken, T, TextRange, TextSize,
     ast::{self, AttrKind, NameOrNameRef},
-    match_ast,
 };
 
 use crate::{
@@ -53,6 +52,7 @@ pub(crate) struct QualifierCtx {
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
+    pub(crate) abi_node: Option<ast::Abi>,
 }
 
 impl QualifierCtx {
@@ -61,6 +61,7 @@ impl QualifierCtx {
             && self.unsafe_tok.is_none()
             && self.safe_tok.is_none()
             && self.vis_node.is_none()
+            && self.abi_node.is_none()
     }
 }
 
@@ -155,7 +156,7 @@ pub(crate) struct PathExprCtx<'db> {
     pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
-    pub(crate) self_param: Option<hir::SelfParam>,
+    pub(crate) self_param: Option<Either<hir::SelfParam, hir::Param<'db>>>,
     pub(crate) innermost_ret_ty: Option<hir::Type<'db>>,
     pub(crate) innermost_breakable_ty: Option<hir::Type<'db>>,
     pub(crate) impl_: Option<ast::Impl>,
@@ -388,6 +389,7 @@ pub(crate) enum CompletionAnalysis<'db> {
         fake_attribute_under_caret: Option<ast::Attr>,
         extern_crate: Option<ast::ExternCrate>,
     },
+    MacroSegment,
 }
 
 /// Information about the field or method access we are completing.
@@ -557,7 +559,7 @@ impl CompletionContext<'_> {
         I: hir::HasAttrs + Copy,
     {
         let attrs = item.attrs(self.db);
-        attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+        attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
     }
 
     /// Check if an item is `#[doc(hidden)]`.
@@ -571,7 +573,7 @@ impl CompletionContext<'_> {
     }
 
     /// Checks whether this item should be listed in regards to stability. Returns `true` if we should.
-    pub(crate) fn check_stability(&self, attrs: Option<&hir::Attrs>) -> bool {
+    pub(crate) fn check_stability(&self, attrs: Option<&hir::AttrsWithOwner>) -> bool {
         let Some(attrs) = attrs else {
             return true;
         };
@@ -589,15 +591,15 @@ impl CompletionContext<'_> {
 
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
-        match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+        match trait_.attrs(self.db).lang(self.db) {
+            Some(lang) => OP_TRAIT_LANG.contains(&lang),
             None => false,
         }
     }
 
     /// Whether the given trait has `#[doc(notable_trait)]`
     pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
-        trait_.attrs(self.db).has_doc_notable_trait()
+        trait_.attrs(self.db).is_doc_notable_trait()
     }
 
     /// Returns the traits in scope, with the [`Drop`] trait removed.
@@ -615,21 +617,14 @@ impl CompletionContext<'_> {
         mut cb: impl FnMut(hir::AssocItem),
     ) {
         let mut seen = FxHashSet::default();
-        ty.iterate_path_candidates(
-            self.db,
-            &self.scope,
-            &self.traits_in_scope(),
-            Some(self.module),
-            None,
-            |item| {
-                // We might iterate candidates of a trait multiple times here, so deduplicate
-                // them.
-                if seen.insert(item) {
-                    cb(item)
-                }
-                None::<()>
-            },
-        );
+        ty.iterate_path_candidates(self.db, &self.scope, &self.traits_in_scope(), None, |item| {
+            // We might iterate candidates of a trait multiple times here, so deduplicate
+            // them.
+            if seen.insert(item) {
+                cb(item)
+            }
+            None::<()>
+        });
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
@@ -661,7 +656,7 @@ impl CompletionContext<'_> {
     fn is_visible_impl(
         &self,
         vis: &hir::Visibility,
-        attrs: &hir::Attrs,
+        attrs: &hir::AttrsWithOwner,
         defining_crate: hir::Crate,
     ) -> Visible {
         if !self.check_stability(Some(attrs)) {
@@ -683,14 +678,18 @@ impl CompletionContext<'_> {
         if self.is_doc_hidden(attrs, defining_crate) { Visible::No } else { Visible::Yes }
     }
 
-    pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+    pub(crate) fn is_doc_hidden(
+        &self,
+        attrs: &hir::AttrsWithOwner,
+        defining_crate: hir::Crate,
+    ) -> bool {
         // `doc(hidden)` items are only completed within the defining crate.
-        self.krate != defining_crate && attrs.has_doc_hidden()
+        self.krate != defining_crate && attrs.is_doc_hidden()
     }
 
     pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
-            attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+            attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
         } else {
             vec![]
         }
@@ -708,7 +707,7 @@ impl<'db> CompletionContext<'db> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
-        let editioned_file_id = sema.attach_first_edition(file_id)?;
+        let editioned_file_id = sema.attach_first_edition(file_id);
         let original_file = sema.parse(editioned_file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
@@ -731,7 +730,7 @@ impl<'db> CompletionContext<'db> {
             let prev_token = original_token.prev_token()?;
 
             // only has a single colon
-            if prev_token.kind() != T![:] {
+            if prev_token.kind() != T![:] && !is_in_macro_matcher(&original_token) {
                 return None;
             }
 
@@ -818,48 +817,20 @@ impl<'db> CompletionContext<'db> {
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
         // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
-        let complete_semicolon = if config.add_semicolon_to_unit {
-            let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
-                match_ast! {
-                    match ancestor {
-                        ast::BlockExpr(_) => ControlFlow::Break(false),
-                        ast::ClosureExpr(_) => ControlFlow::Break(true),
-                        _ => ControlFlow::Continue(())
-                    }
-                }
-            });
-
-            if inside_closure_ret == ControlFlow::Break(true) {
-                CompleteSemicolon::DoNotComplete
-            } else {
-                let next_non_trivia_token =
-                    std::iter::successors(token.next_token(), |it| it.next_token())
-                        .find(|it| !it.kind().is_trivia());
-                let in_match_arm = token.parent_ancestors().try_for_each(|ancestor| {
-                    if ast::MatchArm::can_cast(ancestor.kind()) {
-                        ControlFlow::Break(true)
-                    } else if matches!(
-                        ancestor.kind(),
-                        SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR
-                    ) {
-                        ControlFlow::Break(false)
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                });
-                // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
-                let in_match_arm = match in_match_arm {
-                    ControlFlow::Continue(()) => false,
-                    ControlFlow::Break(it) => it,
-                };
-                let complete_token = if in_match_arm { T![,] } else { T![;] };
-                if next_non_trivia_token.map(|it| it.kind()) == Some(complete_token) {
-                    CompleteSemicolon::DoNotComplete
-                } else if in_match_arm {
-                    CompleteSemicolon::CompleteComma
-                } else {
-                    CompleteSemicolon::CompleteSemi
-                }
+        let complete_semicolon = if !config.add_semicolon_to_unit {
+            CompleteSemicolon::DoNotComplete
+        } else if let Some(term_node) =
+            sema.token_ancestors_with_macros(token.clone()).find(|node| {
+                matches!(node.kind(), BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR)
+            })
+        {
+            let next_token = iter::successors(token.next_token(), |it| it.next_token())
+                .map(|it| it.kind())
+                .find(|kind| !kind.is_trivia());
+            match term_node.kind() {
+                MATCH_ARM if next_token != Some(T![,]) => CompleteSemicolon::CompleteComma,
+                BLOCK_EXPR if next_token != Some(T![;]) => CompleteSemicolon::CompleteSemi,
+                _ => CompleteSemicolon::DoNotComplete,
             }
         } else {
             CompleteSemicolon::DoNotComplete
@@ -894,35 +865,35 @@ impl<'db> CompletionContext<'db> {
     }
 }
 
-const OP_TRAIT_LANG_NAMES: &[&str] = &[
-    "add_assign",
-    "add",
-    "bitand_assign",
-    "bitand",
-    "bitor_assign",
-    "bitor",
-    "bitxor_assign",
-    "bitxor",
-    "deref_mut",
-    "deref",
-    "div_assign",
-    "div",
-    "eq",
-    "fn_mut",
-    "fn_once",
-    "fn",
-    "index_mut",
-    "index",
-    "mul_assign",
-    "mul",
-    "neg",
-    "not",
-    "partial_ord",
-    "rem_assign",
-    "rem",
-    "shl_assign",
-    "shl",
-    "shr_assign",
-    "shr",
-    "sub",
+const OP_TRAIT_LANG: &[hir::LangItem] = &[
+    hir::LangItem::AddAssign,
+    hir::LangItem::Add,
+    hir::LangItem::BitAndAssign,
+    hir::LangItem::BitAnd,
+    hir::LangItem::BitOrAssign,
+    hir::LangItem::BitOr,
+    hir::LangItem::BitXorAssign,
+    hir::LangItem::BitXor,
+    hir::LangItem::DerefMut,
+    hir::LangItem::Deref,
+    hir::LangItem::DivAssign,
+    hir::LangItem::Div,
+    hir::LangItem::PartialEq,
+    hir::LangItem::FnMut,
+    hir::LangItem::FnOnce,
+    hir::LangItem::Fn,
+    hir::LangItem::IndexMut,
+    hir::LangItem::Index,
+    hir::LangItem::MulAssign,
+    hir::LangItem::Mul,
+    hir::LangItem::Neg,
+    hir::LangItem::Not,
+    hir::LangItem::PartialOrd,
+    hir::LangItem::RemAssign,
+    hir::LangItem::Rem,
+    hir::LangItem::ShlAssign,
+    hir::LangItem::Shl,
+    hir::LangItem::ShrAssign,
+    hir::LangItem::Shr,
+    hir::LangItem::Sub,
 ];

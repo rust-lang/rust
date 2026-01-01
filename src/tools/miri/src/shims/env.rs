@@ -1,6 +1,7 @@
 use std::ffi::{OsStr, OsString};
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_target::spec::Os;
 
 use self::shims::unix::UnixEnvVars;
 use self::shims::windows::WindowsEnvVars;
@@ -48,7 +49,7 @@ impl<'tcx> EnvVars<'tcx> {
 
         let env_vars = if ecx.target_os_is_unix() {
             EnvVars::Unix(UnixEnvVars::new(ecx, env_vars)?)
-        } else if ecx.tcx.sess.target.os == "windows" {
+        } else if ecx.tcx.sess.target.os == Os::Windows {
             EnvVars::Windows(WindowsEnvVars::new(ecx, env_vars)?)
         } else {
             // For "none" targets (i.e., without an OS).
@@ -118,7 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let index = thread.to_u32();
         let target_os = &this.tcx.sess.target.os;
-        if target_os == "linux" || target_os == "netbsd" {
+        if matches!(target_os, Os::Linux | Os::NetBsd) {
             // On Linux, the main thread has PID == TID so we uphold this. NetBSD also appears
             // to exhibit the same behavior, though I can't find a citation.
             this.get_pid().strict_add(index)

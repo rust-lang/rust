@@ -6,8 +6,7 @@ use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
 use crate::sys::time::SystemTime;
-use crate::sys::{map_motor_error, unsupported};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, map_motor_error, unsupported};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FileType {

@@ -1,6 +1,9 @@
 use hir::{EditionedFileId, FileRange, HasCrate, HasSource, Semantics};
 use ide_db::{RootDatabase, assists::Assist, source_change::SourceChange, text_edit::TextEdit};
-use syntax::{AstNode, TextRange, TextSize, ast::HasVisibility};
+use syntax::{
+    AstNode, TextRange,
+    ast::{HasName, HasVisibility},
+};
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
@@ -8,7 +11,6 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 //
 // This diagnostic is triggered if the accessed field is not visible from the current module.
 pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField) -> Diagnostic {
-    // FIXME: add quickfix
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0616"),
@@ -35,7 +37,7 @@ pub(crate) fn field_is_private_fixes(
     fix_range: TextRange,
 ) -> Option<Vec<Assist>> {
     let def_crate = private_field.krate(sema.db);
-    let usage_crate = sema.file_to_module_def(usage_file_id.file_id(sema.db))?.krate();
+    let usage_crate = sema.file_to_module_def(usage_file_id.file_id(sema.db))?.krate(sema.db);
     let mut visibility_text = if usage_crate == def_crate { "pub(crate) " } else { "pub " };
 
     let source = private_field.source(sema.db)?;
@@ -50,11 +52,19 @@ pub(crate) fn field_is_private_fixes(
             source.with_value(visibility.syntax()).original_file_range_opt(sema.db)?.0
         }
         None => {
-            let (range, _) = source.syntax().original_file_range_opt(sema.db)?;
-            FileRange {
-                file_id: range.file_id,
-                range: TextRange::at(range.range.start(), TextSize::new(0)),
-            }
+            let (range, _) = source
+                .map(|it| {
+                    Some(match it {
+                        hir::FieldSource::Named(it) => {
+                            it.unsafe_token().or(it.name()?.ident_token())?.text_range()
+                        }
+                        hir::FieldSource::Pos(it) => it.ty()?.syntax().text_range(),
+                    })
+                })
+                .transpose()?
+                .original_node_file_range_opt(sema.db)?;
+
+            FileRange { file_id: range.file_id, range: TextRange::empty(range.range.start()) }
         }
     };
     let source_change = SourceChange::from_text_edit(
@@ -225,6 +235,188 @@ pub mod foo {
 
 fn foo(v: foo::bar::Struct) {
     v.field;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_field_with_doc_comment() {
+        check_fix(
+            r#"
+pub mod foo {
+    pub struct Foo {
+        /// This is a doc comment
+        bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar$0;
+}
+            "#,
+            r#"
+pub mod foo {
+    pub struct Foo {
+        /// This is a doc comment
+        pub(crate) bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_field_with_line_comment() {
+        check_fix(
+            r#"
+pub mod foo {
+    pub struct Foo {
+        // This is a line comment
+        bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar$0;
+}
+            "#,
+            r#"
+pub mod foo {
+    pub struct Foo {
+        // This is a line comment
+        pub(crate) bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_field_with_multiple_doc_comments() {
+        check_fix(
+            r#"
+pub mod foo {
+    pub struct Foo {
+        /// First line
+        /// Second line
+        bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar$0;
+}
+            "#,
+            r#"
+pub mod foo {
+    pub struct Foo {
+        /// First line
+        /// Second line
+        pub(crate) bar: u32,
+    }
+}
+
+fn main() {
+    let x = foo::Foo { bar: 0 };
+    x.bar;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_field_with_attr_and_comment() {
+        check_fix(
+            r#"
+mod foo {
+    pub struct Foo {
+        #[rustfmt::skip]
+        /// First line
+        /// Second line
+        bar: u32,
+    }
+}
+fn main() {
+    foo::Foo { $0bar: 42 };
+}
+            "#,
+            r#"
+mod foo {
+    pub struct Foo {
+        #[rustfmt::skip]
+        /// First line
+        /// Second line
+        pub(crate) bar: u32,
+    }
+}
+fn main() {
+    foo::Foo { bar: 42 };
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_field_with_macro() {
+        check_fix(
+            r#"
+macro_rules! allow_unused {
+    ($vis:vis $struct:ident $name:ident { $($fvis:vis $field:ident : $ty:ty,)* }) => {
+        $vis $struct $name {
+            $(
+                #[allow(unused)]
+                $fvis $field : $ty,
+            )*
+        }
+    };
+}
+mod foo {
+    allow_unused!(
+        pub struct Foo {
+            x: i32,
+        }
+    );
+}
+fn main() {
+    let foo = foo::Foo { x: 2 };
+    let _ = foo.$0x
+}
+            "#,
+            r#"
+macro_rules! allow_unused {
+    ($vis:vis $struct:ident $name:ident { $($fvis:vis $field:ident : $ty:ty,)* }) => {
+        $vis $struct $name {
+            $(
+                #[allow(unused)]
+                $fvis $field : $ty,
+            )*
+        }
+    };
+}
+mod foo {
+    allow_unused!(
+        pub struct Foo {
+            pub(crate) x: i32,
+        }
+    );
+}
+fn main() {
+    let foo = foo::Foo { x: 2 };
+    let _ = foo.x
 }
             "#,
         );

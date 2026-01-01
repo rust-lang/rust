@@ -1,2 +1,20 @@
 Running GenMC Verification...
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'SeqCst', the failure ordering 'Relaxed' is treated like 'SeqCst'. Miri with GenMC might miss bugs related to this memory access.
+  --> tests/genmc/pass/atomics/cas_simple.rs:LL:CC
+   |
+LL |     let _ = VALUE.compare_exchange(99, 99, SeqCst, Relaxed);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Success ordering 'Relaxed' was upgraded to 'SeqCst' to match failure ordering 'SeqCst'. Miri with GenMC might miss bugs related to this memory access.
+  --> tests/genmc/pass/atomics/cas_simple.rs:LL:CC
+   |
+LL |     let _ = VALUE.compare_exchange_weak(99, 99, Relaxed, SeqCst);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> tests/genmc/pass/atomics/cas_simple.rs:LL:CC
+   |
+LL |     let _ = VALUE.compare_exchange_weak(99, 99, Relaxed, SeqCst);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+
 Verification complete with 1 executions. No errors found.

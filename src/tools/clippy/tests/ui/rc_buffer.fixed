@@ -1,5 +1,4 @@
 #![warn(clippy::rc_buffer)]
-#![allow(dead_code, unused_imports)]
 
 use std::cell::RefCell;
 use std::ffi::OsString;
@@ -31,5 +30,10 @@ fn func_bad4(_: Rc<std::ffi::OsStr>) {}
 //~^ rc_buffer
 // does not trigger lint
 fn func_good1(_: Rc<RefCell<String>>) {}
+
+mod issue_15802 {
+    fn foo(_: std::rc::Rc<[u8]>) {}
+    //~^ rc_buffer
+}
 
 fn main() {}

@@ -25,7 +25,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
@@ -35,13 +35,13 @@ use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
-use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -396,24 +396,14 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment().is_some() {
+    if matches!(attr, hir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
         return true;
     }
 
-    if !attr.has_name(sym::doc) {
-        return false;
-    }
-
-    if attr.value_str().is_some() {
+    if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
+        && matches!(d.as_ref(), DocAttribute { hidden: Some(..), .. })
+    {
         return true;
-    }
-
-    if let Some(list) = attr.meta_item_list() {
-        for meta in list {
-            if meta.has_name(sym::hidden) {
-                return true;
-            }
-        }
     }
 
     false
@@ -777,8 +767,7 @@ declare_lint! {
     Warn,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
-        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+        reason: fcw!(EditionError 2018 "trait-fn-parameters"),
     };
 }
 
@@ -823,19 +812,23 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
     let mut sugared_span: Option<Span> = None;
 
     while let Some(attr) = attrs.next() {
-        let is_doc_comment = attr.is_doc_comment();
+        let (is_doc_comment, is_doc_attribute) = match &attr.kind {
+            AttrKind::DocComment(..) => (true, false),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => (true, true),
+            _ => (false, false),
+        };
         if is_doc_comment {
             sugared_span =
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
+        if !is_doc_attribute && attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if is_doc_comment || attr.has_name(sym::doc) {
+        if is_doc_comment || is_doc_attribute {
             let sub = match attr.kind {
                 AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
                     BuiltinUnusedDocCommentSub::PlainHelp
@@ -997,18 +990,15 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
-            hir::ItemKind::Const(..) => {
+            hir::ItemKind::Const(ident, generics, ..) => {
                 if find_attr!(attrs, AttributeKind::NoMangle(..)) {
-                    // account for "pub const" (#45562)
-                    let start = cx
-                        .tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(it.span)
-                        .map(|snippet| snippet.find("const").unwrap_or(0))
-                        .unwrap_or(0) as u32;
-                    // `const` is 5 chars
-                    let suggestion = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
+                    let suggestion =
+                        if generics.params.is_empty() && generics.where_clause_span.is_empty() {
+                            // account for "pub const" (#45562)
+                            Some(it.span.until(ident.span))
+                        } else {
+                            None
+                        };
 
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
@@ -1082,11 +1072,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             cx: &LateContext<'tcx>,
             expr: &hir::Expr<'_>,
         ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
+            let hir::ExprKind::Path(ref qpath) = expr.kind else { return None };
+            let def = cx.qpath_res(qpath, expr.hir_id);
             if let Res::Def(DefKind::Fn, did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
@@ -1667,8 +1654,7 @@ declare_lint! {
     Warn,
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>",
+        reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
     };
 }
 
@@ -1705,7 +1691,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         }
 
         let (parentheses, endpoints) = match &pat.kind {
-            PatKind::Ref(subpat, _) => (true, matches_ellipsis_pat(subpat)),
+            PatKind::Ref(subpat, _, _) => (true, matches_ellipsis_pat(subpat)),
             _ => (false, matches_ellipsis_pat(pat)),
         };
 
@@ -1803,8 +1789,7 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
-        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+        reason: fcw!(EditionError 2018 "new-keywords"),
     };
 }
 
@@ -1848,8 +1833,7 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/gen-keyword.html>",
+        reason: fcw!(EditionError 2024 "gen-keyword"),
     };
 }
 
@@ -2697,7 +2681,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// use std::ptr;
     /// unsafe {
@@ -2716,7 +2700,7 @@ declare_lint! {
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub DEREF_NULLPTR,
-    Warn,
+    Deny,
     "detects when an null pointer is dereferenced"
 }
 
@@ -2726,6 +2710,16 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         /// test if expression is a null ptr
         fn is_null_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+            let pointer_ty = cx.typeck_results().expr_ty(expr);
+            let ty::RawPtr(pointee, _) = pointer_ty.kind() else {
+                return false;
+            };
+            if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(*pointee)) {
+                if layout.layout.size() == rustc_abi::Size::ZERO {
+                    return false;
+                }
+            }
+
             match &expr.kind {
                 hir::ExprKind::Cast(expr, ty) => {
                     if let hir::TyKind::Ptr(_) = ty.kind {

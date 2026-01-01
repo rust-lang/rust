@@ -1,3 +1,4 @@
+//@ edition:2015
 mod mul1 {
     pub trait Mul {}
 }
@@ -45,7 +46,7 @@ impl Mul for Foo {
 }
 
 // BEFORE, we got:
-//   error: use of undeclared type name `Mul` [E0412]
+//   error: use of undeclared type name `Mul` [E0425]
 // AFTER, we get:
 //   error: type name `Mul` is not in scope. Maybe you meant:
 //   help: ...

@@ -749,7 +749,7 @@ impl server::Span for Rustc<'_, '_> {
         let self_loc = self.psess().source_map().lookup_char_pos(first.lo());
         let other_loc = self.psess().source_map().lookup_char_pos(second.lo());
 
-        if self_loc.file.name != other_loc.file.name {
+        if self_loc.file.stable_id != other_loc.file.stable_id {
             return None;
         }
 

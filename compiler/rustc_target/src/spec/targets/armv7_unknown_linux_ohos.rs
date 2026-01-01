@@ -1,4 +1,4 @@
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for OpenHarmony on ARMv7 Linux with thumb-mode, but no NEON or
 // hardfloat.
@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),

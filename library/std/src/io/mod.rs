@@ -330,7 +330,7 @@ pub use self::{
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
     util::{Empty, Repeat, Sink, empty, repeat, sink},
 };
-use crate::mem::take;
+use crate::mem::{MaybeUninit, take};
 use crate::ops::{Deref, DerefMut};
 use crate::{cmp, fmt, slice, str, sys};
 
@@ -1241,6 +1241,46 @@ pub trait Read {
         Self: Sized,
     {
         Take { inner: self, len: limit, limit }
+    }
+
+    /// Read and return a fixed array of bytes from this source.
+    ///
+    /// This function uses an array sized based on a const generic size known at compile time. You
+    /// can specify the size with turbofish (`reader.read_array::<8>()`), or let type inference
+    /// determine the number of bytes needed based on how the return value gets used. For instance,
+    /// this function works well with functions like [`u64::from_le_bytes`] to turn an array of
+    /// bytes into an integer of the same size.
+    ///
+    /// Like `read_exact`, if this function encounters an "end of file" before reading the desired
+    /// number of bytes, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    ///
+    /// ```
+    /// #![feature(read_array)]
+    /// use std::io::Cursor;
+    /// use std::io::prelude::*;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buf = Cursor::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2]);
+    ///     let x = u64::from_le_bytes(buf.read_array()?);
+    ///     let y = u32::from_be_bytes(buf.read_array()?);
+    ///     let z = u16::from_be_bytes(buf.read_array()?);
+    ///     assert_eq!(x, 0x807060504030201);
+    ///     assert_eq!(y, 0x9080706);
+    ///     assert_eq!(z, 0x504);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "read_array", issue = "148848")]
+    fn read_array<const N: usize>(&mut self) -> Result<[u8; N]>
+    where
+        Self: Sized,
+    {
+        let mut buf = [MaybeUninit::uninit(); N];
+        let mut borrowed_buf = BorrowedBuf::from(buf.as_mut_slice());
+        self.read_buf_exact(borrowed_buf.unfilled())?;
+        // Guard against incorrect `read_buf_exact` implementations.
+        assert_eq!(borrowed_buf.len(), N);
+        Ok(unsafe { MaybeUninit::array_assume_init(buf) })
     }
 }
 

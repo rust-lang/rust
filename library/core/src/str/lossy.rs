@@ -1,3 +1,4 @@
+use super::char::EscapeDebugExtArgs;
 use super::from_utf8_unchecked;
 use super::validations::utf8_char_width;
 use crate::fmt;
@@ -121,7 +122,11 @@ impl fmt::Debug for Debug<'_> {
                 let valid = chunk.valid();
                 let mut from = 0;
                 for (i, c) in valid.char_indices() {
-                    let esc = c.escape_debug();
+                    let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                        escape_grapheme_extended: true,
+                        escape_single_quote: false,
+                        escape_double_quote: true,
+                    });
                     // If char needs escaping, flush backlog so far and write, else skip
                     if esc.len() != 1 {
                         f.write_str(&valid[from..i])?;

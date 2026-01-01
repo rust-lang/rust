@@ -189,6 +189,8 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows use of unary negate on unsigned integers, e.g., -e for e: u8
     (removed, negate_unsigned, "1.0.0", Some(29645), None),
+    /// Allows diverging expressions to fall back to `!` rather than `()`.
+    (removed, never_type_fallback, "1.93.0", Some(65992), Some("removed in favor of unconditional fallback"), 148871),
     /// Allows `#[no_coverage]` on functions.
     /// The feature was renamed to `coverage_attribute` and the attribute to `#[coverage(on|off)]`
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
@@ -269,6 +271,8 @@ declare_features! (
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.63.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#), 95818),
+    /// Allows string patterns to dereference values to match them.
+    (removed, string_deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), Some("superseded by `deref_patterns`"), 150530),
     (removed, struct_inherit, "1.0.0", None, None),
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes

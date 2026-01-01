@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt::Display;
 
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
@@ -6,7 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -356,8 +357,6 @@ pub struct Lint {
 /// Extra information for a future incompatibility lint.
 #[derive(Copy, Clone, Debug)]
 pub struct FutureIncompatibleInfo {
-    /// e.g., a URL for an issue/PR/RFC or error code
-    pub reference: &'static str,
     /// The reason for the lint used by diagnostics to provide
     /// the right help message
     pub reason: FutureIncompatibilityReason,
@@ -378,6 +377,17 @@ pub struct FutureIncompatibleInfo {
     /// warns for everyone. It is a good signal that it is ready if you can determine that all
     /// or most affected crates on crates.io have been updated.
     pub report_in_deps: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct EditionFcw {
+    pub edition: Edition,
+    pub page_slug: &'static str,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct ReleaseFcw {
+    pub issue_number: usize,
 }
 
 /// The reason for future incompatibility
@@ -409,14 +419,14 @@ pub enum FutureIncompatibilityReason {
     /// hard errors (and the lint removed). Preferably when there is some
     /// confidence that the number of impacted projects is very small (few
     /// should have a broken dependency in their dependency tree).
-    FutureReleaseError,
+    FutureReleaseError(ReleaseFcw),
     /// Code that changes meaning in some way in a
     /// future release.
     ///
     /// Choose this variant when the semantics of existing code is changing,
     /// (as opposed to [`FutureIncompatibilityReason::FutureReleaseError`],
     /// which is for when code is going to be rejected in the future).
-    FutureReleaseSemanticsChange,
+    FutureReleaseSemanticsChange(ReleaseFcw),
     /// Previously accepted code that will become an
     /// error in the provided edition
     ///
@@ -437,7 +447,7 @@ pub enum FutureIncompatibilityReason {
     /// See also [`FutureIncompatibilityReason::EditionSemanticsChange`] if
     /// you have code that is changing semantics across the edition (as
     /// opposed to being rejected).
-    EditionError(Edition),
+    EditionError(EditionFcw),
     /// Code that changes meaning in some way in
     /// the provided edition
     ///
@@ -445,7 +455,7 @@ pub enum FutureIncompatibilityReason {
     /// except for situations where the semantics change across an edition. It
     /// slightly changes the text of the diagnostic, but is otherwise the
     /// same.
-    EditionSemanticsChange(Edition),
+    EditionSemanticsChange(EditionFcw),
     /// This will be an error in the provided edition *and* in a future
     /// release.
     ///
@@ -455,7 +465,7 @@ pub enum FutureIncompatibilityReason {
     ///
     /// [`EditionError`]: FutureIncompatibilityReason::EditionError
     /// [`FutureReleaseError`]: FutureIncompatibilityReason::FutureReleaseError
-    EditionAndFutureReleaseError(Edition),
+    EditionAndFutureReleaseError(EditionFcw),
     /// This will change meaning in the provided edition *and* in a future
     /// release.
     ///
@@ -466,14 +476,29 @@ pub enum FutureIncompatibilityReason {
     ///
     /// [`EditionSemanticsChange`]: FutureIncompatibilityReason::EditionSemanticsChange
     /// [`FutureReleaseSemanticsChange`]: FutureIncompatibilityReason::FutureReleaseSemanticsChange
-    EditionAndFutureReleaseSemanticsChange(Edition),
+    EditionAndFutureReleaseSemanticsChange(EditionFcw),
     /// A custom reason.
     ///
     /// Choose this variant if the built-in text of the diagnostic of the
     /// other variants doesn't match your situation. This is behaviorally
     /// equivalent to
     /// [`FutureIncompatibilityReason::FutureReleaseError`].
-    Custom(&'static str),
+    Custom(&'static str, ReleaseFcw),
+
+    /// Using the declare_lint macro a reason always needs to be specified.
+    /// So, this case can't actually be reached but a variant needs to exist for it.
+    /// Any code panics on seeing this variant. Do not use.
+    Unreachable,
+}
+
+impl FutureIncompatibleInfo {
+    pub const fn default_fields_for_macro() -> Self {
+        FutureIncompatibleInfo {
+            reason: FutureIncompatibilityReason::Unreachable,
+            explain_reason: true,
+            report_in_deps: false,
+        }
+    }
 }
 
 impl FutureIncompatibilityReason {
@@ -482,23 +507,50 @@ impl FutureIncompatibilityReason {
             Self::EditionError(e)
             | Self::EditionSemanticsChange(e)
             | Self::EditionAndFutureReleaseError(e)
-            | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e),
+            | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e.edition),
 
-            FutureIncompatibilityReason::FutureReleaseError
-            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
-            | FutureIncompatibilityReason::Custom(_) => None,
+            FutureIncompatibilityReason::FutureReleaseError(_)
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange(_)
+            | FutureIncompatibilityReason::Custom(_, _) => None,
+            Self::Unreachable => unreachable!(),
+        }
+    }
+
+    pub fn reference(&self) -> String {
+        match self {
+            Self::FutureReleaseSemanticsChange(release_fcw)
+            | Self::FutureReleaseError(release_fcw)
+            | Self::Custom(_, release_fcw) => release_fcw.to_string(),
+            Self::EditionError(edition_fcw)
+            | Self::EditionSemanticsChange(edition_fcw)
+            | Self::EditionAndFutureReleaseError(edition_fcw)
+            | Self::EditionAndFutureReleaseSemanticsChange(edition_fcw) => edition_fcw.to_string(),
+            Self::Unreachable => unreachable!(),
         }
     }
 }
 
-impl FutureIncompatibleInfo {
-    pub const fn default_fields_for_macro() -> Self {
-        FutureIncompatibleInfo {
-            reference: "",
-            reason: FutureIncompatibilityReason::FutureReleaseError,
-            explain_reason: true,
-            report_in_deps: false,
-        }
+impl Display for ReleaseFcw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let issue_number = self.issue_number;
+        write!(f, "issue #{issue_number} <https://github.com/rust-lang/rust/issues/{issue_number}>")
+    }
+}
+
+impl Display for EditionFcw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "<https://doc.rust-lang.org/edition-guide/{}/{}.html>",
+            match self.edition {
+                Edition::Edition2015 => "rust-2015",
+                Edition::Edition2018 => "rust-2018",
+                Edition::Edition2021 => "rust-2021",
+                Edition::Edition2024 => "rust-2024",
+                Edition::EditionFuture => "future",
+            },
+            self.page_slug,
+        )
     }
 }
 
@@ -593,21 +645,6 @@ impl StableCompare for LintId {
     }
 }
 
-#[derive(Debug)]
-pub struct AmbiguityErrorDiag {
-    pub msg: String,
-    pub span: Span,
-    pub label_span: Span,
-    pub label_msg: String,
-    pub note_msg: String,
-    pub b1_span: Span,
-    pub b1_note_msg: String,
-    pub b1_help_msgs: Vec<String>,
-    pub b2_span: Span,
-    pub b2_note_msg: String,
-    pub b2_help_msgs: Vec<String>,
-}
-
 #[derive(Debug, Clone)]
 pub enum DeprecatedSinceKind {
     InEffect,
@@ -651,8 +688,6 @@ pub enum BuiltinLintDiag {
     },
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
-    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
-    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
@@ -678,13 +713,6 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    ExternCrateNotIdiomatic {
-        vis_span: Span,
-        ident_span: Span,
-    },
-    AmbiguousGlobImports {
-        diag: AmbiguityErrorDiag,
-    },
     AmbiguousGlobReexports {
         /// The name for which collision(s) have occurred.
         name: String,
@@ -709,45 +737,89 @@ pub enum BuiltinLintDiag {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
     },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: (Span, Span),
-    },
     AssociatedConstElidedLifetime {
         elided: bool,
         span: Span,
         lifetimes_in_scope: MultiSpan,
     },
-    RedundantImportVisibility {
-        span: Span,
-        max_vis: String,
-        import_vis: String,
-    },
-    UnknownDiagnosticAttribute {
-        span: Span,
-        typo_name: Option<Symbol>,
-    },
-    PrivateExternCrateReexport {
-        source: Ident,
-        extern_crate_span: Span,
-    },
-    MacroIsPrivate(Ident),
-    UnusedMacroDefinition(Symbol),
-    MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(DiagMessage),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
+    },
+    UnusedVisibility(Span),
+    AttributeLint(AttributeLintKind),
+}
+
+#[derive(Debug, HashStable_Generic)]
+pub enum AttributeLintKind {
+    UnusedDuplicate {
+        this: Span,
+        other: Span,
+        warning: bool,
     },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
     },
-    OutOfScopeMacroCalls {
-        span: Span,
-        path: String,
-        location: String,
+    EmptyAttribute {
+        first_span: Span,
+        attr_path: String,
+        valid_without_list: bool,
     },
+    InvalidTarget {
+        name: String,
+        target: &'static str,
+        applied: Vec<String>,
+        only: &'static str,
+        attr_span: Span,
+    },
+    InvalidStyle {
+        name: String,
+        is_used_as_inner: bool,
+        target: &'static str,
+        target_span: Span,
+    },
+    UnsafeAttrOutsideUnsafe {
+        attribute_name_span: Span,
+        sugg_spans: Option<(Span, Span)>,
+    },
+    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
+    DuplicateDocAlias {
+        first_definition: Span,
+    },
+    DocAutoCfgExpectsHideOrShow,
+    DocAutoCfgHideShowUnexpectedItem {
+        attr_name: Symbol,
+    },
+    DocAutoCfgHideShowExpectsList {
+        attr_name: Symbol,
+    },
+    DocInvalid,
+    DocUnknownInclude {
+        span: Span,
+        inner: &'static str,
+        value: Symbol,
+    },
+    DocUnknownSpotlight {
+        span: Span,
+    },
+    DocUnknownPasses {
+        name: Symbol,
+        span: Span,
+    },
+    DocUnknownPlugins {
+        span: Span,
+    },
+    DocUnknownAny {
+        name: Symbol,
+    },
+    DocAutoCfgWrongLiteral,
+    DocTestTakesList,
+    DocTestUnknown {
+        name: Symbol,
+    },
+    DocTestLiteral,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
@@ -914,5 +986,55 @@ macro_rules! declare_lint_pass {
     ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
+    };
+}
+
+#[macro_export]
+macro_rules! fcw {
+    (FutureReleaseError # $issue_number: literal) => {
+       $crate:: FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
+    };
+    (FutureReleaseSemanticsChange # $issue_number: literal) => {
+        $crate::FutureIncompatibilityReason::FutureReleaseSemanticsChange($crate::ReleaseFcw {
+            issue_number: $issue_number,
+        })
+    };
+    ($description: literal # $issue_number: literal) => {
+        $crate::FutureIncompatibilityReason::Custom($description, $crate::ReleaseFcw {
+            issue_number: $issue_number,
+        })
+    };
+    (EditionError $edition_name: tt $page_slug: literal) => {
+        $crate::FutureIncompatibilityReason::EditionError($crate::EditionFcw {
+            edition: fcw!(@edition $edition_name),
+            page_slug: $page_slug,
+        })
+    };
+    (EditionSemanticsChange $edition_name: tt $page_slug: literal) => {
+        $crate::FutureIncompatibilityReason::EditionSemanticsChange($crate::EditionFcw {
+            edition: fcw!(@edition $edition_name),
+            page_slug: $page_slug,
+        })
+    };
+    (EditionAndFutureReleaseSemanticsChange $edition_name: tt $page_slug: literal) => {
+        $crate::FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange($crate::EditionFcw {
+            edition: fcw!(@edition $edition_name),
+            page_slug: $page_slug,
+        })
+    };
+    (EditionAndFutureReleaseError $edition_name: tt $page_slug: literal) => {
+        $crate::FutureIncompatibilityReason::EditionAndFutureReleaseError($crate::EditionFcw {
+            edition: fcw!(@edition $edition_name),
+            page_slug: $page_slug,
+        })
+    };
+    (@edition 2024) => {
+        rustc_span::edition::Edition::Edition2024
+    };
+    (@edition 2021) => {
+        rustc_span::edition::Edition::Edition2021
+    };
+    (@edition 2018) => {
+        rustc_span::edition::Edition::Edition2018
     };
 }

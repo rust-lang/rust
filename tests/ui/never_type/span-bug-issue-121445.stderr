@@ -1,5 +1,5 @@
 error[E0369]: no implementation for `SingleVariant | ()`
-  --> $DIR/span-bug-issue-121445.rs:6:9
+  --> $DIR/span-bug-issue-121445.rs:8:9
    |
 LL |       let c2 = SingleVariant::Points(0)
    |                ------------------------ SingleVariant
@@ -10,7 +10,7 @@ LL | |         };
    | |_________- ()
    |
 note: an implementation of `BitOr<()>` might be missing for `SingleVariant`
-  --> $DIR/span-bug-issue-121445.rs:11:1
+  --> $DIR/span-bug-issue-121445.rs:13:1
    |
 LL | enum SingleVariant {
    | ^^^^^^^^^^^^^^^^^^ must implement `BitOr<()>`

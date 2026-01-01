@@ -187,11 +187,11 @@ fn test_blocking_write() {
     let mut fds = [-1, -1];
     let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
     assert_eq!(res, 0);
-    let arr1: [u8; 212992] = [1; 212992];
+    let arr1: [u8; 0x34000] = [1; 0x34000];
     // Exhaust the space in the buffer so the subsequent write will block.
     let res =
-        unsafe { libc_utils::write_all(fds[0], arr1.as_ptr() as *const libc::c_void, 212992) };
-    assert_eq!(res, 212992);
+        unsafe { libc_utils::write_all(fds[0], arr1.as_ptr() as *const libc::c_void, arr1.len()) };
+    assert_eq!(res, 0x34000);
     let thread1 = thread::spawn(move || {
         let data = "abc".as_bytes().as_ptr();
         // The write below will be blocked because the buffer is already full.

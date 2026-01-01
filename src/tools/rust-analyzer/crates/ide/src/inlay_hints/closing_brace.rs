@@ -16,6 +16,8 @@ use crate::{
     inlay_hints::LazyProperty,
 };
 
+const ELLIPSIS: &str = "…";
+
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
@@ -60,6 +62,12 @@ pub(super) fn hints(
 
         let module = ast::Module::cast(list.syntax().parent()?)?;
         (format!("mod {}", module.name()?), module.name().map(name))
+    } else if let Some(match_arm_list) = ast::MatchArmList::cast(node.clone()) {
+        closing_token = match_arm_list.r_curly_token()?;
+
+        let match_expr = ast::MatchExpr::cast(match_arm_list.syntax().parent()?)?;
+        let label = format_match_label(&match_expr, config)?;
+        (label, None)
     } else if let Some(label) = ast::Label::cast(node.clone()) {
         // in this case, `ast::Label` could be seen as a part of `ast::BlockExpr`
         // the actual number of lines in this case should be the line count of the parent BlockExpr,
@@ -91,7 +99,7 @@ pub(super) fn hints(
         match_ast! {
             match parent {
                 ast::Fn(it) => {
-                    (format!("fn {}", it.name()?), it.name().map(name))
+                    (format!("{}fn {}", fn_qualifiers(&it), it.name()?), it.name().map(name))
                 },
                 ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
                 ast::Const(it) => {
@@ -100,6 +108,33 @@ pub(super) fn hints(
                     } else {
                         (format!("const {}", it.name()?), it.name().map(name))
                     }
+                },
+                ast::LoopExpr(loop_expr) => {
+                    if loop_expr.label().is_some() {
+                        return None;
+                    }
+                    ("loop".into(), None)
+                },
+                ast::WhileExpr(while_expr) => {
+                    if while_expr.label().is_some() {
+                        return None;
+                    }
+                    (keyword_with_condition("while", while_expr.condition(), config), None)
+                },
+                ast::ForExpr(for_expr) => {
+                    if for_expr.label().is_some() {
+                        return None;
+                    }
+                    let label = format_for_label(&for_expr, config)?;
+                    (label, None)
+                },
+                ast::IfExpr(if_expr) => {
+                    let label = label_for_if_block(&if_expr, &block, config)?;
+                    (label, None)
+                },
+                ast::LetElse(let_else) => {
+                    let label = format_let_else_label(&let_else, config)?;
+                    (label, None)
                 },
                 _ => return None,
             }
@@ -154,11 +189,117 @@ pub(super) fn hints(
     None
 }
 
+fn fn_qualifiers(func: &ast::Fn) -> String {
+    let mut qualifiers = String::new();
+    if func.const_token().is_some() {
+        qualifiers.push_str("const ");
+    }
+    if func.async_token().is_some() {
+        qualifiers.push_str("async ");
+    }
+    if func.unsafe_token().is_some() {
+        qualifiers.push_str("unsafe ");
+    }
+    qualifiers
+}
+
+fn keyword_with_condition(
+    keyword: &str,
+    condition: Option<ast::Expr>,
+    config: &InlayHintsConfig<'_>,
+) -> String {
+    if let Some(expr) = condition {
+        return format!("{keyword} {}", snippet_from_node(expr.syntax(), config));
+    }
+    keyword.to_owned()
+}
+
+fn format_for_label(for_expr: &ast::ForExpr, config: &InlayHintsConfig<'_>) -> Option<String> {
+    let pat = for_expr.pat()?;
+    let iterable = for_expr.iterable()?;
+    Some(format!(
+        "for {} in {}",
+        snippet_from_node(pat.syntax(), config),
+        snippet_from_node(iterable.syntax(), config)
+    ))
+}
+
+fn format_match_label(
+    match_expr: &ast::MatchExpr,
+    config: &InlayHintsConfig<'_>,
+) -> Option<String> {
+    let expr = match_expr.expr()?;
+    Some(format!("match {}", snippet_from_node(expr.syntax(), config)))
+}
+
+fn label_for_if_block(
+    if_expr: &ast::IfExpr,
+    block: &ast::BlockExpr,
+    config: &InlayHintsConfig<'_>,
+) -> Option<String> {
+    if if_expr.then_branch().is_some_and(|then_branch| then_branch.syntax() == block.syntax()) {
+        Some(keyword_with_condition("if", if_expr.condition(), config))
+    } else if matches!(
+        if_expr.else_branch(),
+        Some(ast::ElseBranch::Block(else_block)) if else_block.syntax() == block.syntax()
+    ) {
+        Some("else".into())
+    } else {
+        None
+    }
+}
+
+fn format_let_else_label(let_else: &ast::LetElse, config: &InlayHintsConfig<'_>) -> Option<String> {
+    let stmt = let_else.syntax().parent().and_then(ast::LetStmt::cast)?;
+    let pat = stmt.pat()?;
+    let initializer = stmt.initializer()?;
+    Some(format!(
+        "let {} = {} else",
+        snippet_from_node(pat.syntax(), config),
+        snippet_from_node(initializer.syntax(), config)
+    ))
+}
+
+fn snippet_from_node(node: &SyntaxNode, config: &InlayHintsConfig<'_>) -> String {
+    let mut text = node.text().to_string();
+    if text.contains('\n') {
+        return ELLIPSIS.into();
+    }
+
+    let Some(limit) = config.max_length else {
+        return text;
+    };
+    if limit == 0 {
+        return ELLIPSIS.into();
+    }
+
+    if text.len() <= limit {
+        return text;
+    }
+
+    let boundary = text.floor_char_boundary(limit.min(text.len()));
+    if boundary == text.len() {
+        return text;
+    }
+
+    let cut = text[..boundary]
+        .char_indices()
+        .rev()
+        .find(|&(_, ch)| ch == ' ')
+        .map(|(idx, _)| idx)
+        .unwrap_or(0);
+    text.truncate(cut);
+    text.push_str(ELLIPSIS);
+    text
+}
+
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::{
         InlayHintsConfig,
-        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
+        inlay_hints::tests::{DISABLED_CONFIG, check_expect, check_with_config},
     };
 
     #[test]
@@ -178,6 +319,10 @@ fn g() {
 fn h<T>(with: T, arguments: u8, ...) {
   }
 //^ fn h
+
+async fn async_fn() {
+  }
+//^ async fn async_fn
 
 trait Tr {
     fn f();
@@ -258,6 +403,126 @@ fn test() {
   }
 //^ fn test
 "#,
+        );
+    }
+
+    #[test]
+    fn hints_closing_brace_additional_blocks() {
+        check_expect(
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
+            r#"
+fn demo() {
+    loop {
+
+    }
+
+    while let Some(value) = next() {
+
+    }
+
+    for value in iter {
+
+    }
+
+    if cond {
+
+    }
+
+    if let Some(x) = maybe {
+
+    }
+
+    if other {
+    } else {
+
+    }
+
+    let Some(v) = maybe else {
+
+    };
+
+    match maybe {
+        Some(v) => {
+
+        }
+        value if check(value) => {
+
+        }
+        None => {}
+    }
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        364..365,
+                        [
+                            InlayHintLabelPart {
+                                text: "fn demo",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 3..7,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                    (
+                        28..29,
+                        [
+                            "loop",
+                        ],
+                    ),
+                    (
+                        73..74,
+                        [
+                            "while let Some(value) = next()",
+                        ],
+                    ),
+                    (
+                        105..106,
+                        [
+                            "for value in iter",
+                        ],
+                    ),
+                    (
+                        127..128,
+                        [
+                            "if cond",
+                        ],
+                    ),
+                    (
+                        164..165,
+                        [
+                            "if let Some(x) = maybe",
+                        ],
+                    ),
+                    (
+                        200..201,
+                        [
+                            "else",
+                        ],
+                    ),
+                    (
+                        240..241,
+                        [
+                            "let Some(v) = maybe else",
+                        ],
+                    ),
+                    (
+                        362..363,
+                        [
+                            "match maybe",
+                        ],
+                    ),
+                ]
+            "#]],
         );
     }
 }

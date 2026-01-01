@@ -5,64 +5,64 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command: run
+//@ gdb-command: run
 
-// gdb-command: print btree_set
-// gdb-check:$1 = BTreeSet(size=15) = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+//@ gdb-command: print btree_set
+//@ gdb-check:$1 = BTreeSet(size=15) = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
 
-// gdb-command: print empty_btree_set
-// gdb-check:$2 = BTreeSet(size=0)
+//@ gdb-command: print empty_btree_set
+//@ gdb-check:$2 = BTreeSet(size=0)
 
-// gdb-command: print btree_map
-// gdb-check:$3 = BTreeMap(size=15) = {[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5, [6] = 6, [7] = 7, [8] = 8, [9] = 9, [10] = 10, [11] = 11, [12] = 12, [13] = 13, [14] = 14}
+//@ gdb-command: print btree_map
+//@ gdb-check:$3 = BTreeMap(size=15) = {[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5, [6] = 6, [7] = 7, [8] = 8, [9] = 9, [10] = 10, [11] = 11, [12] = 12, [13] = 13, [14] = 14}
 
-// gdb-command: print empty_btree_map
-// gdb-check:$4 = BTreeMap(size=0)
+//@ gdb-command: print empty_btree_map
+//@ gdb-check:$4 = BTreeMap(size=0)
 
-// gdb-command: print option_btree_map
-// gdb-check:$5 = BTreeMap(size=2) = {[false] = [...], [true] = [...]}
+//@ gdb-command: print option_btree_map
+//@ gdb-check:$5 = BTreeMap(size=2) = {[false] = [...], [true] = [...]}
 // (abbreviated because both values vary wildly over gdb versions and/or linux distributions)
 
-// gdb-command: print nasty_btree_map
-// gdb-check:$6 = BTreeMap(size=15) = {[0] = pretty_std_collections::MyLeafNode (0), [...]}
+//@ gdb-command: print nasty_btree_map
+//@ gdb-check:$6 = BTreeMap(size=15) = {[0] = pretty_std_collections::MyLeafNode (0), [...]}
 // (abbreviated because it's boring but we need enough elements to include internal nodes)
 
-// gdb-command: print zst_key_btree_map
-// gdb-check:$7 = BTreeMap(size=1) = {[()] = 1}
+//@ gdb-command: print zst_key_btree_map
+//@ gdb-check:$7 = BTreeMap(size=1) = {[()] = 1}
 
-// gdb-command: print zst_val_btree_map
-// gdb-check:$8 = BTreeMap(size=1) = {[1] = ()}
+//@ gdb-command: print zst_val_btree_map
+//@ gdb-check:$8 = BTreeMap(size=1) = {[1] = ()}
 
-// gdb-command: print zst_key_val_btree_map
-// gdb-check:$9 = BTreeMap(size=1) = {[()] = ()}
+//@ gdb-command: print zst_key_val_btree_map
+//@ gdb-check:$9 = BTreeMap(size=1) = {[()] = ()}
 
-// gdb-command: print vec_deque
-// gdb-check:$10 = VecDeque(size=3) = {5, 3, 7}
+//@ gdb-command: print vec_deque
+//@ gdb-check:$10 = VecDeque(size=3) = {5, 3, 7}
 
-// gdb-command: print vec_deque2
-// gdb-check:$11 = VecDeque(size=7) = {2, 3, 4, 5, 6, 7, 8}
+//@ gdb-command: print vec_deque2
+//@ gdb-check:$11 = VecDeque(size=7) = {2, 3, 4, 5, 6, 7, 8}
 
-// gdb-command: print hash_map
-// gdb-check:$12 = HashMap(size=4) = {[1] = 10, [2] = 20, [3] = 30, [4] = 40}
+//@ gdb-command: print hash_map
+//@ gdb-check:$12 = HashMap(size=4) = {[1] = 10, [2] = 20, [3] = 30, [4] = 40}
 
-// gdb-command: print hash_set
-// gdb-check:$13 = HashSet(size=4) = {1, 2, 3, 4}
+//@ gdb-command: print hash_set
+//@ gdb-check:$13 = HashSet(size=4) = {1, 2, 3, 4}
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v vec_deque
-// lldb-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
+//@ lldb-command:v vec_deque
+//@ lldb-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
 
-// lldb-command:v vec_deque2
-// lldb-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
+//@ lldb-command:v vec_deque2
+//@ lldb-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
 
-// lldb-command:v hash_map
-// lldb-check:[...] size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
+//@ lldb-command:v hash_map
+//@ lldb-check:[...] size=4 { [0] = (1, 10) { 0 = 1 1 = 10 } [1] = (2, 20) { 0 = 2 1 = 20 } [2] = (3, 30) { 0 = 3 1 = 30 } [3] = (4, 40) { 0 = 4 1 = 40 } }
 
-// lldb-command:v hash_set
-// lldb-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
+//@ lldb-command:v hash_set
+//@ lldb-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
 
 #![allow(unused_variables)]
 use std::collections::BTreeMap;

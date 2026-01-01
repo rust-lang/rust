@@ -23,32 +23,6 @@ pub mod wstr;
 
 // common error constructors
 
-/// A trait for viewing representations from std types
-#[doc(hidden)]
-#[allow(dead_code)] // not used on all platforms
-pub trait AsInner<Inner: ?Sized> {
-    fn as_inner(&self) -> &Inner;
-}
-
-/// A trait for viewing representations from std types
-#[doc(hidden)]
-#[allow(dead_code)] // not used on all platforms
-pub trait AsInnerMut<Inner: ?Sized> {
-    fn as_inner_mut(&mut self) -> &mut Inner;
-}
-
-/// A trait for extracting representations from std types
-#[doc(hidden)]
-pub trait IntoInner<Inner> {
-    fn into_inner(self) -> Inner;
-}
-
-/// A trait for creating std types from internal representations
-#[doc(hidden)]
-pub trait FromInner<Inner> {
-    fn from_inner(inner: Inner) -> Self;
-}
-
 // Computes (value*numerator)/denom without overflow, as long as both (numerator*denom) and the
 // overall result fit into i64 (which is the case for our time conversions).
 #[allow(dead_code)] // not used on all platforms

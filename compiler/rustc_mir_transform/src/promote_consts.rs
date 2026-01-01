@@ -360,6 +360,10 @@ impl<'tcx> Validator<'_, 'tcx> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.validate_place(place.as_ref()),
 
+            // `RuntimeChecks` behaves different in const-eval and runtime MIR,
+            // so we do not promote it.
+            Operand::RuntimeChecks(_) => Err(Unpromotable),
+
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
             // `validate_rvalue` upon access.
             Operand::Constant(c) => {
@@ -410,14 +414,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // In theory, any zero-sized value could be borrowed
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
-                if let ty::Array(_, len) = ty.kind() {
-                    match len.try_to_target_usize(self.tcx) {
-                        Some(0) => {}
-                        _ => return Err(Unpromotable),
-                    }
-                } else {
-                    return Err(Unpromotable);
-                }
+                let ty::Array(_, len) = ty.kind() else { return Err(Unpromotable) };
+                let Some(0) = len.try_to_target_usize(self.tcx) else { return Err(Unpromotable) };
             }
         }
 
@@ -448,11 +446,6 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }
-
-            Rvalue::NullaryOp(op, _) => match op {
-                NullOp::OffsetOf(_) => {}
-                NullOp::RuntimeChecks(_) => {}
-            },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
 

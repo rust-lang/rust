@@ -1,6 +1,6 @@
 //! Type inference for patterns.
 
-use std::iter::repeat_with;
+use std::{cmp, iter};
 
 use hir_def::{
     HasModule,
@@ -9,18 +9,17 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, Ty as _};
 use stdx::TupleExt;
 
 use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic,
     consteval::{self, try_const_usize, usize_const},
     infer::{
-        AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch,
-        coerce::CoerceNever, expr::ExprIsRead,
+        AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch, expr::ExprIsRead,
     },
     lower::lower_mutability,
-    next_solver::{GenericArgs, Ty, TyKind},
+    next_solver::{GenericArgs, Ty, TyKind, Tys, infer::traits::ObligationCause},
 };
 
 impl<'db> InferenceContext<'_, 'db> {
@@ -83,7 +82,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                 {
                                     // FIXME(DIAGNOSE): private tuple field
                                 }
-                                let f = field_types[local_id];
+                                let f = field_types[local_id].get();
                                 let expected_ty = match substs {
                                     Some(substs) => f.instantiate(self.interner(), substs),
                                     None => f.instantiate(self.interner(), &[]),
@@ -147,7 +146,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                         variant: def,
                                     });
                                 }
-                                let f = field_types[local_id];
+                                let f = field_types[local_id].get();
                                 let expected_ty = match substs {
                                     Some(substs) => f.instantiate(self.interner(), substs),
                                     None => f.instantiate(self.interner(), &[]),
@@ -184,42 +183,61 @@ impl<'db> InferenceContext<'_, 'db> {
     /// Ellipses found in the original pattern or expression must be filtered out.
     pub(super) fn infer_tuple_pat_like(
         &mut self,
+        pat: PatId,
         expected: Ty<'db>,
         default_bm: BindingMode,
         ellipsis: Option<u32>,
-        subs: &[PatId],
+        elements: &[PatId],
         decl: Option<DeclContext>,
     ) -> Ty<'db> {
-        let expected = self.table.structurally_resolve_type(expected);
-        let expectations = match expected.kind() {
-            TyKind::Tuple(parameters) => parameters,
-            _ => self.types.empty_tys,
-        };
-
-        let ((pre, post), n_uncovered_patterns) = match ellipsis {
-            Some(idx) => {
-                (subs.split_at(idx as usize), expectations.len().saturating_sub(subs.len()))
+        let mut expected_len = elements.len();
+        if ellipsis.is_some() {
+            // Require known type only when `..` is present.
+            if let TyKind::Tuple(tys) = self.table.structurally_resolve_type(expected).kind() {
+                expected_len = tys.len();
             }
-            None => ((subs, &[][..]), 0),
+        }
+        let max_len = cmp::max(expected_len, elements.len());
+
+        let element_tys_iter = (0..max_len).map(|_| self.table.next_ty_var());
+        let element_tys = Tys::new_from_iter(self.interner(), element_tys_iter);
+        let pat_ty = Ty::new(self.interner(), TyKind::Tuple(element_tys));
+        if self.demand_eqtype(pat.into(), expected, pat_ty).is_err()
+            && let TyKind::Tuple(expected) = expected.kind()
+        {
+            // Equate expected type with the infer vars, for better diagnostics.
+            for (expected, elem_ty) in iter::zip(expected, element_tys) {
+                _ = self
+                    .table
+                    .at(&ObligationCause::dummy())
+                    .eq(expected, elem_ty)
+                    .map(|infer_ok| self.table.register_infer_ok(infer_ok));
+            }
+        }
+        let (before_ellipsis, after_ellipsis) = match ellipsis {
+            Some(ellipsis) => {
+                let element_tys = element_tys.as_slice();
+                // Don't check patterns twice.
+                let from_end_start = cmp::max(
+                    element_tys.len().saturating_sub(elements.len() - ellipsis as usize),
+                    ellipsis as usize,
+                );
+                (
+                    element_tys.get(..ellipsis as usize).unwrap_or(element_tys),
+                    element_tys.get(from_end_start..).unwrap_or_default(),
+                )
+            }
+            None => (element_tys.as_slice(), &[][..]),
         };
-        let mut expectations_iter =
-            expectations.iter().chain(repeat_with(|| self.table.next_ty_var()));
-
-        let mut inner_tys = Vec::with_capacity(n_uncovered_patterns + subs.len());
-
-        inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns + subs.len()));
-
-        // Process pre
-        for (ty, pat) in inner_tys.iter_mut().zip(pre) {
-            *ty = self.infer_pat(*pat, *ty, default_bm, decl);
+        for (&elem, &elem_ty) in iter::zip(elements, before_ellipsis.iter().chain(after_ellipsis)) {
+            self.infer_pat(elem, elem_ty, default_bm, decl);
         }
-
-        // Process post
-        for (ty, pat) in inner_tys.iter_mut().skip(pre.len() + n_uncovered_patterns).zip(post) {
-            *ty = self.infer_pat(*pat, *ty, default_bm, decl);
+        if let Some(uncovered) = elements.get(element_tys.len()..) {
+            for &elem in uncovered {
+                self.infer_pat(elem, self.types.types.error, default_bm, decl);
+            }
         }
-
-        Ty::new_tup_from_iter(self.interner(), inner_tys.into_iter())
+        pat_ty
     }
 
     /// The resolver needs to be updated to the surrounding expression when inside assignment
@@ -252,7 +270,7 @@ impl<'db> InferenceContext<'_, 'db> {
         } else if self.is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let TyKind::Ref(_lifetime, inner, mutability) = expected.kind() {
-                pat_adjustments.push(expected);
+                pat_adjustments.push(expected.store());
                 expected = self.table.try_structurally_resolve_type(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
@@ -273,7 +291,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let ty = match &self.body[pat] {
             Pat::Tuple { args, ellipsis } => {
-                self.infer_tuple_pat_like(expected, default_bm, *ellipsis, args, decl)
+                self.infer_tuple_pat_like(pat, expected, default_bm, *ellipsis, args, decl)
             }
             Pat::Or(pats) => {
                 for pat in pats.iter() {
@@ -306,16 +324,19 @@ impl<'db> InferenceContext<'_, 'db> {
                     expected,
                     ty_inserted_vars,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    ExprIsRead::No,
                 ) {
                     Ok(coerced_ty) => {
                         self.write_pat_ty(pat, coerced_ty);
                         return self.pat_ty_after_adjustment(pat);
                     }
                     Err(_) => {
-                        self.result.type_mismatches.insert(
+                        self.result.type_mismatches.get_or_insert_default().insert(
                             pat.into(),
-                            TypeMismatch { expected, actual: ty_inserted_vars },
+                            TypeMismatch {
+                                expected: expected.store(),
+                                actual: ty_inserted_vars.store(),
+                            },
                         );
                         self.write_pat_ty(pat, ty);
                         // We return `expected` to prevent cascading errors. I guess an alternative is to
@@ -331,8 +352,15 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_slice_pat(expected, prefix, *slice, suffix, default_bm, decl)
             }
             Pat::Wild => expected,
-            Pat::Range { .. } => {
-                // FIXME: do some checks here.
+            Pat::Range { start, end, range_type: _ } => {
+                if let Some(start) = *start {
+                    let start_ty = self.infer_expr(start, &Expectation::None, ExprIsRead::Yes);
+                    _ = self.demand_eqtype(start.into(), expected, start_ty);
+                }
+                if let Some(end) = *end {
+                    let end_ty = self.infer_expr(end, &Expectation::None, ExprIsRead::Yes);
+                    _ = self.demand_eqtype(end.into(), expected, end_ty);
+                }
                 expected
             }
             &Pat::Lit(expr) => {
@@ -347,7 +375,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         Some((adt, subst)) if adt == box_adt => {
                             (subst.type_at(0), subst.as_slice().get(1).and_then(|a| a.as_type()))
                         }
-                        _ => (self.types.error, None),
+                        _ => (self.types.types.error, None),
                     };
 
                     let inner_ty = self.infer_pat(*inner, inner_ty, default_bm, decl);
@@ -357,7 +385,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         GenericArgs::fill_with_defaults(
                             self.interner(),
                             box_adt.into(),
-                            std::iter::once(inner_ty.into()).chain(alloc_ty.map(Into::into)),
+                            iter::once(inner_ty.into()).chain(alloc_ty.map(Into::into)),
                             |_, id, _| self.table.next_var_for_param(id),
                         ),
                     )
@@ -374,22 +402,24 @@ impl<'db> InferenceContext<'_, 'db> {
             Pat::Expr(expr) => {
                 let old_inside_assign = std::mem::replace(&mut self.inside_assignment, false);
                 // LHS of assignment doesn't constitute reads.
+                let expr_is_read = ExprIsRead::No;
                 let result =
-                    self.infer_expr_coerce(*expr, &Expectation::has_type(expected), ExprIsRead::No);
+                    self.infer_expr_coerce(*expr, &Expectation::has_type(expected), expr_is_read);
                 // We are returning early to avoid the unifiability check below.
                 let lhs_ty = self.insert_type_vars_shallow(result);
                 let ty = match self.coerce(
-                    pat.into(),
+                    (*expr).into(),
                     expected,
                     lhs_ty,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    expr_is_read,
                 ) {
                     Ok(ty) => ty,
                     Err(_) => {
-                        self.result
-                            .type_mismatches
-                            .insert(pat.into(), TypeMismatch { expected, actual: lhs_ty });
+                        self.result.type_mismatches.get_or_insert_default().insert(
+                            pat.into(),
+                            TypeMismatch { expected: expected.store(), actual: lhs_ty.store() },
+                        );
                         // `rhs_ty` is returned so no further type mismatches are
                         // reported because of this mismatch.
                         expected
@@ -405,19 +435,22 @@ impl<'db> InferenceContext<'_, 'db> {
         let ty = self.insert_type_vars_shallow(ty);
         // FIXME: This never check is odd, but required with out we do inference right now
         if !expected.is_never() && !self.unify(ty, expected) {
-            self.result.type_mismatches.insert(pat.into(), TypeMismatch { expected, actual: ty });
+            self.result.type_mismatches.get_or_insert_default().insert(
+                pat.into(),
+                TypeMismatch { expected: expected.store(), actual: ty.store() },
+            );
         }
         self.write_pat_ty(pat, ty);
         self.pat_ty_after_adjustment(pat)
     }
 
     fn pat_ty_after_adjustment(&self, pat: PatId) -> Ty<'db> {
-        *self
-            .result
+        self.result
             .pat_adjustments
             .get(&pat)
-            .and_then(|it| it.first())
-            .unwrap_or(&self.result.type_of_pat[pat])
+            .and_then(|it| it.last())
+            .unwrap_or_else(|| &self.result.type_of_pat[pat])
+            .as_ref()
     }
 
     fn infer_ref_pat(
@@ -469,9 +502,9 @@ impl<'db> InferenceContext<'_, 'db> {
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
                 let inner_lt = self.table.next_region_var();
-                Ty::new_ref(self.interner(), inner_lt, inner_ty, mutability)
+                Ty::new_ref(self.interner(), inner_lt, expected, mutability)
             }
-            BindingMode::Move => inner_ty,
+            BindingMode::Move => expected,
         };
         self.write_pat_ty(pat, inner_ty);
         self.write_binding_ty(binding, bound_ty);
@@ -541,10 +574,14 @@ impl<'db> InferenceContext<'_, 'db> {
         {
             let inner = self.table.try_structurally_resolve_type(inner);
             if matches!(inner.kind(), TyKind::Slice(_)) {
-                let elem_ty = self.types.u8;
+                let elem_ty = self.types.types.u8;
                 let slice_ty = Ty::new_slice(self.interner(), elem_ty);
-                let ty =
-                    Ty::new_ref(self.interner(), self.types.re_static, slice_ty, Mutability::Not);
+                let ty = Ty::new_ref(
+                    self.interner(),
+                    self.types.regions.statik,
+                    slice_ty,
+                    Mutability::Not,
+                );
                 self.write_expr_ty(expr, ty);
                 return ty;
             }

@@ -18,11 +18,11 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
 
     const TEMPLATE: AttributeTemplate = template!(List: &["array, boxed_slice"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let mut array = false;
         let mut boxed_slice = false;
         let Some(args) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
         if args.is_empty() {

@@ -50,6 +50,7 @@ impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 
+// See also: [`crate::collections::vec_deque::Splice`].
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
     fn drop(&mut self) {
@@ -112,12 +113,11 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         };
 
         for place in range_slice {
-            if let Some(new_item) = replace_with.next() {
-                unsafe { ptr::write(place, new_item) };
-                vec.len += 1;
-            } else {
+            let Some(new_item) = replace_with.next() else {
                 return false;
-            }
+            };
+            unsafe { ptr::write(place, new_item) };
+            vec.len += 1;
         }
         true
     }

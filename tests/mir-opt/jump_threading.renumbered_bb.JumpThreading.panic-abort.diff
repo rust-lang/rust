@@ -14,7 +14,7 @@
       bb1: {
           _2 = const false;
 -         goto -> bb3;
-+         goto -> bb8;
++         goto -> bb9;
       }
   
       bb2: {
@@ -47,10 +47,14 @@
 +     }
 + 
 +     bb8: {
-+         goto -> bb9;
++         switchInt(copy _2) -> [0: bb4, otherwise: bb5];
 +     }
 + 
 +     bb9: {
++         goto -> bb10;
++     }
++ 
++     bb10: {
 +         goto -> bb6;
       }
   }

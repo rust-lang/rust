@@ -1,31 +1,35 @@
 //! Stuff for handling `#[target_feature]` (needed for unsafe check).
 
+use std::borrow::Cow;
 use std::sync::LazyLock;
 
-use hir_def::attr::Attrs;
-use hir_def::tt;
-use intern::{Symbol, sym};
+use hir_def::FunctionId;
+use hir_def::attrs::AttrFlags;
+use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::db::HirDatabase;
+
 #[derive(Debug, Default, Clone)]
-pub struct TargetFeatures {
-    pub(crate) enabled: FxHashSet<Symbol>,
+pub struct TargetFeatures<'db> {
+    pub(crate) enabled: Cow<'db, FxHashSet<Symbol>>,
 }
 
-impl TargetFeatures {
-    pub fn from_attrs(attrs: &Attrs) -> Self {
-        let mut result = TargetFeatures::from_attrs_no_implications(attrs);
+impl<'db> TargetFeatures<'db> {
+    pub fn from_fn(db: &'db dyn HirDatabase, owner: FunctionId) -> Self {
+        let mut result = TargetFeatures::from_fn_no_implications(db, owner);
         result.expand_implications();
         result
     }
 
     fn expand_implications(&mut self) {
         let all_implications = LazyLock::force(&TARGET_FEATURE_IMPLICATIONS);
-        let mut queue = self.enabled.iter().cloned().collect::<Vec<_>>();
+        let enabled = self.enabled.to_mut();
+        let mut queue = enabled.iter().cloned().collect::<Vec<_>>();
         while let Some(feature) = queue.pop() {
             if let Some(implications) = all_implications.get(&feature) {
                 for implication in implications {
-                    if self.enabled.insert(implication.clone()) {
+                    if enabled.insert(implication.clone()) {
                         queue.push(implication.clone());
                     }
                 }
@@ -34,25 +38,9 @@ impl TargetFeatures {
     }
 
     /// Retrieves the target features from the attributes, and does not expand the target features implied by them.
-    pub(crate) fn from_attrs_no_implications(attrs: &Attrs) -> Self {
-        let enabled = attrs
-            .by_key(sym::target_feature)
-            .tt_values()
-            .filter_map(|tt| match tt.token_trees().flat_tokens() {
-                [
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(enable_ident)),
-                    tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. })),
-                    tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                        kind: tt::LitKind::Str,
-                        symbol: features,
-                        ..
-                    })),
-                ] if enable_ident.sym == sym::enable => Some(features),
-                _ => None,
-            })
-            .flat_map(|features| features.as_str().split(',').map(Symbol::intern))
-            .collect();
-        Self { enabled }
+    pub(crate) fn from_fn_no_implications(db: &'db dyn HirDatabase, owner: FunctionId) -> Self {
+        let enabled = AttrFlags::target_features(db, owner);
+        Self { enabled: Cow::Borrowed(enabled) }
     }
 }
 

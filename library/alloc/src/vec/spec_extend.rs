@@ -1,3 +1,4 @@
+use core::clone::TrivialClone;
 use core::iter::TrustedLen;
 use core::slice::{self};
 
@@ -48,7 +49,7 @@ where
 
 impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
 where
-    T: Copy,
+    T: TrivialClone,
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
