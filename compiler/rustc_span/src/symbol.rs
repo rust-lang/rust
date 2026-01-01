@@ -1083,6 +1083,7 @@ symbols! {
         ffi_pure,
         ffi_returns_twice,
         field,
+        field_base,
         field_init_shorthand,
         field_of,
         field_offset,
