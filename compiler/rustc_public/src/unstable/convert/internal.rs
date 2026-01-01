@@ -5,7 +5,7 @@
 
 // Prefer importing rustc_public over internal rustc constructs to make this file more readable.
 
-use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy};
+use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, FieldIdData, Ty as InternalTy};
 use rustc_public_bridge::Tables;
 
 use crate::abi::Layout;
@@ -153,6 +153,13 @@ impl RustcInternal for RigidTy {
             RigidTy::Pat(ty, pat) => {
                 rustc_ty::TyKind::Pat(ty.internal(tables, tcx), pat.internal(tables, tcx))
             }
+            RigidTy::FRT(ty, variant, field) => rustc_ty::TyKind::FRT(
+                ty.internal(tables, tcx),
+                tcx.tcx().mk_field_id_from_data(FieldIdData::Resolved {
+                    variant: *variant,
+                    field: *field,
+                }),
+            ),
             RigidTy::Adt(def, args) => {
                 rustc_ty::TyKind::Adt(def.internal(tables, tcx), args.internal(tables, tcx))
             }

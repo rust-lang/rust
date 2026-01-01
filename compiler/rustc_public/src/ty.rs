@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
+use rustc_abi::FieldIdx;
 use serde::Serialize;
 
 use super::abi::ReprOptions;
@@ -554,6 +555,7 @@ pub enum RigidTy {
     Str,
     Array(Ty, TyConst),
     Pat(Ty, Pattern),
+    FRT(Ty, rustc_abi::VariantIdx, FieldIdx),
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
