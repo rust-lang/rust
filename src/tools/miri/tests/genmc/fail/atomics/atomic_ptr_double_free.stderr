@@ -17,19 +17,26 @@ help: ALLOC was deallocated here:
    |
 LL |     dealloc(ptr as *mut u8, Layout::new::<u64>())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside `free` at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
-note: inside closure
-  --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
-   |
-LL |                     free(b);
-   |                     ^^^^^^^
-   = note: inside `<std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}>`
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: free
+               at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+           1: miri_start::{closure#1}
+               at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+           2: <std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           3: genmc::spawn_pthread_closure::thread_func
+               at tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
    |
-LL |         f();
-   |         ^^^
+LL | /         libc::pthread_create(
+LL | |             &raw mut thread_id,
+LL | |             attr,
+LL | |             thread_func::<F>,
+LL | |             Box::into_raw(f) as *mut c_void,
+LL | |         )
+   | |_________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

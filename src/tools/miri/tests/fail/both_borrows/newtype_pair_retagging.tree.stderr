@@ -25,28 +25,19 @@ help: the protected tag <TAG> later transitioned to Reserved (conflicted) due to
 LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
-   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL |             || drop(Box::from_raw(ptr)),
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC}>`
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL |     dealloc();
-   |     ^^^^^^^^^
-note: inside `main`
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL | /         dealloc_while_running(
-LL | |             Newtype(&mut *ptr, 0),
-LL | |             || drop(Box::from_raw(ptr)),
-LL | |         )
-   | |_________^
+   = note: stack backtrace:
+           0: <std::boxed::Box<i32> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           3: main::{closure#0}
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           4: dealloc_while_running
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           5: main
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

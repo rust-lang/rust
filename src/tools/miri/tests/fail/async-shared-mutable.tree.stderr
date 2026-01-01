@@ -28,19 +28,15 @@ help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (act
 LL |     let _: Pin<&_> = f.as_ref(); // Or: `f.as_mut().into_ref()`.
    |                      ^^^^^^^^^^
    = help: this transition corresponds to a loss of write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside closure at tests/fail/async-shared-mutable.rs:LL:CC
-   = note: inside `<std::future::PollFn<{closure@tests/fail/async-shared-mutable.rs:LL:CC}> as std::future::Future>::poll` at RUSTLIB/core/src/future/poll_fn.rs:LL:CC
-note: inside closure
-  --> tests/fail/async-shared-mutable.rs:LL:CC
-   |
-LL |         .await
-   |          ^^^^^
-note: inside `main`
-  --> tests/fail/async-shared-mutable.rs:LL:CC
-   |
-LL |     assert_eq!(f.as_mut().poll(&mut cx), Poll::Pending);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: main::{closure#0}::{closure#0}
+               at tests/fail/async-shared-mutable.rs:LL:CC
+           1: <std::future::PollFn<{closure@tests/fail/async-shared-mutable.rs:LL:CC}> as std::future::Future>::poll
+               at RUSTLIB/core/src/future/poll_fn.rs:LL:CC
+           2: main::{closure#0}
+               at tests/fail/async-shared-mutable.rs:LL:CC
+           3: main
+               at tests/fail/async-shared-mutable.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
