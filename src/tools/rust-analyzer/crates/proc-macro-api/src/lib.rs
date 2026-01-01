@@ -18,6 +18,7 @@ extern crate rustc_driver as _;
 
 pub mod bidirectional_protocol;
 pub mod legacy_protocol;
+pub mod pool;
 pub mod process;
 pub mod transport;
 
@@ -29,7 +30,8 @@ use std::{fmt, io, sync::Arc, time::SystemTime};
 pub use crate::transport::codec::Codec;
 use crate::{
     bidirectional_protocol::SubCallback,
-    process::{ProcMacroServerProcess, ProcMacroWorker},
+    pool::{ProcMacroServerPool, default_pool_size},
+    process::ProcMacroServerProcess,
 };
 
 /// The versions of the server protocol
@@ -88,7 +90,7 @@ pub struct ProcMacroClient {
     ///
     /// That means that concurrent salsa requests may block each other when expanding proc macros,
     /// which is unfortunate, but simple and good enough for the time being.
-    worker: Arc<dyn ProcMacroWorker>,
+    pool: Arc<ProcMacroServerPool>,
     path: AbsPathBuf,
 }
 
@@ -110,7 +112,7 @@ impl MacroDylib {
 /// we share a single expander process for all macros within a workspace.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    process: Arc<dyn ProcMacroWorker>,
+    process: Arc<ProcMacroServerProcess>,
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
@@ -188,31 +190,12 @@ impl ProcMacroClient {
         dylib: MacroDylib,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let macros = self.worker.find_proc_macros(&dylib.path, callback)?;
-
-        let dylib_path = Arc::new(dylib.path);
-        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
-            .ok()
-            .and_then(|metadata| metadata.modified().ok());
-        match macros {
-            Ok(macros) => Ok(macros
-                .into_iter()
-                .map(|(name, kind)| ProcMacro {
-                    process: self.worker.clone(),
-                    name: name.into(),
-                    kind,
-                    dylib_path: dylib_path.clone(),
-                    dylib_last_modified,
-                })
-                .collect()),
-            Err(message) => Err(ServerError { message, io: None }),
-        }
+        self.pool.load_dylib(&dylib, callback)
     }
 
     /// Checks if the proc-macro server has exited.
     pub fn exited(&self) -> Option<&ServerError> {
-        self.worker.exited()
+        self.pool.exited()
     }
 }
 

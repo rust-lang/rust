@@ -3,7 +3,7 @@
 use std::{
     fmt::Debug,
     io::{self, BufRead, BufReader, Read, Write},
-    panic::{AssertUnwindSafe, RefUnwindSafe},
+    panic::AssertUnwindSafe,
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
     sync::{Arc, Mutex, OnceLock},
 };
@@ -82,77 +82,6 @@ pub(crate) struct ProcessSrvState {
     stdout: Box<dyn BufRead + Send + Sync>,
 }
 
-impl ProcMacroWorker for ProcMacroServerProcess {
-    fn find_proc_macros(
-        &self,
-        dylib_path: &AbsPath,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
-        ProcMacroServerProcess::find_proc_macros(self, dylib_path, callback)
-    }
-
-    fn expand(
-        &self,
-        proc_macro: &ProcMacro,
-        subtree: tt::SubtreeView<'_>,
-        attr: Option<tt::SubtreeView<'_>>,
-        env: Vec<(String, String)>,
-        def_site: Span,
-        call_site: Span,
-        mixed_site: Span,
-        current_dir: String,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        ProcMacroServerProcess::expand(
-            self,
-            proc_macro,
-            subtree,
-            attr,
-            env,
-            def_site,
-            call_site,
-            mixed_site,
-            current_dir,
-            callback,
-        )
-    }
-
-    fn exited(&self) -> Option<&ServerError> {
-        ProcMacroServerProcess::exited(self)
-    }
-
-    fn version(&self) -> u32 {
-        ProcMacroServerProcess::version(self)
-    }
-
-    fn rust_analyzer_spans(&self) -> bool {
-        ProcMacroServerProcess::rust_analyzer_spans(self)
-    }
-
-    fn enable_rust_analyzer_spans(
-        &self,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<SpanMode, ServerError> {
-        ProcMacroServerProcess::enable_rust_analyzer_spans(self, callback)
-    }
-
-    fn use_postcard(&self) -> bool {
-        ProcMacroServerProcess::use_postcard(self)
-    }
-
-    fn state(&self) -> &Mutex<ProcessSrvState> {
-        &self.state
-    }
-
-    fn get_exited(&self) -> &OnceLock<AssertUnwindSafe<ServerError>> {
-        &self.exited
-    }
-
-    fn is_reusable(&self) -> bool {
-        !self.single_use
-    }
-}
-
 impl ProcMacroServerProcess {
     /// Starts the proc-macro server and performs a version check
     pub(crate) fn spawn<'a>(
@@ -220,7 +149,11 @@ impl ProcMacroServerProcess {
                 let (process, stdin, stdout) = spawn(format)?;
 
                 io::Result::Ok(ProcMacroServerProcess {
-                    state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
+                    state: Mutex::new(ProcessSrvState {
+                        process,
+                        stdin,
+                        stdout,
+                    }),
                     version: 0,
                     protocol: match format {
                         Some(ProtocolFormat::BidirectionalPostcardPrototype) => {
@@ -271,6 +204,37 @@ impl ProcMacroServerProcess {
         Err(err.unwrap())
     }
 
+    pub(crate) fn load_dylib(
+        &self,
+        dylib_path: &AbsPath,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<Vec<(String, ProcMacroKind)>, ServerError> {
+        let _state = self.state.lock().unwrap();
+
+        // if state.loaded_dylibs.contains(dylib_path) {
+        //     // Already loaded in this worker
+        //     return Ok(Vec::new());
+        // }
+
+        let result = match self.protocol {
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::find_proc_macros(self, dylib_path)?
+            }
+            Protocol::BidirectionalPostcardPrototype { .. } => {
+                let cb = callback.expect("callback required");
+                bidirectional_protocol::find_proc_macros(self, dylib_path, cb)?
+            }
+        };
+
+        match result {
+            Ok(macros) => {
+                // state.loaded_dylibs.insert(dylib_path.to_owned());
+                Ok(macros)
+            }
+            Err(message) => Err(ServerError { message, io: None }),
+        }
+    }
+
     /// Returns the server error if the process has exited.
     pub(crate) fn exited(&self) -> Option<&ServerError> {
         self.exited.get().map(|it| &it.0)
@@ -314,21 +278,6 @@ impl ProcMacroServerProcess {
         }
     }
 
-    /// Finds proc-macros in a given dynamic library.
-    pub(crate) fn find_proc_macros(
-        &self,
-        dylib_path: &AbsPath,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
-        match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
-            Protocol::BidirectionalPostcardPrototype { .. } => {
-                let cb = callback.expect("callback required for bidirectional protocol");
-                bidirectional_protocol::find_proc_macros(self, dylib_path, cb)
-            }
-        }
-    }
-
     pub(crate) fn expand(
         &self,
         proc_macro: &ProcMacro,
@@ -365,11 +314,15 @@ impl ProcMacroServerProcess {
             ),
         };
 
-        if self.is_reusable() {
+        if !self.is_reusable() {
             self.terminate();
         }
 
         result
+    }
+
+    fn is_reusable(&self) -> bool {
+        self.single_use
     }
 
     fn terminate(&self) {
@@ -377,13 +330,9 @@ impl ProcMacroServerProcess {
             let _ = state.process.child.kill();
         }
     }
-}
 
-pub(crate) struct SynIO;
-
-impl SynIO {
     pub(crate) fn send_task<Request, Response, C: Codec>(
-        proc_macro_worker: &dyn ProcMacroWorker,
+        &self,
         send: impl FnOnce(
             &mut dyn Write,
             &mut dyn BufRead,
@@ -392,7 +341,7 @@ impl SynIO {
         ) -> Result<Option<Response>, ServerError>,
         req: Request,
     ) -> Result<Response, ServerError> {
-        SynIO::with_locked_io::<C, _>(proc_macro_worker, |writer, reader, buf| {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
             send(writer, reader, req, buf).and_then(|res| {
                 res.ok_or_else(|| {
                     let message = "proc-macro server did not respond with data".to_owned();
@@ -409,10 +358,10 @@ impl SynIO {
     }
 
     pub(crate) fn with_locked_io<C: Codec, R>(
-        proc_macro_worker: &dyn ProcMacroWorker,
+        &self,
         f: impl FnOnce(&mut dyn Write, &mut dyn BufRead, &mut C::Buf) -> Result<R, ServerError>,
     ) -> Result<R, ServerError> {
-        let state = &mut *proc_macro_worker.state().lock().unwrap();
+        let state = &mut *self.state.lock().unwrap();
         let mut buf = C::Buf::default();
 
         f(&mut state.stdin, &mut state.stdout, &mut buf).map_err(|e| {
@@ -434,11 +383,11 @@ impl SynIO {
     }
 
     pub(crate) fn run_bidirectional<C: Codec>(
-        proc_macro_worker: &dyn ProcMacroWorker,
+        &self,
         initial: BidirectionalMessage,
         callback: SubCallback<'_>,
     ) -> Result<BidirectionalMessage, ServerError> {
-        SynIO::with_locked_io::<C, _>(proc_macro_worker, |writer, reader, buf| {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
             bidirectional_protocol::run_conversation::<C>(writer, reader, buf, initial, callback)
         })
     }

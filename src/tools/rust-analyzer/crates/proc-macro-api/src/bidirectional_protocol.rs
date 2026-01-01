@@ -21,7 +21,7 @@ use crate::{
             serialize_span_data_index_map,
         },
     },
-    process::{ProcMacroWorker, SynIO},
+    process::ProcMacroServerProcess,
     transport::codec::postcard::PostcardProtocol,
     version,
 };
@@ -84,7 +84,7 @@ fn wrap_decode(err: io::Error) -> ServerError {
 }
 
 pub(crate) fn version_check(
-    srv: &dyn ProcMacroWorker,
+    srv: &ProcMacroServerProcess,
     callback: SubCallback<'_>,
 ) -> Result<u32, ServerError> {
     let request = BidirectionalMessage::Request(Request::ApiVersionCheck {});
@@ -101,7 +101,7 @@ pub(crate) fn version_check(
 
 /// Enable support for rust-analyzer span mode if the server supports it.
 pub(crate) fn enable_rust_analyzer_spans(
-    srv: &dyn ProcMacroWorker,
+    srv: &ProcMacroServerProcess,
     callback: SubCallback<'_>,
 ) -> Result<SpanMode, ServerError> {
     let request = BidirectionalMessage::Request(Request::SetConfig(ServerConfig {
@@ -120,7 +120,7 @@ pub(crate) fn enable_rust_analyzer_spans(
 
 /// Finds proc-macros in a given dynamic library.
 pub(crate) fn find_proc_macros(
-    srv: &dyn ProcMacroWorker,
+    srv: &ProcMacroServerProcess,
     dylib_path: &AbsPath,
     callback: SubCallback<'_>,
 ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
@@ -205,7 +205,7 @@ pub(crate) fn expand(
 }
 
 fn run_request(
-    srv: &dyn ProcMacroWorker,
+    srv: &ProcMacroServerProcess,
     msg: BidirectionalMessage,
     callback: SubCallback<'_>,
 ) -> Result<BidirectionalMessage, ServerError> {

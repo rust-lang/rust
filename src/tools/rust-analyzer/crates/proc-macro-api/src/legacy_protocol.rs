@@ -143,7 +143,7 @@ pub(crate) fn expand(
 }
 
 /// Sends a request to the proc-macro server and waits for a response.
-fn send_task(srv: &dyn ProcMacroWorker, req: Request) -> Result<Response, ServerError> {
+fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, ServerError> {
     if let Some(server_error) = srv.exited() {
         return Err(server_error.clone());
     }
