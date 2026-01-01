@@ -1,5 +1,6 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
+use std::sync::OnceLock;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
@@ -3052,6 +3053,155 @@ impl<'a> Parser<'a> {
         None
     }
 
+    /// Try to identify if a `git rebase` is in progress to provide more accurate labels.
+    fn vcs_conflict_marker_labels(&self, is_middlediff3: bool) -> &'static ConflictMarkerLabels {
+        let mut msg_start: String = "being merged into".into();
+        let mut msg_middle: String = "incoming code".into();
+
+        // We only need to run this logic once.
+        static MARKER_LABELS: OnceLock<ConflictMarkerLabels> = OnceLock::new();
+        if let Some(labels) = MARKER_LABELS.get() {
+            return labels;
+        }
+
+        // Ideally, we'd execute `git rev-parse --git-path rebase-merge`, in order to get the git
+        // metadata for the rebase currently happening, but instead we only customize the output if
+        // invoking cargo from the project root. If this directory doesn't exist, then the merge
+        // conflict might not have been caused by a git rebase, and we'll fall-back on the default
+        // diagnostic.
+        let git_dir = {
+            let mut curr_dir = std::path::PathBuf::from(".");
+            loop {
+                let Ok(dir) = curr_dir.canonicalize() else {
+                    break None;
+                };
+                match std::fs::exists(dir.join(".git")) {
+                    Ok(true) => {
+                        break Some(dir.join(".git"));
+                    }
+                    Ok(false) => {}
+                    Err(_) => break None,
+                }
+                if let Ok(true) | Err(_) = std::fs::exists(dir.join(".cargo")) {
+                    break None;
+                }
+                curr_dir = dir.join("..");
+            }
+        };
+        let git = |subpath: &str| {
+            let subpath = std::path::Path::new(subpath);
+            git_dir.clone().and_then(|path| {
+                std::fs::read_to_string(path.join(subpath))
+                    .ok()
+                    .map(|content| content.trim().to_string())
+            })
+        };
+        let mut local_branch = None;
+        let mut local_sha = None;
+        let mut onto_descr = None;
+        let mut merge_to = None;
+        let mut onto_sha = None;
+        let mut is_git_pull = false;
+        if let Some(onto) = git("rebase-merge/onto") {
+            let onto = onto.trim();
+            onto_sha = Some(onto.to_string());
+            if let Some(fetch) = git("FETCH_HEAD")
+                && let Some(parts) = fetch
+                    .lines()
+                    .map(|line| line.split('\t').collect::<Vec<_>>())
+                    .filter(|parts| parts[1] == "")
+                    .next()
+                && let [fetch_head, "", branch_descr] = &parts[..]
+                && &onto == fetch_head
+            {
+                is_git_pull = true;
+                onto_descr = Some(branch_descr.trim().to_string());
+            }
+        }
+        if let Some(head_name) = git("rebase-merge/head-name")
+            && let head_name = head_name.trim()
+            && let Some(branch_name) = head_name.strip_prefix("refs/heads/")
+        {
+            local_branch = Some(branch_name.to_string());
+        }
+        if let Some(local) = git("rebase-merge/stopped-sha") {
+            local_sha = Some(local.trim().to_string());
+        }
+        if let Some(head) = git("HEAD")
+            && let Some(merging_to) = head.trim().strip_prefix("ref: refs/heads/")
+            && let Some(msg) = git("MERGE_MSG")
+        {
+            merge_to = Some(merging_to.to_string());
+            if let Some(line) = msg.lines().next()
+                && let Some(msg) = line.strip_prefix("Merge branch ")
+            {
+                let split: Vec<_> = msg.split(" into ").collect();
+                onto_descr = Some(if let [msg, _branch] = &split[..] {
+                    // `git merge`
+                    // Merge branch 'main' into branch-name
+                    format!("branch {msg}")
+                } else {
+                    // `git pull --no-rebase`
+                    // Merge branch `main` of github.com:user/repo
+                    format!("remote branch {msg}")
+                });
+            }
+        }
+        match (local_branch, local_sha, onto_descr, onto_sha, merge_to) {
+            (Some(branch_name), _, Some(onto_descr), _, None) => {
+                // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
+                msg_start = format!("from {}", onto_descr.trim());
+                msg_middle = if is_git_pull {
+                    format!("code from local branch '{branch_name}' before `git pull`")
+                } else {
+                    format!("code from branch '{branch_name}'")
+                };
+            }
+            (None, Some(from_sha), Some(onto_descr), _, None) => {
+                // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
+                msg_start = format!("from {}", onto_descr.trim());
+                msg_middle = format!("code from local commit `{from_sha}` before `git pull`");
+            }
+            (Some(branch_name), _, None, Some(_), None) => {
+                // `git rebase`, but we don't have the branch name for the target.
+                // We could do `git branch --points-at onto_sha` to get a list of branch names, but
+                // that would necessitate to call into `git` *and* would be a linear scan of every
+                // branch, which can be expensive in repos with lots of branches.
+                msg_start = "that you are rebasing onto".to_string();
+                msg_middle = format!("code from branch '{branch_name}' that you are rebasing");
+            }
+            (None, Some(from_sha), None, Some(onto_sha), None) => {
+                // `git rebase`, but we don't have the branch name for the source nor the target.
+                msg_start = format!("from commit `{onto_sha}` that you are rebasing onto");
+                msg_middle = format!("code from commit `{from_sha}` that you are rebasing");
+            }
+            (None, None, None, None, Some(merge_to)) => {
+                // `git merge from-branch`
+                msg_start = format!("from branch '{merge_to}'");
+                msg_middle = format!("code that you are merging");
+            }
+            (None, None, Some(onto_descr), None, Some(merge_to)) => {
+                // `git merge from-branch`
+                msg_start = format!("from branch '{merge_to}'");
+                msg_middle = format!("code from {onto_descr}");
+            }
+            _ => {
+                // We're not in a `git merge`, `git rebase` or `git pull`.
+            }
+        }
+
+        MARKER_LABELS.get_or_init(|| ConflictMarkerLabels {
+            start: format!(
+                "between this marker and `{}` is the code {msg_start}",
+                if is_middlediff3 { "|||||||" } else { "=======" }
+            ),
+            middle: format!("between this marker and `>>>>>>>` is the {msg_middle}"),
+            middlediff3: "between this marker and `=======` is the base code (what the two refs \
+                          diverged from)",
+            end: "this marker concludes the conflict region",
+        })
+    }
+
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
         let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
@@ -3083,29 +3233,25 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
+        let labels = self.vcs_conflict_marker_labels(middlediff3.is_some());
+
         let mut err = self.dcx().struct_span_fatal(spans, "encountered diff marker");
         match middlediff3 {
             // We're using diff3
             Some(middlediff3) => {
-                err.span_label(
-                    start,
-                    "between this marker and `|||||||` is the code that we're merging into",
-                );
-                err.span_label(middlediff3, "between this marker and `=======` is the base code (what the two refs diverged from)");
+                err.span_label(start, labels.start.as_str());
+                err.span_label(middlediff3, labels.middlediff3);
             }
             None => {
-                err.span_label(
-                    start,
-                    "between this marker and `=======` is the code that we're merging into",
-                );
+                err.span_label(start, labels.start.as_str());
             }
         };
 
         if let Some(middle) = middle {
-            err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
+            err.span_label(middle, labels.middle.as_str());
         }
         if let Some(end) = end {
-            err.span_label(end, "this marker concludes the conflict region");
+            err.span_label(end, labels.end);
         }
         err.note(
             "conflict markers indicate that a merge was started but could not be completed due \
@@ -3113,14 +3259,6 @@ impl<'a> Parser<'a> {
              to resolve a conflict, keep only the code you want and then delete the lines \
              containing conflict markers",
         );
-        err.help(
-            "if you're having merge conflicts after pulling new code:\n\
-             the top section is the code you already had and the bottom section is the remote code\n\
-             if you're in the middle of a rebase:\n\
-             the top section is the code being rebased onto and the bottom section is the code \
-             coming from the current commit being rebased",
-        );
-
         err.note(
             "for an explanation on these markers from the `git` documentation:\n\
              visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
@@ -3140,4 +3278,15 @@ impl<'a> Parser<'a> {
         }
         Ok(())
     }
+}
+
+struct ConflictMarkerLabels {
+    /// The label for the `<<<<<<<` marker.
+    start: String,
+    /// The label for the `|||||||` or `=======` marker.
+    middle: String,
+    /// The label for the `=======` marker.
+    middlediff3: &'static str,
+    /// The label for the `>>>>>>>` marker.
+    end: &'static str,
 }
