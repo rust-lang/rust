@@ -128,6 +128,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &mut candidates,
                     );
                 }
+                Some(LangItem::Field) => {
+                    self.assemble_candidates_for_field_trait(obligation, &mut candidates);
+                }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
                     // After the builtin impls we need to also add user written impls, which we do not want to
@@ -1448,6 +1451,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_field_trait(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if let ty::FRT(..) = obligation.predicate.self_ty().skip_binder().kind() {
+            candidates.vec.push(BuiltinCandidate);
         }
     }
 }

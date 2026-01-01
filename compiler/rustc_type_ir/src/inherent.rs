@@ -584,6 +584,10 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
+pub trait FieldId<I: Interner>: Copy + Debug + Hash + Eq {
+    fn ty(self, interner: I, ty: I::Ty) -> I::Ty;
+}
+
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }

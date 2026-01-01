@@ -209,7 +209,7 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    type FieldId: Copy + Debug + Hash + Eq;
+    type FieldId: FieldId<Self>;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
 

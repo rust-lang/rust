@@ -952,6 +952,29 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         unreachable!("`BikeshedGuaranteedNoDrop` does not have an associated type: {:?}", goal)
     }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::FRT(container, field) = self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        let ty = if ecx.cx().is_lang_item(goal.predicate.def_id(), SolverLangItem::FieldBase) {
+            container
+        } else if ecx.cx().is_lang_item(goal.predicate.def_id(), SolverLangItem::FieldType) {
+            field.ty(ecx.cx(), container)
+        } else {
+            panic!("unexpected associated type {:?} in `Field`", goal.predicate)
+        };
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.instantiate_normalizes_to_term(goal, ty.into());
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>
