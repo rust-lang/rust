@@ -29,6 +29,7 @@ pub(crate) fn target() -> Target {
             emit_debug_gdb_scripts: false,
             // GCC defaults to 8 for arm-none here.
             c_enum_min_bits: Some(8),
+            has_thumb_interworking: true,
             ..Default::default()
         },
     }
