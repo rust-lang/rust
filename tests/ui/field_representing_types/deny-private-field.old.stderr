@@ -1,0 +1,9 @@
+error[E0616]: field `a` of struct `A` is private
+  --> $DIR/deny-private-field.rs:18:25
+   |
+LL |     let _: field_of!(A, a);
+   |                         ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.
