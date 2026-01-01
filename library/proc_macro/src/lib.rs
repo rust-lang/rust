@@ -1038,6 +1038,8 @@ impl Ident {
     /// The `string` argument must be a valid identifier permitted by the
     /// language (including keywords, e.g. `self` or `fn`). Otherwise, the function will panic.
     ///
+    /// The constructed identifier will be NFC-normalized. See the [Reference] for more info.
+    ///
     /// Note that `span`, currently in rustc, configures the hygiene information
     /// for this identifier.
     ///
@@ -1052,6 +1054,8 @@ impl Ident {
     ///
     /// Due to the current importance of hygiene this constructor, unlike other
     /// tokens, requires a `Span` to be specified at construction.
+    ///
+    /// [Reference]: https://doc.rust-lang.org/nightly/reference/identifiers.html#r-ident.normalization
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
         Ident(bridge::Ident {
