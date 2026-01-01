@@ -7,7 +7,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -476,6 +476,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         hir::TyPat { hir_id: pat_hir_id, kind: node, span: self.lower_span(pattern.span) }
+    }
+
+    pub(crate) fn lower_ty_field_path(
+        &mut self,
+        fields: &[Ident],
+        ty_span: Span,
+    ) -> Result<&'hir hir::TyFieldPath, ErrorGuaranteed> {
+        Ok(self.arena.alloc(self.lower_ty_field_path_mut(fields, ty_span)?))
+    }
+
+    fn lower_ty_field_path_mut(
+        &mut self,
+        fields: &[Ident],
+        ty_span: Span,
+    ) -> Result<hir::TyFieldPath, ErrorGuaranteed> {
+        match fields.len() {
+            0 => span_bug!(ty_span, "expected at least one field ident parsed in `field_of!`"),
+            1 => Ok(hir::TyFieldPath { variant: None, field: self.lower_ident(fields[0]) }),
+            2 => Ok(hir::TyFieldPath {
+                variant: Some(self.lower_ident(fields[0])),
+                field: self.lower_ident(fields[1]),
+            }),
+            _ => Err(self.dcx().span_err(
+                fields.iter().map(|f| f.span).collect::<Vec<_>>(),
+                "`field_of!` only supports a single field or a variant with a field",
+            )),
+        }
     }
 
     /// Lowers the range end of an exclusive range (`2..5`) to an inclusive range 2..=(5 - 1).

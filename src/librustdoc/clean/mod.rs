@@ -1808,6 +1808,14 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
+        TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
+            let field_str = if let Some(variant) = variant {
+                format!("{variant}.{field}")
+            } else {
+                format!("{field}")
+            };
+            Type::FRT(Box::new(clean_ty(ty, cx)), field_str.into())
+        }
         TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
