@@ -59,6 +59,7 @@ use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::no_link::NoLinkParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
+use crate::attributes::on_move::OnMoveParser;
 use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::pin_v2::PinV2Parser;
 use crate::attributes::proc_macro_attrs::{
@@ -226,6 +227,7 @@ attribute_parsers!(
         Single<MustUseParser>,
         Single<ObjcClassParser>,
         Single<ObjcSelectorParser>,
+        Single<OnMoveParser>,
         Single<OptimizeParser>,
         Single<PatchableFunctionEntryParser>,
         Single<PathAttributeParser>,

@@ -67,6 +67,10 @@ struct DiagnosticOnConstOnlyForTraitImpls {
     item_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_move_only_for_adt)]
+struct DiagnosticOnMoveOnlyForAdt;
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -224,6 +228,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::OnMove(attr)) => {
+                    self.check_diagnostic_on_move(attr.span, hir_id, target)
+                },
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -642,6 +649,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             attr_span,
             DiagnosticOnConstOnlyForTraitImpls { item_span },
         );
+    }
+
+    /// Checks if `#[diagnostic::on_move]` is applied to an ADT definition
+    fn check_diagnostic_on_move(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        if !matches!(target, Target::Enum | Target::Struct | Target::Union) {
+            self.tcx.emit_node_span_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnMoveOnlyForAdt,
+            );
+        }
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.

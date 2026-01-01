@@ -3325,3 +3325,20 @@ pub(crate) struct UnknownCrateTypesSuggestion {
     pub span: Span,
     pub snippet: Symbol,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_malformed_on_move_attr)]
+#[help]
+pub(crate) struct OnMoveMalformedAttr;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_malformed_on_move_format_literals)]
+#[help]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_malformed_on_move_attr_expected_literal_or_delimiter)]
+#[help]
+pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;

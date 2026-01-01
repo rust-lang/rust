@@ -1,0 +1,43 @@
+error[E0539]: malformed `diagnostic::on_move` attribute input
+  --> $DIR/report_warning_on_missing_options.rs:1:1
+   |
+LL | #[diagnostic::on_move]
+   | ^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[diagnostic::on_move(label)]
+   |                      +++++++
+LL | #[diagnostic::on_move(message)]
+   |                      +++++++++
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/report_warning_on_missing_options.rs:10:15
+   |
+LL |     let foo = Foo;
+   |         --- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     takes_foo(foo);
+   |               --- value moved here
+LL |     let bar = foo;
+   |               ^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/report_warning_on_missing_options.rs:5:17
+   |
+LL | fn takes_foo(_: Foo) {}
+   |    ---------    ^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/report_warning_on_missing_options.rs:3:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     takes_foo(foo);
+   |               --- you could clone this value
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0539.
+For more information about an error, try `rustc --explain E0382`.

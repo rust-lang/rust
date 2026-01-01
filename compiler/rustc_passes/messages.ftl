@@ -91,6 +91,9 @@ passes_diagnostic_diagnostic_on_const_only_for_trait_impls =
     `#[diagnostic::on_const]` can only be applied to trait impls
     .label = not a trait impl
 
+passes_diagnostic_diagnostic_on_move_only_for_adt =
+    `#[diagnostic::on_move]` can only be applied to enums, structs or unions
+
 passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
     `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
 

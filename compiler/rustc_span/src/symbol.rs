@@ -1624,6 +1624,7 @@ symbols! {
         omit_gdb_pretty_printer_section,
         on,
         on_const,
+        on_move,
         on_unimplemented,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
