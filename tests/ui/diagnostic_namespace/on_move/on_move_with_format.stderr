@@ -1,0 +1,29 @@
+error[E0382]: Foo for Foo
+  --> $DIR/on_move_with_format.rs:13:15
+   |
+LL |     let foo = Foo;
+   |         --- Bar for Foo
+LL |     takes_foo(foo);
+   |               --- value moved here
+LL |     let bar = foo;
+   |               ^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/on_move_with_format.rs:8:17
+   |
+LL | fn takes_foo(_: Foo) {}
+   |    ---------    ^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/on_move_with_format.rs:6:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     takes_foo(foo);
+   |               --- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
