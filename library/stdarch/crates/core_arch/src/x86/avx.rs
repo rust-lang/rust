@@ -2946,7 +2946,11 @@ pub const fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
 }
 
 /// Casts vector of type __m128 to type __m256;
-/// the upper 128 bits of the result are undefined.
+/// the upper 128 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_castps128_ps256)
 #[inline]
@@ -2960,7 +2964,11 @@ pub const fn _mm256_castps128_ps256(a: __m128) -> __m256 {
 }
 
 /// Casts vector of type __m128d to type __m256d;
-/// the upper 128 bits of the result are undefined.
+/// the upper 128 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_castpd128_pd256)
 #[inline]
@@ -2974,7 +2982,11 @@ pub const fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
 }
 
 /// Casts vector of type __m128i to type __m256i;
-/// the upper 128 bits of the result are undefined.
+/// the upper 128 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_castsi128_si256)
 #[inline]

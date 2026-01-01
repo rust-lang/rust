@@ -27728,7 +27728,13 @@ pub const fn _mm_maskz_unpacklo_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m12
     }
 }
 
-/// Cast vector of type __m128 to type __m512; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m128 to type __m512; the upper 384 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps128_ps512&expand=621)
 #[inline]
@@ -27745,7 +27751,13 @@ pub const fn _mm512_castps128_ps512(a: __m128) -> __m512 {
     }
 }
 
-/// Cast vector of type __m256 to type __m512; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m256 to type __m512; the upper 256 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps256_ps512&expand=623)
 #[inline]
@@ -27840,7 +27852,13 @@ pub const fn _mm512_castps_si512(a: __m512) -> __m512i {
     unsafe { transmute(a) }
 }
 
-/// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd128_pd512&expand=609)
 #[inline]
@@ -27851,7 +27869,13 @@ pub const fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
     unsafe { simd_shuffle!(a, _mm_undefined_pd(), [0, 1, 2, 2, 2, 2, 2, 2]) }
 }
 
-/// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd256_pd512&expand=611)
 #[inline]
@@ -27928,7 +27952,13 @@ pub const fn _mm512_castpd_si512(a: __m512d) -> __m512i {
     unsafe { transmute(a) }
 }
 
-/// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi128_si512&expand=629)
 #[inline]
@@ -27939,7 +27969,13 @@ pub const fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
     unsafe { simd_shuffle!(a, _mm_undefined_si128(), [0, 1, 2, 2, 2, 2, 2, 2]) }
 }
 
-/// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
+/// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are indeterminate.
+///
+/// In the Intel documentation, the upper bits are declared to be "undefined".
+/// This is not equivalent to [`mem::MaybeUninit`]; instead, these bits are non-deterministically
+/// set to some valid value. In practice, this is typically equivalent to [`mem::zeroed`].
+///
+/// This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi256_si512&expand=633)
 #[inline]
