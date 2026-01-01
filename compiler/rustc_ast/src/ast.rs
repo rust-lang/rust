@@ -2557,6 +2557,11 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
+    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    ///
+    /// Usually not written directly in user code but indirectly via the macro
+    /// `core::field::field_of!(...)`.
+    FieldOf(Box<Ty>, Vec<Ident>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
