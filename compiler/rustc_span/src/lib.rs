@@ -2831,7 +2831,7 @@ pub trait HashStableContext {
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
-    ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)>;
+    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)>;
     fn hashing_controls(&self) -> HashingControls;
 }
 
@@ -2849,6 +2849,8 @@ where
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
+    ///
+    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
@@ -2867,15 +2869,17 @@ where
             return;
         }
 
-        if let Some(parent) = span.parent {
-            let def_span = ctx.def_span(parent).data_untracked();
-            if def_span.contains(span) {
-                // This span is enclosed in a definition: only hash the relative position.
-                Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-                (span.lo - def_span.lo).to_u32().hash_stable(ctx, hasher);
-                (span.hi - def_span.lo).to_u32().hash_stable(ctx, hasher);
-                return;
-            }
+        let parent = span.parent.map(|parent| ctx.def_span(parent).data_untracked());
+        if let Some(parent) = parent
+            && parent.contains(span)
+        {
+            // This span is enclosed in a definition: only hash the relative position.
+            // This catches a subset of the cases from the `file.contains(parent.lo)`,
+            // But we can do this check cheaply without the expensive `span_data_to_lines_and_cols` query.
+            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+            (span.lo - parent.lo).to_u32().hash_stable(ctx, hasher);
+            (span.hi - parent.lo).to_u32().hash_stable(ctx, hasher);
+            return;
         }
 
         // If this is not an empty or invalid span, we want to hash the last
@@ -2887,8 +2891,19 @@ where
             return;
         };
 
+        if let Some(parent) = parent
+            && file.contains(parent.lo)
+        {
+            // This span is relative to another span in the same file,
+            // only hash the relative position.
+            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
+            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
+            return;
+        }
+
         Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file, hasher);
+        Hash::hash(&file.stable_id, hasher);
 
         // Hash both the length and the end location (line/column) of a span. If we
         // hash only the length, for example, then two otherwise equal spans with
