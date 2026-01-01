@@ -1459,7 +1459,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if let ty::FRT(..) = obligation.predicate.self_ty().skip_binder().kind() {
+        if let ty::FRT(ty, _) = obligation.predicate.self_ty().skip_binder().kind()
+            && !ty.is_packed()
+        {
             candidates.vec.push(BuiltinCandidate);
         }
     }

@@ -1138,6 +1138,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn has_unsafe_fields(self) -> bool {
         Ty::has_unsafe_fields(self)
     }
+
+    fn is_packed(self) -> bool {
+        Ty::is_packed(self)
+    }
 }
 
 /// Type utilities
@@ -1190,6 +1194,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
+    }
+
+    #[inline]
+    pub fn is_packed(self) -> bool {
+        matches!(self.kind(), Adt(def, _) if def.repr().packed())
     }
 
     #[inline]

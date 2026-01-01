@@ -850,7 +850,9 @@ where
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
         }
-        if let ty::FRT(..) = goal.predicate.self_ty().kind() {
+        if let ty::FRT(ty, _) = goal.predicate.self_ty().kind()
+            && !ty.is_packed()
+        {
             ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
                 .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
         } else {
