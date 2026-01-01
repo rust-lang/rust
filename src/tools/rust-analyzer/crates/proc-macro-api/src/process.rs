@@ -29,6 +29,7 @@ pub(crate) struct ProcMacroServerProcess {
     protocol: Protocol,
     /// Populated when the server exits.
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
+    single_use: bool,
 }
 
 impl std::fmt::Debug for ProcMacroServerProcess {
@@ -146,6 +147,10 @@ impl ProcMacroWorker for ProcMacroServerProcess {
     fn get_exited(&self) -> &OnceLock<AssertUnwindSafe<ServerError>> {
         &self.exited
     }
+
+    fn is_reusable(&self) -> bool {
+        !self.single_use
+    }
 }
 
 impl ProcMacroServerProcess {
@@ -226,6 +231,7 @@ impl ProcMacroServerProcess {
                         }
                     },
                     exited: OnceLock::new(),
+                    single_use,
                 })
             };
             let mut srv = create_srv()?;
@@ -335,7 +341,7 @@ impl ProcMacroServerProcess {
         current_dir: String,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        match self.protocol {
+        let result = match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::expand(
                 proc_macro,
                 subtree,
@@ -357,6 +363,18 @@ impl ProcMacroServerProcess {
                 current_dir,
                 callback.expect("callback required for bidirectional protocol"),
             ),
+        };
+
+        if self.is_reusable() {
+            self.terminate();
+        }
+
+        result
+    }
+
+    fn terminate(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            let _ = state.process.child.kill();
         }
     }
 }
