@@ -2,7 +2,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{OsStr, OsString};
-use crate::io::ErrorKind;
+use crate::io;
 use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
@@ -32,13 +32,13 @@ cfg_select! {
 }
 pub mod winsock;
 
-/// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
+/// Map a [`Result<T, WinError>`] to [`io::Result<T>`].
 pub trait IoResult<T> {
-    fn io_result(self) -> crate::io::Result<T>;
+    fn io_result(self) -> io::Result<T>;
 }
 impl<T> IoResult<T> for Result<T, api::WinError> {
-    fn io_result(self) -> crate::io::Result<T> {
-        self.map_err(|e| crate::io::Error::from_raw_os_error(e.code as i32))
+    fn io_result(self) -> io::Result<T> {
+        self.map_err(|e| io::Error::from_raw_os_error(e.code as i32))
     }
 }
 
@@ -65,8 +65,8 @@ pub fn is_interrupted(_errno: i32) -> bool {
     false
 }
 
-pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    use ErrorKind::*;
+pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
+    use io::ErrorKind::*;
 
     match errno as u32 {
         c::ERROR_ACCESS_DENIED => return PermissionDenied,
@@ -167,8 +167,8 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     None
 }
 
-pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
-    fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
+pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
+    fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
         // Most paths are ASCII, so reserve capacity for as much as there are bytes
         // in the OsStr plus one for the null-terminating character. We are not
         // wasting bytes here as paths created by this function are primarily used
@@ -177,8 +177,8 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
         maybe_result.extend(s.encode_wide());
 
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::const_error!(
-                ErrorKind::InvalidInput,
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
             ));
         }
@@ -209,7 +209,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // passed the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
+pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
 where
     F1: FnMut(*mut u16, u32) -> u32,
     F2: FnOnce(&[u16]) -> T,
@@ -251,7 +251,7 @@ where
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as u32) {
                 0 if api::get_last_error().code == 0 => 0,
-                0 => return Err(crate::io::Error::last_os_error()),
+                0 => return Err(io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && api::get_last_error().code == c::ERROR_INSUFFICIENT_BUFFER {
@@ -285,9 +285,9 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     }
 }
 
-pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> crate::io::Result<T> {
+pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
     if s.as_ref().encode_wide().any(|b| b == 0) {
-        Err(crate::io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(s)
     }
@@ -307,8 +307,8 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-pub fn cvt<I: IsZero>(i: I) -> crate::io::Result<I> {
-    if i.is_zero() { Err(crate::io::Error::last_os_error()) } else { Ok(i) }
+pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+    if i.is_zero() { Err(io::Error::last_os_error()) } else { Ok(i) }
 }
 
 pub fn dur2timeout(dur: Duration) -> u32 {
