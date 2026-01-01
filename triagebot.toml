@@ -1532,7 +1532,8 @@ debuginfo = [
     "@davidtwco"
 ]
 fallback = [
-    "@Mark-Simulacrum"
+    "@Mark-Simulacrum",
+    "@jieyouxu",
 ]
 style-team = [
     "@calebcartwright",
