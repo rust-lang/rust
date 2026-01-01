@@ -328,7 +328,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
     let self_ty = obligation.predicate.self_ty();
     let constituent_tys = match *self_ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::FRT(..) => Ok(ty::Binder::dummy(vec![])),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -470,6 +470,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::FnPtr(..)
         | ty::Never
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::FRT(..)
         | ty::Error(_) => thin_vec![],
 
         // Coroutines and closures could implement `[const] Drop`,

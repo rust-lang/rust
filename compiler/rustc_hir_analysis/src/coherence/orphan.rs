@@ -150,6 +150,10 @@ pub(crate) fn orphan_check_impl(
                     NonlocalImpl::DisallowBecauseNonlocal
                 },
             ),
+            ty::FRT(..) => (
+                LocalImpl::Disallow { problematic_kind: "field representing type" },
+                NonlocalImpl::DisallowOther,
+            ),
 
             // extern { type OpaqueType; }
             // impl AutoTrait for OpaqueType {}

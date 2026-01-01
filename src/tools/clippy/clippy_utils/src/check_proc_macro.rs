@@ -532,6 +532,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
 
         // experimental
         | TyKind::Pat(..)
+        | TyKind::FieldOf(..)
 
         // unused
         | TyKind::CVarArgs

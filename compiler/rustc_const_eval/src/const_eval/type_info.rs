@@ -188,7 +188,8 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
                             variant
                         }
-                        ty::Foreign(_)
+                        ty::FRT(_, _)
+                        | ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)

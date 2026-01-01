@@ -43,6 +43,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Ref(..)
         | ty::Str
         | ty::Foreign(..)
+        | ty::FRT(..)
         | ty::Error(_) => true,
 
         // `T is PAT` and `[T]` have same properties as T.
@@ -275,6 +276,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::Float(_)
         | ty::Str
         | ty::Never
+        | ty::FRT(..)
         | ty::Foreign(..)
         | ty::RawPtr(..)
         | ty::Ref(..)

@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -14,7 +14,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_type_ir::solve::AdtDestructorKind;
@@ -210,6 +210,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn is_struct(self) -> bool {
         self.is_struct()
+    }
+
+    fn is_packed(self) -> bool {
+        self.repr().packed()
     }
 
     fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
@@ -680,4 +684,70 @@ impl<'tcx> AdtDef<'tcx> {
 pub enum Representability {
     Representable,
     Infinite(ErrorGuaranteed),
+}
+
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Debug,
+    Encodable,
+    Decodable,
+    HashStable,
+    serde::Serialize
+)]
+#[rustc_pass_by_value]
+pub struct FieldId {
+    pub variant: VariantIdx,
+    pub field: FieldIdx,
+}
+
+impl FieldId {
+    pub fn ty<'tcx>(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            ty::Adt(def, args) => def.variants()[self.variant].fields[self.field].ty(tcx, args),
+            ty::Tuple(tys) => {
+                debug_assert_eq!(FIRST_VARIANT, self.variant);
+                tys[self.field.index()]
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::FRT(_, _)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::UnsafeBinder(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::Slice(..)
+            | ty::Error(_)
+            | ty::Alias(..) => bug!(
+                "don't expect to see this TyKind here, should be handled by lowering hir to mir"
+            ),
+        }
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::FieldId<TyCtxt<'tcx>> for FieldId {
+    fn ty(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        FieldId::ty(self, tcx, ty)
+    }
 }

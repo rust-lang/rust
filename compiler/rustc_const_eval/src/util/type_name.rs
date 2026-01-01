@@ -34,6 +34,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::Float(_)
             | ty::Str
             | ty::Pat(_, _)
+            | ty::FRT(..)
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)

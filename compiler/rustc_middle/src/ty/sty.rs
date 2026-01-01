@@ -26,8 +26,8 @@ use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region, Ty,
-    TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, Discr, FieldId, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
+    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -485,6 +485,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_pat(tcx: TyCtxt<'tcx>, base: Ty<'tcx>, pat: ty::Pattern<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Pat(base, pat))
+    }
+
+    #[inline]
+    pub fn new_field_representing_type(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        field_id: FieldId,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, FRT(ty, field_id))
     }
 
     #[inline]
@@ -1063,6 +1072,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_pat(interner, ty, pat)
     }
 
+    fn new_field_representing_type(tcx: TyCtxt<'tcx>, ty: Self, field_id: FieldId) -> Self {
+        Self::new_field_representing_type(tcx, ty, field_id)
+    }
+
     fn new_unsafe_binder(interner: TyCtxt<'tcx>, ty: ty::Binder<'tcx, Ty<'tcx>>) -> Self {
         Ty::new_unsafe_binder(interner, ty)
     }
@@ -1081,6 +1094,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn has_unsafe_fields(self) -> bool {
         Ty::has_unsafe_fields(self)
+    }
+
+    fn is_packed(self) -> bool {
+        Ty::is_packed(self)
     }
 }
 
@@ -1134,6 +1151,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
+    }
+
+    #[inline]
+    pub fn is_packed(self) -> bool {
+        matches!(self.kind(), Adt(def, _) if def.repr().packed())
     }
 
     #[inline]
@@ -1629,6 +1651,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
+            | ty::FRT(..)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(..)
@@ -1680,6 +1703,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::FRT(..)
             | ty::Never
             | ty::Error(_)
             // Extern types have metadata = ().
@@ -1870,6 +1894,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
@@ -1922,6 +1947,9 @@ impl<'tcx> Ty<'tcx> {
 
             // ZST which can't be named are fine.
             ty::FnDef(..) => true,
+
+            // ZST.
+            ty::FRT(..) => true,
 
             ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),
 
@@ -1993,6 +2021,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Array(..)
             | ty::Foreign(_)
             | ty::Pat(_, _)
+            | ty::FRT(..)
             | ty::FnDef(..)
             | ty::UnsafeBinder(..)
             | ty::Dynamic(..)

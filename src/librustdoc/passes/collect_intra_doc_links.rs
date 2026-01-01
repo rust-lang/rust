@@ -526,6 +526,7 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
         ty::Tuple(_) => Res::Primitive(Tuple),
         ty::Pat(..) => Res::Primitive(Pat),
+        ty::FRT(..) => Res::Primitive(FRT),
         ty::Array(..) => Res::Primitive(Array),
         ty::Slice(_) => Res::Primitive(Slice),
         ty::RawPtr(_, _) => Res::Primitive(RawPointer),
