@@ -499,6 +499,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
         match self.kind {
             ConstArgKind::Struct(path, _) => path.span(),
             ConstArgKind::Path(path) => path.span(),
+            ConstArgKind::TupleCall(path, _) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
             ConstArgKind::Error(span, _) => span,
             ConstArgKind::Infer(span, _) => span,
@@ -519,6 +520,8 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     Anon(&'hir AnonConst),
     /// Represents construction of struct/struct variants
     Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
+    /// Tuple constructor variant
+    TupleCall(QPath<'hir>, &'hir [&'hir ConstArg<'hir>]),
     /// Error const
     Error(Span, ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes

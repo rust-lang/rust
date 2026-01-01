@@ -2396,6 +2396,35 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         match &expr.kind {
+            ExprKind::Call(func, args) if let ExprKind::Path(qself, path) = &func.kind => {
+                let qpath = self.lower_qpath(
+                    func.id,
+                    qself,
+                    path,
+                    ParamMode::Explicit,
+                    AllowReturnTypeNotation::No,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+
+                let lowered_args = self.arena.alloc_from_iter(args.iter().map(|arg| {
+                    let const_arg = if let ExprKind::ConstBlock(anon_const) = &arg.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        let def_kind = self.tcx.def_kind(def_id);
+                        assert_eq!(DefKind::AnonConst, def_kind);
+                        self.lower_anon_const_to_const_arg_direct(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(arg)
+                    };
+
+                    &*self.arena.alloc(const_arg)
+                }));
+
+                ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::TupleCall(qpath, lowered_args),
+                }
+            }
             ExprKind::Path(qself, path) => {
                 let qpath = self.lower_qpath(
                     expr.id,
@@ -2460,7 +2489,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     && let StmtKind::Expr(expr) = &stmt.kind
                     && matches!(
                         expr.kind,
-                        ExprKind::Block(..) | ExprKind::Path(..) | ExprKind::Struct(..)
+                        ExprKind::Block(..)
+                            | ExprKind::Path(..)
+                            | ExprKind::Struct(..)
+                            | ExprKind::Call(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
