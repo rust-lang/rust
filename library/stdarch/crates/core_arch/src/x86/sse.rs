@@ -1947,7 +1947,7 @@ pub fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     }
 }
 
-/// Returns vector of type __m128 with indeterminate elements.with indetermination elements.
+/// Returns vector of type __m128 with indeterminate elements.
 /// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
 /// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
 /// In practice, this is typically equivalent to [`mem::zeroed`].
