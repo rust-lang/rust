@@ -1180,13 +1180,18 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::on_move]`
+    OnMove {
+        span: Span,
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
-
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 

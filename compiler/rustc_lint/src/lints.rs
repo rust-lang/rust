@@ -3954,6 +3954,11 @@ pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 pub(crate) struct MissingOptionsForOnConstAttr;
 
 #[derive(Diagnostic)]
+#[diag("missing options for `on_move` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnMoveAttr;
+
+#[derive(Diagnostic)]
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnUnimplementedAttrLint {
@@ -3973,3 +3978,27 @@ pub(crate) struct MalformedOnConstAttrLint {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("unknown or malformed `on_move` attribute")]
+#[help(
+    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
+)]
+pub(crate) struct MalformedOnMoveAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help("expect `Self` as format argument")]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("expected a literal or missing delimiter")]
+#[help(
+    "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
+)]
+pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
