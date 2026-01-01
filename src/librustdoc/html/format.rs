@@ -958,6 +958,11 @@ fn fmt_type(
             fmt::Display::fmt(&print_type(t, cx), f)?;
             write!(f, " is {pat}")
         }
+        clean::Type::FRT(t, field) => {
+            write!(f, "field_of!(")?;
+            fmt::Display::fmt(&print_type(t, cx), f)?;
+            write!(f, ", {field})")
+        }
         clean::Array(box clean::Generic(name), n) if !f.alternate() => primitive_link(
             f,
             PrimitiveType::Array,
