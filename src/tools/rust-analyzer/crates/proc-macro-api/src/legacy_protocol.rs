@@ -113,7 +113,7 @@ pub(crate) fn expand(
         current_dir: Some(current_dir),
     };
 
-    let response = send_task(&proc_macro.process, Request::ExpandMacro(Box::new(task)))?;
+    let response = send_task(proc_macro.process.as_ref(), Request::ExpandMacro(Box::new(task)))?;
 
     match response {
         Response::ExpandMacro(it) => Ok(it
@@ -143,7 +143,7 @@ pub(crate) fn expand(
 }
 
 /// Sends a request to the proc-macro server and waits for a response.
-fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, ServerError> {
+fn send_task(srv: &dyn ProcMacroWorker, req: Request) -> Result<Response, ServerError> {
     if let Some(server_error) = srv.exited() {
         return Err(server_error.clone());
     }
