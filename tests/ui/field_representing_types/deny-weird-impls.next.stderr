@@ -1,0 +1,20 @@
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/deny-weird-impls.rs:10:15
+   |
+LL | impl Drop for field_of!(MyStruct, 0) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
+   |
+   = note: this error originates in the macro `field_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: impls of auto traits for field representing types not supported
+  --> $DIR/deny-weird-impls.rs:15:1
+   |
+LL | unsafe impl Send for field_of!(MyStruct, 0) {}
+   | ^^^^^^^^^^^^----^^^^^----------------------^^^
+   |             |        |
+   |             |        field representing type
+   |             auto trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0120`.
