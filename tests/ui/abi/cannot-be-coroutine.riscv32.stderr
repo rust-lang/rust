@@ -1,5 +1,5 @@
 error: functions with the "riscv-interrupt-m" ABI cannot be `async`
-  --> $DIR/cannot-be-coroutine.rs:45:1
+  --> $DIR/cannot-be-coroutine.rs:50:1
    |
 LL | async extern "riscv-interrupt-m" fn riscv_m() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL + extern "riscv-interrupt-m" fn riscv_m() {
    |
 
 error: functions with the "riscv-interrupt-s" ABI cannot be `async`
-  --> $DIR/cannot-be-coroutine.rs:49:1
+  --> $DIR/cannot-be-coroutine.rs:54:1
    |
 LL | async extern "riscv-interrupt-s" fn riscv_s() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL + extern "riscv-interrupt-s" fn riscv_s() {
    |
 
 error: requires `ResumeTy` lang_item
-  --> $DIR/cannot-be-coroutine.rs:33:19
+  --> $DIR/cannot-be-coroutine.rs:38:19
    |
 LL |   async fn vanilla(){
    |  ___________________^

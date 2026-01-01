@@ -1199,6 +1199,14 @@ pub(crate) struct AbiCannotBeCalled {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_gpu_kernel_abi_cannot_be_called)]
+pub(crate) struct GpuKernelAbiCannotBeCalled {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_const_continue_bad_label)]
 pub(crate) struct ConstContinueBadLabel {
     #[primary_span]
