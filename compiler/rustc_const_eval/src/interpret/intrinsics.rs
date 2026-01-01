@@ -300,6 +300,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::UnsafeBinder(_)
                     | ty::Never
                     | ty::Tuple(_)
+                    | ty::FRT(..)
                     | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
                 };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;

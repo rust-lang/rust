@@ -92,6 +92,9 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
                 push_ty_pat::<I>(stack, pat);
                 stack.push(ty.into());
             }
+            ty::FRT(ty, _) => {
+                stack.push(ty.into());
+            }
             ty::Array(ty, len) => {
                 stack.push(len.into());
                 stack.push(ty.into());

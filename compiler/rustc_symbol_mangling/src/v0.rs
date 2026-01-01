@@ -510,6 +510,9 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 self.print_pat(pat)?;
             }
 
+            // FIXME(FRTs): add mangling support
+            ty::FRT(..) => todo!("mangle {ty}"),
+
             ty::Array(ty, len) => {
                 self.push("A");
                 ty.print(self)?;

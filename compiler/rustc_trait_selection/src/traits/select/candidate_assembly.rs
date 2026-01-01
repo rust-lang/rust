@@ -691,6 +691,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Str
                 | ty::Array(_, _)
                 | ty::Pat(_, _)
+                | ty::FRT(..)
                 | ty::Slice(_)
                 | ty::RawPtr(_, _)
                 | ty::Ref(_, _, _)
@@ -865,6 +866,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Str
                 | ty::Array(_, _)
                 | ty::Pat(_, _)
+                | ty::FRT(..)
                 | ty::Slice(_)
                 | ty::Adt(..)
                 | ty::RawPtr(_, _)
@@ -1134,7 +1136,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match *self_ty.kind() {
             // These impls are built-in because we cannot express sufficiently
             // generic impls in libcore.
-            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::Tuple(..) | ty::Pat(..) => {
+            ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Error(_)
+            | ty::Tuple(..)
+            | ty::Pat(..)
+            | ty::FRT(..) => {
                 candidates.vec.push(BuiltinCandidate);
             }
 
@@ -1249,6 +1256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::FRT(..)
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
             }
@@ -1331,6 +1339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _)
@@ -1367,6 +1376,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Str
             | ty::Array(..)
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(..)
@@ -1418,6 +1428,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::Dynamic(..)
             | ty::Str
             | ty::Slice(_)

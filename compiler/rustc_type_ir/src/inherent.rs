@@ -119,6 +119,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_field_representing_type(interner: I, ty: Self, field: I::FieldId) -> Self;
+
     fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
 
     fn tuple_fields(self) -> I::Tys;
@@ -174,6 +176,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Foreign(_)
             | ty::Array(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)

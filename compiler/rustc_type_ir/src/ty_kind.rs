@@ -106,6 +106,9 @@ pub enum TyKind<I: Interner> {
     /// Only supports integer range patterns for now.
     Pat(I::Ty, I::Pat),
 
+    /// Field representing type (`field_of!(Struct, field)`).
+    FRT(I::Ty, I::FieldId),
+
     /// The pointee of an array slice. Written as `[T]`.
     Slice(I::Ty),
 
@@ -298,6 +301,7 @@ impl<I: Interner> TyKind<I> {
             | ty::Str
             | ty::Array(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
@@ -350,6 +354,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{t:?}; {c:?}]"),
             Pat(t, p) => write!(f, "pattern_type!({t:?} is {p:?})"),
+            FRT(t, i) => write!(f, "field_of!({t:?}, {i:?})"),
             Slice(t) => write!(f, "[{:?}]", &t),
             RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), ty),
             Ref(r, t, m) => write!(f, "&{:?} {}{:?}", r, m.prefix_str(), t),

@@ -867,7 +867,7 @@ fn try_write_constant<'tcx>(
 
     match ty.kind() {
         // ZSTs. Nothing to do.
-        ty::FnDef(..) => {}
+        ty::FnDef(..) | ty::FRT(..) => {}
 
         // Those are scalars, must be handled above.
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char =>

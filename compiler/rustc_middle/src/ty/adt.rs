@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -11,12 +11,13 @@ use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHa
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
+use rustc_span::{Ident, Span};
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
@@ -680,4 +681,101 @@ impl<'tcx> AdtDef<'tcx> {
 pub enum Representability {
     Representable,
     Infinite(ErrorGuaranteed),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[rustc_pass_by_value]
+pub struct FieldId<'tcx>(pub Interned<'tcx, FieldIdData>);
+
+#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+pub enum FieldIdData {
+    Resolved {
+        variant: VariantIdx,
+        field: FieldIdx,
+    },
+    Unresolved {
+        item_def_id: LocalDefId,
+        full_span: Span,
+        hir_id: HirId,
+        ty_span: Span,
+        variant: Option<Ident>,
+        field: Ident,
+    },
+}
+
+impl serde::Serialize for FieldId<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match &*self.0 {
+            FieldIdData::Resolved { variant, field } => {
+                serde::Serialize::serialize(&(*variant, *field), serializer)
+            }
+            unresolved @ FieldIdData::Unresolved { .. } => bug!("cannot serialize {unresolved:?}"),
+        }
+    }
+}
+
+impl<'tcx> FieldId<'tcx> {
+    pub fn resolve(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match *self.0 {
+            FieldIdData::Resolved { .. } => Ty::new_field_representing_type(tcx, ty, self),
+            FieldIdData::Unresolved { hir_id, item_def_id, full_span, ty_span, variant, field } => {
+                ty::lower_field_of(tcx, ty, item_def_id, ty_span, full_span, hir_id, variant, field)
+            }
+        }
+    }
+
+    pub fn ty(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match *self.0 {
+            FieldIdData::Resolved { variant, field } => match ty.kind() {
+                ty::Adt(def, args) => def.variants()[variant].fields[field].ty(tcx, args),
+                ty::Tuple(tys) => {
+                    debug_assert_eq!(FIRST_VARIANT, variant);
+                    tys[field.index()]
+                }
+                ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Foreign(_)
+                | ty::Str
+                | ty::FRT(_, _)
+                | ty::RawPtr(_, _)
+                | ty::Ref(_, _, _)
+                | ty::FnDef(_, _)
+                | ty::FnPtr(_, _)
+                | ty::UnsafeBinder(_)
+                | ty::Dynamic(_, _)
+                | ty::Closure(_, _)
+                | ty::CoroutineClosure(_, _)
+                | ty::Coroutine(_, _)
+                | ty::CoroutineWitness(_, _)
+                | ty::Never
+                | ty::Param(_)
+                | ty::Bound(_, _)
+                | ty::Placeholder(_)
+                | ty::Infer(_)
+                | ty::Array(..)
+                | ty::Pat(..)
+                | ty::Slice(..)
+                | ty::Error(_)
+                | ty::Alias(..) => bug!(
+                    "don't expect to see this TyKind here, should be handled by lowering hir to mir"
+                ),
+            },
+            FieldIdData::Unresolved { ty_span, .. } => Ty::new_error(
+                tcx,
+                tcx.dcx().span_err(ty_span, format!("type `{ty}` doesn't have fields")),
+            ),
+        }
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::FieldId<TyCtxt<'tcx>> for FieldId<'tcx> {
+    fn ty(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        FieldId::ty(self, tcx, ty)
+    }
 }
