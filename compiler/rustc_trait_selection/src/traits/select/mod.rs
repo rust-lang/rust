@@ -2160,6 +2160,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::FRT(..)
             | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
@@ -2197,7 +2198,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     fn copy_clone_conditions(&mut self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
         match *self_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => ty::Binder::dummy(vec![]),
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::FRT(..) => ty::Binder::dummy(vec![]),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -2303,6 +2304,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::FnPtr(..)
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::FRT(..)
             | ty::Never
             | ty::Char => {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![], assumptions: vec![] })

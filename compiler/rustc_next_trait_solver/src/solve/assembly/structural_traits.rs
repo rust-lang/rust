@@ -35,6 +35,7 @@ where
         | ty::Float(_)
         | ty::FnDef(..)
         | ty::FnPtr(..)
+        | ty::FRT(..)
         | ty::Error(_)
         | ty::Never
         | ty::Char => Ok(ty::Binder::dummy(vec![])),
@@ -117,7 +118,7 @@ where
     match ty.kind() {
         // impl {Meta,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
         // impl {Meta,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
-        // impl {Meta,}Sized for Closure, CoroutineClosure
+        // impl {Meta,}Sized for FRT, Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -132,6 +133,7 @@ where
         | ty::CoroutineWitness(..)
         | ty::Array(..)
         | ty::Pat(..)
+        | ty::FRT(..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Never
@@ -194,7 +196,7 @@ where
 {
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::FRT(..) => Ok(ty::Binder::dummy(vec![])),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -389,6 +391,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
+        | ty::FRT(_, _)
         | ty::UnsafeBinder(_)
         | ty::Alias(_, _)
         | ty::Param(_)
@@ -554,6 +557,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Str
         | ty::Array(_, _)
         | ty::Pat(_, _)
+        | ty::FRT(_, _)
         | ty::Slice(_)
         | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
@@ -713,6 +717,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
+        | ty::FRT(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..)
@@ -784,6 +789,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::FnPtr(..)
         | ty::Never
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::FRT(..)
         | ty::Error(_) => Ok(vec![]),
 
         // Coroutines and closures could implement `[const] Drop`,

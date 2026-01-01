@@ -1299,6 +1299,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::Dynamic(..)
             | ty::Str
             | ty::Slice(_)

@@ -122,6 +122,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Adt(_, _)
+                        | ty::FRT(_, _)
                         | ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::Slice(_)

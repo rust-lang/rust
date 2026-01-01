@@ -413,6 +413,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Pat(ty, pat) => {
                 TyKind::RigidTy(RigidTy::Pat(ty.stable(tables, cx), pat.stable(tables, cx)))
             }
+            ty::FRT(..) => todo!(),
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(ty.stable(tables, cx))),
             ty::RawPtr(ty, mutbl) => {
                 TyKind::RigidTy(RigidTy::RawPtr(ty.stable(tables, cx), mutbl.stable(tables, cx)))

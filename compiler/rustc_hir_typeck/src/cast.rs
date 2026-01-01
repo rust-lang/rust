@@ -137,6 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)

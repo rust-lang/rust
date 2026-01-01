@@ -1023,6 +1023,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Str
                         | ty::Array(..)
                         | ty::Pat(..)
+                        | ty::FRT(..)
                         | ty::Slice(_)
                         | ty::RawPtr(..)
                         | ty::Ref(..)
@@ -1078,6 +1079,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::Str
                             | ty::Array(..)
                             | ty::Pat(..)
+                            | ty::FRT(..)
                             | ty::Slice(_)
                             | ty::RawPtr(..)
                             | ty::Ref(..)

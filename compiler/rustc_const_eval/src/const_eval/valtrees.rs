@@ -90,7 +90,7 @@ fn const_to_valtree_inner<'tcx>(
     }
 
     match ty.kind() {
-        ty::FnDef(..) => {
+        ty::FnDef(..) | ty::FRT(..) => {
             *num_nodes += 1;
             Ok(ty::ValTree::zst(tcx))
         }
@@ -273,7 +273,7 @@ pub fn valtree_to_const_value<'tcx>(
     // create inner `MPlace`s which are filled recursively.
     // FIXME: Does this need an example?
     match *cv.ty.kind() {
-        ty::FnDef(..) => {
+        ty::FnDef(..) | ty::FRT(..) => {
             assert!(cv.valtree.is_zst());
             mir::ConstValue::ZeroSized
         }

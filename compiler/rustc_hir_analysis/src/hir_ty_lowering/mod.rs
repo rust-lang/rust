@@ -3004,8 +3004,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.record_ty(pat.hir_id, ty, pat.span);
                 pat_ty
             }
-            // TODO(FRTs): implement lowering
-            hir::TyKind::FieldOf(..) => todo!(),
+            hir::TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => ty::lower_field_of(
+                self.tcx(),
+                self.lower_ty(ty),
+                self.item_def_id(),
+                ty.span,
+                hir_ty.span,
+                hir_ty.hir_id,
+                *variant,
+                *field,
+            ),
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 

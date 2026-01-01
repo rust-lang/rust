@@ -46,7 +46,9 @@ use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{
+    self, AdtKind, FieldIdData, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::ExpnKind;
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -2057,6 +2059,35 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
             format!("{pat:?}").into_boxed_str(),
         ),
+        ty::FRT(ty, field) => {
+            let field_str = match *field.0 {
+                FieldIdData::Resolved { variant, field } => match ty.kind() {
+                    ty::Adt(def, _) => {
+                        if def.is_enum() {
+                            let variant = &def.variants()[variant];
+                            format!("{}.{}", variant.name, variant.fields[field].name)
+                        } else {
+                            format!("{}", def.non_enum_variant().fields[field].name)
+                        }
+                    }
+                    ty::Tuple(_) => {
+                        format!("{}", field.index())
+                    }
+                    _ => bug!("unexpected ty in resolved FRT: {ty}"),
+                },
+                FieldIdData::Unresolved { variant, field, .. } => {
+                    if let Some(variant) = variant {
+                        format!("{variant}.{field}")
+                    } else {
+                        format!("{field}")
+                    }
+                }
+            };
+            Type::FRT(
+                Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
+                field_str.into_boxed_str(),
+            )
+        }
         ty::Array(ty, n) => {
             let n = cx.tcx.normalize_erasing_regions(cx.typing_env(), n);
             let n = print_const(cx, n);
