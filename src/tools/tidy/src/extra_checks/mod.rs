@@ -121,9 +121,7 @@ fn check_impl(
             ck.is_non_auto_or_matches(path)
         });
     }
-    if lint_args.iter().any(|ck| ck.if_installed) {
-        lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
-    }
+    lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
 
     macro_rules! extra_check {
         ($lang:ident, $kind:ident) => {
@@ -597,29 +595,26 @@ fn install_requirements(
     Ok(())
 }
 
+/// Returns `Ok` if shellcheck is installed, `Err` otherwise.
 fn has_shellcheck() -> Result<(), Error> {
     match Command::new("shellcheck").arg("--version").status() {
         Ok(_) => Ok(()),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            return Err(Error::MissingReq(
-                "shellcheck",
-                "shell file checks",
-                Some(
-                    "see <https://github.com/koalaman/shellcheck#installing> \
-                    for installation instructions"
-                        .to_owned(),
-                ),
-            ));
-        }
-        Err(e) => return Err(e.into()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Err(Error::MissingReq(
+            "shellcheck",
+            "shell file checks",
+            Some(
+                "see <https://github.com/koalaman/shellcheck#installing> \
+                for installation instructions"
+                    .to_owned(),
+            ),
+        )),
+        Err(e) => Err(e.into()),
     }
 }
 
 /// Check that shellcheck is installed then run it at the given path
 fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
-    if let Err(err) = has_shellcheck() {
-        return Err(err);
-    }
+    has_shellcheck()?;
 
     let status = Command::new("shellcheck").args(args).status()?;
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
@@ -758,6 +753,7 @@ enum ExtraCheckParseError {
 }
 
 struct ExtraCheckArg {
+    /// Only run the check if files to check have been modified.
     auto: bool,
     /// Only run the check if the requisite software is already installed.
     if_installed: bool,
@@ -798,8 +794,7 @@ impl ExtraCheckArg {
                             && rustdoc_js::has_tool(build_dir, "es-check")
                             && rustdoc_js::has_tool(build_dir, "tsc")
                     }
-                    // Unreachable.
-                    Some(_) => false,
+                    Some(_) => unreachable!("js shouldn't have other type of ExtraCheckKind"),
                 }
             }
             ExtraCheckLang::Py | ExtraCheckLang::Cpp => {
@@ -862,6 +857,8 @@ impl FromStr for ExtraCheckArg {
         let Some(mut first) = parts.next() else {
             return Err(ExtraCheckParseError::Empty);
         };
+        // The loop allows users to specify `auto` and `if-installed` in any order.
+        // Both auto:if-installed:<check> and if-installed:auto:<check> are valid.
         loop {
             if !auto && first == "auto" {
                 let Some(part) = parts.next() else {
