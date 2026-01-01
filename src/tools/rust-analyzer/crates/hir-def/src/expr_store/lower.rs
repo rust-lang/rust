@@ -2546,7 +2546,7 @@ impl<'db> ExprCollector<'db> {
                         // Therefore, if we got to the rib of its declaration, give up its hygiene
                         // and use its parent expansion.
 
-                        hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(self.db));
+                        hygiene_id = HygieneId::new(parent_ctx.opaque_and_semiopaque(self.db));
                         hygiene_info = parent_ctx.outer_expn(self.db).map(|expansion| {
                             let expansion = self.db.lookup_intern_macro_call(expansion.into());
                             (parent_ctx.parent(self.db), expansion.def)
