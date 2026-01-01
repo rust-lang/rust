@@ -679,6 +679,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Tup,
                 Path,
                 Pat,
+                FieldOf,
                 TraitObject,
                 ImplTrait,
                 Paren,
