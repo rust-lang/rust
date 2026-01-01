@@ -1,10 +1,11 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::mono::{MonoItemData, Visibility};
-use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::{self, Const, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat};
@@ -62,6 +63,11 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
 ) -> GlobalAsmOperandRef<'tcx> {
     match op {
         InlineAsmOperand::Const { value } => {
+            let Const::Unevaluated(c, _) = &value.const_ else {
+                bug!("need unevaluated const to derive symbol name")
+            };
+            let const_instance = Instance::new_raw(c.def, c.args);
+
             let const_value = instance
                 .instantiate_mir_and_normalize_erasing_regions(
                     cx.tcx(),
@@ -76,15 +82,19 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 cx.typing_env(),
                 ty::EarlyBinder::bind(value.ty()),
             );
+            let mir::ConstValue::Scalar(scalar) = const_value else {
+                span_bug!(
+                    value.span,
+                    "expected Scalar for promoted asm const, but got {:#?}",
+                    const_value
+                )
+            };
 
-            let string = common::asm_const_to_str(
-                cx.tcx(),
-                value.span,
-                const_value,
-                cx.layout_of(mono_type),
-            );
-
-            GlobalAsmOperandRef::Const { string }
+            GlobalAsmOperandRef::Const {
+                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                ty: mono_type,
+                instance: Some(const_instance),
+            }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -100,7 +110,14 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 _ => bug!("asm sym is not a function"),
             };
 
-            GlobalAsmOperandRef::SymFn { instance }
+            GlobalAsmOperandRef::Const {
+                value: Scalar::from_pointer(
+                    cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                    cx,
+                ),
+                ty: Ty::new_fn_ptr(cx.tcx(), mono_type.fn_sig(cx.tcx())),
+                instance: None,
+            }
         }
         InlineAsmOperand::SymStatic { def_id } => {
             GlobalAsmOperandRef::SymStatic { def_id: *def_id }
