@@ -794,7 +794,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 }
             }
 
-            ty::RawPtr(_, _) => {
+            ty::RawPtr(_, _) | ty::FRT(..) => {
                 // Simple cases that are WF if their type args are WF.
             }
 

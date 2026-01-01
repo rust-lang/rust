@@ -136,6 +136,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::Alias(_, _)
         | ty::Bound(_, _)
         | ty::Pat(_, _)
+        | ty::FRT(_, _)
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Slice(_)

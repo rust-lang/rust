@@ -296,6 +296,8 @@ fn characteristic_def_id_of_type_cached<'a>(
             characteristic_def_id_of_type_cached(subty, visited)
         }
 
+        ty::FRT(ty, _) => characteristic_def_id_of_type_cached(ty, visited),
+
         ty::RawPtr(ty, _) => characteristic_def_id_of_type_cached(ty, visited),
 
         ty::Ref(_, ty, _) => characteristic_def_id_of_type_cached(ty, visited),

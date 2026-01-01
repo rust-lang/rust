@@ -735,6 +735,7 @@ where
                 | ty::RawPtr(..)
                 | ty::Never
                 | ty::Pat(..)
+                | ty::FRT(..)
                 | ty::Dynamic(..)
                 | ty::Str
                 | ty::Slice(_)
@@ -840,6 +841,27 @@ where
                 _ => vec![],
             }
         })
+    }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+        if let ty::FRT(ty, _) = goal.predicate.self_ty().kind()
+            && match ty.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.is_packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
+        {
+            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 
@@ -1241,6 +1263,7 @@ where
             | ty::Str
             | ty::Array(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)

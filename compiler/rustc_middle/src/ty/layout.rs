@@ -847,6 +847,7 @@ where
                 | ty::Uint(_)
                 | ty::Float(_)
                 | ty::FnPtr(..)
+                | ty::FRT(..)
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)

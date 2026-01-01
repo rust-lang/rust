@@ -380,6 +380,22 @@ fn resolve_associated_item<'tcx>(
                 assert_eq!(name, sym::transmute);
                 let args = tcx.erase_and_anonymize_regions(rcvr_args);
                 Some(ty::Instance::new_raw(trait_item_id, args))
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::Field) {
+                if tcx.is_lang_item(trait_item_id, LangItem::FieldOffset) {
+                    let self_ty = trait_ref.self_ty();
+                    match self_ty.kind() {
+                        ty::FRT(..) => {}
+                        _ => bug!("expected field representing type, found {self_ty}"),
+                    }
+                    Some(Instance {
+                        def: ty::InstanceKind::Item(
+                            tcx.lang_items().get(LangItem::FieldOffset).unwrap(),
+                        ),
+                        args: rcvr_args,
+                    })
+                } else {
+                    bug!("unexpected associated associated item")
+                }
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }
