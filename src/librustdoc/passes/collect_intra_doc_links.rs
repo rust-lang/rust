@@ -384,7 +384,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         };
 
         match tcx.def_kind(self_id) {
-            DefKind::Impl { .. } => self.def_id_to_res(self_id),
+            DefKind::Impl { .. } => self.ty_to_res(tcx.type_of(self_id).instantiate_identity()),
             DefKind::Use => None,
             def_kind => Some(Res::Def(def_kind, self_id)),
         }
@@ -506,12 +506,12 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         }
     }
 
-    /// Convert a DefId to a Res, where possible.
+    /// Convert a Ty to a Res, where possible.
     ///
     /// This is used for resolving type aliases.
-    fn def_id_to_res(&self, ty_id: DefId) -> Option<Res> {
+    fn ty_to_res(&self, ty: Ty<'tcx>) -> Option<Res> {
         use PrimitiveType::*;
-        Some(match *self.cx.tcx.type_of(ty_id).instantiate_identity().kind() {
+        Some(match *ty.kind() {
             ty::Bool => Res::Primitive(Bool),
             ty::Char => Res::Primitive(Char),
             ty::Int(ity) => Res::Primitive(ity.into()),
@@ -614,7 +614,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                 // Resolve the link on the type the alias points to.
                 // FIXME: if the associated item is defined directly on the type alias,
                 // it will show up on its documentation page, we should link there instead.
-                let Some(res) = self.def_id_to_res(did) else { return Vec::new() };
+                let Some(res) = self.ty_to_res(tcx.type_of(did).instantiate_identity()) else { return Vec::new() };
                 self.resolve_associated_item(res, item_name, ns, disambiguator, module_id)
             }
             Res::Def(
