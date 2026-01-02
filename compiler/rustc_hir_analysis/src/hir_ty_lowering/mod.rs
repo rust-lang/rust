@@ -38,8 +38,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, Upcast, fold_regions,
+    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
+    TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -394,7 +394,118 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
     ) -> ty::GenericArg<'tcx>;
 }
 
+struct ForbidMCGParamUsesFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    anon_const_def_id: LocalDefId,
+    span: Span,
+    is_self_alias: bool,
+}
+
+impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
+    fn error(&self) -> ErrorGuaranteed {
+        let msg = if self.is_self_alias {
+            "generic `Self` types are currently not permitted in anonymous constants"
+        } else {
+            "generic parameters may not be used in const operations"
+        };
+        let mut diag = self.tcx.dcx().struct_span_err(self.span, msg);
+        if self.is_self_alias {
+            let anon_const_hir_id: HirId = HirId::make_owner(self.anon_const_def_id);
+            let parent_impl = self.tcx.hir_parent_owner_iter(anon_const_hir_id).find_map(
+                |(_, node)| match node {
+                    hir::OwnerNode::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(impl_), ..
+                    }) => Some(impl_),
+                    _ => None,
+                },
+            );
+            if let Some(impl_) = parent_impl {
+                diag.span_note(impl_.self_ty.span, "not a concrete type");
+            }
+        }
+        diag.emit()
+    }
+}
+
+impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ForbidMCGParamUsesFolder<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if matches!(t.kind(), ty::Param(..)) {
+            return Ty::new_error(self.tcx, self.error());
+        }
+        t.super_fold_with(self)
+    }
+
+    fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
+        if matches!(c.kind(), ty::ConstKind::Param(..)) {
+            return Const::new_error(self.tcx, self.error());
+        }
+        c.super_fold_with(self)
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if matches!(r.kind(), ty::RegionKind::ReEarlyParam(..) | ty::RegionKind::ReLateParam(..)) {
+            return ty::Region::new_error(self.tcx, self.error());
+        }
+        r
+    }
+}
+
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// See `check_param_uses_if_mcg`.
+    ///
+    /// FIXME(mgca): this is pub only for instantiate_value_path and would be nice to avoid altogether
+    pub fn check_param_res_if_mcg_for_instantiate_value_path(
+        &self,
+        res: Res,
+        span: Span,
+    ) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let parent_def_id = self.item_def_id();
+        if let Res::Def(DefKind::ConstParam, _) = res
+            && tcx.def_kind(parent_def_id) == DefKind::AnonConst
+            && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
+        {
+            let folder = ForbidMCGParamUsesFolder {
+                tcx,
+                anon_const_def_id: parent_def_id,
+                span,
+                is_self_alias: false,
+            };
+            return Err(folder.error());
+        }
+        Ok(())
+    }
+
+    /// Check for uses of generic parameters that are not in scope due to this being
+    /// in a non-generic anon const context.
+    #[must_use = "need to use transformed output"]
+    fn check_param_uses_if_mcg<T>(&self, term: T, span: Span, is_self_alias: bool) -> T
+    where
+        T: ty::TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let tcx = self.tcx();
+        let parent_def_id = self.item_def_id();
+        if tcx.def_kind(parent_def_id) == DefKind::AnonConst
+            && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
+            // Fast path if contains no params/escaping bound vars.
+            && (term.has_param() || term.has_escaping_bound_vars())
+        {
+            let mut folder = ForbidMCGParamUsesFolder {
+                tcx,
+                anon_const_def_id: parent_def_id,
+                span,
+                is_self_alias,
+            };
+            term.fold_with(&mut folder)
+        } else {
+            term
+        }
+    }
+
     /// Lower a lifetime from the HIR to our internal notion of a lifetime called a *region*.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_lifetime(
@@ -403,7 +514,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         reason: RegionInferReason<'_>,
     ) -> ty::Region<'tcx> {
         if let Some(resolved) = self.tcx().named_bound_var(lifetime.hir_id) {
-            self.lower_resolved_lifetime(resolved)
+            let region = self.lower_resolved_lifetime(resolved);
+            self.check_param_uses_if_mcg(region, lifetime.ident.span, false)
         } else {
             self.re_infer(lifetime.ident.span, reason)
         }
@@ -411,7 +523,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower a lifetime from the HIR to our internal notion of a lifetime called a *region*.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn lower_resolved_lifetime(&self, resolved: rbv::ResolvedArg) -> ty::Region<'tcx> {
+    fn lower_resolved_lifetime(&self, resolved: rbv::ResolvedArg) -> ty::Region<'tcx> {
         let tcx = self.tcx();
 
         match resolved {
@@ -1256,9 +1368,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             TypeRelativePath::AssocItem(def_id, args) => {
                 let alias_ty = ty::AliasTy::new_from_args(tcx, def_id, args);
                 let ty = Ty::new_alias(tcx, alias_ty.kind(tcx), alias_ty);
+                let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
+                let adt = self.check_param_uses_if_mcg(adt, span, false);
                 Ok((adt, DefKind::Variant, variant_did))
             }
         }
@@ -1275,7 +1389,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<Const<'tcx>, ErrorGuaranteed> {
         let tcx = self.tcx();
-        let (def_id, args) = match self.lower_type_relative_path(
+        match self.lower_type_relative_path(
             self_ty,
             hir_self_ty,
             segment,
@@ -1292,15 +1406,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.note("the declaration in the trait must be marked with `#[type_const]`");
                     return Err(err.emit());
                 }
-                (def_id, args)
+                let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+                let ct = self.check_param_uses_if_mcg(ct, span, false);
+                Ok(ct)
             }
             // FIXME(mgca): implement support for this once ready to support all adt ctor expressions,
             // not just const ctors
             TypeRelativePath::Variant { .. } => {
                 span_bug!(span, "unexpected variant res for type associated const path")
             }
-        };
-        Ok(Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args)))
+        }
     }
 
     /// Lower a [type-relative][hir::QPath::TypeRelative] (and type-level) path.
@@ -2032,9 +2147,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         GenericsArgsErrExtend::None
                     },
                 );
-                tcx.types.self_param
+                self.check_param_uses_if_mcg(tcx.types.self_param, span, false)
             }
-            Res::SelfTyAlias { alias_to: def_id, forbid_generic, .. } => {
+            Res::SelfTyAlias { alias_to: def_id, forbid_generic: _, .. } => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.
@@ -2043,42 +2158,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments.iter(),
                     GenericsArgsErrExtend::SelfTyAlias { def_id, span },
                 );
-                // HACK(min_const_generics): Forbid generic `Self` types
-                // here as we can't easily do that during nameres.
-                //
-                // We do this before normalization as we otherwise allow
-                // ```rust
-                // trait AlwaysApplicable { type Assoc; }
-                // impl<T: ?Sized> AlwaysApplicable for T { type Assoc = usize; }
-                //
-                // trait BindsParam<T> {
-                //     type ArrayTy;
-                // }
-                // impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
-                //    type ArrayTy = [u8; Self::MAX];
-                // }
-                // ```
-                // Note that the normalization happens in the param env of
-                // the anon const, which is empty. This is why the
-                // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
-                // this to compile if we were to normalize here.
-                if forbid_generic && ty.has_param() {
-                    let mut err = self.dcx().struct_span_err(
-                        path.span,
-                        "generic `Self` types are currently not permitted in anonymous constants",
-                    );
-                    if let Some(hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Impl(impl_),
-                        ..
-                    })) = tcx.hir_get_if_local(def_id)
-                    {
-                        err.span_note(impl_.self_ty.span, "not a concrete type");
-                    }
-                    let reported = err.emit();
-                    Ty::new_error(tcx, reported)
-                } else {
-                    ty
-                }
+                self.check_param_uses_if_mcg(ty, span, true)
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
@@ -2138,7 +2218,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// and late-bound ones to [`ty::Bound`].
     pub(crate) fn lower_ty_param(&self, hir_id: HirId) -> Ty<'tcx> {
         let tcx = self.tcx();
-        match tcx.named_bound_var(hir_id) {
+
+        let ty = match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
@@ -2154,7 +2235,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Some(rbv::ResolvedArg::Error(guar)) => Ty::new_error(tcx, guar),
             arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
-        }
+        };
+        self.check_param_uses_if_mcg(ty, tcx.hir_span(hir_id), false)
     }
 
     /// Lower a const parameter from the HIR to our internal notion of a constant.
@@ -2164,7 +2246,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn lower_const_param(&self, param_def_id: DefId, path_hir_id: HirId) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        match tcx.named_bound_var(path_hir_id) {
+        let ct = match tcx.named_bound_var(path_hir_id) {
             Some(rbv::ResolvedArg::EarlyBound(_)) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
@@ -2181,7 +2263,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ),
             Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
             arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", path_hir_id),
-        }
+        };
+        self.check_param_uses_if_mcg(ct, tcx.hir_span(path_hir_id), false)
     }
 
     /// Lower a [`hir::ConstArg`] to a (type-level) [`ty::Const`](Const).
@@ -2386,7 +2469,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
         let span = path.span;
-        match path.res {
+        let ct = match path.res {
             Res::Def(DefKind::ConstParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
                 let _ = self.prohibit_generic_args(
@@ -2475,7 +2558,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 format!("invalid Res {res:?} for const path"),
             ),
-        }
+        };
+        self.check_param_uses_if_mcg(ct, span, false)
     }
 
     /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
@@ -2518,20 +2602,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 block.expr.as_ref().unwrap()
             }
             _ => expr,
-        };
-
-        // FIXME(mgca): remove this delayed bug once we start checking this
-        // when lowering `Ty/ConstKind::Param`s more generally.
-        if let hir::ExprKind::Path(hir::QPath::Resolved(
-            _,
-            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-        )) = expr.kind
-        {
-            let e = tcx.dcx().span_delayed_bug(
-                expr.span,
-                "try_lower_anon_const_lit: received const param which shouldn't be possible",
-            );
-            return Some(ty::Const::new_error(tcx, e));
         };
 
         let lit_input = match expr.kind {
@@ -2787,6 +2857,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let args = ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(offset) {
                 let (lifetime, _) = lifetimes[i];
+                // FIXME(mgca): should we be calling self.check_params_use_if_mcg here too?
                 self.lower_resolved_lifetime(lifetime).into()
             } else {
                 tcx.mk_param_from_def(param)
