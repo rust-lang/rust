@@ -432,6 +432,8 @@ const_eval_unterminated_c_string =
 const_eval_unwind_past_top =
     unwinding past the topmost frame of the stack
 
+const_eval_va_arg_out_of_bounds = more C-variadic arguments read than were passed
+
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
