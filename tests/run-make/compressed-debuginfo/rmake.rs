@@ -23,7 +23,7 @@ fn check_compression(compression: &str, to_find: &str) {
         } else {
             assert_contains(
                 stderr,
-                format!("unknown debuginfo compression algorithm {compression}"),
+                format!("unsupported debuginfo compression algorithm {compression}"),
             );
         }
     });

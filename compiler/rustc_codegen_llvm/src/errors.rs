@@ -169,8 +169,8 @@ pub(crate) struct CopyBitcode {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_debuginfo_compression)]
-pub(crate) struct UnknownCompression {
+#[diag(codegen_llvm_unsupported_debuginfo_compression)]
+pub(crate) struct UnsupportedCompression {
     pub algorithm: &'static str,
 }
 
