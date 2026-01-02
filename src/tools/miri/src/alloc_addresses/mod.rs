@@ -185,7 +185,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 #[cfg(not(all(unix, feature = "native-lib")))]
                 AllocKind::Function => dummy_alloc(params),
                 AllocKind::VTable => dummy_alloc(params),
-                AllocKind::TypeId | AllocKind::Dead => unreachable!(),
+                AllocKind::TypeId | AllocKind::Dead | AllocKind::VaList => unreachable!(),
             };
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
             return interp_ok(base_ptr.addr().to_u64());
@@ -363,8 +363,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
                 static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
-                this.dedup_diagnostic(&DEDUP, |first| {
-                    NonHaltingDiagnostic::Int2Ptr { details: first }
+                this.dedup_diagnostic(&DEDUP, |first| NonHaltingDiagnostic::Int2Ptr {
+                    details: first,
                 });
             }
             ProvenanceMode::Strict => {
