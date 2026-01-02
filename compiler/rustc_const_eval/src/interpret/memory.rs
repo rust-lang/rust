@@ -128,7 +128,7 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     /// Map for "extra" function pointers.
     extra_fn_ptr_map: FxIndexMap<AllocId, M::ExtraFnVal>,
 
-    pub(super) va_list_map: FxIndexMap<AllocId, Vec<MPlaceTy<'tcx, M::Provenance>>>,
+    pub(crate) va_list_map: FxIndexMap<AllocId, Vec<MPlaceTy<'tcx, M::Provenance>>>,
 
     /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
