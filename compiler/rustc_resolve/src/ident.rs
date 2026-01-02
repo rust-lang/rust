@@ -19,10 +19,10 @@ use crate::late::{
 };
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
-    Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot,
-    NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
+    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportKind,
+    LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind,
+    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
+    Segment, Stage, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -41,17 +41,6 @@ impl From<UsePrelude> for bool {
 enum Shadowing {
     Restricted,
     Unrestricted,
-}
-
-bitflags::bitflags! {
-    #[derive(Clone, Copy)]
-    struct Flags: u8 {
-        const MACRO_RULES          = 1 << 0;
-        const MODULE               = 1 << 1;
-        const MISC_SUGGEST_CRATE   = 1 << 2;
-        const MISC_SUGGEST_SELF    = 1 << 3;
-        const MISC_FROM_PRELUDE    = 1 << 4;
-    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -430,10 +419,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_result: Option<(NameBinding<'_>, Flags)> = None;
+        let mut innermost_results: Vec<(NameBinding<'_>, Scope<'_>)> = Vec::new();
         let mut determinacy = Determinacy::Determined;
-        let mut extern_prelude_item_binding = None;
-        let mut extern_prelude_flag_binding = None;
 
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(
@@ -454,16 +441,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     scope_set,
                     parent_scope,
                     // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
-                    if innermost_result.is_none() { finalize } else { None },
+                    if innermost_results.is_empty() { finalize } else { None },
                     force,
                     ignore_binding,
                     ignore_import,
-                    &mut extern_prelude_item_binding,
-                    &mut extern_prelude_flag_binding,
                 )? {
-                    Ok((binding, flags))
-                        if sub_namespace_match(binding.macro_kinds(), macro_kind) =>
-                    {
+                    Ok(binding) if sub_namespace_match(binding.macro_kinds(), macro_kind) => {
                         // Below we report various ambiguity errors.
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
@@ -472,25 +455,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return ControlFlow::Break(Ok(binding));
                         }
 
-                        if let Some((innermost_binding, innermost_flags)) = innermost_result {
+                        if let Some(&(innermost_binding, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
                             if this.get_mut().maybe_push_ambiguity(
                                 orig_ident,
                                 parent_scope,
                                 binding,
-                                innermost_binding,
-                                flags,
-                                innermost_flags,
-                                extern_prelude_item_binding,
-                                extern_prelude_flag_binding,
+                                scope,
+                                &innermost_results,
                             ) {
                                 // No need to search for more potential ambiguities, one is enough.
                                 return ControlFlow::Break(Ok(innermost_binding));
                             }
-                        } else {
-                            // Found the first solution.
-                            innermost_result = Some((binding, flags));
                         }
+
+                        innermost_results.push((binding, scope));
                     }
                     Ok(_) | Err(Determinacy::Determined) => {}
                     Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
@@ -506,8 +485,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Scope visiting walked all the scopes and maybe found something in one of them.
-        match innermost_result {
-            Some((binding, _)) => Ok(binding),
+        match innermost_results.first() {
+            Some(&(binding, ..)) => Ok(binding),
             None => Err(Determinacy::determined(determinacy == Determinacy::Determined || force)),
         }
     }
@@ -525,19 +504,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         force: bool,
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-        extern_prelude_item_binding: &mut Option<NameBinding<'ra>>,
-        extern_prelude_flag_binding: &mut Option<NameBinding<'ra>>,
-    ) -> ControlFlow<
-        Result<NameBinding<'ra>, Determinacy>,
-        Result<(NameBinding<'ra>, Flags), Determinacy>,
-    > {
+    ) -> ControlFlow<Result<NameBinding<'ra>, Determinacy>, Result<NameBinding<'ra>, Determinacy>>
+    {
         let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
                 if let Some(binding) = self.helper_attrs.get(&expn_id).and_then(|attrs| {
                     attrs.iter().rfind(|(i, _)| ident == *i).map(|(_, binding)| *binding)
                 }) {
-                    Ok((binding, Flags::empty()))
+                    Ok(binding)
                 } else {
                     Err(Determinacy::Determined)
                 }
@@ -559,7 +534,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     derive.span,
                                     LocalExpnId::ROOT,
                                 );
-                                result = Ok((binding, Flags::empty()));
+                                result = Ok(binding);
                                 break;
                             }
                         }
@@ -573,7 +548,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 MacroRulesScope::Binding(macro_rules_binding)
                     if ident == macro_rules_binding.ident =>
                 {
-                    Ok((macro_rules_binding.binding, Flags::MACRO_RULES))
+                    Ok(macro_rules_binding.binding)
                 }
                 MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
                 _ => Err(Determinacy::Determined),
@@ -612,14 +587,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 },
                             );
                         }
-                        let misc_flags = if module == self.graph_root {
-                            Flags::MISC_SUGGEST_CRATE
-                        } else if module.is_normal() {
-                            Flags::MISC_SUGGEST_SELF
-                        } else {
-                            Flags::empty()
-                        };
-                        Ok((binding, Flags::MODULE | misc_flags))
+                        Ok(binding)
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
                     Err(ControlFlow::Break(Determinacy::Undetermined)) => {
@@ -630,21 +598,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
-                Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
+                Some(binding) => Ok(binding),
                 None => Err(Determinacy::determined(
                     self.graph_root.unexpanded_invocations.borrow().is_empty(),
                 )),
             },
             Scope::BuiltinAttrs => match self.builtin_attrs_bindings.get(&ident.name) {
-                Some(binding) => Ok((*binding, Flags::empty())),
+                Some(binding) => Ok(*binding),
                 None => Err(Determinacy::Determined),
             },
             Scope::ExternPreludeItems => {
                 match self.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
-                    Some(binding) => {
-                        *extern_prelude_item_binding = Some(binding);
-                        Ok((binding, Flags::empty()))
-                    }
+                    Some(binding) => Ok(binding),
                     None => Err(Determinacy::determined(
                         self.graph_root.unexpanded_invocations.borrow().is_empty(),
                     )),
@@ -652,15 +617,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::ExternPreludeFlags => {
                 match self.extern_prelude_get_flag(ident, finalize.is_some()) {
-                    Some(binding) => {
-                        *extern_prelude_flag_binding = Some(binding);
-                        Ok((binding, Flags::empty()))
-                    }
+                    Some(binding) => Ok(binding),
                     None => Err(Determinacy::Determined),
                 }
             }
             Scope::ToolPrelude => match self.registered_tool_bindings.get(&ident) {
-                Some(binding) => Ok((*binding, Flags::empty())),
+                Some(binding) => Ok(*binding),
                 None => Err(Determinacy::Determined),
             },
             Scope::StdLibPrelude => {
@@ -679,7 +641,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && (matches!(use_prelude, UsePrelude::Yes)
                         || self.is_builtin_macro(binding.res()))
                 {
-                    result = Ok((binding, Flags::MISC_FROM_PRELUDE));
+                    result = Ok(binding)
                 }
 
                 result
@@ -712,7 +674,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         )
                         .emit();
                     }
-                    Ok((*binding, Flags::empty()))
+                    Ok(*binding)
                 }
                 None => Err(Determinacy::Determined),
             },
@@ -726,17 +688,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident: Ident,
         parent_scope: &ParentScope<'ra>,
         binding: NameBinding<'ra>,
-        innermost_binding: NameBinding<'ra>,
-        flags: Flags,
-        innermost_flags: Flags,
-        extern_prelude_item_binding: Option<NameBinding<'ra>>,
-        extern_prelude_flag_binding: Option<NameBinding<'ra>>,
+        scope: Scope<'ra>,
+        innermost_results: &[(NameBinding<'ra>, Scope<'ra>)],
     ) -> bool {
+        let (innermost_binding, innermost_scope) = *innermost_results.first().unwrap();
         let (res, innermost_res) = (binding.res(), innermost_binding.res());
         if res == innermost_res {
             return false;
         }
 
+        // FIXME: Use `scope` instead of `res` to detect built-in attrs and derive helpers,
+        // it will exclude imports, make slightly more code legal, and will require lang approval.
         let is_builtin = |res| matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)));
         let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
         let derive_helper_compat = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
@@ -747,12 +709,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(AmbiguityKind::DeriveHelper)
         } else if res == derive_helper_compat && innermost_res != derive_helper {
             span_bug!(orig_ident.span, "impossible inner resolution kind")
-        } else if innermost_flags.contains(Flags::MACRO_RULES)
-            && flags.contains(Flags::MODULE)
+        } else if matches!(innermost_scope, Scope::MacroRules(_))
+            && matches!(scope, Scope::Module(..))
             && !self.disambiguate_macro_rules_vs_modularized(innermost_binding, binding)
         {
             Some(AmbiguityKind::MacroRulesVsModularized)
-        } else if flags.contains(Flags::MACRO_RULES) && innermost_flags.contains(Flags::MODULE) {
+        } else if matches!(scope, Scope::MacroRules(_))
+            && matches!(innermost_scope, Scope::Module(..))
+        {
             // should be impossible because of visitation order in
             // visit_scopes
             //
@@ -774,32 +738,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Skip ambiguity errors for extern flag bindings "overridden"
             // by extern item bindings.
             // FIXME: Remove with lang team approval.
-            let issue_145575_hack = Some(binding) == extern_prelude_flag_binding
-                && extern_prelude_item_binding.is_some()
-                && extern_prelude_item_binding != Some(innermost_binding);
+            let issue_145575_hack = matches!(scope, Scope::ExternPreludeFlags)
+                && innermost_results[1..].iter().any(|(b, s)| {
+                    matches!(s, Scope::ExternPreludeItems) && *b != innermost_binding
+                });
 
             if issue_145575_hack {
                 self.issue_145575_hack_applied = true;
             } else {
-                let misc = |f: Flags| {
-                    if f.contains(Flags::MISC_SUGGEST_CRATE) {
-                        AmbiguityErrorMisc::SuggestCrate
-                    } else if f.contains(Flags::MISC_SUGGEST_SELF) {
-                        AmbiguityErrorMisc::SuggestSelf
-                    } else if f.contains(Flags::MISC_FROM_PRELUDE) {
-                        AmbiguityErrorMisc::FromPrelude
-                    } else {
-                        AmbiguityErrorMisc::None
-                    }
-                };
                 self.ambiguity_errors.push(AmbiguityError {
                     kind,
                     ident: orig_ident,
                     b1: innermost_binding,
                     b2: binding,
+                    scope1: innermost_scope,
+                    scope2: scope,
                     warning: false,
-                    misc1: misc(innermost_flags),
-                    misc2: misc(flags),
                 });
                 return true;
             }
@@ -1216,9 +1170,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 b1: binding,
                 b2: shadowed_glob,
+                scope1: Scope::Module(self.empty_module, None),
+                scope2: Scope::Module(self.empty_module, None),
                 warning: false,
-                misc1: AmbiguityErrorMisc::None,
-                misc2: AmbiguityErrorMisc::None,
             });
         }
 
