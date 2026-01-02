@@ -217,6 +217,10 @@ LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
    |                                           ^        - value is dropped here
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
@@ -225,6 +229,10 @@ LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    |                                    ^        - value is dropped here
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:62:29
@@ -233,6 +241,10 @@ LL |     const fn i_f5(x: isize, _: ...) {}
    |                             ^        - value is dropped here
    |                             |
    |                             the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 29 previous errors
 

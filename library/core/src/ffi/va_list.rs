@@ -216,7 +216,8 @@ impl Clone for VaList<'_> {
     }
 }
 
-impl<'f> Drop for VaList<'f> {
+#[rustc_const_unstable(feature = "c_variadic_const", issue = "none")]
+impl<'f> const Drop for VaList<'f> {
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
@@ -291,7 +292,8 @@ impl<'f> VaList<'f> {
     ///
     /// [valid]: https://doc.rust-lang.org/nightly/nomicon/what-unsafe-does.html
     #[inline]
-    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+    #[rustc_const_unstable(feature = "c_variadic_const", issue = "none")]
+    pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }
