@@ -98,6 +98,8 @@ pub trait ProcMacroClientInterface {
     fn file(&mut self, file_id: span::FileId) -> String;
     fn source_text(&mut self, span: Span) -> Option<String>;
     fn local_file(&mut self, file_id: span::FileId) -> Option<String>;
+    /// Line and column are 1-based.
+    fn line_column(&mut self, span: Span) -> Option<(u32, u32)>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

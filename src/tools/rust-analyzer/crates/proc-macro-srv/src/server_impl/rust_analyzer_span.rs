@@ -257,14 +257,12 @@ impl server::Span for RaSpanServer<'_> {
         Span { range: TextRange::empty(span.range.start()), ..span }
     }
 
-    fn line(&mut self, _span: Self::Span) -> usize {
-        // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
-        1
+    fn line(&mut self, span: Self::Span) -> usize {
+        self.callback.as_mut().and_then(|cb| cb.line_column(span)).map_or(1, |(l, _)| l as usize)
     }
 
-    fn column(&mut self, _span: Self::Span) -> usize {
-        // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
-        1
+    fn column(&mut self, span: Self::Span) -> usize {
+        self.callback.as_mut().and_then(|cb| cb.line_column(span)).map_or(1, |(_, c)| c as usize)
     }
 }
 

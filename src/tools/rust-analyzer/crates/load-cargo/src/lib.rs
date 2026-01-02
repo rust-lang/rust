@@ -554,20 +554,30 @@ impl ProcMacroExpander for Expander {
                 Ok(SubResponse::LocalFilePathResult { name })
             }
             SubRequest::SourceText { file_id, ast_id, start, end } => {
-                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
-                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
-                let span = Span {
-                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
-                    anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
-                    ctx: SyntaxContext::root(editioned_file_id.edition()),
-                };
-                let range = db.resolve_span(span);
+                let range = resolve_sub_span(
+                    db,
+                    file_id,
+                    ast_id,
+                    TextRange::new(TextSize::from(start), TextSize::from(end)),
+                );
                 let source = db.file_text(range.file_id.file_id(db)).text(db);
                 let text = source
                     .get(usize::from(range.range.start())..usize::from(range.range.end()))
                     .map(ToOwned::to_owned);
 
                 Ok(SubResponse::SourceTextResult { text })
+            }
+            SubRequest::LineColumn { file_id, ast_id, offset } => {
+                let range =
+                    resolve_sub_span(db, file_id, ast_id, TextRange::empty(TextSize::from(offset)));
+                let source = db.file_text(range.file_id.file_id(db)).text(db);
+                let line_index = ide_db::line_index::LineIndex::new(source);
+                let (line, column) = line_index
+                    .try_line_col(range.range.start())
+                    .map(|lc| (lc.line + 1, lc.col + 1))
+                    .unwrap_or((1, 1));
+                // proc_macro::Span line/column are 1-based
+                Ok(SubResponse::LineColumnResult { line, column })
             }
             SubRequest::FilePath { file_id } => {
                 let file_id = FileId::from_raw(file_id);
@@ -601,6 +611,22 @@ impl ProcMacroExpander for Expander {
     fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
         (other as &dyn Any).downcast_ref::<Self>() == Some(self)
     }
+}
+
+fn resolve_sub_span(
+    db: &dyn ExpandDatabase,
+    file_id: u32,
+    ast_id: u32,
+    range: TextRange,
+) -> hir_expand::FileRange {
+    let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+    let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+    let span = Span {
+        range,
+        anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
+        ctx: SyntaxContext::root(editioned_file_id.edition()),
+    };
+    db.resolve_span(span)
 }
 
 #[cfg(test)]

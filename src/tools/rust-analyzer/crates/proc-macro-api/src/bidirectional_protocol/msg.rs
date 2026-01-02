@@ -13,13 +13,25 @@ pub enum SubRequest {
     FilePath { file_id: u32 },
     SourceText { file_id: u32, ast_id: u32, start: u32, end: u32 },
     LocalFilePath { file_id: u32 },
+    LineColumn { file_id: u32, ast_id: u32, offset: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubResponse {
-    FilePathResult { name: String },
-    SourceTextResult { text: Option<String> },
-    LocalFilePathResult { name: Option<String> },
+    FilePathResult {
+        name: String,
+    },
+    SourceTextResult {
+        text: Option<String>,
+    },
+    LocalFilePathResult {
+        name: Option<String>,
+    },
+    /// Line and column are 1-based.
+    LineColumnResult {
+        line: u32,
+        column: u32,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
