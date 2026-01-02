@@ -109,8 +109,66 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 pshufb(this, left, right, dest)?;
             }
+
+            // Used to implement the _mm512_dpbusd_epi32 function.
+            "vpdpbusd.512" | "vpdpbusd.256" | "vpdpbusd.128" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vnni")?;
+                if matches!(unprefixed_name, "vpdpbusd.128" | "vpdpbusd.256") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [src, a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                vpdpbusd(this, src, a, b, dest)?;
+            }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)
     }
+}
+
+/// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in `a` with corresponding signed
+/// 8-bit integers in `b`, producing 4 intermediate signed 16-bit results. Sum these 4 results with
+/// the corresponding 32-bit integer in `src` (using wrapping arighmetic), and store the packed
+/// 32-bit results in `dst`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_dpbusd_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_dpbusd_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_dpbusd_epi32>
+fn vpdpbusd<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    src: &OpTy<'tcx>,
+    a: &OpTy<'tcx>,
+    b: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (src, src_len) = ecx.project_to_simd(src)?;
+    let (a, a_len) = ecx.project_to_simd(a)?;
+    let (b, b_len) = ecx.project_to_simd(b)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn vpdpbusd(src: i32x16, a: i32x16, b: i32x16) -> i32x16;
+    // fn vpdpbusd256(src: i32x8, a: i32x8, b: i32x8) -> i32x8;
+    // fn vpdpbusd128(src: i32x4, a: i32x4, b: i32x4) -> i32x4;
+    assert_eq!(dest_len, src_len);
+    assert_eq!(dest_len, a_len);
+    assert_eq!(dest_len, b_len);
+
+    for i in 0..dest_len {
+        let src = ecx.read_scalar(&ecx.project_index(&src, i)?)?.to_i32()?;
+        let a = ecx.read_scalar(&ecx.project_index(&a, i)?)?.to_u32()?;
+        let b = ecx.read_scalar(&ecx.project_index(&b, i)?)?.to_u32()?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        let zipped = a.to_le_bytes().into_iter().zip(b.to_le_bytes());
+        let intermediate_sum: i32 = zipped
+            .map(|(a, b)| i32::from(a).strict_mul(i32::from(b.cast_signed())))
+            .fold(0, |x, y| x.strict_add(y));
+
+        // Use `wrapping_add` because `src` is an arbitrary i32 and the addition can overflow.
+        let res = Scalar::from_i32(intermediate_sum.wrapping_add(src));
+        ecx.write_scalar(res, &dest)?;
+    }
+
+    interp_ok(())
 }
