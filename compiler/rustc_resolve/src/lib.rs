@@ -807,7 +807,7 @@ impl<'ra> fmt::Debug for Module<'ra> {
 #[derive(Clone, Copy, Debug)]
 struct NameBindingData<'ra> {
     kind: NameBindingKind<'ra>,
-    ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+    ambiguity: Option<NameBinding<'ra>>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
@@ -937,9 +937,9 @@ impl<'ra> NameBindingData<'ra> {
 
     fn descent_to_ambiguity(
         self: NameBinding<'ra>,
-    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>, AmbiguityKind)> {
+    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>)> {
         match self.ambiguity {
-            Some((ambig_binding, ambig_kind)) => Some((self, ambig_binding, ambig_kind)),
+            Some(ambig_binding) => Some((self, ambig_binding)),
             None => match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
                 _ => None,
@@ -2064,9 +2064,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         used: Used,
         warn_ambiguity: bool,
     ) {
-        if let Some((b2, kind)) = used_binding.ambiguity {
+        if let Some(b2) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
-                kind,
+                kind: AmbiguityKind::GlobVsGlob,
                 ident,
                 b1: used_binding,
                 b2,
