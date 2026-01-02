@@ -140,12 +140,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // since freebsd 12 the former form can be expected.
             "stat" | "stat@FBSD_1.0" => {
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_stat(path, buf)?;
+                let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat@FBSD_1.0" => {
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_lstat(path, buf)?;
+                let result = this.lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat@FBSD_1.0" => {

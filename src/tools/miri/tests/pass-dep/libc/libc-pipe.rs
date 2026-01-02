@@ -13,6 +13,7 @@ fn main() {
     test_pipe_array();
     #[cfg(any(
         target_os = "linux",
+        target_os = "android",
         target_os = "illumos",
         target_os = "freebsd",
         target_os = "solaris"
@@ -133,6 +134,7 @@ fn test_pipe_array() {
 /// Test if pipe2 (including the O_NONBLOCK flag) is supported.
 #[cfg(any(
     target_os = "linux",
+    target_os = "android",
     target_os = "illumos",
     target_os = "freebsd",
     target_os = "solaris"
