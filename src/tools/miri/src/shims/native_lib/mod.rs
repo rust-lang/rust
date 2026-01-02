@@ -1,6 +1,7 @@
 //! Implements calling functions from a native library.
 
 use std::ops::Deref;
+use std::os::raw::c_void;
 use std::sync::atomic::AtomicBool;
 
 use libffi::low::CodePtr;
@@ -72,6 +73,12 @@ impl AccessRange {
     fn end(&self) -> usize {
         self.addr.strict_add(self.size)
     }
+}
+
+/// The data passed to the closure shim function used to intercept function pointer calls from
+/// native code.
+struct CallbackData<'tcx, 'this> {
+    ecx: &'this InterpCx<'tcx, MiriMachine<'tcx>>,
 }
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -429,19 +436,76 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Primitive::Float(Float::F32) => FfiType::f32(),
                 Primitive::Float(Float::F64) => FfiType::f64(),
                 Primitive::Pointer(AddressSpace::ZERO) => FfiType::pointer(),
-                _ =>
-                    throw_unsup_format!(
-                        "unsupported scalar argument type for native call: {}",
-                        layout.ty
-                    ),
+                _ => throw_unsup_format!("unsupported scalar type for native call: {}", layout.ty),
             });
         }
         interp_ok(match layout.ty.kind() {
             // Scalar types have already been handled above.
             ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, *adt_def, args)?,
-            _ => throw_unsup_format!("unsupported argument type for native call: {}", layout.ty),
+            // Rust uses `()` as return type for `void` function, which becomes `Tuple([])`.
+            ty::Tuple(t_list) if t_list.len() == 0 => FfiType::void(),
+            _ => {
+                throw_unsup_format!("unsupported type for native call: {}", layout.ty)
+            }
         })
     }
+}
+
+/// This function sets up a new libffi closure to intercept
+/// calls to rust code via function pointers passed to native code.
+///
+/// Calling this function leaks the data passed into the libffi closure as
+/// these need to be available until the execution terminates as the native
+/// code side could store a function pointer and only call it at a later point.
+pub fn build_libffi_closure<'tcx, 'this>(
+    this: &'this MiriInterpCx<'tcx>,
+    fn_sig: rustc_middle::ty::FnSig<'tcx>,
+) -> InterpResult<'tcx, unsafe extern "C" fn()> {
+    // Compute argument and return types in libffi representation.
+    let mut args = Vec::new();
+    for input in fn_sig.inputs().iter() {
+        let layout = this.layout_of(*input)?;
+        let ty = this.ty_to_ffitype(layout)?;
+        args.push(ty);
+    }
+    let res_type = fn_sig.output();
+    let res_type = {
+        let layout = this.layout_of(res_type)?;
+        this.ty_to_ffitype(layout)?
+    };
+
+    // Build the actual closure.
+    let closure_builder = libffi::middle::Builder::new().args(args).res(res_type);
+    let data = CallbackData { ecx: this };
+    let data = Box::leak(Box::new(data));
+    let closure = closure_builder.into_closure(libffi_closure_callback, data);
+    let closure = Box::leak(Box::new(closure));
+
+    // The actual argument/return type doesn't matter.
+    let fn_ptr = unsafe { closure.instantiate_code_ptr::<unsafe extern "C" fn()>() };
+    // Libffi returns a **reference** to a function ptr here.
+    // Therefore we need to dereference the reference to get the actual function pointer.
+    interp_ok(*fn_ptr)
+}
+
+/// A shim function to intercept calls back from native code into the interpreter
+/// via function pointers passed to the native code.
+///
+/// For now this shim only reports that such constructs are not supported by miri.
+/// As future improvement we might continue execution in the interpreter here.
+unsafe extern "C" fn libffi_closure_callback<'tcx, 'this>(
+    _cif: &libffi::low::ffi_cif,
+    _result: &mut c_void,
+    _args: *const *const c_void,
+    infos: &CallbackData<'tcx, 'this>,
+) {
+    let ecx = infos.ecx;
+    let err = err_unsup_format!("calling a function pointer through the FFI boundary");
+
+    crate::diagnostics::report_result(ecx, err.into());
+    // We abort the execution at this point as we cannot return the
+    // expected value here.
+    std::process::exit(1);
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -477,13 +541,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // pointer was passed as argument). Uninitialised memory is left as-is, but any data
         // exposed this way is garbage anyway.
         this.visit_reachable_allocs(this.exposed_allocs(), |this, alloc_id, info| {
-            if matches!(info.kind, AllocKind::Function) {
-                static DEDUP: AtomicBool = AtomicBool::new(false);
-                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                    // Newly set, so first time we get here.
-                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallFnPtr);
-                }
-            }
             // If there is no data behind this pointer, skip this.
             if !matches!(info.kind, AllocKind::LiveData) {
                 return interp_ok(());
