@@ -20,6 +20,16 @@ pub fn on_assert(i: usize, v: &[u8]) -> u8 {
     v[i]
 }
 
+// EMIT_MIR ssa_range.on_assume.SsaRangePropagation.diff
+pub fn on_assume(i: usize, v: &[u8]) -> u8 {
+    // CHECK-LABEL: fn on_assume(
+    // CHECK: assert(const true
+    unsafe {
+        std::intrinsics::assume(i < v.len());
+    }
+    v[i]
+}
+
 // EMIT_MIR ssa_range.on_match.SsaRangePropagation.diff
 pub fn on_match(i: u8) -> u8 {
     // CHECK-LABEL: fn on_match(
