@@ -338,58 +338,6 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         }
     }
 
-    /// Given a primitive type, try to resolve an associated item.
-    fn resolve_primitive_associated_item(
-        &self,
-        prim_ty: PrimitiveType,
-        ns: Namespace,
-        item_name: Symbol,
-    ) -> Vec<(Res, DefId)> {
-        let tcx = self.cx.tcx;
-
-        prim_ty
-            .impls(tcx)
-            .flat_map(|impl_| {
-                filter_assoc_items_by_name_and_namespace(
-                    tcx,
-                    impl_,
-                    Ident::with_dummy_span(item_name),
-                    ns,
-                )
-                .map(|item| (Res::Primitive(prim_ty), item.def_id))
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn resolve_self_ty(&self, path_str: &str, ns: Namespace, item_id: DefId) -> Option<Res> {
-        if ns != TypeNS || path_str != "Self" {
-            return None;
-        }
-
-        let tcx = self.cx.tcx;
-        let self_id = match tcx.def_kind(item_id) {
-            def_kind @ (DefKind::AssocFn
-            | DefKind::AssocConst
-            | DefKind::AssocTy
-            | DefKind::Variant
-            | DefKind::Field) => {
-                let parent_def_id = tcx.parent(item_id);
-                if def_kind == DefKind::Field && tcx.def_kind(parent_def_id) == DefKind::Variant {
-                    tcx.parent(parent_def_id)
-                } else {
-                    parent_def_id
-                }
-            }
-            _ => item_id,
-        };
-
-        match tcx.def_kind(self_id) {
-            DefKind::Impl { .. } => self.ty_to_res(tcx.type_of(self_id).instantiate_identity()),
-            DefKind::Use => None,
-            def_kind => Some(Res::Def(def_kind, self_id)),
-        }
-    }
-
     /// Convenience wrapper around `doc_link_resolutions`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -402,7 +350,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         item_id: DefId,
         module_id: DefId,
     ) -> Option<Res> {
-        if let res @ Some(..) = self.resolve_self_ty(path_str, ns, item_id) {
+        if let res @ Some(..) = resolve_self_ty(self.cx.tcx, path_str, ns, item_id) {
             return res;
         }
 
@@ -432,13 +380,15 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
     /// Resolves a string as a path within a particular namespace. Returns an
     /// optional URL fragment in the case of variants and methods.
     fn resolve<'path>(
-        &mut self,
+        &self,
         path_str: &'path str,
         ns: Namespace,
         disambiguator: Option<Disambiguator>,
         item_id: DefId,
         module_id: DefId,
     ) -> Result<Vec<(Res, Option<DefId>)>, UnresolvedPath<'path>> {
+        let tcx = self.cx.tcx;
+
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             return Ok(match res {
                 Res::Def(
@@ -484,7 +434,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         match resolve_primitive(path_root, TypeNS)
             .or_else(|| self.resolve_path(path_root, TypeNS, item_id, module_id))
             .map(|ty_res| {
-                self.resolve_associated_item(ty_res, item_name, ns, disambiguator, module_id)
+                resolve_associated_item(tcx, ty_res, item_name, ns, disambiguator, module_id)
                     .into_iter()
                     .map(|(res, def_id)| (res, Some(def_id)))
                     .collect::<Vec<_>>()
@@ -505,244 +455,280 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             }
         }
     }
-
-    /// Convert a Ty to a Res, where possible.
-    ///
-    /// This is used for resolving type aliases.
-    fn ty_to_res(&self, ty: Ty<'tcx>) -> Option<Res> {
-        use PrimitiveType::*;
-        Some(match *ty.kind() {
-            ty::Bool => Res::Primitive(Bool),
-            ty::Char => Res::Primitive(Char),
-            ty::Int(ity) => Res::Primitive(ity.into()),
-            ty::Uint(uty) => Res::Primitive(uty.into()),
-            ty::Float(fty) => Res::Primitive(fty.into()),
-            ty::Str => Res::Primitive(Str),
-            ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
-            ty::Tuple(_) => Res::Primitive(Tuple),
-            ty::Pat(..) => Res::Primitive(Pat),
-            ty::Array(..) => Res::Primitive(Array),
-            ty::Slice(_) => Res::Primitive(Slice),
-            ty::RawPtr(_, _) => Res::Primitive(RawPointer),
-            ty::Ref(..) => Res::Primitive(Reference),
-            ty::FnDef(..) => panic!("type alias to a function definition"),
-            ty::FnPtr(..) => Res::Primitive(Fn),
-            ty::Never => Res::Primitive(Never),
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
-                Res::from_def_id(self.cx.tcx, did)
-            }
-            ty::Alias(..)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Dynamic(..)
-            | ty::UnsafeBinder(_)
-            | ty::Param(_)
-            | ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(_)
-            | ty::Error(_) => return None,
-        })
-    }
-
-    /// Convert a PrimitiveType to a Ty, where possible.
-    ///
-    /// This is used for resolving trait impls for primitives
-    fn primitive_type_to_ty(&mut self, prim: PrimitiveType) -> Option<Ty<'tcx>> {
-        use PrimitiveType::*;
-        let tcx = self.cx.tcx;
-
-        // FIXME: Only simple types are supported here, see if we can support
-        // other types such as Tuple, Array, Slice, etc.
-        // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
-        Some(match prim {
-            Bool => tcx.types.bool,
-            Str => tcx.types.str_,
-            Char => tcx.types.char,
-            Never => tcx.types.never,
-            I8 => tcx.types.i8,
-            I16 => tcx.types.i16,
-            I32 => tcx.types.i32,
-            I64 => tcx.types.i64,
-            I128 => tcx.types.i128,
-            Isize => tcx.types.isize,
-            F16 => tcx.types.f16,
-            F32 => tcx.types.f32,
-            F64 => tcx.types.f64,
-            F128 => tcx.types.f128,
-            U8 => tcx.types.u8,
-            U16 => tcx.types.u16,
-            U32 => tcx.types.u32,
-            U64 => tcx.types.u64,
-            U128 => tcx.types.u128,
-            Usize => tcx.types.usize,
-            _ => return None,
-        })
-    }
-
-    /// Resolve an associated item, returning its containing page's `Res`
-    /// and the fragment targeting the associated item on its page.
-    fn resolve_associated_item(
-        &mut self,
-        root_res: Res,
-        item_name: Symbol,
-        ns: Namespace,
-        disambiguator: Option<Disambiguator>,
-        module_id: DefId,
-    ) -> Vec<(Res, DefId)> {
-        let tcx = self.cx.tcx;
-
-        match root_res {
-            Res::Primitive(prim) => {
-                let items = self.resolve_primitive_associated_item(prim, ns, item_name);
-                if !items.is_empty() {
-                    items
-                // Inherent associated items take precedence over items that come from trait impls.
-                } else {
-                    self.primitive_type_to_ty(prim)
-                        .map(|ty| {
-                            resolve_associated_trait_item(ty, module_id, item_name, ns, self.cx)
-                                .iter()
-                                .map(|item| (root_res, item.def_id))
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default()
-                }
-            }
-            Res::Def(DefKind::TyAlias, did) => {
-                // Resolve the link on the type the alias points to.
-                // FIXME: if the associated item is defined directly on the type alias,
-                // it will show up on its documentation page, we should link there instead.
-                let Some(res) = self.ty_to_res(tcx.type_of(did).instantiate_identity()) else {
-                    return Vec::new();
-                };
-                self.resolve_associated_item(res, item_name, ns, disambiguator, module_id)
-            }
-            Res::Def(
-                def_kind @ (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy),
-                did,
-            ) => self.resolve_assoc_on_adt(),
-            Res::Def(DefKind::Trait, did) => filter_assoc_items_by_name_and_namespace(
-                tcx,
-                did,
-                Ident::with_dummy_span(item_name),
-                ns,
-            )
-            .map(|item| (root_res, item.def_id))
-            .collect::<Vec<_>>(),
-            _ => Vec::new(),
-        }
-    }
-
-    fn resolve_assoc_on_adt(
-        &mut self,
-        adt_def_kind: DefKind,
-        adt_def_id: DefId,
-        item_name: Symbol,
-        ns: Namespace,
-        disambiguator: Option<Disambiguator>,
-        module_id: DefId,
-    ) -> Vec<(Res, DefId)> {
-        let tcx = self.cx.tcx;
-        let root_res = Res::Def(adt_def_kind, adt_def_id);
-        debug!("looking for associated item named {item_name} for item {adt_def_id:?}");
-        // Checks if item_name is a variant of the `SomeItem` enum
-        if ns == TypeNS && adt_def_kind == DefKind::Enum {
-            match tcx.type_of(adt_def_id).instantiate_identity().kind() {
-                ty::Adt(adt_def, _) => {
-                    for variant in adt_def.variants() {
-                        if variant.name == item_name {
-                            return vec![(root_res, variant.def_id)];
-                        }
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        let search_for_field = || {
-            let (DefKind::Struct | DefKind::Union) = adt_def_kind else { return vec![] };
-            debug!("looking for fields named {item_name} for {adt_def_id:?}");
-            // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
-            // NOTE: it's different from variant_field because it only resolves struct fields,
-            // not variant fields (2 path segments, not 3).
-            //
-            // We need to handle struct (and union) fields in this code because
-            // syntactically their paths are identical to associated item paths:
-            // `module::Type::field` and `module::Type::Assoc`.
-            //
-            // On the other hand, variant fields can't be mistaken for associated
-            // items because they look like this: `module::Type::Variant::field`.
-            //
-            // Variants themselves don't need to be handled here, even though
-            // they also look like associated items (`module::Type::Variant`),
-            // because they are real Rust syntax (unlike the intra-doc links
-            // field syntax) and are handled by the compiler's resolver.
-            let ty::Adt(def, _) = tcx.type_of(adt_def_id).instantiate_identity().kind() else {
-                unreachable!()
-            };
-            def.non_enum_variant()
-                .fields
-                .iter()
-                .filter(|field| field.name == item_name)
-                .map(|field| (root_res, field.did))
-                .collect::<Vec<_>>()
-        };
-
-        if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator {
-            return search_for_field();
-        }
-
-        // Checks if item_name belongs to `impl SomeItem`
-        let mut assoc_items: Vec<_> = tcx
-            .inherent_impls(adt_def_id)
-            .iter()
-            .flat_map(|&imp| {
-                filter_assoc_items_by_name_and_namespace(
-                    tcx,
-                    imp,
-                    Ident::with_dummy_span(item_name),
-                    ns,
-                )
-            })
-            .map(|item| (root_res, item.def_id))
-            .collect();
-
-        if assoc_items.is_empty() {
-            // Check if item_name belongs to `impl SomeTrait for SomeItem`
-            // FIXME(#74563): This gives precedence to `impl SomeItem`:
-            // Although having both would be ambiguous, use impl version for compatibility's sake.
-            // To handle that properly resolve() would have to support
-            // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
-            assoc_items = resolve_associated_trait_item(
-                tcx.type_of(adt_def_id).instantiate_identity(),
-                module_id,
-                item_name,
-                ns,
-                self.cx,
-            )
-            .into_iter()
-            .map(|item| (root_res, item.def_id))
-            .collect::<Vec<_>>();
-        }
-
-        debug!("got associated item {assoc_items:?}");
-
-        if !assoc_items.is_empty() {
-            return assoc_items;
-        }
-
-        if ns != Namespace::ValueNS {
-            return Vec::new();
-        }
-
-        search_for_field()
-    }
 }
 
 fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
     assoc_item.map_or(base, |def_id| Res::from_def_id(tcx, def_id))
+}
+
+/// Given a primitive type, try to resolve an associated item.
+fn resolve_primitive_associated_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    prim_ty: PrimitiveType,
+    ns: Namespace,
+    item_ident: Ident,
+) -> Vec<(Res, DefId)> {
+    prim_ty
+        .impls(tcx)
+        .flat_map(|impl_| {
+            filter_assoc_items_by_name_and_namespace(tcx, impl_, item_ident, ns)
+                .map(|item| (Res::Primitive(prim_ty), item.def_id))
+        })
+        .collect::<Vec<_>>()
+}
+
+fn resolve_self_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    path_str: &str,
+    ns: Namespace,
+    item_id: DefId,
+) -> Option<Res> {
+    if ns != TypeNS || path_str != "Self" {
+        return None;
+    }
+
+    let self_id = match tcx.def_kind(item_id) {
+        def_kind @ (DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::AssocTy
+        | DefKind::Variant
+        | DefKind::Field) => {
+            let parent_def_id = tcx.parent(item_id);
+            if def_kind == DefKind::Field && tcx.def_kind(parent_def_id) == DefKind::Variant {
+                tcx.parent(parent_def_id)
+            } else {
+                parent_def_id
+            }
+        }
+        _ => item_id,
+    };
+
+    match tcx.def_kind(self_id) {
+        DefKind::Impl { .. } => ty_to_res(tcx, tcx.type_of(self_id).instantiate_identity()),
+        DefKind::Use => None,
+        def_kind => Some(Res::Def(def_kind, self_id)),
+    }
+}
+
+/// Convert a Ty to a Res, where possible.
+///
+/// This is used for resolving type aliases.
+fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
+    use PrimitiveType::*;
+    Some(match *ty.kind() {
+        ty::Bool => Res::Primitive(Bool),
+        ty::Char => Res::Primitive(Char),
+        ty::Int(ity) => Res::Primitive(ity.into()),
+        ty::Uint(uty) => Res::Primitive(uty.into()),
+        ty::Float(fty) => Res::Primitive(fty.into()),
+        ty::Str => Res::Primitive(Str),
+        ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
+        ty::Tuple(_) => Res::Primitive(Tuple),
+        ty::Pat(..) => Res::Primitive(Pat),
+        ty::Array(..) => Res::Primitive(Array),
+        ty::Slice(_) => Res::Primitive(Slice),
+        ty::RawPtr(_, _) => Res::Primitive(RawPointer),
+        ty::Ref(..) => Res::Primitive(Reference),
+        ty::FnDef(..) => panic!("type alias to a function definition"),
+        ty::FnPtr(..) => Res::Primitive(Fn),
+        ty::Never => Res::Primitive(Never),
+        ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
+            Res::from_def_id(tcx, did)
+        }
+        ty::Alias(..)
+        | ty::Closure(..)
+        | ty::CoroutineClosure(..)
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..)
+        | ty::Dynamic(..)
+        | ty::UnsafeBinder(_)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => return None,
+    })
+}
+
+/// Convert a PrimitiveType to a Ty, where possible.
+///
+/// This is used for resolving trait impls for primitives
+fn primitive_type_to_ty<'tcx>(tcx: TyCtxt<'tcx>, prim: PrimitiveType) -> Option<Ty<'tcx>> {
+    use PrimitiveType::*;
+
+    // FIXME: Only simple types are supported here, see if we can support
+    // other types such as Tuple, Array, Slice, etc.
+    // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
+    Some(match prim {
+        Bool => tcx.types.bool,
+        Str => tcx.types.str_,
+        Char => tcx.types.char,
+        Never => tcx.types.never,
+        I8 => tcx.types.i8,
+        I16 => tcx.types.i16,
+        I32 => tcx.types.i32,
+        I64 => tcx.types.i64,
+        I128 => tcx.types.i128,
+        Isize => tcx.types.isize,
+        F16 => tcx.types.f16,
+        F32 => tcx.types.f32,
+        F64 => tcx.types.f64,
+        F128 => tcx.types.f128,
+        U8 => tcx.types.u8,
+        U16 => tcx.types.u16,
+        U32 => tcx.types.u32,
+        U64 => tcx.types.u64,
+        U128 => tcx.types.u128,
+        Usize => tcx.types.usize,
+        _ => return None,
+    })
+}
+
+/// Resolve an associated item, returning its containing page's `Res`
+/// and the fragment targeting the associated item on its page.
+fn resolve_associated_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    root_res: Res,
+    item_name: Symbol,
+    ns: Namespace,
+    disambiguator: Option<Disambiguator>,
+    module_id: DefId,
+) -> Vec<(Res, DefId)> {
+    let item_ident = Ident::with_dummy_span(item_name);
+
+    match root_res {
+        Res::Primitive(prim) => {
+            let items = resolve_primitive_associated_item(tcx, prim, ns, item_ident);
+            if !items.is_empty() {
+                items
+            // Inherent associated items take precedence over items that come from trait impls.
+            } else {
+                primitive_type_to_ty(tcx, prim)
+                    .map(|ty| {
+                        resolve_associated_trait_item(ty, module_id, item_ident, ns, tcx)
+                            .iter()
+                            .map(|item| (root_res, item.def_id))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
+            }
+        }
+        Res::Def(DefKind::TyAlias, did) => {
+            // Resolve the link on the type the alias points to.
+            // FIXME: if the associated item is defined directly on the type alias,
+            // it will show up on its documentation page, we should link there instead.
+            let Some(res) = ty_to_res(tcx, tcx.type_of(did).instantiate_identity()) else {
+                return Vec::new();
+            };
+            resolve_associated_item(tcx, res, item_name, ns, disambiguator, module_id)
+        }
+        Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, did) => {
+            resolve_assoc_on_adt(tcx, did, item_name, ns, disambiguator, module_id)
+        }
+        Res::Def(DefKind::ForeignTy, did) => {
+            resolve_assoc_on_simple_type(tcx, did, item_ident, ns, module_id)
+        }
+        Res::Def(DefKind::Trait, did) => filter_assoc_items_by_name_and_namespace(
+            tcx,
+            did,
+            Ident::with_dummy_span(item_name),
+            ns,
+        )
+        .map(|item| (root_res, item.def_id))
+        .collect::<Vec<_>>(),
+        _ => Vec::new(),
+    }
+}
+
+fn resolve_assoc_on_adt<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt_def_id: DefId,
+    item_name: Symbol,
+    ns: Namespace,
+    disambiguator: Option<Disambiguator>,
+    module_id: DefId,
+) -> Vec<(Res, DefId)> {
+    debug!("looking for associated item named {item_name} for item {adt_def_id:?}");
+    let root_res = Res::from_def_id(tcx, adt_def_id);
+    let adt_ty = tcx.type_of(adt_def_id).instantiate_identity();
+    let adt_def = adt_ty.ty_adt_def().expect("must be ADT");
+    let item_ident = Ident::with_dummy_span(item_name);
+    // Checks if item_name is a variant of the `SomeItem` enum
+    if ns == TypeNS && adt_def.is_enum() {
+        for variant in adt_def.variants() {
+            if variant.name == item_name {
+                return vec![(root_res, variant.def_id)];
+            }
+        }
+    }
+
+    if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator
+        && (adt_def.is_struct() || adt_def.is_union())
+    {
+        return resolve_structfield(adt_def, item_name)
+            .into_iter()
+            .map(|did| (root_res, did))
+            .collect();
+    }
+
+    let assoc_items = resolve_assoc_on_simple_type(tcx, adt_def_id, item_ident, ns, module_id);
+    if !assoc_items.is_empty() {
+        return assoc_items;
+    }
+
+    if ns == Namespace::ValueNS && (adt_def.is_struct() || adt_def.is_union()) {
+        return resolve_structfield(adt_def, item_name)
+            .into_iter()
+            .map(|did| (root_res, did))
+            .collect();
+    }
+
+    vec![]
+}
+
+/// "Simple" i.e. an ADT, foreign type, etc. -- not a type alias, primitive type, or other trickier type.
+fn resolve_assoc_on_simple_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty_def_id: DefId,
+    item_ident: Ident,
+    ns: Namespace,
+    module_id: DefId,
+) -> Vec<(Res, DefId)> {
+    let root_res = Res::from_def_id(tcx, ty_def_id);
+    // Checks if item_name belongs to `impl SomeItem`
+    let inherent_assoc_items: Vec<_> = tcx
+        .inherent_impls(ty_def_id)
+        .iter()
+        .flat_map(|&imp| filter_assoc_items_by_name_and_namespace(tcx, imp, item_ident, ns))
+        .map(|item| (root_res, item.def_id))
+        .collect();
+    debug!("got inherent assoc items {inherent_assoc_items:?}");
+    if !inherent_assoc_items.is_empty() {
+        return inherent_assoc_items;
+    }
+
+    // Check if item_name belongs to `impl SomeTrait for SomeItem`
+    // FIXME(#74563): This gives precedence to `impl SomeItem`:
+    // Although having both would be ambiguous, use impl version for compatibility's sake.
+    // To handle that properly resolve() would have to support
+    // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+    let ty = tcx.type_of(ty_def_id).instantiate_identity();
+    let trait_assoc_items = resolve_associated_trait_item(ty, module_id, item_ident, ns, tcx)
+        .into_iter()
+        .map(|item| (root_res, item.def_id))
+        .collect::<Vec<_>>();
+    debug!("got trait assoc items {trait_assoc_items:?}");
+    trait_assoc_items
+}
+
+fn resolve_structfield<'tcx>(adt_def: ty::AdtDef<'tcx>, item_name: Symbol) -> Option<DefId> {
+    debug!("looking for fields named {item_name} for {adt_def:?}");
+    adt_def
+        .non_enum_variant()
+        .fields
+        .iter()
+        .find(|field| field.name == item_name)
+        .map(|field| field.did)
 }
 
 /// Look to see if a resolved item has an associated item named `item_name`.
@@ -750,12 +736,12 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
 /// Given `[std::io::Error::source]`, where `source` is unresolved, this would
 /// find `std::error::Error::source` and return
 /// `<io::Error as error::Error>::source`.
-fn resolve_associated_trait_item<'a>(
-    ty: Ty<'a>,
+fn resolve_associated_trait_item<'tcx>(
+    ty: Ty<'tcx>,
     module: DefId,
-    item_name: Symbol,
+    item_ident: Ident,
     ns: Namespace,
-    cx: &mut DocContext<'a>,
+    tcx: TyCtxt<'tcx>,
 ) -> Vec<ty::AssocItem> {
     // FIXME: this should also consider blanket impls (`impl<T> X for T`). Unfortunately
     // `get_auto_trait_and_blanket_impls` is broken because the caching behavior is wrong. In the
@@ -763,22 +749,17 @@ fn resolve_associated_trait_item<'a>(
 
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
-    let traits = trait_impls_for(cx, ty, module);
-    let tcx = cx.tcx;
+    let traits = trait_impls_for(tcx, ty, module);
     debug!("considering traits {traits:?}");
     let candidates = traits
         .iter()
         .flat_map(|&(impl_, trait_)| {
-            filter_assoc_items_by_name_and_namespace(
-                tcx,
-                trait_,
-                Ident::with_dummy_span(item_name),
-                ns,
+            filter_assoc_items_by_name_and_namespace(tcx, trait_, item_ident, ns).map(
+                move |trait_assoc| {
+                    trait_assoc_to_impl_assoc_item(tcx, impl_, trait_assoc.def_id)
+                        .unwrap_or(*trait_assoc)
+                },
             )
-            .map(move |trait_assoc| {
-                trait_assoc_to_impl_assoc_item(tcx, impl_, trait_assoc.def_id)
-                    .unwrap_or(*trait_assoc)
-            })
         })
         .collect::<Vec<_>>();
     // FIXME(#74563): warn about ambiguity
@@ -813,13 +794,12 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-#[instrument(level = "debug", skip(cx))]
-fn trait_impls_for<'a>(
-    cx: &mut DocContext<'a>,
-    ty: Ty<'a>,
+#[instrument(level = "debug", skip(tcx))]
+fn trait_impls_for<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
     module: DefId,
 ) -> FxIndexSet<(DefId, DefId)> {
-    let tcx = cx.tcx;
     let mut impls = FxIndexSet::default();
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
@@ -1535,7 +1515,7 @@ impl LinkCollector<'_, '_> {
             }
             None => {
                 // Try everything!
-                let mut candidate = |ns| {
+                let candidate = |ns| {
                     self.resolve(path_str, ns, None, item_id, module_id)
                         .map_err(ResolutionFailure::NotResolved)
                 };
@@ -1921,7 +1901,7 @@ fn report_diagnostic(
 /// handled earlier. For example, if passed `Item::Crate(std)` and `path_str`
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
 fn resolution_failure(
-    collector: &mut LinkCollector<'_, '_>,
+    collector: &LinkCollector<'_, '_>,
     diag_info: DiagnosticInfo<'_>,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
