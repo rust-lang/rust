@@ -75,9 +75,8 @@ impl AccessRange {
     }
 }
 
-/// The data passed to the closure shim function used
-/// to intercept function pointer calls from native
-/// code
+/// The data passed to the closure shim function used to intercept function pointer calls from
+/// native code.
 struct CallbackData<'tcx, 'this> {
     ecx: &'this InterpCx<'tcx, MiriMachine<'tcx>>,
 }
@@ -338,9 +337,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Read the bytes that make up this argument. We cannot use the normal getter as
                 // those would fail if any part of the argument is uninitialized. Native code
                 // is kind of outside the interpreter, after all...
-                let ret: Box<[u8]> =
-                    Box::from(alloc.inspect_with_uninit_and_ptr_outside_interpreter(range));
-                ret
+                Box::from(alloc.inspect_with_uninit_and_ptr_outside_interpreter(range))
             }
             either::Either::Right(imm) => {
                 let mut bytes: Box<[u8]> = vec![0; imm.layout.size.bytes_usize()].into();
@@ -446,7 +443,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Scalar types have already been handled above.
             ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, *adt_def, args)?,
             // Rust uses `()` as return type for `void` function, which becomes `Tuple([])`.
-            ty::Tuple(t_list) if (*t_list).deref().is_empty() => FfiType::void(),
+            ty::Tuple(t_list) if t_list.len() == 0 => FfiType::void(),
             _ => {
                 throw_unsup_format!("unsupported type for native call: {}", layout.ty)
             }
@@ -454,22 +451,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-/// This function sets up a new libffi Closure to intercept
+/// This function sets up a new libffi closure to intercept
 /// calls to rust code via function pointers passed to native code.
-///
-/// It manages tho setup the underlying libffi datastructure by initializing the
-/// right number of arguments with the right types, as well a setting
-/// the right return type
 ///
 /// Calling this function leaks the data passed into the libffi closure as
 /// these need to be available until the execution terminates as the native
 /// code side could store a function pointer and only call it at a later point.
-/// This is for example done by SQLite, which uses function pointers as destructors
-/// which then only run at teardown time
-fn build_libffi_closure<'tcx, 'this>(
+pub fn build_libffi_closure<'tcx, 'this>(
     this: &'this MiriInterpCx<'tcx>,
     fn_sig: rustc_middle::ty::FnSig<'tcx>,
-) -> InterpResult<'tcx, libffi::middle::Closure<'this>> {
+) -> InterpResult<'tcx, unsafe extern "C" fn()> {
+    // Compute argument and return types in libffi representation.
     let mut args = Vec::new();
     for input in fn_sig.inputs().iter() {
         let layout = this.layout_of(*input)?;
@@ -481,38 +473,19 @@ fn build_libffi_closure<'tcx, 'this>(
         let layout = this.layout_of(res_type)?;
         this.ty_to_ffitype(layout)?
     };
+
+    // Build the actual closure.
     let closure_builder = libffi::middle::Builder::new().args(args).res(res_type);
     let data = CallbackData { ecx: this };
     let data = Box::leak(Box::new(data));
-    let closure = closure_builder.into_closure(callback_callback, data);
-    interp_ok(closure)
-}
-
-/// This function wraps build_libffi_closure
-/// to return the correct pointer that is expected to be
-/// passed into native code as function pointer.
-///
-/// This function returns a `*const c_void` ptr to erase the
-/// actual function type, that is only known at runtime.
-pub fn build_libffi_closure_ptr<'tcx, 'this>(
-    this: &'this MiriInterpCx<'tcx>,
-    fn_sig: rustc_middle::ty::FnSig<'tcx>,
-) -> InterpResult<'tcx, *const std::ffi::c_void> {
-    let closure = build_libffi_closure(this, fn_sig)?;
+    let closure = closure_builder.into_closure(libffi_closure_callback, data);
     let closure = Box::leak(Box::new(closure));
+
+    // The actual argument/return type doesn't matter.
+    let fn_ptr = unsafe { closure.instantiate_code_ptr::<unsafe extern "C" fn()>() };
     // Libffi returns a **reference** to a function ptr here.
-    // (The actual argument type doesn't matter)
-    let fn_ptr =
-        unsafe { closure.instantiate_code_ptr::<unsafe extern "C" fn(*const std::ffi::c_void)>() };
     // Therefore we need to dereference the reference to get the actual function pointer.
-    let fn_ptr = *fn_ptr;
-    #[expect(clippy::as_conversions, reason = "No better way to cast a function ptr to a ptr")]
-    {
-        // After that we need to cast the function pointer to the
-        // expected pointer type. At this point we don't actually care about the
-        // type of this pointer.
-        interp_ok(fn_ptr as *const std::ffi::c_void)
-    }
+    interp_ok(*fn_ptr)
 }
 
 /// A shim function to intercept calls back from native code into the interpreter
@@ -520,7 +493,7 @@ pub fn build_libffi_closure_ptr<'tcx, 'this>(
 ///
 /// For now this shim only reports that such constructs are not supported by miri.
 /// As future improvement we might continue execution in the interpreter here.
-unsafe extern "C" fn callback_callback<'tcx, 'this>(
+unsafe extern "C" fn libffi_closure_callback<'tcx, 'this>(
     _cif: &libffi::low::ffi_cif,
     _result: &mut c_void,
     _args: *const *const c_void,

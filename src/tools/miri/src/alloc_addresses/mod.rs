@@ -169,8 +169,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.tcx.try_get_global_alloc(alloc_id)
                     {
                         let fn_sig = this.tcx.fn_sig(instance.def_id()).skip_binder().skip_binder();
-                        let ptr = crate::shims::native_lib::build_libffi_closure_ptr(this, fn_sig)?;
-                        ptr.cast()
+                        let fn_ptr = crate::shims::native_lib::build_libffi_closure(this, fn_sig)?;
+
+                        #[expect(
+                            clippy::as_conversions,
+                            reason = "No better way to cast a function ptr to a ptr"
+                        )]
+                        {
+                            fn_ptr as *const _
+                        }
                     } else {
                         dummy_alloc(params)
                     }
