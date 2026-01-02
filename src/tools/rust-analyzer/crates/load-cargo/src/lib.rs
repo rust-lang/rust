@@ -547,10 +547,8 @@ impl ProcMacroExpander for Expander {
 
                 let name = source_root
                     .path_for_file(&file)
-                    .and_then(|path| path.clone().into_abs_path())
-                    .and_then(|path| {
-                        path.as_path().file_name().map(|filename| filename.to_owned())
-                    });
+                    .and_then(|path| path.as_path())
+                    .and_then(|path| path.file_name().map(|filename| filename.to_owned()));
 
                 Ok(SubResponse::LocalFileNameResult { name })
             }
