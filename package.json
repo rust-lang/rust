@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "browser-ui-test": "^0.22.2",
+    "browser-ui-test": "^0.23.0",
     "es-check": "^9.4.4",
     "eslint": "^8.57.1",
     "typescript": "^5.8.3"
