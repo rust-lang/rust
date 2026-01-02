@@ -102,6 +102,7 @@ enum AllocDiscriminant {
     Alloc,
     Fn,
     VTable,
+    VaList,
     Static,
     Type,
 }
@@ -127,6 +128,9 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
             AllocDiscriminant::VTable.encode(encoder);
             ty.encode(encoder);
             poly_trait_ref.encode(encoder);
+        }
+        GlobalAlloc::VaList => {
+            AllocDiscriminant::VaList.encode(encoder);
         }
         GlobalAlloc::TypeId { ty } => {
             trace!("encoding {alloc_id:?} with {ty:#?}");
@@ -234,6 +238,7 @@ impl<'s> AllocDecodingSession<'s> {
                 trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
                 decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref, CTFE_ALLOC_SALT)
             }
+            AllocDiscriminant::VaList => decoder.interner().reserve_and_set_va_list_alloc(),
             AllocDiscriminant::Type => {
                 trace!("creating typeid alloc ID");
                 let ty = Decodable::decode(decoder);
@@ -265,6 +270,8 @@ pub enum GlobalAlloc<'tcx> {
     /// const-eval and Miri can detect UB due to invalid transmutes of
     /// `dyn Trait` types.
     VTable(Ty<'tcx>, &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>),
+    /// This alloc ID points to a variable argument list.
+    VaList,
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
@@ -314,7 +321,8 @@ impl<'tcx> GlobalAlloc<'tcx> {
             GlobalAlloc::TypeId { .. }
             | GlobalAlloc::Static(..)
             | GlobalAlloc::Memory(..)
-            | GlobalAlloc::VTable(..) => AddressSpace::ZERO,
+            | GlobalAlloc::VTable(..)
+            | GlobalAlloc::VaList => AddressSpace::ZERO,
         }
     }
 
@@ -350,7 +358,10 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 }
             }
             GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-            GlobalAlloc::TypeId { .. } | GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
+            GlobalAlloc::TypeId { .. }
+            | GlobalAlloc::Function { .. }
+            | GlobalAlloc::VTable(..)
+            | GlobalAlloc::VaList => {
                 // These are immutable.
                 Mutability::Not
             }
@@ -407,8 +418,8 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 // No data to be accessed here. But vtables are pointer-aligned.
                 (Size::ZERO, tcx.data_layout.pointer_align().abi)
             }
-            // Fake allocation, there's nothing to access here
-            GlobalAlloc::TypeId { .. } => (Size::ZERO, Align::ONE),
+            // Fake allocation, there's nothing to access here.
+            GlobalAlloc::VaList | GlobalAlloc::TypeId { .. } => (Size::ZERO, Align::ONE),
         }
     }
 }
@@ -514,6 +525,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, dyn_ty), salt)
     }
 
+    /// Generates an `AllocId` for a va_list. Does not get deduplicated.
+    pub fn reserve_and_set_va_list_alloc(self) -> AllocId {
+        let id = self.reserve_alloc_id();
+        self.set_alloc_id_va_list(id);
+        id
+    }
+
     /// Generates an [AllocId] for a [core::any::TypeId]. Will get deduplicated.
     pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::TypeId { ty }, 0)
@@ -557,6 +575,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::Memory(mem)) {
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
+        }
+    }
+
+    /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
+    /// call this function twice, even with the same `Allocation` will ICE the compiler.
+    pub fn set_alloc_id_va_list(self, id: AllocId) {
+        if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::VaList) {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }

@@ -67,6 +67,8 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
+    /// A variable argument list allocation (used by c-variadic functions).
+    VaList,
     /// A vtable allocation.
     VTable,
     /// A TypeId allocation.
@@ -394,6 +396,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         kind = "vtable",
                     )
                 }
+                Some(GlobalAlloc::VaList) => {
+                    err_ub_custom!(
+                        fluent::const_eval_invalid_dealloc,
+                        alloc_id = alloc_id,
+                        kind = "valist",
+                    )
+                }
                 Some(GlobalAlloc::TypeId { .. }) => {
                     err_ub_custom!(
                         fluent::const_eval_invalid_dealloc,
@@ -670,6 +679,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
+            Some(GlobalAlloc::VaList) => throw_ub!(DerefVaListPointer(id)),
             Some(GlobalAlloc::TypeId { .. }) => throw_ub!(DerefTypeIdPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccess)),
             Some(GlobalAlloc::Static(def_id)) => {
@@ -960,6 +970,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
                 GlobalAlloc::VTable { .. } => AllocKind::VTable,
+                GlobalAlloc::VaList { .. } => AllocKind::VaList,
                 GlobalAlloc::TypeId { .. } => AllocKind::TypeId,
             };
             return AllocInfo::new(size, align, kind, mutbl);
@@ -1271,6 +1282,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         }
                         Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                             write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
+                        }
+                        Some(GlobalAlloc::VaList) => {
+                            write!(fmt, " (valist)")?;
                         }
                         Some(GlobalAlloc::TypeId { ty }) => {
                             write!(fmt, " (typeid for {ty})")?;
