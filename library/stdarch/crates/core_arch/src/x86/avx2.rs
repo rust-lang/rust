@@ -1754,12 +1754,19 @@ pub fn _mm256_inserti128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m25
 #[cfg_attr(test, assert_instr(vpmaddwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_madd_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let r: i32x16 = simd_mul(simd_cast(a.as_i16x16()), simd_cast(b.as_i16x16()));
-        let even: i32x8 = simd_shuffle!(r, r, [0, 2, 4, 6, 8, 10, 12, 14]);
-        let odd: i32x8 = simd_shuffle!(r, r, [1, 3, 5, 7, 9, 11, 13, 15]);
-        simd_add(even, odd).as_m256i()
-    }
+    // It's a trick used in the Adler-32 algorithm to perform a widening addition.
+    //
+    // ```rust
+    // #[target_feature(enable = "avx2")]
+    // unsafe fn widening_add(mad: __m256i) -> __m256i {
+    //     _mm256_madd_epi16(mad, _mm256_set1_epi16(1))
+    // }
+    // ```
+    //
+    // If we implement this using generic vector intrinsics, the optimizer
+    // will eliminate this pattern, and `vpmaddwd` will no longer be emitted.
+    // For this reason, we use x86 intrinsics.
+    unsafe { transmute(pmaddwd(a.as_i16x16(), b.as_i16x16())) }
 }
 
 /// Vertically multiplies each unsigned 8-bit integer from `a` with the
@@ -3701,6 +3708,8 @@ unsafe extern "C" {
     fn phaddsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.phsub.sw"]
     fn phsubsw(a: i16x16, b: i16x16) -> i16x16;
+    #[link_name = "llvm.x86.avx2.pmadd.wd"]
+    fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
     fn pmaddubsw(a: u8x32, b: i8x32) -> i16x16;
     #[link_name = "llvm.x86.avx2.mpsadbw"]
