@@ -1,21 +1,22 @@
 //! Implements calling functions from a native library.
 
+use std::cell::Cell;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_void;
+use std::ptr;
 use std::sync::atomic::AtomicBool;
 
 use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::either;
-use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, UintTy};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Symbol;
 use serde::{Deserialize, Serialize};
 
-use self::helpers::ToSoft;
-
-mod ffi;
+use crate::*;
 
 #[cfg_attr(
     not(all(
@@ -27,8 +28,21 @@ mod ffi;
 )]
 pub mod trace;
 
-use self::ffi::OwnedArg;
-use crate::*;
+/// An argument for an FFI call.
+#[derive(Debug, Clone)]
+pub struct OwnedArg {
+    /// The type descriptor for this argument.
+    ty: Option<FfiType>,
+    /// Corresponding bytes for the value.
+    bytes: Box<[u8]>,
+}
+
+impl OwnedArg {
+    /// Instantiates an argument from a type descriptor and bytes.
+    pub fn new(ty: FfiType, bytes: Box<[u8]>) -> Self {
+        Self { ty: Some(ty), bytes }
+    }
+}
 
 /// The final results of an FFI trace, containing every relevant event detected
 /// by the tracer.
@@ -75,106 +89,40 @@ impl AccessRange {
     }
 }
 
-/// The data passed to the closure shim function used to intercept function pointer calls from
-/// native code.
-struct CallbackData<'tcx, 'this> {
-    ecx: &'this InterpCx<'tcx, MiriMachine<'tcx>>,
-}
-
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Call native host function and return the output as an immediate.
-    fn call_native_with_args(
+    /// Call native host function and return the output and the memory accesses
+    /// that occurred during the call.
+    fn call_native_raw(
         &mut self,
-        link_name: Symbol,
-        dest: &MPlaceTy<'tcx>,
         fun: CodePtr,
-        libffi_args: &mut [OwnedArg],
-    ) -> InterpResult<'tcx, (crate::ImmTy<'tcx>, Option<MemEvents>)> {
+        args: &mut [OwnedArg],
+        ret: (FfiType, Size),
+    ) -> InterpResult<'tcx, (Box<[u8]>, Option<MemEvents>)> {
         let this = self.eval_context_mut();
         #[cfg(target_os = "linux")]
-        let alloc = this.machine.allocator.as_ref().unwrap();
+        let alloc = this.machine.allocator.as_ref().unwrap().clone();
         #[cfg(not(target_os = "linux"))]
         // Placeholder value.
         let alloc = ();
 
-        trace::Supervisor::do_ffi(alloc, || {
-            // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
-            // as the specified primitive integer type
-            let scalar = match dest.layout.ty.kind() {
-                // ints
-                ty::Int(IntTy::I8) => {
-                    // Unsafe because of the call to native code.
-                    // Because this is calling a C function it is not necessarily sound,
-                    // but there is no way around this and we've checked as much as we can.
-                    let x = unsafe { ffi::call::<i8>(fun, libffi_args) };
-                    Scalar::from_i8(x)
-                }
-                ty::Int(IntTy::I16) => {
-                    let x = unsafe { ffi::call::<i16>(fun, libffi_args) };
-                    Scalar::from_i16(x)
-                }
-                ty::Int(IntTy::I32) => {
-                    let x = unsafe { ffi::call::<i32>(fun, libffi_args) };
-                    Scalar::from_i32(x)
-                }
-                ty::Int(IntTy::I64) => {
-                    let x = unsafe { ffi::call::<i64>(fun, libffi_args) };
-                    Scalar::from_i64(x)
-                }
-                ty::Int(IntTy::Isize) => {
-                    let x = unsafe { ffi::call::<isize>(fun, libffi_args) };
-                    Scalar::from_target_isize(x.try_into().unwrap(), this)
-                }
-                // uints
-                ty::Uint(UintTy::U8) => {
-                    let x = unsafe { ffi::call::<u8>(fun, libffi_args) };
-                    Scalar::from_u8(x)
-                }
-                ty::Uint(UintTy::U16) => {
-                    let x = unsafe { ffi::call::<u16>(fun, libffi_args) };
-                    Scalar::from_u16(x)
-                }
-                ty::Uint(UintTy::U32) => {
-                    let x = unsafe { ffi::call::<u32>(fun, libffi_args) };
-                    Scalar::from_u32(x)
-                }
-                ty::Uint(UintTy::U64) => {
-                    let x = unsafe { ffi::call::<u64>(fun, libffi_args) };
-                    Scalar::from_u64(x)
-                }
-                ty::Uint(UintTy::Usize) => {
-                    let x = unsafe { ffi::call::<usize>(fun, libffi_args) };
-                    Scalar::from_target_usize(x.try_into().unwrap(), this)
-                }
-                ty::Float(FloatTy::F32) => {
-                    let x = unsafe { ffi::call::<f32>(fun, libffi_args) };
-                    Scalar::from_f32(x.to_soft())
-                }
-                ty::Float(FloatTy::F64) => {
-                    let x = unsafe { ffi::call::<f64>(fun, libffi_args) };
-                    Scalar::from_f64(x.to_soft())
-                }
-                // Functions with no declared return type (i.e., the default return)
-                // have the output_type `Tuple([])`.
-                ty::Tuple(t_list) if (*t_list).deref().is_empty() => {
-                    unsafe { ffi::call::<()>(fun, libffi_args) };
-                    return interp_ok(ImmTy::uninit(dest.layout));
-                }
-                ty::RawPtr(ty, ..) if ty.is_sized(*this.tcx, this.typing_env()) => {
-                    let x = unsafe { ffi::call::<*const ()>(fun, libffi_args) };
-                    let ptr = StrictPointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
-                    Scalar::from_pointer(ptr, this)
-                }
-                _ =>
-                    return Err(err_unsup_format!(
-                        "unsupported return type for native call: {:?}",
-                        link_name
-                    ))
-                    .into(),
-            };
-            interp_ok(ImmTy::from_scalar(scalar, dest.layout))
-        })
+        // Expose InterpCx for use by closure callbacks.
+        this.machine.native_lib_ecx_interchange.set(ptr::from_mut(this).expose_provenance());
+
+        let res = trace::Supervisor::do_ffi(&alloc, || {
+            use libffi::middle::{Arg, Cif, Ret};
+
+            let cif = Cif::new(args.iter_mut().map(|arg| arg.ty.take().unwrap()), ret.0);
+            let arg_ptrs: Vec<_> = args.iter().map(|arg| Arg::new(&*arg.bytes)).collect();
+            let mut ret = vec![0u8; ret.1.bytes_usize()];
+
+            unsafe { cif.call_return_into(fun, &arg_ptrs, Ret::new::<[u8]>(&mut *ret)) };
+            ret.into()
+        });
+
+        this.machine.native_lib_ecx_interchange.set(0);
+
+        res
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
@@ -388,6 +336,30 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(OwnedArg::new(ty, bytes))
     }
 
+    fn ffi_ret_to_mem(&mut self, v: Box<[u8]>, dest: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let len = v.len();
+        this.write_bytes_ptr(dest.ptr(), v)?;
+        if len == 0 {
+            return interp_ok(());
+        }
+        // We have no idea which provenance these bytes have, so we reset it to wildcard.
+        let tcx = this.tcx;
+        let (alloc_id, offset, _) = this.ptr_try_get_alloc_id(dest.ptr(), 0).unwrap();
+        let alloc = this.get_alloc_raw_mut(alloc_id)?.0;
+        alloc.process_native_write(&tcx, Some(alloc_range(offset, dest.layout.size)));
+        // Run the validation that would usually be part of `return`, also to reset
+        // any provenance and padding that would not survive the return.
+        if MiriMachine::enforce_validity(this, dest.layout) {
+            this.validate_operand(
+                &dest.clone().into(),
+                MiriMachine::enforce_validity_recursively(this, dest.layout),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
+        interp_ok(())
+    }
+
     /// Parses an ADT to construct the matching libffi type.
     fn adt_to_ffitype(
         &self,
@@ -395,6 +367,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> InterpResult<'tcx, FfiType> {
+        let this = self.eval_context_ref();
         // TODO: unions, etc.
         if !adt_def.is_struct() {
             throw_unsup_format!("passing an enum or union over FFI: {orig_ty}");
@@ -404,7 +377,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("passing a non-#[repr(C)] {} over FFI: {orig_ty}", adt_def.descr())
         }
 
-        let this = self.eval_context_ref();
         let mut fields = vec![];
         for field in &adt_def.non_enum_variant().fields {
             let layout = this.layout_of(field.ty(*this.tcx, args))?;
@@ -451,6 +423,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
+/// The data passed to the closure shim function used to intercept function pointer calls from
+/// native code.
+struct LibffiClosureData<'tcx> {
+    ecx_interchange: &'static Cell<usize>,
+    marker: PhantomData<MiriInterpCx<'tcx>>,
+}
+
 /// This function sets up a new libffi closure to intercept
 /// calls to rust code via function pointers passed to native code.
 ///
@@ -476,7 +455,10 @@ pub fn build_libffi_closure<'tcx, 'this>(
 
     // Build the actual closure.
     let closure_builder = libffi::middle::Builder::new().args(args).res(res_type);
-    let data = CallbackData { ecx: this };
+    let data = LibffiClosureData {
+        ecx_interchange: this.machine.native_lib_ecx_interchange,
+        marker: PhantomData,
+    };
     let data = Box::leak(Box::new(data));
     let closure = closure_builder.into_closure(libffi_closure_callback, data);
     let closure = Box::leak(Box::new(closure));
@@ -493,13 +475,17 @@ pub fn build_libffi_closure<'tcx, 'this>(
 ///
 /// For now this shim only reports that such constructs are not supported by miri.
 /// As future improvement we might continue execution in the interpreter here.
-unsafe extern "C" fn libffi_closure_callback<'tcx, 'this>(
+unsafe extern "C" fn libffi_closure_callback<'tcx>(
     _cif: &libffi::low::ffi_cif,
     _result: &mut c_void,
     _args: *const *const c_void,
-    infos: &CallbackData<'tcx, 'this>,
+    data: &LibffiClosureData<'tcx>,
 ) {
-    let ecx = infos.ecx;
+    let ecx = unsafe {
+        ptr::with_exposed_provenance_mut::<MiriInterpCx<'tcx>>(data.ecx_interchange.get())
+            .as_mut()
+            .expect("libffi closure called while no FFI call is active")
+    };
     let err = err_unsup_format!("calling a function pointer through the FFI boundary");
 
     crate::diagnostics::report_result(ecx, err.into());
@@ -515,6 +501,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// a native form (through `libffi` call).
     /// Then, convert the return value from the native form into something that
     /// can be stored in Miri's internal memory.
+    ///
+    /// Returns `true` if a call has been made, `false` if no functions of this name was found.
     fn call_native_fn(
         &mut self,
         link_name: Symbol,
@@ -536,6 +524,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         for arg in args.iter() {
             libffi_args.push(this.op_to_ffi_arg(arg, tracing)?);
         }
+        let ret_ty = this.ty_to_ffitype(dest.layout)?;
 
         // Prepare all exposed memory (both previously exposed, and just newly exposed since a
         // pointer was passed as argument). Uninitialised memory is left as-is, but any data
@@ -578,15 +567,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(())
         })?;
 
-        // Call the function and store output, depending on return type in the function signature.
+        // Call the function and store its output.
         let (ret, maybe_memevents) =
-            this.call_native_with_args(link_name, dest, code_ptr, &mut libffi_args)?;
-
+            this.call_native_raw(code_ptr, &mut libffi_args, (ret_ty, dest.layout.size))?;
         if tracing {
             this.tracing_apply_accesses(maybe_memevents.unwrap())?;
         }
-
-        this.write_immediate(*ret, dest)?;
+        this.ffi_ret_to_mem(ret, dest)?;
         interp_ok(true)
     }
 }
