@@ -281,6 +281,9 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
                     }
+                    GlobalAlloc::VaList => {
+                        bug!("valist allocation should never make it to codegen")
+                    }
                     GlobalAlloc::TypeId { .. } => {
                         let val = self.const_usize(offset.bytes());
                         // This is still a variable of pointer type, even though we only use the provenance

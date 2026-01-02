@@ -175,6 +175,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                         let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
                         fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
                     }
+                    GlobalAlloc::VaList => {
+                        bug!("valist allocation should never make it to codegen")
+                    }
                     GlobalAlloc::TypeId { .. } => {
                         return CValue::const_val(
                             fx,
@@ -381,6 +384,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Function { .. }
                     | GlobalAlloc::Static(_)
                     | GlobalAlloc::TypeId { .. }
+                    | GlobalAlloc::VaList
                     | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
@@ -494,6 +498,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         .principal()
                         .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
                 ),
+                GlobalAlloc::VaList => {
+                    bug!("valist allocation should never make it to codegen")
+                }
                 GlobalAlloc::TypeId { .. } => {
                     // Nothing to do, the bytes/offset of this pointer have already been written together with all other bytes,
                     // so we just need to drop this provenance.

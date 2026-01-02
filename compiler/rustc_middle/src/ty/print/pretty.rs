@@ -1746,6 +1746,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         }
                         Some(GlobalAlloc::Function { .. }) => write!(self, "<function>")?,
                         Some(GlobalAlloc::VTable(..)) => write!(self, "<vtable>")?,
+                        Some(GlobalAlloc::VaList) => write!(self, "<valist>")?,
                         Some(GlobalAlloc::TypeId { .. }) => write!(self, "<typeid>")?,
                         None => write!(self, "<dangling pointer>")?,
                     }
