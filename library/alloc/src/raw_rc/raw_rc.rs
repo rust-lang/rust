@@ -3,15 +3,27 @@ use core::any::Any;
 use core::cell::UnsafeCell;
 use core::clone::CloneToUninit;
 #[cfg(not(no_global_oom_handling))]
-use core::iter::TrustedLen;
-use core::marker::PhantomData;
+use core::clone::TrivialClone;
+use core::error::{Error, Request};
+use core::fmt::{self, Debug, Display, Formatter, Pointer};
+use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
-use core::mem::SizedTypeProperties;
+use core::iter::TrustedLen;
+use core::marker::{PhantomData, Unsize};
 use core::mem::{DropGuard, MaybeUninit};
 #[cfg(not(no_global_oom_handling))]
+use core::mem::{ManuallyDrop, SizedTypeProperties};
+use core::ops::{CoerceUnsized, DispatchFromDyn};
+#[cfg(not(no_global_oom_handling))]
 use core::ops::{ControlFlow, DerefMut, Try};
+use core::pin::PinCoerceUnsized;
 use core::ptr::NonNull;
+#[cfg(not(no_global_oom_handling))]
+use core::str;
 
+use crate::alloc::Global;
+#[cfg(not(no_global_oom_handling))]
+use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::raw_rc::MakeMutStrategy;
 #[cfg(not(no_global_oom_handling))]
@@ -21,6 +33,10 @@ use crate::raw_rc::raw_weak::RawWeak;
 use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, rc_alloc};
+#[cfg(not(no_global_oom_handling))]
+use crate::string::String;
+#[cfg(not(no_global_oom_handling))]
+use crate::vec::Vec;
 
 /// Base implementation of a strong pointer. `RawRc` does not implement `Drop`; the user should call
 /// `RawRc::drop` manually to destroy this object.
@@ -114,10 +130,6 @@ where
 
     pub(crate) const fn as_ptr(&self) -> NonNull<T> {
         self.weak.as_ptr()
-    }
-
-    const fn as_ref(&self) -> &T {
-        unsafe { self.as_ptr().as_ref() }
     }
 
     pub(crate) unsafe fn cast<U>(self) -> RawRc<U, A> {
@@ -762,6 +774,410 @@ impl<A> RawRc<dyn Any, A> {
     {
         unsafe { self.cast() }
     }
+}
+
+impl<T, A> AsRef<T> for RawRc<T, A>
+where
+    T: ?Sized,
+{
+    fn as_ref(&self) -> &T {
+        unsafe { self.as_ptr().as_ref() }
+    }
+}
+
+impl<T, U, A> CoerceUnsized<RawRc<U, A>> for RawRc<T, A>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
+
+impl<T, A> Debug for RawRc<T, A>
+where
+    T: Debug + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <T as Debug>::fmt(self.as_ref(), f)
+    }
+}
+
+impl<T, A> Display for RawRc<T, A>
+where
+    T: Display + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <T as Display>::fmt(self.as_ref(), f)
+    }
+}
+
+impl<T, U> DispatchFromDyn<RawRc<U, Global>> for RawRc<T, Global>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
+
+impl<T, A> Error for RawRc<T, A>
+where
+    T: Error + ?Sized,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        T::source(self.as_ref())
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        T::cause(self.as_ref())
+    }
+
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        T::provide(self.as_ref(), request);
+    }
+}
+
+impl<T, A> Pointer for RawRc<T, A>
+where
+    T: ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <&T as Pointer>::fmt(&self.as_ref(), f)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> Default for RawRc<T, A>
+where
+    T: Default,
+    A: Allocator + Default,
+{
+    fn default() -> Self {
+        Self::new_with(T::default)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> Default for RawRc<[T], A>
+where
+    A: Allocator + Default,
+{
+    fn default() -> Self {
+        RawRc::<[T; 0], A>::default()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<A> Default for RawRc<str, A>
+where
+    A: Allocator + Default,
+{
+    fn default() -> Self {
+        let empty_slice = RawRc::<[u8], A>::default();
+
+        // SAFETY: Empty slice is a valid `str`.
+        unsafe { empty_slice.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as *mut _)) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> From<T> for RawRc<T, A>
+where
+    A: Allocator + Default,
+{
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> From<Box<T, A>> for RawRc<T, A>
+where
+    T: ?Sized,
+    A: Allocator,
+{
+    fn from(value: Box<T, A>) -> Self {
+        let value_ref = &*value;
+        let alloc_ref = Box::allocator(&value);
+
+        unsafe {
+            let value_ptr = rc_alloc::allocate_with_value_in::<T, A, 1>(value_ref, alloc_ref);
+            let (box_ptr, alloc) = Box::into_raw_with_allocator(value);
+
+            drop(Box::from_raw_in(box_ptr as *mut ManuallyDrop<T>, &alloc));
+
+            Self::from_raw_parts(value_ptr, alloc)
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecRawRcFromSlice<T> {
+    fn spec_from_slice(slice: &[T]) -> Self;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> SpecRawRcFromSlice<T> for RawRc<[T], A>
+where
+    T: Clone,
+    A: Allocator + Default,
+{
+    default fn spec_from_slice(slice: &[T]) -> Self {
+        Self::from_trusted_len_iter(slice.iter().cloned())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> SpecRawRcFromSlice<T> for RawRc<[T], A>
+where
+    T: TrivialClone,
+    A: Allocator + Default,
+{
+    fn spec_from_slice(slice: &[T]) -> Self {
+        let (ptr, alloc) = rc_alloc::allocate_with_value::<[T], A, 1>(slice);
+
+        unsafe { Self::from_raw_parts(ptr, alloc) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> From<&[T]> for RawRc<[T], A>
+where
+    T: Clone,
+    A: Allocator + Default,
+{
+    fn from(value: &[T]) -> Self {
+        Self::spec_from_slice(value)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> From<&mut [T]> for RawRc<[T], A>
+where
+    T: Clone,
+    A: Allocator + Default,
+{
+    fn from(value: &mut [T]) -> Self {
+        Self::from(&*value)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<A> From<&str> for RawRc<str, A>
+where
+    A: Allocator + Default,
+{
+    #[inline]
+    fn from(value: &str) -> Self {
+        let rc_of_bytes = RawRc::<[u8], A>::from(value.as_bytes());
+
+        unsafe { rc_of_bytes.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<A> From<&mut str> for RawRc<str, A>
+where
+    A: Allocator + Default,
+{
+    fn from(value: &mut str) -> Self {
+        Self::from(&*value)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl From<String> for RawRc<str, Global> {
+    fn from(value: String) -> Self {
+        let rc_of_bytes = RawRc::<[u8], Global>::from(value.into_bytes());
+
+        unsafe { rc_of_bytes.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
+    }
+}
+
+impl<A> From<RawRc<str, A>> for RawRc<[u8], A> {
+    fn from(value: RawRc<str, A>) -> Self {
+        unsafe { value.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, const N: usize, A> From<[T; N]> for RawRc<[T], A>
+where
+    A: Allocator + Default,
+{
+    fn from(value: [T; N]) -> Self {
+        RawRc::new(value)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A> From<Vec<T, A>> for RawRc<[T], A>
+where
+    A: Allocator,
+{
+    fn from(value: Vec<T, A>) -> Self {
+        let src = &*value;
+        let alloc = value.allocator();
+        let value_ptr = rc_alloc::allocate_with_value_in::<[T], A, 1>(src, alloc);
+        let (vec_ptr, _length, capacity, alloc) = value.into_raw_parts_with_alloc();
+
+        unsafe {
+            drop(Vec::from_raw_parts_in(vec_ptr, 0, capacity, &alloc));
+
+            Self::from_raw_parts(value_ptr, alloc)
+        }
+    }
+}
+
+impl<T, const N: usize, A> TryFrom<RawRc<[T], A>> for RawRc<[T; N], A> {
+    type Error = RawRc<[T], A>;
+
+    fn try_from(value: RawRc<[T], A>) -> Result<Self, Self::Error> {
+        value.try_into_array()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecRawRcFromIter<I> {
+    fn spec_from_iter(iter: I) -> Self;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<I> SpecRawRcFromIter<I> for RawRc<[I::Item], Global>
+where
+    I: Iterator,
+{
+    default fn spec_from_iter(iter: I) -> Self {
+        Self::from(iter.collect::<Vec<_>>())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<I> SpecRawRcFromIter<I> for RawRc<[I::Item], Global>
+where
+    I: TrustedLen,
+{
+    fn spec_from_iter(iter: I) -> Self {
+        Self::from_trusted_len_iter(iter)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T> FromIterator<T> for RawRc<[T], Global> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Self::spec_from_iter(iter.into_iter())
+    }
+}
+
+impl<T, A> Hash for RawRc<T, A>
+where
+    T: Hash + ?Sized,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        T::hash(self.as_ref(), state);
+    }
+}
+
+// Hack to allow specializing on `Eq` even though `Eq` has a method.
+#[rustc_unsafe_specialization_marker]
+trait MarkerEq: PartialEq<Self> {}
+
+impl<T> MarkerEq for T where T: Eq {}
+
+trait SpecPartialEq {
+    fn spec_eq(&self, other: &Self) -> bool;
+    fn spec_ne(&self, other: &Self) -> bool;
+}
+
+impl<T, A> SpecPartialEq for RawRc<T, A>
+where
+    T: PartialEq + ?Sized,
+{
+    #[inline]
+    default fn spec_eq(&self, other: &Self) -> bool {
+        T::eq(self.as_ref(), other.as_ref())
+    }
+
+    #[inline]
+    default fn spec_ne(&self, other: &Self) -> bool {
+        T::ne(self.as_ref(), other.as_ref())
+    }
+}
+
+/// We're doing this specialization here, and not as a more general optimization on `&T`, because it
+/// would otherwise add a cost to all equality checks on refs. We assume that `RawArc`s are used to
+/// store large values, that are slow to clone, but also heavy to check for equality, causing this
+/// cost to pay off more easily. It's also more likely to have two `RawArc` clones, that point to
+/// the same value, than two `&T`s.
+///
+/// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
+impl<T, A> SpecPartialEq for RawRc<T, A>
+where
+    T: MarkerEq + ?Sized,
+{
+    #[inline]
+    fn spec_eq(&self, other: &Self) -> bool {
+        Self::ptr_eq(self, other) || T::eq(self.as_ref(), other.as_ref())
+    }
+
+    #[inline]
+    fn spec_ne(&self, other: &Self) -> bool {
+        Self::ptr_ne(self, other) && T::ne(self.as_ref(), other.as_ref())
+    }
+}
+
+impl<T, A> PartialEq for RawRc<T, A>
+where
+    T: PartialEq + ?Sized,
+{
+    fn eq(&self, other: &Self) -> bool {
+        Self::spec_eq(self, other)
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        Self::spec_ne(self, other)
+    }
+}
+
+impl<T, A> Eq for RawRc<T, A> where T: Eq + ?Sized {}
+
+impl<T, A> PartialOrd for RawRc<T, A>
+where
+    T: PartialOrd + ?Sized,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        T::partial_cmp(self.as_ref(), other.as_ref())
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        T::lt(self.as_ref(), other.as_ref())
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        T::le(self.as_ref(), other.as_ref())
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        T::gt(self.as_ref(), other.as_ref())
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        T::ge(self.as_ref(), other.as_ref())
+    }
+}
+
+impl<T, A> Ord for RawRc<T, A>
+where
+    T: Ord + ?Sized,
+{
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        T::cmp(self.as_ref(), other.as_ref())
+    }
+}
+
+unsafe impl<T, A> PinCoerceUnsized for RawRc<T, A>
+where
+    T: ?Sized,
+    A: Allocator,
+{
 }
 
 /// Decrements strong reference count in a reference-counted allocation with a value object that is
