@@ -2,9 +2,9 @@ use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
 use core::clone::CloneToUninit;
 use core::marker::PhantomData;
-use core::mem::DropGuard;
 #[cfg(not(no_global_oom_handling))]
-use core::mem::{MaybeUninit, SizedTypeProperties};
+use core::mem::SizedTypeProperties;
+use core::mem::{DropGuard, MaybeUninit};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{ControlFlow, DerefMut, Try};
 use core::ptr::NonNull;
@@ -449,7 +449,7 @@ impl<T, A> RawRc<T, A> {
             unsafe {
                 allocation.get_mut_unchecked().write(mapped_value);
 
-                allocation.cast()
+                allocation.assume_init()
             }
         } else {
             // Destruct `self` if `f` panics or returns a failure value.
@@ -544,6 +544,72 @@ impl<T, A> RawRc<T, A> {
 
             T::clone(guard.as_ref())
         })
+    }
+}
+
+impl<T, A> RawRc<MaybeUninit<T>, A> {
+    pub(crate) fn try_new_uninit_in(alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        RawWeak::try_new_uninit_in::<1>(alloc).map(|weak| unsafe { Self::from_weak(weak) })
+    }
+
+    pub(crate) fn try_new_uninit() -> Result<Self, AllocError>
+    where
+        A: Allocator + Default,
+    {
+        RawWeak::try_new_uninit::<1>().map(|weak| unsafe { Self::from_weak(weak) })
+    }
+
+    pub(crate) fn try_new_zeroed_in(alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        RawWeak::try_new_zeroed_in::<1>(alloc).map(|weak| unsafe { Self::from_weak(weak) })
+    }
+
+    pub(crate) fn try_new_zeroed() -> Result<Self, AllocError>
+    where
+        A: Allocator + Default,
+    {
+        RawWeak::try_new_zeroed::<1>().map(|weak| unsafe { Self::from_weak(weak) })
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_in(alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit_in::<1>(alloc)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit() -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit::<1>()) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_in(alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed_in::<1>(alloc)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed() -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed::<1>()) }
+    }
+
+    pub(crate) unsafe fn assume_init(self) -> RawRc<T, A> {
+        unsafe { self.cast() }
     }
 }
 
