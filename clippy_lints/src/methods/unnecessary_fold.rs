@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;
 use rustc_data_structures::packed::Pu128;
@@ -124,11 +124,12 @@ fn check_fold_with_op(
                 let mut applicability = replacement.default_applicability();
                 let turbofish =
                     replacement.maybe_turbofish(cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs());
+                let (r_snippet, _) =
+                    snippet_with_context(cx, right_expr.span, expr.span.ctxt(), "EXPR", &mut applicability);
                 let sugg = if replacement.has_args {
                     format!(
-                        "{method}{turbofish}(|{second_arg_ident}| {r})",
+                        "{method}{turbofish}(|{second_arg_ident}| {r_snippet})",
                         method = replacement.method_name,
-                        r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
                     )
                 } else {
                     format!("{method}{turbofish}()", method = replacement.method_name)

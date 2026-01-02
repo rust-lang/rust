@@ -203,5 +203,13 @@ error: this `.fold` can be written more succinctly using another method
 LL |         (0..3).fold(1, |acc, x| acc * x)
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `product::<i32>()`
 
-error: aborting due to 32 previous errors
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:188:20
+   |
+LL |     let _ = (0..3).fold(false, |acc: bool, x| acc || test_expr!(x));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| test_expr!(x))`
+   |
+   = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
+
+error: aborting due to 33 previous errors
 
