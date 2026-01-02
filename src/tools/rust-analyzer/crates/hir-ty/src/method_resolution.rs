@@ -731,6 +731,10 @@ impl TraitImpls {
         ) {
             for (_module_id, module_data) in def_map.modules() {
                 for impl_id in module_data.scope.impls() {
+                    let trait_ref = match db.impl_trait(impl_id) {
+                        Some(tr) => tr.instantiate_identity(),
+                        None => continue,
+                    };
                     // Reservation impls should be ignored during trait resolution, so we never need
                     // them during type analysis. See rust-lang/rust#64631 for details.
                     //
@@ -742,10 +746,6 @@ impl TraitImpls {
                     {
                         continue;
                     }
-                    let trait_ref = match db.impl_trait(impl_id) {
-                        Some(tr) => tr.instantiate_identity(),
-                        None => continue,
-                    };
                     let self_ty = trait_ref.self_ty();
                     let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();

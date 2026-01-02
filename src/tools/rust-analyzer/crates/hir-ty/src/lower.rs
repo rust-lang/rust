@@ -1319,7 +1319,7 @@ fn type_for_struct_constructor(
     db: &dyn HirDatabase,
     def: StructId,
 ) -> Option<StoredEarlyBinder<StoredTy>> {
-    let struct_data = def.fields(db);
+    let struct_data = db.struct_signature(def);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),

@@ -41,7 +41,6 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Variances
 )]
 fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariancesOf {
     tracing::debug!("variances_of(def={:?})", def);
-    let interner = DbInterner::new_no_crate(db);
     match def {
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
@@ -55,15 +54,17 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
                 }
             }
         }
-        _ => return VariancesOf::empty(interner).store(),
+        _ => return VariancesOf::empty(DbInterner::new_no_crate(db)).store(),
     }
 
     let generics = generics(db, def);
     let count = generics.len();
     if count == 0 {
-        return VariancesOf::empty(interner).store();
+        return VariancesOf::empty(DbInterner::new_no_crate(db)).store();
     }
-    let variances = Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
+    let variances =
+        Context { generics, variances: vec![Variance::Bivariant; count].into_boxed_slice(), db }
+            .solve();
 
     VariancesOf::new_from_slice(&variances).store()
 }
@@ -113,11 +114,11 @@ pub(crate) fn variances_of_cycle_initial(
 struct Context<'db> {
     db: &'db dyn HirDatabase,
     generics: Generics,
-    variances: Vec<Variance>,
+    variances: Box<[Variance]>,
 }
 
 impl<'db> Context<'db> {
-    fn solve(mut self) -> Vec<Variance> {
+    fn solve(mut self) -> Box<[Variance]> {
         tracing::debug!("solve(generics={:?})", self.generics);
         match self.generics.def() {
             GenericDefId::AdtId(adt) => {
