@@ -50,9 +50,9 @@ use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId,
-    GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup,
-    MacroExpander, MacroId, StaticId, StructId, SyntheticSyntax, TupleId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
+    MacroId, StaticId, StructId, SyntheticSyntax, TupleId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId,
     attrs::AttrFlags,
     builtin_derive::BuiltinDeriveImplMethod,
     expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
@@ -150,7 +150,7 @@ pub use {
         visibility::Visibility,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
-        {ModuleDefId, TraitId},
+        {GenericParamId, ModuleDefId, TraitId},
     },
     hir_expand::{
         EditionedFileId, ExpandResult, HirFileId, MacroCallId, MacroKind,
