@@ -8,15 +8,16 @@ mod suggestions;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
-use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{
     HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
+use rustc_middle::ty::typeck_results::HasTypeDependentDefs;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
@@ -418,7 +419,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         }
     }
 
-    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
+    fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span) {
         // FIXME: normalization and escaping regions
         let ty = if !ty.has_escaping_bound_vars() {
             // NOTE: These obligations are 100% redundant and are implied by
@@ -438,6 +439,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.write_ty(hir_id, ty)
     }
 
+    fn record_res(&self, hir_id: HirId, def_id: DefId) {
+        self.write_resolution(hir_id, Ok((self.tcx.def_kind(def_id), def_id)));
+    }
+
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
     }
@@ -446,7 +451,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         &self,
         decl: &rustc_hir::FnDecl<'tcx>,
         _generics: Option<&rustc_hir::Generics<'_>>,
-        _hir_id: rustc_hir::HirId,
+        _hir_id: HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
         let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_ty(a)).collect();
@@ -460,6 +465,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
         self.tcx.dyn_compatibility_violations(trait_def_id).to_vec()
+    }
+}
+
+impl HasTypeDependentDefs for FnCtxt<'_, '_> {
+    fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)> {
+        self.typeck_results.borrow().type_dependent_def(id)
     }
 }
 

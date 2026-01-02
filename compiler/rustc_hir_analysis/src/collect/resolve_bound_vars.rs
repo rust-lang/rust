@@ -2109,6 +2109,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
                 }) =>
             {
+                // FIXME(fmease): No longer true.
                 // First, ignore a qself that isn't a type or `Self` param. Those are the
                 // only ones that support `T::Assoc` anyways in HIR lowering.
                 let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = qself.kind else {

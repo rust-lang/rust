@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::assert_matches::assert_matches;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
 use std::ops::Bound;
 
@@ -33,6 +33,9 @@ use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgK
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::query::Providers;
+use rustc_middle::ty::typeck_results::{
+    HasTypeDependentDefs, LocalTableInContext, LocalTableInContextMut, TypeDependentDefs,
+};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
@@ -132,6 +135,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    type_dependent_defs: RefCell<TypeDependentDefs>,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
@@ -243,7 +247,12 @@ fn bad_placeholder<'cx, 'tcx>(
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
+        ItemCtxt {
+            tcx,
+            item_def_id,
+            type_dependent_defs: Default::default(),
+            tainted_by_errors: Cell::new(None),
+        }
     }
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -510,6 +519,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         // There's no place to record types from signatures?
     }
 
+    fn record_res(&self, hir_id: hir::HirId, def_id: DefId) {
+        LocalTableInContextMut::new(
+            self.hir_id().owner,
+            &mut self.type_dependent_defs.borrow_mut(),
+        )
+        .insert(hir_id, Ok((self.tcx.def_kind(def_id), def_id)));
+    }
+
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
         None
     }
@@ -565,6 +582,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
         hir_ty_lowering_dyn_compatibility_violations(self.tcx, trait_def_id)
+    }
+}
+
+impl HasTypeDependentDefs for ItemCtxt<'_> {
+    fn type_dependent_def(&self, id: hir::HirId) -> Option<(DefKind, DefId)> {
+        LocalTableInContext::new(self.hir_id().owner, &self.type_dependent_defs.borrow())
+            .get(id)
+            .copied()
+            .and_then(|result| result.ok())
     }
 }
 

@@ -1307,16 +1307,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     path_span,
                     PermitVariants::Yes,
                 );
-                let ty = result
-                    .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
+                let ty =
+                    result.map(|(ty, _)| ty).unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
                 let ty = LoweredTy::from_raw(self, path_span, ty);
-                let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
-                // Write back the new resolution.
-                self.write_resolution(hir_id, result);
-
-                (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
+                (
+                    result.map_or(Res::Err, |(_, def_id)| {
+                        Res::Def(self.tcx().def_kind(def_id), def_id)
+                    }),
+                    ty,
+                )
             }
         }
     }
