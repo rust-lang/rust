@@ -563,14 +563,23 @@ impl ProcMacroExpander for Expander {
                 let source_root_id = db.file_source_root(file).source_root_id(db);
                 let source_root = db.source_root(source_root_id).source_root(db);
 
-                let name = source_root.path_for_file(&file).and_then(|path| {
-                    path.name_and_extension().map(|(name, ext)| match ext {
-                        Some(ext) => format!("{name}.{ext}"),
-                        None => name.to_owned(),
-                    })
-                });
+                let path = source_root.path_for_file(&file);
 
-                Ok(SubResponse::FileNameResult { name: name.unwrap_or_default() })
+                let name = path
+                    .and_then(|p| p.as_path())
+                    .and_then(|p| p.file_name())
+                    .map(|n| n.to_owned())
+                    .or_else(|| {
+                        path.and_then(|p| {
+                            p.name_and_extension().map(|(name, ext)| match ext {
+                                Some(ext) => format!("{name}.{ext}"),
+                                None => name.into(),
+                            })
+                        })
+                    })
+                    .unwrap_or_default();
+
+                Ok(SubResponse::FileNameResult { name })
             }
         };
         match self.0.expand(
