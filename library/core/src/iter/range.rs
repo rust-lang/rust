@@ -482,6 +482,20 @@ macro_rules! step_nonzero_identical_methods {
             // Do saturating math (wrapping math causes UB if it wraps to Zero)
             Self::new(start.get().saturating_sub(n as $int)).unwrap_or(Self::MIN)
         }
+
+        #[inline]
+        fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
+            if *start <= *end {
+                #[allow(irrefutable_let_patterns, reason = "happens on narrower than usize")]
+                if let Ok(steps) = usize::try_from(end.get() - start.get()) {
+                    (steps, Some(steps))
+                } else {
+                    (usize::MAX, None)
+                }
+            } else {
+                (0, None)
+            }
+        }
     };
 }
 
@@ -497,17 +511,6 @@ macro_rules! step_nonzero_impls {
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             impl Step for NonZero<$narrower> {
                 step_nonzero_identical_methods!($narrower);
-
-                #[inline]
-                fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
-                    if *start <= *end {
-                        // relies on Self being narrower or equal to usize
-                        let steps = (end.get() - start.get()) as usize;
-                        (steps, Some(steps))
-                    } else {
-                        (0, None)
-                    }
-                }
 
                 #[inline]
                 fn forward_checked(start: Self, n: usize) -> Option<Self> {
@@ -535,19 +538,6 @@ macro_rules! step_nonzero_impls {
                 step_nonzero_identical_methods!($wider);
 
                 #[inline]
-                fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
-                    if *start <= *end {
-                        if let Ok(steps) = usize::try_from(end.get() - start.get()) {
-                            (steps, Some(steps))
-                        } else {
-                            (usize::MAX, None)
-                        }
-                    } else {
-                        (0, None)
-                    }
-                }
-
-                #[inline]
                 fn forward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_add(n as $wider)
                 }
@@ -560,7 +550,6 @@ macro_rules! step_nonzero_impls {
         )+
     };
 }
-
 
 #[cfg(target_pointer_width = "64")]
 step_nonzero_impls! {
