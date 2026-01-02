@@ -32,7 +32,7 @@ serde_json = { version = "1.0", optional = true }
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # native-lib dependencies
-libffi = { version = "5.0.0", optional = true }
+libffi = { version = "5.1.0", optional = true }
 libloading = { version = "0.9", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 
