@@ -66,6 +66,7 @@ use core::mem;
 use core::sync::atomic::Atomic;
 
 mod raw_rc;
+mod raw_unique_rc;
 mod raw_weak;
 mod rc_alloc;
 mod rc_layout;
