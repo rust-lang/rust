@@ -332,6 +332,14 @@ trigger_labels = [
     "A-type-based-search",
 ]
 
+[autolabel."A-rustdoc-js"]
+trigger_files = [
+    "src/librustdoc/html/static/js/",
+    "src/librustdoc/html/static/css/",
+    "tests/rustdoc-js/",
+    "tests/rustdoc-js-std/",
+]
+
 [autolabel."T-compiler"]
 trigger_files = [
     # Source code
