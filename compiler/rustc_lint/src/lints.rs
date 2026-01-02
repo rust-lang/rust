@@ -2801,6 +2801,11 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_missing_crt_static)]
+#[help]
+pub(crate) struct MissingCrtStatic;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_single_use_lifetime)]
 pub(crate) struct SingleUseLifetime {
     #[label(lint_label_param)]

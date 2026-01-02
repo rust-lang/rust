@@ -599,6 +599,10 @@ lint_mismatched_lifetime_syntaxes_suggestion_mixed =
 lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
     use `'_` for type paths
 
+lint_missing_crt_static =
+    on musl targets, the implicit default for `crt-static` is going to change
+    .help = explicitly pass `-C target-feature=+crt-static` or `-C target-feature=-crt-static`
+
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
     .includes_note = the usage includes {$includes}

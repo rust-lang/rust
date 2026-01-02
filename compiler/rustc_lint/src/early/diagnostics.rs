@@ -300,6 +300,9 @@ pub fn decorate_builtin_lint(
             lints::UnusedVisibility { span }.decorate_lint(diag)
         }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
+        BuiltinLintDiag::MissingCrtStatic => {
+            lints::MissingCrtStatic.decorate_lint(diag);
+        }
     }
 }
 
