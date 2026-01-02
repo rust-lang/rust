@@ -2319,7 +2319,6 @@ impl<'db> ExprCollector<'db> {
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
-                // FIXME properly handle `RestPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p, binding_list)).collect(),
                     slice: slice.map(|p| self.collect_pat(p, binding_list)),

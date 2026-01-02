@@ -1,8 +1,6 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use std::fmt::Write;
-
 use hir_expand::name::Name;
 use intern::Symbol;
 use la_arena::Idx;
@@ -10,12 +8,11 @@ use thin_vec::ThinVec;
 
 use crate::{
     LifetimeParamId, TypeParamId,
-    builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{
         ExpressionStore,
         path::{GenericArg, Path},
     },
-    hir::{ExprId, Literal},
+    hir::ExprId,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -274,57 +271,4 @@ impl TypeBound {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ConstRef {
     pub expr: ExprId,
-}
-
-/// A literal constant value
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LiteralConstRef {
-    Int(i128),
-    UInt(u128),
-    Bool(bool),
-    Char(char),
-
-    /// Case of an unknown value that rustc might know but we don't
-    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
-    // constants
-    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
-    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
-    Unknown,
-}
-
-impl LiteralConstRef {
-    pub fn builtin_type(&self) -> BuiltinType {
-        match self {
-            LiteralConstRef::UInt(_) | LiteralConstRef::Unknown => {
-                BuiltinType::Uint(BuiltinUint::U128)
-            }
-            LiteralConstRef::Int(_) => BuiltinType::Int(BuiltinInt::I128),
-            LiteralConstRef::Char(_) => BuiltinType::Char,
-            LiteralConstRef::Bool(_) => BuiltinType::Bool,
-        }
-    }
-}
-
-impl From<Literal> for LiteralConstRef {
-    fn from(literal: Literal) -> Self {
-        match literal {
-            Literal::Char(c) => Self::Char(c),
-            Literal::Bool(flag) => Self::Bool(flag),
-            Literal::Int(num, _) => Self::Int(num),
-            Literal::Uint(num, _) => Self::UInt(num),
-            _ => Self::Unknown,
-        }
-    }
-}
-
-impl std::fmt::Display for LiteralConstRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match self {
-            LiteralConstRef::Int(num) => num.fmt(f),
-            LiteralConstRef::UInt(num) => num.fmt(f),
-            LiteralConstRef::Bool(flag) => flag.fmt(f),
-            LiteralConstRef::Char(c) => write!(f, "'{c}'"),
-            LiteralConstRef::Unknown => f.write_char('_'),
-        }
-    }
 }
