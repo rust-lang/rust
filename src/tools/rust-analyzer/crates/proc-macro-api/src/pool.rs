@@ -27,12 +27,10 @@ impl ProcMacroServerPool {
     }
 
     fn pick_process(&self) -> &ProcMacroServerProcess {
-        for workers in &*self.workers {
-            if workers.can_use() {
-                return workers;
-            }
-        }
-        &self.workers[0]
+        self.workers
+            .iter()
+            .min_by_key(|w| w.number_of_active_req())
+            .expect("worker pool must not be empty")
     }
 
     pub(crate) fn load_dylib(
@@ -41,27 +39,31 @@ impl ProcMacroServerPool {
         _callback: Option<SubCallback<'_>>,
     ) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let mut all_macros = Vec::new();
 
-        for worker in &*self.workers {
-            let dylib_path = Arc::new(dylib.path.clone());
-            let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
-                .ok()
-                .and_then(|metadata| metadata.modified().ok());
-            let macros = worker.find_proc_macros(&dylib.path, None)?.unwrap();
+        let dylib_path = Arc::new(dylib.path.clone());
+        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
 
-            for (name, kind) in macros {
-                all_macros.push(ProcMacro {
-                    process: self.clone(),
-                    name: name.into(),
-                    kind,
-                    dylib_path: Arc::new(dylib.path.clone()),
-                    dylib_last_modified,
-                });
-            }
+        let first = &self.workers[0];
+        let macros = first.find_proc_macros(&dylib.path, None)?.unwrap();
+
+        for worker in &self.workers[1..] {
+            let _ = worker.find_proc_macros(&dylib.path, None)?;
         }
 
-        Ok(all_macros)
+        let result = macros
+            .into_iter()
+            .map(|(name, kind)| ProcMacro {
+                process: self.clone(),
+                name: name.into(),
+                kind,
+                dylib_path: dylib_path.clone(),
+                dylib_last_modified,
+            })
+            .collect();
+
+        Ok(result)
     }
 
     pub(crate) fn expand(

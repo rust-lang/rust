@@ -7,7 +7,7 @@ use std::{
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicU32, Ordering},
     },
 };
 
@@ -32,7 +32,7 @@ pub(crate) struct ProcMacroServerProcess {
     protocol: Protocol,
     /// Populated when the server exits.
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
-    can_use: AtomicBool,
+    active: AtomicU32,
 }
 
 impl std::fmt::Debug for ProcMacroServerProcess {
@@ -163,7 +163,7 @@ impl ProcMacroServerProcess {
                         }
                     },
                     exited: OnceLock::new(),
-                    can_use: AtomicBool::new(true),
+                    active: AtomicU32::new(0),
                 })
             };
             let mut srv = create_srv()?;
@@ -275,7 +275,7 @@ impl ProcMacroServerProcess {
         current_dir: String,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        self.can_use.store(false, Ordering::Release);
+        self.active.fetch_add(1, Ordering::AcqRel);
         let result = match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::expand(
                 proc_macro,
@@ -302,7 +302,7 @@ impl ProcMacroServerProcess {
             ),
         };
 
-        self.can_use.store(true, Ordering::Release);
+        self.active.fetch_sub(1, Ordering::AcqRel);
         result
     }
 
@@ -367,8 +367,8 @@ impl ProcMacroServerProcess {
         })
     }
 
-    pub(crate) fn can_use(&self) -> bool {
-        self.can_use.load(Ordering::Acquire)
+    pub(crate) fn number_of_active_req(&self) -> u32 {
+        self.active.load(Ordering::Acquire)
     }
 }
 
