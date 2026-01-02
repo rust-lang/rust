@@ -222,7 +222,7 @@ fn issue16270() {
 
 #[warn(clippy::needless_collect)]
 mod collect_push_then_iter {
-    use std::collections::{BinaryHeap, LinkedList};
+    use std::collections::{BinaryHeap, LinkedList, VecDeque};
 
     fn vec_push(iter: impl Iterator<Item = i32>) -> Vec<i32> {
         let mut v = iter.collect::<Vec<_>>();
@@ -269,5 +269,29 @@ mod collect_push_then_iter {
         //~^ needless_collect
         ll.extend(s);
         ll.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn deque_push_front(iter: impl Iterator<Item = i32>) -> VecDeque<i32> {
+        let mut v = iter.collect::<VecDeque<_>>();
+        //~^ needless_collect
+        v.push_front(1);
+        v.push_front(2);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn linked_list_push_front_mixed(
+        iter: impl Iterator<Item = i32>,
+        iter2: impl Iterator<Item = i32>,
+    ) -> LinkedList<i32> {
+        let mut v = iter.collect::<LinkedList<_>>();
+        //~^ needless_collect
+        v.push_front(1);
+        v.push_back(2);
+        v.push_front(3);
+        v.extend(iter2);
+        v.push_back(4);
+        v.push_front(5);
+        v.push_back(6);
+        v.into_iter().map(|x| x + 1).collect()
     }
 }

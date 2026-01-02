@@ -190,5 +190,46 @@ LL ~
 LL ~         iter.chain(s).map(|x| x + 1).collect()
    |
 
-error: aborting due to 24 previous errors
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:275:26
+   |
+LL |         let mut v = iter.collect::<VecDeque<_>>();
+   |                          ^^^^^^^
+...
+LL |         v.into_iter().map(|x| x + 1).collect()
+   |         ------------- the iterator could be used here instead
+   |
+help: use the original Iterator instead of collecting it and then producing a new one
+   |
+LL ~         
+LL |
+LL ~         
+LL ~         
+LL ~         [1, 2].into_iter().chain(iter).map(|x| x + 1).collect()
+   |
+
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:286:26
+   |
+LL |         let mut v = iter.collect::<LinkedList<_>>();
+   |                          ^^^^^^^
+...
+LL |         v.into_iter().map(|x| x + 1).collect()
+   |         ------------- the iterator could be used here instead
+   |
+help: use the original Iterator instead of collecting it and then producing a new one
+   |
+LL ~         
+LL |
+LL ~         
+LL ~         
+LL ~         
+LL ~         
+LL ~         
+LL ~         
+LL ~         
+LL ~         [5].into_iter().chain([1, 3].into_iter().chain(iter).chain([2]).chain(iter2)).chain([4, 6]).map(|x| x + 1).collect()
+   |
+
+error: aborting due to 26 previous errors
 

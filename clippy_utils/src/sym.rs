@@ -272,6 +272,7 @@ generate! {
     product,
     push,
     push_back,
+    push_front,
     push_str,
     read,
     read_exact,
