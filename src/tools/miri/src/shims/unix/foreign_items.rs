@@ -510,7 +510,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pipe2" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(
-                    &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos],
+                    &[Os::Linux, Os::Android, Os::FreeBsd, Os::Solaris, Os::Illumos],
                     link_name,
                 )?;
                 let [pipefd, flags] = this.check_shim_sig(

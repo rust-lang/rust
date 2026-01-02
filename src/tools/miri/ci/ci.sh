@@ -149,10 +149,11 @@ case $HOST_TARGET in
   i686-unknown-linux-gnu)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Fully, but not officially, supported tier 2
+    MANY_SEEDS=16 TEST_TARGET=aarch64-linux-android run_tests
     # Partially supported targets (tier 2)
     BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random thread sync concurrency epoll eventfd prctl
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     ;;
