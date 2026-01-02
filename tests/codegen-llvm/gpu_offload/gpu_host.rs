@@ -82,14 +82,14 @@ fn main() {
 // CHECK-NEXT:   %5 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 40
 // CHECK-NEXT:   %6 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 72
 // CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %5, i8 0, i64 32, i1 false)
-// CHECK-NEXT:   store <4 x i32> <i32 2097152, i32 0, i32 0, i32 256>, ptr %6, align 8
-// CHECK-NEXT:   %.fca.1.gep3 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
-// CHECK-NEXT:   store i32 0, ptr %.fca.1.gep3, align 8
-// CHECK-NEXT:   %.fca.2.gep4 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 92
-// CHECK-NEXT:   store i32 0, ptr %.fca.2.gep4, align 4
+// CHECK-NEXT:   store <4 x i32> <i32 256, i32 1, i32 1, i32 32>, ptr %6, align 8
+// CHECK-NEXT:   %.fca.1.gep5 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
+// CHECK-NEXT:   store i32 1, ptr %.fca.1.gep5, align 8
+// CHECK-NEXT:   %.fca.2.gep7 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 92
+// CHECK-NEXT:   store i32 1, ptr %.fca.2.gep7, align 4
 // CHECK-NEXT:   %7 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 96
 // CHECK-NEXT:   store i32 0, ptr %7, align 8
-// CHECK-NEXT:   %8 = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2097152, i32 256, ptr nonnull @._kernel_1.region_id, ptr nonnull %kernel_args)
+// CHECK-NEXT:   %8 = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @._kernel_1.region_id, ptr nonnull %kernel_args)
 // CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes._kernel_1, ptr null, ptr null)
 // CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   ret void
@@ -98,7 +98,7 @@ fn main() {
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub fn kernel_1(x: &mut [f32; 256]) {
-    core::intrinsics::offload(_kernel_1, (x,))
+    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x,))
 }
 
 #[unsafe(no_mangle)]
