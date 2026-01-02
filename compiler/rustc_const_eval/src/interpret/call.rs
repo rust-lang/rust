@@ -3,10 +3,10 @@
 use std::borrow::Cow;
 
 use either::{Left, Right};
-use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
+use rustc_abi::{self as abi, ExternAbi, FieldIdx, HasDataLayout, Integer, Size, VariantIdx};
 use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
@@ -15,9 +15,9 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
-    throw_ub, throw_ub_custom,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
+    PlaceTy, Pointer, Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar,
+    StackPopInfo, interp_ok, throw_ub, throw_ub_custom,
 };
 use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
@@ -470,7 +470,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let place = self.eval_place(dest)?;
                     let mplace = self.force_allocation(&place)?;
 
-                    let _ = mplace;
+                    // This global allocation is used as a key so `va_arg` can look up the variable
+                    // argument list corresponding to a `VaList` value.
+                    let alloc_id = self.tcx().reserve_and_set_va_list_alloc();
+
+                    // Consume the remaining arguments and store them in a global allocation.
+                    let mut varargs = Vec::new();
+                    for (fn_arg, abi) in &mut caller_args {
+                        let op = self.copy_fn_arg(fn_arg);
+                        let mplace = self.allocate(abi.layout, MemoryKind::Stack)?;
+                        self.copy_op(&op, &mplace)?;
+
+                        varargs.push(mplace);
+                    }
+
+                    // When the frame is dropped, this ID is used to deallocate the variable arguments list.
+                    self.frame_mut().va_list = Some(alloc_id);
+
+                    // A global map that is used to implement `va_arg`.
+                    self.memory.va_list_map.insert(alloc_id, varargs);
+
+                    // A VaList is a global allocation, so make sure we get the right root pointer.
+                    // We know this is not an `extern static` so this cannot fail.
+                    let ptr = self.global_root_pointer(Pointer::from(alloc_id)).unwrap();
+                    let addr = Scalar::from_pointer(ptr, self);
+
+                    // Store the pointer to the global variable arguments list allocation in the
+                    // first bytes of the `VaList` value.
+                    let mut alloc = self
+                        .get_ptr_alloc_mut(mplace.ptr(), self.data_layout().pointer_size())?
+                        .expect("not a ZST");
+
+                    alloc.write_ptr_sized(Size::ZERO, addr)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     self.storage_live(local)?;
