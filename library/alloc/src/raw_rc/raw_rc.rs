@@ -27,6 +27,8 @@ use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::raw_rc::MakeMutStrategy;
 #[cfg(not(no_global_oom_handling))]
+use crate::raw_rc::raw_unique_rc::RawUniqueRc;
+#[cfg(not(no_global_oom_handling))]
 use crate::raw_rc::raw_weak;
 use crate::raw_rc::raw_weak::RawWeak;
 #[cfg(not(no_global_oom_handling))]
@@ -431,6 +433,45 @@ impl<T, A> RawRc<T, A> {
         });
 
         unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn new_cyclic_impl<F, R>(mut weak: RawWeak<T, A>, data_fn: F) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        let guard = unsafe { raw_weak::new_weak_guard::<T, A, R>(&mut weak) };
+        let data = data_fn(&guard);
+
+        DropGuard::dismiss(guard);
+
+        unsafe { RawUniqueRc::from_weak_with_value(weak, data).into_rc::<R>() }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) unsafe fn new_cyclic_in<F, R>(data_fn: F, alloc: A) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        let weak = RawWeak::new_uninit_in::<0>(alloc);
+
+        unsafe { Self::new_cyclic_impl::<F, R>(weak, data_fn) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) unsafe fn new_cyclic<F, R>(data_fn: F) -> Self
+    where
+        A: Allocator + Default,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        let weak = RawWeak::new_uninit::<0>();
+
+        unsafe { Self::new_cyclic_impl::<F, R>(weak, data_fn) }
     }
 
     /// Attempts to map the value in an `Rc`, reusing the allocation if possible.
