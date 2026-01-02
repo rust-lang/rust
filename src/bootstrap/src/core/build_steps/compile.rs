@@ -1690,7 +1690,7 @@ impl Step for GccCodegenBackend {
             &CodegenBackendKind::Gcc,
         );
 
-        if builder.config.keep_stage.contains(&build_compiler.stage) {
+        if builder.config.keep_stage.contains(&build_compiler.stage) && stamp.path().exists() {
             trace!("`keep-stage` requested");
             builder.info(
                 "WARNING: Using a potentially old codegen backend. \
