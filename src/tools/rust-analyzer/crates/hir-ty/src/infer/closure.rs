@@ -68,7 +68,6 @@ impl<'db> InferenceContext<'_, 'db> {
         let ClosureSignatures { bound_sig, liberated_sig } =
             self.sig_of_closure(arg_types, ret_type, expected_sig);
         let body_ret_ty = bound_sig.output().skip_binder();
-        let sig_ty = Ty::new_fn_ptr(interner, bound_sig);
 
         let parent_args = GenericArgs::identity_for_item(interner, self.generic_def.into());
         // FIXME: Make this an infer var and infer it later.
@@ -117,6 +116,16 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                     None => {}
                 };
+                let sig = bound_sig.map_bound(|sig| {
+                    interner.mk_fn_sig(
+                        [Ty::new_tup(interner, sig.inputs())],
+                        sig.output(),
+                        sig.c_variadic,
+                        sig.safety,
+                        sig.abi,
+                    )
+                });
+                let sig_ty = Ty::new_fn_ptr(interner, sig);
                 // FIXME: Infer the kind later if needed.
                 let parts = ClosureArgsParts {
                     parent_args: parent_args.as_slice(),

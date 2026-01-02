@@ -4,14 +4,15 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
-    ModuleDefId, VariantId,
+    AdtId, AssocItemId, BuiltinDeriveImplId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId,
+    GenericParamId, ModuleDefId, VariantId,
     hir::{BindingId, LabelId},
 };
+use hir_ty::next_solver::AnyImplId;
 
 use crate::{
-    Adt, AssocItem, BuiltinType, DefWithBody, Field, GenericDef, GenericParam, ItemInNs, Label,
-    Local, ModuleDef, Variant, VariantDef,
+    Adt, AnyFunctionId, AssocItem, BuiltinType, DefWithBody, Field, GenericDef, GenericParam,
+    ItemInNs, Label, Local, ModuleDef, Variant, VariantDef,
 };
 
 macro_rules! from_id {
@@ -39,8 +40,8 @@ from_id![
     (hir_def::TraitId, crate::Trait),
     (hir_def::StaticId, crate::Static),
     (hir_def::ConstId, crate::Const),
-    (hir_def::FunctionId, crate::Function),
-    (hir_def::ImplId, crate::Impl),
+    (crate::AnyFunctionId, crate::Function),
+    (hir_ty::next_solver::AnyImplId, crate::Impl),
     (hir_def::TypeOrConstParamId, crate::TypeOrConstParam),
     (hir_def::TypeParamId, crate::TypeParam),
     (hir_def::ConstParamId, crate::ConstParam),
@@ -119,11 +120,15 @@ impl From<ModuleDefId> for ModuleDef {
     }
 }
 
-impl From<ModuleDef> for ModuleDefId {
-    fn from(id: ModuleDef) -> Self {
-        match id {
+impl TryFrom<ModuleDef> for ModuleDefId {
+    type Error = ();
+    fn try_from(id: ModuleDef) -> Result<Self, Self::Error> {
+        Ok(match id {
             ModuleDef::Module(it) => ModuleDefId::ModuleId(it.into()),
-            ModuleDef::Function(it) => ModuleDefId::FunctionId(it.into()),
+            ModuleDef::Function(it) => match it.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
             ModuleDef::Adt(it) => ModuleDefId::AdtId(it.into()),
             ModuleDef::Variant(it) => ModuleDefId::EnumVariantId(it.into()),
             ModuleDef::Const(it) => ModuleDefId::ConstId(it.into()),
@@ -132,18 +137,22 @@ impl From<ModuleDef> for ModuleDefId {
             ModuleDef::TypeAlias(it) => ModuleDefId::TypeAliasId(it.into()),
             ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it.into()),
             ModuleDef::Macro(it) => ModuleDefId::MacroId(it.into()),
-        }
+        })
     }
 }
 
-impl From<DefWithBody> for DefWithBodyId {
-    fn from(def: DefWithBody) -> Self {
-        match def {
-            DefWithBody::Function(it) => DefWithBodyId::FunctionId(it.id),
+impl TryFrom<DefWithBody> for DefWithBodyId {
+    type Error = ();
+    fn try_from(def: DefWithBody) -> Result<Self, ()> {
+        Ok(match def {
+            DefWithBody::Function(it) => match it.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
             DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
             DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
             DefWithBody::Variant(it) => DefWithBodyId::VariantId(it.into()),
-        }
+        })
     }
 }
 
@@ -168,17 +177,11 @@ impl From<AssocItemId> for AssocItem {
     }
 }
 
-impl From<GenericDef> for GenericDefId {
-    fn from(def: GenericDef) -> Self {
-        match def {
-            GenericDef::Function(it) => GenericDefId::FunctionId(it.id),
-            GenericDef::Adt(it) => GenericDefId::AdtId(it.into()),
-            GenericDef::Trait(it) => GenericDefId::TraitId(it.id),
-            GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
-            GenericDef::Impl(it) => GenericDefId::ImplId(it.id),
-            GenericDef::Const(it) => GenericDefId::ConstId(it.id),
-            GenericDef::Static(it) => GenericDefId::StaticId(it.id),
-        }
+impl TryFrom<GenericDef> for GenericDefId {
+    type Error = ();
+
+    fn try_from(def: GenericDef) -> Result<Self, Self::Error> {
+        def.id().ok_or(())
     }
 }
 
@@ -238,13 +241,17 @@ impl From<FieldId> for Field {
     }
 }
 
-impl From<AssocItem> for GenericDefId {
-    fn from(item: AssocItem) -> Self {
-        match item {
-            AssocItem::Function(f) => f.id.into(),
+impl TryFrom<AssocItem> for GenericDefId {
+    type Error = ();
+    fn try_from(item: AssocItem) -> Result<Self, Self::Error> {
+        Ok(match item {
+            AssocItem::Function(f) => match f.id {
+                AnyFunctionId::FunctionId(it) => it.into(),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => return Err(()),
+            },
             AssocItem::Const(c) => c.id.into(),
             AssocItem::TypeAlias(t) => t.id.into(),
-        }
+        })
     }
 }
 
@@ -270,13 +277,14 @@ impl From<hir_def::item_scope::ItemInNs> for ItemInNs {
     }
 }
 
-impl From<ItemInNs> for hir_def::item_scope::ItemInNs {
-    fn from(it: ItemInNs) -> Self {
-        match it {
-            ItemInNs::Types(it) => Self::Types(it.into()),
-            ItemInNs::Values(it) => Self::Values(it.into()),
+impl TryFrom<ItemInNs> for hir_def::item_scope::ItemInNs {
+    type Error = ();
+    fn try_from(it: ItemInNs) -> Result<Self, Self::Error> {
+        Ok(match it {
+            ItemInNs::Types(it) => Self::Types(it.try_into()?),
+            ItemInNs::Values(it) => Self::Values(it.try_into()?),
             ItemInNs::Macros(it) => Self::Macros(it.into()),
-        }
+        })
     }
 }
 
@@ -289,5 +297,23 @@ impl From<hir_def::builtin_type::BuiltinType> for BuiltinType {
 impl From<BuiltinType> for hir_def::builtin_type::BuiltinType {
     fn from(it: BuiltinType) -> Self {
         it.inner
+    }
+}
+
+impl From<hir_def::ImplId> for crate::Impl {
+    fn from(value: hir_def::ImplId) -> Self {
+        crate::Impl { id: AnyImplId::ImplId(value) }
+    }
+}
+
+impl From<BuiltinDeriveImplId> for crate::Impl {
+    fn from(value: BuiltinDeriveImplId) -> Self {
+        crate::Impl { id: AnyImplId::BuiltinDeriveImplId(value) }
+    }
+}
+
+impl From<hir_def::FunctionId> for crate::Function {
+    fn from(value: hir_def::FunctionId) -> Self {
+        crate::Function { id: AnyFunctionId::FunctionId(value) }
     }
 }

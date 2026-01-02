@@ -18,6 +18,7 @@
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(assert_matches)]
+#![feature(box_vec_non_null)]
 #![feature(char_internals)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]

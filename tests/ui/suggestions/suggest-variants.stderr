@@ -74,6 +74,64 @@ LL | enum Shape {
 LL |     Shape::Rombus;
    |            ^^^^^^ variant or associated item not found in `Shape`
 
-error: aborting due to 6 previous errors
+error[E0599]: no variant or associated item named `Redd` found for enum `Color` in the current scope
+  --> $DIR/suggest-variants.rs:28:13
+   |
+LL | enum Color {
+   | ---------- variant or associated item `Redd` not found for this enum
+...
+LL |   Ok(Color::Redd)
+   |             ^^^^ variant or associated item not found in `Color`
+   |
+help: there is a variant with a similar name
+   |
+LL -   Ok(Color::Redd)
+LL +   Ok(Color::Red)
+   |
+
+error[E0599]: no variant or associated item named `Greenn` found for enum `Color` in the current scope
+  --> $DIR/suggest-variants.rs:32:13
+   |
+LL | enum Color {
+   | ---------- variant or associated item `Greenn` not found for this enum
+...
+LL |   Ok(Color::Greenn(()))
+   |             ^^^^^^ variant or associated item not found in `Color`
+   |
+help: there is a variant with a similar name
+   |
+LL -   Ok(Color::Greenn(()))
+LL +   Ok(Color::Green(()))
+   |
+
+error[E0599]: no variant or associated item named `Blu` found for enum `Color` in the current scope
+  --> $DIR/suggest-variants.rs:36:13
+   |
+LL | enum Color {
+   | ---------- variant or associated item `Blu` not found for this enum
+...
+LL |   Ok(Color::Blu)
+   |             ^^^ variant or associated item not found in `Color`
+   |
+help: there is a variant with a similar name
+   |
+LL |   Ok(Color::Blue)
+   |                +
+
+error[E0599]: no variant named `Alph` found for enum `Color`
+  --> $DIR/suggest-variants.rs:40:13
+   |
+LL | enum Color {
+   | ---------- variant `Alph` not found here
+...
+LL |   Ok(Color::Alph{ a: 255 })
+   |             ^^^^
+   |
+help: there is a variant with a similar name
+   |
+LL |   Ok(Color::Alpha{ a: 255 })
+   |                 +
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

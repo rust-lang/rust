@@ -7,16 +7,17 @@ error: abnormal termination: the program aborted execution
 LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
-   = note: inside `alloc::alloc::__alloc_error_handler::__rdl_alloc_error_handler` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-note: inside `miri_start`
-  --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
-   |
-LL |     handle_alloc_error(Layout::for_value(&0));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: panic_handler
+               at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
+           1: alloc::alloc::__alloc_error_handler::__rdl_alloc_error_handler
+               at RUSTLIB/alloc/src/alloc.rs:LL:CC
+           2: alloc::alloc::handle_alloc_error::rt_error
+               at RUSTLIB/alloc/src/alloc.rs:LL:CC
+           3: alloc::alloc::handle_alloc_error
+               at RUSTLIB/alloc/src/alloc.rs:LL:CC
+           4: miri_start
+               at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

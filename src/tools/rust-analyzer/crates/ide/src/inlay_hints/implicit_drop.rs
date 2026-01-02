@@ -34,9 +34,10 @@ pub(super) fn hints(
     let def = sema.to_def(node)?;
     let def: DefWithBody = def.into();
 
-    let (hir, source_map) = sema.db.body_with_source_map(def.into());
+    let def = def.try_into().ok()?;
+    let (hir, source_map) = sema.db.body_with_source_map(def);
 
-    let mir = sema.db.mir_body(def.into()).ok()?;
+    let mir = sema.db.mir_body(def).ok()?;
 
     let local_to_binding = mir.local_to_binding_map();
 

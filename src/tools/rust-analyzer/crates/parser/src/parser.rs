@@ -32,7 +32,7 @@ const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15
 
 impl<'t> Parser<'t> {
     pub(super) fn new(inp: &'t Input) -> Parser<'t> {
-        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0) }
+        Parser { inp, pos: 0, events: Vec::with_capacity(2 * inp.len()), steps: Cell::new(0) }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {

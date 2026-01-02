@@ -2,23 +2,36 @@ error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ thread `main` got stuck here
+   |                                                                  ^ thread got stuck here
    |
-   = note: BACKTRACE:
-   = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
-   = note: inside `std::thread::lifecycle::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
-   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/join_handle.rs:LL:CC
-note: inside `main`
-  --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
-   |
-LL |     thread2.join().unwrap();
-   |     ^^^^^^^^^^^^^^
+   = note: this is on thread `main`
+   = note: stack backtrace:
+           0: std::sys::thread::PLATFORM::Thread::join
+               at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
+           1: std::thread::lifecycle::JoinInner::join
+               at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
+           2: std::thread::JoinHandle::join
+               at RUSTLIB/std/src/thread/join_handle.rs:LL:CC
+           3: main
+               at tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
 
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
    |
 LL |         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
-   |                                                                          ^ thread `unnamed-ID` got stuck here
+   |                                                                          ^ thread got stuck here
+   |
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+   |
+LL |       let thread2 = thread::spawn(move || {
+   |  ___________________^
+LL | |         let mut buf: [u8; 8] = [0; 8];
+...  |
+LL | |         assert_eq!(counter, 1_u64);
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

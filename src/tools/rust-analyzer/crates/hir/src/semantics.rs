@@ -13,7 +13,7 @@ use std::{
 use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
+    DefWithBodyId, MacroId, StructId, TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
@@ -34,7 +34,7 @@ use hir_ty::{
     diagnostics::{unsafe_operations, unsafe_operations_for_body},
     infer_query_with_inspect,
     next_solver::{
-        DbInterner, Span,
+        AnyImplId, DbInterner, Span,
         format_proof_tree::{ProofTreeData, dump_proof_tree_structured},
     },
 };
@@ -53,11 +53,11 @@ use syntax::{
 };
 
 use crate::{
-    Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const, ConstParam,
-    Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource, Impl,
-    InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
-    Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait, TupleField, Type,
-    TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Adjust, Adjustment, Adt, AnyFunctionId, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
+    ConstParam, Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution,
+    HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
+    Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait,
+    TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, resolve_hir_path},
@@ -106,7 +106,10 @@ impl PathResolution {
             | PathResolution::DeriveHelper(_)
             | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
-            PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
+            PathResolution::SelfType(impl_def) => match impl_def.id {
+                AnyImplId::ImplId(id) => Some(TypeNs::SelfType(id)),
+                AnyImplId::BuiltinDeriveImplId(_) => None,
+            },
         }
     }
 }
@@ -345,23 +348,23 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
     }
 
     pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
-        self.imp.resolve_await_to_poll(await_expr).map(Function::from)
+        self.imp.resolve_await_to_poll(await_expr)
     }
 
     pub fn resolve_prefix_expr(&self, prefix_expr: &ast::PrefixExpr) -> Option<Function> {
-        self.imp.resolve_prefix_expr(prefix_expr).map(Function::from)
+        self.imp.resolve_prefix_expr(prefix_expr)
     }
 
     pub fn resolve_index_expr(&self, index_expr: &ast::IndexExpr) -> Option<Function> {
-        self.imp.resolve_index_expr(index_expr).map(Function::from)
+        self.imp.resolve_index_expr(index_expr)
     }
 
     pub fn resolve_bin_expr(&self, bin_expr: &ast::BinExpr) -> Option<Function> {
-        self.imp.resolve_bin_expr(bin_expr).map(Function::from)
+        self.imp.resolve_bin_expr(bin_expr)
     }
 
     pub fn resolve_try_expr(&self, try_expr: &ast::TryExpr) -> Option<Function> {
-        self.imp.resolve_try_expr(try_expr).map(Function::from)
+        self.imp.resolve_try_expr(try_expr)
     }
 
     pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
@@ -833,7 +836,7 @@ impl<'db> SemanticsImpl<'db> {
     // FIXME: Type the return type
     /// Returns the range (pre-expansion) in the string literal corresponding to the resolution,
     /// absolute file range (post-expansion)
-    /// of the part in the format string, the corresponding string token and the resolution if it
+    /// of the part in the format string (post-expansion), the corresponding string token and the resolution if it
     /// exists.
     // FIXME: Remove this in favor of `check_for_format_args_template_with_file`
     pub fn check_for_format_args_template(
@@ -1749,6 +1752,7 @@ impl<'db> SemanticsImpl<'db> {
         func: Function,
         subst: impl IntoIterator<Item = Type<'db>>,
     ) -> Option<Function> {
+        let AnyFunctionId::FunctionId(func) = func.id else { return Some(func) };
         let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
         let substs =
@@ -1757,7 +1761,12 @@ impl<'db> SemanticsImpl<'db> {
                 subst.next().expect("too few subst").ty.into()
             });
         assert!(subst.next().is_none(), "too many subst");
-        Some(self.db.lookup_impl_method(env.env, func.into(), substs).0.into())
+        Some(match self.db.lookup_impl_method(env.env, func, substs).0 {
+            Either::Left(it) => it.into(),
+            Either::Right((impl_, method)) => {
+                Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } }
+            }
+        })
     }
 
     fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<StructId> {
@@ -1768,23 +1777,23 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(range_expr.syntax())?.resolve_range_expr(self.db, range_expr)
     }
 
-    fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<FunctionId> {
+    fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
         self.analyze(await_expr.syntax())?.resolve_await_to_poll(self.db, await_expr)
     }
 
-    fn resolve_prefix_expr(&self, prefix_expr: &ast::PrefixExpr) -> Option<FunctionId> {
+    fn resolve_prefix_expr(&self, prefix_expr: &ast::PrefixExpr) -> Option<Function> {
         self.analyze(prefix_expr.syntax())?.resolve_prefix_expr(self.db, prefix_expr)
     }
 
-    fn resolve_index_expr(&self, index_expr: &ast::IndexExpr) -> Option<FunctionId> {
+    fn resolve_index_expr(&self, index_expr: &ast::IndexExpr) -> Option<Function> {
         self.analyze(index_expr.syntax())?.resolve_index_expr(self.db, index_expr)
     }
 
-    fn resolve_bin_expr(&self, bin_expr: &ast::BinExpr) -> Option<FunctionId> {
+    fn resolve_bin_expr(&self, bin_expr: &ast::BinExpr) -> Option<Function> {
         self.analyze(bin_expr.syntax())?.resolve_bin_expr(self.db, bin_expr)
     }
 
-    fn resolve_try_expr(&self, try_expr: &ast::TryExpr) -> Option<FunctionId> {
+    fn resolve_try_expr(&self, try_expr: &ast::TryExpr) -> Option<Function> {
         self.analyze(try_expr.syntax())?.resolve_try_expr(self.db, try_expr)
     }
 
@@ -1861,7 +1870,9 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
-        let def = DefWithBodyId::from(def);
+        let Ok(def) = DefWithBodyId::try_from(def) else {
+            return FxHashSet::default();
+        };
         let (body, source_map) = self.db.body_with_source_map(def);
         let infer = InferenceResult::for_body(self.db, def);
         let mut res = FxHashSet::default();
@@ -1877,7 +1888,9 @@ impl<'db> SemanticsImpl<'db> {
         always!(block.unsafe_token().is_some());
         let block = self.wrap_node_infile(ast::Expr::from(block));
         let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
-        let def = def.into();
+        let Ok(def) = def.try_into() else {
+            return Vec::new();
+        };
         let (body, source_map) = self.db.body_with_source_map(def);
         let infer = InferenceResult::for_body(self.db, def);
         let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
@@ -2023,13 +2036,19 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Search for a definition's source and cache its syntax tree
-    pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>>
-    where
-        Def::Ast: AstNode,
-    {
+    pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>> {
         // FIXME: source call should go through the parse cache
         let res = def.source(self.db)?;
         self.cache(find_root(res.value.syntax()), res.file_id);
+        Some(res)
+    }
+
+    pub fn source_with_range<Def: HasSource>(
+        &self,
+        def: Def,
+    ) -> Option<InFile<(TextRange, Option<Def::Ast>)>> {
+        let res = def.source_with_range(self.db)?;
+        self.parse_or_expand(res.file_id);
         Some(res)
     }
 
@@ -2162,9 +2181,10 @@ impl<'db> SemanticsImpl<'db> {
 
         let def = match &enclosing_item {
             Either::Left(ast::Item::Fn(it)) if it.unsafe_token().is_some() => return true,
-            Either::Left(ast::Item::Fn(it)) => {
-                self.to_def(it).map(<_>::into).map(DefWithBodyId::FunctionId)
-            }
+            Either::Left(ast::Item::Fn(it)) => (|| match self.to_def(it)?.id {
+                AnyFunctionId::FunctionId(id) => Some(DefWithBodyId::FunctionId(id)),
+                AnyFunctionId::BuiltinDeriveImplMethod { .. } => None,
+            })(),
             Either::Left(ast::Item::Const(it)) => {
                 self.to_def(it).map(<_>::into).map(DefWithBodyId::ConstId)
             }
@@ -2201,7 +2221,11 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn impl_generated_from_derive(&self, impl_: Impl) -> Option<Adt> {
-        let source = hir_def::src::HasSource::ast_ptr(&impl_.id.loc(self.db), self.db);
+        let id = match impl_.id {
+            AnyImplId::ImplId(id) => id,
+            AnyImplId::BuiltinDeriveImplId(id) => return Some(id.loc(self.db).adt.into()),
+        };
+        let source = hir_def::src::HasSource::ast_ptr(&id.loc(self.db), self.db);
         let mut file_id = source.file_id;
         let adt_ast_id = loop {
             let macro_call = file_id.macro_file()?;

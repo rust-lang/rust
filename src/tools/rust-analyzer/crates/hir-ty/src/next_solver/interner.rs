@@ -38,10 +38,10 @@ use crate::{
     lower::GenericPredicates,
     method_resolution::TraitImpls,
     next_solver::{
-        AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, ImplIdWrapper,
-        OpaqueTypeKey, RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds,
-        TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, util::explicit_item_bounds,
+        AdtIdWrapper, AnyImplId, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, OpaqueTypeKey,
+        RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper,
+        TypeAliasIdWrapper, UnevaluatedConst, util::explicit_item_bounds,
     },
 };
 
@@ -1020,7 +1020,7 @@ impl<'db> Interner for DbInterner<'db> {
     type CoroutineClosureId = CoroutineIdWrapper;
     type CoroutineId = CoroutineIdWrapper;
     type AdtId = AdtIdWrapper;
-    type ImplId = ImplIdWrapper;
+    type ImplId = AnyImplId;
     type UnevaluatedConstId = GeneralConstIdWrapper;
     type Span = Span;
 
@@ -1164,7 +1164,7 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf {
-        generics(self.db(), def_id)
+        generics(self, def_id)
     }
 
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf {
@@ -1190,6 +1190,7 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::TraitId(_)
             | SolverDefId::TypeAliasId(_)
             | SolverDefId::ImplId(_)
+            | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_) => {
                 return VariancesOf::empty(self);
@@ -1327,6 +1328,7 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::AdtId(_)
             | SolverDefId::TraitId(_)
             | SolverDefId::ImplId(_)
+            | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::EnumVariantId(..)
             | SolverDefId::Ctor(..)
             | SolverDefId::InternedOpaqueTyId(..) => panic!(),
@@ -1445,8 +1447,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        GenericPredicates::query_all(self.db, def_id.try_into().unwrap())
-            .map_bound(|it| it.iter().copied())
+        predicates_of(self.db, def_id).all_predicates().map_bound(|it| it.iter().copied())
     }
 
     #[tracing::instrument(level = "debug", skip(self), ret)]
@@ -1454,8 +1455,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        GenericPredicates::query_own(self.db, def_id.try_into().unwrap())
-            .map_bound(|it| it.iter().copied())
+        predicates_of(self.db, def_id).own_predicates().map_bound(|it| it.iter().copied())
     }
 
     #[tracing::instrument(skip(self), ret)]
@@ -1500,32 +1500,30 @@ impl<'db> Interner for DbInterner<'db> {
             }
         }
 
-        GenericPredicates::query_explicit(self.db, def_id.try_into().unwrap()).map_bound(
-            |predicates| {
-                predicates
-                    .iter()
-                    .copied()
-                    .filter(|p| match p.kind().skip_binder() {
-                        ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
-                        ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
-                        ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
-                        ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
-                        // FIXME: Not sure is this correct to allow other clauses but we might replace
-                        // `generic_predicates_ns` query here with something closer to rustc's
-                        // `implied_bounds_with_filter`, which is more granular lowering than this
-                        // "lower at once and then filter" implementation.
-                        _ => true,
-                    })
-                    .map(|p| (p, Span::dummy()))
-            },
-        )
+        predicates_of(self.db, def_id).explicit_predicates().map_bound(|predicates| {
+            predicates
+                .iter()
+                .copied()
+                .filter(|p| match p.kind().skip_binder() {
+                    ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
+                    ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
+                    ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
+                    ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
+                    // FIXME: Not sure is this correct to allow other clauses but we might replace
+                    // `generic_predicates_ns` query here with something closer to rustc's
+                    // `implied_bounds_with_filter`, which is more granular lowering than this
+                    // "lower at once and then filter" implementation.
+                    _ => true,
+                })
+                .map(|p| (p, Span::dummy()))
+        })
     }
 
     fn impl_super_outlives(
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let trait_ref = self.db().impl_trait(impl_id.0).expect("expected an impl of trait");
+        let trait_ref = self.impl_trait_ref(impl_id);
         trait_ref.map_bound(|trait_ref| {
             let clause: Clause<'_> = trait_ref.upcast(self);
             elaborate(self, [clause]).filter(|clause| {
@@ -1790,6 +1788,7 @@ impl<'db> Interner for DbInterner<'db> {
                     SolverDefId::ConstId(_)
                     | SolverDefId::FunctionId(_)
                     | SolverDefId::ImplId(_)
+                    | SolverDefId::BuiltinDeriveImplId(_)
                     | SolverDefId::StaticId(_)
                     | SolverDefId::InternedClosureId(_)
                     | SolverDefId::InternedCoroutineId(_)
@@ -1805,7 +1804,12 @@ impl<'db> Interner for DbInterner<'db> {
                 type_block,
                 trait_block,
                 &mut |impls| {
-                    for &impl_ in impls.for_trait_and_self_ty(trait_def_id.0, &simp) {
+                    let (regular_impls, builtin_derive_impls) =
+                        impls.for_trait_and_self_ty(trait_def_id.0, &simp);
+                    for &impl_ in regular_impls {
+                        f(impl_.into());
+                    }
+                    for &impl_ in builtin_derive_impls {
                         f(impl_.into());
                     }
                 },
@@ -1927,7 +1931,10 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn impl_is_default(self, impl_def_id: Self::ImplId) -> bool {
-        self.db.impl_signature(impl_def_id.0).is_default()
+        match impl_def_id {
+            AnyImplId::ImplId(impl_id) => self.db.impl_signature(impl_id).is_default(),
+            AnyImplId::BuiltinDeriveImplId(_) => false,
+        }
     }
 
     #[tracing::instrument(skip(self), ret)]
@@ -1935,14 +1942,24 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
-        let db = self.db();
-        db.impl_trait(impl_id.0)
-            // ImplIds for impls where the trait ref can't be resolved should never reach trait solving
-            .expect("invalid impl passed to trait solver")
+        match impl_id {
+            AnyImplId::ImplId(impl_id) => {
+                let db = self.db();
+                db.impl_trait(impl_id)
+                    // ImplIds for impls where the trait ref can't be resolved should never reach trait solving
+                    .expect("invalid impl passed to trait solver")
+            }
+            AnyImplId::BuiltinDeriveImplId(impl_id) => {
+                crate::builtin_derive::impl_trait(self, impl_id)
+            }
+        }
     }
 
     fn impl_polarity(self, impl_id: Self::ImplId) -> rustc_type_ir::ImplPolarity {
-        let impl_data = self.db().impl_signature(impl_id.0);
+        let AnyImplId::ImplId(impl_id) = impl_id else {
+            return ImplPolarity::Positive;
+        };
+        let impl_data = self.db().impl_signature(impl_id);
         if impl_data.flags.contains(ImplFlags::NEGATIVE) {
             ImplPolarity::Negative
         } else {
@@ -2230,11 +2247,13 @@ impl<'db> Interner for DbInterner<'db> {
         specializing_impl_def_id: Self::ImplId,
         parent_impl_def_id: Self::ImplId,
     ) -> bool {
-        crate::specialization::specializes(
-            self.db,
-            specializing_impl_def_id.0,
-            parent_impl_def_id.0,
-        )
+        let (AnyImplId::ImplId(specializing_impl_def_id), AnyImplId::ImplId(parent_impl_def_id)) =
+            (specializing_impl_def_id, parent_impl_def_id)
+        else {
+            // No builtin derive allow specialization currently.
+            return false;
+        };
+        crate::specialization::specializes(self.db, specializing_impl_def_id, parent_impl_def_id)
     }
 
     fn next_trait_solver_globally(self) -> bool {
@@ -2349,6 +2368,14 @@ impl<'db> DbInterner<'db> {
     }
 }
 
+fn predicates_of(db: &dyn HirDatabase, def_id: SolverDefId) -> &GenericPredicates {
+    if let SolverDefId::BuiltinDeriveImplId(impl_) = def_id {
+        crate::builtin_derive::predicates(db, impl_)
+    } else {
+        GenericPredicates::query(db, def_id.try_into().unwrap())
+    }
+}
+
 macro_rules! TrivialTypeTraversalImpls {
     ($($ty:ty,)+) => {
         $(
@@ -2396,7 +2423,7 @@ TrivialTypeTraversalImpls! {
     ClosureIdWrapper,
     CoroutineIdWrapper,
     AdtIdWrapper,
-    ImplIdWrapper,
+    AnyImplId,
     GeneralConstIdWrapper,
     Safety,
     FnAbi,

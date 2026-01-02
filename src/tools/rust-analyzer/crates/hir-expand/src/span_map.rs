@@ -1,6 +1,6 @@
 //! Span maps for real files and macro expansions.
 
-use span::{Span, SyntaxContext};
+use span::Span;
 use syntax::{AstNode, TextRange, ast};
 use triomphe::Arc;
 
@@ -8,7 +8,7 @@ pub use span::RealSpanMap;
 
 use crate::{HirFileId, MacroCallId, db::ExpandDatabase};
 
-pub type ExpansionSpanMap = span::SpanMap<SyntaxContext>;
+pub type ExpansionSpanMap = span::SpanMap;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -27,13 +27,13 @@ pub enum SpanMapRef<'a> {
     RealSpanMap(&'a RealSpanMap),
 }
 
-impl syntax_bridge::SpanMapper<Span> for SpanMap {
+impl syntax_bridge::SpanMapper for SpanMap {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
 
-impl syntax_bridge::SpanMapper<Span> for SpanMapRef<'_> {
+impl syntax_bridge::SpanMapper for SpanMapRef<'_> {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }

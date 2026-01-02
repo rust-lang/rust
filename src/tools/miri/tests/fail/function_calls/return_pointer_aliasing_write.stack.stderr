@@ -21,13 +21,11 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique in-place fun
    |
 LL |     unsafe { ptr.write(0) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `myfun` at tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
-note: inside `main`
-  --> tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
-   |
-LL |             Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: myfun
+               at tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+           1: main
+               at tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -5,11 +5,11 @@ pub mod time;
 
 pub use moto_rt::futex;
 
-use crate::io as std_io;
-use crate::sys::RawOsError;
+use crate::io;
 
-pub(crate) fn map_motor_error(err: moto_rt::ErrorCode) -> crate::io::Error {
-    crate::io::Error::from_raw_os_error(err.into())
+pub(crate) fn map_motor_error(err: moto_rt::Error) -> io::Error {
+    let error_code: moto_rt::ErrorCode = err.into();
+    io::Error::from_raw_os_error(error_code.into())
 }
 
 #[cfg(not(test))]
@@ -36,49 +36,50 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {}
 
-pub fn unsupported<T>() -> std_io::Result<T> {
+pub fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::UNSUPPORTED_PLATFORM
+pub fn unsupported_err() -> io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
 }
 
-pub fn is_interrupted(_code: RawOsError) -> bool {
+pub fn is_interrupted(_code: io::RawOsError) -> bool {
     false // Motor OS doesn't have signals.
 }
 
-pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
+pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
     use moto_rt::error::*;
-    use std_io::ErrorKind;
 
     if code < 0 || code > u16::MAX.into() {
-        return std_io::ErrorKind::Uncategorized;
+        return io::ErrorKind::Uncategorized;
     }
 
-    match code as moto_rt::ErrorCode /* u16 */ {
-        E_UNSPECIFIED => ErrorKind::Uncategorized,
-        E_UNKNOWN => ErrorKind::Uncategorized,
-        E_NOT_READY => ErrorKind::WouldBlock,
-        E_NOT_IMPLEMENTED => ErrorKind::Unsupported,
-        E_VERSION_TOO_HIGH => ErrorKind::Unsupported,
-        E_VERSION_TOO_LOW => ErrorKind::Unsupported,
-        E_INVALID_ARGUMENT => ErrorKind::InvalidInput,
-        E_OUT_OF_MEMORY => ErrorKind::OutOfMemory,
-        E_NOT_ALLOWED => ErrorKind::PermissionDenied,
-        E_NOT_FOUND => ErrorKind::NotFound,
-        E_INTERNAL_ERROR => ErrorKind::Other,
-        E_TIMED_OUT => ErrorKind::TimedOut,
-        E_ALREADY_IN_USE => ErrorKind::AlreadyExists,
-        E_UNEXPECTED_EOF => ErrorKind::UnexpectedEof,
-        E_INVALID_FILENAME => ErrorKind::InvalidFilename,
-        E_NOT_A_DIRECTORY => ErrorKind::NotADirectory,
-        E_BAD_HANDLE => ErrorKind::InvalidInput,
-        E_FILE_TOO_LARGE => ErrorKind::FileTooLarge,
-        E_NOT_CONNECTED => ErrorKind::NotConnected,
-        E_STORAGE_FULL => ErrorKind::StorageFull,
-        E_INVALID_DATA => ErrorKind::InvalidData,
-        _ => crate::io::ErrorKind::Uncategorized,
+    let error = moto_rt::Error::from(code as moto_rt::ErrorCode);
+
+    match error {
+        moto_rt::Error::Unspecified => io::ErrorKind::Uncategorized,
+        moto_rt::Error::Unknown => io::ErrorKind::Uncategorized,
+        moto_rt::Error::NotReady => io::ErrorKind::WouldBlock,
+        moto_rt::Error::NotImplemented => io::ErrorKind::Unsupported,
+        moto_rt::Error::VersionTooHigh => io::ErrorKind::Unsupported,
+        moto_rt::Error::VersionTooLow => io::ErrorKind::Unsupported,
+        moto_rt::Error::InvalidArgument => io::ErrorKind::InvalidInput,
+        moto_rt::Error::OutOfMemory => io::ErrorKind::OutOfMemory,
+        moto_rt::Error::NotAllowed => io::ErrorKind::PermissionDenied,
+        moto_rt::Error::NotFound => io::ErrorKind::NotFound,
+        moto_rt::Error::InternalError => io::ErrorKind::Other,
+        moto_rt::Error::TimedOut => io::ErrorKind::TimedOut,
+        moto_rt::Error::AlreadyInUse => io::ErrorKind::AlreadyExists,
+        moto_rt::Error::UnexpectedEof => io::ErrorKind::UnexpectedEof,
+        moto_rt::Error::InvalidFilename => io::ErrorKind::InvalidFilename,
+        moto_rt::Error::NotADirectory => io::ErrorKind::NotADirectory,
+        moto_rt::Error::BadHandle => io::ErrorKind::InvalidInput,
+        moto_rt::Error::FileTooLarge => io::ErrorKind::FileTooLarge,
+        moto_rt::Error::NotConnected => io::ErrorKind::NotConnected,
+        moto_rt::Error::StorageFull => io::ErrorKind::StorageFull,
+        moto_rt::Error::InvalidData => io::ErrorKind::InvalidData,
+        _ => io::ErrorKind::Uncategorized,
     }
 }
 

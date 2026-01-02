@@ -851,7 +851,7 @@ struct S;
 trait Trait<T> {}
 impl Trait<&str> for S {}
 
-struct O<T>;
+struct O<T>(T);
 impl<U, T: Trait<U>> O<T> {
     fn foo(&self) -> U { loop {} }
 }
@@ -1492,7 +1492,7 @@ fn dyn_trait_in_impl() {
 trait Trait<T, U> {
     fn foo(&self) -> (T, U);
 }
-struct S<T, U> {}
+struct S<T, U>(T, U);
 impl<T, U> S<T, U> {
     fn bar(&self) -> &dyn Trait<T, U> { loop {} }
 }
@@ -1506,16 +1506,16 @@ fn test(s: S<u32, i32>) {
 }"#,
         expect![[r#"
             32..36 'self': &'? Self
-            102..106 'self': &'? S<T, U>
-            128..139 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
-            130..137 'loop {}': !
-            135..137 '{}': ()
-            175..179 'self': &'? Self
-            251..252 's': S<u32, i32>
-            267..289 '{     ...z(); }': ()
-            273..274 's': S<u32, i32>
-            273..280 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
-            273..286 's.bar().baz()': (u32, i32)
+            106..110 'self': &'? S<T, U>
+            132..143 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
+            134..141 'loop {}': !
+            139..141 '{}': ()
+            179..183 'self': &'? Self
+            255..256 's': S<u32, i32>
+            271..293 '{     ...z(); }': ()
+            277..278 's': S<u32, i32>
+            277..284 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
+            277..290 's.bar().baz()': (u32, i32)
         "#]],
     );
 }

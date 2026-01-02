@@ -32,7 +32,7 @@ fn has_destructor(interner: DbInterner<'_>, adt: AdtId) -> bool {
         },
         None => TraitImpls::for_crate(db, module.krate(db)),
     };
-    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).is_empty()
+    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).0.is_empty()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

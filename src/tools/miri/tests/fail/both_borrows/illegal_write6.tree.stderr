@@ -25,13 +25,11 @@ help: the protected tag <TAG> later transitioned to Unique due to a child write 
 LL |     *a = 1;
    |     ^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
-   = note: BACKTRACE (of the first span):
-   = note: inside `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
-   |
-LL |     foo(x, p);
-   |     ^^^^^^^^^
+   = note: stack backtrace:
+           0: foo
+               at tests/fail/both_borrows/illegal_write6.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/illegal_write6.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

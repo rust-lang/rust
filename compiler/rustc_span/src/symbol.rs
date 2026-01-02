@@ -472,6 +472,8 @@ symbols! {
         arith_offset,
         arm,
         arm64ec,
+        arm_a32: "arm::a32",
+        arm_t32: "arm::t32",
         arm_target_feature,
         array,
         as_dash_needed: "as-needed",

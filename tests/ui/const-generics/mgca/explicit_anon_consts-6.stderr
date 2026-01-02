@@ -1,8 +1,0 @@
-error: generic parameters may not be used in const operations
-  --> $DIR/explicit_anon_consts-6.rs:7:58
-   |
-LL | struct Default3<const N: usize, const M: usize = const { N }>;
-   |                                                          ^
-
-error: aborting due to 1 previous error
-

@@ -36,7 +36,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        assert!(moto_rt::thread::join(self.sys_thread) == moto_rt::E_OK)
+        assert!(moto_rt::thread::join(self.sys_thread).is_ok())
     }
 }
 

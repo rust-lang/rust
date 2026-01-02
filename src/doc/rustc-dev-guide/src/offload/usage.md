@@ -57,7 +57,7 @@ fn main() {
 
 #[inline(never)]
 unsafe fn kernel(x: *mut [f64; 256]) {
-    core::intrinsics::offload(kernel_1, (x,))
+    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x,))
 }
 
 #[cfg(target_os = "linux")]
