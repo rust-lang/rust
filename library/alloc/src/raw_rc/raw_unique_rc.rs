@@ -1,10 +1,14 @@
 use core::alloc::Allocator;
-use core::marker::PhantomData;
+use core::fmt::{self, Debug, Display, Formatter, Pointer};
+use core::hash::{Hash, Hasher};
+use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::{DropGuard, SizedTypeProperties};
+use core::ops::{CoerceUnsized, DispatchFromDyn};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{ControlFlow, Try};
 
+use crate::alloc::Global;
 use crate::raw_rc::RefCounter;
 use crate::raw_rc::raw_rc::RawRc;
 #[cfg(not(no_global_oom_handling))]
@@ -170,5 +174,123 @@ impl<T, A> RawUniqueRc<T, A> {
         match unsafe { self.try_map::<R, _>(f) } {
             ControlFlow::Continue(output) => output,
         }
+    }
+}
+
+impl<T, A> AsMut<T> for RawUniqueRc<T, A>
+where
+    T: ?Sized,
+{
+    fn as_mut(&mut self) -> &mut T {
+        unsafe { self.weak.as_ptr().as_mut() }
+    }
+}
+
+impl<T, A> AsRef<T> for RawUniqueRc<T, A>
+where
+    T: ?Sized,
+{
+    fn as_ref(&self) -> &T {
+        unsafe { self.weak.as_ptr().as_ref() }
+    }
+}
+
+impl<T, U, A> CoerceUnsized<RawUniqueRc<U, A>> for RawUniqueRc<T, A>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+    A: Allocator,
+{
+}
+
+impl<T, A> Debug for RawUniqueRc<T, A>
+where
+    T: Debug + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <T as Debug>::fmt(self.as_ref(), f)
+    }
+}
+
+impl<T, U> DispatchFromDyn<RawUniqueRc<U, Global>> for RawUniqueRc<T, Global>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
+
+impl<T, A> Display for RawUniqueRc<T, A>
+where
+    T: Display + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <T as Display>::fmt(self.as_ref(), f)
+    }
+}
+
+impl<T, A> Eq for RawUniqueRc<T, A> where T: Eq + ?Sized {}
+
+impl<T, A> Hash for RawUniqueRc<T, A>
+where
+    T: Hash + ?Sized,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        T::hash(self.as_ref(), state);
+    }
+}
+
+impl<T, A> Ord for RawUniqueRc<T, A>
+where
+    T: Ord + ?Sized,
+{
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        T::cmp(self.as_ref(), other.as_ref())
+    }
+}
+
+impl<T, A> PartialEq for RawUniqueRc<T, A>
+where
+    T: PartialEq + ?Sized,
+{
+    fn eq(&self, other: &Self) -> bool {
+        T::eq(self.as_ref(), other.as_ref())
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        T::ne(self.as_ref(), other.as_ref())
+    }
+}
+
+impl<T, A> PartialOrd for RawUniqueRc<T, A>
+where
+    T: PartialOrd + ?Sized,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        T::partial_cmp(self.as_ref(), other.as_ref())
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        T::lt(self.as_ref(), other.as_ref())
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        T::le(self.as_ref(), other.as_ref())
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        T::gt(self.as_ref(), other.as_ref())
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        T::ge(self.as_ref(), other.as_ref())
+    }
+}
+
+impl<T, A> Pointer for RawUniqueRc<T, A>
+where
+    T: ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <&T as Pointer>::fmt(&self.as_ref(), f)
     }
 }
