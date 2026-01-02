@@ -828,8 +828,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && innermost_results[1..].iter().any(|(b, s)| {
                     matches!(s, Scope::ExternPreludeItems) && *b != innermost_binding
                 });
+            // Skip ambiguity errors for nonglob module bindings "overridden"
+            // by glob module bindings in the same module.
+            // FIXME: Remove with lang team approval.
+            let issue_149681_hack = match scope {
+                Scope::ModuleGlobs(m1, _)
+                    if innermost_results[1..]
+                        .iter()
+                        .any(|(_, s)| matches!(*s, Scope::ModuleNonGlobs(m2, _) if m1 == m2)) =>
+                {
+                    true
+                }
+                _ => false,
+            };
 
-            if issue_145575_hack {
+            if issue_145575_hack || issue_149681_hack {
                 self.issue_145575_hack_applied = true;
             } else {
                 self.ambiguity_errors.push(AmbiguityError {
