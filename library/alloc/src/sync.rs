@@ -1309,6 +1309,73 @@ impl<T> Arc<[T]> {
         }
     }
 
+    /// Constructs a new atomically reference-counted slice with uninitialized contents.
+    /// Returns an error if the allocation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut values = Arc::<[u32]>::try_new_uninit_slice(3)?;
+    ///
+    /// // Deferred initialization:
+    /// let data = Arc::get_mut(&mut values).unwrap();
+    /// data[0].write(1);
+    /// data[1].write(2);
+    /// data[2].write(3);
+    ///
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub fn try_new_uninit_slice(len: usize) -> Result<Arc<[mem::MaybeUninit<T>]>, AllocError> {
+        unsafe { Ok(Arc::from_ptr(Arc::try_allocate_for_slice(len)?)) }
+    }
+
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
+    /// filled with `0` bytes. Returns an error if the allocation fails.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let values = Arc::<[u32]>::try_new_zeroed_slice(3)?;
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub fn try_new_zeroed_slice(len: usize) -> Result<Arc<[mem::MaybeUninit<T>]>, AllocError> {
+        unsafe {
+            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| Global.allocate_zeroed(layout),
+                |mem| {
+                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
+                        as *mut ArcInner<[mem::MaybeUninit<T>]>
+                },
+            )?))
+        }
+    }
+
     /// Converts the reference-counted slice into a reference-counted array.
     ///
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
@@ -1400,6 +1467,80 @@ impl<T, A: Allocator> Arc<[T], A> {
                 ),
                 alloc,
             )
+        }
+    }
+
+    /// Constructs a new atomically reference-counted slice with uninitialized contents in the
+    /// provided allocator. Returns an error if the allocation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_mut_unchecked)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let mut values = Arc::<[u32], _>::try_new_uninit_slice_in(3, System)?;
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Arc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Arc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_new_uninit_slice_in(len: usize, alloc: A) -> Result<Arc<[mem::MaybeUninit<T>], A>, AllocError> {
+        unsafe {
+            Ok(Arc::from_ptr_in(Arc::try_allocate_for_slice_in(len, &alloc)?, alloc))
+        }
+    }
+
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
+    /// filled with `0` bytes, in the provided allocator. Returns an error if the allocation fails.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let values = Arc::<[u32], _>::try_new_zeroed_slice_in(3, System)?;
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_new_zeroed_slice_in(len: usize, alloc: A) -> Result<Arc<[mem::MaybeUninit<T>], A>, AllocError> {
+        unsafe {
+            Ok(Arc::from_ptr_in(
+                Arc::try_allocate_for_layout(
+                    Layout::array::<T>(len).unwrap(),
+                    |layout| alloc.allocate_zeroed(layout),
+                    |mem| {
+                        ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
+                            as *mut ArcInner<[mem::MaybeUninit<T>]>
+                    },
+                )?,
+                alloc,
+            ))
         }
     }
 }
@@ -2244,11 +2385,15 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
         unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
-            )
+            Self::allocate_for_slice_in(len, &Global)
+        }
+    }
+    /// Allocates an `ArcInner<[T]>` with the given length. Returns an error
+    /// if the allocation fails.
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn try_allocate_for_slice(len: usize) -> Result<*mut ArcInner<[T]>, AllocError> {
+        unsafe {
+            Self::try_allocate_for_slice_in(len, &Global)
         }
     }
 
@@ -2324,6 +2469,19 @@ impl<T, A: Allocator> Arc<[T], A> {
     unsafe fn allocate_for_slice_in(len: usize, alloc: &A) -> *mut ArcInner<[T]> {
         unsafe {
             Arc::allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| alloc.allocate(layout),
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
+            )
+        }
+    }
+    /// Allocates an `ArcInner<[T]>` with the given length. Returns an error
+    /// if the allocation fails.
+    #[inline]
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn try_allocate_for_slice_in(len: usize, alloc: &A) -> Result<*mut ArcInner<[T]>, AllocError> {
+        unsafe {
+            Arc::try_allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
                 |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,

@@ -1166,8 +1166,8 @@ impl<T> Rc<[T]> {
     /// # Examples
     ///
     /// ```
-    ///
     /// #![feature(allocator_api)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut values = Rc::<[u32]>::try_new_uninit_slice(3)?;
@@ -1191,7 +1191,7 @@ impl<T> Rc<[T]> {
         }
     }
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
-    /// filled with `0` bytes.
+    /// filled with `0` bytes. Returns an error if the allocation fails.
     ///
     /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
     /// incorrect usage of this method.
@@ -1200,6 +1200,7 @@ impl<T> Rc<[T]> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let values = Rc::<[u32]>::try_new_zeroed_slice(3)?;
@@ -1319,6 +1320,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     }
 
     /// Constructs a new reference-counted slice with uninitialized contents.
+    /// Returns an error if the allocation fails.
     ///
     /// # Examples
     ///
@@ -1351,7 +1353,7 @@ impl<T, A: Allocator> Rc<[T], A> {
         }
     }
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
-    /// filled with `0` bytes.
+    /// filled with `0` bytes.  Returns an error if the allocation fails.
     ///
     /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
     /// incorrect usage of this method.
@@ -2437,6 +2439,8 @@ impl<T> Rc<[T]> {
             Self::allocate_for_slice_in(len, &Global)
         }
     }
+    /// Allocates an `RcInner<[T]>` with the given length. Returns an error if
+    /// the allocation fails.
     #[inline]
     #[cfg(not(no_global_oom_handling))]
     unsafe fn try_allocate_for_slice(len: usize) -> Result<*mut RcInner<[T]>, AllocError> {
@@ -2517,10 +2521,12 @@ impl<T, A: Allocator> Rc<[T], A> {
             Rc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem: *mut u8| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
+    /// Allocates an `RcInner<[T]>` with the given length. Returns an error if
+    /// the allocation fails.
     #[inline]
     #[cfg(not(no_global_oom_handling))]
     unsafe fn try_allocate_for_slice_in(len: usize, alloc: &A) -> Result<*mut RcInner<[T]>, AllocError> {
@@ -2528,7 +2534,7 @@ impl<T, A: Allocator> Rc<[T], A> {
             Rc::try_allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem: *mut u8| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
