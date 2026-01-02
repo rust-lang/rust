@@ -614,7 +614,9 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                 // Resolve the link on the type the alias points to.
                 // FIXME: if the associated item is defined directly on the type alias,
                 // it will show up on its documentation page, we should link there instead.
-                let Some(res) = self.ty_to_res(tcx.type_of(did).instantiate_identity()) else { return Vec::new() };
+                let Some(res) = self.ty_to_res(tcx.type_of(did).instantiate_identity()) else {
+                    return Vec::new();
+                };
                 self.resolve_associated_item(res, item_name, ns, disambiguator, module_id)
             }
             Res::Def(
@@ -720,10 +722,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                 Ident::with_dummy_span(item_name),
                 ns,
             )
-            .map(|item| {
-                let res = Res::Def(item.as_def_kind(), item.def_id);
-                (res, item.def_id)
-            })
+            .map(|item| (root_res, item.def_id))
             .collect::<Vec<_>>(),
             _ => Vec::new(),
         }
