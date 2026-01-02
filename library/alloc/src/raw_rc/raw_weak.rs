@@ -373,6 +373,68 @@ impl<T, A> RawWeak<T, A> {
     }
 }
 
+impl<T, A> RawWeak<[T], A> {
+    #[cfg(not(no_global_oom_handling))]
+    fn allocate_in<F>(length: usize, alloc: A, allocate_fn: F) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(&A, RcLayout) -> RcValuePointer,
+    {
+        let rc_layout = RcLayout::new_array::<T>(length);
+        let ptr = allocate_fn(&alloc, rc_layout);
+
+        unsafe {
+            Self::from_raw_parts(NonNull::slice_from_raw_parts(ptr.as_ptr().cast(), length), alloc)
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn allocate<F>(length: usize, allocate_fn: F) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(RcLayout) -> (RcValuePointer, A),
+    {
+        let rc_layout = RcLayout::new_array::<T>(length);
+        let (ptr, alloc) = allocate_fn(rc_layout);
+
+        unsafe {
+            Self::from_raw_parts(NonNull::slice_from_raw_parts(ptr.as_ptr().cast(), length), alloc)
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice_in<const STRONG_COUNT: usize>(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        Self::allocate_in(length, alloc, rc_alloc::allocate_uninit_in::<A, STRONG_COUNT>)
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice<const STRONG_COUNT: usize>(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        Self::allocate(length, rc_alloc::allocate_uninit::<A, STRONG_COUNT>)
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice_in<const STRONG_COUNT: usize>(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        Self::allocate_in(length, alloc, rc_alloc::allocate_zeroed_in::<A, STRONG_COUNT>)
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice<const STRONG_COUNT: usize>(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        Self::allocate(length, rc_alloc::allocate_zeroed::<A, STRONG_COUNT>)
+    }
+}
+
 // We choose `NonZeroUsize::MAX` as the address for dangling weak pointers because:
 //
 // - It does not point to any object that is stored inside a reference-counted allocation. Because
