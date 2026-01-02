@@ -183,7 +183,8 @@ mod tests {
     use crate::{ClosureReturnTypeHints, fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_no_edit, check_with_config,
+        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_expect, check_no_edit,
+        check_with_config,
     };
 
     #[track_caller]
@@ -1253,6 +1254,42 @@ where
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn generic_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn identity<T>(t: T) -> T {
+    let x = t;
+    x
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        36..37,
+                        [
+                            InlayHintLabelPart {
+                                text: "T",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 12..13,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
         );
     }
 }
