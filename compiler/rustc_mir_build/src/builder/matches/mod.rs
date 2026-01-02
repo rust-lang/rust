@@ -1290,9 +1290,10 @@ enum PatConstKind {
     /// These types don't support `SwitchInt` and require an equality test,
     /// but can also interact with range pattern tests.
     Float,
+    /// Constant string values, tested via string equality.
+    String,
     /// Any other constant-pattern is usually tested via some kind of equality
     /// check. Types that might be encountered here include:
-    /// - `&str`
     /// - raw pointers derived from integer values
     /// - pattern types, e.g. `pattern_type!(u32 is 1..)`
     Other,
@@ -1368,14 +1369,20 @@ enum TestKind<'tcx> {
     /// Test whether a `bool` is `true` or `false`.
     If,
 
-    /// Test for equality with value, possibly after an unsizing coercion to
-    /// `cast_ty`,
-    Eq {
+    /// Tests the place against a string constant using string equality.
+    StringEq {
+        /// Constant `&str` value to test against.
         value: ty::Value<'tcx>,
-        // Integer types are handled by `SwitchInt`, and constants with ADT
-        // types and `&[T]` types are converted back into patterns, so this can
-        // only be `&str` or floats.
-        cast_ty: Ty<'tcx>,
+        /// Type of the corresponding pattern node. Usually `&str`, but could
+        /// be `str` for patterns like `deref!("..."): String`.
+        pat_ty: Ty<'tcx>,
+    },
+
+    /// Tests the place against a constant using scalar equality.
+    ScalarEq {
+        value: ty::Value<'tcx>,
+        /// Type of the corresponding pattern node.
+        pat_ty: Ty<'tcx>,
     },
 
     /// Test whether the value falls within an inclusive or exclusive range.

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -173,9 +174,21 @@ impl<'tcx> MatchPairTree<'tcx> {
                     PatConstKind::IntOrChar
                 } else if pat_ty.is_floating_point() {
                     PatConstKind::Float
+                } else if pat_ty.is_str() {
+                    // Deref-patterns can cause string-literal patterns to have
+                    // type `str` instead of the usual `&str`.
+                    if !cx.tcx.features().deref_patterns() {
+                        span_bug!(
+                            pattern.span,
+                            "const pattern has type `str` but deref_patterns is not enabled"
+                        );
+                    }
+                    PatConstKind::String
+                } else if pat_ty.is_imm_ref_str() {
+                    PatConstKind::String
                 } else {
                     // FIXME(Zalathar): This still covers several different
-                    // categories (e.g. raw pointer, string, pattern-type)
+                    // categories (e.g. raw pointer, pattern-type)
                     // which could be split out into their own kinds.
                     PatConstKind::Other
                 };

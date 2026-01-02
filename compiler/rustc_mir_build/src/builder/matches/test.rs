@@ -38,11 +38,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Constant { value: _, kind: PatConstKind::IntOrChar } => {
                 TestKind::SwitchInt
             }
-            TestableCase::Constant { value, kind: PatConstKind::Float } => {
-                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            TestableCase::Constant { value, kind: PatConstKind::String } => {
+                TestKind::StringEq { value, pat_ty: match_pair.pattern_ty }
             }
-            TestableCase::Constant { value, kind: PatConstKind::Other } => {
-                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
+                TestKind::ScalarEq { value, pat_ty: match_pair.pattern_ty }
             }
 
             TestableCase::Range(ref range) => {
@@ -141,7 +141,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, cast_ty: pat_ty } => {
+            TestKind::StringEq { value, pat_ty } | TestKind::ScalarEq { value, pat_ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
