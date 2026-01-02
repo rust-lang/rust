@@ -112,7 +112,7 @@ impl MacroDylib {
 /// we share a single expander process for all macros within a workspace.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    process: ProcMacroServerPool,
+    pool: ProcMacroServerPool,
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
@@ -240,7 +240,7 @@ impl ProcMacro {
         current_dir: String,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        self.process.expand(
+        self.pool.expand(
             self,
             subtree,
             attr,

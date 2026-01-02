@@ -55,7 +55,7 @@ impl ProcMacroServerPool {
         let result = macros
             .into_iter()
             .map(|(name, kind)| ProcMacro {
-                process: self.clone(),
+                pool: self.clone(),
                 name: name.into(),
                 kind,
                 dylib_path: dylib_path.clone(),
