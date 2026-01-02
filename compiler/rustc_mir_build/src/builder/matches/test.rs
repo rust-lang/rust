@@ -141,13 +141,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::StringEq { value, pat_ty } | TestKind::ScalarEq { value, pat_ty } => {
+            TestKind::StringEq { value, pat_ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let mut expected_value_ty = value.ty;
-                let mut expected_value_operand =
+                let expected_value_ty = value.ty;
+                let expected_value_operand =
                     self.literal_operand(test.span, Const::from_ty_value(tcx, value));
 
                 let mut actual_value_ty = pat_ty;
@@ -177,6 +177,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         actual_value_place = ref_place;
                         actual_value_ty = ref_str_ty;
                     }
+                    _ => {}
+                }
+
+                assert_eq!(expected_value_ty, actual_value_ty);
+                assert!(actual_value_ty.is_imm_ref_str());
+
+                // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
+                // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+                // on the `PartialEq` impl for `str` to be correct!)
+                self.string_compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_place),
+                );
+            }
+
+            TestKind::ScalarEq { value, pat_ty } => {
+                let tcx = self.tcx;
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
+
+                let mut expected_value_ty = value.ty;
+                let mut expected_value_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+
+                let mut actual_value_ty = pat_ty;
+                let mut actual_value_place = place;
+
+                match pat_ty.kind() {
                     &ty::Pat(base, _) => {
                         assert_eq!(pat_ty, value.ty);
                         assert!(base.is_trivially_pure_clone_copy());
@@ -210,42 +242,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 assert_eq!(expected_value_ty, actual_value_ty);
-                if !actual_value_ty.is_scalar() {
-                    // Use `PartialEq::eq` instead of `BinOp::Eq`
-                    // (the binop can only handle primitives)
-                    // Make sure that we do *not* call any user-defined code here.
-                    // The only type that can end up here is string literals, which have their
-                    // comparison defined in `core`.
-                    // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-                    // on the `PartialEq` impl for `str` to b correct!)
-                    match *actual_value_ty.kind() {
-                        ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ => {}
-                        _ => {
-                            span_bug!(
-                                source_info.span,
-                                "invalid type for non-scalar compare: {actual_value_ty}"
-                            )
-                        }
-                    };
-                    self.string_compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        expected_value_operand,
-                        Operand::Copy(actual_value_place),
-                    );
-                } else {
-                    self.compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        BinOp::Eq,
-                        expected_value_operand,
-                        Operand::Copy(actual_value_place),
-                    );
-                }
+                assert!(actual_value_ty.is_scalar());
+
+                self.compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    BinOp::Eq,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_place),
+                );
             }
 
             TestKind::Range(ref range) => {
