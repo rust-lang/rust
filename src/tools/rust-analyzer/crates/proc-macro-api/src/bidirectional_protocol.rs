@@ -138,6 +138,7 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
+    process: &ProcMacroServerProcess,
     subtree: tt::SubtreeView<'_>,
     attr: Option<tt::SubtreeView<'_>>,
     env: Vec<(String, String)>,
@@ -147,7 +148,7 @@ pub(crate) fn expand(
     current_dir: String,
     callback: SubCallback<'_>,
 ) -> Result<Result<tt::TopSubtree, String>, crate::ServerError> {
-    let version = proc_macro.process.version();
+    let version = process.version();
     let mut span_data_table = SpanDataIndexMap::default();
     let def_site = span_data_table.insert_full(def_site).0;
     let call_site = span_data_table.insert_full(call_site).0;
@@ -164,7 +165,7 @@ pub(crate) fn expand(
                 call_site,
                 mixed_site,
             },
-            span_data_table: if proc_macro.process.rust_analyzer_spans() {
+            span_data_table: if process.rust_analyzer_spans() {
                 serialize_span_data_index_map(&span_data_table)
             } else {
                 Vec::new()
@@ -175,13 +176,13 @@ pub(crate) fn expand(
         current_dir: Some(current_dir),
     })));
 
-    let response_payload = run_request(proc_macro.process.as_ref(), task, callback)?;
+    let response_payload = run_request(process, task, callback)?;
 
     match response_payload {
         BidirectionalMessage::Response(Response::ExpandMacro(it)) => Ok(it
             .map(|tree| {
                 let mut expanded = FlatTree::to_subtree_resolved(tree, version, &span_data_table);
-                if proc_macro.needs_fixup_change() {
+                if proc_macro.needs_fixup_change(process) {
                     proc_macro.change_fixup_to_match_old_server(&mut expanded);
                 }
                 expanded
@@ -194,7 +195,7 @@ pub(crate) fn expand(
                     version,
                     &deserialize_span_data_index_map(&resp.span_data_table),
                 );
-                if proc_macro.needs_fixup_change() {
+                if proc_macro.needs_fixup_change(process) {
                     proc_macro.change_fixup_to_match_old_server(&mut expanded);
                 }
                 expanded
