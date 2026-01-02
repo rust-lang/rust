@@ -462,7 +462,7 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
 }
 
 /// Given a primitive type, try to resolve an associated item.
-fn resolve_primitive_associated_item<'tcx>(
+fn resolve_primitive_inherent_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     prim_ty: PrimitiveType,
     ns: Namespace,
@@ -597,33 +597,30 @@ fn resolve_associated_item<'tcx>(
     let item_ident = Ident::with_dummy_span(item_name);
 
     match root_res {
-        Res::Primitive(prim) => {
-            let items = resolve_primitive_associated_item(tcx, prim, ns, item_ident);
-            if !items.is_empty() {
-                items
-            // Inherent associated items take precedence over items that come from trait impls.
-            } else {
-                primitive_type_to_ty(tcx, prim)
-                    .map(|ty| {
-                        resolve_associated_trait_item(ty, module_id, item_ident, ns, tcx)
-                            .iter()
-                            .map(|item| (root_res, item.def_id))
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default()
-            }
-        }
-        Res::Def(DefKind::TyAlias, did) => {
+        Res::Def(DefKind::TyAlias, alias_did) => {
             // Resolve the link on the type the alias points to.
             // FIXME: if the associated item is defined directly on the type alias,
             // it will show up on its documentation page, we should link there instead.
-            let Some(res) = ty_to_res(tcx, tcx.type_of(did).instantiate_identity()) else {
-                return Vec::new();
+            let Some(aliased_res) = ty_to_res(tcx, tcx.type_of(alias_did).instantiate_identity())
+            else {
+                return vec![];
             };
-            resolve_associated_item(tcx, res, item_name, ns, disambiguator, module_id)
+            let aliased_items =
+                resolve_associated_item(tcx, aliased_res, item_name, ns, disambiguator, module_id);
+            aliased_items
+                .into_iter()
+                .map(|(res, assoc_did)| {
+                    if is_assoc_item_on_alias_page(tcx, assoc_did) {
+                        (root_res, assoc_did)
+                    } else {
+                        (res, assoc_did)
+                    }
+                })
+                .collect()
         }
+        Res::Primitive(prim) => resolve_assoc_on_primitive(tcx, prim, ns, item_ident, module_id),
         Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, did) => {
-            resolve_assoc_on_adt(tcx, did, item_name, ns, disambiguator, module_id)
+            resolve_assoc_on_adt(tcx, did, item_ident, ns, disambiguator, module_id)
         }
         Res::Def(DefKind::ForeignTy, did) => {
             resolve_assoc_on_simple_type(tcx, did, item_ident, ns, module_id)
@@ -640,23 +637,56 @@ fn resolve_associated_item<'tcx>(
     }
 }
 
+// FIXME: make this fully complete by also including ALL inherent impls
+// and trait impls BUT ONLY if on alias directly
+fn is_assoc_item_on_alias_page<'tcx>(tcx: TyCtxt<'tcx>, assoc_did: DefId) -> bool {
+    match tcx.def_kind(assoc_did) {
+        // Variants and fields always have docs on the alias page.
+        DefKind::Variant | DefKind::Field => true,
+        _ => false,
+    }
+}
+
+fn resolve_assoc_on_primitive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    prim: PrimitiveType,
+    ns: Namespace,
+    item_ident: Ident,
+    module_id: DefId,
+) -> Vec<(Res, DefId)> {
+    let root_res = Res::Primitive(prim);
+    let items = resolve_primitive_inherent_assoc_item(tcx, prim, ns, item_ident);
+    if !items.is_empty() {
+        items
+    // Inherent associated items take precedence over items that come from trait impls.
+    } else {
+        primitive_type_to_ty(tcx, prim)
+            .map(|ty| {
+                resolve_associated_trait_item(ty, module_id, item_ident, ns, tcx)
+                    .iter()
+                    .map(|item| (root_res, item.def_id))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
+}
+
 fn resolve_assoc_on_adt<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt_def_id: DefId,
-    item_name: Symbol,
+    item_ident: Ident,
     ns: Namespace,
     disambiguator: Option<Disambiguator>,
     module_id: DefId,
 ) -> Vec<(Res, DefId)> {
-    debug!("looking for associated item named {item_name} for item {adt_def_id:?}");
+    debug!("looking for associated item named {item_ident} for item {adt_def_id:?}");
     let root_res = Res::from_def_id(tcx, adt_def_id);
     let adt_ty = tcx.type_of(adt_def_id).instantiate_identity();
     let adt_def = adt_ty.ty_adt_def().expect("must be ADT");
-    let item_ident = Ident::with_dummy_span(item_name);
     // Checks if item_name is a variant of the `SomeItem` enum
     if ns == TypeNS && adt_def.is_enum() {
         for variant in adt_def.variants() {
-            if variant.name == item_name {
+            if variant.name == item_ident.name {
                 return vec![(root_res, variant.def_id)];
             }
         }
@@ -665,7 +695,7 @@ fn resolve_assoc_on_adt<'tcx>(
     if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator
         && (adt_def.is_struct() || adt_def.is_union())
     {
-        return resolve_structfield(adt_def, item_name)
+        return resolve_structfield(adt_def, item_ident.name)
             .into_iter()
             .map(|did| (root_res, did))
             .collect();
@@ -677,7 +707,7 @@ fn resolve_assoc_on_adt<'tcx>(
     }
 
     if ns == Namespace::ValueNS && (adt_def.is_struct() || adt_def.is_union()) {
-        return resolve_structfield(adt_def, item_name)
+        return resolve_structfield(adt_def, item_ident.name)
             .into_iter()
             .map(|did| (root_res, did))
             .collect();
