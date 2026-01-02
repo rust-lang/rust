@@ -81,7 +81,7 @@ pub trait CodegenBackend {
     /// Value printed by `--print=backend-has-zstd`.
     ///
     /// Used by compiletest to determine whether tests involving zstd compression
-    /// (e.g. `-Zdebuginfo-compression=zstd`) should be executed or skipped.
+    /// (e.g. `-Cdebuginfo-compression=zstd`) should be executed or skipped.
     fn has_zstd(&self) -> bool {
         false
     }
