@@ -59,11 +59,13 @@
 //! - Converting `Option<Rc<T>>` to `Option<&T>` without checking for `None` values.
 //! - Converting `&[Rc<T>]` to `&[&T]` with zero cost.
 
-#![allow(dead_code)]
-
 use core::cell::UnsafeCell;
 use core::mem;
 use core::sync::atomic::Atomic;
+
+pub(crate) use crate::raw_rc::raw_rc::RawRc;
+pub(crate) use crate::raw_rc::raw_unique_rc::RawUniqueRc;
+pub(crate) use crate::raw_rc::raw_weak::RawWeak;
 
 mod raw_rc;
 mod raw_unique_rc;
