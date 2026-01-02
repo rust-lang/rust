@@ -210,14 +210,20 @@ pub const fn _mm_avg_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pmaddwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let r: i32x8 = simd_mul(simd_cast(a.as_i16x8()), simd_cast(b.as_i16x8()));
-        let even: i32x4 = simd_shuffle!(r, r, [0, 2, 4, 6]);
-        let odd: i32x4 = simd_shuffle!(r, r, [1, 3, 5, 7]);
-        simd_add(even, odd).as_m128i()
-    }
+pub fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
+    // It's a trick used in the Adler-32 algorithm to perform a widening addition.
+    //
+    // ```rust
+    // #[target_feature(enable = "sse2")]
+    // unsafe fn widening_add(mad: __m128i) -> __m128i {
+    //     _mm_madd_epi16(mad, _mm_set1_epi16(1))
+    // }
+    // ```
+    //
+    // If we implement this using generic vector intrinsics, the optimizer
+    // will eliminate this pattern, and `pmaddwd` will no longer be emitted.
+    // For this reason, we use x86 intrinsics.
+    unsafe { transmute(pmaddwd(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -3187,6 +3193,8 @@ unsafe extern "C" {
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
     fn mfence();
+    #[link_name = "llvm.x86.sse2.pmadd.wd"]
+    fn pmaddwd(a: i16x8, b: i16x8) -> i32x4;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
     #[link_name = "llvm.x86.sse2.psll.w"]
@@ -3467,7 +3475,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_madd_epi16() {
+    fn test_mm_madd_epi16() {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let b = _mm_setr_epi16(9, 10, 11, 12, 13, 14, 15, 16);
         let r = _mm_madd_epi16(a, b);
