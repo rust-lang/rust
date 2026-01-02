@@ -880,6 +880,7 @@ pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_diagnostic_item = "ptr_without_provenance"]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     without_provenance_mut(addr)
 }
@@ -918,6 +919,7 @@ pub const fn dangling<T>() -> *const T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_diagnostic_item = "ptr_without_provenance_mut"]
 #[allow(integer_to_ptr_transmutes)] // Expected semantics here.
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
