@@ -137,34 +137,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
-pub(crate) struct UnsupportedInstructionSet {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_instruction_set, code = E0779)]
-pub(crate) struct InvalidInstructionSet {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_bare_instruction_set, code = E0778)]
-pub(crate) struct BareInstructionSet {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_multiple_instruction_set, code = E0779)]
-pub(crate) struct MultipleInstructionSet {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_expected_name_value_pair)]
 pub(crate) struct ExpectedNameValuePair {
     #[primary_span]

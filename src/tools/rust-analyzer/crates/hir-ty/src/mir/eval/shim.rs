@@ -16,28 +16,13 @@ use crate::{
     mir::eval::{
         Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay,
         InternedClosure, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals,
-        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, pad16,
+        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported,
+        pad16,
     },
     next_solver::Region,
 };
 
 mod simd;
-
-macro_rules! from_bytes {
-    ($ty:tt, $value:expr) => {
-        ($ty::from_le_bytes(match ($value).try_into() {
-            Ok(it) => it,
-            #[allow(unreachable_patterns)]
-            Err(_) => return Err(MirEvalError::InternalError("mismatched size".into())),
-        }))
-    };
-}
-
-macro_rules! not_supported {
-    ($it: expr) => {
-        return Err(MirEvalError::NotSupported(format!($it)))
-    };
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EvalLangItem {

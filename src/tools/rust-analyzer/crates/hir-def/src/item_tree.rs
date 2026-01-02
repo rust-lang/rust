@@ -103,7 +103,7 @@ fn lower_extra_crate_attrs<'a>(
     struct FakeSpanMap {
         file_id: span::EditionedFileId,
     }
-    impl syntax_bridge::SpanMapper<Span> for FakeSpanMap {
+    impl syntax_bridge::SpanMapper for FakeSpanMap {
         fn span_for(&self, range: TextRange) -> Span {
             Span {
                 range,

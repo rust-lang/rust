@@ -47,6 +47,8 @@ use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
 #[cfg(not(no_global_oom_handling))]
+use core::num::Saturating;
+#[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::AddAssign;
@@ -1098,6 +1100,23 @@ impl String {
     #[rustc_diagnostic_item = "string_push_str"]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    fn push_str_slice(&mut self, slice: &[&str]) {
+        // use saturating arithmetic to ensure that in the case of an overflow, reserve() throws OOM
+        let additional: Saturating<usize> = slice.iter().map(|x| Saturating(x.len())).sum();
+        self.reserve(additional.0);
+        let (ptr, len, cap) = core::mem::take(self).into_raw_parts();
+        unsafe {
+            let mut dst = ptr.add(len);
+            for new in slice {
+                core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+                dst = dst.add(new.len());
+            }
+            *self = String::from_raw_parts(ptr, len + additional.0, cap);
+        }
     }
 
     /// Copies elements from `src` range to the end of the string.
@@ -2486,12 +2505,38 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(s));
+        <I as SpecExtendStr>::spec_extend_into(iter, self)
     }
 
     #[inline]
     fn extend_one(&mut self, s: &'a str) {
         self.push_str(s);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecExtendStr {
+    fn spec_extend_into(self, s: &mut String);
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<'a, T: IntoIterator<Item = &'a str>> SpecExtendStr for T {
+    default fn spec_extend_into(self, target: &mut String) {
+        self.into_iter().for_each(move |s| target.push_str(s));
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl SpecExtendStr for [&str] {
+    fn spec_extend_into(self, target: &mut String) {
+        target.push_str_slice(&self);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<const N: usize> SpecExtendStr for [&str; N] {
+    fn spec_extend_into(self, target: &mut String) {
+        target.push_str_slice(&self[..]);
     }
 }
 

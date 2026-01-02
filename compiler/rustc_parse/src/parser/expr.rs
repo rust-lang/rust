@@ -1622,15 +1622,13 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = if self.token.is_keyword(kw::Const)
-                    && self.look_ahead(1, |t| *t == token::OpenBrace)
-                {
+                let count = if self.eat_keyword(exp!(Const)) {
                     // While we could just disambiguate `Direct` from `AnonConst` by
                     // treating all const block exprs as `AnonConst`, that would
                     // complicate the DefCollector and likely all other visitors.
                     // So we strip the const blockiness and just store it as a block
                     // in the AST with the extra disambiguator on the AnonConst
-                    self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?
+                    self.parse_mgca_const_block(false)?
                 } else {
                     self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
                 };

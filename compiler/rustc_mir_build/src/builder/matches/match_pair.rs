@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::builder::matches::{
-    FlatPat, MatchPairTree, PatConstKind, PatternExtraData, TestableCase,
+    FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -173,9 +174,21 @@ impl<'tcx> MatchPairTree<'tcx> {
                     PatConstKind::IntOrChar
                 } else if pat_ty.is_floating_point() {
                     PatConstKind::Float
+                } else if pat_ty.is_str() {
+                    // Deref-patterns can cause string-literal patterns to have
+                    // type `str` instead of the usual `&str`.
+                    if !cx.tcx.features().deref_patterns() {
+                        span_bug!(
+                            pattern.span,
+                            "const pattern has type `str` but deref_patterns is not enabled"
+                        );
+                    }
+                    PatConstKind::String
+                } else if pat_ty.is_imm_ref_str() {
+                    PatConstKind::String
                 } else {
                     // FIXME(Zalathar): This still covers several different
-                    // categories (e.g. raw pointer, string, pattern-type)
+                    // categories (e.g. raw pointer, pattern-type)
                     // which could be split out into their own kinds.
                     PatConstKind::Other
                 };
@@ -277,11 +290,20 @@ impl<'tcx> MatchPairTree<'tcx> {
                 );
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                    // This pattern is shaped like `[..]`. It can match a slice
+                    // of any length, so no length test is needed.
                     None
                 } else {
+                    // Any other shape of slice pattern requires a length test.
+                    // Slice patterns with a `..` subpattern require a minimum
+                    // length; those without `..` require an exact length.
                     Some(TestableCase::Slice {
                         len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
-                        variable_length: slice.is_some(),
+                        op: if slice.is_some() {
+                            SliceLenOp::GreaterOrEqual
+                        } else {
+                            SliceLenOp::Equal
+                        },
                     })
                 }
             }

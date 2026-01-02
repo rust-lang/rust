@@ -218,7 +218,18 @@ impl<T> Drop for Parse<T> {
                 let (sender, receiver) = std::sync::mpsc::channel::<GreenNode>();
                 std::thread::Builder::new()
                     .name("ParseNodeDropper".to_owned())
-                    .spawn(move || receiver.iter().for_each(drop))
+                    .spawn(move || {
+                        loop {
+                            // block on a receive
+                            _ = receiver.recv();
+                            // then drain the entire channel
+                            while receiver.try_recv().is_ok() {}
+                            // and sleep for a bit
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        }
+                        // why do this over just a `receiver.iter().for_each(drop)`? To reduce contention on the channel lock.
+                        // otherwise this thread will constantly wake up and sleep again.
+                    })
                     .unwrap();
                 sender
             })

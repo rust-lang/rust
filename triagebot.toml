@@ -954,15 +954,15 @@ cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/ty/relate.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_infer/src/infer/relate"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
 message = "changes to `inspect_obligations.rs`"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
@@ -974,7 +974,7 @@ cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/wf.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"
@@ -997,7 +997,7 @@ message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
-cc = ["@lcnr", "@compiler-errors"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_analysis/src/hir_ty_lowering"]
 message = "HIR ty lowering was modified"
@@ -1146,7 +1146,7 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
 message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
@@ -1158,11 +1158,11 @@ cc = ["@Muscraft"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
@@ -1427,7 +1427,6 @@ compiler_leads = [
 compiler = [
     "@BoxyUwU",
     "@chenyukang",
-    "@compiler-errors",
     "@davidtwco",
     "@eholk",
     "@fee1-dead",
@@ -1486,13 +1485,11 @@ incremental = [
     "@wesleywiser",
 ]
 diagnostics = [
-    "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
 ]
 parser = [
-    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -1518,7 +1515,6 @@ mir-opt = [
     "@saethlin",
 ]
 types = [
-    "@compiler-errors",
     "@jackh726",
     "@lcnr",
     "@oli-obk",
@@ -1530,14 +1526,14 @@ borrowck = [
     "@matthewjasper"
 ]
 ast_lowering = [
-    "@compiler-errors",
     "@spastorino",
 ]
 debuginfo = [
     "@davidtwco"
 ]
 fallback = [
-    "@Mark-Simulacrum"
+    "@Mark-Simulacrum",
+    "@jieyouxu",
 ]
 style-team = [
     "@calebcartwright",
@@ -1545,7 +1541,6 @@ style-team = [
     "@traviscross",
 ]
 project-const-traits = [
-    "@compiler-errors",
     "@fee1-dead",
     "@fmease",
     "@oli-obk",
@@ -1629,8 +1624,8 @@ dep-bumps = [
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
-"/tests/run-make" =                                      ["@jieyouxu"]
-"/tests/run-make-cargo" =                                ["@jieyouxu"]
+"/tests/run-make" =                                      ["compiler"]
+"/tests/run-make-cargo" =                                ["compiler"]
 "/tests/rustdoc" =                                       ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
@@ -1639,7 +1634,7 @@ dep-bumps = [
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]

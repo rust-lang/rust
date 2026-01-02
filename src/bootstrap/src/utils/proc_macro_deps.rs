@@ -5,6 +5,7 @@ pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
     "annotate-snippets",
     "anstyle",
+    "askama_derive",
     "askama_parser",
     "basic-toml",
     "block-buffer",

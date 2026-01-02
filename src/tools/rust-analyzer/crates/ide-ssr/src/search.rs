@@ -6,10 +6,9 @@ use crate::{
 };
 use hir::FileRange;
 use ide_db::{
-    FileId, FxHashSet,
+    FileId, FxHashSet, LocalRoots,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
-    symbol_index::LocalRoots,
 };
 use syntax::{AstNode, SyntaxKind, SyntaxNode, ast};
 

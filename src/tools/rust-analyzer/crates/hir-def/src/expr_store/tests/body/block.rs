@@ -190,13 +190,13 @@ fn f() {
     "#,
         expect![[r#"
             ModuleIdLt {
-                [salsa id]: Id(3003),
+                [salsa id]: Id(3803),
                 krate: Crate(
-                    Id(1c00),
+                    Id(2400),
                 ),
                 block: Some(
                     BlockId(
-                        3c01,
+                        4401,
                     ),
                 ),
             }"#]],

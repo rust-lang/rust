@@ -16,13 +16,11 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique function-ent
    |
 LL |     safe_raw(xraw, xshr);
    |     ^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
-   |
-LL |     safe_raw(xraw, xshr);
-   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: safe
+               at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

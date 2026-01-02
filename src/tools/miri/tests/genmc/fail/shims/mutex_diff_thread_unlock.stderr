@@ -7,16 +7,27 @@ LL |             self.lock.inner.unlock();
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside `<std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop` at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::sync::MutexGuard<'_, u64>> - shim(Some(std::sync::MutexGuard<'_, u64>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<EvilSend<std::sync::MutexGuard<'_, u64>>> - shim(Some(EvilSend<std::sync::MutexGuard<'_, u64>>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<EvilSend<std::sync::MutexGuard<'_, u64>>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: <std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop
+               at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           3: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           4: miri_start::{closure#0}
+               at tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
    |
-LL |         drop(guard);
-   |         ^^^^^^^^^^^
+LL |       let handle = std::thread::spawn(move || {
+   |  __________________^
+LL | |         let guard = guard; // avoid field capturing
+LL | |         drop(guard);
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

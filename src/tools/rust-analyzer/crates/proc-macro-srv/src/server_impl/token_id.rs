@@ -9,6 +9,7 @@ use intern::Symbol;
 use proc_macro::bridge::server;
 
 use crate::{
+    ProcMacroClientHandle,
     bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
     server_impl::literal_from_str,
 };
@@ -26,7 +27,7 @@ type Span = SpanId;
 
 pub struct FreeFunctions;
 
-pub struct SpanIdServer {
+pub struct SpanIdServer<'a> {
     // FIXME: Report this back to the caller to track as dependencies
     pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
     // FIXME: Report this back to the caller to track as dependencies
@@ -34,16 +35,17 @@ pub struct SpanIdServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
+    pub callback: Option<ProcMacroClientHandle<'a>>,
 }
 
-impl server::Types for SpanIdServer {
+impl server::Types for SpanIdServer<'_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 }
 
-impl server::FreeFunctions for SpanIdServer {
+impl server::FreeFunctions for SpanIdServer<'_> {
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
@@ -61,7 +63,7 @@ impl server::FreeFunctions for SpanIdServer {
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
 }
 
-impl server::TokenStream for SpanIdServer {
+impl server::TokenStream for SpanIdServer<'_> {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -118,7 +120,7 @@ impl server::TokenStream for SpanIdServer {
     }
 }
 
-impl server::Span for SpanIdServer {
+impl server::Span for SpanIdServer<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span.0)
     }
@@ -185,14 +187,14 @@ impl server::Span for SpanIdServer {
     }
 }
 
-impl server::Symbol for SpanIdServer {
+impl server::Symbol for SpanIdServer<'_> {
     fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
         // FIXME: nfc-normalize and validate idents
         Ok(<Self as server::Server>::intern_symbol(string))
     }
 }
 
-impl server::Server for SpanIdServer {
+impl server::Server for SpanIdServer<'_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {
             def_site: self.def_site,

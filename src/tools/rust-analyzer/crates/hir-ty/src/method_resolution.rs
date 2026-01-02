@@ -13,11 +13,13 @@ use tracing::{debug, instrument};
 
 use base_db::Crate;
 use hir_def::{
-    AssocItemId, BlockId, ConstId, FunctionId, GenericParamId, HasModule, ImplId, ItemContainerId,
-    ModuleId, TraitId,
+    AssocItemId, BlockId, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
+    ImplId, ItemContainerId, ModuleId, TraitId,
     attrs::AttrFlags,
+    builtin_derive::BuiltinDeriveImplMethod,
     expr_store::path::GenericArgs as HirGenericArgs,
     hir::ExprId,
+    lang_item::LangItems,
     nameres::{DefMap, block_def_map, crate_def_map},
     resolver::Resolver,
 };
@@ -37,7 +39,7 @@ use crate::{
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
     next_solver::{
-        Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
+        AnyImplId, Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
         SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
@@ -132,7 +134,7 @@ pub enum MethodError<'db> {
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CandidateSource {
-    Impl(ImplId),
+    Impl(AnyImplId),
     Trait(TraitId),
 }
 
@@ -371,9 +373,13 @@ pub fn lookup_impl_const<'db>(
     };
 
     lookup_impl_assoc_item_for_trait_ref(infcx, trait_ref, env, name)
-        .and_then(
-            |assoc| if let (AssocItemId::ConstId(id), s) = assoc { Some((id, s)) } else { None },
-        )
+        .and_then(|assoc| {
+            if let (Either::Left(AssocItemId::ConstId(id)), s) = assoc {
+                Some((id, s))
+            } else {
+                None
+            }
+        })
         .unwrap_or((const_id, subs))
 }
 
@@ -419,12 +425,12 @@ pub(crate) fn lookup_impl_method_query<'db>(
     env: ParamEnvAndCrate<'db>,
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
-) -> (FunctionId, GenericArgs<'db>) {
+) -> (Either<FunctionId, (BuiltinDeriveImplId, BuiltinDeriveImplMethod)>, GenericArgs<'db>) {
     let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
-        return (func, fn_subst);
+        return (Either::Left(func), fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).len();
     let trait_ref = TraitRef::new_from_args(
@@ -434,16 +440,19 @@ pub(crate) fn lookup_impl_method_query<'db>(
     );
 
     let name = &db.function_signature(func).name;
-    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(
-        &infcx,
-        trait_ref,
-        env.param_env,
-        name,
-    )
-    .and_then(|assoc| {
-        if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
-    }) else {
-        return (func, fn_subst);
+    let Some((impl_fn, impl_subst)) =
+        lookup_impl_assoc_item_for_trait_ref(&infcx, trait_ref, env.param_env, name).and_then(
+            |(assoc, impl_args)| {
+                let assoc = match assoc {
+                    Either::Left(AssocItemId::FunctionId(id)) => Either::Left(id),
+                    Either::Right(it) => Either::Right(it),
+                    _ => return None,
+                };
+                Some((assoc, impl_args))
+            },
+        )
+    else {
+        return (Either::Left(func), fn_subst);
     };
 
     (
@@ -460,22 +469,33 @@ fn lookup_impl_assoc_item_for_trait_ref<'db>(
     trait_ref: TraitRef<'db>,
     env: ParamEnv<'db>,
     name: &Name,
-) -> Option<(AssocItemId, GenericArgs<'db>)> {
+) -> Option<(Either<AssocItemId, (BuiltinDeriveImplId, BuiltinDeriveImplMethod)>, GenericArgs<'db>)>
+{
     let (impl_id, impl_subst) = find_matching_impl(infcx, env, trait_ref)?;
+    let impl_id = match impl_id {
+        AnyImplId::ImplId(it) => it,
+        AnyImplId::BuiltinDeriveImplId(impl_) => {
+            return impl_
+                .loc(infcx.interner.db)
+                .trait_
+                .get_method(name.symbol())
+                .map(|method| (Either::Right((impl_, method)), impl_subst));
+        }
+    };
     let item =
         impl_id.impl_items(infcx.interner.db).items.iter().find_map(|(n, it)| match *it {
             AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
             AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
             AssocItemId::TypeAliasId(_) => None,
         })?;
-    Some((item, impl_subst))
+    Some((Either::Left(item), impl_subst))
 }
 
 pub(crate) fn find_matching_impl<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
     trait_ref: TraitRef<'db>,
-) -> Option<(ImplId, GenericArgs<'db>)> {
+) -> Option<(AnyImplId, GenericArgs<'db>)> {
     let trait_ref = infcx.at(&ObligationCause::dummy(), env).deeply_normalize(trait_ref).ok()?;
 
     let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), env, trait_ref);
@@ -635,13 +655,13 @@ impl InherentImpls {
 
 #[derive(Debug, PartialEq)]
 struct OneTraitImpls {
-    non_blanket_impls: FxHashMap<SimplifiedType, Box<[ImplId]>>,
+    non_blanket_impls: FxHashMap<SimplifiedType, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
     blanket_impls: Box<[ImplId]>,
 }
 
 #[derive(Default)]
 struct OneTraitImplsBuilder {
-    non_blanket_impls: FxHashMap<SimplifiedType, Vec<ImplId>>,
+    non_blanket_impls: FxHashMap<SimplifiedType, (Vec<ImplId>, Vec<BuiltinDeriveImplId>)>,
     blanket_impls: Vec<ImplId>,
 }
 
@@ -650,7 +670,9 @@ impl OneTraitImplsBuilder {
         let mut non_blanket_impls = self
             .non_blanket_impls
             .into_iter()
-            .map(|(self_ty, impls)| (self_ty, impls.into_boxed_slice()))
+            .map(|(self_ty, (impls, builtin_derive_impls))| {
+                (self_ty, (impls.into_boxed_slice(), builtin_derive_impls.into_boxed_slice()))
+            })
             .collect::<FxHashMap<_, _>>();
         non_blanket_impls.shrink_to_fit();
         let blanket_impls = self.blanket_impls.into_boxed_slice();
@@ -691,8 +713,9 @@ impl TraitImpls {
 
 impl TraitImpls {
     fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap) -> Self {
+        let lang_items = hir_def::lang_item::lang_items(db, def_map.krate());
         let mut map = FxHashMap::default();
-        collect(db, def_map, &mut map);
+        collect(db, def_map, lang_items, &mut map);
         let mut map = map
             .into_iter()
             .map(|(trait_id, trait_map)| (trait_id, trait_map.finish()))
@@ -703,6 +726,7 @@ impl TraitImpls {
         fn collect(
             db: &dyn HirDatabase,
             def_map: &DefMap,
+            lang_items: &LangItems,
             map: &mut FxHashMap<TraitId, OneTraitImplsBuilder>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
@@ -727,10 +751,21 @@ impl TraitImpls {
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
                         Some(self_ty) => {
-                            entry.non_blanket_impls.entry(self_ty).or_default().push(impl_id)
+                            entry.non_blanket_impls.entry(self_ty).or_default().0.push(impl_id)
                         }
                         None => entry.blanket_impls.push(impl_id),
                     }
+                }
+
+                for impl_id in module_data.scope.builtin_derive_impls() {
+                    let loc = impl_id.loc(db);
+                    let Some(trait_id) = loc.trait_.get_id(lang_items) else { continue };
+                    let entry = map.entry(trait_id).or_default();
+                    let entry = entry
+                        .non_blanket_impls
+                        .entry(SimplifiedType::Adt(loc.adt.into()))
+                        .or_default();
+                    entry.1.push(impl_id);
                 }
 
                 // To better support custom derives, collect impls in all unnamed const items.
@@ -738,7 +773,7 @@ impl TraitImpls {
                 for konst in module_data.scope.unnamed_consts() {
                     let body = db.body(konst.into());
                     for (_, block_def_map) in body.blocks(db) {
-                        collect(db, block_def_map, map);
+                        collect(db, block_def_map, lang_items, map);
                     }
                 }
             }
@@ -761,27 +796,41 @@ impl TraitImpls {
         })
     }
 
-    pub fn for_trait_and_self_ty(&self, trait_: TraitId, self_ty: &SimplifiedType) -> &[ImplId] {
+    pub fn for_trait_and_self_ty(
+        &self,
+        trait_: TraitId,
+        self_ty: &SimplifiedType,
+    ) -> (&[ImplId], &[BuiltinDeriveImplId]) {
         self.map
             .get(&trait_)
             .and_then(|map| map.non_blanket_impls.get(self_ty))
-            .map(|it| &**it)
+            .map(|it| (&*it.0, &*it.1))
             .unwrap_or_default()
     }
 
-    pub fn for_trait(&self, trait_: TraitId, mut callback: impl FnMut(&[ImplId])) {
+    pub fn for_trait(
+        &self,
+        trait_: TraitId,
+        mut callback: impl FnMut(Either<&[ImplId], &[BuiltinDeriveImplId]>),
+    ) {
         if let Some(impls) = self.map.get(&trait_) {
-            callback(&impls.blanket_impls);
+            callback(Either::Left(&impls.blanket_impls));
             for impls in impls.non_blanket_impls.values() {
-                callback(impls);
+                callback(Either::Left(&impls.0));
+                callback(Either::Right(&impls.1));
             }
         }
     }
 
-    pub fn for_self_ty(&self, self_ty: &SimplifiedType, mut callback: impl FnMut(&[ImplId])) {
+    pub fn for_self_ty(
+        &self,
+        self_ty: &SimplifiedType,
+        mut callback: impl FnMut(Either<&[ImplId], &[BuiltinDeriveImplId]>),
+    ) {
         for for_trait in self.map.values() {
             if let Some(for_ty) = for_trait.non_blanket_impls.get(self_ty) {
-                callback(for_ty);
+                callback(Either::Left(&for_ty.0));
+                callback(Either::Right(&for_ty.1));
             }
         }
     }

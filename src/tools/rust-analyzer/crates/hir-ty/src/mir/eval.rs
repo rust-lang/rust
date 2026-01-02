@@ -27,7 +27,7 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     AliasTyKind,
-    inherent::{AdtDef, IntoKind, Region as _, SliceLike, Ty as _},
+    inherent::{AdtDef, GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
 };
 use span::FileId;
 use stdx::never;
@@ -77,12 +77,14 @@ macro_rules! from_bytes {
         }).into())
     };
 }
+use from_bytes;
 
 macro_rules! not_supported {
     ($it: expr) => {
-        return Err(MirEvalError::NotSupported(format!($it)))
+        return Err($crate::mir::eval::MirEvalError::NotSupported(format!($it)))
     };
 }
+use not_supported;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub struct VTableMap<'db> {
@@ -731,7 +733,7 @@ impl<'db> Evaluator<'db> {
                 let InternedClosure(def, _) = self.db.lookup_intern_closure(c);
                 let infer = InferenceResult::for_body(self.db, def);
                 let (captures, _) = infer.closure_info(c);
-                let parent_subst = subst.split_closure_args_untupled().parent_args;
+                let parent_subst = subst.as_closure().parent_args();
                 captures
                     .get(f)
                     .expect("broken closure field")
@@ -2622,6 +2624,9 @@ impl<'db> Evaluator<'db> {
                 def,
                 generic_args,
             );
+            let Either::Left(imp) = imp else {
+                not_supported!("evaluating builtin derive impls is not supported")
+            };
 
             let mir_body = self
                 .db
@@ -2771,7 +2776,7 @@ impl<'db> Evaluator<'db> {
             TyKind::Closure(closure, subst) => self.exec_closure(
                 closure.0,
                 func_data,
-                GenericArgs::new_from_slice(subst.split_closure_args_untupled().parent_args),
+                GenericArgs::new_from_slice(subst.as_closure().parent_args()),
                 destination,
                 &args[1..],
                 locals,

@@ -12,16 +12,7 @@ error: abnormal termination: the program aborted execution
 LL |         crate::process::abort();
    |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-note: inside `main`
-  --> tests/fail/ptr_swap_nonoverlapping.rs:LL:CC
-   |
-LL |         std::ptr::swap_nonoverlapping(ptr, ptr, 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

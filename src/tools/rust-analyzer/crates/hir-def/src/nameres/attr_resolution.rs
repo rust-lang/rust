@@ -114,7 +114,7 @@ pub(super) fn attr_macro_as_call_id(
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
             let mut tt = tt.clone();
-            tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
+            tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
             Some(tt)
         }
 
