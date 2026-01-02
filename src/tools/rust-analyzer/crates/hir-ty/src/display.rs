@@ -692,7 +692,9 @@ impl<'db> HirDisplay<'db> for Const<'db> {
             ConstKind::Param(param) => {
                 let generics = generics(f.db, param.id.parent());
                 let param_data = &generics[param.id.local_id()];
+                f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name().unwrap().display(f.db, f.edition()))?;
+                f.end_location_link();
                 Ok(())
             }
             ConstKind::Value(const_bytes) => render_const_scalar(
@@ -2041,7 +2043,9 @@ impl<'db> HirDisplay<'db> for Region<'db> {
             RegionKind::ReEarlyParam(param) => {
                 let generics = generics(f.db, param.id.parent);
                 let param_data = &generics[param.id.local_id];
+                f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
+                f.end_location_link();
                 Ok(())
             }
             RegionKind::ReBound(BoundVarIndexKind::Bound(db), idx) => {

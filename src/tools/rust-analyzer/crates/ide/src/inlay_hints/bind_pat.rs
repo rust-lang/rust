@@ -1258,7 +1258,7 @@ where
     }
 
     #[test]
-    fn generic_param_inlay_hint_has_location_link() {
+    fn type_param_inlay_hint_has_location_link() {
         check_expect(
             InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
             r#"
@@ -1286,6 +1286,96 @@ fn identity<T>(t: T) -> T {
                                 ),
                                 tooltip: "",
                             },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn const_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn f<const N: usize>() {
+    let x = [0; N];
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        33..34,
+                        [
+                            "[i32; ",
+                            InlayHintLabelPart {
+                                text: "N",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 11..12,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "]",
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn lifetime_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+struct S<'lt>(*mut &'lt ());
+
+fn f<'a>() {
+    let x = S::<'a>(loop {});
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        51..52,
+                        [
+                            InlayHintLabelPart {
+                                text: "S",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 7..8,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "'a",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 35..37,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            ">",
                         ],
                     ),
                 ]
