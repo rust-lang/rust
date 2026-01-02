@@ -1001,11 +1001,12 @@ fn visit_instance_use<'tcx>(
             if tcx.should_codegen_locally(panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
-        } else if !intrinsic.must_be_overridden {
+        } else if !intrinsic.must_be_overridden
+            && !tcx.sess.replaced_intrinsics.contains(&intrinsic.name)
+        {
             // Codegen the fallback body of intrinsics with fallback bodies.
-            // We explicitly skip this otherwise to ensure we get a linker error
-            // if anyone tries to call this intrinsic and the codegen backend did not
-            // override the implementation.
+            // We have to skip this otherwise as there's no body to codegen.
+            // We also skip intrinsics the backend handles, to reduce monomorphizations.
             let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));

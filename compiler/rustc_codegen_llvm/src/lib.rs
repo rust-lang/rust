@@ -42,7 +42,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
 use crate::llvm::ToLlvmBool;
@@ -331,6 +331,10 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess)
+    }
+
+    fn replaced_intrinsics(&self) -> Vec<Symbol> {
+        vec![sym::unchecked_funnel_shl, sym::unchecked_funnel_shr, sym::carrying_mul_add]
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {

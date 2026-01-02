@@ -8,7 +8,7 @@ use std::{env, io};
 use rand::{RngCore, rng};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
@@ -154,6 +154,10 @@ pub struct Session {
     /// preserved with a flag like `-C save-temps`, since these files may be
     /// hard linked.
     pub invocation_temp: Option<String>,
+
+    /// The names of intrinsics that the current codegen backend replaces
+    /// with its own implementations.
+    pub replaced_intrinsics: FxHashSet<Symbol>,
 }
 
 #[derive(Clone, Copy)]
@@ -1091,6 +1095,7 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         invocation_temp,
+        replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
     };
 
     validate_commandline_args_with_session_available(&sess);
