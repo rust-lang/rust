@@ -207,20 +207,13 @@ class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
+        self._ptr = unwrap_unique_or_non_null(valobj["raw_rc"]["weak"]["ptr"])
+        self._value = self._ptr.dereference()
 
-        if is_atomic:
-            self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
-            self._value = self._ptr["data"]
-            self._strong = self._ptr["strong"]["v"]["value"]
-            self._weak = self._ptr["weak"]["v"]["value"] - 1
-        else:
-            self._ptr = unwrap_unique_or_non_null(valobj["raw_rc"]["weak"]["ptr"])
-            self._value = self._ptr.dereference()
+        ref_counts_ptr = self._ptr.reinterpret_cast(_get_ref_counts_ptr_type()) - 1
 
-            ref_counts_ptr = self._ptr.reinterpret_cast(_get_ref_counts_ptr_type()) - 1
-
-            self._strong = ref_counts_ptr["strong"]["value"]
-            self._weak = ref_counts_ptr["weak"]["value"] - 1
+        self._strong = ref_counts_ptr["strong"]["value"]
+        self._weak = ref_counts_ptr["weak"]["value"] - 1
 
     def to_string(self):
         if self._is_atomic:
