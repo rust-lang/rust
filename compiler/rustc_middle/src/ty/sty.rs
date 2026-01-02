@@ -1218,6 +1218,12 @@ impl<'tcx> Ty<'tcx> {
         *self.kind() == Str
     }
 
+    /// Returns true if this type is `&str`. The reference's lifetime is ignored.
+    #[inline]
+    pub fn is_imm_ref_str(self) -> bool {
+        matches!(self.kind(), ty::Ref(_, inner, hir::Mutability::Not) if inner.is_str())
+    }
+
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
