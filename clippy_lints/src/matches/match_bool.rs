@@ -25,8 +25,9 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
             "`match` on a boolean expression",
             move |diag| {
                 let mut app = Applicability::MachineApplicable;
+                let ctxt = expr.span.ctxt();
                 let test_sugg = if let PatKind::Expr(arm_bool) = arms[0].pat.kind {
-                    let test = Sugg::hir_with_applicability(cx, scrutinee, "_", &mut app);
+                    let test = Sugg::hir_with_context(cx, scrutinee, ctxt, "_", &mut app);
                     if let PatExprKind::Lit { lit, .. } = arm_bool.kind {
                         match &lit.node {
                             LitKind::Bool(true) => Some(test),
@@ -36,7 +37,7 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
                         .map(|test| {
                             if let Some(guard) = &arms[0]
                                 .guard
-                                .map(|g| Sugg::hir_with_applicability(cx, g, "_", &mut app))
+                                .map(|g| Sugg::hir_with_context(cx, g, ctxt, "_", &mut app))
                             {
                                 test.and(guard)
                             } else {
