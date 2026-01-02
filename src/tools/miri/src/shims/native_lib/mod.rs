@@ -1,7 +1,10 @@
 //! Implements calling functions from a native library.
 
+use std::cell::Cell;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_void;
+use std::ptr;
 use std::sync::atomic::AtomicBool;
 
 use libffi::low::CodePtr;
@@ -75,12 +78,6 @@ impl AccessRange {
     }
 }
 
-/// The data passed to the closure shim function used to intercept function pointer calls from
-/// native code.
-struct CallbackData<'tcx, 'this> {
-    ecx: &'this InterpCx<'tcx, MiriMachine<'tcx>>,
-}
-
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Call native host function and return the output as an immediate.
@@ -93,12 +90,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, (crate::ImmTy<'tcx>, Option<MemEvents>)> {
         let this = self.eval_context_mut();
         #[cfg(target_os = "linux")]
-        let alloc = this.machine.allocator.as_ref().unwrap();
+        let alloc = this.machine.allocator.as_ref().unwrap().clone();
         #[cfg(not(target_os = "linux"))]
         // Placeholder value.
         let alloc = ();
 
-        trace::Supervisor::do_ffi(alloc, || {
+        // Expose InterpCx for use by closure callbacks.
+        this.machine.native_lib_ecx_interchange.set(ptr::from_mut(this).expose_provenance());
+
+        let res = trace::Supervisor::do_ffi(&alloc, || {
             // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
             // as the specified primitive integer type
             let scalar = match dest.layout.ty.kind() {
@@ -174,7 +174,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .into(),
             };
             interp_ok(ImmTy::from_scalar(scalar, dest.layout))
-        })
+        });
+
+        this.machine.native_lib_ecx_interchange.set(0);
+
+        res
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
@@ -451,6 +455,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
+/// The data passed to the closure shim function used to intercept function pointer calls from
+/// native code.
+struct LibffiClosureData<'tcx> {
+    ecx_interchange: &'static Cell<usize>,
+    marker: PhantomData<MiriInterpCx<'tcx>>,
+}
+
 /// This function sets up a new libffi closure to intercept
 /// calls to rust code via function pointers passed to native code.
 ///
@@ -476,7 +487,10 @@ pub fn build_libffi_closure<'tcx, 'this>(
 
     // Build the actual closure.
     let closure_builder = libffi::middle::Builder::new().args(args).res(res_type);
-    let data = CallbackData { ecx: this };
+    let data = LibffiClosureData {
+        ecx_interchange: this.machine.native_lib_ecx_interchange,
+        marker: PhantomData,
+    };
     let data = Box::leak(Box::new(data));
     let closure = closure_builder.into_closure(libffi_closure_callback, data);
     let closure = Box::leak(Box::new(closure));
@@ -493,13 +507,17 @@ pub fn build_libffi_closure<'tcx, 'this>(
 ///
 /// For now this shim only reports that such constructs are not supported by miri.
 /// As future improvement we might continue execution in the interpreter here.
-unsafe extern "C" fn libffi_closure_callback<'tcx, 'this>(
+unsafe extern "C" fn libffi_closure_callback<'tcx>(
     _cif: &libffi::low::ffi_cif,
     _result: &mut c_void,
     _args: *const *const c_void,
-    infos: &CallbackData<'tcx, 'this>,
+    data: &LibffiClosureData<'tcx>,
 ) {
-    let ecx = infos.ecx;
+    let ecx = unsafe {
+        ptr::with_exposed_provenance_mut::<MiriInterpCx<'tcx>>(data.ecx_interchange.get())
+            .as_mut()
+            .expect("libffi closure called while no FFI call is active")
+    };
     let err = err_unsup_format!("calling a function pointer through the FFI boundary");
 
     crate::diagnostics::report_result(ecx, err.into());
