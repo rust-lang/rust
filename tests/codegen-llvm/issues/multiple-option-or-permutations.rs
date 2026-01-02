@@ -19,6 +19,7 @@ pub fn or_match_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
 }
 
 // CHECK-LABEL: @or_match_alt_u8
+// CHECK-SAME: (i1{{.+}}%opta.0, i8 %opta.1, i1{{.+}}%optb.0, i8 %optb.1)
 #[no_mangle]
 pub fn or_match_alt_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
     // CHECK: start:
@@ -58,6 +59,7 @@ pub fn if_some_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
 }
 
 // CHECK-LABEL: @or_match_slice_u8
+// CHECK-SAME: (i16 %0, i16 %1)
 #[no_mangle]
 pub fn or_match_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
