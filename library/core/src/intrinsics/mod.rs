@@ -3385,11 +3385,17 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 /// - `T`: A tuple of arguments passed to `f`.
 /// - `R`: The return type of the kernel.
 ///
+/// Arguments:
+/// - `f`: The kernel function to offload.
+/// - `workgroup_dim`: A 3D size specifying the number of workgroups to launch.
+/// - `thread_dim`: A 3D size specifying the number of threads per workgroup.
+/// - `args`: A tuple of arguments forwarded to `f`.
+///
 /// Example usage (pseudocode):
 ///
 /// ```rust,ignore (pseudocode)
 /// fn kernel(x: *mut [f64; 128]) {
-///     core::intrinsics::offload(kernel_1, (x,))
+///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
 /// }
 ///
 /// #[cfg(target_os = "linux")]
@@ -3408,7 +3414,12 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 /// <https://clang.llvm.org/docs/OffloadingDesign.html>.
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn offload<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
+pub const fn offload<F, T: crate::marker::Tuple, R>(
+    f: F,
+    workgroup_dim: [u32; 3],
+    thread_dim: [u32; 3],
+    args: T,
+) -> R;
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

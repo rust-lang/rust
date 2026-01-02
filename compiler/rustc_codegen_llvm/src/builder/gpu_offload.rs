@@ -2,7 +2,9 @@ use std::ffi::CString;
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
+use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_middle::bug;
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 
 use crate::builder::Builder;
@@ -65,6 +67,57 @@ impl<'ll> OffloadGlobals<'ll> {
             register_lib,
             unregister_lib,
             init_rtls,
+        }
+    }
+}
+
+pub(crate) struct OffloadKernelDims<'ll> {
+    num_workgroups: &'ll Value,
+    threads_per_block: &'ll Value,
+    workgroup_dims: &'ll Value,
+    thread_dims: &'ll Value,
+}
+
+impl<'ll> OffloadKernelDims<'ll> {
+    pub(crate) fn from_operands<'tcx>(
+        builder: &mut Builder<'_, 'll, 'tcx>,
+        workgroup_op: &OperandRef<'tcx, &'ll llvm::Value>,
+        thread_op: &OperandRef<'tcx, &'ll llvm::Value>,
+    ) -> Self {
+        let cx = builder.cx;
+        let arr_ty = cx.type_array(cx.type_i32(), 3);
+        let four = Align::from_bytes(4).unwrap();
+
+        let OperandValue::Ref(place) = workgroup_op.val else {
+            bug!("expected array operand by reference");
+        };
+        let workgroup_val = builder.load(arr_ty, place.llval, four);
+
+        let OperandValue::Ref(place) = thread_op.val else {
+            bug!("expected array operand by reference");
+        };
+        let thread_val = builder.load(arr_ty, place.llval, four);
+
+        fn mul_dim3<'ll, 'tcx>(
+            builder: &mut Builder<'_, 'll, 'tcx>,
+            arr: &'ll Value,
+        ) -> &'ll Value {
+            let x = builder.extract_value(arr, 0);
+            let y = builder.extract_value(arr, 1);
+            let z = builder.extract_value(arr, 2);
+
+            let xy = builder.mul(x, y);
+            builder.mul(xy, z)
+        }
+
+        let num_workgroups = mul_dim3(builder, workgroup_val);
+        let threads_per_block = mul_dim3(builder, thread_val);
+
+        OffloadKernelDims {
+            workgroup_dims: workgroup_val,
+            thread_dims: thread_val,
+            num_workgroups,
+            threads_per_block,
         }
     }
 }
@@ -204,12 +257,12 @@ impl KernelArgsTy {
         num_args: u64,
         memtransfer_types: &'ll Value,
         geps: [&'ll Value; 3],
+        workgroup_dims: &'ll Value,
+        thread_dims: &'ll Value,
     ) -> [(Align, &'ll Value); 13] {
         let four = Align::from_bytes(4).expect("4 Byte alignment should work");
         let eight = Align::EIGHT;
 
-        let ti32 = cx.type_i32();
-        let ci32_0 = cx.get_const_i32(0);
         [
             (four, cx.get_const_i32(KernelArgsTy::OFFLOAD_VERSION)),
             (four, cx.get_const_i32(num_args)),
@@ -222,8 +275,8 @@ impl KernelArgsTy {
             (eight, cx.const_null(cx.type_ptr())), // dbg
             (eight, cx.get_const_i64(KernelArgsTy::TRIPCOUNT)),
             (eight, cx.get_const_i64(KernelArgsTy::FLAGS)),
-            (four, cx.const_array(ti32, &[cx.get_const_i32(2097152), ci32_0, ci32_0])),
-            (four, cx.const_array(ti32, &[cx.get_const_i32(256), ci32_0, ci32_0])),
+            (four, workgroup_dims),
+            (four, thread_dims),
             (four, cx.get_const_i32(0)),
         ]
     }
@@ -413,10 +466,13 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     types: &[&Type],
     metadata: &[OffloadMetadata],
     offload_globals: &OffloadGlobals<'ll>,
+    offload_dims: &OffloadKernelDims<'ll>,
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals { offload_sizes, offload_entry, memtransfer_types, region_id } =
         offload_data;
+    let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
+        offload_dims;
 
     let tgt_decl = offload_globals.launcher_fn;
     let tgt_target_kernel_ty = offload_globals.launcher_ty;
@@ -554,7 +610,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         num_args,
         s_ident_t,
     );
-    let values = KernelArgsTy::new(&cx, num_args, memtransfer_types, geps);
+    let values =
+        KernelArgsTy::new(&cx, num_args, memtransfer_types, geps, workgroup_dims, thread_dims);
 
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above
@@ -567,9 +624,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         s_ident_t,
         // FIXME(offload) give users a way to select which GPU to use.
         cx.get_const_i64(u64::MAX), // MAX == -1.
-        // FIXME(offload): Don't hardcode the numbers of threads in the future.
-        cx.get_const_i32(2097152),
-        cx.get_const_i32(256),
+        num_workgroups,
+        threads_per_block,
         region_id,
         a5,
     ];
