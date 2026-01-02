@@ -25,10 +25,10 @@ pub struct Drain<
     // drain_start is stored in deque.len
     pub(super) drain_len: usize,
     // index into the logical array, not the physical one (always lies in [0..deque.len))
-    idx: usize,
+    pub(super) idx: usize,
     // number of elements after the drained range
     pub(super) tail_len: usize,
-    remaining: usize,
+    pub(super) remaining: usize,
     // Needed to make Drain covariant over T
     _marker: PhantomData<&'a T>,
 }
@@ -53,7 +53,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
 
     // Only returns pointers to the slices, as that's all we need
     // to drop them. May only be called if `self.remaining != 0`.
-    unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
+    pub(super) unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
         unsafe {
             let deque = self.deque.as_ref();
 
