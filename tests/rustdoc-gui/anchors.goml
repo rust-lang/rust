@@ -15,7 +15,7 @@ define-function: (
         assert-css: (".main-heading h1 span", {"color": |main_heading_type_color|})
         assert-css: (
              ".rightside a.src",
-             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+             {"color": |src_link_color|, "text-decoration": "none"},
              ALL,
         )
         compare-elements-css: (
@@ -32,17 +32,17 @@ define-function: (
         move-cursor-to: ".main-heading a.src"
         assert-css: (
              ".main-heading a.src",
-             {"color": |src_link_color|, "text-decoration": "underline solid " + |src_link_color|},
+             {"color": |src_link_color|, "text-decoration": "underline"},
         )
         move-cursor-to: ".impl-items .rightside a.src"
         assert-css: (
              ".impl-items .rightside a.src",
-             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+             {"color": |src_link_color|, "text-decoration": "none"},
         )
         move-cursor-to: ".impl-items a.rightside.src"
         assert-css: (
              ".impl-items a.rightside.src",
-             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+             {"color": |src_link_color|, "text-decoration": "none"},
         )
 
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"

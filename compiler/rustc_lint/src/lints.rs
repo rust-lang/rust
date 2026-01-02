@@ -2010,6 +2010,19 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_improper_gpu_kernel_arg)]
+#[help]
+pub(crate) struct ImproperGpuKernelArg<'a> {
+    pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_missing_gpu_kernel_export_name)]
+#[help]
+#[note]
+pub(crate) struct MissingGpuKernelExportName;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_variant_size_differences)]
 pub(crate) struct VariantSizeDifferencesDiag {
     pub largest: u64,
