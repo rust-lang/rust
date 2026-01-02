@@ -371,6 +371,9 @@ pub(crate) fn print_evaluated_const(
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id).instantiate_identity();
+        if !ty.is_primitive() {
+            return None;
+        }
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
