@@ -31,17 +31,14 @@ extern "C" fn f3_3(_: ..., x: isize) {}
 //~^ ERROR `...` must be the last argument of a C-variadic function
 
 const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
-//~^ ERROR functions cannot be both `const` and C-variadic
-//~| ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
+//~^ ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
 
 const extern "C" fn f4_2(x: isize, _: ...) {}
-//~^ ERROR functions cannot be both `const` and C-variadic
-//~| ERROR functions with a C variable argument list must be unsafe
+//~^ ERROR functions with a C variable argument list must be unsafe
 //~| ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
 
 const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
-//~^ ERROR functions cannot be both `const` and C-variadic
-//~| ERROR functions with a C variable argument list must be unsafe
+//~^ ERROR functions with a C variable argument list must be unsafe
 //~| ERROR `...` must be the last argument of a C-variadic function
 
 extern "C" {
@@ -64,7 +61,6 @@ impl X {
     //~| ERROR `...` must be the last argument of a C-variadic function
     const fn i_f5(x: isize, _: ...) {}
     //~^ ERROR `...` is not supported for non-extern functions
-    //~| ERROR functions cannot be both `const` and C-variadic
     //~| ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
 }
 
