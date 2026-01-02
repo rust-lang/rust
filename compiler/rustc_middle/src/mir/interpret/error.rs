@@ -436,6 +436,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     },
     /// ABI-incompatible return types.
     AbiMismatchReturn { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
+    /// `va_arg` was called on an exhausted `VaList`.
+    VaArgOutOfBounds,
 }
 
 #[derive(Debug, Clone, Copy)]

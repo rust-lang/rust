@@ -624,14 +624,21 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     err_unsup_format!("va_arg on unknown va_list allocation {:?}", alloc_id)
                 })?;
 
-                let src_mplace = arguments
-                    .get(index)
-                    .ok_or_else(|| err_unsup_format!("va_arg out of bounds (index={index})"))?
-                    .clone();
+                let Some(src_mplace) = arguments.get(index).cloned() else {
+                    throw_ub!(VaArgOutOfBounds)
+                };
 
                 // NOTE: In C some type conversions are allowed (e.g. casting between signed and
                 // unsigned integers). For now we require c-variadic arguments to be read with the
                 // exact type they were passed as.
+                if src_mplace.layout.ty != dest.layout.ty {
+                    throw_unsup_format!(
+                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
+                        dest.layout.ty,
+                        src_mplace.layout.ty
+                    );
+                }
+
                 ecx.copy_op(&src_mplace, dest)?;
             }
 

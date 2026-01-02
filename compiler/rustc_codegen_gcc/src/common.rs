@@ -4,6 +4,7 @@ use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
+use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;

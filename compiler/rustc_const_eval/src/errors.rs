@@ -510,6 +510,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidNichedEnumVariantWritten { .. } => {
                 const_eval_invalid_niched_enum_variant_written
             }
+            VaArgOutOfBounds => const_eval_va_arg_out_of_bounds,
             AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
@@ -536,6 +537,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | InvalidMeta(InvalidMetaKind::TooBig)
             | InvalidUninitBytes(None)
             | DeadLocal
+            | VaArgOutOfBounds
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
 
