@@ -308,24 +308,27 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         let ty_res = self.resolve_path(path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
-            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).instantiate_identity().kind() {
-                ty::Adt(def, _) if def.is_enum() => {
-                    if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
-                        && let Some(field) =
-                            variant.fields.iter().find(|f| f.name == variant_field_name)
-                    {
-                        Ok((ty_res, field.did))
-                    } else {
-                        Err(UnresolvedPath {
-                            item_id,
-                            module_id,
-                            partial_res: Some(Res::Def(DefKind::Enum, def.did())),
-                            unresolved: variant_field_name.to_string().into(),
-                        })
+            Res::Def(DefKind::Enum | DefKind::TyAlias, did) => {
+                match tcx.type_of(did).instantiate_identity().kind() {
+                    ty::Adt(def, _) if def.is_enum() => {
+                        if let Some(variant) =
+                            def.variants().iter().find(|v| v.name == variant_name)
+                            && let Some(field) =
+                                variant.fields.iter().find(|f| f.name == variant_field_name)
+                        {
+                            Ok((ty_res, field.did))
+                        } else {
+                            Err(UnresolvedPath {
+                                item_id,
+                                module_id,
+                                partial_res: Some(Res::Def(DefKind::Enum, def.did())),
+                                unresolved: variant_field_name.to_string().into(),
+                            })
+                        }
                     }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
-            },
+            }
             _ => Err(UnresolvedPath {
                 item_id,
                 module_id,
