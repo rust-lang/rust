@@ -622,100 +622,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             Res::Def(
                 def_kind @ (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy),
                 did,
-            ) => {
-                debug!("looking for associated item named {item_name} for item {did:?}");
-                // Checks if item_name is a variant of the `SomeItem` enum
-                if ns == TypeNS && def_kind == DefKind::Enum {
-                    match tcx.type_of(did).instantiate_identity().kind() {
-                        ty::Adt(adt_def, _) => {
-                            for variant in adt_def.variants() {
-                                if variant.name == item_name {
-                                    return vec![(root_res, variant.def_id)];
-                                }
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-
-                let search_for_field = || {
-                    let (DefKind::Struct | DefKind::Union) = def_kind else { return vec![] };
-                    debug!("looking for fields named {item_name} for {did:?}");
-                    // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
-                    // NOTE: it's different from variant_field because it only resolves struct fields,
-                    // not variant fields (2 path segments, not 3).
-                    //
-                    // We need to handle struct (and union) fields in this code because
-                    // syntactically their paths are identical to associated item paths:
-                    // `module::Type::field` and `module::Type::Assoc`.
-                    //
-                    // On the other hand, variant fields can't be mistaken for associated
-                    // items because they look like this: `module::Type::Variant::field`.
-                    //
-                    // Variants themselves don't need to be handled here, even though
-                    // they also look like associated items (`module::Type::Variant`),
-                    // because they are real Rust syntax (unlike the intra-doc links
-                    // field syntax) and are handled by the compiler's resolver.
-                    let ty::Adt(def, _) = tcx.type_of(did).instantiate_identity().kind() else {
-                        unreachable!()
-                    };
-                    def.non_enum_variant()
-                        .fields
-                        .iter()
-                        .filter(|field| field.name == item_name)
-                        .map(|field| (root_res, field.did))
-                        .collect::<Vec<_>>()
-                };
-
-                if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator {
-                    return search_for_field();
-                }
-
-                // Checks if item_name belongs to `impl SomeItem`
-                let mut assoc_items: Vec<_> = tcx
-                    .inherent_impls(did)
-                    .iter()
-                    .flat_map(|&imp| {
-                        filter_assoc_items_by_name_and_namespace(
-                            tcx,
-                            imp,
-                            Ident::with_dummy_span(item_name),
-                            ns,
-                        )
-                    })
-                    .map(|item| (root_res, item.def_id))
-                    .collect();
-
-                if assoc_items.is_empty() {
-                    // Check if item_name belongs to `impl SomeTrait for SomeItem`
-                    // FIXME(#74563): This gives precedence to `impl SomeItem`:
-                    // Although having both would be ambiguous, use impl version for compatibility's sake.
-                    // To handle that properly resolve() would have to support
-                    // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
-                    assoc_items = resolve_associated_trait_item(
-                        tcx.type_of(did).instantiate_identity(),
-                        module_id,
-                        item_name,
-                        ns,
-                        self.cx,
-                    )
-                    .into_iter()
-                    .map(|item| (root_res, item.def_id))
-                    .collect::<Vec<_>>();
-                }
-
-                debug!("got associated item {assoc_items:?}");
-
-                if !assoc_items.is_empty() {
-                    return assoc_items;
-                }
-
-                if ns != Namespace::ValueNS {
-                    return Vec::new();
-                }
-
-                search_for_field()
-            }
+            ) => self.resolve_assoc_on_adt(),
             Res::Def(DefKind::Trait, did) => filter_assoc_items_by_name_and_namespace(
                 tcx,
                 did,
@@ -726,6 +633,111 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             .collect::<Vec<_>>(),
             _ => Vec::new(),
         }
+    }
+
+    fn resolve_assoc_on_adt(
+        &mut self,
+        adt_def_kind: DefKind,
+        adt_def_id: DefId,
+        item_name: Symbol,
+        ns: Namespace,
+        disambiguator: Option<Disambiguator>,
+        module_id: DefId,
+    ) -> Vec<(Res, DefId)> {
+        let tcx = self.cx.tcx;
+        let root_res = Res::Def(adt_def_kind, adt_def_id);
+        debug!("looking for associated item named {item_name} for item {adt_def_id:?}");
+        // Checks if item_name is a variant of the `SomeItem` enum
+        if ns == TypeNS && adt_def_kind == DefKind::Enum {
+            match tcx.type_of(adt_def_id).instantiate_identity().kind() {
+                ty::Adt(adt_def, _) => {
+                    for variant in adt_def.variants() {
+                        if variant.name == item_name {
+                            return vec![(root_res, variant.def_id)];
+                        }
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        let search_for_field = || {
+            let (DefKind::Struct | DefKind::Union) = adt_def_kind else { return vec![] };
+            debug!("looking for fields named {item_name} for {adt_def_id:?}");
+            // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
+            // NOTE: it's different from variant_field because it only resolves struct fields,
+            // not variant fields (2 path segments, not 3).
+            //
+            // We need to handle struct (and union) fields in this code because
+            // syntactically their paths are identical to associated item paths:
+            // `module::Type::field` and `module::Type::Assoc`.
+            //
+            // On the other hand, variant fields can't be mistaken for associated
+            // items because they look like this: `module::Type::Variant::field`.
+            //
+            // Variants themselves don't need to be handled here, even though
+            // they also look like associated items (`module::Type::Variant`),
+            // because they are real Rust syntax (unlike the intra-doc links
+            // field syntax) and are handled by the compiler's resolver.
+            let ty::Adt(def, _) = tcx.type_of(adt_def_id).instantiate_identity().kind() else {
+                unreachable!()
+            };
+            def.non_enum_variant()
+                .fields
+                .iter()
+                .filter(|field| field.name == item_name)
+                .map(|field| (root_res, field.did))
+                .collect::<Vec<_>>()
+        };
+
+        if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator {
+            return search_for_field();
+        }
+
+        // Checks if item_name belongs to `impl SomeItem`
+        let mut assoc_items: Vec<_> = tcx
+            .inherent_impls(adt_def_id)
+            .iter()
+            .flat_map(|&imp| {
+                filter_assoc_items_by_name_and_namespace(
+                    tcx,
+                    imp,
+                    Ident::with_dummy_span(item_name),
+                    ns,
+                )
+            })
+            .map(|item| (root_res, item.def_id))
+            .collect();
+
+        if assoc_items.is_empty() {
+            // Check if item_name belongs to `impl SomeTrait for SomeItem`
+            // FIXME(#74563): This gives precedence to `impl SomeItem`:
+            // Although having both would be ambiguous, use impl version for compatibility's sake.
+            // To handle that properly resolve() would have to support
+            // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+            assoc_items = resolve_associated_trait_item(
+                tcx.type_of(adt_def_id).instantiate_identity(),
+                module_id,
+                item_name,
+                ns,
+                self.cx,
+            )
+            .into_iter()
+            .map(|item| (root_res, item.def_id))
+            .collect::<Vec<_>>();
+        }
+
+        debug!("got associated item {assoc_items:?}");
+
+        if !assoc_items.is_empty() {
+            return assoc_items;
+        }
+
+        if ns != Namespace::ValueNS {
+            return Vec::new();
+        }
+
+        search_for_field()
     }
 }
 
