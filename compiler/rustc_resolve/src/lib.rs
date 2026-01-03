@@ -96,6 +96,7 @@ pub mod rustdoc;
 
 pub use macros::registered_tools_ast;
 
+use crate::late::AnonConstKind;
 use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -310,7 +311,11 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst { name: Symbol, param_kind: ParamKindInNonTrivialAnonConst },
+    ParamInNonTrivialAnonConst {
+        name: Symbol,
+        param_kind: ParamKindInNonTrivialAnonConst,
+        place: Option<AnonConstKind>,
+    },
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.

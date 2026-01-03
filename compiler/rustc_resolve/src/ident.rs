@@ -1337,7 +1337,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
-                        RibKind::ConstantItem(_, item) => {
+                        RibKind::ConstantItem(_, item, _) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
@@ -1438,7 +1438,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, kind) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous
                                 // constant we can't easily tell if it's generic at this stage, so
@@ -1469,6 +1469,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                     name: rib_ident.name,
                                                     param_kind:
                                                         ParamKindInNonTrivialAnonConst::Type,
+                                                    place: kind,
                                                 }
                                             }
                                         };
@@ -1547,7 +1548,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, kind) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
                                     let error = match cause {
@@ -1563,6 +1564,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,
                                                 },
+                                                place: kind,
                                             }
                                         }
                                     };

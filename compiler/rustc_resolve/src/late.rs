@@ -69,7 +69,7 @@ pub(crate) enum PatternSource {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum IsRepeatExpr {
+pub(crate) enum IsRepeatExpr {
     No,
     Yes,
 }
@@ -79,11 +79,25 @@ struct IsNeverPattern;
 /// Describes whether an `AnonConst` is a type level const arg or
 /// some other form of anon const (i.e. inline consts or enum discriminants)
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum AnonConstKind {
+pub(crate) enum AnonConstKind {
     EnumDiscriminant,
     FieldDefaultValue,
     InlineConst,
     ConstArg(IsRepeatExpr),
+}
+
+impl IntoDiagArg for AnonConstKind {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self {
+            AnonConstKind::EnumDiscriminant => "enum discriminant",
+            AnonConstKind::FieldDefaultValue => "field default value",
+            AnonConstKind::InlineConst => "inline const",
+            AnonConstKind::ConstArg(is_repeat_expr) => match is_repeat_expr {
+                IsRepeatExpr::No => "const generic args",
+                IsRepeatExpr::Yes => "array repeat expression",
+            },
+        }))
+    }
 }
 
 impl PatternSource {
@@ -219,7 +233,7 @@ pub(crate) enum RibKind<'ra> {
     ///
     /// The item may reference generic parameters in trivial constant expressions.
     /// All other constants aren't allowed to use generic params at all.
-    ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
+    ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>, Option<AnonConstKind>),
 
     /// We passed through a module item.
     Module(Module<'ra>),
@@ -3145,22 +3159,31 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         is_repeat: IsRepeatExpr,
         may_use_generics: ConstantHasGenerics,
+        anon_const_kind: Option<AnonConstKind>,
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
         let f = |this: &mut Self| {
-            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item), |this| {
-                this.with_rib(
-                    TypeNS,
-                    RibKind::ConstantItem(
-                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                        item,
-                    ),
-                    |this| {
-                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item), f);
-                    },
-                )
-            })
+            this.with_rib(
+                ValueNS,
+                RibKind::ConstantItem(may_use_generics, item, anon_const_kind),
+                |this| {
+                    this.with_rib(
+                        TypeNS,
+                        RibKind::ConstantItem(
+                            may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                            item,
+                            anon_const_kind,
+                        ),
+                        |this| {
+                            this.with_label_rib(
+                                RibKind::ConstantItem(may_use_generics, item, anon_const_kind),
+                                f,
+                            );
+                        },
+                    )
+                },
+            )
         };
 
         if let ConstantHasGenerics::No(cause) = may_use_generics {
@@ -3680,9 +3703,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_static_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
         self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-            this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
-                this.visit_expr(expr)
-            });
+            this.with_constant_rib(
+                IsRepeatExpr::No,
+                ConstantHasGenerics::Yes,
+                None,
+                item,
+                |this| this.visit_expr(expr),
+            );
         })
     }
 
@@ -4928,11 +4955,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
 
-        self.with_constant_rib(is_repeat_expr, may_use_generics, None, |this| {
-            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                resolve_expr(this);
-            });
-        });
+        self.with_constant_rib(
+            is_repeat_expr,
+            may_use_generics,
+            Some(anon_const_kind),
+            None,
+            |this| {
+                this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                    resolve_expr(this);
+                });
+            },
+        );
     }
 
     fn resolve_expr_field(&mut self, f: &'ast ExprField, e: &'ast Expr) {
