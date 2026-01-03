@@ -21,7 +21,6 @@ text-size.workspace = true
 vfs.workspace = true
 syntax.workspace = true
 stdx.workspace = true
-serde.workspace = true
 
 [dev-dependencies]
 syntax.workspace = true

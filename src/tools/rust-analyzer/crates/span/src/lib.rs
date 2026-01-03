@@ -20,7 +20,6 @@ pub use self::{
     map::{RealSpanMap, SpanMap},
 };
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub use syntax::Edition;
 pub use text_size::{TextRange, TextSize};
 pub use vfs::FileId;
@@ -69,32 +68,16 @@ impl Span {
 /// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs
 /// together. Positions in spans are relative to some [`SpanAnchor`] to make them more incremental
 /// friendly.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
     /// The text range of this span, relative to the anchor.
     /// We need the anchor for incrementality, as storing absolute ranges will require
     /// recomputation on every change in a file at all times.
-    #[serde(serialize_with = "serialize_text_range", deserialize_with = "deserialize_text_range")]
     pub range: TextRange,
     /// The anchor this span is relative to.
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
     pub ctx: SyntaxContext,
-}
-
-fn serialize_text_range<S>(range: &TextRange, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    (u32::from(range.start()), u32::from(range.end())).serialize(serializer)
-}
-
-fn deserialize_text_range<'de, D>(deserializer: D) -> Result<TextRange, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let (start, end) = <(u32, u32)>::deserialize(deserializer)?;
-    Ok(TextRange::new(TextSize::from(start), TextSize::from(end)))
 }
 
 impl fmt::Debug for Span {
@@ -129,7 +112,7 @@ impl fmt::Display for Span {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SpanAnchor {
     pub file_id: EditionedFileId,
     pub ast_id: ErasedFileAstId,
@@ -143,7 +126,7 @@ impl fmt::Debug for SpanAnchor {
 
 /// A [`FileId`] and [`Edition`] bundled up together.
 /// The MSB is reserved for `HirFileId` encoding, more upper bits are used to then encode the edition.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EditionedFileId(u32);
 
 impl fmt::Debug for EditionedFileId {

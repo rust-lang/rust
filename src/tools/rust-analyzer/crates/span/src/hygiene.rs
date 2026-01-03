@@ -19,16 +19,12 @@
 //! # The Call-site Hierarchy
 //!
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
-use std::fmt;
-
-#[cfg(feature = "salsa")]
-use serde::{Deserialize, Serialize};
-
 use crate::Edition;
+use std::fmt;
 
 /// A syntax context describes a hierarchy tracking order of macro definitions.
 #[cfg(feature = "salsa")]
-#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct SyntaxContext(
     /// # Invariant
     ///
