@@ -1059,6 +1059,18 @@ gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
+[mentions."library/core/src/num/dec2flt"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
+[mentions."library/core/src/num/flt2dec"]
+message = "Some changes occurred in float printing"
+cc = ["@tgross35"]
+
+[mentions."library/core/src/fmt/num.rs"]
+message = "Some changes occurred in integer formatting"
+cc = ["@tgross35"]
+
 [mentions."library/portable-simd"]
 message = """
 Portable SIMD is developed in its own repository. If possible, consider \

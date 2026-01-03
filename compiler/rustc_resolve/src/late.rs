@@ -2655,11 +2655,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 |this| {
                     let item_def_id = this.r.local_def_id(item.id).to_def_id();
                     this.with_self_rib(
-                        Res::SelfTyAlias {
-                            alias_to: item_def_id,
-                            forbid_generic: false,
-                            is_trait_impl: false,
-                        },
+                        Res::SelfTyAlias { alias_to: item_def_id, is_trait_impl: false },
                         |this| {
                             visit::walk_item(this, item);
                         },
@@ -3368,8 +3364,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     let item_def_id = item_def_id.to_def_id();
                                     let res = Res::SelfTyAlias {
                                         alias_to: item_def_id,
-                                        forbid_generic: false,
-                                        is_trait_impl: trait_id.is_some()
+                                        is_trait_impl: trait_id.is_some(),
                                     };
                                     this.with_self_rib(res, |this| {
                                         if let Some(of_trait) = of_trait {
