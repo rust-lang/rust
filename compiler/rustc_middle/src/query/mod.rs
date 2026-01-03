@@ -2334,12 +2334,21 @@ rustc_queries! {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
+
     // Crates that are loaded non-speculatively (not for diagnostics or doc links).
     // FIXME: This is currently only used for collecting lang items, but should be used instead of
     // `crates` in most other cases too.
     query used_crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
+    }
+
+    /// All crates that share the same name as crate `c`.
+    ///
+    /// This normally occurs when multiple versions of the same dependency are present in the
+    /// dependency tree.
+    query duplicate_crate_names(c: CrateNum) -> &'tcx [CrateNum] {
+        desc { "fetching `CrateNum`s with same name as `{c:?}`" }
     }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.

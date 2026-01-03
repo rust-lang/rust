@@ -559,6 +559,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     .filter_map(|(cnum, data)| data.used().then_some(cnum)),
             )
         },
+        duplicate_crate_names: |tcx, c: CrateNum| {
+            let name = tcx.crate_name(c);
+            tcx.arena.alloc_from_iter(
+                tcx.crates(())
+                    .into_iter()
+                    .filter(|k| tcx.crate_name(**k) == name && **k != c)
+                    .map(|c| *c),
+            )
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
