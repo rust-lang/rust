@@ -13,7 +13,7 @@
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
 // FIXME: This is a mess that needs some untangling work
-use std::{iter, mem};
+use std::{iter, mem, sync::atomic::AtomicUsize};
 
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
@@ -866,12 +866,13 @@ impl GlobalState {
         let invocation_strategy = config.invocation_strategy();
         let next_gen =
             self.flycheck.iter().map(FlycheckHandle::generation).max().unwrap_or_default() + 1;
+        let generation = Arc::new(AtomicUsize::new(next_gen));
 
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => {
                 vec![FlycheckHandle::spawn(
                     0,
-                    next_gen,
+                    generation.clone(),
                     sender.clone(),
                     config,
                     None,
@@ -915,7 +916,7 @@ impl GlobalState {
                     .map(|(id, (root, manifest_path, target_dir), sysroot_root)| {
                         FlycheckHandle::spawn(
                             id,
-                            next_gen,
+                            generation.clone(),
                             sender.clone(),
                             config.clone(),
                             sysroot_root,

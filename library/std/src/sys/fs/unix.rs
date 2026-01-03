@@ -89,9 +89,9 @@ use crate::os::unix::prelude::*;
 use crate::os::wasi::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
-use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
+use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::syscall;
@@ -1305,6 +1305,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1330,6 +1331,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1346,6 +1348,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1371,6 +1374,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1387,6 +1391,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1428,6 +1433,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1447,6 +1453,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1488,6 +1495,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1507,6 +1515,7 @@ impl File {
     #[cfg(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1532,6 +1541,7 @@ impl File {
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -2166,7 +2176,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 
 fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
-       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita") => {
+       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems") => {
             let _ = (p, times, follow_symlinks);
             Err(io::const_error!(
                 io::ErrorKind::Unsupported,
@@ -2488,9 +2498,8 @@ mod remove_dir_impl {
     use crate::ffi::CStr;
     use crate::io;
     use crate::path::{Path, PathBuf};
-    use crate::sys::common::small_c_string::run_path_with_cstr;
+    use crate::sys::helpers::{ignore_notfound, run_path_with_cstr};
     use crate::sys::{cvt, cvt_r};
-    use crate::sys_common::ignore_notfound;
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {

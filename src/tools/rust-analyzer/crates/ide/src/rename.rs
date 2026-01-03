@@ -31,6 +31,7 @@ pub struct RenameConfig {
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
     pub prefer_absolute: bool,
+    pub show_conflicts: bool,
 }
 
 impl RenameConfig {
@@ -41,6 +42,10 @@ impl RenameConfig {
             prefer_absolute: self.prefer_absolute,
             allow_unstable: true,
         }
+    }
+
+    fn ide_db_config(&self) -> ide_db::rename::RenameConfig {
+        ide_db::rename::RenameConfig { show_conflicts: self.show_conflicts }
     }
 }
 
@@ -190,7 +195,7 @@ pub(crate) fn rename(
                     return rename_to_self(&sema, local);
                 }
             }
-            def.rename(&sema, new_name.as_str(), rename_def)
+            def.rename(&sema, new_name.as_str(), rename_def, &config.ide_db_config())
         })),
     };
 
@@ -205,11 +210,13 @@ pub(crate) fn will_rename_file(
     db: &RootDatabase,
     file_id: FileId,
     new_name_stem: &str,
+    config: &RenameConfig,
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
     let module = sema.file_to_module_def(file_id)?;
     let def = Definition::Module(module);
-    let mut change = def.rename(&sema, new_name_stem, RenameDefinition::Yes).ok()?;
+    let mut change =
+        def.rename(&sema, new_name_stem, RenameDefinition::Yes, &config.ide_db_config()).ok()?;
     change.file_system_edits.clear();
     Some(change)
 }
@@ -803,8 +810,12 @@ mod tests {
 
     use super::{RangeInfo, RenameConfig, RenameError};
 
-    const TEST_CONFIG: RenameConfig =
-        RenameConfig { prefer_no_std: false, prefer_prelude: true, prefer_absolute: false };
+    const TEST_CONFIG: RenameConfig = RenameConfig {
+        prefer_no_std: false,
+        prefer_prelude: true,
+        prefer_absolute: false,
+        show_conflicts: true,
+    };
 
     #[track_caller]
     fn check(
@@ -893,7 +904,7 @@ mod tests {
     ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis
-            .will_rename_file(position.file_id, new_name)
+            .will_rename_file(position.file_id, new_name, &TEST_CONFIG)
             .unwrap()
             .expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))

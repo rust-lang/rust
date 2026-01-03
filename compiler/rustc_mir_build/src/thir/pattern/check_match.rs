@@ -5,7 +5,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
@@ -687,12 +687,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             unpeeled_pat = subpattern;
         }
 
-        if let PatKind::ExpandedConstant { def_id, .. } = unpeeled_pat.kind
-            && let DefKind::Const = self.tcx.def_kind(def_id)
-            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
-            // We filter out paths with multiple path::segments.
-            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
-        {
+        if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, unpeeled_pat) {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
             // When we encounter a constant as the binding name, point at the `const` definition.
@@ -1209,6 +1204,26 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
     }
 }
 
+/// If the given pattern is a named constant that looks like it could have been
+/// intended to be a binding, returns the `DefId` of the named constant.
+///
+/// Diagnostics use this to give more detailed suggestions for non-exhaustive
+/// matches.
+fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>) -> Option<DefId> {
+    // The pattern must be a named constant, and the name that appears in
+    // the pattern's source text must resemble a plain identifier without any
+    // `::` namespace separators or other non-identifier characters.
+    if let PatKind::ExpandedConstant { def_id, .. } = pat.kind
+        && matches!(tcx.def_kind(def_id), DefKind::Const)
+        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
+        && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+    {
+        Some(def_id)
+    } else {
+        None
+    }
+}
+
 /// Report that a match is not exhaustive.
 fn report_non_exhaustive_match<'p, 'tcx>(
     cx: &PatCtxt<'p, 'tcx>,
@@ -1303,12 +1318,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::ExpandedConstant { def_id, .. } = arm.pattern.kind
-            && !matches!(cx.tcx.def_kind(def_id), DefKind::InlineConst)
-            && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
-            // We filter out paths with multiple path::segments.
-            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
-        {
+        if let Some(def_id) = is_const_pat_that_looks_like_binding(cx.tcx, &arm.pattern) {
             let const_name = cx.tcx.item_name(def_id);
             err.span_label(
                 arm.pattern.span,

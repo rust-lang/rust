@@ -25,6 +25,7 @@ extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
 extern crate self as hir_ty;
 
+pub mod builtin_derive;
 mod infer;
 mod inhabitedness;
 mod lower;
@@ -49,6 +50,7 @@ pub mod method_resolution;
 pub mod mir;
 pub mod primitive;
 pub mod traits;
+pub mod upvars;
 
 #[cfg(test)]
 mod test_db;

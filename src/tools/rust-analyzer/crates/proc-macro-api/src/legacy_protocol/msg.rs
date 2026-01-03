@@ -8,7 +8,7 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{ProcMacroKind, codec::Codec};
+use crate::{Codec, ProcMacroKind};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -172,7 +172,7 @@ impl Message for Response {}
 
 #[cfg(test)]
 mod tests {
-    use intern::{Symbol, sym};
+    use intern::Symbol;
     use span::{
         Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
     };
@@ -185,7 +185,7 @@ mod tests {
 
     use super::*;
 
-    fn fixture_token_tree_top_many_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_many_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -232,16 +232,15 @@ mod tests {
             }
             .into(),
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: Symbol::intern("Foo"),
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new_no_suffix(
+            "Foo",
+            Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Str,
-            suffix: None,
-        }));
+            tt::LitKind::Str,
+        )));
         builder.push(Leaf::Punct(Punct {
             char: '@',
             span: Span {
@@ -267,16 +266,16 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: sym::INTEGER_0,
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new(
+            "0",
+            Span {
                 range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32),
-        }));
+            tt::LitKind::Integer,
+            "u32",
+        )));
         builder.close(Span {
             range: TextRange::at(TextSize::new(20), TextSize::of(']')),
             anchor,
@@ -292,7 +291,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -318,7 +317,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_brace() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_brace() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),

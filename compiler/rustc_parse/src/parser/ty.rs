@@ -658,9 +658,7 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = if self.token.is_keyword(kw::Const)
-                && self.look_ahead(1, |t| *t == token::OpenBrace)
-            {
+            let mut length = if self.eat_keyword(exp!(Const)) {
                 // While we could just disambiguate `Direct` from `AnonConst` by
                 // treating all const block exprs as `AnonConst`, that would
                 // complicate the DefCollector and likely all other visitors.

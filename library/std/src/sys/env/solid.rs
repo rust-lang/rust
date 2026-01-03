@@ -6,7 +6,7 @@ use crate::io;
 use crate::os::raw::{c_char, c_int};
 use crate::os::solid::ffi::{OsStrExt, OsStringExt};
 use crate::sync::{PoisonError, RwLock};
-use crate::sys::common::small_c_string::run_with_cstr;
+use crate::sys::helpers::run_with_cstr;
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
 

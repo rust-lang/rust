@@ -503,6 +503,11 @@ impl Builder<'_> {
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", &out_dir);
 
+        // Set this unconditionally. Cargo silently ignores `CARGO_BUILD_WARNINGS` when `-Z
+        // warnings` isn't present, which is hard to debug, and it's not worth the effort to keep
+        // them in sync.
+        cargo.arg("-Zwarnings");
+
         // Bootstrap makes a lot of assumptions about the artifacts produced in the target
         // directory. If users override the "build directory" using `build-dir`
         // (https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-dir), then
@@ -1207,8 +1212,10 @@ impl Builder<'_> {
             lint_flags.push("-Wunused_lifetimes");
 
             if self.config.deny_warnings {
-                lint_flags.push("-Dwarnings");
-                rustdocflags.arg("-Dwarnings");
+                // We use this instead of `lint_flags` so that we don't have to rebuild all
+                // workspace dependencies when `deny-warnings` changes, but we still get an error
+                // immediately instead of having to wait until the next rebuild.
+                cargo.env("CARGO_BUILD_WARNINGS", "deny");
             }
 
             rustdocflags.arg("-Wrustdoc::invalid_codeblock_attributes");

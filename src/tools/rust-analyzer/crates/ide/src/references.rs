@@ -2503,7 +2503,7 @@ fn r#fn$0() {}
 fn main() { r#fn(); }
 "#,
             expect![[r#"
-                r#fn Function FileId(0) 0..12 3..7
+                fn Function FileId(0) 0..12 3..7
 
                 FileId(0) 25..29
             "#]],

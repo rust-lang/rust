@@ -1,16 +1,13 @@
 //! Convert macro-by-example tokens which are specific to macro expansion into a
 //! format that works for our parser.
 
-use std::fmt;
-use std::hash::Hash;
-
 use rustc_hash::FxHashMap;
-use span::{Edition, SpanData};
+use span::{Edition, SyntaxContext};
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
-    buffer: tt::TokenTreesView<'_, SpanData<Ctx>>,
-    span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
+pub fn to_parser_input(
+    buffer: tt::TokenTreesView<'_>,
+    span_to_edition: &mut dyn FnMut(SyntaxContext) -> Edition,
 ) -> parser::Input {
     let mut res = parser::Input::with_capacity(buffer.len());
 
@@ -55,7 +52,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                         };
                         res.push(kind, ctx_edition(lit.span.ctx));
 
-                        if kind == FLOAT_NUMBER && !lit.symbol.as_str().ends_with('.') {
+                        if kind == FLOAT_NUMBER && !lit.text().ends_with('.') {
                             // Tag the token as joint if it is float with a fractional part
                             // we use this jointness to inform the parser about what token split
                             // event to emit when we encounter a float literal in a field access

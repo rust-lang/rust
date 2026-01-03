@@ -339,14 +339,14 @@ fn main(a: SliceIter<'_, Container>) {
     fn lt_hints() {
         check_types(
             r#"
-struct S<'lt>;
+struct S<'lt>(*mut &'lt ());
 
 fn f<'a>() {
-    let x = S::<'static>;
+    let x = S::<'static>(loop {});
       //^ S<'static>
-    let y = S::<'_>;
+    let y = S::<'_>(loop {});
       //^ S<'_>
-    let z = S::<'a>;
+    let z = S::<'a>(loop {});
       //^ S<'a>
 
 }
@@ -632,10 +632,10 @@ fn main() {
     fn multi_dyn_trait_bounds() {
         check_types(
             r#"
-pub struct Vec<T> {}
+pub struct Vec<T>(*mut T);
 
 impl<T> Vec<T> {
-    pub fn new() -> Self { Vec {} }
+    pub fn new() -> Self { Vec(0 as *mut T) }
 }
 
 pub struct Box<T> {}

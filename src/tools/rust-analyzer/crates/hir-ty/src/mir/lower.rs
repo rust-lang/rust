@@ -19,7 +19,7 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{Const as _, IntoKind, Ty as _};
+use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use span::{Edition, FileId};
 use syntax::TextRange;
 use triomphe::Arc;
@@ -30,7 +30,10 @@ use crate::{
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
+    infer::{
+        CaptureKind, CapturedItem, TypeMismatch, cast::CastTy,
+        closure::analysis::HirPlaceProjection,
+    },
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     method_resolution::CandidateId,
@@ -44,6 +47,7 @@ use crate::{
     next_solver::{
         Const, DbInterner, ParamConst, ParamEnv, Region, StoredGenericArgs, StoredTy, TyKind,
         TypingMode, UnevaluatedConst,
+        abi::Safety,
         infer::{DbInternerInferExt, InferCtxt},
     },
     traits::FnTrait,
@@ -1257,22 +1261,16 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                 .clone()
                                 .into_iter()
                                 .map(|it| match it {
-                                    ProjectionElem::Deref => ProjectionElem::Deref,
-                                    ProjectionElem::Field(it) => ProjectionElem::Field(it),
-                                    ProjectionElem::ClosureField(it) => {
-                                        ProjectionElem::ClosureField(it)
+                                    HirPlaceProjection::Deref => ProjectionElem::Deref,
+                                    HirPlaceProjection::Field(field_id) => {
+                                        ProjectionElem::Field(Either::Left(field_id))
                                     }
-                                    ProjectionElem::ConstantIndex { offset, from_end } => {
-                                        ProjectionElem::ConstantIndex { offset, from_end }
+                                    HirPlaceProjection::TupleField(idx) => {
+                                        ProjectionElem::Field(Either::Right(TupleFieldId {
+                                            tuple: TupleId(!0), // Dummy as it's unused
+                                            index: idx,
+                                        }))
                                     }
-                                    ProjectionElem::Subslice { from, to } => {
-                                        ProjectionElem::Subslice { from, to }
-                                    }
-                                    ProjectionElem::OpaqueCast(it) => {
-                                        ProjectionElem::OpaqueCast(it)
-                                    }
-                                    #[allow(unreachable_patterns)]
-                                    ProjectionElem::Index(it) => match it {},
                                 })
                                 .collect(),
                         ),
@@ -2138,11 +2136,7 @@ pub fn mir_body_for_closure_query<'db>(
         .store(),
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) =
-        substs.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.callable_sig(ctx.interner())
-    else {
-        implementation_error!("closure has not callable sig");
-    };
+    let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
     let current = ctx.lower_params_and_bindings(
         args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
@@ -2176,10 +2170,13 @@ pub fn mir_body_for_closure_query<'db>(
                 for (it, y) in p.projection.lookup(store).iter().zip(it.0.place.projections.iter())
                 {
                     match (it, y) {
-                        (ProjectionElem::Deref, ProjectionElem::Deref) => (),
-                        (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
-                        (ProjectionElem::ClosureField(it), ProjectionElem::ClosureField(y))
+                        (ProjectionElem::Deref, HirPlaceProjection::Deref) => (),
+                        (ProjectionElem::Field(Either::Left(it)), HirPlaceProjection::Field(y))
                             if it == y => {}
+                        (
+                            ProjectionElem::Field(Either::Right(it)),
+                            HirPlaceProjection::TupleField(y),
+                        ) if it.index == *y => (),
                         _ => return false,
                     }
                 }

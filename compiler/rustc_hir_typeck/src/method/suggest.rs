@@ -1384,13 +1384,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(parent), .. })
                 | hir::Node::Expr(parent) = tcx.parent_hir_node(path_expr.hir_id)
             {
-                let replacement_span =
-                    if let hir::ExprKind::Call(..) | hir::ExprKind::Struct(..) = parent.kind {
-                        // We want to replace the parts that need to go, like `()` and `{}`.
+                // We want to replace the parts that need to go, like `()` and `{}`.
+                let replacement_span = match parent.kind {
+                    hir::ExprKind::Call(callee, _) if callee.hir_id == path_expr.hir_id => {
                         span.with_hi(parent.span.hi())
-                    } else {
-                        span
-                    };
+                    }
+                    hir::ExprKind::Struct(..) => span.with_hi(parent.span.hi()),
+                    _ => span,
+                };
                 match (variant.ctor, parent.kind) {
                     (None, hir::ExprKind::Struct(..)) => {
                         // We want a struct and we have a struct. We won't suggest changing

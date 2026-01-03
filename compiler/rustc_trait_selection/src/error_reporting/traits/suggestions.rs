@@ -4069,15 +4069,46 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ))
                 && expr.span.hi() != rcvr.span.hi()
             {
-                err.span_suggestion_verbose(
-                    expr.span.with_lo(rcvr.span.hi()),
-                    format!(
-                        "consider removing this method call, as the receiver has type `{ty}` and \
-                         `{pred}` trivially holds",
-                    ),
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
+                let should_sugg = match tcx.hir_node(call_hir_id) {
+                    Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::MethodCall(_, call_receiver, _, _),
+                        ..
+                    }) if let Some((DefKind::AssocFn, did)) =
+                        typeck_results.type_dependent_def(call_hir_id)
+                        && call_receiver.hir_id == arg_hir_id =>
+                    {
+                        // Avoid suggesting removing a method call if the argument is the receiver of the parent call and
+                        // removing the receiver would make the method inaccessible. i.e. `x.a().b()`, suggesting removing
+                        // `.a()` could change the type and make `.b()` unavailable.
+                        if tcx.inherent_impl_of_assoc(did).is_some() {
+                            // if we're calling an inherent impl method, just try to make sure that the receiver type stays the same.
+                            Some(ty) == typeck_results.node_type_opt(arg_hir_id)
+                        } else {
+                            // we're calling a trait method, so we just check removing the method call still satisfies the trait.
+                            let trait_id = tcx
+                                .trait_of_assoc(did)
+                                .unwrap_or_else(|| tcx.impl_trait_id(tcx.parent(did)));
+                            let args = typeck_results.node_args(call_hir_id);
+                            let tr = ty::TraitRef::from_assoc(tcx, trait_id, args)
+                                .with_replaced_self_ty(tcx, ty);
+                            self.type_implements_trait(tr.def_id, tr.args, param_env)
+                                .must_apply_modulo_regions()
+                        }
+                    }
+                    _ => true,
+                };
+
+                if should_sugg {
+                    err.span_suggestion_verbose(
+                        expr.span.with_lo(rcvr.span.hi()),
+                        format!(
+                            "consider removing this method call, as the receiver has type `{ty}` and \
+                            `{pred}` trivially holds",
+                        ),
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();

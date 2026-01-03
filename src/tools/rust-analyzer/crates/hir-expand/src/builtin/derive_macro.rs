@@ -5,7 +5,7 @@ use intern::sym;
 use itertools::{Itertools, izip};
 use parser::SyntaxKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, Span, SyntaxContext};
+use span::{Edition, Span};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
@@ -28,7 +28,7 @@ use syntax::{
 };
 
 macro_rules! register_builtin {
-    ( $($trait:ident => $expand:ident),* ) => {
+    ( $($trait:ident => $expand:ident),* $(,)? ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinDeriveExpander {
             $($trait),*
@@ -48,7 +48,6 @@ macro_rules! register_builtin {
                 }
             }
         }
-
     };
 }
 
@@ -75,7 +74,7 @@ register_builtin! {
     PartialOrd => partial_ord_expand,
     Eq => eq_expand,
     PartialEq => partial_eq_expand,
-    CoercePointee => coerce_pointee_expand
+    CoercePointee => coerce_pointee_expand,
 }
 
 pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> {
@@ -239,7 +238,7 @@ fn parse_adt(
 
 fn parse_adt_from_syntax(
     adt: &ast::Adt,
-    tm: &span::SpanMap<SyntaxContext>,
+    tm: &span::SpanMap,
     call_site: Span,
 ) -> Result<BasicAdtInfo, ExpandError> {
     let (name, generic_param_list, where_clause, shape) = match &adt {
@@ -391,7 +390,7 @@ fn to_adt_syntax(
     db: &dyn ExpandDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
-) -> Result<(ast::Adt, span::SpanMap<SyntaxContext>), ExpandError> {
+) -> Result<(ast::Adt, span::SpanMap), ExpandError> {
     let (parsed, tm) = crate::db::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
         .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
