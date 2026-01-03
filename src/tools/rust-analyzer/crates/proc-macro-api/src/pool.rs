@@ -1,4 +1,4 @@
-//! This module represents Process Pool
+//! A pool of proc-macro server processes
 use std::sync::Arc;
 
 use tt::Span;
@@ -11,11 +11,13 @@ use crate::{
 #[derive(Debug, Clone)]
 pub(crate) struct ProcMacroServerPool {
     workers: Arc<[ProcMacroServerProcess]>,
+    version: u32,
 }
 
 impl ProcMacroServerPool {
     pub(crate) fn new(workers: Vec<ProcMacroServerProcess>) -> Self {
-        Self { workers: workers.into() }
+        let version = workers[0].version();
+        Self { workers: workers.into(), version }
     }
 }
 
@@ -87,20 +89,6 @@ impl ProcMacroServerPool {
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
         let process = self.pick_process()?;
 
-        let (mut subtree, mut attr) = (subtree, attr);
-        let (mut subtree_changed, mut attr_changed);
-        if proc_macro.needs_fixup_change(process) {
-            subtree_changed = tt::TopSubtree::from_subtree(subtree);
-            proc_macro.change_fixup_to_match_old_server(&mut subtree_changed);
-            subtree = subtree_changed.view();
-
-            if let Some(attr) = &mut attr {
-                attr_changed = tt::TopSubtree::from_subtree(*attr);
-                proc_macro.change_fixup_to_match_old_server(&mut attr_changed);
-                *attr = attr_changed.view();
-            }
-        }
-
         process.expand(
             proc_macro,
             subtree,
@@ -112,6 +100,10 @@ impl ProcMacroServerPool {
             current_dir,
             callback,
         )
+    }
+
+    pub(crate) fn version(&self) -> u32 {
+        self.version
     }
 }
 

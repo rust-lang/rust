@@ -120,7 +120,7 @@ pub(crate) fn expand(
         Response::ExpandMacro(it) => Ok(it
             .map(|tree| {
                 let mut expanded = FlatTree::to_subtree_resolved(tree, version, &span_data_table);
-                if proc_macro.needs_fixup_change(process) {
+                if proc_macro.needs_fixup_change() {
                     proc_macro.change_fixup_to_match_old_server(&mut expanded);
                 }
                 expanded
@@ -133,7 +133,7 @@ pub(crate) fn expand(
                     version,
                     &deserialize_span_data_index_map(&resp.span_data_table),
                 );
-                if proc_macro.needs_fixup_change(process) {
+                if proc_macro.needs_fixup_change() {
                     proc_macro.change_fixup_to_match_old_server(&mut expanded);
                 }
                 expanded

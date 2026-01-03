@@ -209,8 +209,8 @@ impl ProcMacro {
         self.kind
     }
 
-    fn needs_fixup_change(&self, process: &ProcMacroServerProcess) -> bool {
-        let version = process.version();
+    fn needs_fixup_change(&self) -> bool {
+        let version = self.pool.version();
         (version::RUST_ANALYZER_SPAN_SUPPORT..version::HASHED_AST_ID).contains(&version)
     }
 
@@ -240,6 +240,20 @@ impl ProcMacro {
         current_dir: String,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
+        let (mut subtree, mut attr) = (subtree, attr);
+        let (mut subtree_changed, mut attr_changed);
+        if self.needs_fixup_change() {
+            subtree_changed = tt::TopSubtree::from_subtree(subtree);
+            self.change_fixup_to_match_old_server(&mut subtree_changed);
+            subtree = subtree_changed.view();
+
+            if let Some(attr) = &mut attr {
+                attr_changed = tt::TopSubtree::from_subtree(*attr);
+                self.change_fixup_to_match_old_server(&mut attr_changed);
+                *attr = attr_changed.view();
+            }
+        }
+
         self.pool.expand(
             self,
             subtree,
