@@ -827,23 +827,22 @@ pub enum PatKind<'tcx> {
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     ///   error.
-    /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: ty::Value<'tcx>,
     },
 
-    /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`. This is used for unsafety checking.
+    /// Wrapper node representing a named constant that was lowered to a pattern
+    /// using `const_to_pat`.
+    ///
+    /// This is used by some diagnostics for non-exhaustive matches, to map
+    /// the pattern node back to the `DefId` of its original constant.
+    ///
+    /// FIXME(#150498): Can we make this an `Option<DefId>` field on `Pat`
+    /// instead, so that non-diagnostic code can ignore it more easily?
     ExpandedConstant {
         /// [DefId] of the constant item.
         def_id: DefId,
         /// The pattern that the constant lowered to.
-        ///
-        /// HACK: we need to keep the `DefId` of inline constants around for unsafety checking;
-        /// therefore when a range pattern contains inline constants, we re-wrap the range pattern
-        /// with the `ExpandedConstant` nodes that correspond to the range endpoints. Hence
-        /// `subpattern` may actually be a range pattern, and `def_id` be the constant for one of
-        /// its endpoints.
         subpattern: Box<Pat<'tcx>>,
     },
 

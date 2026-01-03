@@ -271,6 +271,8 @@ declare_features! (
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.63.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#), 95818),
+    /// Allows string patterns to dereference values to match them.
+    (removed, string_deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), Some("superseded by `deref_patterns`"), 150530),
     (removed, struct_inherit, "1.0.0", None, None),
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes

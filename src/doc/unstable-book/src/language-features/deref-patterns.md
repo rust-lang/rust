@@ -7,7 +7,7 @@ The tracking issue for this feature is: [#87121]
 ------------------------
 
 > **Note**: This feature is incomplete. In the future, it is meant to supersede
-> [`box_patterns`] and [`string_deref_patterns`].
+> [`box_patterns`].
 
 This feature permits pattern matching on [smart pointers in the standard library] through their
 `Deref` target types, either implicitly or with explicit `deref!(_)` patterns (the syntax of which
@@ -103,5 +103,4 @@ match *(b"test" as &[u8]) {
 ```
 
 [`box_patterns`]: ./box-patterns.md
-[`string_deref_patterns`]: ./string-deref-patterns.md
 [smart pointers in the standard library]: https://doc.rust-lang.org/std/ops/trait.DerefPure.html#implementors

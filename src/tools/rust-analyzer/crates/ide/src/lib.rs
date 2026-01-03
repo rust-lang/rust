@@ -67,7 +67,7 @@ use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::Cancelled,
+        salsa::{Cancelled, Database},
     },
     prime_caches, symbol_index,
 };
@@ -199,8 +199,13 @@ impl AnalysisHost {
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, profile::Bytes, usize)> {
         self.db.per_query_memory_usage()
     }
-    pub fn request_cancellation(&mut self) {
-        self.db.request_cancellation();
+    pub fn trigger_cancellation(&mut self) {
+        self.db.trigger_cancellation();
+    }
+    pub fn trigger_garbage_collection(&mut self) {
+        self.db.trigger_lru_eviction();
+        // SAFETY: `trigger_lru_eviction` triggers cancellation, so all running queries were canceled.
+        unsafe { hir::collect_ty_garbage() };
     }
     pub fn raw_database(&self) -> &RootDatabase {
         &self.db
@@ -853,8 +858,9 @@ impl Analysis {
         &self,
         file_id: FileId,
         new_name_stem: &str,
+        config: &RenameConfig,
     ) -> Cancellable<Option<SourceChange>> {
-        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem))
+        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem, config))
     }
 
     pub fn structural_search_replace(

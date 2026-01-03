@@ -10,7 +10,6 @@ cargo-fuzz = true
 
 [dependencies]
 syntax = { path = "..", version = "0.0.0" }
-text-edit = { path = "../../text-edit", version = "0.0.0" }
 libfuzzer-sys = "0.4.5"
 
 # Prevent this from interfering with workspaces

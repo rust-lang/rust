@@ -79,6 +79,7 @@ fn macro_fuzzy_completion() {
         r#"
 //- /lib.rs crate:dep
 /// Please call me as macro_with_curlies! {}
+#[rust_analyzer::macro_style(braces)]
 #[macro_export]
 macro_rules! macro_with_curlies {
     () => {}

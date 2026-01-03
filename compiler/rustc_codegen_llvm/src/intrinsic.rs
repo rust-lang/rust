@@ -30,7 +30,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
+use crate::builder::gpu_offload::{OffloadKernelDims, gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
@@ -1384,7 +1384,8 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    let args = get_args_from_tuple(bx, args[1], fn_target);
+    let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
+    let args = get_args_from_tuple(bx, args[3], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
@@ -1403,7 +1404,7 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
-    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals);
+    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(

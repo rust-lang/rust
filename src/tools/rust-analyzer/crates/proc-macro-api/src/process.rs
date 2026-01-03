@@ -9,10 +9,12 @@ use std::{
 
 use paths::AbsPath;
 use semver::Version;
+use span::Span;
 use stdx::JodChild;
 
 use crate::{
-    ProcMacroKind, ServerError,
+    Codec, ProcMacro, ProcMacroKind, ServerError,
+    bidirectional_protocol::{self, SubCallback, msg::BidirectionalMessage, reject_subrequests},
     legacy_protocol::{self, SpanMode},
     version,
 };
@@ -33,6 +35,7 @@ pub(crate) struct ProcMacroServerProcess {
 pub(crate) enum Protocol {
     LegacyJson { mode: SpanMode },
     LegacyPostcard { mode: SpanMode },
+    BidirectionalPostcardPrototype { mode: SpanMode },
 }
 
 /// Maintains the state of the proc-macro server process.
@@ -62,6 +65,10 @@ impl ProcMacroServerProcess {
             && has_working_format_flag
         {
             &[
+                (
+                    Some("bidirectional-postcard-prototype"),
+                    Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id },
+                ),
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
                 (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
             ]
@@ -84,7 +91,7 @@ impl ProcMacroServerProcess {
             };
             let mut srv = create_srv()?;
             tracing::info!("sending proc-macro server version check");
-            match srv.version_check() {
+            match srv.version_check(Some(&mut reject_subrequests)) {
                 Ok(v) if v > version::CURRENT_API_VERSION => {
                     #[allow(clippy::disallowed_methods)]
                     let process_version = Command::new(process_path)
@@ -102,12 +109,13 @@ impl ProcMacroServerProcess {
                     tracing::info!("Proc-macro server version: {v}");
                     srv.version = v;
                     if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT
-                        && let Ok(new_mode) = srv.enable_rust_analyzer_spans()
+                        && let Ok(new_mode) =
+                            srv.enable_rust_analyzer_spans(Some(&mut reject_subrequests))
                     {
                         match &mut srv.protocol {
-                            Protocol::LegacyJson { mode } | Protocol::LegacyPostcard { mode } => {
-                                *mode = new_mode
-                            }
+                            Protocol::LegacyJson { mode }
+                            | Protocol::LegacyPostcard { mode }
+                            | Protocol::BidirectionalPostcardPrototype { mode } => *mode = new_mode,
                         }
                     }
                     tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
@@ -143,22 +151,36 @@ impl ProcMacroServerProcess {
         match self.protocol {
             Protocol::LegacyJson { mode } => mode == SpanMode::RustAnalyzer,
             Protocol::LegacyPostcard { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::BidirectionalPostcardPrototype { mode } => mode == SpanMode::RustAnalyzer,
         }
     }
 
     /// Checks the API version of the running proc-macro server.
-    fn version_check(&self) -> Result<u32, ServerError> {
+    fn version_check(&self, callback: Option<SubCallback<'_>>) -> Result<u32, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::version_check(self),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::version_check(self),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::version_check(self)
+            }
+            Protocol::BidirectionalPostcardPrototype { .. } => {
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::version_check(self, cb)
+            }
         }
     }
 
     /// Enable support for rust-analyzer span mode if the server supports it.
-    fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
+    fn enable_rust_analyzer_spans(
+        &self,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<SpanMode, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::enable_rust_analyzer_spans(self)
+            }
+            Protocol::BidirectionalPostcardPrototype { .. } => {
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::enable_rust_analyzer_spans(self, cb)
+            }
         }
     }
 
@@ -166,30 +188,70 @@ impl ProcMacroServerProcess {
     pub(crate) fn find_proc_macros(
         &self,
         dylib_path: &AbsPath,
+        callback: Option<SubCallback<'_>>,
     ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::find_proc_macros(self, dylib_path)
+            }
+            Protocol::BidirectionalPostcardPrototype { .. } => {
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::find_proc_macros(self, dylib_path, cb)
+            }
         }
     }
 
-    pub(crate) fn send_task<Request, Response, Buf>(
+    pub(crate) fn expand(
         &self,
-        serialize_req: impl FnOnce(
+        proc_macro: &ProcMacro,
+        subtree: tt::SubtreeView<'_>,
+        attr: Option<tt::SubtreeView<'_>>,
+        env: Vec<(String, String)>,
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
+        current_dir: String,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
+        match self.protocol {
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::expand(
+                    proc_macro,
+                    subtree,
+                    attr,
+                    env,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                    current_dir,
+                )
+            }
+            Protocol::BidirectionalPostcardPrototype { .. } => bidirectional_protocol::expand(
+                proc_macro,
+                subtree,
+                attr,
+                env,
+                def_site,
+                call_site,
+                mixed_site,
+                current_dir,
+                callback.expect("callback required for bidirectional protocol"),
+            ),
+        }
+    }
+
+    pub(crate) fn send_task<Request, Response, C: Codec>(
+        &self,
+        send: impl FnOnce(
             &mut dyn Write,
             &mut dyn BufRead,
             Request,
-            &mut Buf,
+            &mut C::Buf,
         ) -> Result<Option<Response>, ServerError>,
         req: Request,
-    ) -> Result<Response, ServerError>
-    where
-        Buf: Default,
-    {
-        let state = &mut *self.state.lock().unwrap();
-        let mut buf = Buf::default();
-        serialize_req(&mut state.stdin, &mut state.stdout, req, &mut buf)
-            .and_then(|res| {
+    ) -> Result<Response, ServerError> {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
+            send(writer, reader, req, buf).and_then(|res| {
                 res.ok_or_else(|| {
                     let message = "proc-macro server did not respond with data".to_owned();
                     ServerError {
@@ -201,33 +263,51 @@ impl ProcMacroServerProcess {
                     }
                 })
             })
-            .map_err(|e| {
-                if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
-                    match state.process.child.try_wait() {
-                        Ok(None) | Err(_) => e,
-                        Ok(Some(status)) => {
-                            let mut msg = String::new();
-                            if !status.success()
-                                && let Some(stderr) = state.process.child.stderr.as_mut()
-                            {
-                                _ = stderr.read_to_string(&mut msg);
-                            }
-                            let server_error = ServerError {
-                                message: format!(
-                                    "proc-macro server exited with {status}{}{msg}",
-                                    if msg.is_empty() { "" } else { ": " }
-                                ),
-                                io: None,
-                            };
-                            // `AssertUnwindSafe` is fine here, we already correct initialized
-                            // server_error at this point.
-                            self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
+        })
+    }
+
+    pub(crate) fn with_locked_io<C: Codec, R>(
+        &self,
+        f: impl FnOnce(&mut dyn Write, &mut dyn BufRead, &mut C::Buf) -> Result<R, ServerError>,
+    ) -> Result<R, ServerError> {
+        let state = &mut *self.state.lock().unwrap();
+        let mut buf = C::Buf::default();
+
+        f(&mut state.stdin, &mut state.stdout, &mut buf).map_err(|e| {
+            if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
+                match state.process.child.try_wait() {
+                    Ok(None) | Err(_) => e,
+                    Ok(Some(status)) => {
+                        let mut msg = String::new();
+                        if !status.success()
+                            && let Some(stderr) = state.process.child.stderr.as_mut()
+                        {
+                            _ = stderr.read_to_string(&mut msg);
                         }
+                        let server_error = ServerError {
+                            message: format!(
+                                "proc-macro server exited with {status}{}{msg}",
+                                if msg.is_empty() { "" } else { ": " }
+                            ),
+                            io: None,
+                        };
+                        self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
                     }
-                } else {
-                    e
                 }
-            })
+            } else {
+                e
+            }
+        })
+    }
+
+    pub(crate) fn run_bidirectional<C: Codec>(
+        &self,
+        initial: BidirectionalMessage,
+        callback: SubCallback<'_>,
+    ) -> Result<BidirectionalMessage, ServerError> {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
+            bidirectional_protocol::run_conversation::<C>(writer, reader, buf, initial, callback)
+        })
     }
 }
 

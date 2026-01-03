@@ -503,3 +503,28 @@ fn main() {
         expect!["73..149;37..38;103..104 ByValue b Option<Box>"],
     );
 }
+
+#[test]
+fn alias_needs_to_be_normalized() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+trait Trait {
+    type Associated;
+}
+struct A;
+struct B { x: i32 }
+impl Trait for A {
+    type Associated = B;
+}
+struct C { b: <A as Trait>::Associated }
+fn main() {
+    let c: C = C { b: B { x: 1 } };
+    let closure = || {
+        let _move = c.b.x;
+    };
+}
+"#,
+        expect!["220..257;174..175;245..250 ByRef(Shared) c.b.x &'? i32"],
+    );
+}

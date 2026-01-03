@@ -233,6 +233,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::Ignore { .. }
+                    | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
                     | AttributeKind::AutomaticallyDerived(..)
@@ -340,7 +341,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
                             // need to be fixed
-                            | sym::instruction_set // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal

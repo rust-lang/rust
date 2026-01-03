@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/selftyparam.rs:5:37
+   |
+LL |     fn foo() -> [(); const { let _: Self; 1 }];
+   |                                     ^^^^
+
+error: aborting due to 1 previous error
+

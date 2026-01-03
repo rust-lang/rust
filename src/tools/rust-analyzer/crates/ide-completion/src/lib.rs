@@ -263,6 +263,9 @@ pub fn completions(
                     extern_crate.as_ref(),
                 );
             }
+            CompletionAnalysis::MacroSegment => {
+                completions::macro_def::complete_macro_segment(acc, ctx);
+            }
             CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),
         }
     }

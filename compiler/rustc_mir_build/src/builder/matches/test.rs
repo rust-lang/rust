@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    MatchPairTree, PatConstKind, Test, TestBranch, TestKind, TestableCase,
+    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -38,11 +38,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Constant { value: _, kind: PatConstKind::IntOrChar } => {
                 TestKind::SwitchInt
             }
-            TestableCase::Constant { value, kind: PatConstKind::Float } => {
-                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            TestableCase::Constant { value, kind: PatConstKind::String } => {
+                TestKind::StringEq { value, pat_ty: match_pair.pattern_ty }
             }
-            TestableCase::Constant { value, kind: PatConstKind::Other } => {
-                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
+                TestKind::ScalarEq { value, pat_ty: match_pair.pattern_ty }
             }
 
             TestableCase::Range(ref range) => {
@@ -50,10 +50,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Range(Arc::clone(range))
             }
 
-            TestableCase::Slice { len, variable_length } => {
-                let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
-                TestKind::Len { len, op }
-            }
+            TestableCase::Slice { len, op } => TestKind::SliceLen { len, op },
 
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
@@ -144,17 +141,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, mut cast_ty } => {
+            TestKind::StringEq { value, pat_ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let mut expect_ty = value.ty;
-                let mut expect = self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+                let expected_value_ty = value.ty;
+                let expected_value_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, value));
 
-                let mut place = place;
-                let mut block = block;
-                match cast_ty.kind() {
+                let mut actual_value_ty = pat_ty;
+                let mut actual_value_place = place;
+
+                match pat_ty.kind() {
                     ty::Str => {
                         // String literal patterns may have type `str` if `deref_patterns` is
                         // enabled, in order to allow `deref!("..."): String`. In this case, `value`
@@ -175,39 +174,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             ref_place,
                             Rvalue::Ref(re_erased, BorrowKind::Shared, place),
                         );
-                        place = ref_place;
-                        cast_ty = ref_str_ty;
+                        actual_value_place = ref_place;
+                        actual_value_ty = ref_str_ty;
                     }
-                    ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
-                        if !tcx.features().string_deref_patterns() {
-                            span_bug!(
-                                test.span,
-                                "matching on `String` went through without enabling string_deref_patterns"
-                            );
-                        }
-                        let re_erased = tcx.lifetimes.re_erased;
-                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                        let ref_str = self.temp(ref_str_ty, test.span);
-                        let eq_block = self.cfg.start_new_block();
-                        // `let ref_str: &str = <String as Deref>::deref(&place);`
-                        self.call_deref(
-                            block,
-                            eq_block,
-                            place,
-                            Mutability::Not,
-                            cast_ty,
-                            ref_str,
-                            test.span,
-                        );
-                        // Since we generated a `ref_str = <String as Deref>::deref(&place) -> eq_block` terminator,
-                        // we need to add all further statements to `eq_block`.
-                        // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
-                        block = eq_block;
-                        place = ref_str;
-                        cast_ty = ref_str_ty;
-                    }
+                    _ => {}
+                }
+
+                assert_eq!(expected_value_ty, actual_value_ty);
+                assert!(actual_value_ty.is_imm_ref_str());
+
+                // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
+                // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+                // on the `PartialEq` impl for `str` to be correct!)
+                self.string_compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_place),
+                );
+            }
+
+            TestKind::ScalarEq { value, pat_ty } => {
+                let tcx = self.tcx;
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
+
+                let mut expected_value_ty = value.ty;
+                let mut expected_value_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+
+                let mut actual_value_ty = pat_ty;
+                let mut actual_value_place = place;
+
+                match pat_ty.kind() {
                     &ty::Pat(base, _) => {
-                        assert_eq!(cast_ty, value.ty);
+                        assert_eq!(pat_ty, value.ty);
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);
@@ -215,7 +218,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             self.source_info(scrutinee_span),
                             transmuted_place,
-                            Rvalue::Cast(CastKind::Transmute, Operand::Copy(place), base),
+                            Rvalue::Cast(
+                                CastKind::Transmute,
+                                Operand::Copy(actual_value_place),
+                                base,
+                            ),
                         );
 
                         let transmuted_expect = self.temp(base, test.span);
@@ -223,54 +230,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             self.source_info(test.span),
                             transmuted_expect,
-                            Rvalue::Cast(CastKind::Transmute, expect, base),
+                            Rvalue::Cast(CastKind::Transmute, expected_value_operand, base),
                         );
 
-                        place = transmuted_place;
-                        expect = Operand::Copy(transmuted_expect);
-                        cast_ty = base;
-                        expect_ty = base;
+                        actual_value_place = transmuted_place;
+                        actual_value_ty = base;
+                        expected_value_operand = Operand::Copy(transmuted_expect);
+                        expected_value_ty = base;
                     }
                     _ => {}
                 }
 
-                assert_eq!(expect_ty, cast_ty);
-                if !cast_ty.is_scalar() {
-                    // Use `PartialEq::eq` instead of `BinOp::Eq`
-                    // (the binop can only handle primitives)
-                    // Make sure that we do *not* call any user-defined code here.
-                    // The only type that can end up here is string literals, which have their
-                    // comparison defined in `core`.
-                    // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-                    // on the `PartialEq` impl for `str` to b correct!)
-                    match *cast_ty.kind() {
-                        ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ => {}
-                        _ => {
-                            span_bug!(
-                                source_info.span,
-                                "invalid type for non-scalar compare: {cast_ty}"
-                            )
-                        }
-                    };
-                    self.string_compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        expect,
-                        Operand::Copy(place),
-                    );
-                } else {
-                    self.compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        BinOp::Eq,
-                        expect,
-                        Operand::Copy(place),
-                    );
-                }
+                assert_eq!(expected_value_ty, actual_value_ty);
+                assert!(actual_value_ty.is_scalar());
+
+                self.compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    BinOp::Eq,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_place),
+                );
             }
 
             TestKind::Range(ref range) => {
@@ -312,7 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Len { len, op } => {
+            TestKind::SliceLen { len, op } => {
                 let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 
@@ -332,7 +314,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     success_block,
                     fail_block,
                     source_info,
-                    op,
+                    match op {
+                        SliceLenOp::Equal => BinOp::Eq,
+                        SliceLenOp::GreaterOrEqual => BinOp::Ge,
+                    },
                     Operand::Move(actual),
                     Operand::Move(expected),
                 );

@@ -9,6 +9,7 @@ use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTuple;
 
 use crate::fluent_generated as fluent;
 
@@ -935,4 +936,13 @@ pub(crate) struct CfgAttrBadDelim {
 pub(crate) struct DocAliasMalformed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unsupported_instruction_set)]
+pub(crate) struct UnsupportedInstructionSet<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub instruction_set: Symbol,
+    pub current_target: &'a TargetTuple,
 }

@@ -6,8 +6,8 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
+use crate::sys::pal::{helpers, unsupported};
 use crate::sys::time::SystemTime;
-use crate::sys::{helpers, unsupported};
 
 const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
 
@@ -160,7 +160,15 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         match self.0.read_dir_entry() {
             Ok(None) => None,
-            Ok(Some(x)) => Some(Ok(DirEntry::from_uefi(x, self.0.path()))),
+            Ok(Some(x)) => {
+                let temp = DirEntry::from_uefi(x, self.0.path());
+                // Ignore "." and "..". This is how ReadDir behaves in Unix.
+                if temp.file_name == "." || temp.file_name == ".." {
+                    self.next()
+                } else {
+                    Some(Ok(temp))
+                }
+            }
             Err(e) => Some(Err(e)),
         }
     }
@@ -489,7 +497,7 @@ mod uefi_fs {
     use crate::os::uefi::ffi::OsStringExt;
     use crate::path::Path;
     use crate::ptr::NonNull;
-    use crate::sys::helpers::{self, UefiBox};
+    use crate::sys::pal::helpers::{self, UefiBox};
     use crate::sys::time::{self, SystemTime};
 
     pub(crate) struct File {

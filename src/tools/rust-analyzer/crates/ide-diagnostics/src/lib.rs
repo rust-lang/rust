@@ -100,6 +100,7 @@ use ide_db::{
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
+    rename::RenameConfig,
     source_change::SourceChange,
 };
 use syntax::{
@@ -107,7 +108,6 @@ use syntax::{
     ast::{self, AstNode},
 };
 
-// FIXME: Make this an enum
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticCode {
     RustcHardError(&'static str),
@@ -238,6 +238,7 @@ pub struct DiagnosticsConfig {
     pub prefer_absolute: bool,
     pub term_search_fuel: u64,
     pub term_search_borrowck: bool,
+    pub show_rename_conflicts: bool,
 }
 
 impl DiagnosticsConfig {
@@ -266,7 +267,12 @@ impl DiagnosticsConfig {
             prefer_absolute: false,
             term_search_fuel: 400,
             term_search_borrowck: true,
+            show_rename_conflicts: true,
         }
+    }
+
+    pub fn rename_config(&self) -> RenameConfig {
+        RenameConfig { show_conflicts: self.show_rename_conflicts }
     }
 }
 

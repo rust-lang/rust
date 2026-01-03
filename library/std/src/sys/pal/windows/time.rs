@@ -179,8 +179,8 @@ fn intervals2dur(intervals: u64) -> Duration {
 mod perf_counter {
     use super::NANOS_PER_SEC;
     use crate::sync::atomic::{Atomic, AtomicU64, Ordering};
+    use crate::sys::helpers::mul_div_u64;
     use crate::sys::{c, cvt};
-    use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {

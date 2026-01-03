@@ -767,14 +767,30 @@ fn label_of_ty(
                     )
                 });
 
+                let module_def_location = |label_builder: &mut InlayHintLabelBuilder<'_>,
+                                           def: ModuleDef,
+                                           name| {
+                    let def = def.try_into();
+                    if let Ok(def) = def {
+                        label_builder.start_location_link(def);
+                    }
+                    #[expect(
+                        clippy::question_mark,
+                        reason = "false positive; replacing with `?` leads to 'type annotations needed' error"
+                    )]
+                    if let Err(err) = label_builder.write_str(name) {
+                        return Err(err);
+                    }
+                    if def.is_ok() {
+                        label_builder.end_location_link();
+                    }
+                    Ok(())
+                };
+
                 label_builder.write_str(LABEL_START)?;
-                label_builder.start_location_link(ModuleDef::from(iter_trait).into());
-                label_builder.write_str(LABEL_ITERATOR)?;
-                label_builder.end_location_link();
+                module_def_location(label_builder, ModuleDef::from(iter_trait), LABEL_ITERATOR)?;
                 label_builder.write_str(LABEL_MIDDLE)?;
-                label_builder.start_location_link(ModuleDef::from(item).into());
-                label_builder.write_str(LABEL_ITEM)?;
-                label_builder.end_location_link();
+                module_def_location(label_builder, ModuleDef::from(item), LABEL_ITEM)?;
                 label_builder.write_str(LABEL_MIDDLE2)?;
                 rec(sema, famous_defs, max_length, &ty, label_builder, config, display_target)?;
                 label_builder.write_str(LABEL_END)?;

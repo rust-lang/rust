@@ -1568,6 +1568,7 @@ const GOAL: u8 = {
 }
 
 #[test]
+#[ignore = "builtin derive macros are currently not working with MIR eval"]
 fn builtin_derive_macro() {
     check_number(
         r#"

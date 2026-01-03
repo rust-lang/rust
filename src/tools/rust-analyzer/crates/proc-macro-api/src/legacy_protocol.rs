@@ -1,8 +1,6 @@
 //! The initial proc-macro-srv protocol, soon to be deprecated.
 
-pub mod json;
 pub mod msg;
-pub mod postcard;
 
 use std::{
     io::{BufRead, Write},
@@ -14,17 +12,14 @@ use span::Span;
 
 use crate::{
     ProcMacro, ProcMacroKind, ServerError,
-    codec::Codec,
-    legacy_protocol::{
-        json::JsonProtocol,
-        msg::{
-            ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, Message, Request, Response,
-            ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
-            flat::serialize_span_data_index_map,
-        },
-        postcard::PostcardProtocol,
+    legacy_protocol::msg::{
+        ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, Message, Request, Response,
+        ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
+        flat::serialize_span_data_index_map,
     },
     process::ProcMacroServerProcess,
+    transport::codec::Codec,
+    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version,
 };
 
@@ -82,15 +77,14 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
-    subtree: tt::SubtreeView<'_, Span>,
-    attr: Option<tt::SubtreeView<'_, Span>>,
+    subtree: tt::SubtreeView<'_>,
+    attr: Option<tt::SubtreeView<'_>>,
     env: Vec<(String, String)>,
     def_site: Span,
     call_site: Span,
     mixed_site: Span,
     current_dir: String,
-) -> Result<Result<tt::TopSubtree<span::SpanData<span::SyntaxContext>>, String>, crate::ServerError>
-{
+) -> Result<Result<tt::TopSubtree, String>, crate::ServerError> {
     let version = proc_macro.process.version();
     let mut span_data_table = SpanDataIndexMap::default();
     let def_site = span_data_table.insert_full(def_site).0;
@@ -155,9 +149,9 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
     }
 
     if srv.use_postcard() {
-        srv.send_task(send_request::<PostcardProtocol>, req)
+        srv.send_task::<_, _, PostcardProtocol>(send_request::<PostcardProtocol>, req)
     } else {
-        srv.send_task(send_request::<JsonProtocol>, req)
+        srv.send_task::<_, _, JsonProtocol>(send_request::<JsonProtocol>, req)
     }
 }
 
