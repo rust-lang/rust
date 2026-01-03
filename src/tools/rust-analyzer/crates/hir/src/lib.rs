@@ -803,22 +803,21 @@ impl Module {
                 emit_def_diagnostic(db, acc, diag, edition, loc.container.krate(db));
             }
 
-            if impl_signature.target_trait.is_none()
-                && !is_inherent_impl_coherent(db, def_map, impl_id)
-            {
+            let trait_impl = impl_signature.target_trait.is_some();
+            if !trait_impl && !is_inherent_impl_coherent(db, def_map, impl_id) {
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(loc.id.value), file_id }.into())
             }
 
-            if !impl_def.check_orphan_rules(db) {
+            if trait_impl && !impl_def.check_orphan_rules(db) {
                 acc.push(TraitImplOrphan { impl_: ast_id_map.get(loc.id.value), file_id }.into())
             }
 
-            let trait_ = impl_def.trait_(db);
+            let trait_ = trait_impl.then(|| impl_def.trait_(db)).flatten();
             let mut trait_is_unsafe = trait_.is_some_and(|t| t.is_unsafe(db));
             let impl_is_negative = impl_def.is_negative(db);
             let impl_is_unsafe = impl_def.is_unsafe(db);
 
-            let trait_is_unresolved = trait_.is_none() && impl_signature.target_trait.is_some();
+            let trait_is_unresolved = trait_.is_none() && trait_impl;
             if trait_is_unresolved {
                 // Ignore trait safety errors when the trait is unresolved, as otherwise we'll treat it as safe,
                 // which may not be correct.
