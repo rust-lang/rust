@@ -38,13 +38,11 @@ fn test_pipe() {
     let data = b"123";
     write_all_from_slice(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let res = read_into_slice(fds[0], &mut buf4).unwrap().0.len();
-    assert_eq!(buf4[..res], data[..res]);
-    if res < 3 {
-        // Drain the rest from the read end.
-        let res = read_into_slice(fds[0], &mut buf4[res..]).unwrap().0.len();
-        assert!(res > 0);
-    }
+    let (part1, rest) = read_into_slice(fds[0], &mut buf4).unwrap();
+    assert_eq!(part1[..], data[..part1.len()]);
+    // Write 2 more bytes so we can exactly fill the `rest`.
+    write_all_from_slice(fds[1], b"34").unwrap();
+    read_all_into_slice(fds[0], rest).unwrap();
 }
 
 fn test_pipe_threaded() {
