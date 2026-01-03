@@ -1288,10 +1288,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.def_span(def.did()),
                     format!("`{self_ty}` needs to implement `From<{ty}>`"),
                 );
-                err.span_note(
-                    self.tcx.def_span(found.did()),
-                    format!("alternatively, `{ty}` needs to implement `Into<{self_ty}>`"),
-                );
             }
             (ty::Adt(def, _), None) if def.did().is_local() => {
                 let trait_path = self.tcx.short_string(
