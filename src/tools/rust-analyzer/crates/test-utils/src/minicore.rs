@@ -80,6 +80,7 @@
 //!     offset_of:
 
 #![rustc_coherence_is_core]
+#![feature(lang_items)]
 
 pub mod marker {
     // region:sized

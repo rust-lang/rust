@@ -2374,6 +2374,7 @@ fn rust_destruct_option_clone() {
     check_types(
         r#"
 //- minicore: option, drop
+#![feature(lang_items)]
 fn test(o: &Option<i32>) {
     o.my_clone();
   //^^^^^^^^^^^^ Option<i32>
