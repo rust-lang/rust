@@ -6,6 +6,7 @@ use proc_macro_api::{
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version::CURRENT_API_VERSION,
 };
+use span::Span;
 use std::io;
 
 use legacy::Message;
@@ -185,8 +186,8 @@ impl<'a, C: Codec> ProcMacroClientHandle<'a, C> {
 }
 
 impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
-    fn file(&mut self, file_id: u32) -> String {
-        match self.roundtrip(bidirectional::SubRequest::FilePath { file_id }) {
+    fn file(&mut self, span: Span) -> String {
+        match self.roundtrip(bidirectional::SubRequest::FilePath { span }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::FilePathResult { name },
             )) => name,
@@ -194,8 +195,8 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
         }
     }
 
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::SourceText { file_id, start, end }) {
+    fn source_text(&mut self, span: Span) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::SourceText { span }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::SourceTextResult { text },
             )) => text,
@@ -203,8 +204,8 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
         }
     }
 
-    fn local_file(&mut self, file_id: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { file_id }) {
+    fn local_file(&mut self, span: Span) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { span }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::LocalFilePathResult { name },
             )) => name,
