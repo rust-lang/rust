@@ -11,15 +11,16 @@ extern crate rustc_driver as _;
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
-use hir_expand::proc_macro::{
-    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-    ProcMacrosBuilder,
+use hir_expand::{
+    db::ExpandDatabase,
+    proc_macro::{
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+        ProcMacrosBuilder,
+    },
 };
 use ide_db::{
-    ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{
-        CrateGraphBuilder, Env, ProcMacroLoadingError, SourceDatabase, SourceRoot, SourceRootId,
-    },
+    ChangeWithProcMacros, EditionedFileId, FxHashMap, RootDatabase,
+    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
 use itertools::Itertools;
@@ -33,7 +34,7 @@ use proc_macro_api::{
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
-    AbsPath, AbsPathBuf, FileId, VfsPath,
+    AbsPath, AbsPathBuf, VfsPath,
     file_set::FileSetConfig,
     loader::{Handle, LoadingProgress},
 };
@@ -530,7 +531,7 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        db: &dyn SourceDatabase,
+        db: &dyn ExpandDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
