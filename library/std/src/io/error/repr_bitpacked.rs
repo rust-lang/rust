@@ -241,7 +241,6 @@ impl Drop for Repr {
     // meanwhile, is a code size increase by a factor of up to 5.4 in the case
     // of dropping multiple io::Results in the same function
     // (https://godbolt.org/z/8hfGchjsT).
-    #[inline(never)]
     fn drop(&mut self) {
         // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we're being dropped.
