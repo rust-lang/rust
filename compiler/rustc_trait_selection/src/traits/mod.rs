@@ -713,11 +713,58 @@ pub fn try_evaluate_const<'tcx>(
             // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
             // where it gets used as a const generic.
             match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, tcx.def_span(uv.def)) {
-                Ok(Ok(val)) => Ok(ty::Const::new_value(
-                    tcx,
-                    val,
-                    tcx.type_of(uv.def).instantiate(tcx, uv.args),
-                )),
+                Ok(Ok(val)) => {
+                    // FIXME(mgca): this is really scuffed :3 we should probably have const eval
+                    // return untyped valtrees and then recursively destructure `type_of` of the
+                    // const item we evaluated to associate each valtree node with a type
+                    struct ErasedRegionReplacer<'a, 'tcx>(&'a InferCtxt<'tcx>);
+
+                    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ErasedRegionReplacer<'_, 'tcx> {
+                        fn cx(&self) -> TyCtxt<'tcx> {
+                            self.0.tcx
+                        }
+
+                        fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                            if let ty::ReErased = r.kind() {
+                                // We could return a new region variable here instead.
+                                //
+                                // This would cause the normalization process to result in
+                                // different terms every time which is weird:tm: This would
+                                // potentially affect `adt_const_params` even though that
+                                // feature doesn't care for the types of nested valtrees.
+                                //
+                                // Using 'static should be fine anyway as we don't evaluate
+                                // stuff that isn't fully concrete stuff. And fully concrete
+                                // stuff can only be using static lifetimes
+                                //
+                                // The types of nested valtrees are only relevant for:
+                                // - mGCA
+                                // - printing
+                                // - name mangling
+                                //
+                                // All of the non-mGCA places where this Ty matters only encounter
+                                // 'static lifetimes anyway. If this *is* wrong then it will only
+                                // affect mGCA which is... fine.
+                                //
+                                // I'm not even sure this logic is reachable without
+                                // `unsized_const_params` being enabled, as `adt_const_params`
+                                // doesn't support references which are the only places lifetimes
+                                // can be introduced.
+                                self.0.tcx.lifetimes.re_static
+                            } else {
+                                r
+                            }
+                        }
+                    }
+
+                    Ok(ty::Const::new_value(
+                        tcx,
+                        // The type of nested valtrees may contain erased
+                        // lifetimes which we need to handle
+                        val.fold_with(&mut ErasedRegionReplacer(infcx)),
+                        tcx.type_of(uv.def).instantiate(tcx, uv.args),
+                    ))
+                }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
                         "Type system constant with non valtree'able type evaluated but no error emitted",
