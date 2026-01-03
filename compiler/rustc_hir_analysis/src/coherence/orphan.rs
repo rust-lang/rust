@@ -3,6 +3,8 @@
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
@@ -10,6 +12,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::sym;
 use rustc_trait_selection::traits::{
     self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
 };
@@ -36,7 +39,32 @@ pub(crate) fn orphan_check_impl(
                     bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
                 }
             },
-            Err(err) => return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err)),
+            Err(err) => {
+                // The orphan check failed fully, see if we may tolerate it ...
+                if tcx.has_attr(trait_ref.def_id, sym::rustc_has_incoherent_trait_impls) {
+                    // `#[rustc_has_incoherent_trait_impls]` was specified,
+                    // meaning we tolerate a violation here; now ensure that all
+                    // associated methods, types, and constants have the
+                    // `#[rustc_allow_incoherent_trait_impl]` attribute.
+                    let items = tcx.associated_item_def_ids(impl_def_id);
+                    for item in items {
+                        if !find_attr!(
+                            tcx.get_all_attrs(*item),
+                            AttributeKind::AllowIncoherentTraitImpl(_)
+                        ) {
+                            // Missing `#[rustc_allow_incoherent_trait_impl]`.
+                            return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err));
+                        }
+
+                        // Item is fine, continue.
+                    }
+                    // All items are fine, let's tolerate.
+                } else {
+                    // We do not tolerate orphan violations, usually the default
+                    // except for some standard library hacks.
+                    return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err));
+                }
+            }
         },
     }
 

@@ -246,6 +246,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::UnsafeSpecializationMarker(..)
                     | AttributeKind::ParenSugar(..)
                     | AttributeKind::AllowIncoherentImpl(..)
+                    | AttributeKind::AllowIncoherentTraitImpl(..)
                     | AttributeKind::Confusables { .. }
                     | AttributeKind::TypeConst{..}
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
@@ -325,6 +326,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
+                        }
+                        [sym::rustc_has_incoherent_trait_impls, ..] => {
+                            self.check_has_incoherent_trait_impls(attr, span, target)
                         }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
@@ -1165,6 +1169,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx
                     .dcx()
                     .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
+            }
+        }
+    }
+
+    /// Checks if `#[rustc_has_incoherent_trait_impls]` is applied to a trait.
+    fn check_has_incoherent_trait_impls(&self, attr: &Attribute, span: Span, target: Target) {
+        match target {
+            Target::Trait => {}
+            _ => {
+                self.tcx
+                    .dcx()
+                    .emit_err(errors::HasIncoherentTraitImpl { attr_span: attr.span(), span });
             }
         }
     }

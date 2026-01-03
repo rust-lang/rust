@@ -139,6 +139,18 @@ impl<S: Stage> NoArgsAttributeParser<S> for AllowIncoherentImplParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::AllowIncoherentImpl;
 }
 
+pub(crate) struct AllowIncoherentTraitImplParser;
+impl<S: Stage> NoArgsAttributeParser<S> for AllowIncoherentTraitImplParser {
+    const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_trait_impl];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::AssocConst),
+        Allow(Target::AssocTy),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AllowIncoherentTraitImpl;
+}
+
 pub(crate) struct FundamentalParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];

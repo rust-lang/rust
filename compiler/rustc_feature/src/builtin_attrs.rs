@@ -1309,6 +1309,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
+        rustc_allow_incoherent_trait_impl, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
+        "`#[rustc_allow_incoherent_trait_impl]` has to be added to all impl items of an incoherent trait impl."
+    ),
+    rustc_attr!(
         rustc_preserve_ub_checks, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "`#![rustc_preserve_ub_checks]` prevents the designated crate from evaluating whether UB checks are enabled when optimizing MIR",
     ),
@@ -1334,6 +1338,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with `#[rustc_allow_incoherent_impl]`."
+    ),
+    rustc_attr!(
+        rustc_has_incoherent_trait_impls, AttributeType::Normal, template!(Word),
+        ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_has_incoherent_trait_impls]` allows the addition of incoherent trait impls for \
+         the given trait by annotating all impl items with `#[rustc_allow_incoherent_trait_impl]`."
     ),
 
     BuiltinAttribute {

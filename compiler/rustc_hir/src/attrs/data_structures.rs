@@ -694,6 +694,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_incoherent_impl]`.
     AllowIncoherentImpl(Span),
 
+    /// Represents `#[rustc_allow_incoherent_trait_impl]`.
+    AllowIncoherentTraitImpl(Span),
+
     /// Represents `#[allow_internal_unsafe]`.
     AllowInternalUnsafe(Span),
 

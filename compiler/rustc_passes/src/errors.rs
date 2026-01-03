@@ -197,6 +197,15 @@ pub(crate) struct HasIncoherentInherentImpl {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_has_incoherent_trait_impl)]
+pub(crate) struct HasIncoherentTraitImpl {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_both_ffi_const_and_pure, code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
