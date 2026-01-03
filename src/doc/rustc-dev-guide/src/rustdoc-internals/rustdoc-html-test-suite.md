@@ -1,6 +1,6 @@
-# The `rustdoc` test suite
+# The `rustdoc-html` test suite
 
-This page is about the test suite named `rustdoc` used to test the HTML output of `rustdoc`.
+This page is about the test suite named `rustdoc-html` used to test the HTML output of `rustdoc`.
 For other rustdoc-specific test suites, see [Rustdoc test suites].
 
 Each test file in this test suite is simply a Rust source file `file.rs` sprinkled with
