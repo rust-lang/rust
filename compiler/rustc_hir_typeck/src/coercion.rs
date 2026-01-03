@@ -1519,14 +1519,20 @@ impl<'tcx> CoerceMany<'tcx> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
+            // For the *first* expression being coerced, we call `fcx.coerce`,
+            // which will actually end up using `Sub` rather tha `Lub`.
+            // This is not the most ideal thing to do, but this breaks all over
+            // the place when removing this special-case.
+            // So, for now, to keep things *logically* a bit more simple, we
+            // have a `force_lub` option that callers can use (currently only
+            // is set in match coercion) to guarantee that all expressions use
+            // Lub coercion.
             if !self.force_lub && self.expressions.is_empty() {
-                // Special-case the first expression we are coercing.
-                // To be honest, I'm not entirely sure why we do this.
-                // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
                 fcx.coerce(
                     expression,
                     expression_ty,
                     self.expected_ty,
+                    // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
                     AllowTwoPhase::No,
                     Some(cause.clone()),
                 )
