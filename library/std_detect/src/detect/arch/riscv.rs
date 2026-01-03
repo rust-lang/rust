@@ -222,6 +222,13 @@ features! {
     /// "M" Extension for Integer Multiplication and Division
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] a: "a";
+    implied by cfg(any(
+        target_feature = "a",
+        all(
+            target_feature = "zalrsc",
+            target_feature = "zaamo",
+        )
+    ));
     /// "A" Extension for Atomic Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zalrsc: "zalrsc";
     /// "Zalrsc" Extension for Load-Reserved/Store-Conditional Instructions
@@ -265,14 +272,22 @@ features! {
     /// "Zhinxmin" Extension for Minimal Half-Precision Floating-Point in Integer Registers
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] c: "c";
+    implied by cfg(any(
+        target_feature = "c",
+        all(
+            not(target_feature = "d"),
+            any(not(target_arch = "riscv32"), not(target_feature = "f")),
+            target_feature = "zca",
+        )
+    ));
     /// "C" Extension for Compressed Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zca: "zca";
     /// "Zca" Compressed Instructions excluding Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcf: "zcf";
-    without cfg check: true;
+    implied by cfg(all(target_arch = "riscv32", target_feature = "c", target_feature = "f"));
     /// "Zcf" Compressed Instructions for Single-Precision Floating-Point Loads/Stores on RV32
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcd: "zcd";
-    without cfg check: true;
+    implied by cfg(all(target_feature = "c", target_feature = "d"));
     /// "Zcd" Compressed Instructions for Double-Precision Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcb: "zcb";
     /// "Zcb" Simple Code-size Saving Compressed Instructions
@@ -280,6 +295,14 @@ features! {
     /// "Zcmop" Extension for Compressed May-Be-Operations
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] b: "b";
+    implied by cfg(any(
+        target_feature = "b",
+        all(
+            target_feature = "zba",
+            target_feature = "zbb",
+            target_feature = "zbs",
+        )
+    ));
     /// "B" Extension for Bit Manipulation
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zba: "zba";
     /// "Zba" Extension for Address Generation
@@ -309,10 +332,44 @@ features! {
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zkr: "zkr";
     /// "Zkr" Entropy Source Extension
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zkn: "zkn";
+    implied by cfg(any(
+        target_feature = "zkn",
+        all(
+            target_feature = "zbkb",
+            target_feature = "zbkc",
+            target_feature = "zbkx",
+            target_feature = "zkne",
+            target_feature = "zknd",
+            target_feature = "zknh",
+        )
+    ));
     /// "Zkn" Cryptography Extension for NIST Algorithm Suite
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zks: "zks";
+    implied by cfg(any(
+        target_feature = "zks",
+        all(
+            target_feature = "zbkb",
+            target_feature = "zbkc",
+            target_feature = "zbkx",
+            target_feature = "zksed",
+            target_feature = "zksh",
+        )
+    ));
     /// "Zks" Cryptography Extension for ShangMi Algorithm Suite
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zk: "zk";
+    implied by cfg(any(
+        target_feature = "zk",
+        all(
+            target_feature = "zbkb",
+            target_feature = "zbkc",
+            target_feature = "zbkx",
+            target_feature = "zkne",
+            target_feature = "zknd",
+            target_feature = "zknh",
+            target_feature = "zkr",
+            target_feature = "zkt",
+        )
+    ));
     /// "Zk" Cryptography Extension for Standard Scalar Cryptography
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zkt: "zkt";
     /// "Zkt" Cryptography Extension for Data Independent Execution Latency
@@ -357,16 +414,74 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvksh: "zvksh";
     /// "Zvksh" Cryptography Extension for ShangMi Suite: Vector SM3 Secure Hash
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvkn: "zvkn";
+    implied by cfg(any(
+        target_feature = "zvkn",
+        all(
+            target_feature = "zvkned",
+            target_feature = "zvknhb",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+        )
+    ));
     /// "Zvkn" Cryptography Extension for NIST Algorithm Suite
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvknc: "zvknc";
+    implied by cfg(any(
+        target_feature = "zvknc",
+        all(
+            target_feature = "zvkned",
+            target_feature = "zvknhb",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+            target_feature = "zvbc",
+        )
+    ));
     /// "Zvknc" Cryptography Extension for NIST Algorithm Suite with Carryless Multiply
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvkng: "zvkng";
+    implied by cfg(any(
+        target_feature = "zvkng",
+        all(
+            target_feature = "zvkned",
+            target_feature = "zvknhb",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+            target_feature = "zvkg",
+        )
+    ));
     /// "Zvkng" Cryptography Extension for NIST Algorithm Suite with GCM
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvks: "zvks";
+    implied by cfg(any(
+        target_feature = "zvks",
+        all(
+            target_feature = "zvksed",
+            target_feature = "zvksh",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+        )
+    ));
     /// "Zvks" Cryptography Extension for ShangMi Algorithm Suite
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvksc: "zvksc";
+    implied by cfg(any(
+        target_feature = "zvksc",
+        all(
+            target_feature = "zvksed",
+            target_feature = "zvksh",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+            target_feature = "zvbc",
+        )
+    ));
     /// "Zvksc" Cryptography Extension for ShangMi Algorithm Suite with Carryless Multiply
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvksg: "zvksg";
+    implied by cfg(any(
+        target_feature = "zvksg",
+        all(
+            target_feature = "zvksed",
+            target_feature = "zvksh",
+            target_feature = "zvkb",
+            target_feature = "zvkt",
+            target_feature = "zvkg",
+        )
+    ));
     /// "Zvksg" Cryptography Extension for ShangMi Algorithm Suite with GCM
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvkt: "zvkt";
     /// "Zvkt" Extension for Vector Data-Independent Execution Latency
