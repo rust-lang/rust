@@ -359,12 +359,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None
         };
 
-        // FIXME(associated_const_equality): This has quite a few false positives and negatives.
+        // FIXME(mgca): This has quite a few false positives and negatives.
         let wrap_in_braces_sugg = if let Some(constraint) = constraint
             && let Some(hir_ty) = constraint.ty()
             && let ty = self.lower_ty(hir_ty)
             && (ty.is_enum() || ty.references_error())
-            && tcx.features().associated_const_equality()
+            && tcx.features().min_generic_const_args()
         {
             Some(errors::AssocKindMismatchWrapInBracesSugg {
                 lo: hir_ty.span.shrink_to_lo(),
