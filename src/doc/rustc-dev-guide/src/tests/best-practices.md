@@ -153,6 +153,7 @@ This may include remarks on:
 - Try to make sure the test is as minimal as possible.
 - Minimize non-critical code and especially minimize unnecessary syntax and type
   errors which can clutter stderr snapshots.
+- Use `#![allow(...)]` or `#![expect(...)]` to suppress unrelated warnings.
 - Where possible, use semantically meaningful names (e.g. `fn
   bare_coverage_attributes() {}`).
 

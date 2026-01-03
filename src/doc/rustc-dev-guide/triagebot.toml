@@ -58,9 +58,6 @@ allow-unauthenticated = [
 # Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
 [issue-links]
 
-[behind-upstream]
-days-threshold = 7
-
 # Enable triagebot (PR) assignment.
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
 [assign]
