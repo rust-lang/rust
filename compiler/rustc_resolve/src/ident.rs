@@ -1286,7 +1286,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         rib_index: usize,
         rib_ident: Ident,
-        mut res: Res,
+        res: Res,
         finalize: Option<Span>,
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'ra>],
@@ -1439,44 +1439,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstantItem(trivial, _) => {
-                            if let ConstantHasGenerics::No(cause) = trivial {
-                                // HACK(min_const_generics): If we encounter `Self` in an anonymous
-                                // constant we can't easily tell if it's generic at this stage, so
-                                // we instead remember this and then enforce the self type to be
-                                // concrete later on.
-                                if let Res::SelfTyAlias {
-                                    alias_to: def,
-                                    forbid_generic: _,
-                                    is_trait_impl,
-                                } = res
-                                {
-                                    res = Res::SelfTyAlias {
-                                        alias_to: def,
-                                        forbid_generic: true,
-                                        is_trait_impl,
-                                    }
-                                } else {
-                                    if let Some(span) = finalize {
-                                        let error = match cause {
-                                            NoConstantGenericsReason::IsEnumDiscriminant => {
-                                                ResolutionError::ParamInEnumDiscriminant {
-                                                    name: rib_ident.name,
-                                                    param_kind: ParamKindInEnumDiscriminant::Type,
-                                                }
+                            if let ConstantHasGenerics::No(cause) = trivial
+                                && !matches!(res, Res::SelfTyAlias { .. })
+                            {
+                                if let Some(span) = finalize {
+                                    let error = match cause {
+                                        NoConstantGenericsReason::IsEnumDiscriminant => {
+                                            ResolutionError::ParamInEnumDiscriminant {
+                                                name: rib_ident.name,
+                                                param_kind: ParamKindInEnumDiscriminant::Type,
                                             }
-                                            NoConstantGenericsReason::NonTrivialConstArg => {
-                                                ResolutionError::ParamInNonTrivialAnonConst {
-                                                    name: rib_ident.name,
-                                                    param_kind:
-                                                        ParamKindInNonTrivialAnonConst::Type,
-                                                }
+                                        }
+                                        NoConstantGenericsReason::NonTrivialConstArg => {
+                                            ResolutionError::ParamInNonTrivialAnonConst {
+                                                name: rib_ident.name,
+                                                param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
-                                        };
-                                        let _: ErrorGuaranteed = self.report_error(span, error);
-                                    }
-
-                                    return Res::Err;
+                                        }
+                                    };
+                                    let _: ErrorGuaranteed = self.report_error(span, error);
                                 }
+
+                                return Res::Err;
                             }
 
                             continue;
