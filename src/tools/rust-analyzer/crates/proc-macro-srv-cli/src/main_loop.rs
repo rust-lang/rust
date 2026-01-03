@@ -186,9 +186,9 @@ impl<'a, C: Codec> ProcMacroClientHandle<'a, C> {
 
 impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
     fn file(&mut self, file_id: u32) -> String {
-        match self.roundtrip(bidirectional::SubRequest::FileName { file_id }) {
+        match self.roundtrip(bidirectional::SubRequest::FilePath { file_id }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
-                bidirectional::SubResponse::FileNameResult { name },
+                bidirectional::SubResponse::FilePathResult { name },
             )) => name,
             _ => String::new(),
         }
@@ -204,9 +204,9 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
     }
 
     fn local_file(&mut self, file_id: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::LocalFileName { file_id }) {
+        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { file_id }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
-                bidirectional::SubResponse::LocalFileNameResult { name },
+                bidirectional::SubResponse::LocalFilePathResult { name },
             )) => name,
             _ => None,
         }
