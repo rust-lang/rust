@@ -27,11 +27,15 @@ impl ProcMacroServerPool {
         self.workers[0].exited()
     }
 
-    fn pick_process(&self) -> &ProcMacroServerProcess {
+    fn pick_process(&self) -> Result<&ProcMacroServerProcess, ServerError> {
         self.workers
             .iter()
+            .filter(|w| w.exited().is_none())
             .min_by_key(|w| w.number_of_active_req())
-            .expect("worker pool must not be empty")
+            .ok_or_else(|| ServerError {
+                message: "all proc-macro server workers have exited".into(),
+                io: None,
+            })
     }
 
     pub(crate) fn load_dylib(
@@ -81,7 +85,7 @@ impl ProcMacroServerPool {
         current_dir: String,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        let process = self.pick_process();
+        let process = self.pick_process()?;
 
         let (mut subtree, mut attr) = (subtree, attr);
         let (mut subtree_changed, mut attr_changed);
