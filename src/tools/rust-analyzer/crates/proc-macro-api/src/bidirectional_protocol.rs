@@ -28,7 +28,7 @@ use crate::{
 
 pub mod msg;
 
-pub type SubCallback<'a> = &'a mut dyn FnMut(SubRequest) -> Result<SubResponse, ServerError>;
+pub type SubCallback<'a> = &'a dyn Fn(SubRequest) -> Result<SubResponse, ServerError>;
 
 pub fn run_conversation<C: Codec>(
     writer: &mut dyn Write,
