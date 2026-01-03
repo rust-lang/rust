@@ -794,6 +794,8 @@ fn slice_tail_pattern() {
 fn box_pattern() {
     check_infer(
         r#"
+        #![feature(lang_items)]
+
         pub struct Global;
         #[lang = "owned_box"]
         pub struct Box<T, A = Global>(T);
@@ -805,13 +807,13 @@ fn box_pattern() {
         }
         "#,
         expect![[r#"
-            83..89 'params': Box<i32, Global>
-            101..155 '{     ...   } }': ()
-            107..153 'match ...     }': ()
-            113..119 'params': Box<i32, Global>
-            130..141 'box integer': Box<i32, Global>
-            134..141 'integer': i32
-            145..147 '{}': ()
+            108..114 'params': Box<i32, Global>
+            126..180 '{     ...   } }': ()
+            132..178 'match ...     }': ()
+            138..144 'params': Box<i32, Global>
+            155..166 'box integer': Box<i32, Global>
+            159..166 'integer': i32
+            170..172 '{}': ()
         "#]],
     );
     check_infer(
@@ -831,7 +833,6 @@ fn box_pattern() {
             76..122 'match ...     }': ()
             82..88 'params': Box<i32>
             99..110 'box integer': Box<i32>
-            103..110 'integer': i32
             114..116 '{}': ()
         "#]],
     );
@@ -1142,6 +1143,7 @@ fn my_fn(#[cfg(feature = "feature")] u8: u8, u32: u32) {}
 fn var_args() {
     check_types(
         r#"
+#![feature(lang_items)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f>;
 fn my_fn(foo: ...) {}
@@ -1156,6 +1158,7 @@ fn my_fn2(bar: u32, foo: ...) {}
 fn var_args_cond() {
     check_types(
         r#"
+#![feature(lang_items)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f>;
 fn my_fn(bar: u32, #[cfg(FALSE)] foo: ..., #[cfg(not(FALSE))] foo: u32) {
