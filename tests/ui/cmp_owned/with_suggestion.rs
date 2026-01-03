@@ -83,3 +83,32 @@ fn issue_8103() {
     let _ = foo1 == foo2.to_owned();
     //~^ cmp_owned
 }
+
+macro_rules! issue16322_macro_generator {
+    ($locale:ident) => {
+        mod $locale {
+            macro_rules! _make {
+                ($token:tt) => {
+                    stringify!($token)
+                };
+            }
+
+            pub(crate) use _make;
+        }
+
+        macro_rules! t {
+            ($token:tt) => {
+                crate::$locale::_make!($token)
+            };
+        }
+    };
+}
+
+issue16322_macro_generator!(de);
+
+fn issue16322(item: String) {
+    if item == t!(frohes_neu_Jahr).to_string() {
+        //~^ cmp_owned
+        println!("Ja!");
+    }
+}
