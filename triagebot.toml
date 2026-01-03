@@ -240,7 +240,7 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "tests/rustdoc",
+    "tests/rustdoc-html",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
     "tests/rustdoc-js/",
@@ -315,7 +315,7 @@ trigger_labels = [
 ]
 trigger_files = [
     "src/librustdoc/html/",
-    "tests/rustdoc/",
+    "tests/rustdoc-html/",
     "tests/rustdoc-gui/",
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std/",
@@ -1638,7 +1638,7 @@ dep-bumps = [
 "/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["compiler"]
 "/tests/run-make-cargo" =                                ["compiler"]
-"/tests/rustdoc" =                                       ["rustdoc"]
+"/tests/rustdoc-html" =                                  ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]

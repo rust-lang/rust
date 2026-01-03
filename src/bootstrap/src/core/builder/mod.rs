@@ -880,7 +880,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::Rustdoc,
+                test::RustdocHtml,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::CodegenCranelift,

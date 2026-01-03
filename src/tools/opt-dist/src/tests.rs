@@ -123,7 +123,7 @@ llvm-config = "{llvm_config}"
             "tests/run-make/rust-lld-x86_64-unknown-linux-gnu-dist",
             "tests/ui",
             "tests/crashes",
-            "tests/rustdoc",
+            "tests/rustdoc-html",
         ];
         for test_path in env.skipped_tests() {
             args.extend(["--skip", test_path]);

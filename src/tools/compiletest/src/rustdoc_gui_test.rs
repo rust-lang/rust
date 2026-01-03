@@ -50,7 +50,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
     //
     // For instance, `//@ ignore-stage1` will not work at all.
     Config {
-        mode: TestMode::Rustdoc,
+        mode: TestMode::RustdocHtml,
         // E.g. this has no sensible default tbh.
         suite: TestSuite::Ui,
 
