@@ -37,23 +37,27 @@ impl ProcMacroServerPool {
     pub(crate) fn load_dylib(
         &self,
         dylib: &MacroDylib,
-        _callback: Option<SubCallback<'_>>,
+        callback: Option<SubCallback<'_>>,
     ) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
+        let _span = tracing::info_span!("ProcMacroServer::load_dylib").entered();
 
         let dylib_path = Arc::new(dylib.path.clone());
-        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
-            .ok()
-            .and_then(|metadata| metadata.modified().ok());
+        let dylib_last_modified =
+            std::fs::metadata(dylib_path.as_path()).ok().and_then(|m| m.modified().ok());
 
-        let first = &self.workers[0];
-        let macros = first.find_proc_macros(&dylib.path, None)?.unwrap();
+        let (first, rest) = self.workers.split_first().expect("worker pool must not be empty");
 
-        for worker in &self.workers[1..] {
-            let _ = worker.find_proc_macros(&dylib.path, None)?;
+        let macros = first
+            .find_proc_macros(&dylib.path, callback)?
+            .map_err(|e| ServerError { message: e, io: None })?;
+
+        for worker in rest {
+            worker
+                .find_proc_macros(&dylib.path, callback)?
+                .map_err(|e| ServerError { message: e, io: None })?;
         }
 
-        let result = macros
+        Ok(macros
             .into_iter()
             .map(|(name, kind)| ProcMacro {
                 pool: self.clone(),
@@ -62,9 +66,7 @@ impl ProcMacroServerPool {
                 dylib_path: dylib_path.clone(),
                 dylib_last_modified,
             })
-            .collect();
-
-        Ok(result)
+            .collect())
     }
 
     pub(crate) fn expand(
