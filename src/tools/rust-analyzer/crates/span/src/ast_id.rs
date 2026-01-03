@@ -29,6 +29,7 @@ use std::{
 
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxBuildHasher, FxHashMap};
+use serde::{Deserialize, Serialize};
 use syntax::{
     AstNode, AstPtr, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     ast::{self, HasName},
@@ -54,7 +55,7 @@ pub const NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::NoDownmap as u32));
 
 /// This is a type erased FileAstId.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ErasedFileAstId(u32);
 
 impl fmt::Debug for ErasedFileAstId {

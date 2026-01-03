@@ -1881,6 +1881,7 @@ dependencies = [
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",
+ "span",
 ]
 
 [[package]]
@@ -2648,6 +2649,7 @@ dependencies = [
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 2.1.1",
  "salsa",
+ "serde",
  "stdx",
  "syntax",
  "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
