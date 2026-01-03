@@ -6,30 +6,31 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print union on
-// gdb-command:run
+//@ gdb-command:set print union on
+//@ gdb-command:run
 
-// gdb-command:print case1
-// gdb-check:$1 = struct_in_enum::Regular::Case1(0, struct_in_enum::Struct {x: 2088533116, y: 2088533116, z: 31868})
+//@ gdb-command:print case1
+//@ gdb-check:$1 = struct_in_enum::Regular::Case1(0, struct_in_enum::Struct {x: 2088533116, y: 2088533116, z: 31868})
 
-// gdb-command:print case2
-// gdb-check:$2 = struct_in_enum::Regular::Case2(0, 1229782938247303441, 4369)
+//@ gdb-command:print case2
+//@ gdb-check:$2 = struct_in_enum::Regular::Case2(0, 1229782938247303441, 4369)
 
-// gdb-command:print univariant
-// gdb-check:$3 = struct_in_enum::Univariant::TheOnlyCase(struct_in_enum::Struct {x: 123, y: 456, z: 789})
+//@ gdb-command:print univariant
+//@ gdb-check:$3 = struct_in_enum::Univariant::TheOnlyCase(struct_in_enum::Struct {x: 123, y: 456, z: 789})
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v case1
-// lldb-check:[...] Case1(0, Struct { x: 2088533116, y: 2088533116, z: 31868 })
-// lldb-command:v case2
-// lldb-check:[...] Case2(0, 1229782938247303441, 4369)
+//@ lldb-command:v case1
+//@ lldb-check:[...] Case1(0, {x:2088533116, y:2088533116, z:31868}) { 0 = 0 1 = { x = 2088533116 y = 2088533116 z = 31868 } }
 
-// lldb-command:v univariant
-// lldb-check:[...] TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
+//@ lldb-command:v case2
+//@ lldb-check:[...] Case2(0, 1229782938247303441, 4369) { 0 = 0 1 = 1229782938247303441 2 = 4369 }
+
+//@ lldb-command:v univariant
+//@ lldb-check:[...] TheOnlyCase({x:123, y:456, z:789}) { 0 = { x = 123 y = 456 z = 789 } }
 
 #![allow(unused_variables)]
 

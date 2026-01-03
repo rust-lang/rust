@@ -1,10 +1,11 @@
+// Test that `!` can be coerced to multiple different types after getting it
+// from pattern matching.
+//
 //@ run-pass
 
-#![allow(unused_variables)]
-#![allow(unreachable_code)]
-#![allow(unreachable_patterns)]
-// Test that we can extract a ! through pattern matching then use it as several different types.
 #![feature(never_type)]
+#![expect(unused_variables)]
+#![expect(unreachable_code)]
 
 fn main() {
     let x: Result<u32, !> = Ok(123);

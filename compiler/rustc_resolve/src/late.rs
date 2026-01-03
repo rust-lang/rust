@@ -28,7 +28,10 @@ use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, Par
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{AssocTag, DelegationFnSig, Visibility};
+use rustc_middle::ty::{
+    AssocTag, DELEGATION_INHERIT_ATTRS_START, DelegationAttrs, DelegationFnSig,
+    DelegationFnSigAttrs, DelegationInfo, Visibility,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
@@ -447,6 +450,8 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     ReturnTypeNotation,
     /// Paths from `#[define_opaque]` attributes
     DefineOpaques,
+    /// Resolving a macro
+    Macro,
 }
 
 impl PathSource<'_, '_, '_> {
@@ -463,6 +468,7 @@ impl PathSource<'_, '_, '_> {
             | PathSource::ReturnTypeNotation => ValueNS,
             PathSource::TraitItem(ns, _) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
+            PathSource::Macro => MacroNS,
         }
     }
 
@@ -478,7 +484,8 @@ impl PathSource<'_, '_, '_> {
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
             | PathSource::Delegation
-            | PathSource::PreciseCapturingArg(..) => false,
+            | PathSource::PreciseCapturingArg(..)
+            | PathSource::Macro => false,
         }
     }
 
@@ -520,6 +527,7 @@ impl PathSource<'_, '_, '_> {
             },
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
+            PathSource::Macro => "macro",
         }
     }
 
@@ -614,6 +622,7 @@ impl PathSource<'_, '_, '_> {
                 Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }
             ),
             PathSource::PreciseCapturingArg(MacroNS) => false,
+            PathSource::Macro => matches!(res, Res::Def(DefKind::Macro(_), _)),
         }
     }
 
@@ -622,7 +631,7 @@ impl PathSource<'_, '_, '_> {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
             (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
-            (PathSource::Type | PathSource::DefineOpaques, false) => E0412,
+            (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
@@ -633,6 +642,7 @@ impl PathSource<'_, '_, '_> {
             (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
+            (PathSource::Macro, _) => E0425,
         }
     }
 }
@@ -954,9 +964,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.visit_ty(element_ty);
                 self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
             }
-            TyKind::Typeof(ct) => {
-                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
-            }
             _ => visit::walk_ty(self, ty),
         }
         self.diag_metadata.current_trait_object = prev;
@@ -1034,7 +1041,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             }
         }
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, _: &AttrVec, sp: Span, fn_id: NodeId) {
         let previous_value = self.diag_metadata.current_function;
         match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
@@ -1060,6 +1067,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             FnKind::Closure(..) => {}
         };
         debug!("(resolving function) entering function");
+
+        if let FnKind::Fn(_, _, f) = fn_kind {
+            for EiiImpl { node_id, eii_macro_path, .. } in &f.eii_impls {
+                self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
+            }
+        }
 
         // Create a value rib for the function.
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
@@ -1225,7 +1238,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    && path.is_potential_trivial_const_arg(false)
+                    && path.is_potential_trivial_const_arg()
                 {
                     let mut check_ns = |ns| {
                         self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
@@ -2133,7 +2146,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::TraitItem(..)
                 | PathSource::Type
                 | PathSource::PreciseCapturingArg(..)
-                | PathSource::ReturnTypeNotation => false,
+                | PathSource::ReturnTypeNotation
+                | PathSource::Macro => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct(_)
@@ -2890,6 +2904,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let def_id = self.r.local_def_id(item.id);
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
+
+                if let Some(EiiExternTarget { extern_item_path, impl_unsafe: _, span: _ }) =
+                    &macro_def.eii_extern_target
+                {
+                    self.smart_resolve_path(
+                        item.id,
+                        &None,
+                        extern_item_path,
+                        PathSource::Expr(None),
+                    );
+                }
             }
 
             ItemKind::ForeignMod(_) | ItemKind::GlobalAsm(_) => {
@@ -2904,7 +2929,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     item.id,
                     LifetimeBinderKind::Function,
                     span,
-                    |this| this.resolve_delegation(delegation),
+                    |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
                 );
             }
 
@@ -2916,9 +2941,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn with_generic_param_rib<'c, F>(
-        &'c mut self,
-        params: &'c [GenericParam],
+    fn with_generic_param_rib<F>(
+        &mut self,
+        params: &[GenericParam],
         kind: RibKind<'ra>,
         binder: NodeId,
         generics_kind: LifetimeBinderKind,
@@ -3161,7 +3186,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         result
     }
 
-    /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
+    /// When evaluating a `trait` use its associated types' idents for suggestions in E0425.
     fn resolve_trait_items(&mut self, trait_items: &'ast [Box<AssocItem>]) {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
@@ -3233,7 +3258,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         item.id,
                         LifetimeBinderKind::Function,
                         delegation.path.segments.last().unwrap().ident.span,
-                        |this| this.resolve_delegation(delegation),
+                        |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
                     );
                 }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
@@ -3362,7 +3387,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
-                                                    this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id);
+                                                    this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
                                                 }
                                             });
                                         });
@@ -3381,6 +3406,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         item: &'ast AssocItem,
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
+        is_in_trait_impl: bool,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3526,7 +3552,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
-                        this.resolve_delegation(delegation)
+                        // Here we don't use `trait_id`, as we can process unresolved trait, however
+                        // in this case we are still in a trait impl, https://github.com/rust-lang/rust/issues/150152
+                        this.resolve_delegation(delegation, item.id, is_in_trait_impl, &item.attrs);
                     },
                 );
             }
@@ -3675,24 +3703,45 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         })
     }
 
-    fn resolve_delegation(&mut self, delegation: &'ast Delegation) {
+    fn resolve_delegation(
+        &mut self,
+        delegation: &'ast Delegation,
+        item_id: NodeId,
+        is_in_trait_impl: bool,
+        attrs: &[Attribute],
+    ) {
         self.smart_resolve_path(
             delegation.id,
             &delegation.qself,
             &delegation.path,
             PathSource::Delegation,
         );
+
         if let Some(qself) = &delegation.qself {
             self.visit_ty(&qself.ty);
         }
+
         self.visit_path(&delegation.path);
+
+        self.r.delegation_infos.insert(
+            self.r.local_def_id(item_id),
+            DelegationInfo {
+                attrs: create_delegation_attrs(attrs),
+                resolution_node: if is_in_trait_impl { item_id } else { delegation.id },
+            },
+        );
+
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
             let span = delegation.path.segments.last().unwrap().ident.span;
             let ident = Ident::new(kw::SelfLower, span.normalize_to_macro_rules());
             let res = Res::Local(delegation.id);
             this.innermost_rib_bindings(ValueNS).insert(ident, res);
-            this.visit_block(body);
+
+            //As we lower target_expr_template body to a body of a function we need a label rib (#148889)
+            this.with_label_rib(RibKind::FnOrCoroutine, |this| {
+                this.visit_block(body);
+            });
         });
     }
 
@@ -4266,7 +4315,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
         qself: &Option<Box<QSelf>>,
@@ -4362,7 +4410,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 // There are two different error messages user might receive at
                 // this point:
-                // - E0412 cannot find type `{}` in this scope
+                // - E0425 cannot find type `{}` in this scope
                 // - E0433 failed to resolve: use of undeclared type or module `{}`
                 //
                 // The first one is emitted for paths in type-position, and the
@@ -4370,7 +4418,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 //
                 // Thus (since we're in expression-position at this point), not to
                 // confuse the user, we want to keep the *message* from E0433 (so
-                // `parent_err`), but we want *hints* from E0412 (so `err`).
+                // `parent_err`), but we want *hints* from E0425 (so `err`).
                 //
                 // And that's what happens below - we're just mixing both messages
                 // into a single one.
@@ -4839,9 +4887,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        let is_trivial_const_arg = constant
-            .value
-            .is_potential_trivial_const_arg(self.r.tcx.features().min_generic_const_args());
+        let is_trivial_const_arg = constant.value.is_potential_trivial_const_arg();
         self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
             this.resolve_expr(&constant.value, None)
         })
@@ -4871,7 +4917,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
+                if self.r.tcx.features().generic_const_exprs()
+                    || self.r.tcx.features().min_generic_const_args()
+                    || is_trivial_const_arg
+                {
                     ConstantHasGenerics::Yes
                 } else {
                     ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)
@@ -5022,9 +5071,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
-                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg(
-                            self.r.tcx.features().min_generic_const_args(),
-                        );
+                        // FIXME(mgca): legacy const generics doesn't support mgca but maybe
+                        // that's okay.
+                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg();
                         self.resolve_anon_const_manual(
                             is_trivial_const_arg,
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
@@ -5293,15 +5342,43 @@ impl ItemInfoCollector<'_, '_, '_> {
         id: NodeId,
         attrs: &[Attribute],
     ) {
-        let sig = DelegationFnSig {
-            header,
-            param_count: decl.inputs.len(),
-            has_self: decl.has_self(),
-            c_variadic: decl.c_variadic(),
-            target_feature: attrs.iter().any(|attr| attr.has_name(sym::target_feature)),
-        };
-        self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
+        self.r.delegation_fn_sigs.insert(
+            self.r.local_def_id(id),
+            DelegationFnSig {
+                header,
+                param_count: decl.inputs.len(),
+                has_self: decl.has_self(),
+                c_variadic: decl.c_variadic(),
+                attrs: create_delegation_attrs(attrs),
+            },
+        );
     }
+}
+
+fn create_delegation_attrs(attrs: &[Attribute]) -> DelegationAttrs {
+    static NAMES_TO_FLAGS: &[(Symbol, DelegationFnSigAttrs)] = &[
+        (sym::target_feature, DelegationFnSigAttrs::TARGET_FEATURE),
+        (sym::must_use, DelegationFnSigAttrs::MUST_USE),
+    ];
+
+    let mut to_inherit_attrs = AttrVec::new();
+    let mut flags = DelegationFnSigAttrs::empty();
+
+    'attrs_loop: for attr in attrs {
+        for &(name, flag) in NAMES_TO_FLAGS {
+            if attr.has_name(name) {
+                flags.set(flag, true);
+
+                if flag.bits() >= DELEGATION_INHERIT_ATTRS_START.bits() {
+                    to_inherit_attrs.push(attr.clone());
+                }
+
+                continue 'attrs_loop;
+            }
+        }
+    }
+
+    DelegationAttrs { flags, to_inherit: to_inherit_attrs }
 }
 
 impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {

@@ -74,7 +74,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             }
 
             // delete comparison statement if it the value being switched on was moved, which means
-            // it can not be user later on
+            // it can not be used later on
             if opt.can_remove_bin_op_stmt {
                 bb.statements[opt.bin_op_stmt_idx].make_nop(true);
             } else {

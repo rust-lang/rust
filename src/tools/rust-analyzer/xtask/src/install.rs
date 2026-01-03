@@ -44,8 +44,11 @@ pub(crate) struct ServerOpt {
 
 impl ServerOpt {
     fn to_features(&self) -> Vec<&'static str> {
-        let mut features = Vec::new();
-        features.extend(self.malloc.to_features());
+        let malloc_features = self.malloc.to_features();
+        let mut features = Vec::with_capacity(
+            malloc_features.len() + if self.force_always_assert { 2 } else { 0 },
+        );
+        features.extend(malloc_features);
         if self.force_always_assert {
             features.extend(["--features", "force-always-assert"]);
         }
@@ -153,7 +156,7 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
 
     let mut install_cmd = cmd!(
         sh,
-        "cargo install --path crates/rust-analyzer --profile={profile} --locked --force --features force-always-assert {features...}"
+        "cargo install --path crates/rust-analyzer --profile={profile} --locked --force {features...}"
     );
 
     if let Some(train_crate) = opts.pgo {
@@ -174,10 +177,17 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
 fn install_proc_macro_server(sh: &Shell, opts: ProcMacroServerOpt) -> anyhow::Result<()> {
     let profile = if opts.dev_rel { "dev-rel" } else { "release" };
 
-    cmd!(
+    let mut cmd = cmd!(
         sh,
-        "cargo +nightly install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
-    ).run()?;
+        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
+    );
+    if std::env::var_os("RUSTUP_TOOLCHAIN").is_none() {
+        cmd = cmd.env("RUSTUP_TOOLCHAIN", "nightly");
+    } else {
+        cmd = cmd.env("RUSTC_BOOTSTRAP", "1");
+    }
+
+    cmd.run()?;
 
     Ok(())
 }

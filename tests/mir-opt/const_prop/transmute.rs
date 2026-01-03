@@ -43,8 +43,7 @@ pub unsafe fn invalid_bool() -> bool {
 // EMIT_MIR transmute.undef_union_as_integer.GVN.diff
 pub unsafe fn undef_union_as_integer() -> u32 {
     // CHECK-LABEL: fn undef_union_as_integer(
-    // CHECK: _1 = const Union32
-    // CHECK: _0 = const {{.*}}: u32;
+    // CHECK: _0 = const <uninit>;
     union Union32 {
         value: u32,
         unit: (),

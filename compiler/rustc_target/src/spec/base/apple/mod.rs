@@ -4,8 +4,8 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
-    SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
+    Abi, BinaryFormat, Cc, DebuginfoKind, Env, FloatAbi, FramePointer, LinkerFlavor, Lld, Os,
+    RustcAbi, SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -94,11 +94,25 @@ pub(crate) enum TargetEnv {
 }
 
 impl TargetEnv {
-    fn target_env(self) -> &'static str {
+    fn target_env(self) -> Env {
         match self {
-            Self::Normal => "",
-            Self::MacCatalyst => "macabi",
-            Self::Simulator => "sim",
+            Self::Normal => Env::Unspecified,
+            Self::MacCatalyst => Env::MacAbi,
+            Self::Simulator => Env::Sim,
+        }
+    }
+
+    // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
+    // before it was discovered that those are actually environments:
+    // https://github.com/rust-lang/rust/issues/133331
+    //
+    // But let's continue setting them for backwards compatibility.
+    // FIXME(madsmtm): Warn about using these in the future.
+    fn target_abi(self) -> Abi {
+        match self {
+            Self::Normal => Abi::Unspecified,
+            Self::MacCatalyst => Abi::MacAbi,
+            Self::Simulator => Abi::Sim,
         }
     }
 }
@@ -106,23 +120,19 @@ impl TargetEnv {
 /// Get the base target options, unversioned LLVM target and `target_arch` from the three
 /// things that uniquely identify Rust's Apple targets: The OS, the architecture, and the ABI.
 pub(crate) fn base(
-    os: &'static str,
+    os: Os,
     arch: Arch,
     env: TargetEnv,
 ) -> (TargetOptions, StaticCow<str>, crate::spec::Arch) {
+    let link_env_remove = link_env_remove(&os);
+    let unversioned_llvm_target = unversioned_llvm_target(&os, arch, env);
     let mut opts = TargetOptions {
         llvm_floatabi: Some(FloatAbi::Hard),
-        os: os.into(),
-        env: env.target_env().into(),
-        // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
-        // before it was discovered that those are actually environments:
-        // https://github.com/rust-lang/rust/issues/133331
-        //
-        // But let's continue setting them for backwards compatibility.
-        // FIXME(madsmtm): Warn about using these in the future.
-        abi: env.target_env().into(),
+        os,
+        env: env.target_env(),
+        abi: env.target_abi(),
         cpu: arch.target_cpu(env).into(),
-        link_env_remove: link_env_remove(os),
+        link_env_remove,
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -189,23 +199,23 @@ pub(crate) fn base(
         // All Apple x86-32 targets have SSE2.
         opts.rustc_abi = Some(RustcAbi::X86Sse2);
     }
-    (opts, unversioned_llvm_target(os, arch, env), arch.target_arch())
+    (opts, unversioned_llvm_target, arch.target_arch())
 }
 
 /// Generate part of the LLVM target triple.
 ///
 /// See `rustc_codegen_ssa::back::versioned_llvm_target` for the full triple passed to LLVM and
 /// Clang.
-fn unversioned_llvm_target(os: &str, arch: Arch, env: TargetEnv) -> StaticCow<str> {
+fn unversioned_llvm_target(os: &Os, arch: Arch, env: TargetEnv) -> StaticCow<str> {
     let arch = arch.target_name();
     // Convert to the "canonical" OS name used by LLVM:
     // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L236-L282
     let os = match os {
-        "macos" => "macosx",
-        "ios" => "ios",
-        "watchos" => "watchos",
-        "tvos" => "tvos",
-        "visionos" => "xros",
+        Os::MacOs => "macosx",
+        Os::IOs => "ios",
+        Os::WatchOs => "watchos",
+        Os::TvOs => "tvos",
+        Os::VisionOs => "xros",
         _ => unreachable!("tried to get LLVM target OS for non-Apple platform"),
     };
     let environment = match env {
@@ -216,13 +226,13 @@ fn unversioned_llvm_target(os: &str, arch: Arch, env: TargetEnv) -> StaticCow<st
     format!("{arch}-apple-{os}{environment}").into()
 }
 
-fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
+fn link_env_remove(os: &Os) -> StaticCow<[StaticCow<str>]> {
     // Apple platforms only officially support macOS as a host for any compilation.
     //
     // If building for macOS, we go ahead and remove any erroneous environment state
     // that's only applicable to cross-OS compilation. Always leave anything for the
     // host OS alone though.
-    if os == "macos" {
+    if *os == Os::MacOs {
         // `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
@@ -284,7 +294,7 @@ impl OSVersion {
     }
 
     /// Minimum operating system versions currently supported by `rustc`.
-    pub fn os_minimum_deployment_target(os: &str) -> Self {
+    pub fn os_minimum_deployment_target(os: &Os) -> Self {
         // When bumping a version in here, remember to update the platform-support docs too.
         //
         // NOTE: The defaults may change in future `rustc` versions, so if you are looking for the
@@ -293,12 +303,14 @@ impl OSVersion {
         // $ rustc --print deployment-target
         // ```
         let (major, minor, patch) = match os {
-            "macos" => (10, 12, 0),
-            "ios" => (10, 0, 0),
-            "tvos" => (10, 0, 0),
-            "watchos" => (5, 0, 0),
-            "visionos" => (1, 0, 0),
-            _ => unreachable!("tried to get deployment target for non-Apple platform"),
+            Os::MacOs => (10, 12, 0),
+            Os::IOs => (10, 0, 0),
+            Os::TvOs => (10, 0, 0),
+            Os::WatchOs => (5, 0, 0),
+            Os::VisionOs => (1, 0, 0),
+            other => {
+                unreachable!("tried to get deployment target for non-Apple platform: {:?}", other)
+            }
         };
         Self { major, minor, patch }
     }
@@ -311,36 +323,36 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, &target.arch, &*target.env) {
-            ("macos", crate::spec::Arch::AArch64, _) => (11, 0, 0),
-            ("ios", crate::spec::Arch::AArch64, "macabi") => (14, 0, 0),
-            ("ios", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
-            ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
+        let (major, minor, patch) = match (&target.os, &target.arch, &target.env) {
+            (Os::MacOs, crate::spec::Arch::AArch64, _) => (11, 0, 0),
+            (Os::IOs, crate::spec::Arch::AArch64, Env::MacAbi) => (14, 0, 0),
+            (Os::IOs, crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),
+            (Os::IOs, _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
             // Mac Catalyst defaults to 13.1 in Clang.
-            ("ios", _, "macabi") => (13, 1, 0),
-            ("tvos", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
-            ("watchos", crate::spec::Arch::AArch64, "sim") => (7, 0, 0),
+            (Os::IOs, _, Env::MacAbi) => (13, 1, 0),
+            (Os::TvOs, crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),
+            (Os::WatchOs, crate::spec::Arch::AArch64, Env::Sim) => (7, 0, 0),
             // True Aarch64 on watchOS (instead of their Aarch64 Ilp32 called `arm64_32`) has been
             // available since Xcode 14, but it's only actually used more recently in watchOS 26.
-            ("watchos", crate::spec::Arch::AArch64, "")
+            (Os::WatchOs, crate::spec::Arch::AArch64, Env::Unspecified)
                 if !target.llvm_target.starts_with("arm64_32") =>
             {
                 (26, 0, 0)
             }
-            (os, _, _) => return Self::os_minimum_deployment_target(os),
+            _ => return Self::os_minimum_deployment_target(&target.os),
         };
         Self { major, minor, patch }
     }
 }
 
 /// Name of the environment variable used to fetch the deployment target on the given OS.
-pub fn deployment_target_env_var(os: &str) -> &'static str {
+pub fn deployment_target_env_var(os: &Os) -> &'static str {
     match os {
-        "macos" => "MACOSX_DEPLOYMENT_TARGET",
-        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
-        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
-        "tvos" => "TVOS_DEPLOYMENT_TARGET",
-        "visionos" => "XROS_DEPLOYMENT_TARGET",
+        Os::MacOs => "MACOSX_DEPLOYMENT_TARGET",
+        Os::IOs => "IPHONEOS_DEPLOYMENT_TARGET",
+        Os::WatchOs => "WATCHOS_DEPLOYMENT_TARGET",
+        Os::TvOs => "TVOS_DEPLOYMENT_TARGET",
+        Os::VisionOs => "XROS_DEPLOYMENT_TARGET",
         _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
     }
 }

@@ -29,8 +29,6 @@
  * to produce the hexadecimal values shown.
  */
 
-use core::f64;
-
 use super::fabs;
 
 const ATANHI: [f64; 4] = [
@@ -134,19 +132,19 @@ pub fn atan(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use core::f64;
+    use core::f64::consts;
 
     use super::atan;
 
     #[test]
     fn sanity_check() {
         for (input, answer) in [
-            (3.0_f64.sqrt() / 3.0, f64::consts::FRAC_PI_6),
-            (1.0, f64::consts::FRAC_PI_4),
-            (3.0_f64.sqrt(), f64::consts::FRAC_PI_3),
-            (-3.0_f64.sqrt() / 3.0, -f64::consts::FRAC_PI_6),
-            (-1.0, -f64::consts::FRAC_PI_4),
-            (-3.0_f64.sqrt(), -f64::consts::FRAC_PI_3),
+            (3.0_f64.sqrt() / 3.0, consts::FRAC_PI_6),
+            (1.0, consts::FRAC_PI_4),
+            (3.0_f64.sqrt(), consts::FRAC_PI_3),
+            (-3.0_f64.sqrt() / 3.0, -consts::FRAC_PI_6),
+            (-1.0, -consts::FRAC_PI_4),
+            (-3.0_f64.sqrt(), -consts::FRAC_PI_3),
         ]
         .iter()
         {
@@ -167,12 +165,12 @@ mod tests {
 
     #[test]
     fn infinity() {
-        assert_eq!(atan(f64::INFINITY), f64::consts::FRAC_PI_2);
+        assert_eq!(atan(f64::INFINITY), consts::FRAC_PI_2);
     }
 
     #[test]
     fn minus_infinity() {
-        assert_eq!(atan(f64::NEG_INFINITY), -f64::consts::FRAC_PI_2);
+        assert_eq!(atan(f64::NEG_INFINITY), -consts::FRAC_PI_2);
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 use super::PhantomData;
 use crate::any::type_name;
+use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
@@ -59,6 +60,9 @@ macro_rules! phantom_type {
         }
 
         impl<T> Copy for $name<T> where T: ?Sized {}
+
+        #[doc(hidden)]
+        unsafe impl<T> TrivialClone for $name<T> where T: ?Sized {}
 
         impl<T> PartialEq for $name<T>
             where T: ?Sized

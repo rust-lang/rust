@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-    base, cvs,
+    Arch, LinkArgs, LinkerFlavor, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions, base, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
         TargetOptions::link_args(LinkerFlavor::EmCc, &["-sABORTING_MALLOC=0", "-sWASM_BIGINT"]);
 
     let opts = TargetOptions {
-        os: "emscripten".into(),
+        os: Os::Emscripten,
         linker_flavor: LinkerFlavor::EmCc,
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.

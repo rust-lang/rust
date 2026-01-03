@@ -1,13 +1,12 @@
 //! Code to extract the universally quantified regions declared on a
-//! function and the relationships between them. For example:
+//! function. For example:
 //!
 //! ```
 //! fn foo<'a, 'b, 'c: 'b>() { }
 //! ```
 //!
 //! here we would return a map assigning each of `{'a, 'b, 'c}`
-//! to an index, as well as the `FreeRegionMap` which can compute
-//! relationships between them.
+//! to an index.
 //!
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
@@ -271,8 +270,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// Creates a new and fully initialized `UniversalRegions` that
     /// contains indices for all the free regions found in the given
     /// MIR -- that is, all the regions that appear in the function's
-    /// signature. This will also compute the relationships that are
-    /// known between those regions.
+    /// signature.
     pub(crate) fn new(infcx: &BorrowckInferCtxt<'tcx>, mir_def: LocalDefId) -> Self {
         UniversalRegionsBuilder { infcx, mir_def }.build()
     }
@@ -454,8 +452,6 @@ struct UniversalRegionsBuilder<'infcx, 'tcx> {
     mir_def: LocalDefId,
 }
 
-const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
-
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
@@ -466,8 +462,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
         // Create the "global" region that is always free in all contexts: 'static.
-        let fr_static =
-            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(kw::Static)).as_var();
+        let fr_static = self
+            .infcx
+            .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                RegionCtxt::Free(kw::Static)
+            })
+            .as_var();
 
         // We've now added all the global regions. The next ones we
         // add will be external.
@@ -500,7 +500,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     debug!(?r);
                     let region_vid = {
                         let name = r.get_name_or_anon(self.infcx.tcx);
-                        self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                        self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                            RegionCtxt::LateBound(name)
+                        })
                     };
 
                     debug!(?region_vid);
@@ -526,7 +528,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
                 let region_vid = {
                     let name = r.get_name_or_anon(self.infcx.tcx);
-                    self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                    self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                        RegionCtxt::LateBound(name)
+                    })
                 };
 
                 debug!(?region_vid);
@@ -553,7 +557,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 let reg_vid = self
                     .infcx
-                    .next_nll_region_var(FR, || RegionCtxt::Free(sym::c_dash_variadic))
+                    .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                        RegionCtxt::Free(sym::c_dash_variadic)
+                    })
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
@@ -569,8 +575,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
         }
 
-        let fr_fn_body =
-            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(sym::fn_body)).as_var();
+        let fr_fn_body = self
+            .infcx
+            .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                RegionCtxt::Free(sym::fn_body)
+            })
+            .as_var();
 
         let num_universals = self.infcx.num_region_vars();
 
@@ -613,8 +623,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
-                let defining_ty =
-                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
+                let defining_ty = self.infcx.replace_free_regions_with_nll_infer_vars(
+                    NllRegionVariableOrigin::FreeRegion,
+                    defining_ty,
+                );
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
@@ -634,15 +646,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                if self.mir_def.to_def_id() == typeck_root_def_id
-                    // Do not ICE when checking default_field_values consts with lifetimes (#135649)
-                    && DefKind::Field != tcx.def_kind(tcx.parent(typeck_root_def_id))
-                {
-                    let args =
-                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_args);
+                if self.mir_def.to_def_id() == typeck_root_def_id {
+                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(
+                        NllRegionVariableOrigin::FreeRegion,
+                        identity_args,
+                    );
                     DefiningTy::Const(self.mir_def.to_def_id(), args)
                 } else {
-                    // FIXME this line creates a dependency between borrowck and typeck.
+                    // FIXME: this line creates a query dependency between borrowck and typeck.
                     //
                     // This is required for `AscribeUserType` canonical query, which will call
                     // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
@@ -659,7 +670,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         InlineConstArgsParts { parent_args: identity_args, ty },
                     )
                     .args;
-                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
+                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(
+                        NllRegionVariableOrigin::FreeRegion,
+                        args,
+                    );
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
                 }
             }
@@ -680,30 +694,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-        let fr_args = match defining_ty {
-            DefiningTy::Closure(_, args)
-            | DefiningTy::CoroutineClosure(_, args)
-            | DefiningTy::Coroutine(_, args)
-            | DefiningTy::InlineConst(_, args) => {
-                // In the case of closures, we rely on the fact that
-                // the first N elements in the ClosureArgs are
-                // inherited from the `typeck_root_def_id`.
-                // Therefore, when we zip together (below) with
-                // `identity_args`, we will get only those regions
-                // that correspond to early-bound regions declared on
-                // the `typeck_root_def_id`.
-                assert!(args.len() >= identity_args.len());
-                assert_eq!(args.regions().count(), identity_args.regions().count());
-                args
-            }
-
-            DefiningTy::FnDef(_, args) | DefiningTy::Const(_, args) => args,
-
-            DefiningTy::GlobalAsm(_) => ty::List::empty(),
-        };
+        let renumbered_args = defining_ty.args();
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
-        let arg_mapping = iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
+        // This relies on typeck roots being generics_of parents with their
+        // parameters at the start of nested bodies' generics.
+        assert!(renumbered_args.len() >= identity_args.len());
+        let arg_mapping =
+            iter::zip(identity_args.regions(), renumbered_args.regions().map(|r| r.as_var()));
 
         UniversalRegionIndices {
             indices: global_mapping.chain(arg_mapping).collect(),
@@ -843,8 +841,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         };
 
         // FIXME(#129952): We probably want a more principled approach here.
-        if let Err(terr) = inputs_and_output.skip_binder().error_reported() {
-            self.infcx.set_tainted_by_errors(terr);
+        if let Err(e) = inputs_and_output.error_reported() {
+            self.infcx.set_tainted_by_errors(e);
         }
 
         inputs_and_output
@@ -856,7 +854,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NllRegionVariableOrigin,
+        origin: NllRegionVariableOrigin<'tcx>,
         value: T,
     ) -> T
     where

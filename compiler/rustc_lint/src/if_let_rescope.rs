@@ -11,9 +11,8 @@ use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::{FutureIncompatibilityReason, LintId};
+use rustc_session::lint::{LintId, fcw};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
 
@@ -86,8 +85,7 @@ declare_lint! {
     "`if let` assigns a shorter lifetime to temporary values being pattern-matched against in Edition 2024 and \
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>",
+        reason: fcw!(EditionSemanticsChange 2024 "temporary-if-let-scope"),
     };
 }
 

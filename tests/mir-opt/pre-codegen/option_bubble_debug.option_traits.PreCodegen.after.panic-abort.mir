@@ -34,7 +34,7 @@ fn option_traits(_1: Option<u32>) -> Option<u32> {
     }
 
     bb3: {
-        _0 = <Option<u32> as FromResidual<Option<Infallible>>>::from_residual(const Option::<Infallible>::None) -> [return: bb4, unwind unreachable];
+        _0 = ops::try_trait::residual_into_try_type::<Option<Infallible>, u32>(const Option::<Infallible>::None) -> [return: bb4, unwind unreachable];
     }
 
     bb4: {

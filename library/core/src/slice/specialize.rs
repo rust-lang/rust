@@ -1,3 +1,6 @@
+use crate::clone::TrivialClone;
+use crate::ptr;
+
 pub(super) trait SpecFill<T> {
     fn spec_fill(&mut self, value: T);
 }
@@ -14,10 +17,12 @@ impl<T: Clone> SpecFill<T> for [T] {
     }
 }
 
-impl<T: Copy> SpecFill<T> for [T] {
+impl<T: TrivialClone> SpecFill<T> for [T] {
     default fn spec_fill(&mut self, value: T) {
         for item in self.iter_mut() {
-            *item = value;
+            // SAFETY: `TrivialClone` indicates that this is equivalent to
+            // calling `Clone::clone`
+            *item = unsafe { ptr::read(&value) };
         }
     }
 }

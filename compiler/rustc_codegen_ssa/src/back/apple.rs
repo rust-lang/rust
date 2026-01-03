@@ -6,7 +6,7 @@ use itertools::Itertools;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::Session;
 pub(super) use rustc_target::spec::apple::OSVersion;
-use rustc_target::spec::{Arch, Target};
+use rustc_target::spec::{Arch, Env, Os, Target};
 use tracing::debug;
 
 use crate::errors::{XcrunError, XcrunSdkPathWarning};
@@ -17,35 +17,35 @@ mod tests;
 
 /// The canonical name of the desired SDK for a given target.
 pub(super) fn sdk_name(target: &Target) -> &'static str {
-    match (&*target.os, &*target.env) {
-        ("macos", "") => "MacOSX",
-        ("ios", "") => "iPhoneOS",
-        ("ios", "sim") => "iPhoneSimulator",
+    match (&target.os, &target.env) {
+        (Os::MacOs, Env::Unspecified) => "MacOSX",
+        (Os::IOs, Env::Unspecified) => "iPhoneOS",
+        (Os::IOs, Env::Sim) => "iPhoneSimulator",
         // Mac Catalyst uses the macOS SDK
-        ("ios", "macabi") => "MacOSX",
-        ("tvos", "") => "AppleTVOS",
-        ("tvos", "sim") => "AppleTVSimulator",
-        ("visionos", "") => "XROS",
-        ("visionos", "sim") => "XRSimulator",
-        ("watchos", "") => "WatchOS",
-        ("watchos", "sim") => "WatchSimulator",
+        (Os::IOs, Env::MacAbi) => "MacOSX",
+        (Os::TvOs, Env::Unspecified) => "AppleTVOS",
+        (Os::TvOs, Env::Sim) => "AppleTVSimulator",
+        (Os::VisionOs, Env::Unspecified) => "XROS",
+        (Os::VisionOs, Env::Sim) => "XRSimulator",
+        (Os::WatchOs, Env::Unspecified) => "WatchOS",
+        (Os::WatchOs, Env::Sim) => "WatchSimulator",
         (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
     }
 }
 
 pub(super) fn macho_platform(target: &Target) -> u32 {
-    match (&*target.os, &*target.env) {
-        ("macos", _) => object::macho::PLATFORM_MACOS,
-        ("ios", "macabi") => object::macho::PLATFORM_MACCATALYST,
-        ("ios", "sim") => object::macho::PLATFORM_IOSSIMULATOR,
-        ("ios", _) => object::macho::PLATFORM_IOS,
-        ("watchos", "sim") => object::macho::PLATFORM_WATCHOSSIMULATOR,
-        ("watchos", _) => object::macho::PLATFORM_WATCHOS,
-        ("tvos", "sim") => object::macho::PLATFORM_TVOSSIMULATOR,
-        ("tvos", _) => object::macho::PLATFORM_TVOS,
-        ("visionos", "sim") => object::macho::PLATFORM_XROSSIMULATOR,
-        ("visionos", _) => object::macho::PLATFORM_XROS,
-        _ => unreachable!("tried to get Mach-O platform for non-Apple target"),
+    match (&target.os, &target.env) {
+        (Os::MacOs, _) => object::macho::PLATFORM_MACOS,
+        (Os::IOs, Env::MacAbi) => object::macho::PLATFORM_MACCATALYST,
+        (Os::IOs, Env::Sim) => object::macho::PLATFORM_IOSSIMULATOR,
+        (Os::IOs, _) => object::macho::PLATFORM_IOS,
+        (Os::WatchOs, Env::Sim) => object::macho::PLATFORM_WATCHOSSIMULATOR,
+        (Os::WatchOs, _) => object::macho::PLATFORM_WATCHOS,
+        (Os::TvOs, Env::Sim) => object::macho::PLATFORM_TVOSSIMULATOR,
+        (Os::TvOs, _) => object::macho::PLATFORM_TVOS,
+        (Os::VisionOs, Env::Sim) => object::macho::PLATFORM_XROSSIMULATOR,
+        (Os::VisionOs, _) => object::macho::PLATFORM_XROS,
+        (os, env) => unreachable!("invalid os '{os}' / env '{env}' combination for Apple target"),
     }
 }
 

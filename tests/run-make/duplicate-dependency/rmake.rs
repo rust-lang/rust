@@ -11,7 +11,7 @@ fn rustc_with_common_args() -> Rustc {
 
 fn main() {
     rustc_with_common_args()
-        .input("foo-v1.rs")
+        .input(cwd().join("foo-v1.rs"))
         .crate_type("rlib")
         .crate_name("foo")
         .extra_filename("-v1")
@@ -19,7 +19,7 @@ fn main() {
         .run();
 
     rustc_with_common_args()
-        .input("foo-v2.rs")
+        .input(cwd().join("foo-v2.rs"))
         .crate_type("rlib")
         .crate_name("foo")
         .extra_filename("-v2")
@@ -27,7 +27,7 @@ fn main() {
         .run();
 
     rustc_with_common_args()
-        .input("re-export-foo.rs")
+        .input(cwd().join("re-export-foo.rs"))
         .crate_type("rlib")
         .extern_("foo", rust_lib_name("foo-v2"))
         .run();

@@ -55,7 +55,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
             path.gen_source_code(
                 &scope,
                 &mut formatter,
-                ctx.config.find_path_config(ctx.sema.is_nightly(scope.module().krate())),
+                ctx.config.find_path_config(ctx.sema.is_nightly(scope.module().krate(ctx.sema.db))),
                 scope.krate().to_display_target(ctx.db()),
             )
             .ok()

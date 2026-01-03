@@ -110,7 +110,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let mut inline_refs_for_file = |file_id: EditionedFileId, refs: Vec<FileReference>| {
                 let file_id = file_id.file_id(ctx.db());
                 builder.edit_file(file_id);
-                let call_krate = ctx.sema.file_to_module_def(file_id).map(|it| it.krate());
+                let call_krate = ctx.sema.file_to_module_def(file_id).map(|it| it.krate(ctx.db()));
                 let count = refs.len();
                 // The collects are required as we are otherwise iterating while mutating 🙅‍♀️🙅‍♂️
                 let (name_refs, name_refs_use) = split_refs_and_uses(builder, refs, Some);
@@ -196,7 +196,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
     let call_info = CallInfo::from_name_ref(
         name_ref.clone(),
-        ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate().into(),
+        ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate(ctx.db()).into(),
     )?;
     let (function, label) = match &call_info.node {
         ast::CallableExpr::Call(call) => {

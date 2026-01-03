@@ -8,85 +8,85 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_rem1_call1[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_rem1_call3[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_rem2_call1[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call1[...]
-// gdb-command:next 2
-// gdb-check:[...]#loc_rem2_call3[...]
-// gdb-command:step 2
-// gdb-command:frame
-// gdb-check:[...]#loc_call3_println[...]
-// gdb-command:next 3
-// gdb-command:frame
-// gdb-check:[...]#loc_after_rem[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_add1_call1[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_add_macro[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_add1_call3[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_add2_call1[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call1[...]
-// gdb-command:next 2
-// gdb-check:[...]#loc_add_macro[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call2[...]
-// gdb-command:next 2
-// gdb-command:frame
-// gdb-check:[...]#loc_add2_call3[...]
-// gdb-command:step 2
-// gdb-command:frame
-// gdb-check:[...]#loc_call3_println[...]
-// gdb-command:next 3
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder1_call2[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder1_call3[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder1_call1[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder2_call2[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call2[...]
-// gdb-command:next 2
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder2_call3[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call3[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call3_println[...]
-// gdb-command:next 3
-// gdb-command:frame
-// gdb-check:[...]#loc_reorder2_call1[...]
-// gdb-command:step
-// gdb-command:frame
-// gdb-check:[...]#loc_call1[...]
-// gdb-command:next 2
-// gdb-command:continue
+//@ gdb-command:run
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_rem1_call1[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_rem1_call3[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_rem2_call1[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call1[...]
+//@ gdb-command:next 2
+//@ gdb-check:[...]#loc_rem2_call3[...]
+//@ gdb-command:step 2
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call3_println[...]
+//@ gdb-command:next 3
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_after_rem[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_add1_call1[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_add_macro[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_add1_call3[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_add2_call1[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call1[...]
+//@ gdb-command:next 2
+//@ gdb-check:[...]#loc_add_macro[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call2[...]
+//@ gdb-command:next 2
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_add2_call3[...]
+//@ gdb-command:step 2
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call3_println[...]
+//@ gdb-command:next 3
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder1_call2[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder1_call3[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder1_call1[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder2_call2[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call2[...]
+//@ gdb-command:next 2
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder2_call3[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call3[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call3_println[...]
+//@ gdb-command:next 3
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_reorder2_call1[...]
+//@ gdb-command:step
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc_call1[...]
+//@ gdb-command:next 2
+//@ gdb-command:continue
 
 #[inline(never)]
 fn myprintln_impl(text: &str) {

@@ -7,6 +7,9 @@ use std::path::PathBuf;
 
 use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
     // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
     // actual path is `proc-macro-srv-cli`
@@ -133,7 +136,7 @@ pub(crate) fn match_paths_to_steps_and_run(
 
     if paths.is_empty() || builder.config.include_default_paths {
         for StepExtra { desc, should_run } in &steps {
-            if desc.default && should_run.is_really_default() {
+            if (desc.is_default_step_fn)(builder) {
                 desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
             }
         }

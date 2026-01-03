@@ -28,6 +28,8 @@ LL | | }
 help: change this to
    |
 LL -     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+LL -         todo!();
+LL -     }
 LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
    |
 

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:unnamed_pub_trait_source.rs
 
 /*

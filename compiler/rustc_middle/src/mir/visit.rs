@@ -775,10 +775,6 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::NullaryOp(_op, ty) => {
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                    }
-
                     Rvalue::Aggregate(kind, operands) => {
                         let kind = &$($mutability)? **kind;
                         match kind {
@@ -849,6 +845,7 @@ macro_rules! make_mir_visitor {
                     Operand::Constant(constant) => {
                         self.visit_const_operand(constant, location);
                     }
+                    Operand::RuntimeChecks(_) => {}
                 }
             }
 
@@ -974,10 +971,7 @@ macro_rules! make_mir_visitor {
                 self.visit_span($(& $mutability)? *span);
                 match const_ {
                     Const::Ty(_, ct) => self.visit_ty_const($(&$mutability)? *ct, location),
-                    Const::Val(_, ty) => {
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                    }
-                    Const::Unevaluated(_, ty) => {
+                    Const::Val(_, ty) | Const::Unevaluated(_, ty) => {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
                 }

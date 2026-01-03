@@ -7,13 +7,13 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#one_callsite[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-command:continue
+//@ gdb-command:run
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#one_callsite[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-command:continue
 
 fn one() {
     println!("one");

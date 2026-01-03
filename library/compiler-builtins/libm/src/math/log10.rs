@@ -17,8 +17,6 @@
  *    log10(x) = (f - f*f/2 + r)/log(10) + k*log10(2)
  */
 
-use core::f64;
-
 const IVLN10HI: f64 = 4.34294481878168880939e-01; /* 0x3fdbcb7b, 0x15200000 */
 const IVLN10LO: f64 = 2.50829467116452752298e-11; /* 0x3dbb9438, 0xca9aadd5 */
 const LOG10_2HI: f64 = 3.01029995663611771306e-01; /* 0x3FD34413, 0x509F6000 */

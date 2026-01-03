@@ -10,16 +10,6 @@ use crate::mem::SizedTypeProperties;
 use crate::ptr::{Alignment, NonNull};
 use crate::{assert_unsafe_precondition, fmt, mem};
 
-// While this function is used in one place and its implementation
-// could be inlined, the previous attempts to do so made rustc
-// slower:
-//
-// * https://github.com/rust-lang/rust/pull/72189
-// * https://github.com/rust-lang/rust/pull/79827
-const fn size_align<T>() -> (usize, usize) {
-    (size_of::<T>(), align_of::<T>())
-}
-
 /// Layout of a block of memory.
 ///
 /// An instance of `Layout` describes a particular layout of memory.
@@ -75,6 +65,7 @@ impl Layout {
         }
     }
 
+    #[inline]
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
         let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
@@ -168,11 +159,7 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn new<T>() -> Self {
-        let (size, align) = size_align::<T>();
-        // SAFETY: if the type is instantiated, rustc already ensures that its
-        // layout is valid. Use the unchecked constructor to avoid inserting a
-        // panicking codepath that needs to be optimized out.
-        unsafe { Layout::from_size_align_unchecked(size, align) }
+        <T as SizedTypeProperties>::LAYOUT
     }
 
     /// Produces layout describing a record that could be used to

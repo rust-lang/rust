@@ -1,3 +1,5 @@
+// Check that the never type can be used in various positions.
+//
 //@ run-pass
 
 #![feature(never_type)]

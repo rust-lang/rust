@@ -132,28 +132,45 @@ pub struct AttributeTemplate {
     pub docs: Option<&'static str>,
 }
 
+pub enum AttrSuggestionStyle {
+    /// The suggestion is styled for a normal attribute.
+    /// The `AttrStyle` determines whether this is an inner or outer attribute.
+    Attribute(AttrStyle),
+    /// The suggestion is styled for an attribute embedded into another attribute.
+    /// For example, attributes inside `#[cfg_attr(true, attr(...)]`.
+    EmbeddedAttribute,
+    /// The suggestion is styled for macros that are parsed with attribute parsers.
+    /// For example, the `cfg!(predicate)` macro.
+    Macro,
+}
+
 impl AttributeTemplate {
     pub fn suggestions(
         &self,
-        style: Option<AttrStyle>,
+        style: AttrSuggestionStyle,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
-        let mut suggestions = vec![];
-        let (start, end) = match style {
-            Some(AttrStyle::Outer) => ("#[", "]"),
-            Some(AttrStyle::Inner) => ("#![", "]"),
-            None => ("", ""),
+        let (start, macro_call, end) = match style {
+            AttrSuggestionStyle::Attribute(AttrStyle::Outer) => ("#[", "", "]"),
+            AttrSuggestionStyle::Attribute(AttrStyle::Inner) => ("#![", "", "]"),
+            AttrSuggestionStyle::Macro => ("", "!", ""),
+            AttrSuggestionStyle::EmbeddedAttribute => ("", "", ""),
         };
+
+        let mut suggestions = vec![];
+
         if self.word {
+            debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             suggestions.push(format!("{start}{name}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!("{start}{name}({descr}){end}"));
+                suggestions.push(format!("{start}{name}{macro_call}({descr}){end}"));
             }
         }
         suggestions.extend(self.one_of.iter().map(|&word| format!("{start}{name}({word}){end}")));
         if let Some(descr) = self.name_value_str {
+            debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
                 suggestions.push(format!("{start}{name} = \"{descr}\"{end}"));
             }
@@ -944,6 +961,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
+    gated!(
+        rustc_eii_extern_item, Normal, template!(Word),
+        ErrorFollowing, EncodeCrossCrate::Yes, eii_internals,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
+    ),
     rustc_attr!(
         rustc_allowed_through_unstable_modules, Normal, template!(NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,
@@ -1101,6 +1123,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: &[r#""...""#]), DuplicatesOk,
         EncodeCrossCrate::Yes,
     ),
+    rustc_attr!(
+        rustc_offload_kernel, Normal,
+        template!(Word), DuplicatesOk,
+        EncodeCrossCrate::Yes,
+    ),
     // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
     // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
     // or unstable code directly because `sym::cfg_(attr_)trace` are not valid identifiers, they
@@ -1251,6 +1278,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations."
     ),
     rustc_attr!(
+        rustc_should_not_be_called_on_const_items, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts."
+    ),
+    rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference."
@@ -1389,6 +1421,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_force_inline]` forces a free function to be inlined"
+    ),
+    rustc_attr!(
+        rustc_scalable_vector, Normal, template!(List: &["count"]), WarnFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_scalable_vector]` defines a scalable vector type"
     ),
 
     // ==========================================================================
@@ -1559,9 +1595,10 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         map
     });
 
-pub fn is_stable_diagnostic_attribute(sym: Symbol, _features: &Features) -> bool {
+pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
     match sym {
         sym::on_unimplemented | sym::do_not_recommend => true,
+        sym::on_const => features.diagnostic_on_const(),
         _ => false,
     }
 }

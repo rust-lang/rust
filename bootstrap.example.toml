@@ -59,7 +59,10 @@
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
 # Set this to `true` to download if CI llvm available otherwise it builds
-# from `src/llvm-project`.
+# from `src/llvm-project`. If you set it to `true`, it's safe and time-saving to run
+# `git submodule deinit src/llvm-project` to avoid git updating the llvm-project submodule
+# when building compiler locally.
+#
 #
 # Set this to `"if-unchanged"` to download only if the llvm-project has not
 # been modified. You can also use this if you are unsure whether you're on a
@@ -102,6 +105,9 @@
 
 # Whether to build LLVM with support for it's gpu offload runtime.
 #llvm.offload = false
+
+# Absolute path to the directory containing ClangConfig.cmake
+#llvm.offload-clang-dir = ""
 
 # When true, link libstdc++ statically into the rustc_llvm.
 # This is useful if you don't want to use the dynamic version of that
@@ -188,6 +194,31 @@
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
 #gcc.download-ci-gcc = false
 
+# Provide a directory of prebuilt libgccjit.so dylibs for given (host, target) compilation pairs.
+# This is useful when you want to cross-compile `rustc` to another target since GCC is not a
+# multi-target compiler.
+# You have to use a directory structure that looks like this:
+# `<libgccjit-libs-dir>/<host>/<target>/libgccjit.so`.
+# For example:
+#
+# ```
+# <libgccjit-libs-dir>
+# ├── m68k-unknown-linux-gnu
+# │   └── m68k-unknown-linux-gnu
+# │       └── libgccjit.so
+# └── x86_64-unknown-linux-gnu
+#     ├── m68k-unknown-linux-gnu
+#     │   └── libgccjit.so
+#     └── x86_64-unknown-linux-gnu
+#         └── libgccjit.so
+# ```
+# The directory above would allow you to cross-compile rustc from x64 to m68k
+#
+# Note that this option has priority over `gcc.download-ci-gcc`.
+# If you set both, bootstrap will first try to load libgccjit.so from this directory.
+# Only if it isn't found, it will try to download it from CI or build it locally.
+#gcc.libgccjit-libs-dir = "/path/to/libgccjit-libs-dir"
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -216,6 +247,11 @@
 # A descriptive string to be appended to version output (e.g., `rustc --version`),
 # which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
 # supplementary build information, like distro-specific package versions.
+#
+# IMPORTANT: Changing this value changes crate IDs and symbol name mangling, making
+# compiled artifacts incompatible. PGO profiles cannot be reused across different
+# descriptions, and incremental compilation caches are invalidated. Keep this value
+# consistent when reusing build artifacts.
 #
 # The Rust compiler will differentiate between versions of itself, including
 # based on this string, which means that if you wish to be compatible with
@@ -312,15 +348,15 @@
 # target when running tests, otherwise this can be omitted.
 #build.nodejs = "node"
 
-# The npm executable to use. Note that this is used for rustdoc-gui tests,
-# otherwise this can be omitted.
+# The yarn executable to use. Note that this is used for rustdoc-gui tests and
+# tidy js extra-checks, otherwise this can be omitted.
 #
-# Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
+# Under Windows this should be `yarn.cmd` or path to it (verified on nodejs v18.06), or
 # error will be emitted.
-#build.npm = "npm"
+#build.yarn = "yarn"
 
 # Python interpreter to use for various tasks throughout the build, notably
-# rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
+# rustdoc tests, and some dist bits and pieces.
 #
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"
@@ -705,6 +741,12 @@
 # desired in distributions, for example.
 #rust.rpath = true
 
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags but not over per target rustflags nor env. vars. like RUSTFLAGS.
+# Applies to all stages and targets.
+#
+#rust.rustflags = []
+
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #rust.strip = false
 
@@ -827,6 +869,11 @@
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #rust.new-symbol-mangling = true|false (see comment)
+
+# Size limit in bytes for move/copy annotations (-Zannotate-moves). Only types
+# at or above this size will be annotated. If not specified, uses the default
+# limit (65 bytes).
+#rust.annotate-moves-size-limit = 65
 
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
@@ -1004,6 +1051,12 @@
 # This option supports enable `rpath` in each target independently,
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
+
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags and `rust.rustflags` but not over env. vars. like RUSTFLAGS.
+# Applies to all stages.
+#
+#rustflags = rust.rustflags
 
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the

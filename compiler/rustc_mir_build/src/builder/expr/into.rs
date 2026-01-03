@@ -32,7 +32,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
         // just use the name `this` uniformly
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
@@ -784,7 +784,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. }
-            | ExprKind::OffsetOf { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above

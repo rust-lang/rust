@@ -22,6 +22,7 @@ fn check_(
     expect: expect_test::Expect,
     parse: parser::TopEntryPoint,
 ) {
+    let db = salsa::DatabaseImpl::default();
     let decl_tt = &syntax_bridge::parse_to_token_tree(
         def_edition,
         SpanAnchor {
@@ -49,14 +50,15 @@ fn check_(
     )
     .unwrap();
     let res = mac.expand(
+        &db,
         &arg_tt,
         |_| (),
+        crate::MacroCallStyle::FnLike,
         Span {
             range: TextRange::up_to(TextSize::of(arg)),
             anchor: call_anchor,
             ctx: SyntaxContext::root(Edition::CURRENT),
         },
-        def_edition,
     );
     let mut expect_res = String::new();
     if let Some(err) = res.err {
@@ -65,12 +67,8 @@ fn check_(
     if render_debug {
         format_to!(expect_res, "{:#?}\n\n", res.value.0);
     }
-    let (node, _) = syntax_bridge::token_tree_to_syntax_node(
-        &res.value.0,
-        parse,
-        &mut |_| def_edition,
-        def_edition,
-    );
+    let (node, _) =
+        syntax_bridge::token_tree_to_syntax_node(&res.value.0, parse, &mut |_| def_edition);
     format_to!(
         expect_res,
         "{}",

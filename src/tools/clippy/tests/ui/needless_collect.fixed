@@ -20,6 +20,10 @@ fn main() {
     }
     sample.iter().cloned().any(|x| x == 1);
     //~^ needless_collect
+
+    let _ = sample.iter().cloned().nth(1).unwrap();
+    //~^ needless_collect
+
     // #7164 HashMap's and BTreeMap's `len` usage should not be linted
     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
     sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().len();
@@ -209,4 +213,9 @@ mod issue8055_regression {
         .collect::<Vec<&i32>>()
         .len();
     }
+}
+
+fn issue16270() {
+    // Do not lint, `..` implements `Index` but is not `usize`
+    _ = &(1..3).collect::<Vec<i32>>()[..];
 }

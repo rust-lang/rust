@@ -5,6 +5,7 @@
 //@ [aarch64-sve2] needs-llvm-components: aarch64
 //@ build-pass
 //@ add-minicore
+//@ ignore-backends: gcc
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, staged_api)]

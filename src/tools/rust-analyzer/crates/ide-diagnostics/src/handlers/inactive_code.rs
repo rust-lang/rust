@@ -95,7 +95,7 @@ fn f() {
   //^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no is disabled
 
     #[cfg(no)] #[cfg(no2)] mod m;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no and no2 are disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no is disabled
 
     #[cfg(all(not(a), b))] enum E {}
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: b is disabled
@@ -130,7 +130,6 @@ trait Bar {
     /// Tests that `cfg` attributes behind `cfg_attr` is handled properly.
     #[test]
     fn inactive_via_cfg_attr() {
-        cov_mark::check!(cfg_attr_active);
         check(
             r#"
     #[cfg_attr(not(never), cfg(no))] fn f() {}

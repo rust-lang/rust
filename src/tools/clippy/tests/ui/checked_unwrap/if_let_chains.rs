@@ -1,5 +1,5 @@
 //@require-annotations-for-level: ERROR
-#![deny(clippy::unnecessary_unwrap)]
+#![warn(clippy::unnecessary_unwrap)]
 
 #[clippy::msrv = "1.85"]
 fn if_let_chains_unsupported(a: Option<u32>, b: Option<u32>) {

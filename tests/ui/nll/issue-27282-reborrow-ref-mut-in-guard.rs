@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Issue 27282: This is a variation on issue-27282-move-ref-mut-into-guard.rs
 //
 // It reborrows instead of moving the `ref mut` pattern borrow. This

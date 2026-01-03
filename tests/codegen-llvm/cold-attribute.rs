@@ -20,7 +20,7 @@ pub async fn async_block() {
         f.await;
     }
     x(
-        // CHECK-LABEL: ; cold_attribute::async_block::{{{{closure}}}}::{{{{closure}}}}
+        // CHECK-LABEL: ; cold_attribute::async_block::{closure#0}::{closure#0}
         // CHECK-NEXT: Function Attrs: cold {{.*}}
         #[cold]
         async {},
@@ -33,7 +33,7 @@ pub fn closure() {
         f()
     }
     x(
-        // CHECK-LABEL: ; cold_attribute::closure::{{{{closure}}}}
+        // CHECK-LABEL: ; cold_attribute::closure::{closure#0}
         // CHECK-NEXT: Function Attrs: cold {{.*}}
         #[cold]
         || {},
@@ -43,14 +43,14 @@ pub fn closure() {
 pub struct S;
 
 impl S {
-    // CHECK-LABEL: ; cold_attribute::S::method
+    // CHECK-LABEL: ; <cold_attribute::S>::method
     // CHECK-NEXT: Function Attrs: cold {{.*}}
     #[cold]
     pub fn method(&self) {}
 }
 
 pub trait Trait {
-    // CHECK-LABEL: ; cold_attribute::Trait::trait_fn
+    // CHECK-LABEL: ; <cold_attribute::S as cold_attribute::Trait>::trait_fn
     // CHECK-NEXT: Function Attrs: cold {{.*}}
     #[cold]
     fn trait_fn(&self) {}

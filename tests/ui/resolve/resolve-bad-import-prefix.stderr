@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `Nonexistent`
-  --> $DIR/resolve-bad-import-prefix.rs:12:5
+  --> $DIR/resolve-bad-import-prefix.rs:13:5
    |
 LL | use Nonexistent::{};
    |     ^^^^^^^^^^^^^^^ no `Nonexistent` in the root

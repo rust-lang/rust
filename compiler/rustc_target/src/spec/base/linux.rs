@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use crate::spec::{RelroLevel, SplitDebuginfo, TargetOptions, cvs};
+use crate::spec::{Os, RelroLevel, SplitDebuginfo, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "linux".into(),
+        os: Os::Linux,
         dynamic_linking: true,
         families: cvs!["unix"],
         has_rpath: true,

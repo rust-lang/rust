@@ -147,9 +147,16 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     // that is allowed to leak and memory that is not.
     conf->warnUnfreedMemory = false;
 
-    // FIXME(genmc,error handling): This function currently exits on error, but will return an
-    // error value in the future. The return value should be checked once this change is made.
-    checkConfig(*conf);
+    // Validate the config and exit if there are any errors
+    std::vector<std::string> warnings;
+    auto config_valid = conf->validate(warnings);
+    for (const auto& w : warnings)
+        WARN("{}", w);
+    if (auto* errors = std::get_if<ConfigErrorList>(&config_valid); errors) {
+        for (const auto& e : *errors)
+            LOG(VerbosityLevel::Error, "{}", e);
+        exit(EUSER);
+    }
 
     // Create the actual driver and Miri-GenMC communication shim.
     auto driver = std::make_unique<MiriGenmcShim>(std::move(conf), mode);

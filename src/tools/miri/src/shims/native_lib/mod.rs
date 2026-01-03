@@ -256,7 +256,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 match evt {
                     AccessEvent::Read(_) => {
                         // If a provenance was read by the foreign code, expose it.
-                        for prov in alloc.provenance().get_range(this, overlap.into()) {
+                        for (_prov_range, prov) in
+                            alloc.provenance().get_range(overlap.into(), this)
+                        {
                             this.expose_provenance(prov)?;
                         }
                     }
@@ -321,7 +323,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Expose all provenances in the allocation within the byte range of the struct, if
                 // any. These pointers are being directly passed to native code by-value.
                 let alloc = this.get_alloc_raw(id)?;
-                for prov in alloc.provenance().get_range(this, range.clone().into()) {
+                for (_prov_range, prov) in alloc.provenance().get_range(range.clone().into(), this)
+                {
                     expose(prov)?;
                 }
                 // Read the bytes that make up this argument. We cannot use the normal getter as
@@ -456,12 +459,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         // Get the pointer to the function in the shared object file if it exists.
-        let code_ptr = match this.get_func_ptr_explicitly_from_lib(link_name) {
-            Some(ptr) => ptr,
-            None => {
-                // Shared object file does not export this function -- try the shims next.
-                return interp_ok(false);
-            }
+        let Some(code_ptr) = this.get_func_ptr_explicitly_from_lib(link_name) else {
+            // Shared object file does not export this function -- try the shims next.
+            return interp_ok(false);
         };
 
         // Do we have ptrace?

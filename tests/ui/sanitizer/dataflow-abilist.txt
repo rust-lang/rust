@@ -491,6 +491,8 @@ fun:__dfso_*=discard
 
 # Rust functions.
 fun:_ZN4core*=uninstrumented
+fun:_R*4core*=uninstrumented
 fun:_ZN3std*=uninstrumented
+fun:_R*3std*=uninstrumented
 fun:rust_eh_personality=uninstrumented
 fun:_R*__rustc*=uninstrumented

@@ -7,7 +7,7 @@ pub(crate) fn malformed_derive(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MalformedDerive,
 ) -> Diagnostic {
-    let display_range = ctx.sema.diagnostics_display_range(d.node);
+    let display_range = ctx.sema.diagnostics_display_range_for_range(d.range);
 
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0777"),
@@ -28,7 +28,7 @@ mod tests {
 //- minicore:derive
 mod __ {
     #[derive = "aaaa"]
-  //^^^^^^^^^^^^^^^^^^ error: malformed derive input, derive attributes are of the form `#[derive(Derive1, Derive2, ...)]`
+   // ^^^^^^^^^^^^^^^ error: malformed derive input, derive attributes are of the form `#[derive(Derive1, Derive2, ...)]`
     struct Foo;
 }
             "#,

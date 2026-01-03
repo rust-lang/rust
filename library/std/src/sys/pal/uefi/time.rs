@@ -1,5 +1,7 @@
 use crate::time::Duration;
 
+const SECS_IN_MINUTE: u64 = 60;
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
 
@@ -22,7 +24,8 @@ pub const UNIX_EPOCH: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     daylight: 0,
     pad1: 0,
     pad2: 0,
-});
+})
+.unwrap();
 
 const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     year: 9999,
@@ -36,7 +39,8 @@ const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     daylight: 0,
     pad1: 0,
     pad2: 0,
-});
+})
+.unwrap();
 
 impl Instant {
     pub fn now() -> Instant {
@@ -66,18 +70,56 @@ impl Instant {
 }
 
 impl SystemTime {
-    pub(crate) const fn from_uefi(t: r_efi::efi::Time) -> Self {
-        Self(system_time_internal::from_uefi(&t))
+    pub const MAX: SystemTime = MAX_UEFI_TIME;
+
+    pub const MIN: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
+        year: 1900,
+        month: 1,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        nanosecond: 0,
+        timezone: -1440,
+        daylight: 0,
+        pad1: 0,
+        pad2: 0,
+    })
+    .unwrap();
+
+    pub(crate) const fn from_uefi(t: r_efi::efi::Time) -> Option<Self> {
+        match system_time_internal::from_uefi(&t) {
+            Some(x) => Some(Self(x)),
+            None => None,
+        }
     }
 
-    #[expect(dead_code)]
-    pub(crate) const fn to_uefi(self, timezone: i16, daylight: u8) -> Option<r_efi::efi::Time> {
-        system_time_internal::to_uefi(&self.0, timezone, daylight)
+    pub(crate) const fn to_uefi(
+        self,
+        timezone: i16,
+        daylight: u8,
+    ) -> Result<r_efi::efi::Time, i16> {
+        // system_time_internal::to_uefi requires a valid timezone. In case of unspecified timezone,
+        // we just pass 0 since it is assumed that no timezone related adjustments are required.
+        if timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
+            system_time_internal::to_uefi(&self.0, 0, daylight)
+        } else {
+            system_time_internal::to_uefi(&self.0, timezone, daylight)
+        }
+    }
+
+    /// Create UEFI Time with the closest timezone (minute offset) that still allows the time to be
+    /// represented.
+    pub(crate) fn to_uefi_loose(self, timezone: i16, daylight: u8) -> r_efi::efi::Time {
+        match self.to_uefi(timezone, daylight) {
+            Ok(x) => x,
+            Err(tz) => self.to_uefi(tz, daylight).unwrap(),
+        }
     }
 
     pub fn now() -> SystemTime {
-        system_time_internal::now()
-            .unwrap_or_else(|| panic!("time not implemented on this platform"))
+        Self::from_uefi(system_time_internal::now())
+            .expect("time incorrectly implemented on this platform")
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
@@ -104,24 +146,22 @@ pub(crate) mod system_time_internal {
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
 
-    const SECS_IN_MINUTE: u64 = 60;
     const SECS_IN_HOUR: u64 = SECS_IN_MINUTE * 60;
     const SECS_IN_DAY: u64 = SECS_IN_HOUR * 24;
-    const TIMEZONE_DELTA: u64 = 1440 * SECS_IN_MINUTE;
+    const SYSTEMTIME_TIMEZONE: i64 = -1440 * SECS_IN_MINUTE as i64;
 
-    pub fn now() -> Option<SystemTime> {
-        let runtime_services: NonNull<RuntimeServices> = helpers::runtime_services()?;
+    pub(crate) fn now() -> Time {
+        let runtime_services: NonNull<RuntimeServices> =
+            helpers::runtime_services().expect("Runtime services are not available");
         let mut t: MaybeUninit<Time> = MaybeUninit::uninit();
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_time)(t.as_mut_ptr(), crate::ptr::null_mut())
         };
         if r.is_error() {
-            return None;
+            panic!("time not implemented on this platform");
         }
 
-        let t = unsafe { t.assume_init() };
-
-        Some(SystemTime::from_uefi(t))
+        unsafe { t.assume_init() }
     }
 
     /// This algorithm is a modified form of the one described in the post
@@ -129,20 +169,22 @@ pub(crate) mod system_time_internal {
     ///
     /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
     /// epoch used in the original algorithm.
-    pub(crate) const fn from_uefi(t: &Time) -> Duration {
-        assert!(t.month <= 12 && t.month != 0);
-        assert!(t.year >= 1900 && t.year <= 9999);
-        assert!(t.day <= 31 && t.day != 0);
-
-        assert!(t.second < 60);
-        assert!(t.minute < 60);
-        assert!(t.hour < 24);
-        assert!(t.nanosecond < 1_000_000_000);
-
-        assert!(
-            (t.timezone <= 1440 && t.timezone >= -1440)
-                || t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE
-        );
+    pub(crate) const fn from_uefi(t: &Time) -> Option<Duration> {
+        if !(t.month <= 12
+            && t.month != 0
+            && t.year >= 1900
+            && t.year <= 9999
+            && t.day <= 31
+            && t.day != 0
+            && t.second < 60
+            && t.minute <= 60
+            && t.hour < 24
+            && t.nanosecond < 1_000_000_000
+            && ((t.timezone <= 1440 && t.timezone >= -1440)
+                || t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE))
+        {
+            return None;
+        }
 
         const YEAR_BASE: u32 = 4800; /* Before min year, multiple of 400. */
 
@@ -161,18 +203,16 @@ pub(crate) mod system_time_internal {
             + (t.minute as u64) * SECS_IN_MINUTE
             + (t.hour as u64) * SECS_IN_HOUR;
 
-        // Calculate the offset from 1/1/1900 at timezone -1440 min
-        let adjusted_localtime_epoc: u64 = localtime_epoch + TIMEZONE_DELTA;
-
-        let epoch: u64 = if t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
-            adjusted_localtime_epoc
+        let normalized_timezone = if t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
+            -SYSTEMTIME_TIMEZONE
         } else {
-            adjusted_localtime_epoc
-                .checked_add_signed((t.timezone as i64) * SECS_IN_MINUTE as i64)
-                .unwrap()
+            (t.timezone as i64) * SECS_IN_MINUTE as i64 - SYSTEMTIME_TIMEZONE
         };
 
-        Duration::new(epoch, t.nanosecond)
+        // Calculate the offset from 1/1/1900 at timezone -1440 min
+        let epoch = localtime_epoch.checked_add_signed(normalized_timezone).unwrap();
+
+        Some(Duration::new(epoch, t.nanosecond))
     }
 
     /// This algorithm is a modified version of the one described in the post:
@@ -180,16 +220,24 @@ pub(crate) mod system_time_internal {
     ///
     /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
     /// epoch used in the original algorithm.
-    pub(crate) const fn to_uefi(dur: &Duration, timezone: i16, daylight: u8) -> Option<Time> {
+    pub(crate) const fn to_uefi(dur: &Duration, timezone: i16, daylight: u8) -> Result<Time, i16> {
+        const MIN_IN_HOUR: u64 = 60;
+        const MIN_IN_DAY: u64 = MIN_IN_HOUR * 24;
+
         // Check timezone validity
         assert!(timezone <= 1440 && timezone >= -1440);
 
-        // FIXME(#126043): use checked_sub_signed once stabilized
-        let secs =
-            dur.as_secs().checked_add_signed((-timezone as i64) * SECS_IN_MINUTE as i64).unwrap();
-
         // Convert to seconds since 1900-01-01-00:00:00 in timezone.
-        let Some(secs) = secs.checked_sub(TIMEZONE_DELTA) else { return None };
+        let Some(secs) = dur
+            .as_secs()
+            .checked_add_signed(SYSTEMTIME_TIMEZONE - (timezone as i64 * SECS_IN_MINUTE as i64))
+        else {
+            // If the current timezone cannot be used, find the closest timezone that will allow the
+            // conversion to succeed.
+            let new_tz = (dur.as_secs() / SECS_IN_MINUTE) as i16
+                + (SYSTEMTIME_TIMEZONE / SECS_IN_MINUTE as i64) as i16;
+            return Err(new_tz);
+        };
 
         let days = secs / SECS_IN_DAY;
         let remaining_secs = secs % SECS_IN_DAY;
@@ -212,9 +260,10 @@ pub(crate) mod system_time_internal {
         let minute = ((remaining_secs % SECS_IN_HOUR) / SECS_IN_MINUTE) as u8;
         let second = (remaining_secs % SECS_IN_MINUTE) as u8;
 
-        // Check Bounds
-        if y >= 1900 && y <= 9999 {
-            Some(Time {
+        // At this point, invalid time will be greater than MAX representable time. It cannot be less
+        // than minimum time since we already take care of that case above.
+        if y <= 9999 {
+            Ok(Time {
                 year: y as u16,
                 month: m as u8,
                 day: d as u8,
@@ -228,7 +277,17 @@ pub(crate) mod system_time_internal {
                 pad2: 0,
             })
         } else {
-            None
+            assert!(y == 10000);
+            assert!(m == 1);
+
+            let delta = ((d - 1) as u64 * MIN_IN_DAY
+                + hour as u64 * MIN_IN_HOUR
+                + minute as u64
+                + if second == 0 { 0 } else { 1 }) as i16;
+            let new_tz = timezone + delta;
+
+            assert!(new_tz <= 1440 && new_tz >= -1440);
+            Err(new_tz)
         }
     }
 }

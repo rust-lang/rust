@@ -6,7 +6,7 @@ use crate::{
 };
 use hir::FileRange;
 use ide_db::{
-    EditionedFileId, FileId, FxHashSet,
+    FileId, FxHashSet, LocalRoots,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
 };
@@ -135,11 +135,7 @@ impl<'db> MatchFinder<'db> {
         // seems to get put into a single source root.
         let mut files = Vec::new();
         self.search_files_do(|file_id| {
-            files.push(
-                self.sema
-                    .attach_first_edition(file_id)
-                    .unwrap_or_else(|| EditionedFileId::current_edition(self.sema.db, file_id)),
-            );
+            files.push(self.sema.attach_first_edition(file_id));
         });
         SearchScope::files(&files)
     }
@@ -156,8 +152,7 @@ impl<'db> MatchFinder<'db> {
         if self.restrict_ranges.is_empty() {
             // Unrestricted search.
             use ide_db::base_db::SourceDatabase;
-            use ide_db::symbol_index::SymbolsDatabase;
-            for &root in self.sema.db.local_roots().iter() {
+            for &root in LocalRoots::get(self.sema.db).roots(self.sema.db).iter() {
                 let sr = self.sema.db.source_root(root).source_root(self.sema.db);
                 for file_id in sr.iter() {
                     callback(file_id);

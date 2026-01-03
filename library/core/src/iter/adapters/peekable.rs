@@ -331,6 +331,8 @@ impl<I: Iterator> Peekable<I> {
     /// If the closure panics, the next value will always be consumed and dropped
     /// even if the panic is caught, because the closure never returned an `Err` value to put back.
     ///
+    /// See also: [`next_if_map_mut`](Self::next_if_map_mut).
+    ///
     /// # Examples
     ///
     /// Parse the leading decimal number from an iterator of characters.
@@ -412,6 +414,44 @@ impl<I: Iterator> Peekable<I> {
             match f(item) {
                 Ok(result) => return Some(result),
                 Err(item) => Some(item),
+            }
+        } else {
+            None
+        };
+        self.peeked = Some(unpeek);
+        None
+    }
+
+    /// Gives a mutable reference to the next value of the iterator and applies a function `f` to it,
+    /// returning the result and advancing the iterator if `f` returns `Some`.
+    ///
+    /// Otherwise, if `f` returns `None`, the next value is kept for the next iteration.
+    ///
+    /// If `f` panics, the item that is consumed from the iterator as if `Some` was returned from `f`.
+    /// The value will be dropped.
+    ///
+    /// This is similar to [`next_if_map`](Self::next_if_map), except ownership of the item is not given to `f`.
+    /// This can be preferable if `f` would copy the item anyway.
+    ///
+    /// # Examples
+    ///
+    /// Parse the leading decimal number from an iterator of characters.
+    /// ```
+    /// #![feature(peekable_next_if_map)]
+    /// let mut iter = "125 GOTO 10".chars().peekable();
+    /// let mut line_num = 0_u32;
+    /// while let Some(digit) = iter.next_if_map_mut(|c| c.to_digit(10)) {
+    ///     line_num = line_num * 10 + digit;
+    /// }
+    /// assert_eq!(line_num, 125);
+    /// assert_eq!(iter.collect::<String>(), " GOTO 10");
+    /// ```
+    #[unstable(feature = "peekable_next_if_map", issue = "143702")]
+    pub fn next_if_map_mut<R>(&mut self, f: impl FnOnce(&mut I::Item) -> Option<R>) -> Option<R> {
+        let unpeek = if let Some(mut item) = self.next() {
+            match f(&mut item) {
+                Some(result) => return Some(result),
+                None => Some(item),
             }
         } else {
             None

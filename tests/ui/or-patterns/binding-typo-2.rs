@@ -1,3 +1,4 @@
+//@ edition: 2015
 // Issue #51976
 #![deny(unused_variables)] //~ NOTE: the lint level is defined here
 enum Lol {
@@ -63,8 +64,8 @@ fn foo(x: (Lol, Lol)) {
 }
 fn bar(x: (Lol, Lol)) {
     use Lol::*;
-    use ::Bat;
-    use ::Bay;
+    use crate::Bat;
+    use crate::Bay;
     match &x {
         (Foo, _) | (Ban, Foo) => {}
         //~^ ERROR: variable `Ban` is not bound in all patterns

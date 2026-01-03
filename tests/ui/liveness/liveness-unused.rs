@@ -244,8 +244,8 @@ fn f10<T>(mut a: T, b: T) {
     //~^ ERROR value assigned to `a` is never read
 }
 
-fn f10b<T>(mut a: Box<T>, b: Box<T>) {
-    a = b;
+fn f10b<T>(mut a: Box<T>, b: Box<T>) { //~ ERROR variable `a` is assigned to, but never used
+    a = b; //~ ERROR value assigned to `a` is never read
 }
 
 // unused params warnings are not needed for intrinsic functions without bodies

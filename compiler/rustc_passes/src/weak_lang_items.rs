@@ -8,6 +8,7 @@ use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
+use rustc_target::spec::Os;
 
 use crate::errors::{
     MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd, UnknownExternLangItem,
@@ -26,7 +27,7 @@ pub(crate) fn check_crate(
     if items.eh_personality().is_none() {
         items.missing.push(LangItem::EhPersonality);
     }
-    if tcx.sess.target.os == "emscripten"
+    if tcx.sess.target.os == Os::Emscripten
         && items.eh_catch_typeinfo().is_none()
         && !tcx.sess.opts.unstable_opts.emscripten_wasm_eh
     {

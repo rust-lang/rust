@@ -1,5 +1,4 @@
 Available passes for running rustdoc:
-       check-doc-cfg - checks `#[doc(cfg(...))]` for stability feature and unexpected cfgs
 check_doc_test_visibility - run various visibility-related lints on doctests
    propagate-doc-cfg - propagates `#[doc(cfg(...))]` to child items
 strip-aliased-non-local - strips all non-local private aliased items from the output
@@ -15,7 +14,6 @@ calculate-doc-coverage - counts the number of items with and without documentati
 Default passes for rustdoc:
  collect-trait-impls
 check_doc_test_visibility
-       check-doc-cfg
 strip-aliased-non-local
    propagate-doc-cfg
         strip-hidden  (when not --document-hidden-items)

@@ -184,16 +184,6 @@ impl fmt::Debug for ty::BoundTy {
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.universe == ty::UniverseIndex::ROOT {
-            write!(f, "!{:?}", self.bound)
-        } else {
-            write!(f, "!{}_{:?}", self.universe.index(), self.bound)
-        }
-    }
-}
-
 impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind() {
@@ -253,7 +243,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::FakeReadCause,
     crate::mir::Local,
     crate::mir::MirPhase,
-    crate::mir::NullOp<'tcx>,
     crate::mir::Promoted,
     crate::mir::RawPtrKind,
     crate::mir::RetagKind,
@@ -267,8 +256,8 @@ TrivialTypeTraversalImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::BoundRegion,
+    crate::ty::ScalarInt,
     crate::ty::UserTypeAnnotationIndex,
-    crate::ty::ValTree<'tcx>,
     crate::ty::abstract_const::NotConstEvaluatable,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::adjustment::PointerCoercion,
@@ -294,8 +283,9 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
+    crate::mir::RuntimeChecks,
+    crate::ty::BoundTy,
     crate::ty::ParamTy,
-    crate::ty::PlaceholderType,
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end
@@ -704,6 +694,37 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(_) => V::Result::output(),
         }
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        inner.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        let new_inner = inner.clone().try_fold_with(folder)?;
+
+        if inner == &new_inner {
+            Ok(self)
+        } else {
+            let valtree = folder.cx().intern_valtree(new_inner);
+            Ok(valtree)
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        let new_inner = inner.clone().fold_with(folder);
+
+        if inner == &new_inner { self } else { folder.cx().intern_valtree(new_inner) }
     }
 }
 

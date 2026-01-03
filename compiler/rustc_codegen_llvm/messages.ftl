@@ -1,7 +1,9 @@
+codegen_llvm_autodiff_component_unavailable = failed to load our autodiff backend. Did you install it via rustup?
+
 codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z autodiff=Enable
+codegen_llvm_autodiff_without_lto = using the autodiff feature requires setting `lto="fat"` in your Cargo.toml
 
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
-
 
 codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on the `{$arch}` architecture
 
@@ -16,6 +18,14 @@ codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for 
 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
+
+codegen_llvm_offload_bundleimages_failed = call to BundleImages failed, `host.out` was not created
+codegen_llvm_offload_embed_failed = call to EmbedBufferInModule failed, `host.o` was not created
+codegen_llvm_offload_no_abs_path = using the `-Z offload=Host=/absolute/path/to/host.out` flag requires an absolute path
+codegen_llvm_offload_no_host_out = using the `-Z offload=Host=/absolute/path/to/host.out` flag must point to a `host.out` file
+codegen_llvm_offload_nonexisting = the given path/file to `host.out` does not exist. Did you forget to run the device compilation first?
+codegen_llvm_offload_without_enable = using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/host.out>
+codegen_llvm_offload_without_fat_lto = using the offload feature requires -C lto=fat
 
 codegen_llvm_parse_bitcode = failed to parse bitcode for LTO module
 codegen_llvm_parse_bitcode_with_llvm_err = failed to parse bitcode for LTO module: {$llvm_err}

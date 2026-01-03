@@ -504,7 +504,7 @@ fn write_scope_tree(
                     "{0:1$} // at {2}",
                     indented_header,
                     ALIGN,
-                    tcx.sess.source_map().span_to_embeddable_string(span),
+                    tcx.sess.source_map().span_to_diagnostic_string(span),
                 )?;
             } else {
                 writeln!(w, "{indented_header}")?;
@@ -688,7 +688,7 @@ fn write_user_type_annotations(
             "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            tcx.sess.source_map().span_to_diagnostic_string(annotation.span),
             with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
         )?;
     }
@@ -1097,19 +1097,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => {
-                let t = with_no_trimmed_paths!(format!("{}", t));
-                match op {
-                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                    NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                        write!(fmt, "ContractChecks()")
-                    }
-                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                        write!(fmt, "OverflowChecks()")
-                    }
-                }
-            }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1268,6 +1255,7 @@ impl<'tcx> Debug for Operand<'tcx> {
             Constant(ref a) => write!(fmt, "{a:?}"),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
+            RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
         }
     }
 }
@@ -1424,7 +1412,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             self.push("mir::ConstOperand");
             self.push(&format!(
                 "+ span: {}",
-                self.tcx.sess.source_map().span_to_embeddable_string(*span)
+                self.tcx.sess.source_map().span_to_diagnostic_string(*span)
             ));
             if let Some(user_ty) = user_ty {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
@@ -1507,7 +1495,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
 }
 
 fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    let location = tcx.sess.source_map().span_to_embeddable_string(span);
+    let location = tcx.sess.source_map().span_to_diagnostic_string(span);
     format!("scope {} at {}", scope.index(), location,)
 }
 
@@ -1791,7 +1779,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if let Some((prov, idx)) = alloc.provenance().get_byte(i, &tcx) {
+        } else if let Some(frag) = alloc.provenance().get_byte(i, &tcx) {
             // Memory with provenance must be defined
             assert!(
                 alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
@@ -1801,7 +1789,8 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼")?;
+            // FIXME: Find a way to print `frag.offset` that does not look terrible...
+            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼", prov = frag.prov, idx = frag.idx)?;
             i += Size::from_bytes(1);
         } else if alloc
             .init_mask()
@@ -1872,6 +1861,13 @@ fn pretty_print_const_value_tcx<'tcx>(
         return Ok(());
     }
 
+    // Printing [MaybeUninit<u8>::uninit(); N] or any other aggregate where all fields are uninit
+    // becomes very verbose. This special case makes the dump terse and clear.
+    if ct.all_bytes_uninit(tcx) {
+        fmt.write_str("<uninit>")?;
+        return Ok(());
+    }
+
     let u8_type = tcx.types.u8;
     match (ct, ty.kind()) {
         // Byte/string slices, printed as (byte) string literals.
@@ -1900,7 +1896,8 @@ fn pretty_print_const_value_tcx<'tcx>(
         // Aggregates, printed as array/tuple/struct/variant construction syntax.
         //
         // NB: the `has_non_region_param` check ensures that we can use
-        // the `destructure_const` query with an empty `ty::ParamEnv` without
+        // the `try_destructure_mir_constant_for_user_output ` query with
+        // an empty `TypingEnv::fully_monomorphized` without
         // introducing ICEs (e.g. via `layout_of`) from missing bounds.
         // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
         // to be able to destructure the tuple into `(0u8, *mut T)`

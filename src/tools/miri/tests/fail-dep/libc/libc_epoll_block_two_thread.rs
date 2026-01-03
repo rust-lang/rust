@@ -1,11 +1,12 @@
 //@compile-flags: -Zmiri-deterministic-concurrency
-//~^ERROR: deadlocked
-//~^^ERROR: deadlocked
 //@only-target: linux android illumos
 //@error-in-other-file: deadlock
 
 use std::convert::TryInto;
-use std::thread::spawn;
+use std::thread;
+
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
 
 // Using `as` cast since `EPOLLET` wraps around
 const EPOLL_IN_OUT_ET: u32 = (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _;
@@ -49,39 +50,37 @@ fn main() {
     let epfd = unsafe { libc::epoll_create1(0) };
     assert_ne!(epfd, -1);
 
-    // Create a socketpair instance.
-    let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    // Create an eventfd instance.
+    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
+    let fd1 = unsafe { libc::eventfd(0, flags) };
+    // Make a duplicate so that we have two file descriptors for the same file description.
+    let fd2 = unsafe { libc::dup(fd1) };
+
+    // Register both with epoll.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd1 as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd1, &mut ev) };
+    assert_eq!(res, 0);
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd2 as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd2, &mut ev) };
     assert_eq!(res, 0);
 
-    // Register one side of the socketpair with epoll.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
+    // Consume the initial events.
+    let expected = [(libc::EPOLLOUT as u32, fd1 as u64), (libc::EPOLLOUT as u32, fd2 as u64)];
+    check_epoll_wait::<8>(epfd, &expected, -1);
 
-    // epoll_wait to clear notification.
-    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
-    let expected_value = fds[0] as u64;
-    check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 0);
-
-    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
-    let expected_value = fds[0] as u64;
-    let thread1 = spawn(move || {
-        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
+    let thread1 = thread::spawn(move || {
+        check_epoll_wait::<2>(epfd, &expected, -1);
+    });
+    let thread2 = thread::spawn(move || {
+        check_epoll_wait::<2>(epfd, &expected, -1);
         //~^ERROR: deadlocked
     });
-    let thread2 = spawn(move || {
-        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
-    });
+    // Yield so the threads are both blocked.
+    thread::yield_now();
 
-    let thread3 = spawn(move || {
-        // Just a single write, so we only wake up one of them.
-        let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
-        assert!(res > 0 && res <= 5);
-    });
+    // Create two events at once.
+    libc_utils::write_all_from_slice(fd1, &0_u64.to_ne_bytes()).unwrap();
 
     thread1.join().unwrap();
     thread2.join().unwrap();
-    thread3.join().unwrap();
 }

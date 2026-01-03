@@ -237,7 +237,7 @@ help: consider introducing lifetime `'a` here
 LL | fn elided4<'a>(_: &impl Copy + 'a) ->  new  { x(x) }
    |           ++++
 
-error[E0412]: cannot find type `new` in this scope
+error[E0425]: cannot find type `new` in this scope
   --> $DIR/ty-variance-issue-124423.rs:48:36
    |
 LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
@@ -282,5 +282,5 @@ note: if you're trying to build a new `Box<_, _>` consider using one of the foll
 
 error: aborting due to 30 previous errors
 
-Some errors have detailed explanations: E0121, E0224, E0261, E0412, E0599.
+Some errors have detailed explanations: E0121, E0224, E0261, E0425, E0599.
 For more information about an error, try `rustc --explain E0121`.

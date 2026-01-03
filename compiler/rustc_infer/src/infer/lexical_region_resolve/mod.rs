@@ -31,7 +31,7 @@ use crate::infer::{RegionRelations, RegionVariableOrigin, SubregionOrigin};
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
 pub(crate) fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
-    var_infos: VarInfos,
+    var_infos: VarInfos<'tcx>,
     data: RegionConstraintData<'tcx>,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     let mut errors = vec![];
@@ -80,7 +80,7 @@ pub enum RegionResolutionError<'tcx> {
     /// `sub_r <= sup_r` does not hold.
     SubSupConflict(
         RegionVid,
-        RegionVariableOrigin,
+        RegionVariableOrigin<'tcx>,
         SubregionOrigin<'tcx>,
         Region<'tcx>,
         SubregionOrigin<'tcx>,
@@ -92,7 +92,7 @@ pub enum RegionResolutionError<'tcx> {
     /// cannot name the placeholder `'b`.
     UpperBoundUniverseConflict(
         RegionVid,
-        RegionVariableOrigin,
+        RegionVariableOrigin<'tcx>,
         ty::UniverseIndex,     // the universe index of the region variable
         SubregionOrigin<'tcx>, // cause of the constraint
         Region<'tcx>,          // the placeholder `'b`
@@ -122,7 +122,7 @@ type RegionGraph<'tcx> = LinkedGraph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
-    var_infos: VarInfos,
+    var_infos: VarInfos<'tcx>,
     data: RegionConstraintData<'tcx>,
 }
 

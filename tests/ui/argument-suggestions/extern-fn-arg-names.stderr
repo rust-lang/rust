@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `err` in this scope
+error[E0425]: cannot find type `err` in this scope
   --> $DIR/extern-fn-arg-names.rs:2:29
    |
 LL |     fn dstfn(src: i32, dst: err);
@@ -22,5 +22,5 @@ LL |     dstfn(1, /* dst */);
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0061, E0412.
+Some errors have detailed explanations: E0061, E0425.
 For more information about an error, try `rustc --explain E0061`.

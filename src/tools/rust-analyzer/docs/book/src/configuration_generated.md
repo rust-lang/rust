@@ -1033,6 +1033,13 @@ Default: `false`
 Show inlay hints for the implied type parameter `Sized` bound.
 
 
+## rust-analyzer.inlayHints.impliedDynTraitHints.enable {#inlayHints.impliedDynTraitHints.enable}
+
+Default: `true`
+
+Show inlay hints for the implied `dyn` keyword in trait object types.
+
+
 ## rust-analyzer.inlayHints.lifetimeElisionHints.enable {#inlayHints.lifetimeElisionHints.enable}
 
 Default: `"never"`
@@ -1061,6 +1068,13 @@ Maximum length for inlay hints. Set to null to have an unlimited length.
 Default: `true`
 
 Show function parameter name inlay hints at the call site.
+
+
+## rust-analyzer.inlayHints.parameterHints.missingArguments.enable {#inlayHints.parameterHints.missingArguments.enable}
+
+Default: `false`
+
+Show parameter name inlay hints for missing arguments at the call site.
 
 
 ## rust-analyzer.inlayHints.rangeExclusiveHints.enable {#inlayHints.rangeExclusiveHints.enable}
@@ -1109,6 +1123,13 @@ Only applies to closures with blocks, same as
 Default: `false`
 
 Hide inlay parameter type hints for closures.
+
+
+## rust-analyzer.inlayHints.typeHints.hideInferredTypes {#inlayHints.typeHints.hideInferredTypes}
+
+Default: `false`
+
+Hide inlay type hints for inferred types.
 
 
 ## rust-analyzer.inlayHints.typeHints.hideNamedConstructor {#inlayHints.typeHints.hideNamedConstructor}
@@ -1320,11 +1341,49 @@ Default: `false`
 Exclude tests from find-all-references and call-hierarchy.
 
 
+## rust-analyzer.rename.showConflicts {#rename.showConflicts}
+
+Default: `true`
+
+Whether to warn when a rename will cause conflicts (change the meaning of the code).
+
+
+## rust-analyzer.runnables.bench.command {#runnables.bench.command}
+
+Default: `"bench"`
+
+Subcommand used for bench runnables instead of `bench`.
+
+
+## rust-analyzer.runnables.bench.overrideCommand {#runnables.bench.overrideCommand}
+
+Default: `null`
+
+Override the command used for bench runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
+
+
 ## rust-analyzer.runnables.command {#runnables.command}
 
 Default: `null`
 
 Command to be executed instead of 'cargo' for runnables.
+
+
+## rust-analyzer.runnables.doctest.overrideCommand {#runnables.doctest.overrideCommand}
+
+Default: `null`
+
+Override the command used for bench runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.runnables.extraArgs {#runnables.extraArgs}
@@ -1351,6 +1410,25 @@ Unless the launched target uses a
 [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
 they will end up being interpreted as options to
 [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+
+
+## rust-analyzer.runnables.test.command {#runnables.test.command}
+
+Default: `"test"`
+
+Subcommand used for test runnables instead of `test`.
+
+
+## rust-analyzer.runnables.test.overrideCommand {#runnables.test.overrideCommand}
+
+Default: `null`
+
+Override the command used for test runnables.
+The first element of the array should be the program to execute (for example, `cargo`).
+
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.rustc.source {#rustc.source}
@@ -1623,7 +1701,7 @@ Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
 `DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and
 therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an
 existing workspace. As a reference for implementors, buck2's `rust-project` will likely
-be useful: https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+be useful: <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.
 
 
 ## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}

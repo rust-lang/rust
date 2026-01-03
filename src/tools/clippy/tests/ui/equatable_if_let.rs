@@ -1,14 +1,6 @@
 //@aux-build:proc_macros.rs
-
-#![allow(
-    unused_variables,
-    dead_code,
-    clippy::derive_partial_eq_without_eq,
-    clippy::needless_ifs
-)]
+#![allow(clippy::derive_partial_eq_without_eq, clippy::needless_ifs)]
 #![warn(clippy::equatable_if_let)]
-
-extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
 use std::cmp::Ordering;
@@ -48,7 +40,6 @@ impl PartialEq for NotStructuralEq {
     }
 }
 
-#[inline_macros]
 fn main() {
     let a = 2;
     let b = 3;
@@ -95,13 +86,6 @@ fn main() {
     //~^ equatable_if_let
     if let NoPartialEqStruct { a: 2, b: false } = h {}
     //~^ equatable_if_let
-
-    if let inline!("abc") = "abc" {
-        //~^ equatable_if_let
-        println!("OK");
-    }
-
-    external!({ if let 2 = $a {} });
 }
 
 mod issue8710 {
@@ -138,4 +122,93 @@ mod issue8710 {
             todo!();
         }
     }
+}
+
+#[inline_macros]
+fn issue14548() {
+    if let inline!("abc") = "abc" {
+        println!("OK");
+    }
+
+    let a = 2;
+    external!({ if let 2 = $a {} });
+
+    // Don't lint: `==`/`matches!` might be correct for a particular `$($font)|*`, but not in general
+    macro_rules! m1 {
+        ($($font:pat_param)|*) => {
+            if let $($font)|* = "from_expansion" {}
+        }
+    }
+    m1!("foo");
+    m1!("Sans" | "Serif" | "Sans Mono");
+    m1!(inline!("foo"));
+
+    // Don't lint: the suggestion might be correct for a particular `$from_root_ctxt`, but not in
+    // general
+    macro_rules! m2 {
+        ($from_root_ctxt:pat) => {
+            if let $from_root_ctxt = "from_expansion" {}
+        };
+    }
+    m2!("foo");
+    m2!("Sans" | "Serif" | "Sans Mono");
+    m2!(inline!("foo"));
+
+    // Don't lint: the suggestion might be correct for a particular `$from_root_ctxt`, but not in
+    // general
+    macro_rules! m3 {
+        ($from_root_ctxt:expr) => {
+            if let "from_expansion" = $from_root_ctxt {}
+        };
+    }
+    m3!("foo");
+    m3!("foo");
+    m3!(inline!("foo"));
+
+    // Don't lint: the suggestion might be correct for a particular `$from_root_ctxt`, but not in
+    // general. Don't get confused by the scrutinee coming from macro invocation
+    macro_rules! m4 {
+        ($from_root_ctxt:pat) => {
+            if let $from_root_ctxt = inline!("from_expansion") {}
+        };
+    }
+    m4!("foo");
+    m4!("Sans" | "Serif" | "Sans Mono");
+    m4!(inline!("foo"));
+
+    // Don't lint: the suggestion might be correct for a particular `$from_root_ctxt`, but not in
+    // general. Don't get confused by the scrutinee coming from macro invocation
+    macro_rules! m5 {
+        ($from_root_ctxt:expr) => {
+            if let inline!("from_expansion") = $from_root_ctxt {}
+        };
+    }
+    m5!("foo");
+    m5!("foo");
+    m5!(inline!("foo"));
+
+    // Would be nice to lint: both sides are macro _invocations_, so the suggestion is correct in
+    // general
+    if let inline!("foo") = inline!("bar") {}
+}
+
+// PartialEq is not stable in consts yet
+fn issue15376() {
+    enum NonConstEq {
+        A,
+        B,
+    }
+    impl PartialEq for NonConstEq {
+        fn eq(&self, _other: &Self) -> bool {
+            true
+        }
+    }
+
+    const N: NonConstEq = NonConstEq::A;
+
+    // `impl PartialEq` is not const, suggest `matches!`
+    const _: u32 = if let NonConstEq::A = N { 0 } else { 1 };
+    //~^ ERROR: this pattern matching can be expressed using `matches!`
+    const _: u32 = if let Some(NonConstEq::A) = Some(N) { 0 } else { 1 };
+    //~^ ERROR: this pattern matching can be expressed using `matches!`
 }

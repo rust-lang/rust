@@ -1,0 +1,16 @@
+error: `/invalid-utf8-binary-file.bin` wasn't a utf-8 file
+  --> $DIR/invalid-utf8-binary-file.rs:8:10
+   |
+LL | #![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: invalid utf-8 at byte `$BYTE`
+
+error: attribute value must be a literal
+  --> $DIR/invalid-utf8-binary-file.rs:8:10
+   |
+LL | #![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -33,11 +33,7 @@ pub(crate) fn global_gcc_features(sess: &Session) -> Vec<String> {
     // should be taken in cases like these.
     let mut features = vec![];
 
-    // Features implied by an implicit or explicit `--target`.
-    features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
-
-    // -Ctarget-features
-    target_features::flag_to_backend_features(sess, |feature, enable| {
+    let mut extend_backend_features = |feature: &str, enable: bool| {
         // We run through `to_gcc_features` when
         // passing requests down to GCC. This means that all in-language
         // features also work on the command line instead of having two
@@ -48,7 +44,13 @@ pub(crate) fn global_gcc_features(sess: &Session) -> Vec<String> {
                 .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
                 .map(|feature| if !enable { format!("-{}", feature) } else { feature.to_string() }),
         );
-    });
+    };
+
+    // Features implied by an implicit or explicit `--target`.
+    target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
+
+    // -Ctarget-features
+    target_features::flag_to_backend_features(sess, extend_backend_features);
 
     gcc_features_by_flags(sess, &mut features);
 
@@ -66,6 +68,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
         (&Arch::X86 | &Arch::X86_64, "rdrand") => smallvec!["rdrnd"],
         (&Arch::X86 | &Arch::X86_64, "bmi1") => smallvec!["bmi"],
         (&Arch::X86 | &Arch::X86_64, "cmpxchg16b") => smallvec!["cx16"],
+        (&Arch::X86 | &Arch::X86_64, "lahfsahf") => smallvec!["sahf"],
         (&Arch::X86 | &Arch::X86_64, "avx512vaes") => smallvec!["vaes"],
         (&Arch::X86 | &Arch::X86_64, "avx512gfni") => smallvec!["gfni"],
         (&Arch::X86 | &Arch::X86_64, "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],

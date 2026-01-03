@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
 use find_msvc_tools;
+use rustc_hir::attrs::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
@@ -17,7 +18,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Arch, Cc, LinkOutputKind, LinkerFlavor, Lld};
+use rustc_target::spec::{Abi, Arch, Cc, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -83,7 +84,7 @@ pub(crate) fn get_linker<'a>(
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
-    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.vendor == "uwp" {
+    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.abi == Abi::Uwp {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
@@ -134,12 +135,12 @@ pub(crate) fn get_linker<'a>(
 
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
+    assert!(cmd.get_args().is_empty() || sess.target.abi == Abi::Uwp);
     match flavor {
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == "l4re" => {
+        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
             Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
         }
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == "aix" => {
+        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::Aix => {
             Box::new(AixLinker::new(cmd, sess)) as Box<dyn Linker>
         }
         LinkerFlavor::WasmLld(Cc::No) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
@@ -345,7 +346,7 @@ pub(crate) trait Linker {
         crate_type: CrateType,
         symbols: &[(String, SymbolExportKind)],
     );
-    fn subsystem(&mut self, subsystem: &str);
+    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
     fn add_no_exec(&mut self) {}
@@ -573,7 +574,7 @@ impl<'a> Linker for GccLinker<'a> {
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
         // FIXME: Switch to using `#[link]` attributes in the `libc` crate
         // similarly to other targets.
-        if self.sess.target.os == "vxworks"
+        if self.sess.target.os == Os::VxWorks
             && matches!(
                 output_kind,
                 LinkOutputKind::StaticNoPicExe
@@ -595,7 +596,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, as_needed: bool) {
-        if self.sess.target.os == "illumos" && name == "c" {
+        if self.sess.target.os == Os::Illumos && name == "c" {
             // libc will be added via late_link_args on illumos so that it will
             // appear last in the library search order.
             // FIXME: This should be replaced by a more complete and generic
@@ -884,8 +885,8 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn subsystem(&mut self, subsystem: &str) {
-        self.link_args(&["--subsystem", subsystem]);
+    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
+        self.link_args(&["--subsystem", subsystem.as_str()]);
     }
 
     fn reset_per_library_state(&mut self) {
@@ -1159,9 +1160,8 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.link_arg(&arg);
     }
 
-    fn subsystem(&mut self, subsystem: &str) {
-        // Note that previous passes of the compiler validated this subsystem,
-        // so we just blindly pass it to the linker.
+    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
+        let subsystem = subsystem.as_str();
         self.link_arg(&format!("/SUBSYSTEM:{subsystem}"));
 
         // Windows has two subsystems we're interested in right now, the console
@@ -1307,7 +1307,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cc_arg(arg);
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {
         // noop
     }
 
@@ -1439,12 +1439,12 @@ impl<'a> Linker for WasmLd<'a> {
         // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of wasm32-unknown-unknown tooling use
         // this, so be sure these symbols make their way out of the linker as well.
-        if self.sess.target.os == "unknown" || self.sess.target.os == "none" {
+        if matches!(self.sess.target.os, Os::Unknown | Os::None) {
             self.link_args(&["--export=__heap_base", "--export=__data_end"]);
         }
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}
 
     fn linker_plugin_lto(&mut self) {
         match self.sess.opts.cg.linker_plugin_lto {
@@ -1566,7 +1566,8 @@ impl<'a> Linker for L4Bender<'a> {
         self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
     }
 
-    fn subsystem(&mut self, subsystem: &str) {
+    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
+        let subsystem = subsystem.as_str();
         self.link_arg(&format!("--subsystem {subsystem}"));
     }
 
@@ -1735,7 +1736,7 @@ impl<'a> Linker for AixLinker<'a> {
         self.link_arg(format!("-bE:{}", path.to_str().unwrap()));
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}
 
     fn reset_per_library_state(&mut self) {
         self.hint_dynamic();
@@ -1969,7 +1970,7 @@ impl<'a> Linker for PtxLinker<'a> {
     ) {
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}
 
     fn linker_plugin_lto(&mut self) {}
 }
@@ -2050,7 +2051,7 @@ impl<'a> Linker for LlbcLinker<'a> {
         }
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}
 
     fn linker_plugin_lto(&mut self) {}
 }
@@ -2134,7 +2135,7 @@ impl<'a> Linker for BpfLinker<'a> {
         }
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}
 
     fn linker_plugin_lto(&mut self) {}
 }

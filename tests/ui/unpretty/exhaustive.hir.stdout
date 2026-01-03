@@ -27,6 +27,7 @@
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
+#![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 #[attr = MacroUse {arguments: UseAll}]
@@ -253,7 +254,19 @@ mod expressions {
     }
 
     /// ExprKind::TryBlock
-    fn expr_try_block() { { from_output(()) } { return; from_output(()) } }
+    fn expr_try_block() {
+        { from_output(()) }
+        { return; from_output(()) }
+        type_ascribe!({ from_output(()) }, Option<_>);
+        type_ascribe!({
+                from_output(match branch(None) {
+                        Break {  0: residual } => #[allow(unreachable_code)]
+                            break from_residual(residual),
+                        Continue {  0: val } => #[allow(unreachable_code)]
+                            val,
+                    })
+            }, Option<String>)
+    }
 
     /// ExprKind::Assign
     fn expr_assign() { let expr; expr = true; }
@@ -343,7 +356,7 @@ mod expressions {
 
 
 
-        { offset_of!(T, field) };
+        const { offset_of!(T, field) };
     }
     /// ExprKind::MacCall
     fn expr_mac_call() { "..."; "..."; "..."; }
@@ -390,11 +403,11 @@ mod expressions {
     /// ExprKind::FormatArgs
     fn expr_format_args() {
         let expr;
-        format_arguments::new_const(&[]);
+        format_arguments::from_str("");
         {
             super let args = (&expr,);
             super let args = [format_argument::new_display(args.0)];
-            format_arguments::new_v1(&[""], &args)
+            unsafe { format_arguments::new(b"\xc0\x00", &args) }
         };
     }
 }

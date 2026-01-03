@@ -38,12 +38,13 @@ impl LexedStr<'_> {
                 res.push_ident(
                     SyntaxKind::from_contextual_keyword(token_text, edition)
                         .unwrap_or(SyntaxKind::IDENT),
+                    edition,
                 )
             } else {
                 if was_joint {
                     res.was_joint();
                 }
-                res.push(kind);
+                res.push(kind, edition);
                 // Tag the token as joint if it is float with a fractional part
                 // we use this jointness to inform the parser about what token split
                 // event to emit when we encounter a float literal in a field access

@@ -139,11 +139,12 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
     }
 }
 
-/// Parse the value of `-Ctarget-feature`, also expanding implied features,
-/// and call the closure for each (expanded) Rust feature. If the list contains
+/// Parse the value of the target spec `features` field or `-Ctarget-feature`, also expanding
+/// implied features, and call the closure for each (expanded) Rust feature. If the list contains
 /// a syntactically invalid item (not starting with `+`/`-`), the error callback is invoked.
-fn parse_rust_feature_flag<'a>(
+fn parse_rust_feature_list<'a>(
     sess: &'a Session,
+    features: &'a str,
     err_callback: impl Fn(&'a str),
     mut callback: impl FnMut(
         /* base_feature */ &'a str,
@@ -154,7 +155,7 @@ fn parse_rust_feature_flag<'a>(
     // A cache for the backwards implication map.
     let mut inverse_implied_features: Option<FxHashMap<&str, FxHashSet<&str>>> = None;
 
-    for feature in sess.opts.cg.target_feature.split(',') {
+    for feature in features.split(',') {
         if let Some(base_feature) = feature.strip_prefix('+') {
             // Skip features that are not target features, but rustc features.
             if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
@@ -244,8 +245,9 @@ pub fn cfg_target_feature<'a, const N: usize>(
     let mut enabled_disabled_features = FxHashMap::default();
 
     // Add enabled and remove disabled features.
-    parse_rust_feature_flag(
+    parse_rust_feature_list(
         sess,
+        &sess.opts.cg.target_feature,
         /* err_callback */
         |feature| {
             sess.dcx().emit_warn(errors::UnknownCTargetFeaturePrefix { feature });
@@ -366,6 +368,37 @@ pub fn check_tied_features(
     None
 }
 
+/// Translates the target spec `features` field into a backend target feature list.
+///
+/// `extend_backend_features` extends the set of backend features (assumed to be in mutable state
+/// accessible by that closure) to enable/disable the given Rust feature name.
+pub fn target_spec_to_backend_features<'a>(
+    sess: &'a Session,
+    mut extend_backend_features: impl FnMut(&'a str, /* enable */ bool),
+) {
+    // Compute implied features
+    let mut rust_features = vec![];
+    parse_rust_feature_list(
+        sess,
+        &sess.target.features,
+        /* err_callback */
+        |feature| {
+            panic!("Target spec contains invalid feature {feature}");
+        },
+        |_base_feature, new_features, enable| {
+            // FIXME emit an error for unknown features like cfg_target_feature would for -Ctarget-feature
+            rust_features.extend(
+                UnordSet::from(new_features).to_sorted_stable_ord().iter().map(|&&s| (enable, s)),
+            );
+        },
+    );
+
+    // Add this to the backend features.
+    for (enable, feature) in rust_features {
+        extend_backend_features(feature, enable);
+    }
+}
+
 /// Translates the `-Ctarget-feature` flag into a backend target feature list.
 ///
 /// `extend_backend_features` extends the set of backend features (assumed to be in mutable state
@@ -376,8 +409,9 @@ pub fn flag_to_backend_features<'a>(
 ) {
     // Compute implied features
     let mut rust_features = vec![];
-    parse_rust_feature_flag(
+    parse_rust_feature_list(
         sess,
+        &sess.opts.cg.target_feature,
         /* err_callback */
         |_feature| {
             // Errors are already emitted in `cfg_target_feature`; avoid duplicates.

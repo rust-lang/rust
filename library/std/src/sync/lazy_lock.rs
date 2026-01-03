@@ -172,7 +172,6 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
     /// use std::sync::LazyLock;
     ///
     /// let mut lazy = LazyLock::new(|| 92);
@@ -183,7 +182,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
     pub fn force_mut(this: &mut LazyLock<T, F>) -> &mut T {
         #[cold]
         /// # Safety
@@ -247,6 +246,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.once.call_once_force(|state| {
             if state.is_poisoned() {
@@ -278,8 +278,6 @@ impl<T, F> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
-    ///
     /// use std::sync::LazyLock;
     ///
     /// let mut lazy = LazyLock::new(|| 92);
@@ -290,7 +288,7 @@ impl<T, F> LazyLock<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
     pub fn get_mut(this: &mut LazyLock<T, F>) -> Option<&mut T> {
         // `state()` does not perform an atomic load, so prefer it over `is_complete()`.
         let state = this.once.state();
@@ -308,8 +306,6 @@ impl<T, F> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_get)]
-    ///
     /// use std::sync::LazyLock;
     ///
     /// let lazy = LazyLock::new(|| 92);
@@ -319,7 +315,8 @@ impl<T, F> LazyLock<T, F> {
     /// assert_eq!(LazyLock::get(&lazy), Some(&92));
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_get", issue = "129333")]
+    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn get(this: &LazyLock<T, F>) -> Option<&T> {
         if this.once.is_completed() {
             // SAFETY:

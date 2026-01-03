@@ -70,7 +70,7 @@ macro_rules! assert_unsafe_precondition {
                     let msg = concat!("unsafe precondition(s) violated: ", $message,
                         "\n\nThis indicates a bug in the program. \
                         This Undefined Behavior check is optional, and cannot be relied on for safety.");
-                    ::core::panicking::panic_nounwind_fmt(::core::fmt::Arguments::new_const(&[msg]), false);
+                    ::core::panicking::panic_nounwind_fmt(::core::fmt::Arguments::from_str(msg), false);
                 }
             }
 
@@ -95,17 +95,16 @@ pub use intrinsics::ub_checks as check_library_ub;
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn check_language_ub() -> bool {
     // Only used for UB checks so we may const_eval_select.
-    intrinsics::ub_checks()
-        && const_eval_select!(
-            @capture { } -> bool:
-            if const {
-                // Always disable UB checks.
-                false
-            } else {
-                // Disable UB checks in Miri.
-                !cfg!(miri)
-            }
-        )
+    const_eval_select!(
+        @capture { } -> bool:
+        if const {
+            // Always disable UB checks.
+            false
+        } else {
+            // Disable UB checks in Miri.
+            !cfg!(miri)
+        }
+    ) && intrinsics::ub_checks()
 }
 
 /// Checks whether `ptr` is properly aligned with respect to the given alignment, and

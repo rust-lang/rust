@@ -8,6 +8,7 @@ use super::{check_infer, check_no_mismatches, check_types};
 fn infer_slice_method() {
     check_types(
         r#"
+//- /core.rs crate:core
 impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
@@ -27,13 +28,13 @@ fn test(x: &[u8]) {
 fn cross_crate_primitive_method() {
     check_types(
         r#"
-//- /main.rs crate:main deps:other_crate
+//- /main.rs crate:main deps:core
 fn test() {
     let x = 1f32;
     x.foo();
 } //^^^^^^^ f32
 
-//- /lib.rs crate:other_crate
+//- /lib.rs crate:core
 mod foo {
     impl f32 {
         #[rustc_allow_incoherent_impl]
@@ -48,6 +49,7 @@ mod foo {
 fn infer_array_inherent_impl() {
     check_types(
         r#"
+//- /core.rs crate:core
 impl<T, const N: usize> [T; N] {
     #[rustc_allow_incoherent_impl]
     fn foo(&self) -> T {
@@ -981,7 +983,6 @@ fn main() {
 
 #[test]
 fn method_resolution_overloaded_const() {
-    cov_mark::check!(const_candidate_self_type_mismatch);
     check_types(
         r#"
 struct Wrapper<T>(T);
@@ -1376,7 +1377,6 @@ mod b {
 
 #[test]
 fn autoderef_visibility_method() {
-    cov_mark::check!(autoderef_candidate_not_visible);
     check(
         r#"
 //- minicore: receiver
@@ -1415,7 +1415,6 @@ mod b {
 
 #[test]
 fn trait_vs_private_inherent_const() {
-    cov_mark::check!(const_candidate_not_visible);
     check(
         r#"
 mod a {
@@ -1505,6 +1504,7 @@ fn f() {
 fn resolve_const_generic_array_methods() {
     check_types(
         r#"
+//- /core.rs crate:core
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
     #[rustc_allow_incoherent_impl]
@@ -1536,6 +1536,7 @@ fn f() {
 fn resolve_const_generic_method() {
     check_types(
         r#"
+//- /core.rs crate:core
 struct Const<const N: usize>;
 
 #[lang = "array"]
@@ -1714,8 +1715,8 @@ fn f<S: Sized, T, U: ?Sized>() {
             95..103 'u32::foo': fn foo<u32>() -> u8
             109..115 'S::foo': fn foo<S>() -> u8
             121..127 'T::foo': fn foo<T>() -> u8
-            133..139 'U::foo': {unknown}
-            145..157 '<[u32]>::foo': {unknown}
+            133..139 'U::foo': fn foo<U>() -> u8
+            145..157 '<[u32]>::foo': fn foo<[u32]>() -> u8
         "#]],
     );
 }
@@ -1869,6 +1870,7 @@ fn main() {
 "#,
     );
 }
+
 #[test]
 fn receiver_adjustment_autoref() {
     check(
@@ -1879,9 +1881,9 @@ impl Foo {
 }
 fn test() {
     Foo.foo();
-  //^^^ adjustments: Borrow(Ref('?0, Not))
+  //^^^ adjustments: Borrow(Ref(Not))
     (&Foo).foo();
-  // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not))
+  // ^^^^ adjustments: Deref(None), Borrow(Ref(Not))
 }
 "#,
     );
@@ -1895,7 +1897,7 @@ fn receiver_adjustment_unsize_array() {
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Borrow(Ref('?0, Not)), Pointer(Unsize)
+} //^ adjustments: Borrow(Ref(Not)), Pointer(Unsize)
 "#,
     );
 }
@@ -2036,6 +2038,7 @@ fn incoherent_impls() {
     check(
         r#"
 //- minicore: error, send
+//- /std.rs crate:std
 pub struct Box<T>(T);
 use core::error::Error;
 
@@ -2108,7 +2111,7 @@ impl Foo {
 }
 fn test() {
     Box::new(Foo).foo();
-  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref('?0, Not))
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not))
 }
 "#,
     );
@@ -2126,7 +2129,7 @@ impl Foo {
 use core::mem::ManuallyDrop;
 fn test() {
     ManuallyDrop::new(Foo).foo();
-  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('?0, Not))
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
 }
 "#,
     );
@@ -2176,6 +2179,8 @@ fn receiver_without_deref_impl() {
     check(
         r#"
 //- minicore: receiver
+#![feature(arbitrary_self_types)]
+
 use core::ops::Receiver;
 
 struct Foo;
@@ -2222,5 +2227,34 @@ fn test(x: *mut u8) {
      //      ^^^^^^^^^^^ type: u64
 }
 "#,
+    );
+}
+
+#[test]
+fn unsized_struct() {
+    check_types(
+        r#"
+//- minicore: sized, phantom_data
+use core::marker::PhantomData;
+
+const UI_DEV_CREATE: Ioctl = Ioctl(PhantomData);
+
+struct Ioctl<T: ?Sized = NoArgs>(PhantomData<T>);
+
+struct NoArgs([u8]);
+
+impl<T> Ioctl<T> {
+    fn ioctl(self) {}
+}
+
+impl Ioctl<NoArgs> {
+    fn ioctl(self) -> u32 { 0 }
+}
+
+fn main() {
+    UI_DEV_CREATE.ioctl();
+ // ^^^^^^^^^^^^^^^^^^^^^ u32
+}
+    "#,
     );
 }

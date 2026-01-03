@@ -35,7 +35,8 @@ define_config! {
         gdb: Option<String> = "gdb",
         lldb: Option<String> = "lldb",
         nodejs: Option<String> = "nodejs",
-        npm: Option<String> = "npm",
+        npm: Option<String> = "npm", // unused, present for compatibility
+        yarn: Option<String> = "yarn",
         python: Option<String> = "python",
         windows_rc: Option<String> = "windows-rc",
         reuse: Option<String> = "reuse",

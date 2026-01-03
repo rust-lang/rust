@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -39,6 +39,7 @@ pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 pub type TypingMode<'tcx> = ir::TypingMode<TyCtxt<'tcx>>;
+pub type Placeholder<'tcx, T> = ir::Placeholder<TyCtxt<'tcx>, T>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -508,7 +509,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
+    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Placeholder(placeholder))
     }
 
@@ -878,11 +879,6 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_)
     }
 
-    #[inline]
-    pub fn new_diverging_default(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        if tcx.features().never_type_fallback() { tcx.types.never } else { tcx.types.unit }
-    }
-
     // lang and diagnostic tys
 
     fn new_generic_adt(tcx: TyCtxt<'tcx>, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
@@ -962,7 +958,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_param(tcx, param.index, param.name)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Self {
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
 
@@ -1257,12 +1253,33 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn is_scalable_vector(self) -> bool {
+        match self.kind() {
+            Adt(def, _) => def.repr().scalable(),
+            _ => false,
+        }
+    }
+
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
+    }
+
+    pub fn scalable_vector_element_count_and_type(self, tcx: TyCtxt<'tcx>) -> (u16, Ty<'tcx>) {
+        let Adt(def, args) = self.kind() else {
+            bug!("`scalable_vector_size_and_type` called on invalid type")
+        };
+        let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
+            bug!("`scalable_vector_size_and_type` called on non-scalable vector type");
+        };
+        let variant = def.non_enum_variant();
+        assert_eq!(variant.fields.len(), 1);
+        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
+        (element_count, field_ty)
     }
 
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
@@ -1364,6 +1381,19 @@ impl<'tcx> Ty<'tcx> {
             return Some((ty, mutbl));
         }
         None
+    }
+
+    pub fn maybe_pinned_ref(self) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability)> {
+        match *self.kind() {
+            Adt(def, args)
+                if def.is_pin()
+                    && let ty::Ref(_, ty, mutbl) = *args.type_at(0).kind() =>
+            {
+                Some((ty, ty::Pinnedness::Pinned, mutbl))
+            }
+            ty::Ref(_, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl)),
+            _ => None,
+        }
     }
 
     /// Panics if called on any type other than `Box<T>`.
@@ -1519,18 +1549,13 @@ impl<'tcx> Ty<'tcx> {
         let mut cor_ty = self;
         let mut ty = cor_ty;
         loop {
-            if let ty::Coroutine(def_id, args) = ty.kind() {
-                cor_ty = ty;
-                f(ty);
-                if tcx.is_async_drop_in_place_coroutine(*def_id) {
-                    ty = args.first().unwrap().expect_ty();
-                    continue;
-                } else {
-                    return cor_ty;
-                }
-            } else {
+            let ty::Coroutine(def_id, args) = ty.kind() else { return cor_ty };
+            cor_ty = ty;
+            f(ty);
+            if !tcx.is_async_drop_in_place_coroutine(*def_id) {
                 return cor_ty;
             }
+            ty = args.first().unwrap().expect_ty();
         }
     }
 

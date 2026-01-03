@@ -38,6 +38,8 @@ LL | fn without_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {}
 error[E0310]: the parameter type `impl FnOnce(T) -> dyn Future<Output = ()>` may not live long enough
   --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:6:5
    |
+LL | ) -> Box<dyn FnOnce(T) -> dyn Future<Output = ()>> {
+   |          ---------------------------------------- this `dyn Trait` has an implicit `'static` lifetime bound
 LL |     Box::new(executor)
    |     ^^^^^^^^^^^^^^^^^^
    |     |

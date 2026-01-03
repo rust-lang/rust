@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

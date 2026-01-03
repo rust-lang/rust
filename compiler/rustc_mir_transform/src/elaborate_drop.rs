@@ -511,19 +511,12 @@ where
                 let tcx = self.tcx();
 
                 assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
-                let field_ty = match tcx.try_normalize_erasing_regions(
-                    self.elaborator.typing_env(),
-                    field.ty(tcx, args),
-                ) {
-                    Ok(t) => t,
-                    Err(_) => Ty::new_error(
-                        self.tcx(),
-                        self.tcx().dcx().span_delayed_bug(
-                            self.elaborator.body().span,
-                            "Error normalizing in drop elaboration.",
-                        ),
-                    ),
-                };
+                let field_ty = field.ty(tcx, args);
+                // We silently leave an unnormalized type here to support polymorphic drop
+                // elaboration for users of rustc internal APIs
+                let field_ty = tcx
+                    .try_normalize_erasing_regions(self.elaborator.typing_env(), field_ty)
+                    .unwrap_or(field_ty);
 
                 (tcx.mk_place_field(base_place, field_idx, field_ty), subpath)
             })

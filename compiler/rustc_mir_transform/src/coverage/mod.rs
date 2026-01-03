@@ -9,6 +9,7 @@ use crate::coverage::mappings::ExtractedMappings;
 
 mod counters;
 mod expansion;
+mod from_mir;
 mod graph;
 mod hir_info;
 mod mappings;
@@ -16,7 +17,6 @@ pub(super) mod query;
 mod spans;
 #[cfg(test)]
 mod tests;
-mod unexpand;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen

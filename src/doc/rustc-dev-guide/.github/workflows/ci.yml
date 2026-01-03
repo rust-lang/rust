@@ -7,22 +7,22 @@ on:
   pull_request:
   schedule:
     # Run multiple times a day as the successfull cached links are not checked every time.
-    - cron: '0 */8 * * *'
+    - cron: "0 */8 * * *"
 
 jobs:
   ci:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
-      MDBOOK_VERSION: 0.4.52
-      MDBOOK_LINKCHECK2_VERSION: 0.9.1
-      MDBOOK_MERMAID_VERSION: 0.12.6
+      MDBOOK_VERSION: 0.5.1
+      MDBOOK_LINKCHECK2_VERSION: 0.11.0
+      MDBOOK_MERMAID_VERSION: 0.17.0
       MDBOOK_OUTPUT__LINKCHECK__FOLLOW_WEB_LINKS: ${{ github.event_name != 'pull_request' }}
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
@@ -87,4 +87,4 @@ jobs:
         continue-on-error: true
         run: |
           # using split_inclusive that uses regex feature that uses an unstable feature
-          RUSTC_BOOTSTRAP=1 cargo run --manifest-path ci/sembr/Cargo.toml src
+          RUSTC_BOOTSTRAP=1 cargo run --release --manifest-path ci/sembr/Cargo.toml src

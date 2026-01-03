@@ -2,7 +2,7 @@
 
 use std::hash::{BuildHasher, Hash};
 
-use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics};
+use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics, Symbol};
 use smallvec::SmallVec;
 use span::{TextRange, TextSize};
 use syntax::{
@@ -25,18 +25,14 @@ impl RootDatabase {
         // We don't want a mistake in the fixture to crash r-a, so we wrap this in `catch_unwind()`.
         std::panic::catch_unwind(|| {
             let mut db = RootDatabase::default();
-            let fixture = test_fixture::ChangeFixture::parse_with_proc_macros(
-                &db,
-                text,
-                minicore.0,
-                Vec::new(),
-            );
+            let fixture =
+                test_fixture::ChangeFixture::parse_with_proc_macros(text, minicore.0, Vec::new());
             db.apply_change(fixture.change);
             let files = fixture
                 .files
                 .into_iter()
                 .zip(fixture.file_lines)
-                .map(|(file_id, range)| (file_id.file_id(&db), range))
+                .map(|(file_id, range)| (file_id.file_id(), range))
                 .collect();
             (db, files, fixture.sysroot_files)
         })
@@ -524,8 +520,9 @@ impl_empty_upmap_from_ra_fixture!(
     f64,
     &str,
     String,
+    Symbol,
     SmolStr,
-    Documentation,
+    Documentation<'_>,
     SymbolKind,
     CfgExpr,
     ReferenceCategory,

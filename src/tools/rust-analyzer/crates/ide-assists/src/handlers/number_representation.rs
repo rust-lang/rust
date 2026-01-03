@@ -1,6 +1,6 @@
 use syntax::{AstToken, ast, ast::Radix};
 
-use crate::{AssistContext, AssistId, Assists, GroupLabel};
+use crate::{AssistContext, AssistId, Assists, GroupLabel, utils::add_group_separators};
 
 const MIN_NUMBER_OF_DIGITS_TO_FORMAT: usize = 5;
 
@@ -68,18 +68,6 @@ const fn group_size(r: Radix) -> usize {
         Radix::Decimal => 3,
         Radix::Hexadecimal => 4,
     }
-}
-
-fn add_group_separators(s: &str, group_size: usize) -> String {
-    let mut chars = Vec::new();
-    for (i, ch) in s.chars().filter(|&ch| ch != '_').rev().enumerate() {
-        if i > 0 && i % group_size == 0 {
-            chars.push('_');
-        }
-        chars.push(ch);
-    }
-
-    chars.into_iter().rev().collect()
 }
 
 #[cfg(test)]

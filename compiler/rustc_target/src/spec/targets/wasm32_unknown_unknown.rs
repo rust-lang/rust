@@ -10,11 +10,11 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Os, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
-    options.os = "unknown".into();
+    options.os = Os::Unknown;
 
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::No),

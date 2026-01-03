@@ -50,5 +50,5 @@ fn main() {
         assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 5);
     }
     assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
-    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 15);
+    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 5);
 }

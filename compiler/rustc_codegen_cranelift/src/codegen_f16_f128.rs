@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 pub(crate) fn f16_to_f32(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     let (value, arg_ty) =
-        if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == Arch::X86_64 {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
             (
                 fx.bcx.ins().bitcast(types::I16, MemFlags::new(), value),
                 lib_call_arg_param(fx.tcx, types::I16, false),
@@ -22,8 +22,7 @@ fn f16_to_f64(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
 }
 
 pub(crate) fn f32_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let ret_ty = if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == Arch::X86_64
-    {
+    let ret_ty = if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
         types::I16
     } else {
         types::F16
@@ -38,8 +37,7 @@ pub(crate) fn f32_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value
 }
 
 fn f64_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let ret_ty = if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == Arch::X86_64
-    {
+    let ret_ty = if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
         types::I16
     } else {
         types::F16

@@ -106,5 +106,11 @@ error: transmute from a `&[u8]` to a `&str`
 LL |     const _: &str = unsafe { std::mem::transmute(B) };
    |                              ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_unchecked(B)`
 
-error: aborting due to 16 previous errors
+error: transmute from a `&[u8]` to a `&str`
+  --> tests/ui/transmute.rs:139:23
+   |
+LL |         let _: &str = std::mem::transmute(take_ref!(b));
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(take_ref!(b)).unwrap()`
+
+error: aborting due to 17 previous errors
 

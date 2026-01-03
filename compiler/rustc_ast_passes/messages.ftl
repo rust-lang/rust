@@ -37,9 +37,10 @@ ast_passes_assoc_type_without_body =
     .suggestion = provide a definition for the type
 
 ast_passes_async_fn_in_const_trait_or_trait_impl =
-    async functions are not allowed in `const` {$in_impl ->
-        [true] trait impls
-        *[false] traits
+    async functions are not allowed in `const` {$context ->
+        [trait_impl] trait impls
+        [impl] impls
+        *[trait] traits
     }
     .label = associated functions of `const` cannot be declared `async`
 
@@ -68,12 +69,18 @@ ast_passes_c_variadic_bad_extern = `...` is not supported for `extern "{$abi}"` 
     .label = `extern "{$abi}"` because of this
     .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
+ast_passes_c_variadic_bad_naked_extern = `...` is not supported for `extern "{$abi}"` naked functions
+    .label = `extern "{$abi}"` because of this
+    .help = C-variadic function must have a compatible calling convention
+
 ast_passes_c_variadic_must_be_unsafe =
     functions with a C variable argument list must be unsafe
     .suggestion = add the `unsafe` keyword to this definition
 
 ast_passes_c_variadic_no_extern = `...` is not supported for non-extern functions
     .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+ast_passes_c_variadic_not_supported = the `{$target}` target does not support c-variadic functions
 
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this
@@ -83,6 +90,9 @@ ast_passes_const_and_coroutine = functions cannot be both `const` and `{$corouti
     .const = `const` because of this
     .coroutine = `{$coroutine_kind}` because of this
     .label = {""}
+
+ast_passes_const_auto_trait = auto traits cannot be const
+    .help = remove the `const` keyword
 
 ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
 
@@ -200,6 +210,11 @@ ast_passes_generic_before_constraints = generic arguments must come before the f
 
 ast_passes_generic_default_trailing = generic parameters with a default must be trailing
 
+ast_passes_impl_fn_const =
+    redundant `const` fn marker in const impl
+    .parent_constness = this declares all associated functions implicitly const
+    .label = remove the `const`
+
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
@@ -254,6 +269,8 @@ ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing
     .label = second `use<...>` here
 
 ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
+
+ast_passes_scalable_vector_not_tuple_struct = scalable vectors must be tuple structs
 
 ast_passes_static_without_body =
     free static item without body

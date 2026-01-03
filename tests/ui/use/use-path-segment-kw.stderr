@@ -1,0 +1,1245 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:98:13
+   |
+LL |         use crate;
+   |             ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:102:15
+   |
+LL |         use ::crate;
+   |               ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:105:16
+   |
+LL |         use ::{crate};
+   |                ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:110:21
+   |
+LL |         use foobar::crate;
+   |                     ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:113:22
+   |
+LL |         use foobar::{crate};
+   |                      ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:118:20
+   |
+LL |         use crate::crate;
+   |                    ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:121:21
+   |
+LL |         use crate::{crate};
+   |                     ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:126:20
+   |
+LL |         use super::crate;
+   |                    ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:129:21
+   |
+LL |         use super::{crate};
+   |                     ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:134:19
+   |
+LL |         use self::crate;
+   |                   ^^^^^
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:137:20
+   |
+LL |         use self::{crate};
+   |                    ^^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:184:13
+   |
+LL |         use self;
+   |             ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:185:17
+   |
+LL |         pub use self as _self;
+   |                 ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:188:13
+   |
+LL |         use ::self;
+   |             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use ::self;
+LL +         use ;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use ::{self};
+   |               +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:190:13
+   |
+LL |         use ::self as _self2;
+   |             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use ::self as _self2;
+LL +         use  as _self2;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use ::{self as _self2};
+   |               +              +
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:192:16
+   |
+LL |         use ::{self};
+   |                ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:193:16
+   |
+LL |         use ::{self as _nested_self2};
+   |                ^^^^^^^^^^^^^^^^^^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:196:28
+   |
+LL |         pub use foobar::qux::self;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use foobar::qux::self;
+LL +         pub use foobar::qux;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use foobar::qux::{self};
+   |                              +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:197:23
+   |
+LL |         pub use foobar::self as _self3;
+   |                       ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use foobar::self as _self3;
+LL +         pub use foobar as _self3;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use foobar::{self as _self3};
+   |                         +              +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:202:18
+   |
+LL |         use crate::self;
+   |                  ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use crate::self;
+LL +         use crate;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use crate::{self};
+   |                    +    +
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:202:13
+   |
+LL |         use crate::self;
+   |             ^^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:205:22
+   |
+LL |         pub use crate::self as _self4;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::self as _self4;
+LL +         pub use crate as _self4;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::{self as _self4};
+   |                        +              +
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:206:21
+   |
+LL |         use crate::{self};
+   |                     ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:211:18
+   |
+LL |         use super::self;
+   |                  ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use super::self;
+LL +         use super;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use super::{self};
+   |                    +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:213:22
+   |
+LL |         pub use super::self as _self5;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::self as _self5;
+LL +         pub use super as _self5;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::{self as _self5};
+   |                        +              +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:219:17
+   |
+LL |         use self::self;
+   |                 ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use self::self;
+LL +         use self;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use self::{self};
+   |                   +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:220:21
+   |
+LL |         pub use self::self as _self6;
+   |                     ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use self::self as _self6;
+LL +         pub use self as _self6;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use self::{self as _self6};
+   |                       +              +
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:134:13
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use self::crate;
+   |             ^^^^^^^^^^^ `crate` reimported here
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:137:20
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use self::{crate};
+   |         -----------^^^^^--
+   |         |          |
+   |         |          `crate` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:202:13
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use crate::self;
+   |             ^^^^^^^^^^^ `crate` reimported here
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:206:21
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use crate::{self};
+   |         ------------^^^^--
+   |         |           |
+   |         |           `crate` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error: `$crate` may not be imported
+  --> $DIR/use-path-segment-kw.rs:9:9
+   |
+LL |         use $crate;
+   |         ^^^^^^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` may not be imported
+  --> $DIR/use-path-segment-kw.rs:10:9
+   |
+LL |         pub use $crate as _dollar_crate;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:49:21
+   |
+LL |         use $crate::crate;
+   |                     ^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:52:22
+   |
+LL |         use $crate::{crate};
+   |                      ^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:63:19
+   |
+LL |         use $crate::self;
+   |                   ^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing the module directly
+   |
+LL -         use $crate::self;
+LL +         use $crate;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use $crate::{self};
+   |                     +    +
+
+error: `$crate` may not be imported
+  --> $DIR/use-path-segment-kw.rs:63:9
+   |
+LL |         use $crate::self;
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:66:23
+   |
+LL |         pub use $crate::self as _m_self8;
+   |                       ^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing the module directly
+   |
+LL -         pub use $crate::self as _m_self8;
+LL +         pub use $crate as _m_self8;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use $crate::{self as _m_self8};
+   |                         +                +
+
+error: `$crate` may not be imported
+  --> $DIR/use-path-segment-kw.rs:66:9
+   |
+LL |         pub use $crate::self as _m_self8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0252]: the name `<!dummy!>` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:63:13
+   |
+LL |         use $crate;
+   |             ------ previous import of the module `<!dummy!>` here
+...
+LL |         use $crate::self;
+   |             ^^^^^^^^^^^^ `<!dummy!>` reimported here
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: `<!dummy!>` must be defined only once in the type namespace of this module
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0252]: the name `$crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:68:22
+   |
+LL |         use self::$crate;
+   |             ------------ previous import of the module `$crate` here
+...
+LL |         use $crate::{self};
+   |         -------------^^^^--
+   |         |            |
+   |         |            `$crate` reimported here
+   |         help: remove unnecessary import
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: `$crate` must be defined only once in the type namespace of this module
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `crate`
+  --> $DIR/use-path-segment-kw.rs:102:13
+   |
+LL |         use ::crate;
+   |             ^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate`
+  --> $DIR/use-path-segment-kw.rs:104:13
+   |
+LL |         use ::crate as _crate2;
+   |             ^^^^^^^^^^^^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate`
+  --> $DIR/use-path-segment-kw.rs:105:16
+   |
+LL |         use ::{crate};
+   |                ^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate`
+  --> $DIR/use-path-segment-kw.rs:107:16
+   |
+LL |         use ::{crate as _nested_crate2};
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `foobar::crate`
+  --> $DIR/use-path-segment-kw.rs:110:13
+   |
+LL |         use foobar::crate;
+   |             ^^^^^^^^^^^^^ no `crate` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::crate`
+  --> $DIR/use-path-segment-kw.rs:112:13
+   |
+LL |         use foobar::crate as _crate3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::crate`
+  --> $DIR/use-path-segment-kw.rs:113:22
+   |
+LL |         use foobar::{crate};
+   |                      ^^^^^ no `crate` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::crate`
+  --> $DIR/use-path-segment-kw.rs:115:22
+   |
+LL |         use foobar::{crate as _nested_crate3};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `crate::crate`
+  --> $DIR/use-path-segment-kw.rs:118:13
+   |
+LL |         use crate::crate;
+   |             ^^^^^^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate::crate`
+  --> $DIR/use-path-segment-kw.rs:120:13
+   |
+LL |         use crate::crate as _crate4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate::crate`
+  --> $DIR/use-path-segment-kw.rs:121:21
+   |
+LL |         use crate::{crate};
+   |                     ^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `crate::crate`
+  --> $DIR/use-path-segment-kw.rs:123:21
+   |
+LL |         use crate::{crate as _nested_crate4};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in the root
+
+error[E0432]: unresolved import `super::crate`
+  --> $DIR/use-path-segment-kw.rs:126:13
+   |
+LL |         use super::crate;
+   |             ^^^^^^^^^^^^ no `crate` in `foo`
+
+error[E0432]: unresolved import `super::crate`
+  --> $DIR/use-path-segment-kw.rs:128:13
+   |
+LL |         use super::crate as _crate5;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in `foo`
+
+error[E0432]: unresolved import `super::crate`
+  --> $DIR/use-path-segment-kw.rs:129:21
+   |
+LL |         use super::{crate};
+   |                     ^^^^^ no `crate` in `foo`
+
+error[E0432]: unresolved import `super::crate`
+  --> $DIR/use-path-segment-kw.rs:131:21
+   |
+LL |         use super::{crate as _nested_crate5};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in `foo`
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:143:13
+   |
+LL |         use super::{};
+   |             ^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:146:13
+   |
+LL |         use super;
+   |             ^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:147:17
+   |
+LL |         pub use super as _super;
+   |                 ^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:150:13
+   |
+LL |         use ::super;
+   |             ^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:151:13
+   |
+LL |         use ::super as _super2;
+   |             ^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:152:16
+   |
+LL |         use ::{super};
+   |                ^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:153:16
+   |
+LL |         use ::{super as _nested_super2};
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:156:13
+   |
+LL |         use foobar::super;
+   |             ^^^^^^^^^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:157:13
+   |
+LL |         use foobar::super as _super3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:158:22
+   |
+LL |         use foobar::{super};
+   |                      ^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:159:22
+   |
+LL |         use foobar::{super as _nested_super3};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:162:13
+   |
+LL |         use crate::super;
+   |             ^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:163:13
+   |
+LL |         use crate::super as _super4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:164:21
+   |
+LL |         use crate::{super};
+   |                     ^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:165:21
+   |
+LL |         use crate::{super as _nested_super4};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super::super`
+  --> $DIR/use-path-segment-kw.rs:168:13
+   |
+LL |         use super::super;
+   |             ^^^^^^^^^^^^ no `super` in `foo`
+
+error[E0432]: unresolved import `super::super`
+  --> $DIR/use-path-segment-kw.rs:169:17
+   |
+LL |         pub use super::super as _super5;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo`
+
+error[E0432]: unresolved import `super::super`
+  --> $DIR/use-path-segment-kw.rs:170:21
+   |
+LL |         use super::{super};
+   |                     ^^^^^ no `super` in `foo`
+
+error[E0432]: unresolved import `super::super`
+  --> $DIR/use-path-segment-kw.rs:171:25
+   |
+LL |         pub use super::{super as _nested_super5};
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo`
+
+error[E0432]: unresolved import `self`
+  --> $DIR/use-path-segment-kw.rs:181:13
+   |
+LL |         use self::{};
+   |             ^^^^^^^^ no `self` in the root
+
+error[E0432]: unresolved import `{{root}}`
+  --> $DIR/use-path-segment-kw.rs:188:13
+   |
+LL |         use ::self;
+   |             ^^^^^^ no `{{root}}` in the root
+
+error[E0432]: unresolved import `{{root}}`
+  --> $DIR/use-path-segment-kw.rs:190:13
+   |
+LL |         use ::self as _self2;
+   |             ^^^^^^^^^^^^^^^^ no `{{root}}` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:211:13
+   |
+LL |         use super::self;
+   |             ^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:213:17
+   |
+LL |         pub use super::self as _self5;
+   |                 ^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:215:21
+   |
+LL |         use super::{self};
+   |                     ^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:216:25
+   |
+LL |         pub use super::{self as _nested_self5};
+   |                         ^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `self`
+  --> $DIR/use-path-segment-kw.rs:221:20
+   |
+LL |         use self::{self};
+   |                    ^^^^ no `self` in the root
+
+error[E0432]: unresolved import `self`
+  --> $DIR/use-path-segment-kw.rs:222:24
+   |
+LL |         pub use self::{self as _nested_self6};
+   |                        ^^^^^^^^^^^^^^^^^^^^^ no `self` in the root
+
+error[E0432]: unresolved import `$crate`
+  --> $DIR/use-path-segment-kw.rs:13:13
+   |
+LL |         use ::$crate;
+   |             ^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate`
+  --> $DIR/use-path-segment-kw.rs:14:13
+   |
+LL |         use ::$crate as _dollar_crate2;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate`
+  --> $DIR/use-path-segment-kw.rs:15:16
+   |
+LL |         use ::{$crate};
+   |                ^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate`
+  --> $DIR/use-path-segment-kw.rs:16:16
+   |
+LL |         use ::{$crate as _nested_dollar_crate2};
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `foobar::$crate`
+  --> $DIR/use-path-segment-kw.rs:19:13
+   |
+LL |         use foobar::$crate;
+   |             ^^^^^^^^^^^^^^ no `$crate` in `foo::bar::foobar`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `foobar::$crate`
+  --> $DIR/use-path-segment-kw.rs:20:13
+   |
+LL |         use foobar::$crate as _dollar_crate3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in `foo::bar::foobar`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `foobar::$crate`
+  --> $DIR/use-path-segment-kw.rs:21:22
+   |
+LL |         use foobar::{$crate};
+   |                      ^^^^^^ no `$crate` in `foo::bar::foobar`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `foobar::$crate`
+  --> $DIR/use-path-segment-kw.rs:22:22
+   |
+LL |         use foobar::{$crate as _nested_dollar_crate3};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in `foo::bar::foobar`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:25:13
+   |
+LL |         use crate::$crate;
+   |             ^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:26:13
+   |
+LL |         use crate::$crate as _dollar_crate4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:27:21
+   |
+LL |         use crate::{$crate};
+   |                     ^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:28:21
+   |
+LL |         use crate::{$crate as _nested_dollar_crate4};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `super::$crate`
+  --> $DIR/use-path-segment-kw.rs:31:13
+   |
+LL |         use super::$crate;
+   |             ^^^^^^^^^^^^^ no `$crate` in `foo`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `super::$crate`
+  --> $DIR/use-path-segment-kw.rs:32:13
+   |
+LL |         use super::$crate as _dollar_crate5;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in `foo`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `super::$crate`
+  --> $DIR/use-path-segment-kw.rs:33:21
+   |
+LL |         use super::{$crate};
+   |                     ^^^^^^ no `$crate` in `foo`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `super::$crate`
+  --> $DIR/use-path-segment-kw.rs:34:21
+   |
+LL |         use super::{$crate as _nested_dollar_crate5};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in `foo`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:43:13
+   |
+LL |         use $crate::$crate;
+   |             ^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:44:13
+   |
+LL |         use $crate::$crate as _dollar_crate7;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:45:22
+   |
+LL |         use $crate::{$crate};
+   |                      ^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::$crate`
+  --> $DIR/use-path-segment-kw.rs:46:22
+   |
+LL |         use $crate::{$crate as _nested_dollar_crate7};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `$crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::crate`
+  --> $DIR/use-path-segment-kw.rs:49:13
+   |
+LL |         use $crate::crate;
+   |             ^^^^^^^^^^^^^ no `crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::crate`
+  --> $DIR/use-path-segment-kw.rs:51:13
+   |
+LL |         use $crate::crate as _m_crate8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::crate`
+  --> $DIR/use-path-segment-kw.rs:52:22
+   |
+LL |         use $crate::{crate};
+   |                      ^^^^^ no `crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::crate`
+  --> $DIR/use-path-segment-kw.rs:54:22
+   |
+LL |         use $crate::{crate as _m_nested_crate8};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ no `crate` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::super`
+  --> $DIR/use-path-segment-kw.rs:57:13
+   |
+LL |         use $crate::super;
+   |             ^^^^^^^^^^^^^ no `super` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::super`
+  --> $DIR/use-path-segment-kw.rs:58:13
+   |
+LL |         use $crate::super as _m_super8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::super`
+  --> $DIR/use-path-segment-kw.rs:59:22
+   |
+LL |         use $crate::{super};
+   |                      ^^^^^ no `super` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `$crate::super`
+  --> $DIR/use-path-segment-kw.rs:60:22
+   |
+LL |         use $crate::{super as _m_nested_super8};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0573]: expected type, found module `$crate`
+  --> $DIR/use-path-segment-kw.rs:8:19
+   |
+LL |         type A1 = $crate;
+   |                   ^^^^^^ not a type
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0573]: expected type, found module `crate`
+  --> $DIR/use-path-segment-kw.rs:97:19
+   |
+LL |         type B1 = crate;
+   |                   ^^^^^ not a type
+
+error[E0573]: expected type, found module `super`
+  --> $DIR/use-path-segment-kw.rs:145:19
+   |
+LL |         type C1 = super;
+   |                   ^^^^^ not a type
+
+error[E0573]: expected type, found module `super::super`
+  --> $DIR/use-path-segment-kw.rs:167:19
+   |
+LL |         type C5 = super::super;
+   |                   ^^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `self::super`
+  --> $DIR/use-path-segment-kw.rs:173:19
+   |
+LL |         type C6 = self::super;
+   |                   ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `self`
+  --> $DIR/use-path-segment-kw.rs:183:19
+   |
+LL |         type D1 = self;
+   |                   ^^^^ not a type
+
+error[E0433]: failed to resolve: global paths cannot start with `$crate`
+  --> $DIR/use-path-segment-kw.rs:12:21
+   |
+LL |         type A2 = ::$crate;
+   |                     ^^^^^^ global paths cannot start with `$crate`
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:18:27
+   |
+LL |         type A3 = foobar::$crate;
+   |                           ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:24:26
+   |
+LL |         type A4 = crate::$crate;
+   |                          ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:30:26
+   |
+LL |         type A5 = super::$crate;
+   |                          ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:36:25
+   |
+LL |         type A6 = self::$crate;
+   |                         ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:42:27
+   |
+LL |         type A7 = $crate::$crate;
+   |                           ^^^^^^ `$crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:48:27
+   |
+LL |         type A8 = $crate::crate;
+   |                           ^^^^^ `crate` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:56:27
+   |
+LL |         type A9 = $crate::super;
+   |                           ^^^^^ `super` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:62:28
+   |
+LL |         type A10 = $crate::self;
+   |                            ^^^^ `self` in paths can only be used in start position
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: global paths cannot start with `crate`
+  --> $DIR/use-path-segment-kw.rs:101:21
+   |
+LL |         type B2 = ::crate;
+   |                     ^^^^^ global paths cannot start with `crate`
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:109:27
+   |
+LL |         type B3 = foobar::crate;
+   |                           ^^^^^ `crate` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:117:26
+   |
+LL |         type B4 = crate::crate;
+   |                          ^^^^^ `crate` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:125:26
+   |
+LL |         type B5 = super::crate;
+   |                          ^^^^^ `crate` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:133:25
+   |
+LL |         type B6 = self::crate;
+   |                         ^^^^^ `crate` in paths can only be used in start position
+
+error[E0433]: failed to resolve: global paths cannot start with `super`
+  --> $DIR/use-path-segment-kw.rs:149:21
+   |
+LL |         type C2 = ::super;
+   |                     ^^^^^ global paths cannot start with `super`
+
+error[E0433]: failed to resolve: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:155:27
+   |
+LL |         type C3 = foobar::super;
+   |                           ^^^^^ `super` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:161:26
+   |
+LL |         type C4 = crate::super;
+   |                          ^^^^^ `super` in paths can only be used in start position
+
+error[E0433]: failed to resolve: global paths cannot start with `self`
+  --> $DIR/use-path-segment-kw.rs:187:21
+   |
+LL |         type D2 = ::self;
+   |                     ^^^^ global paths cannot start with `self`
+
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:195:27
+   |
+LL |         type D3 = foobar::self;
+   |                           ^^^^ `self` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:201:26
+   |
+LL |         type D4 = crate::self;
+   |                          ^^^^ `self` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:210:26
+   |
+LL |         type D5 = super::self;
+   |                          ^^^^ `self` in paths can only be used in start position
+
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:218:25
+   |
+LL |         type D6 = self::self;
+   |                         ^^^^ `self` in paths can only be used in start position
+
+error: aborting due to 141 previous errors
+
+Some errors have detailed explanations: E0252, E0429, E0431, E0432, E0433, E0573.
+For more information about an error, try `rustc --explain E0252`.

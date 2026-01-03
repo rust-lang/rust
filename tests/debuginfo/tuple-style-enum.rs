@@ -6,37 +6,37 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print union on
-// gdb-command:run
+//@ gdb-command:set print union on
+//@ gdb-command:run
 
-// gdb-command:print case1
-// gdb-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
+//@ gdb-command:print case1
+//@ gdb-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
 
-// gdb-command:print case2
-// gdb-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
+//@ gdb-command:print case2
+//@ gdb-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
 
-// gdb-command:print case3
-// gdb-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
+//@ gdb-command:print case3
+//@ gdb-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
 
-// gdb-command:print univariant
-// gdb-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
+//@ gdb-command:print univariant
+//@ gdb-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v case1
-// lldb-check:(tuple_style_enum::Regular) case1 = { value = { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 } $discr$ = 0 }
+//@ lldb-command:v case1
+//@ lldb-check:(tuple_style_enum::Regular) case1 = Case1(0, 31868, 31868, 31868, 31868) { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 }
 
-// lldb-command:v case2
-// lldb-check:(tuple_style_enum::Regular) case2 = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
+//@ lldb-command:v case2
+//@ lldb-check:(tuple_style_enum::Regular) case2 = Case2(0, 286331153, 286331153) { 0 = 0 1 = 286331153 2 = 286331153 }
 
-// lldb-command:v case3
-// lldb-check:(tuple_style_enum::Regular) case3 = { value = { 0 = 0 1 = 6438275382588823897 } $discr$ = 2 }
+//@ lldb-command:v case3
+//@ lldb-check:(tuple_style_enum::Regular) case3 = Case3(0, 6438275382588823897) { 0 = 0 1 = 6438275382588823897 }
 
-// lldb-command:v univariant
-// lldb-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
+//@ lldb-command:v univariant
+//@ lldb-check:(tuple_style_enum::Univariant) univariant = TheOnlyCase(-1) { 0 = -1 }
 
 #![allow(unused_variables)]
 

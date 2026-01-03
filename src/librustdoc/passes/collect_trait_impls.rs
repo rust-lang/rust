@@ -3,9 +3,10 @@
 //! struct implements that trait.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
 use tracing::debug;
 
 use super::Pass;
@@ -65,17 +66,17 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         for &impl_def_id in tcx.trait_impls_in_crate(LOCAL_CRATE) {
             let mut parent = Some(tcx.parent(impl_def_id));
             while let Some(did) = parent {
-                attr_buf.extend(
-                    tcx.get_attrs(did, sym::doc)
-                        .filter(|attr| {
-                            if let Some([attr]) = attr.meta_item_list().as_deref() {
-                                attr.has_name(sym::cfg)
-                            } else {
-                                false
-                            }
-                        })
-                        .cloned(),
-                );
+                attr_buf.extend(tcx.get_all_attrs(did).iter().filter_map(|attr| match attr {
+                    Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => {
+                        // The only doc attributes we're interested into for trait impls are the
+                        // `cfg`s for the `doc_cfg` feature. So we create a new empty `DocAttribute`
+                        // and then only clone the actual `DocAttribute::cfg` field.
+                        let mut new_attr = DocAttribute::default();
+                        new_attr.cfg = d.cfg.clone();
+                        Some(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))))
+                    }
+                    _ => None,
+                }));
                 parent = tcx.opt_parent(did);
             }
             cx.with_param_env(impl_def_id, |cx| {

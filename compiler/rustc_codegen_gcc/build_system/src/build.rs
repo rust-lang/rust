@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::os::unix::fs::symlink;
+use std::path::{Path, PathBuf};
 
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
@@ -45,8 +46,16 @@ impl BuildArg {
         println!(
             r#"
 `build` command help:
-
-    --sysroot              : Build with sysroot"#
+    --sysroot              : When used on its own, build backend in dev mode with optimized dependencies
+                             and sysroot in dev mode (unoptimized)
+                             When used together with --release, build backend in release mode with optimized dependencies
+                             When used together with --release-sysroot,
+                             build the sysroot in release mode with optimized dependencies instead of in dev mode
+    --release-sysroot      : When combined with --sysroot, additionally
+                             build the sysroot in release mode with optimized dependencies.
+                             It has no effect if `--sysroot` is not specified.
+                             It should not be used on its own.
+    --sysroot-panic-abort  : Build the sysroot without unwinding support"#
         );
         ConfigInfo::show_usage();
         println!("    --help                 : Show this help");
@@ -100,6 +109,24 @@ fn cleanup_sysroot_previous_build(library_dir: &Path) {
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
     let start_dir = get_sysroot_dir();
 
+    // Symlink libgccjit.so to sysroot.
+    let lib_path = start_dir.join("sysroot").join("lib");
+    let rustlib_target_path = lib_path
+        .join("rustlib")
+        .join(&config.host_triple)
+        .join("codegen-backends")
+        .join("lib")
+        .join(&config.target_triple);
+    let libgccjit_path =
+        PathBuf::from(config.gcc_path.as_ref().expect("libgccjit should be set by this point"))
+            .join("libgccjit.so");
+    let libgccjit_in_sysroot_path = rustlib_target_path.join("libgccjit.so");
+    // First remove the file to be able to create the symlink even when the file already exists.
+    let _ = fs::remove_file(&libgccjit_in_sysroot_path);
+    create_dir(&rustlib_target_path)?;
+    symlink(libgccjit_path, &libgccjit_in_sysroot_path)
+        .map_err(|error| format!("Cannot create symlink for libgccjit.so: {}", error))?;
+
     let library_dir = start_dir.join("sysroot_src").join("library");
     cleanup_sysroot_previous_build(&library_dir);
 
@@ -148,7 +175,10 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     run_command_with_output_and_env(&args, Some(&sysroot_dir), Some(&env))?;
 
     // Copy files to sysroot
-    let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
+    let sysroot_path = lib_path.join(format!("rustlib/{}/lib/", config.target_triple));
+    // To avoid errors like "multiple candidates for `rmeta` dependency `core` found", we clean the
+    // sysroot directory before copying the sysroot build artifacts.
+    let _ = fs::remove_dir_all(&sysroot_path);
     create_dir(&sysroot_path)?;
     let mut copier = |dir_to_copy: &Path| {
         // FIXME: should not use shell command!
@@ -171,13 +201,6 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
-
-    let gcc_path =
-        args.config_info.gcc_path.clone().expect(
-            "The config module should have emitted an error if the GCC path wasn't provided",
-        );
-    env.insert("LD_LIBRARY_PATH".to_string(), gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_string(), gcc_path);
 
     if args.config_info.no_default_features {
         env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());

@@ -270,6 +270,22 @@ fn foo<A: Trait, B: Trait>(a: A, b: B) -> i32 { return 42; }
     }
 
     #[test]
+    fn generate_fn_alias_unnamed_complex_types() {
+        check_assist_by_label(
+            generate_fn_type_alias,
+            r#"
+fn fo$0o(x: Vec<i32>) {}
+"#,
+            r#"
+type ${0:FooFn} = fn(Vec<i32>);
+
+fn foo(x: Vec<i32>) {}
+"#,
+            ParamStyle::Unnamed.label(),
+        );
+    }
+
+    #[test]
     fn generate_fn_alias_unnamed_self() {
         check_assist_by_label(
             generate_fn_type_alias,
@@ -400,6 +416,22 @@ fn fo$0o<A: Trait, B: Trait>(a: A, b: B) -> i32 { return 42; }
 type ${0:FooFn}<A: Trait, B: Trait> = fn(a: A, b: B) -> i32;
 
 fn foo<A: Trait, B: Trait>(a: A, b: B) -> i32 { return 42; }
+"#,
+            ParamStyle::Named.label(),
+        );
+    }
+
+    #[test]
+    fn generate_fn_alias_named_complex_types() {
+        check_assist_by_label(
+            generate_fn_type_alias,
+            r#"
+fn fo$0o(x: Vec<i32>) {}
+"#,
+            r#"
+type ${0:FooFn} = fn(x: Vec<i32>);
+
+fn foo(x: Vec<i32>) {}
 "#,
             ParamStyle::Named.label(),
         );

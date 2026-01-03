@@ -63,7 +63,7 @@ pub const BAZ: u32 = 0;
     let all_crates_before = db.all_crates();
 
     {
-        // Add a dependency a -> b.
+        // Add dependencies: c -> b, b -> a.
         let mut new_crate_graph = CrateGraphBuilder::default();
 
         let mut add_crate = |crate_name, root_file_idx: usize| {
@@ -76,6 +76,7 @@ pub const BAZ: u32 = 0;
                 None,
                 Env::default(),
                 CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },
+                Vec::new(),
                 false,
                 Arc::new(
                     // FIXME: This is less than ideal
@@ -111,9 +112,13 @@ pub const BAZ: u32 = 0;
                 crate_def_map(&db, krate);
             }
         },
-        &[("crate_local_def_map", 1)],
+        // `c` gets invalidated as its dependency `b` changed
+        // `b` gets invalidated due to its new dependency edge to `a`
+        &[("crate_local_def_map", 2)],
         expect![[r#"
             [
+                "crate_local_def_map",
+                "file_item_tree_query",
                 "crate_local_def_map",
             ]
         "#]],
@@ -222,6 +227,7 @@ pub struct S {}
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
+                "decl_macro_expander_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_shim",
@@ -235,7 +241,6 @@ pub struct S {}
                 "ast_id_map_shim",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
-                "decl_macro_expander_shim",
             ]
         "#]],
         expect![[r#"
@@ -280,16 +285,16 @@ fn f() { foo }
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
-                "real_span_map_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
-                "real_span_map_shim",
                 "crate_local_def_map",
                 "proc_macros_for_crate_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_shim",
+                "real_span_map_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_shim",
+                "real_span_map_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_shim",
@@ -404,32 +409,32 @@ pub struct S {}
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
-                "real_span_map_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
-                "real_span_map_shim",
-                "macro_def_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_macro_expansion_shim",
-                "macro_arg_shim",
-                "decl_macro_expander_shim",
-                "macro_def_shim",
-                "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_macro_expansion_shim",
-                "macro_arg_shim",
-                "decl_macro_expander_shim",
                 "crate_local_def_map",
                 "proc_macros_for_crate_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
+                "decl_macro_expander_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_shim",
+                "real_span_map_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_shim",
+                "real_span_map_shim",
+                "macro_def_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_macro_expansion_shim",
+                "macro_arg_shim",
+                "decl_macro_expander_shim",
+                "macro_def_shim",
+                "file_item_tree_query",
+                "ast_id_map_shim",
+                "parse_macro_expansion_shim",
+                "macro_arg_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -446,8 +451,8 @@ pub struct S {}
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "macro_arg_shim",
-                "macro_arg_shim",
                 "decl_macro_expander_shim",
+                "macro_arg_shim",
                 "macro_arg_shim",
             ]
         "#]],
@@ -509,7 +514,8 @@ m!(Z);
         &db,
         || {
             let crate_def_map = crate_def_map(&db, krate);
-            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            let module_data = &crate_def_map
+                [crate_def_map.modules_for_file(&db, pos.file_id.file_id(&db)).next().unwrap()];
             assert_eq!(module_data.scope.resolutions().count(), 4);
         },
         &[("file_item_tree_query", 6), ("parse_macro_expansion_shim", 3)],
@@ -520,6 +526,7 @@ m!(Z);
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
+                "decl_macro_expander_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_shim",
@@ -533,7 +540,6 @@ m!(Z);
                 "ast_id_map_shim",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
-                "decl_macro_expander_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_macro_expansion_shim",
@@ -558,7 +564,8 @@ m!(Z);
         &db,
         || {
             let crate_def_map = crate_def_map(&db, krate);
-            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            let module_data = &crate_def_map
+                [crate_def_map.modules_for_file(&db, pos.file_id.file_id(&db)).next().unwrap()];
             assert_eq!(module_data.scope.resolutions().count(), 4);
         },
         &[("file_item_tree_query", 1), ("parse_macro_expansion_shim", 0)],

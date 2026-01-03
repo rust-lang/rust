@@ -119,6 +119,24 @@ pub struct ManuallyDrop<T: PointeeSized> {
 }
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonNull<T: ?Sized> {
+    pointer: *const T,
+}
+impl<T: ?Sized> Copy for NonNull<T> {}
+
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonZero<T>(T);
+
+pub struct Unique<T: ?Sized> {
+    pub pointer: NonNull<T>,
+    pub _marker: PhantomData<T>,
+}
+
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
 pub struct UnsafeCell<T: PointeeSized> {

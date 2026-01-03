@@ -10,6 +10,10 @@
 
 #![allow(unused)]
 #![allow(non_camel_case_types)]
+// FIXME: `cfg(minisimd_const)` is used to toggle use of const trait impls, which require a few
+// nightly features. Remove this when `const_trait_impls`, `const_cmp` and `const_index` are
+// stablilized.
+#![allow(unexpected_cfgs)]
 
 // The field is currently left `pub` for convenience in porting tests, many of
 // which attempt to just construct it directly. That still works; it's just the
@@ -24,22 +28,9 @@ impl<T: Copy, const N: usize> Clone for Simd<T, N> {
     }
 }
 
-impl<T: PartialEq, const N: usize> PartialEq for Simd<T, N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_array() == other.as_array()
-    }
-}
-
 impl<T: core::fmt::Debug, const N: usize> core::fmt::Debug for Simd<T, N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         <[T; N] as core::fmt::Debug>::fmt(self.as_array(), f)
-    }
-}
-
-impl<T, const N: usize> core::ops::Index<usize> for Simd<T, N> {
-    type Output = T;
-    fn index(&self, i: usize) -> &T {
-        &self.as_array()[i]
     }
 }
 
@@ -47,15 +38,21 @@ impl<T, const N: usize> Simd<T, N> {
     pub const fn from_array(a: [T; N]) -> Self {
         Simd(a)
     }
-    pub fn as_array(&self) -> &[T; N] {
+    pub const fn as_array(&self) -> &[T; N] {
         let p: *const Self = self;
         unsafe { &*p.cast::<[T; N]>() }
     }
-    pub fn into_array(self) -> [T; N]
+    pub const fn into_array(self) -> [T; N]
     where
         T: Copy,
     {
         *self.as_array()
+    }
+    pub const fn splat(a: T) -> Self
+    where
+        T: Copy,
+    {
+        Self([a; N])
     }
 }
 
@@ -109,6 +106,14 @@ pub type i64x8 = Simd<i64, 8>;
 pub type i128x2 = Simd<i128, 2>;
 pub type i128x4 = Simd<i128, 4>;
 
+pub type usizex2 = Simd<usize, 2>;
+pub type usizex4 = Simd<usize, 4>;
+pub type usizex8 = Simd<usize, 8>;
+
+pub type isizex2 = Simd<isize, 2>;
+pub type isizex4 = Simd<isize, 4>;
+pub type isizex8 = Simd<isize, 8>;
+
 pub type f32x2 = Simd<f32, 2>;
 pub type f32x4 = Simd<f32, 4>;
 pub type f32x8 = Simd<f32, 8>;
@@ -122,18 +127,12 @@ pub type f64x8 = Simd<f64, 8>;
 // which attempt to just construct it directly. That still works; it's just the
 // `.0` projection that doesn't.
 #[repr(simd, packed)]
-#[derive(Copy)]
+#[derive(Copy, Eq)]
 pub struct PackedSimd<T, const N: usize>(pub [T; N]);
 
 impl<T: Copy, const N: usize> Clone for PackedSimd<T, N> {
     fn clone(&self) -> Self {
         *self
-    }
-}
-
-impl<T: PartialEq, const N: usize> PartialEq for PackedSimd<T, N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_array() == other.as_array()
     }
 }
 
@@ -147,14 +146,81 @@ impl<T, const N: usize> PackedSimd<T, N> {
     pub const fn from_array(a: [T; N]) -> Self {
         PackedSimd(a)
     }
-    pub fn as_array(&self) -> &[T; N] {
+    pub const fn as_array(&self) -> &[T; N] {
         let p: *const Self = self;
         unsafe { &*p.cast::<[T; N]>() }
     }
-    pub fn into_array(self) -> [T; N]
+    pub const fn into_array(self) -> [T; N]
     where
         T: Copy,
     {
         *self.as_array()
     }
+    pub const fn splat(a: T) -> Self
+    where
+        T: Copy,
+    {
+        Self([a; N])
+    }
 }
+
+// As `const_trait_impl` is a language feature with specialized syntax, we have to use them in a way
+// such that it doesn't get parsed as Rust code unless `cfg(minisimd_const)` is on. The easiest way
+// for that is a macro
+
+macro_rules! impl_traits {
+    ($($const_:ident)?) => {
+        impl<T: $([$const_])? PartialEq, const N: usize> $($const_)? PartialEq for Simd<T, N> {
+            fn eq(&self, other: &Self) -> bool {
+                self.as_array() == other.as_array()
+            }
+        }
+
+        impl<T, const N: usize> $($const_)? core::ops::Index<usize> for Simd<T, N> {
+            type Output = T;
+            fn index(&self, i: usize) -> &T {
+                &self.as_array()[i]
+            }
+        }
+
+        impl<T: $([$const_])? PartialEq, const N: usize> $($const_)? PartialEq for PackedSimd<T, N>
+        {
+            fn eq(&self, other: &Self) -> bool {
+                self.as_array() == other.as_array()
+            }
+        }
+    };
+}
+
+#[cfg(minisimd_const)]
+impl_traits!(const);
+
+#[cfg(not(minisimd_const))]
+impl_traits!();
+
+/// Version of `assert_eq` that ignores fancy runtime printing in const context.
+/// FIXME: Remove once <https://github.com/rust-lang/rust/issues/119826> is fixed.
+#[cfg(minisimd_const)]
+#[macro_export]
+macro_rules! assert_eq {
+    ($left:expr, $right:expr $(,)?) => {
+        assert_eq!(
+            $left,
+            $right,
+            concat!("`", stringify!($left), "` == `", stringify!($right), "`")
+        );
+    };
+    ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
+        {
+            let left = $left;
+            let right = $right;
+            // type inference works better with the concrete type on the
+            // left, but humans work better with the expected on the
+            // right
+            assert!(right == left, $($($arg)*),*);
+        }
+    };
+}
+
+#[cfg(minisimd_const)]
+use assert_eq;

@@ -1,3 +1,4 @@
+//@ edition:2015
 use core::default; //~ ERROR unresolved import `core`
 
 fn main() {

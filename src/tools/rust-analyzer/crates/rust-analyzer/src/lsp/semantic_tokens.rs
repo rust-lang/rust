@@ -143,6 +143,7 @@ define_semantic_token_modifiers![
         DECLARATION,
         STATIC,
         DEFAULT_LIBRARY,
+        DEPRECATED,
     }
     custom {
         (ASSOCIATED, "associated"),

@@ -11,8 +11,6 @@ use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 pub mod abi;
 mod libunwind_integration;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub mod thread_parking;
 pub mod time;
 pub mod waitqueue;
@@ -121,8 +119,6 @@ pub fn abort_internal() -> ! {
 pub extern "C" fn __rust_abort() {
     abort_internal();
 }
-
-pub use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 pub trait TryIntoInner<Inner>: Sized {
     fn try_into_inner(self) -> Result<Inner, Self>;

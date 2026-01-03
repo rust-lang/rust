@@ -576,4 +576,39 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`llvm.enzyme` now works with `download-ci-llvm=true`.",
     },
+    ChangeInfo {
+        change_id: 148636,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.python` option is now respected on macOS (previously ignored and forced to be /usr/bin/python3).",
+    },
+    ChangeInfo {
+        change_id: 148911,
+        severity: ChangeSeverity::Warning,
+        summary: "Flags from `*FLAGS*` (such as `RUSTFLAGS`) env. vars. now have precedence over rustflags set by bootstrap. Before, it was the other way around.",
+    },
+    ChangeInfo {
+        change_id: 148763,
+        severity: ChangeSeverity::Info,
+        summary: "`yarn` is now used instead of `npm` to install dependencies for some extra tidy checks. Use `build.yarn` to manually specify the path to `yarn` (`build.npm` is no longer used).",
+    },
+    ChangeInfo {
+        change_id: 148803,
+        severity: ChangeSeverity::Info,
+        summary: "The `-Zannotate-moves` option is now always enabled when building rustc, sysroot and tools.",
+    },
+    ChangeInfo {
+        change_id: 148795,
+        severity: ChangeSeverity::Info,
+        summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
+    },
+    ChangeInfo {
+        change_id: 149354,
+        severity: ChangeSeverity::Info,
+        summary: "New option `gcc.libgccjit-libs-dir` to specify which libgccjit.so to use per target.",
+    },
+    ChangeInfo {
+        change_id: 148671,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload-clang-dir` to allow building an in-tree llvm offload and openmp runtime with an external clang.",
+    },
 ];

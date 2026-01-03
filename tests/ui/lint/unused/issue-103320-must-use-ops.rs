@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![warn(unused_must_use)]
-#![feature(never_type)]
 
 use std::ops::Add;
 use std::ops::Sub;

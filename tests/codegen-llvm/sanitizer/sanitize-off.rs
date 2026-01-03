@@ -66,7 +66,7 @@ pub trait MyTrait {
     fn unsanitized(&self, b: &mut u8) -> u8;
     fn sanitized(&self, b: &mut u8) -> u8;
 
-    // CHECK-LABEL: ; sanitize_off::MyTrait::unsanitized_default
+    // CHECK-LABEL: ; <() as sanitize_off::MyTrait>::unsanitized_default
     // CHECK-NEXT:  ; Function Attrs:
     // CHECK-NOT:   sanitize_address
     // CHECK:       start:
@@ -77,7 +77,7 @@ pub trait MyTrait {
         *b
     }
 
-    // CHECK-LABEL: ; sanitize_off::MyTrait::sanitized_default
+    // CHECK-LABEL: ; <() as sanitize_off::MyTrait>::sanitized_default
     // CHECK-NEXT:  ; Function Attrs:
     // CHECK:       sanitize_address
     // CHECK:       start:

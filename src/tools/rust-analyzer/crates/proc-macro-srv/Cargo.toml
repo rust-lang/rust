@@ -18,8 +18,6 @@ libloading.workspace = true
 memmap2.workspace = true
 temp-dir.workspace = true
 
-tt.workspace = true
-syntax-bridge.workspace = true
 paths.workspace = true
 # span = {workspace = true, default-features = false} does not work
 span = { path = "../span", version = "0.0.0", default-features = false}
@@ -38,8 +36,9 @@ expect-test.workspace = true
 proc-macro-test.path = "./proc-macro-test"
 
 [features]
+default = []
 sysroot-abi = []
-in-rust-tree = ["syntax-bridge/in-rust-tree", "tt/in-rust-tree", "sysroot-abi"]
+in-rust-tree = ["sysroot-abi"]
 
 [lints]
 workspace = true

@@ -28,7 +28,7 @@
 use rustc_type_ir::{
     FnSig, GenericArgKind, TypeFoldable, TypingMode, Variance,
     error::ExpectedFound,
-    inherent::{IntoKind, Span as _},
+    inherent::Span as _,
     relate::{Relate, TypeRelation, solver_relating::RelateExt},
 };
 
@@ -68,6 +68,7 @@ impl<'db> InferCtxt<'db> {
             inner: self.inner.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
+            obligation_inspector: self.obligation_inspector.clone(),
         }
     }
 
@@ -84,6 +85,7 @@ impl<'db> InferCtxt<'db> {
             inner: self.inner.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
+            obligation_inspector: self.obligation_inspector.clone(),
         }
     }
 }

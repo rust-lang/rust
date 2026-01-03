@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `DecoderError` in this scope
+error[E0425]: cannot find type `DecoderError` in this scope
   --> $DIR/issue-30589.rs:3:23
    |
 LL | impl fmt::Display for DecoderError {
@@ -6,4 +6,4 @@ LL | impl fmt::Display for DecoderError {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

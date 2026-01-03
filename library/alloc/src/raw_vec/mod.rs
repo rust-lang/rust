@@ -788,9 +788,7 @@ impl<A: Allocator> RawVecInner<A> {
         elem_layout: Layout,
     ) -> Result<(), TryReserveError> {
         // SAFETY: Precondition passed to caller
-        let (ptr, layout) = if let Some(mem) = unsafe { self.current_memory(elem_layout) } {
-            mem
-        } else {
+        let Some((ptr, layout)) = (unsafe { self.current_memory(elem_layout) }) else {
             return Ok(());
         };
 

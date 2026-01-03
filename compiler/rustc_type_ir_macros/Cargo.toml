@@ -6,6 +6,9 @@ edition = "2024"
 [lib]
 proc-macro = true
 
+[features]
+nightly = []
+
 [dependencies]
 # tidy-alphabetical-start
 proc-macro2 = "1"

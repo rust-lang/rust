@@ -35,6 +35,15 @@ pub(crate) enum VisibilityNotPermittedNote {
     #[note(ast_passes_individual_foreign_items)]
     IndividualForeignItems,
 }
+#[derive(Diagnostic)]
+#[diag(ast_passes_impl_fn_const)]
+pub(crate) struct ImplFnConst {
+    #[primary_span]
+    #[suggestion(ast_passes_label, code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(ast_passes_parent_constness)]
+    pub parent_constness: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_trait_fn_const, code = E0379)]
@@ -67,7 +76,7 @@ pub(crate) struct TraitFnConst {
 pub(crate) struct AsyncFnInConstTraitOrTraitImpl {
     #[primary_span]
     pub async_keyword: Span,
-    pub in_impl: bool,
+    pub context: &'static str,
     #[label]
     pub const_keyword: Span,
 }
@@ -347,7 +356,18 @@ pub(crate) struct CVariadicMustBeUnsafe {
 pub(crate) struct CVariadicBadExtern {
     #[primary_span]
     pub span: Span,
-    pub abi: Symbol,
+    pub abi: &'static str,
+    #[label]
+    pub extern_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_bad_naked_extern)]
+#[help]
+pub(crate) struct CVariadicBadNakedExtern {
+    #[primary_span]
+    pub span: Span,
+    pub abi: &'static str,
     #[label]
     pub extern_span: Span,
 }
@@ -407,6 +427,14 @@ pub(crate) struct AutoTraitItems {
     pub total: Span,
     #[label]
     pub ident: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_const_auto_trait)]
+#[help]
+pub(crate) struct ConstAutoTrait {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -706,6 +734,14 @@ pub(crate) struct CoroutineAndCVariadic {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_not_supported)]
+pub(crate) struct CVariadicNotSupported<'a> {
+    #[primary_span]
+    pub variadic_span: Span,
+    pub target: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_foreign, code = E0130)]
 // FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub(crate) struct PatternInForeign {
@@ -953,4 +989,11 @@ pub(crate) struct AbiX86Interrupt {
     #[primary_span]
     pub spans: Vec<Span>,
     pub param_count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_scalable_vector_not_tuple_struct)]
+pub(crate) struct ScalableVectorNotTupleStruct {
+    #[primary_span]
+    pub span: Span,
 }

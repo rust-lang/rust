@@ -1,5 +1,8 @@
 // https://github.com/rust-lang/rust/issues/54094
 //@ check-pass
+
+#![allow(function_casts_as_integer)]
+
 trait Zoo {
     type X;
 }

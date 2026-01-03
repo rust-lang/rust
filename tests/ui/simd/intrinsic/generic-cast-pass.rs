@@ -1,6 +1,7 @@
 //@ run-pass
+//@ compile-flags: --cfg minisimd_const
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -12,7 +13,7 @@ use std::cmp::{max, min};
 
 type V<T> = Simd<T, 2>;
 
-fn main() {
+const fn cast() {
     unsafe {
         let u: V::<u32> = Simd([i16::MIN as u32, i16::MAX as u32]);
         let i: V<i16> = simd_cast(u);
@@ -55,4 +56,9 @@ fn main() {
         assert_eq!(u[0], f[0] as usize);
         assert_eq!(u[1], f[1] as usize);
     }
+}
+
+fn main() {
+    const { cast() };
+    cast();
 }

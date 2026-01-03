@@ -2,6 +2,7 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
 //@ normalize-stderr: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
+//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
 //@ ignore-backends: gcc
 #![feature(extern_types)]
 

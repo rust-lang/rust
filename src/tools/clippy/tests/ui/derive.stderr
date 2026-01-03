@@ -1,5 +1,5 @@
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:16:1
+  --> tests/ui/derive.rs:15:1
    |
 LL | / impl Clone for Qux {
 LL | |
@@ -14,7 +14,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:42:1
+  --> tests/ui/derive.rs:41:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |
@@ -27,7 +27,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:55:1
+  --> tests/ui/derive.rs:54:1
    |
 LL | / impl Clone for BigArray {
 LL | |
@@ -40,7 +40,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:68:1
+  --> tests/ui/derive.rs:67:1
    |
 LL | / impl Clone for FnPtr {
 LL | |
@@ -53,7 +53,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:90:1
+  --> tests/ui/derive.rs:89:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |

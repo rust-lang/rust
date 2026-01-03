@@ -8,7 +8,7 @@ use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock};
-use rustc_errors::emitter::{FatalOnlyEmitter, HumanEmitter, stderr_destination};
+use rustc_errors::emitter::{EmitterWithNote, HumanEmitter, stderr_destination};
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     BufferedEarlyLint, ColorConfig, DecorateDiagCompat, Diag, DiagCtxt, DiagCtxtHandle,
@@ -150,7 +150,7 @@ pub fn feature_warn_issue(
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
     err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
     err.warn(lint.desc);
-    err.note(format!("for more information, see {}", future_incompatible.reference));
+    err.note(format!("for more information, see {}", future_incompatible.reason.reference()));
 
     // A later feature_err call can steal and cancel this warning.
     err.stash(span, StashKey::EarlySyntaxWarning);
@@ -315,16 +315,12 @@ impl ParseSess {
         }
     }
 
-    pub fn with_fatal_emitter(locale_resources: Vec<&'static str>, fatal_note: String) -> Self {
+    pub fn emitter_with_note(locale_resources: Vec<&'static str>, note: String) -> Self {
         let translator = Translator::with_fallback_bundle(locale_resources, false);
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_emitter =
+        let emitter =
             Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator));
-        let dcx = DiagCtxt::new(Box::new(FatalOnlyEmitter {
-            fatal_emitter,
-            fatal_note: Some(fatal_note),
-        }))
-        .disable_warnings();
+        let dcx = DiagCtxt::new(Box::new(EmitterWithNote { emitter, note }));
         ParseSess::with_dcx(dcx, sm)
     }
 

@@ -16,7 +16,8 @@ use crate::alloc::{Allocator, Global};
 /// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
 #[stable(feature = "extract_if", since = "1.87.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain_mut` or `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
     'a,
     T,
@@ -129,7 +130,20 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let peek = if self.idx < self.end { self.vec.get(self.idx) } else { None };
+        let peek = if self.idx < self.end {
+            // This has to use pointer arithmetic as `self.vec[self.idx]` or
+            // `self.vec.get_unchecked(self.idx)` wouldn't work since we
+            // temporarily set the length of `self.vec` to zero.
+            //
+            // SAFETY:
+            // Since `self.idx` is smaller than `self.end` and `self.end` is
+            // smaller than `self.old_len`, `idx` is valid for indexing the
+            // buffer. Also, per the invariant of `self.idx`, this element
+            // has not been inspected/moved out yet.
+            Some(unsafe { &*self.vec.as_ptr().add(self.idx) })
+        } else {
+            None
+        };
         f.debug_struct("ExtractIf").field("peek", &peek).finish_non_exhaustive()
     }
 }

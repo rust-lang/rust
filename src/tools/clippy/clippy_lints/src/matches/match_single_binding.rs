@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_path, walk_stmt};
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Node, PatKind, Path, Stmt, StmtKind};
+use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, PatKind, Path, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
@@ -307,26 +307,6 @@ fn expr_in_nested_block(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
     false
 }
 
-fn expr_must_have_curlies(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
-    let parent = cx.tcx.parent_hir_node(match_expr.hir_id);
-    if let Node::Expr(Expr {
-        kind: ExprKind::Closure(..) | ExprKind::Binary(..),
-        ..
-    })
-    | Node::AnonConst(..) = parent
-    {
-        return true;
-    }
-
-    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id)
-        && let ExprKind::Match(..) = arm.body.kind
-    {
-        return true;
-    }
-
-    false
-}
-
 fn indent_of_nth_line(snippet: &str, nth: usize) -> Option<usize> {
     snippet
         .lines()
@@ -379,14 +359,47 @@ fn sugg_with_curlies<'a>(
 
     let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
     let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
-    if !expr_in_nested_block(cx, match_expr)
-        && ((needs_var_binding && is_var_binding_used_later) || expr_must_have_curlies(cx, match_expr))
-    {
+    let mut add_curlies = || {
         cbrace_end = format!("\n{indent}}}");
         // Fix body indent due to the closure
         indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
         cbrace_start = format!("{{\n{indent}");
         snippet_body = reindent_snippet_if_in_block(&snippet_body, !assignment_str.is_empty());
+    };
+
+    if !expr_in_nested_block(cx, match_expr) {
+        let mut parent = cx.tcx.parent_hir_node(match_expr.hir_id);
+        if let Node::Expr(Expr {
+            kind: ExprKind::Assign(..),
+            hir_id,
+            ..
+        }) = parent
+        {
+            parent = cx.tcx.parent_hir_node(*hir_id);
+        }
+        if let Node::Stmt(stmt) = parent {
+            parent = cx.tcx.parent_hir_node(stmt.hir_id);
+        }
+
+        match parent {
+            Node::Block(..)
+            | Node::Expr(Expr {
+                kind: ExprKind::Block(..) | ExprKind::ConstBlock(..),
+                ..
+            }) => {
+                if needs_var_binding && is_var_binding_used_later {
+                    add_curlies();
+                }
+            },
+            Node::Expr(..)
+            | Node::AnonConst(..)
+            | Node::Item(Item {
+                kind: ItemKind::Const(..),
+                ..
+            }) => add_curlies(),
+            Node::Arm(arm) if let ExprKind::Match(..) = arm.body.kind => add_curlies(),
+            _ => {},
+        }
     }
 
     format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")

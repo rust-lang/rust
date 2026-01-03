@@ -1,9 +1,13 @@
 error: Undefined Behavior: calling a function with more arguments than it expected
+  --> tests/fail-dep/concurrency/libc_pthread_create_too_few_args.rs:LL:CC
    |
-   = note: Undefined Behavior occurred here
-   = note: (no span available)
+LL |             libc::pthread_create(&mut native, ptr::null(), thread_start, ptr::null_mut()),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred due to this code
+   |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this error occurred while pushing a call frame onto an empty stack
+   = note: the span indicates which code caused the function to be called, but may not be the literal call site
 
 error: aborting due to 1 previous error
 

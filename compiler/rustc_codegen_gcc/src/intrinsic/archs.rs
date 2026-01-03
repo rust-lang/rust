@@ -10,7 +10,7 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
     };
     match arch {
         "AMDGPU" => {
-            #[allow(non_snake_case)]
+            #[expect(non_snake_case)]
             fn AMDGPU(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // AMDGPU
@@ -48,7 +48,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             AMDGPU(name, full_name)
         }
         "aarch64" => {
-            #[allow(non_snake_case)]
             fn aarch64(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // aarch64
@@ -71,26 +70,50 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "sve.sm4e" => "__builtin_sve_svsm4e_u32",
                     "sve.sm4ekey" => "__builtin_sve_svsm4ekey_u32",
                     "sve.wrffr" => "__builtin_sve_svwrffr",
-                    "tcancel" => "__builtin_arm_tcancel",
-                    "tcommit" => "__builtin_arm_tcommit",
-                    "tstart" => "__builtin_arm_tstart",
-                    "ttest" => "__builtin_arm_ttest",
                     _ => unimplemented!("***** unsupported LLVM intrinsic {full_name}"),
                 }
             }
             aarch64(name, full_name)
         }
         "amdgcn" => {
-            #[allow(non_snake_case)]
             fn amdgcn(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // amdgcn
+                    "add.max.i32" => "__builtin_amdgcn_add_max_i32",
+                    "add.max.u32" => "__builtin_amdgcn_add_max_u32",
+                    "add.min.i32" => "__builtin_amdgcn_add_min_i32",
+                    "add.min.u32" => "__builtin_amdgcn_add_min_u32",
                     "alignbyte" => "__builtin_amdgcn_alignbyte",
                     "ashr.pk.i8.i32" => "__builtin_amdgcn_ashr_pk_i8_i32",
                     "ashr.pk.u8.i32" => "__builtin_amdgcn_ashr_pk_u8_i32",
                     "buffer.wbinvl1" => "__builtin_amdgcn_buffer_wbinvl1",
                     "buffer.wbinvl1.sc" => "__builtin_amdgcn_buffer_wbinvl1_sc",
                     "buffer.wbinvl1.vol" => "__builtin_amdgcn_buffer_wbinvl1_vol",
+                    "cluster.id.x" => "__builtin_amdgcn_cluster_id_x",
+                    "cluster.id.y" => "__builtin_amdgcn_cluster_id_y",
+                    "cluster.id.z" => "__builtin_amdgcn_cluster_id_z",
+                    "cluster.load.async.to.lds.b128" => {
+                        "__builtin_amdgcn_cluster_load_async_to_lds_b128"
+                    }
+                    "cluster.load.async.to.lds.b32" => {
+                        "__builtin_amdgcn_cluster_load_async_to_lds_b32"
+                    }
+                    "cluster.load.async.to.lds.b64" => {
+                        "__builtin_amdgcn_cluster_load_async_to_lds_b64"
+                    }
+                    "cluster.load.async.to.lds.b8" => {
+                        "__builtin_amdgcn_cluster_load_async_to_lds_b8"
+                    }
+                    "cluster.workgroup.flat.id" => "__builtin_amdgcn_cluster_workgroup_flat_id",
+                    "cluster.workgroup.id.x" => "__builtin_amdgcn_cluster_workgroup_id_x",
+                    "cluster.workgroup.id.y" => "__builtin_amdgcn_cluster_workgroup_id_y",
+                    "cluster.workgroup.id.z" => "__builtin_amdgcn_cluster_workgroup_id_z",
+                    "cluster.workgroup.max.flat.id" => {
+                        "__builtin_amdgcn_cluster_workgroup_max_flat_id"
+                    }
+                    "cluster.workgroup.max.id.x" => "__builtin_amdgcn_cluster_workgroup_max_id_x",
+                    "cluster.workgroup.max.id.y" => "__builtin_amdgcn_cluster_workgroup_max_id_y",
+                    "cluster.workgroup.max.id.z" => "__builtin_amdgcn_cluster_workgroup_max_id_z",
                     "cubeid" => "__builtin_amdgcn_cubeid",
                     "cubema" => "__builtin_amdgcn_cubema",
                     "cubesc" => "__builtin_amdgcn_cubesc",
@@ -101,18 +124,36 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cvt.f32.fp8" => "__builtin_amdgcn_cvt_f32_fp8",
                     "cvt.f32.fp8.e5m3" => "__builtin_amdgcn_cvt_f32_fp8_e5m3",
                     "cvt.off.f32.i4" => "__builtin_amdgcn_cvt_off_f32_i4",
+                    "cvt.pk.bf8.f16" => "__builtin_amdgcn_cvt_pk_bf8_f16",
                     "cvt.pk.bf8.f32" => "__builtin_amdgcn_cvt_pk_bf8_f32",
                     "cvt.pk.f16.bf8" => "__builtin_amdgcn_cvt_pk_f16_bf8",
                     "cvt.pk.f16.fp8" => "__builtin_amdgcn_cvt_pk_f16_fp8",
                     "cvt.pk.f32.bf8" => "__builtin_amdgcn_cvt_pk_f32_bf8",
                     "cvt.pk.f32.fp8" => "__builtin_amdgcn_cvt_pk_f32_fp8",
+                    "cvt.pk.fp8.f16" => "__builtin_amdgcn_cvt_pk_fp8_f16",
                     "cvt.pk.fp8.f32" => "__builtin_amdgcn_cvt_pk_fp8_f32",
+                    "cvt.pk.fp8.f32.e5m3" => "__builtin_amdgcn_cvt_pk_fp8_f32_e5m3",
                     "cvt.pk.i16" => "__builtin_amdgcn_cvt_pk_i16",
                     "cvt.pk.u16" => "__builtin_amdgcn_cvt_pk_u16",
                     "cvt.pk.u8.f32" => "__builtin_amdgcn_cvt_pk_u8_f32",
                     "cvt.pknorm.i16" => "__builtin_amdgcn_cvt_pknorm_i16",
                     "cvt.pknorm.u16" => "__builtin_amdgcn_cvt_pknorm_u16",
                     "cvt.pkrtz" => "__builtin_amdgcn_cvt_pkrtz",
+                    "cvt.scale.pk16.bf16.bf6" => "__builtin_amdgcn_cvt_scale_pk16_bf16_bf6",
+                    "cvt.scale.pk16.bf16.fp6" => "__builtin_amdgcn_cvt_scale_pk16_bf16_fp6",
+                    "cvt.scale.pk16.f16.bf6" => "__builtin_amdgcn_cvt_scale_pk16_f16_bf6",
+                    "cvt.scale.pk16.f16.fp6" => "__builtin_amdgcn_cvt_scale_pk16_f16_fp6",
+                    "cvt.scale.pk16.f32.bf6" => "__builtin_amdgcn_cvt_scale_pk16_f32_bf6",
+                    "cvt.scale.pk16.f32.fp6" => "__builtin_amdgcn_cvt_scale_pk16_f32_fp6",
+                    "cvt.scale.pk8.bf16.bf8" => "__builtin_amdgcn_cvt_scale_pk8_bf16_bf8",
+                    "cvt.scale.pk8.bf16.fp4" => "__builtin_amdgcn_cvt_scale_pk8_bf16_fp4",
+                    "cvt.scale.pk8.bf16.fp8" => "__builtin_amdgcn_cvt_scale_pk8_bf16_fp8",
+                    "cvt.scale.pk8.f16.bf8" => "__builtin_amdgcn_cvt_scale_pk8_f16_bf8",
+                    "cvt.scale.pk8.f16.fp4" => "__builtin_amdgcn_cvt_scale_pk8_f16_fp4",
+                    "cvt.scale.pk8.f16.fp8" => "__builtin_amdgcn_cvt_scale_pk8_f16_fp8",
+                    "cvt.scale.pk8.f32.bf8" => "__builtin_amdgcn_cvt_scale_pk8_f32_bf8",
+                    "cvt.scale.pk8.f32.fp4" => "__builtin_amdgcn_cvt_scale_pk8_f32_fp4",
+                    "cvt.scale.pk8.f32.fp8" => "__builtin_amdgcn_cvt_scale_pk8_f32_fp8",
                     "cvt.scalef32.2xpk16.bf6.f32" => "__builtin_amdgcn_cvt_scalef32_2xpk16_bf6_f32",
                     "cvt.scalef32.2xpk16.fp6.f32" => "__builtin_amdgcn_cvt_scalef32_2xpk16_fp6_f32",
                     "cvt.scalef32.f16.bf8" => "__builtin_amdgcn_cvt_scalef32_f16_bf8",
@@ -137,6 +178,12 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cvt.scalef32.pk.fp8.bf16" => "__builtin_amdgcn_cvt_scalef32_pk_fp8_bf16",
                     "cvt.scalef32.pk.fp8.f16" => "__builtin_amdgcn_cvt_scalef32_pk_fp8_f16",
                     "cvt.scalef32.pk.fp8.f32" => "__builtin_amdgcn_cvt_scalef32_pk_fp8_f32",
+                    "cvt.scalef32.pk16.bf6.bf16" => "__builtin_amdgcn_cvt_scalef32_pk16_bf6_bf16",
+                    "cvt.scalef32.pk16.bf6.f16" => "__builtin_amdgcn_cvt_scalef32_pk16_bf6_f16",
+                    "cvt.scalef32.pk16.bf6.f32" => "__builtin_amdgcn_cvt_scalef32_pk16_bf6_f32",
+                    "cvt.scalef32.pk16.fp6.bf16" => "__builtin_amdgcn_cvt_scalef32_pk16_fp6_bf16",
+                    "cvt.scalef32.pk16.fp6.f16" => "__builtin_amdgcn_cvt_scalef32_pk16_fp6_f16",
+                    "cvt.scalef32.pk16.fp6.f32" => "__builtin_amdgcn_cvt_scalef32_pk16_fp6_f32",
                     "cvt.scalef32.pk32.bf16.bf6" => "__builtin_amdgcn_cvt_scalef32_pk32_bf16_bf6",
                     "cvt.scalef32.pk32.bf16.fp6" => "__builtin_amdgcn_cvt_scalef32_pk32_bf16_fp6",
                     "cvt.scalef32.pk32.bf6.bf16" => "__builtin_amdgcn_cvt_scalef32_pk32_bf6_bf16",
@@ -147,6 +194,15 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cvt.scalef32.pk32.f32.fp6" => "__builtin_amdgcn_cvt_scalef32_pk32_f32_fp6",
                     "cvt.scalef32.pk32.fp6.bf16" => "__builtin_amdgcn_cvt_scalef32_pk32_fp6_bf16",
                     "cvt.scalef32.pk32.fp6.f16" => "__builtin_amdgcn_cvt_scalef32_pk32_fp6_f16",
+                    "cvt.scalef32.pk8.bf8.bf16" => "__builtin_amdgcn_cvt_scalef32_pk8_bf8_bf16",
+                    "cvt.scalef32.pk8.bf8.f16" => "__builtin_amdgcn_cvt_scalef32_pk8_bf8_f16",
+                    "cvt.scalef32.pk8.bf8.f32" => "__builtin_amdgcn_cvt_scalef32_pk8_bf8_f32",
+                    "cvt.scalef32.pk8.fp4.bf16" => "__builtin_amdgcn_cvt_scalef32_pk8_fp4_bf16",
+                    "cvt.scalef32.pk8.fp4.f16" => "__builtin_amdgcn_cvt_scalef32_pk8_fp4_f16",
+                    "cvt.scalef32.pk8.fp4.f32" => "__builtin_amdgcn_cvt_scalef32_pk8_fp4_f32",
+                    "cvt.scalef32.pk8.fp8.bf16" => "__builtin_amdgcn_cvt_scalef32_pk8_fp8_bf16",
+                    "cvt.scalef32.pk8.fp8.f16" => "__builtin_amdgcn_cvt_scalef32_pk8_fp8_f16",
+                    "cvt.scalef32.pk8.fp8.f32" => "__builtin_amdgcn_cvt_scalef32_pk8_fp8_f32",
                     "cvt.scalef32.sr.bf8.bf16" => "__builtin_amdgcn_cvt_scalef32_sr_bf8_bf16",
                     "cvt.scalef32.sr.bf8.f16" => "__builtin_amdgcn_cvt_scalef32_sr_bf8_f16",
                     "cvt.scalef32.sr.bf8.f32" => "__builtin_amdgcn_cvt_scalef32_sr_bf8_f32",
@@ -156,6 +212,24 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cvt.scalef32.sr.pk.fp4.bf16" => "__builtin_amdgcn_cvt_scalef32_sr_pk_fp4_bf16",
                     "cvt.scalef32.sr.pk.fp4.f16" => "__builtin_amdgcn_cvt_scalef32_sr_pk_fp4_f16",
                     "cvt.scalef32.sr.pk.fp4.f32" => "__builtin_amdgcn_cvt_scalef32_sr_pk_fp4_f32",
+                    "cvt.scalef32.sr.pk16.bf6.bf16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_bf6_bf16"
+                    }
+                    "cvt.scalef32.sr.pk16.bf6.f16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_bf6_f16"
+                    }
+                    "cvt.scalef32.sr.pk16.bf6.f32" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_bf6_f32"
+                    }
+                    "cvt.scalef32.sr.pk16.fp6.bf16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_fp6_bf16"
+                    }
+                    "cvt.scalef32.sr.pk16.fp6.f16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_fp6_f16"
+                    }
+                    "cvt.scalef32.sr.pk16.fp6.f32" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk16_fp6_f32"
+                    }
                     "cvt.scalef32.sr.pk32.bf6.bf16" => {
                         "__builtin_amdgcn_cvt_scalef32_sr_pk32_bf6_bf16"
                     }
@@ -174,10 +248,30 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "cvt.scalef32.sr.pk32.fp6.f32" => {
                         "__builtin_amdgcn_cvt_scalef32_sr_pk32_fp6_f32"
                     }
+                    "cvt.scalef32.sr.pk8.bf8.bf16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk8_bf8_bf16"
+                    }
+                    "cvt.scalef32.sr.pk8.bf8.f16" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_bf8_f16",
+                    "cvt.scalef32.sr.pk8.bf8.f32" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_bf8_f32",
+                    "cvt.scalef32.sr.pk8.fp4.bf16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp4_bf16"
+                    }
+                    "cvt.scalef32.sr.pk8.fp4.f16" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp4_f16",
+                    "cvt.scalef32.sr.pk8.fp4.f32" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp4_f32",
+                    "cvt.scalef32.sr.pk8.fp8.bf16" => {
+                        "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp8_bf16"
+                    }
+                    "cvt.scalef32.sr.pk8.fp8.f16" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp8_f16",
+                    "cvt.scalef32.sr.pk8.fp8.f32" => "__builtin_amdgcn_cvt_scalef32_sr_pk8_fp8_f32",
                     "cvt.sr.bf16.f32" => "__builtin_amdgcn_cvt_sr_bf16_f32",
+                    "cvt.sr.bf8.f16" => "__builtin_amdgcn_cvt_sr_bf8_f16",
                     "cvt.sr.bf8.f32" => "__builtin_amdgcn_cvt_sr_bf8_f32",
                     "cvt.sr.f16.f32" => "__builtin_amdgcn_cvt_sr_f16_f32",
+                    "cvt.sr.fp8.f16" => "__builtin_amdgcn_cvt_sr_fp8_f16",
                     "cvt.sr.fp8.f32" => "__builtin_amdgcn_cvt_sr_fp8_f32",
+                    "cvt.sr.fp8.f32.e5m3" => "__builtin_amdgcn_cvt_sr_fp8_f32_e5m3",
+                    "cvt.sr.pk.bf16.f32" => "__builtin_amdgcn_cvt_sr_pk_bf16_f32",
+                    "cvt.sr.pk.f16.f32" => "__builtin_amdgcn_cvt_sr_pk_f16_f32",
                     "dispatch.id" => "__builtin_amdgcn_dispatch_id",
                     "dot4.f32.bf8.bf8" => "__builtin_amdgcn_dot4_f32_bf8_bf8",
                     "dot4.f32.bf8.fp8" => "__builtin_amdgcn_dot4_f32_bf8_fp8",
@@ -297,8 +391,20 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "mqsad.u32.u8" => "__builtin_amdgcn_mqsad_u32_u8",
                     "msad.u8" => "__builtin_amdgcn_msad_u8",
                     "perm" => "__builtin_amdgcn_perm",
+                    "perm.pk16.b4.u4" => "__builtin_amdgcn_perm_pk16_b4_u4",
+                    "perm.pk16.b6.u4" => "__builtin_amdgcn_perm_pk16_b6_u4",
+                    "perm.pk16.b8.u4" => "__builtin_amdgcn_perm_pk16_b8_u4",
+                    "permlane.bcast" => "__builtin_amdgcn_permlane_bcast",
+                    "permlane.down" => "__builtin_amdgcn_permlane_down",
+                    "permlane.idx.gen" => "__builtin_amdgcn_permlane_idx_gen",
+                    "permlane.up" => "__builtin_amdgcn_permlane_up",
+                    "permlane.xor" => "__builtin_amdgcn_permlane_xor",
                     "permlane16.var" => "__builtin_amdgcn_permlane16_var",
                     "permlanex16.var" => "__builtin_amdgcn_permlanex16_var",
+                    "pk.add.max.i16" => "__builtin_amdgcn_pk_add_max_i16",
+                    "pk.add.max.u16" => "__builtin_amdgcn_pk_add_max_u16",
+                    "pk.add.min.i16" => "__builtin_amdgcn_pk_add_min_i16",
+                    "pk.add.min.u16" => "__builtin_amdgcn_pk_add_min_u16",
                     "prng.b32" => "__builtin_amdgcn_prng_b32",
                     "qsad.pk.u16.u8" => "__builtin_amdgcn_qsad_pk_u16_u8",
                     "queue.ptr" => "__builtin_amdgcn_queue_ptr",
@@ -306,11 +412,15 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "rcp.legacy" => "__builtin_amdgcn_rcp_legacy",
                     "rsq.legacy" => "__builtin_amdgcn_rsq_legacy",
                     "s.barrier" => "__builtin_amdgcn_s_barrier",
+                    "s.barrier.init" => "__builtin_amdgcn_s_barrier_init",
+                    "s.barrier.join" => "__builtin_amdgcn_s_barrier_join",
+                    "s.barrier.leave" => "__builtin_amdgcn_s_barrier_leave",
                     "s.barrier.signal" => "__builtin_amdgcn_s_barrier_signal",
                     "s.barrier.signal.isfirst" => "__builtin_amdgcn_s_barrier_signal_isfirst",
                     "s.barrier.signal.var" => "__builtin_amdgcn_s_barrier_signal_var",
                     "s.barrier.wait" => "__builtin_amdgcn_s_barrier_wait",
                     "s.buffer.prefetch.data" => "__builtin_amdgcn_s_buffer_prefetch_data",
+                    "s.cluster.barrier" => "__builtin_amdgcn_s_cluster_barrier",
                     "s.dcache.inv" => "__builtin_amdgcn_s_dcache_inv",
                     "s.dcache.inv.vol" => "__builtin_amdgcn_s_dcache_inv_vol",
                     "s.dcache.wb" => "__builtin_amdgcn_s_dcache_wb",
@@ -408,7 +518,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             amdgcn(name, full_name)
         }
         "arm" => {
-            #[allow(non_snake_case)]
             fn arm(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // arm
@@ -517,7 +626,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             arm(name, full_name)
         }
         "bpf" => {
-            #[allow(non_snake_case)]
             fn bpf(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // bpf
@@ -539,7 +647,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             bpf(name, full_name)
         }
         "cuda" => {
-            #[allow(non_snake_case)]
             fn cuda(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // cuda
@@ -550,7 +657,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             cuda(name, full_name)
         }
         "hexagon" => {
-            #[allow(non_snake_case)]
             fn hexagon(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // hexagon
@@ -1522,6 +1628,14 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vabs.f8.128B" => "__builtin_HEXAGON_V6_vabs_f8_128B",
                     "V6.vabs.hf" => "__builtin_HEXAGON_V6_vabs_hf",
                     "V6.vabs.hf.128B" => "__builtin_HEXAGON_V6_vabs_hf_128B",
+                    "V6.vabs.qf16.hf" => "__builtin_HEXAGON_V6_vabs_qf16_hf",
+                    "V6.vabs.qf16.hf.128B" => "__builtin_HEXAGON_V6_vabs_qf16_hf_128B",
+                    "V6.vabs.qf16.qf16" => "__builtin_HEXAGON_V6_vabs_qf16_qf16",
+                    "V6.vabs.qf16.qf16.128B" => "__builtin_HEXAGON_V6_vabs_qf16_qf16_128B",
+                    "V6.vabs.qf32.qf32" => "__builtin_HEXAGON_V6_vabs_qf32_qf32",
+                    "V6.vabs.qf32.qf32.128B" => "__builtin_HEXAGON_V6_vabs_qf32_qf32_128B",
+                    "V6.vabs.qf32.sf" => "__builtin_HEXAGON_V6_vabs_qf32_sf",
+                    "V6.vabs.qf32.sf.128B" => "__builtin_HEXAGON_V6_vabs_qf32_sf_128B",
                     "V6.vabs.sf" => "__builtin_HEXAGON_V6_vabs_sf",
                     "V6.vabs.sf.128B" => "__builtin_HEXAGON_V6_vabs_sf_128B",
                     "V6.vabsb" => "__builtin_HEXAGON_V6_vabsb",
@@ -1634,6 +1748,8 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vaddwsat.128B" => "__builtin_HEXAGON_V6_vaddwsat_128B",
                     "V6.vaddwsat.dv" => "__builtin_HEXAGON_V6_vaddwsat_dv",
                     "V6.vaddwsat.dv.128B" => "__builtin_HEXAGON_V6_vaddwsat_dv_128B",
+                    "V6.valign4" => "__builtin_HEXAGON_V6_valign4",
+                    "V6.valign4.128B" => "__builtin_HEXAGON_V6_valign4_128B",
                     "V6.valignb" => "__builtin_HEXAGON_V6_valignb",
                     "V6.valignb.128B" => "__builtin_HEXAGON_V6_valignb_128B",
                     "V6.valignbi" => "__builtin_HEXAGON_V6_valignbi",
@@ -1752,14 +1868,30 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vcl0w.128B" => "__builtin_HEXAGON_V6_vcl0w_128B",
                     "V6.vcombine" => "__builtin_HEXAGON_V6_vcombine",
                     "V6.vcombine.128B" => "__builtin_HEXAGON_V6_vcombine_128B",
+                    "V6.vconv.bf.qf32" => "__builtin_HEXAGON_V6_vconv_bf_qf32",
+                    "V6.vconv.bf.qf32.128B" => "__builtin_HEXAGON_V6_vconv_bf_qf32_128B",
+                    "V6.vconv.f8.qf16" => "__builtin_HEXAGON_V6_vconv_f8_qf16",
+                    "V6.vconv.f8.qf16.128B" => "__builtin_HEXAGON_V6_vconv_f8_qf16_128B",
                     "V6.vconv.h.hf" => "__builtin_HEXAGON_V6_vconv_h_hf",
                     "V6.vconv.h.hf.128B" => "__builtin_HEXAGON_V6_vconv_h_hf_128B",
+                    "V6.vconv.h.hf.rnd" => "__builtin_HEXAGON_V6_vconv_h_hf_rnd",
+                    "V6.vconv.h.hf.rnd.128B" => "__builtin_HEXAGON_V6_vconv_h_hf_rnd_128B",
                     "V6.vconv.hf.h" => "__builtin_HEXAGON_V6_vconv_hf_h",
                     "V6.vconv.hf.h.128B" => "__builtin_HEXAGON_V6_vconv_hf_h_128B",
                     "V6.vconv.hf.qf16" => "__builtin_HEXAGON_V6_vconv_hf_qf16",
                     "V6.vconv.hf.qf16.128B" => "__builtin_HEXAGON_V6_vconv_hf_qf16_128B",
                     "V6.vconv.hf.qf32" => "__builtin_HEXAGON_V6_vconv_hf_qf32",
                     "V6.vconv.hf.qf32.128B" => "__builtin_HEXAGON_V6_vconv_hf_qf32_128B",
+                    "V6.vconv.qf16.f8" => "__builtin_HEXAGON_V6_vconv_qf16_f8",
+                    "V6.vconv.qf16.f8.128B" => "__builtin_HEXAGON_V6_vconv_qf16_f8_128B",
+                    "V6.vconv.qf16.hf" => "__builtin_HEXAGON_V6_vconv_qf16_hf",
+                    "V6.vconv.qf16.hf.128B" => "__builtin_HEXAGON_V6_vconv_qf16_hf_128B",
+                    "V6.vconv.qf16.qf16" => "__builtin_HEXAGON_V6_vconv_qf16_qf16",
+                    "V6.vconv.qf16.qf16.128B" => "__builtin_HEXAGON_V6_vconv_qf16_qf16_128B",
+                    "V6.vconv.qf32.qf32" => "__builtin_HEXAGON_V6_vconv_qf32_qf32",
+                    "V6.vconv.qf32.qf32.128B" => "__builtin_HEXAGON_V6_vconv_qf32_qf32_128B",
+                    "V6.vconv.qf32.sf" => "__builtin_HEXAGON_V6_vconv_qf32_sf",
+                    "V6.vconv.qf32.sf.128B" => "__builtin_HEXAGON_V6_vconv_qf32_sf_128B",
                     "V6.vconv.sf.qf32" => "__builtin_HEXAGON_V6_vconv_sf_qf32",
                     "V6.vconv.sf.qf32.128B" => "__builtin_HEXAGON_V6_vconv_sf_qf32_128B",
                     "V6.vconv.sf.w" => "__builtin_HEXAGON_V6_vconv_sf_w",
@@ -1874,6 +2006,22 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.veqh.or.128B" => "__builtin_HEXAGON_V6_veqh_or_128B",
                     "V6.veqh.xor" => "__builtin_HEXAGON_V6_veqh_xor",
                     "V6.veqh.xor.128B" => "__builtin_HEXAGON_V6_veqh_xor_128B",
+                    "V6.veqhf" => "__builtin_HEXAGON_V6_veqhf",
+                    "V6.veqhf.128B" => "__builtin_HEXAGON_V6_veqhf_128B",
+                    "V6.veqhf.and" => "__builtin_HEXAGON_V6_veqhf_and",
+                    "V6.veqhf.and.128B" => "__builtin_HEXAGON_V6_veqhf_and_128B",
+                    "V6.veqhf.or" => "__builtin_HEXAGON_V6_veqhf_or",
+                    "V6.veqhf.or.128B" => "__builtin_HEXAGON_V6_veqhf_or_128B",
+                    "V6.veqhf.xor" => "__builtin_HEXAGON_V6_veqhf_xor",
+                    "V6.veqhf.xor.128B" => "__builtin_HEXAGON_V6_veqhf_xor_128B",
+                    "V6.veqsf" => "__builtin_HEXAGON_V6_veqsf",
+                    "V6.veqsf.128B" => "__builtin_HEXAGON_V6_veqsf_128B",
+                    "V6.veqsf.and" => "__builtin_HEXAGON_V6_veqsf_and",
+                    "V6.veqsf.and.128B" => "__builtin_HEXAGON_V6_veqsf_and_128B",
+                    "V6.veqsf.or" => "__builtin_HEXAGON_V6_veqsf_or",
+                    "V6.veqsf.or.128B" => "__builtin_HEXAGON_V6_veqsf_or_128B",
+                    "V6.veqsf.xor" => "__builtin_HEXAGON_V6_veqsf_xor",
+                    "V6.veqsf.xor.128B" => "__builtin_HEXAGON_V6_veqsf_xor_128B",
                     "V6.veqw" => "__builtin_HEXAGON_V6_veqw",
                     "V6.veqw.128B" => "__builtin_HEXAGON_V6_veqw_128B",
                     "V6.veqw.and" => "__builtin_HEXAGON_V6_veqw_and",
@@ -1900,6 +2048,8 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vfneg.hf.128B" => "__builtin_HEXAGON_V6_vfneg_hf_128B",
                     "V6.vfneg.sf" => "__builtin_HEXAGON_V6_vfneg_sf",
                     "V6.vfneg.sf.128B" => "__builtin_HEXAGON_V6_vfneg_sf_128B",
+                    "V6.vgather.vscattermh" => "__builtin_HEXAGON_V6_vgather_vscattermh",
+                    "V6.vgather.vscattermh.128B" => "__builtin_HEXAGON_V6_vgather_vscattermh_128B",
                     "V6.vgathermh" => "__builtin_HEXAGON_V6_vgathermh",
                     "V6.vgathermh.128B" => "__builtin_HEXAGON_V6_vgathermh_128B",
                     "V6.vgathermhq" => "__builtin_HEXAGON_V6_vgathermhq",
@@ -1984,6 +2134,14 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vgtw.or.128B" => "__builtin_HEXAGON_V6_vgtw_or_128B",
                     "V6.vgtw.xor" => "__builtin_HEXAGON_V6_vgtw_xor",
                     "V6.vgtw.xor.128B" => "__builtin_HEXAGON_V6_vgtw_xor_128B",
+                    "V6.vilog2.hf" => "__builtin_HEXAGON_V6_vilog2_hf",
+                    "V6.vilog2.hf.128B" => "__builtin_HEXAGON_V6_vilog2_hf_128B",
+                    "V6.vilog2.qf16" => "__builtin_HEXAGON_V6_vilog2_qf16",
+                    "V6.vilog2.qf16.128B" => "__builtin_HEXAGON_V6_vilog2_qf16_128B",
+                    "V6.vilog2.qf32" => "__builtin_HEXAGON_V6_vilog2_qf32",
+                    "V6.vilog2.qf32.128B" => "__builtin_HEXAGON_V6_vilog2_qf32_128B",
+                    "V6.vilog2.sf" => "__builtin_HEXAGON_V6_vilog2_sf",
+                    "V6.vilog2.sf.128B" => "__builtin_HEXAGON_V6_vilog2_sf_128B",
                     "V6.vinsertwr" => "__builtin_HEXAGON_V6_vinsertwr",
                     "V6.vinsertwr.128B" => "__builtin_HEXAGON_V6_vinsertwr_128B",
                     "V6.vlalignb" => "__builtin_HEXAGON_V6_vlalignb",
@@ -2238,6 +2396,14 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vnavgub.128B" => "__builtin_HEXAGON_V6_vnavgub_128B",
                     "V6.vnavgw" => "__builtin_HEXAGON_V6_vnavgw",
                     "V6.vnavgw.128B" => "__builtin_HEXAGON_V6_vnavgw_128B",
+                    "V6.vneg.qf16.hf" => "__builtin_HEXAGON_V6_vneg_qf16_hf",
+                    "V6.vneg.qf16.hf.128B" => "__builtin_HEXAGON_V6_vneg_qf16_hf_128B",
+                    "V6.vneg.qf16.qf16" => "__builtin_HEXAGON_V6_vneg_qf16_qf16",
+                    "V6.vneg.qf16.qf16.128B" => "__builtin_HEXAGON_V6_vneg_qf16_qf16_128B",
+                    "V6.vneg.qf32.qf32" => "__builtin_HEXAGON_V6_vneg_qf32_qf32",
+                    "V6.vneg.qf32.qf32.128B" => "__builtin_HEXAGON_V6_vneg_qf32_qf32_128B",
+                    "V6.vneg.qf32.sf" => "__builtin_HEXAGON_V6_vneg_qf32_sf",
+                    "V6.vneg.qf32.sf.128B" => "__builtin_HEXAGON_V6_vneg_qf32_sf_128B",
                     "V6.vnormamth" => "__builtin_HEXAGON_V6_vnormamth",
                     "V6.vnormamth.128B" => "__builtin_HEXAGON_V6_vnormamth_128B",
                     "V6.vnormamtw" => "__builtin_HEXAGON_V6_vnormamtw",
@@ -2382,6 +2548,8 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vsub.hf.f8.128B" => "__builtin_HEXAGON_V6_vsub_hf_f8_128B",
                     "V6.vsub.hf.hf" => "__builtin_HEXAGON_V6_vsub_hf_hf",
                     "V6.vsub.hf.hf.128B" => "__builtin_HEXAGON_V6_vsub_hf_hf_128B",
+                    "V6.vsub.hf.mix" => "__builtin_HEXAGON_V6_vsub_hf_mix",
+                    "V6.vsub.hf.mix.128B" => "__builtin_HEXAGON_V6_vsub_hf_mix_128B",
                     "V6.vsub.qf16" => "__builtin_HEXAGON_V6_vsub_qf16",
                     "V6.vsub.qf16.128B" => "__builtin_HEXAGON_V6_vsub_qf16_128B",
                     "V6.vsub.qf16.mix" => "__builtin_HEXAGON_V6_vsub_qf16_mix",
@@ -2396,6 +2564,8 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "V6.vsub.sf.bf.128B" => "__builtin_HEXAGON_V6_vsub_sf_bf_128B",
                     "V6.vsub.sf.hf" => "__builtin_HEXAGON_V6_vsub_sf_hf",
                     "V6.vsub.sf.hf.128B" => "__builtin_HEXAGON_V6_vsub_sf_hf_128B",
+                    "V6.vsub.sf.mix" => "__builtin_HEXAGON_V6_vsub_sf_mix",
+                    "V6.vsub.sf.mix.128B" => "__builtin_HEXAGON_V6_vsub_sf_mix_128B",
                     "V6.vsub.sf.sf" => "__builtin_HEXAGON_V6_vsub_sf_sf",
                     "V6.vsub.sf.sf.128B" => "__builtin_HEXAGON_V6_vsub_sf_sf_128B",
                     "V6.vsubb" => "__builtin_HEXAGON_V6_vsubb",
@@ -2531,7 +2701,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             hexagon(name, full_name)
         }
         "loongarch" => {
-            #[allow(non_snake_case)]
             fn loongarch(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // loongarch
@@ -2569,6 +2738,24 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "iocsrwr.d" => "__builtin_loongarch_iocsrwr_d",
                     "iocsrwr.h" => "__builtin_loongarch_iocsrwr_h",
                     "iocsrwr.w" => "__builtin_loongarch_iocsrwr_w",
+                    "lasx.cast.128" => "__builtin_lasx_cast_128",
+                    "lasx.cast.128.d" => "__builtin_lasx_cast_128_d",
+                    "lasx.cast.128.s" => "__builtin_lasx_cast_128_s",
+                    "lasx.concat.128" => "__builtin_lasx_concat_128",
+                    "lasx.concat.128.d" => "__builtin_lasx_concat_128_d",
+                    "lasx.concat.128.s" => "__builtin_lasx_concat_128_s",
+                    "lasx.extract.128.hi" => "__builtin_lasx_extract_128_hi",
+                    "lasx.extract.128.hi.d" => "__builtin_lasx_extract_128_hi_d",
+                    "lasx.extract.128.hi.s" => "__builtin_lasx_extract_128_hi_s",
+                    "lasx.extract.128.lo" => "__builtin_lasx_extract_128_lo",
+                    "lasx.extract.128.lo.d" => "__builtin_lasx_extract_128_lo_d",
+                    "lasx.extract.128.lo.s" => "__builtin_lasx_extract_128_lo_s",
+                    "lasx.insert.128.hi" => "__builtin_lasx_insert_128_hi",
+                    "lasx.insert.128.hi.d" => "__builtin_lasx_insert_128_hi_d",
+                    "lasx.insert.128.hi.s" => "__builtin_lasx_insert_128_hi_s",
+                    "lasx.insert.128.lo" => "__builtin_lasx_insert_128_lo",
+                    "lasx.insert.128.lo.d" => "__builtin_lasx_insert_128_lo_d",
+                    "lasx.insert.128.lo.s" => "__builtin_lasx_insert_128_lo_s",
                     "lasx.vext2xv.d.b" => "__builtin_lasx_vext2xv_d_b",
                     "lasx.vext2xv.d.h" => "__builtin_lasx_vext2xv_d_h",
                     "lasx.vext2xv.d.w" => "__builtin_lasx_vext2xv_d_w",
@@ -4040,7 +4227,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             loongarch(name, full_name)
         }
         "mips" => {
-            #[allow(non_snake_case)]
             fn mips(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // mips
@@ -4721,7 +4907,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             mips(name, full_name)
         }
         "nvvm" => {
-            #[allow(non_snake_case)]
             fn nvvm(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // nvvm
@@ -4837,8 +5022,20 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "f16x2.to.e5m2x2.rn.relu" => "__nvvm_f16x2_to_e5m2x2_rn_relu",
                     "f2bf16.rn" => "__nvvm_f2bf16_rn",
                     "f2bf16.rn.relu" => "__nvvm_f2bf16_rn_relu",
+                    "f2bf16.rn.relu.satfinite" => "__nvvm_f2bf16_rn_relu_satfinite",
+                    "f2bf16.rn.satfinite" => "__nvvm_f2bf16_rn_satfinite",
                     "f2bf16.rz" => "__nvvm_f2bf16_rz",
                     "f2bf16.rz.relu" => "__nvvm_f2bf16_rz_relu",
+                    "f2bf16.rz.relu.satfinite" => "__nvvm_f2bf16_rz_relu_satfinite",
+                    "f2bf16.rz.satfinite" => "__nvvm_f2bf16_rz_satfinite",
+                    "f2f16.rn" => "__nvvm_f2f16_rn",
+                    "f2f16.rn.relu" => "__nvvm_f2f16_rn_relu",
+                    "f2f16.rn.relu.satfinite" => "__nvvm_f2f16_rn_relu_satfinite",
+                    "f2f16.rn.satfinite" => "__nvvm_f2f16_rn_satfinite",
+                    "f2f16.rz" => "__nvvm_f2f16_rz",
+                    "f2f16.rz.relu" => "__nvvm_f2f16_rz_relu",
+                    "f2f16.rz.relu.satfinite" => "__nvvm_f2f16_rz_relu_satfinite",
+                    "f2f16.rz.satfinite" => "__nvvm_f2f16_rz_satfinite",
                     "f2h.rn" => "__nvvm_f2h_rn",
                     "f2h.rn.ftz" => "__nvvm_f2h_rn_ftz",
                     "f2i.rm" => "__nvvm_f2i_rm",
@@ -4883,6 +5080,26 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "f2ull.rp.ftz" => "__nvvm_f2ull_rp_ftz",
                     "f2ull.rz" => "__nvvm_f2ull_rz",
                     "f2ull.rz.ftz" => "__nvvm_f2ull_rz_ftz",
+                    "f32x4.to.e2m1x4.rs.relu.satfinite" => {
+                        "__nvvm_f32x4_to_e2m1x4_rs_relu_satfinite"
+                    }
+                    "f32x4.to.e2m1x4.rs.satfinite" => "__nvvm_f32x4_to_e2m1x4_rs_satfinite",
+                    "f32x4.to.e2m3x4.rs.relu.satfinite" => {
+                        "__nvvm_f32x4_to_e2m3x4_rs_relu_satfinite"
+                    }
+                    "f32x4.to.e2m3x4.rs.satfinite" => "__nvvm_f32x4_to_e2m3x4_rs_satfinite",
+                    "f32x4.to.e3m2x4.rs.relu.satfinite" => {
+                        "__nvvm_f32x4_to_e3m2x4_rs_relu_satfinite"
+                    }
+                    "f32x4.to.e3m2x4.rs.satfinite" => "__nvvm_f32x4_to_e3m2x4_rs_satfinite",
+                    "f32x4.to.e4m3x4.rs.relu.satfinite" => {
+                        "__nvvm_f32x4_to_e4m3x4_rs_relu_satfinite"
+                    }
+                    "f32x4.to.e4m3x4.rs.satfinite" => "__nvvm_f32x4_to_e4m3x4_rs_satfinite",
+                    "f32x4.to.e5m2x4.rs.relu.satfinite" => {
+                        "__nvvm_f32x4_to_e5m2x4_rs_relu_satfinite"
+                    }
+                    "f32x4.to.e5m2x4.rs.satfinite" => "__nvvm_f32x4_to_e5m2x4_rs_satfinite",
                     "fabs.d" => "__nvvm_fabs_d",
                     "fabs.f" => "__nvvm_fabs_f",
                     "fabs.ftz.f" => "__nvvm_fabs_ftz_f",
@@ -4902,12 +5119,28 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "ff.to.ue8m0x2.rz.satfinite" => "__nvvm_ff_to_ue8m0x2_rz_satfinite",
                     "ff2bf16x2.rn" => "__nvvm_ff2bf16x2_rn",
                     "ff2bf16x2.rn.relu" => "__nvvm_ff2bf16x2_rn_relu",
+                    "ff2bf16x2.rn.relu.satfinite" => "__nvvm_ff2bf16x2_rn_relu_satfinite",
+                    "ff2bf16x2.rn.satfinite" => "__nvvm_ff2bf16x2_rn_satfinite",
+                    "ff2bf16x2.rs" => "__nvvm_ff2bf16x2_rs",
+                    "ff2bf16x2.rs.relu" => "__nvvm_ff2bf16x2_rs_relu",
+                    "ff2bf16x2.rs.relu.satfinite" => "__nvvm_ff2bf16x2_rs_relu_satfinite",
+                    "ff2bf16x2.rs.satfinite" => "__nvvm_ff2bf16x2_rs_satfinite",
                     "ff2bf16x2.rz" => "__nvvm_ff2bf16x2_rz",
                     "ff2bf16x2.rz.relu" => "__nvvm_ff2bf16x2_rz_relu",
+                    "ff2bf16x2.rz.relu.satfinite" => "__nvvm_ff2bf16x2_rz_relu_satfinite",
+                    "ff2bf16x2.rz.satfinite" => "__nvvm_ff2bf16x2_rz_satfinite",
                     "ff2f16x2.rn" => "__nvvm_ff2f16x2_rn",
                     "ff2f16x2.rn.relu" => "__nvvm_ff2f16x2_rn_relu",
+                    "ff2f16x2.rn.relu.satfinite" => "__nvvm_ff2f16x2_rn_relu_satfinite",
+                    "ff2f16x2.rn.satfinite" => "__nvvm_ff2f16x2_rn_satfinite",
+                    "ff2f16x2.rs" => "__nvvm_ff2f16x2_rs",
+                    "ff2f16x2.rs.relu" => "__nvvm_ff2f16x2_rs_relu",
+                    "ff2f16x2.rs.relu.satfinite" => "__nvvm_ff2f16x2_rs_relu_satfinite",
+                    "ff2f16x2.rs.satfinite" => "__nvvm_ff2f16x2_rs_satfinite",
                     "ff2f16x2.rz" => "__nvvm_ff2f16x2_rz",
                     "ff2f16x2.rz.relu" => "__nvvm_ff2f16x2_rz_relu",
+                    "ff2f16x2.rz.relu.satfinite" => "__nvvm_ff2f16x2_rz_relu_satfinite",
+                    "ff2f16x2.rz.satfinite" => "__nvvm_ff2f16x2_rz_satfinite",
                     "floor.d" => "__nvvm_floor_d",
                     "floor.f" => "__nvvm_floor_f",
                     "floor.ftz.f" => "__nvvm_floor_ftz_f",
@@ -5129,6 +5362,7 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "read.ptx.sreg.envreg8" => "__nvvm_read_ptx_sreg_envreg8",
                     "read.ptx.sreg.envreg9" => "__nvvm_read_ptx_sreg_envreg9",
                     "read.ptx.sreg.globaltimer" => "__nvvm_read_ptx_sreg_globaltimer",
+                    "read.ptx.sreg.globaltimer.lo" => "__nvvm_read_ptx_sreg_globaltimer_lo",
                     "read.ptx.sreg.gridid" => "__nvvm_read_ptx_sreg_gridid",
                     // [DUPLICATE]: "read.ptx.sreg.gridid" => "__nvvm_read_ptx_sreg_",
                     "read.ptx.sreg.laneid" => "__nvvm_read_ptx_sreg_laneid",
@@ -5501,7 +5735,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             nvvm(name, full_name)
         }
         "ppc" => {
-            #[allow(non_snake_case)]
             fn ppc(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ppc
@@ -5801,8 +6034,12 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "altivec.vupklsb" => "__builtin_altivec_vupklsb",
                     "altivec.vupklsh" => "__builtin_altivec_vupklsh",
                     "altivec.vupklsw" => "__builtin_altivec_vupklsw",
+                    "amo.ldat" => "__builtin_amo_ldat",
+                    "amo.lwat" => "__builtin_amo_lwat",
                     "bcdadd" => "__builtin_ppc_bcdadd",
                     "bcdadd.p" => "__builtin_ppc_bcdadd_p",
+                    "bcdcopysign" => "__builtin_ppc_bcdcopysign",
+                    "bcdsetsign" => "__builtin_ppc_bcdsetsign",
                     "bcdsub" => "__builtin_ppc_bcdsub",
                     "bcdsub.p" => "__builtin_ppc_bcdsub_p",
                     "bpermd" => "__builtin_bpermd",
@@ -6059,6 +6296,7 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "vsx.xvminsp" => "__builtin_vsx_xvminsp",
                     "vsx.xvredp" => "__builtin_vsx_xvredp",
                     "vsx.xvresp" => "__builtin_vsx_xvresp",
+                    "vsx.xvrlw" => "__builtin_vsx_xvrlw",
                     "vsx.xvrsqrtedp" => "__builtin_vsx_xvrsqrtedp",
                     "vsx.xvrsqrtesp" => "__builtin_vsx_xvrsqrtesp",
                     "vsx.xvtdivdp" => "__builtin_vsx_xvtdivdp",
@@ -6092,7 +6330,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ppc(name, full_name)
         }
         "ptx" => {
-            #[allow(non_snake_case)]
             fn ptx(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ptx
@@ -6120,7 +6357,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ptx(name, full_name)
         }
         "r600" => {
-            #[allow(non_snake_case)]
             fn r600(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // r600
@@ -6145,7 +6381,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             r600(name, full_name)
         }
         "riscv" => {
-            #[allow(non_snake_case)]
             fn riscv(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // riscv
@@ -6160,6 +6395,9 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "aes64im" => "__builtin_riscv_aes64im",
                     "aes64ks1i" => "__builtin_riscv_aes64ks1i",
                     "aes64ks2" => "__builtin_riscv_aes64ks2",
+                    "mips.ehb" => "__builtin_riscv_mips_ehb",
+                    "mips.ihb" => "__builtin_riscv_mips_ihb",
+                    "mips.pause" => "__builtin_riscv_mips_pause",
                     "sha512sig0" => "__builtin_riscv_sha512sig0",
                     "sha512sig0h" => "__builtin_riscv_sha512sig0h",
                     "sha512sig0l" => "__builtin_riscv_sha512sig0l",
@@ -6176,7 +6414,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             riscv(name, full_name)
         }
         "s390" => {
-            #[allow(non_snake_case)]
             fn s390(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // s390
@@ -6370,7 +6607,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             s390(name, full_name)
         }
         "spv" => {
-            #[allow(non_snake_case)]
             fn spv(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // spv
@@ -6387,7 +6623,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             spv(name, full_name)
         }
         "ve" => {
-            #[allow(non_snake_case)]
             fn ve(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ve
@@ -7660,7 +7895,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ve(name, full_name)
         }
         "x86" => {
-            #[allow(non_snake_case)]
             fn x86(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // x86
@@ -10019,24 +10253,16 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "stui" => "__builtin_ia32_stui",
                     "subborrow.u32" => "__builtin_ia32_subborrow_u32",
                     "subborrow.u64" => "__builtin_ia32_subborrow_u64",
-                    "t2rpntlvwz0" => "__builtin_ia32_t2rpntlvwz0",
                     "t2rpntlvwz0rs" => "__builtin_ia32_t2rpntlvwz0rs",
                     "t2rpntlvwz0rst1" => "__builtin_ia32_t2rpntlvwz0rst1",
-                    "t2rpntlvwz0t1" => "__builtin_ia32_t2rpntlvwz0t1",
-                    "t2rpntlvwz1" => "__builtin_ia32_t2rpntlvwz1",
                     "t2rpntlvwz1rs" => "__builtin_ia32_t2rpntlvwz1rs",
                     "t2rpntlvwz1rst1" => "__builtin_ia32_t2rpntlvwz1rst1",
-                    "t2rpntlvwz1t1" => "__builtin_ia32_t2rpntlvwz1t1",
                     "tbm.bextri.u32" => "__builtin_ia32_bextri_u32",
                     "tbm.bextri.u64" => "__builtin_ia32_bextri_u64",
                     "tcmmimfp16ps" => "__builtin_ia32_tcmmimfp16ps",
                     "tcmmimfp16ps.internal" => "__builtin_ia32_tcmmimfp16ps_internal",
                     "tcmmrlfp16ps" => "__builtin_ia32_tcmmrlfp16ps",
                     "tcmmrlfp16ps.internal" => "__builtin_ia32_tcmmrlfp16ps_internal",
-                    "tconjtcmmimfp16ps" => "__builtin_ia32_tconjtcmmimfp16ps",
-                    "tconjtcmmimfp16ps.internal" => "__builtin_ia32_tconjtcmmimfp16ps_internal",
-                    "tconjtfp16" => "__builtin_ia32_tconjtfp16",
-                    "tconjtfp16.internal" => "__builtin_ia32_tconjtfp16_internal",
                     "tcvtrowd2ps" => "__builtin_ia32_tcvtrowd2ps",
                     "tcvtrowd2ps.internal" => "__builtin_ia32_tcvtrowd2ps_internal",
                     "tcvtrowps2bf16h" => "__builtin_ia32_tcvtrowps2bf16h",
@@ -10086,18 +10312,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
                     "tmmultf32ps" => "__builtin_ia32_tmmultf32ps",
                     "tmmultf32ps.internal" => "__builtin_ia32_tmmultf32ps_internal",
                     "tpause" => "__builtin_ia32_tpause",
-                    "ttcmmimfp16ps" => "__builtin_ia32_ttcmmimfp16ps",
-                    "ttcmmimfp16ps.internal" => "__builtin_ia32_ttcmmimfp16ps_internal",
-                    "ttcmmrlfp16ps" => "__builtin_ia32_ttcmmrlfp16ps",
-                    "ttcmmrlfp16ps.internal" => "__builtin_ia32_ttcmmrlfp16ps_internal",
-                    "ttdpbf16ps" => "__builtin_ia32_ttdpbf16ps",
-                    "ttdpbf16ps.internal" => "__builtin_ia32_ttdpbf16ps_internal",
-                    "ttdpfp16ps" => "__builtin_ia32_ttdpfp16ps",
-                    "ttdpfp16ps.internal" => "__builtin_ia32_ttdpfp16ps_internal",
-                    "ttmmultf32ps" => "__builtin_ia32_ttmmultf32ps",
-                    "ttmmultf32ps.internal" => "__builtin_ia32_ttmmultf32ps_internal",
-                    "ttransposed" => "__builtin_ia32_ttransposed",
-                    "ttransposed.internal" => "__builtin_ia32_ttransposed_internal",
                     "umonitor" => "__builtin_ia32_umonitor",
                     "umwait" => "__builtin_ia32_umwait",
                     "urdmsr" => "__builtin_ia32_urdmsr",
@@ -10228,7 +10442,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             x86(name, full_name)
         }
         "xcore" => {
-            #[allow(non_snake_case)]
             fn xcore(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // xcore

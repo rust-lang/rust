@@ -28,7 +28,6 @@ use ide_db::{
 use itertools::Itertools;
 use macros::UpmapFromRaFixture;
 use nohash_hasher::IntMap;
-use span::Edition;
 use syntax::AstToken;
 use syntax::{
     AstNode,
@@ -419,10 +418,7 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let edition = sema
-        .attach_first_edition(file_id)
-        .map(|it| it.edition(sema.db))
-        .unwrap_or(Edition::CURRENT);
+    let edition = sema.attach_first_edition(file_id).edition(sema.db);
     let token = pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
         _ if kind.is_keyword(edition) => 4,
         T![=>] => 3,
@@ -1058,7 +1054,7 @@ use self$0;
 use self$0;
 "#,
             expect![[r#"
-                Module FileId(0) 0..10
+                _ Module FileId(0) 0..10
 
                 FileId(0) 4..8 import
             "#]],
@@ -1124,7 +1120,10 @@ pub(super) struct Foo$0 {
         check_with_scope(
             code,
             Some(&mut |db| {
-                SearchScope::single_file(EditionedFileId::current_edition(db, FileId::from_raw(2)))
+                SearchScope::single_file(EditionedFileId::current_edition_guess_origin(
+                    db,
+                    FileId::from_raw(2),
+                ))
             }),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
@@ -2504,7 +2503,7 @@ fn r#fn$0() {}
 fn main() { r#fn(); }
 "#,
             expect![[r#"
-                r#fn Function FileId(0) 0..12 3..7
+                fn Function FileId(0) 0..12 3..7
 
                 FileId(0) 25..29
             "#]],
@@ -3130,7 +3129,7 @@ fn foo<'r#fn>(s: &'r#fn str) {
 }
         "#,
             expect![[r#"
-                'r#break Label FileId(0) 87..96 87..95
+                'break Label FileId(0) 87..96 87..95
 
                 FileId(0) 113..121
             "#]],
@@ -3146,7 +3145,7 @@ fn foo<'r#fn$0>(s: &'r#fn str) {
 }
         "#,
             expect![[r#"
-                'r#fn LifetimeParam FileId(0) 7..12
+                'fn LifetimeParam FileId(0) 7..12
 
                 FileId(0) 18..23
                 FileId(0) 44..49

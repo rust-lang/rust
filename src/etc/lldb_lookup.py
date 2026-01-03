@@ -10,9 +10,6 @@ def is_hashbrown_hashmap(hash_map: lldb.SBValue) -> bool:
 
 
 def classify_rust_type(type: lldb.SBType) -> str:
-    if type.IsPointerType():
-        type = type.GetPointeeType()
-
     type_class = type.GetTypeClass()
     if type_class == lldb.eTypeClassStruct:
         return classify_struct(type.name, type.fields)
@@ -88,6 +85,26 @@ def synthetic_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
     if rust_type == RustType.SINGLETON_ENUM:
         return synthetic_lookup(valobj.GetChildAtIndex(0), _dict)
     if rust_type == RustType.ENUM:
+        # this little trick lets us treat `synthetic_lookup` as a "recognizer function" for the enum
+        # summary providers, reducing the number of lookups we have to do. This is a huge time save
+        # because there's no way (via type name) to recognize sum-type enums on `*-gnu` targets. The
+        # alternative would be to shove every single type through `summary_lookup`, which is
+        # incredibly wasteful. Once these scripts are updated for LLDB 19.0 and we can use
+        # `--recognizer-function`, this hack will only be needed for backwards compatibility.
+        summary: lldb.SBTypeSummary = valobj.GetTypeSummary()
+        if (
+            summary.summary_data is None
+            or summary.summary_data.strip()
+            != "lldb_lookup.ClangEncodedEnumSummaryProvider(valobj,internal_dict)"
+        ):
+            rust_category: lldb.SBTypeCategory = lldb.debugger.GetCategory("Rust")
+            rust_category.AddTypeSummary(
+                lldb.SBTypeNameSpecifier(valobj.GetTypeName()),
+                lldb.SBTypeSummary().CreateWithFunctionName(
+                    "lldb_lookup.ClangEncodedEnumSummaryProvider"
+                ),
+            )
+
         return ClangEncodedEnumProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC:
         return StdVecSyntheticProvider(valobj, _dict)

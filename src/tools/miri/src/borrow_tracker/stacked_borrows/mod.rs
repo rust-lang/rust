@@ -9,7 +9,7 @@ use std::fmt::Write;
 use std::sync::atomic::AtomicBool;
 use std::{cmp, mem};
 
-use rustc_abi::{BackendRepr, Size};
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasTypingEnv;
@@ -826,15 +826,12 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
-        let size = match size {
-            Some(size) => size,
-            None => {
-                static DEDUP: AtomicBool = AtomicBool::new(false);
-                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                    this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
-                }
-                return interp_ok(place.clone());
+        let Some(size) = size else {
+            static DEDUP: AtomicBool = AtomicBool::new(false);
+            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
             }
+            return interp_ok(place.clone());
         };
 
         // Compute new borrow.
@@ -887,14 +884,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
             RetagKind::TwoPhase => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
-        let mut visitor =
-            RetagVisitor { ecx: this, kind, retag_cause, retag_fields, in_field: false };
+        let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, in_field: false };
         return visitor.visit_value(place);
 
         // The actual visitor.
@@ -902,7 +897,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx: &'ecx mut MiriInterpCx<'tcx>,
             kind: RetagKind,
             retag_cause: RetagCause,
-            retag_fields: RetagFields,
             in_field: bool,
         }
         impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
@@ -967,24 +961,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         self.walk_value(place)?;
                     }
                     _ => {
-                        // Not a reference/pointer/box. Only recurse if configured appropriately.
-                        let recurse = match self.retag_fields {
-                            RetagFields::No => false,
-                            RetagFields::Yes => true,
-                            RetagFields::OnlyScalar => {
-                                // Matching `ArgAbi::new` at the time of writing, only fields of
-                                // `Scalar` and `ScalarPair` ABI are considered.
-                                matches!(
-                                    place.layout.backend_repr,
-                                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
-                                )
-                            }
-                        };
-                        if recurse {
-                            let in_field = mem::replace(&mut self.in_field, true); // remember and restore old value
-                            self.walk_value(place)?;
-                            self.in_field = in_field;
-                        }
+                        // Not a reference/pointer/box. Recurse.
+                        let in_field = mem::replace(&mut self.in_field, true); // remember and restore old value
+                        self.walk_value(place)?;
+                        self.in_field = in_field;
                     }
                 }
 

@@ -5,10 +5,13 @@ LL |     type Target;
    |     ------------ associated type `Target` defined here
 ...
 LL |     let _: <S as Trait>::Output;
-   |                          ^^^^^^
-   |                          |
-   |                          not found in `Trait`
-   |                          help: maybe you meant this associated type: `Target`
+   |                          ^^^^^^ not found in `Trait`
+   |
+help: maybe you meant this associated type
+   |
+LL -     let _: <S as Trait>::Output;
+LL +     let _: <S as Trait>::Target;
+   |
 
 error[E0576]: cannot find method or associated constant `BAR` in trait `Trait`
   --> $DIR/issue-87638.rs:20:27
@@ -17,10 +20,13 @@ LL |     const FOO: usize;
    |     ----------------- associated constant `FOO` defined here
 ...
 LL |     let _ = <S as Trait>::BAR;
-   |                           ^^^
-   |                           |
-   |                           not found in `Trait`
-   |                           help: maybe you meant this associated constant: `FOO`
+   |                           ^^^ not found in `Trait`
+   |
+help: maybe you meant this associated constant
+   |
+LL -     let _ = <S as Trait>::BAR;
+LL +     let _ = <S as Trait>::FOO;
+   |
 
 error: aborting due to 2 previous errors
 

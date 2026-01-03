@@ -202,7 +202,7 @@ fn invalid_range_pattern(state: f32) {
                     break 'blk 2.5;
                 }
                 4.0..3.0 => {
-                    //~^ ERROR lower range bound must be less than upper
+                    //~^ ERROR lower bound for range pattern must be less than upper bound
                     todo!()
                 }
             }

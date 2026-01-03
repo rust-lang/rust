@@ -17,8 +17,8 @@ use std::fmt;
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, db::DefDatabase, hir::Pat,
-    item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, attrs::AttrFlags,
+    db::DefDatabase, hir::Pat, item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
 };
 use hir_expand::{
     HirFileId,
@@ -164,7 +164,7 @@ impl<'a> DeclValidator<'a> {
         else {
             return;
         };
-        let module_data = &module_id.def_map(self.db)[module_id.local_id];
+        let module_data = &module_id.def_map(self.db)[module_id];
         let Some(module_src) = module_data.declaration_source(self.db) else {
             return;
         };
@@ -201,7 +201,7 @@ impl<'a> DeclValidator<'a> {
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
-            let no_mangle = self.db.attrs(func.into()).by_key(sym::no_mangle).exists();
+            let no_mangle = AttrFlags::query(self.db, func.into()).contains(AttrFlags::NO_MANGLE);
             if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {
@@ -293,12 +293,18 @@ impl<'a> DeclValidator<'a> {
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
         let data = self.db.struct_signature(struct_id);
-        self.create_incorrect_case_diagnostic_for_item_name(
-            struct_id,
-            &data.name,
-            CaseType::UpperCamelCase,
-            IdentType::Structure,
-        );
+
+        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // use camel case.
+        let has_repr_c = data.repr(self.db, struct_id).is_some_and(|repr| repr.c());
+        if !has_repr_c {
+            self.create_incorrect_case_diagnostic_for_item_name(
+                struct_id,
+                &data.name,
+                CaseType::UpperCamelCase,
+                IdentType::Structure,
+            );
+        }
 
         // Check the field names.
         self.validate_struct_fields(struct_id);
@@ -378,15 +384,20 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_enum(&mut self, enum_id: EnumId) {
+        // Check the enum name.
         let data = self.db.enum_signature(enum_id);
 
-        // Check the enum name.
-        self.create_incorrect_case_diagnostic_for_item_name(
-            enum_id,
-            &data.name,
-            CaseType::UpperCamelCase,
-            IdentType::Enum,
-        );
+        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // use camel case.
+        let has_repr_c = data.repr(self.db, enum_id).is_some_and(|repr| repr.c());
+        if !has_repr_c {
+            self.create_incorrect_case_diagnostic_for_item_name(
+                enum_id,
+                &data.name,
+                CaseType::UpperCamelCase,
+                IdentType::Enum,
+            );
+        }
 
         // Check the variant names.
         self.validate_enum_variants(enum_id)
@@ -561,6 +572,10 @@ impl<'a> DeclValidator<'a> {
         let data = self.db.static_signature(static_id);
         if data.flags.contains(StaticFlags::EXTERN) {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
+            return;
+        }
+        if AttrFlags::query(self.db, static_id.into()).contains(AttrFlags::NO_MANGLE) {
+            cov_mark::hit!(no_mangle_static_incorrect_case_ignored);
             return;
         }
 

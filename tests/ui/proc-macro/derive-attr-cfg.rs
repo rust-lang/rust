@@ -9,7 +9,7 @@ use derive_attr_cfg::Foo;
 #[derive(Foo)]
 #[foo]
 struct S {
-    #[cfg(any())]
+    #[cfg(false)]
     x: i32
 }
 

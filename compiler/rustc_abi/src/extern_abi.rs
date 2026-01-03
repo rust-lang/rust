@@ -269,11 +269,54 @@ impl ExternAbi {
             | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
-            | Self::EfiApi => CVariadicStatus::Stable,
-            Self::System { .. } => {
-                CVariadicStatus::Unstable { feature: rustc_span::sym::extern_system_varargs }
-            }
+            | Self::EfiApi
+            | Self::System { .. } => CVariadicStatus::Stable,
             _ => CVariadicStatus::NotSupported,
+        }
+    }
+
+    /// Returns whether the ABI supports guaranteed tail calls.
+    #[cfg(feature = "nightly")]
+    pub fn supports_guaranteed_tail_call(self) -> bool {
+        match self {
+            Self::CmseNonSecureCall | Self::CmseNonSecureEntry => {
+                // See https://godbolt.org/z/9jhdeqErv. The CMSE calling conventions clear registers
+                // before returning, and hence cannot guarantee a tail call.
+                false
+            }
+            Self::AvrInterrupt
+            | Self::AvrNonBlockingInterrupt
+            | Self::Msp430Interrupt
+            | Self::RiscvInterruptM
+            | Self::RiscvInterruptS
+            | Self::X86Interrupt => {
+                // See https://godbolt.org/z/Edfjnxxcq. Interrupts cannot be called directly.
+                false
+            }
+            Self::GpuKernel | Self::PtxKernel => {
+                // See https://godbolt.org/z/jq5TE5jK1.
+                false
+            }
+            Self::Custom => {
+                // This ABI does not support calls at all (except via assembly).
+                false
+            }
+            Self::C { .. }
+            | Self::System { .. }
+            | Self::Rust
+            | Self::RustCall
+            | Self::RustCold
+            | Self::RustInvalid
+            | Self::Unadjusted
+            | Self::EfiApi
+            | Self::Aapcs { .. }
+            | Self::Cdecl { .. }
+            | Self::Stdcall { .. }
+            | Self::Fastcall { .. }
+            | Self::Thiscall { .. }
+            | Self::Vectorcall { .. }
+            | Self::SysV64 { .. }
+            | Self::Win64 { .. } => true,
         }
     }
 }

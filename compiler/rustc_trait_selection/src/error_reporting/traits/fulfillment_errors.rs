@@ -1,12 +1,13 @@
 // ignore-tidy-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
+use std::collections::hash_set;
 use std::path::PathBuf;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -42,6 +43,7 @@ use super::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
+use crate::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -468,7 +470,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_trait_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_different_trait_with_same_name(&mut err, &obligation, leaf_trait_predicate);
                         self.note_adt_version_mismatch(&mut err, leaf_trait_predicate);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
@@ -539,7 +541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // variable that used to fallback to `()` now falling back to `!`. Issue a
                         // note informing about the change in behaviour.
                         if leaf_trait_predicate.skip_binder().self_ty().is_never()
-                            && self.fallback_has_occurred
+                            && self.diverging_fallback_has_occurred
                         {
                             let predicate = leaf_trait_predicate.map_bound(|trait_pred| {
                                 trait_pred.with_replaced_self_ty(self.tcx, tcx.types.unit)
@@ -548,8 +550,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if self.predicate_may_hold(&unit_obligation) {
                                 err.note(
                                     "this error might have been caused by changes to \
-                                    Rust's type-inference algorithm (see issue #48950 \
-                                    <https://github.com/rust-lang/rust/issues/48950> \
+                                    Rust's type-inference algorithm (see issue #148922 \
+                                    <https://github.com/rust-lang/rust/issues/148922> \
                                     for more information)",
                                 );
                                 err.help("you might have intended to use the type `()` here instead");
@@ -586,7 +588,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        self.report_host_effect_error(bound_predicate.rebind(predicate), obligation.param_env, span)
+                        self.report_host_effect_error(bound_predicate.rebind(predicate), &obligation, span)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -807,20 +809,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_host_effect_error(
         &self,
         predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        main_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Diag<'a> {
         // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
-        // *conditionally* holds. If that fails, we should also do selection
-        // to drill this down to an impl or built-in source, so we can
-        // point at it and explain that while the trait *is* implemented,
-        // that implementation is not const.
+        // *conditionally* holds.
         let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
             trait_ref: predicate.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
         let mut file = None;
+
         let err_msg = self.get_standard_error_message(
             trait_ref,
             None,
@@ -831,18 +831,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
         *diag.long_ty_path() = file;
-        if !self.predicate_may_hold(&Obligation::new(
+        let obligation = Obligation::new(
             self.tcx,
             ObligationCause::dummy(),
-            param_env,
+            main_obligation.param_env,
             trait_ref,
-        )) {
+        );
+        if !self.predicate_may_hold(&obligation) {
             diag.downgrade_to_delayed_bug();
         }
-        for candidate in self.find_similar_impl_candidates(trait_ref) {
-            let CandidateSimilarity::Exact { .. } = candidate.similarity else { continue };
-            let impl_did = candidate.impl_def_id;
-            let trait_did = candidate.trait_ref.def_id;
+
+        if let Ok(Some(ImplSource::UserDefined(impl_data))) =
+            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+        {
+            let impl_did = impl_data.impl_def_id;
+            let trait_did = trait_ref.def_id();
             let impl_span = self.tcx.def_span(impl_did);
             let trait_name = self.tcx.item_name(trait_did);
 
@@ -864,6 +867,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         impl_span,
                         format!("trait `{trait_name}` is implemented but not `const`"),
                     );
+
+                    let (condition_options, format_args) = self.on_unimplemented_components(
+                        trait_ref,
+                        main_obligation,
+                        diag.long_ty_path(),
+                    );
+
+                    if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, impl_did)
+                    {
+                        let note = command.evaluate(
+                            self.tcx,
+                            predicate.skip_binder().trait_ref,
+                            &condition_options,
+                            &format_args,
+                        );
+                        let OnUnimplementedNote {
+                            message,
+                            label,
+                            notes,
+                            parent_label,
+                            append_const_msg: _,
+                        } = note;
+
+                        if let Some(message) = message {
+                            diag.primary_message(message);
+                        }
+                        if let Some(label) = label {
+                            diag.span_label(impl_span, label);
+                        }
+                        for note in notes {
+                            diag.note(note);
+                        }
+                        if let Some(parent_label) = parent_label {
+                            diag.span_label(impl_span, parent_label);
+                        }
+                    }
                 }
             }
         }
@@ -1190,7 +1229,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         chain.push((expr.span, prev_ty));
 
         let mut prev = None;
-        for (span, err_ty) in chain.into_iter().rev() {
+        let mut iter = chain.into_iter().rev().peekable();
+        while let Some((span, err_ty)) = iter.next() {
+            let is_last = iter.peek().is_none();
             let err_ty = get_e_type(err_ty);
             let err_ty = match (err_ty, prev) {
                 (Some(err_ty), Some(prev)) if !self.can_eq(obligation.param_env, err_ty, prev) => {
@@ -1202,27 +1243,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     continue;
                 }
             };
-            if self
+
+            let implements_from = self
                 .infcx
                 .type_implements_trait(
                     self.tcx.get_diagnostic_item(sym::From).unwrap(),
                     [self_ty, err_ty],
                     obligation.param_env,
                 )
-                .must_apply_modulo_regions()
-            {
-                if !suggested {
-                    let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                    err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
-                }
+                .must_apply_modulo_regions();
+
+            let err_ty_str = self.tcx.short_string(err_ty, err.long_ty_path());
+            let label = if !implements_from && is_last {
+                format!(
+                    "this can't be annotated with `?` because it has type `Result<_, {err_ty_str}>`"
+                )
             } else {
-                let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                err.span_label(
-                    span,
-                    format!(
-                        "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
-                    ),
-                );
+                format!("this has type `Result<_, {err_ty_str}>`")
+            };
+
+            if !suggested || !implements_from {
+                err.span_label(span, label);
             }
             prev = Some(err_ty);
         }
@@ -1952,11 +1993,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if self.tcx.visibility(did).is_accessible_from(body_def_id, self.tcx) {
                             // don't suggest foreign `#[doc(hidden)]` types
                             if !did.is_local() {
-                                while let Some(parent) = parent_map.get(&did) {
+                                let mut previously_seen_dids: FxHashSet<DefId> = Default::default();
+                                previously_seen_dids.insert(did);
+                                while let Some(&parent) = parent_map.get(&did)
+                                    && let hash_set::Entry::Vacant(v) =
+                                        previously_seen_dids.entry(parent)
+                                {
                                     if self.tcx.is_doc_hidden(did) {
                                         return false;
                                     }
-                                    did = *parent;
+                                    v.insert();
+                                    did = parent;
                                 }
                             }
                             true
@@ -1973,115 +2020,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             impl_candidates.dedup();
             impl_candidates
         };
-
-        // We'll check for the case where the reason for the mismatch is that the trait comes from
-        // one crate version and the type comes from another crate version, even though they both
-        // are from the same crate.
-        let trait_def_id = trait_pred.def_id();
-        let trait_name = self.tcx.item_name(trait_def_id);
-        let crate_name = self.tcx.crate_name(trait_def_id.krate);
-        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
-            trait_name == self.tcx.item_name(trait_def_id)
-                && trait_def_id.krate != def_id.krate
-                && crate_name == self.tcx.crate_name(def_id.krate)
-        }) {
-            // We've found two different traits with the same name, same crate name, but
-            // different crate `DefId`. We highlight the traits.
-
-            let found_type =
-                if let ty::Adt(def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind() {
-                    Some(def.did())
-                } else {
-                    None
-                };
-            let candidates = if impl_candidates.is_empty() {
-                alternative_candidates(trait_def_id)
-            } else {
-                impl_candidates.into_iter().map(|cand| (cand.trait_ref, cand.impl_def_id)).collect()
-            };
-            let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
-            span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
-            for (sp, label) in [trait_def_id, other_trait_def_id]
-                .iter()
-                // The current crate-version might depend on another version of the same crate
-                // (Think "semver-trick"). Do not call `extern_crate` in that case for the local
-                // crate as that doesn't make sense and ICEs (#133563).
-                .filter(|def_id| !def_id.is_local())
-                .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
-                .map(|data| {
-                    let dependency = if data.dependency_of == LOCAL_CRATE {
-                        "direct dependency of the current crate".to_string()
-                    } else {
-                        let dep = self.tcx.crate_name(data.dependency_of);
-                        format!("dependency of crate `{dep}`")
-                    };
-                    (
-                        data.span,
-                        format!("one version of crate `{crate_name}` used here, as a {dependency}"),
-                    )
-                })
-            {
-                span.push_span_label(sp, label);
-            }
-            let mut points_at_type = false;
-            if let Some(found_type) = found_type {
-                span.push_span_label(
-                    self.tcx.def_span(found_type),
-                    "this type doesn't implement the required trait",
-                );
-                for (trait_ref, _) in candidates {
-                    if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
-                        && let candidate_def_id = def.did()
-                        && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
-                        && let Some(found) = self.tcx.opt_item_name(found_type)
-                        && name == found
-                        && candidate_def_id.krate != found_type.krate
-                        && self.tcx.crate_name(candidate_def_id.krate)
-                            == self.tcx.crate_name(found_type.krate)
-                    {
-                        // A candidate was found of an item with the same name, from two separate
-                        // versions of the same crate, let's clarify.
-                        let candidate_span = self.tcx.def_span(candidate_def_id);
-                        span.push_span_label(
-                            candidate_span,
-                            "this type implements the required trait",
-                        );
-                        points_at_type = true;
-                    }
-                }
-            }
-            span.push_span_label(self.tcx.def_span(other_trait_def_id), "this is the found trait");
-            err.highlighted_span_note(
-                span,
-                vec![
-                    StringPart::normal("there are ".to_string()),
-                    StringPart::highlighted("multiple different versions".to_string()),
-                    StringPart::normal(" of crate `".to_string()),
-                    StringPart::highlighted(format!("{crate_name}")),
-                    StringPart::normal("` in the dependency graph".to_string()),
-                ],
-            );
-            if points_at_type {
-                // We only clarify that the same type from different crate versions are not the
-                // same when we *find* the same type coming from different crate versions, otherwise
-                // it could be that it was a type provided by a different crate than the one that
-                // provides the trait, and mentioning this adds verbosity without clarification.
-                err.highlighted_note(vec![
-                    StringPart::normal(
-                        "two types coming from two different versions of the same crate are \
-                         different types "
-                            .to_string(),
-                    ),
-                    StringPart::highlighted("even if they look the same".to_string()),
-                ]);
-            }
-            err.highlighted_help(vec![
-                StringPart::normal("you can use `".to_string()),
-                StringPart::highlighted("cargo tree".to_string()),
-                StringPart::normal("` to explore your dependency tree".to_string()),
-            ]);
-            return true;
-        }
 
         if let [single] = &impl_candidates {
             // If we have a single implementation, try to unify it with the trait ref
@@ -2478,10 +2416,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
-    /// with the same path as `trait_ref`, a help message about
-    /// a probable version mismatch is added to `err`
-    fn note_trait_version_mismatch(
+    fn check_same_trait_different_version(
         &self,
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
@@ -2492,46 +2427,33 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_def_id,
                 trait_pred.skip_binder().self_ty(),
                 |impl_def_id| {
-                    trait_impls.push(impl_def_id);
+                    let impl_trait_header = self.tcx.impl_trait_header(impl_def_id);
+                    trait_impls
+                        .push(self.tcx.def_span(impl_trait_header.trait_ref.skip_binder().def_id));
                 },
             );
             trait_impls
         };
-
-        let required_trait_path = self.tcx.def_path_str(trait_pred.def_id());
-        let traits_with_same_path: UnordSet<_> = self
-            .tcx
-            .visible_traits()
-            .filter(|trait_def_id| *trait_def_id != trait_pred.def_id())
-            .map(|trait_def_id| (self.tcx.def_path_str(trait_def_id), trait_def_id))
-            .filter(|(p, _)| *p == required_trait_path)
-            .collect();
-
-        let traits_with_same_path =
-            traits_with_same_path.into_items().into_sorted_stable_ord_by_key(|(p, _)| p);
-        let mut suggested = false;
-        for (_, trait_with_same_path) in traits_with_same_path {
-            let trait_impls = get_trait_impls(trait_with_same_path);
-            if trait_impls.is_empty() {
-                continue;
-            }
-            let impl_spans: Vec<_> =
-                trait_impls.iter().map(|impl_def_id| self.tcx.def_span(*impl_def_id)).collect();
-            err.span_help(
-                impl_spans,
-                format!("trait impl{} with same name found", pluralize!(trait_impls.len())),
-            );
-            self.note_two_crate_versions(trait_with_same_path, err);
-            suggested = true;
-        }
-        suggested
+        self.check_same_definition_different_crate(
+            err,
+            trait_pred.def_id(),
+            self.tcx.visible_traits(),
+            get_trait_impls,
+            "trait",
+        )
     }
 
-    fn note_two_crate_versions(&self, did: DefId, err: &mut Diag<'_>) {
+    pub fn note_two_crate_versions(
+        &self,
+        did: DefId,
+        sp: impl Into<MultiSpan>,
+        err: &mut Diag<'_>,
+    ) {
         let crate_name = self.tcx.crate_name(did.krate);
-        let crate_msg =
-            format!("perhaps two different versions of crate `{crate_name}` are being used?");
-        err.note(crate_msg);
+        let crate_msg = format!(
+            "there are multiple different versions of crate `{crate_name}` in the dependency graph"
+        );
+        err.span_note(sp, crate_msg);
     }
 
     fn note_adt_version_mismatch(
@@ -2592,8 +2514,80 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         for (similar_item, _) in similar_items {
             err.span_help(self.tcx.def_span(similar_item), "item with same name found");
-            self.note_two_crate_versions(similar_item, err);
+            self.note_two_crate_versions(similar_item, MultiSpan::new(), err);
         }
+    }
+
+    fn check_same_name_different_path(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        let mut suggested = false;
+        let trait_def_id = trait_pred.def_id();
+        let trait_has_same_params = |other_trait_def_id: DefId| -> bool {
+            let trait_generics = self.tcx.generics_of(trait_def_id);
+            let other_trait_generics = self.tcx.generics_of(other_trait_def_id);
+
+            if trait_generics.count() != other_trait_generics.count() {
+                return false;
+            }
+            trait_generics.own_params.iter().zip(other_trait_generics.own_params.iter()).all(
+                |(a, b)| match (&a.kind, &b.kind) {
+                    (ty::GenericParamDefKind::Lifetime, ty::GenericParamDefKind::Lifetime)
+                    | (
+                        ty::GenericParamDefKind::Type { .. },
+                        ty::GenericParamDefKind::Type { .. },
+                    )
+                    | (
+                        ty::GenericParamDefKind::Const { .. },
+                        ty::GenericParamDefKind::Const { .. },
+                    ) => true,
+                    _ => false,
+                },
+            )
+        };
+        let trait_name = self.tcx.item_name(trait_def_id);
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
+            trait_def_id != *def_id
+                && trait_name == self.tcx.item_name(def_id)
+                && trait_has_same_params(*def_id)
+                && self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    self.tcx,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_pred.map_bound(|tr| ty::TraitPredicate {
+                        trait_ref: ty::TraitRef::new(self.tcx, *def_id, tr.trait_ref.args),
+                        ..tr
+                    }),
+                ))
+        }) {
+            err.note(format!(
+                "`{}` implements similarly named trait `{}`, but not `{}`",
+                trait_pred.self_ty(),
+                self.tcx.def_path_str(other_trait_def_id),
+                trait_pred.print_modifiers_and_trait_path()
+            ));
+            suggested = true;
+        }
+        suggested
+    }
+
+    /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
+    /// with the same path as `trait_ref`, a help message about a multiple different
+    /// versions of the same crate is added to `err`. Otherwise if it implements another
+    /// trait with the same name, a note message about a similarly named trait is added to `err`.
+    pub fn note_different_trait_with_same_name(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        if self.check_same_trait_different_version(err, trait_pred) {
+            return true;
+        }
+        self.check_same_name_different_path(err, obligation, trait_pred)
     }
 
     /// Add a `::` prefix when comparing paths so that paths with just one item

@@ -84,11 +84,15 @@ error[E0404]: expected trait, found struct `String`
   --> $DIR/assoc_type_bound_with_struct.rs:19:51
    |
 LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
-   |                                                   ^^^^^^ help: a trait with a similar name exists: `ToString`
+   |                                                   ^^^^^^
    |
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: similarly named trait `ToString` defined here
+help: a trait with a similar name exists
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: ToString {}
+   |                                                   ++
 
 error: aborting due to 6 previous errors
 

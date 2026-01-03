@@ -1,5 +1,5 @@
 #![feature(supertrait_item_shadowing)]
-#![deny(supertrait_item_shadowing_definition)]
+#![deny(shadowing_supertrait_items)]
 
 trait SuperSuper {
     fn method();

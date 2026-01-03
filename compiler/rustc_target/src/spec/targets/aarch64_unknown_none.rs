@@ -20,13 +20,14 @@ pub(crate) fn target() -> Target {
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &["--fix-cortex-a53-843419"],
         ),
-        features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
+        features: "+v8a,+strict-align,+neon".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
+        default_uwtable: true,
         ..Default::default()
     };
     Target {

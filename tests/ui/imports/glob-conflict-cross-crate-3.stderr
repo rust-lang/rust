@@ -1,0 +1,91 @@
+error: `C` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-3.rs:13:13
+   |
+LL |     let _a: C = 1;
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:9:9
+   |
+LL | pub use a::*;
+   |         ^
+note: `C` could also refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
+   |
+LL | pub use b::*;
+   |         ^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: `C` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-3.rs:13:13
+   |
+LL |     let _a: C = 1;
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias imported here
+  --> $DIR/glob-conflict-cross-crate-3.rs:9:5
+   |
+LL | use glob_conflict_cross_crate_2_extern::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+note: `C` could also refer to the type alias imported here
+  --> $DIR/glob-conflict-cross-crate-3.rs:10:5
+   |
+LL | use a::*;
+   |     ^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+
+error: aborting due to 2 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: `C` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-3.rs:13:13
+   |
+LL |     let _a: C = 1;
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:9:9
+   |
+LL | pub use a::*;
+   |         ^
+note: `C` could also refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
+   |
+LL | pub use b::*;
+   |         ^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `C` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-3.rs:13:13
+   |
+LL |     let _a: C = 1;
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias imported here
+  --> $DIR/glob-conflict-cross-crate-3.rs:9:5
+   |
+LL | use glob_conflict_cross_crate_2_extern::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+note: `C` could also refer to the type alias imported here
+  --> $DIR/glob-conflict-cross-crate-3.rs:10:5
+   |
+LL | use a::*;
+   |     ^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

@@ -1,373 +1,340 @@
 //! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
-use std::iter::Peekable;
+use std::{cell::OnceCell, ops::ControlFlow};
 
+use ::tt::TextRange;
 use base_db::Crate;
-use cfg::{CfgAtom, CfgExpr};
-use intern::{Symbol, sym};
-use rustc_hash::FxHashSet;
+use cfg::CfgExpr;
+use parser::T;
+use smallvec::SmallVec;
 use syntax::{
-    AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
-    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
+    AstNode, PreorderWithTokens, SyntaxElement, SyntaxNode, SyntaxToken, WalkEvent,
+    ast::{self, HasAttrs, TokenTreeChildren},
 };
-use tracing::{debug, warn};
+use syntax_bridge::DocCommentDesugarMode;
 
-use crate::{MacroCallLoc, MacroDefKind, db::ExpandDatabase, proc_macro::ProcMacroKind};
+use crate::{
+    attrs::{AttrId, Meta, expand_cfg_attr, is_item_tree_filtered_attr},
+    db::ExpandDatabase,
+    fixup::{self, SyntaxFixupUndoInfo},
+    span_map::SpanMapRef,
+    tt::{self, DelimSpan, Span},
+};
 
-fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: Crate) -> Option<bool> {
-    if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
-        return None;
-    }
-    let cfg = parse_from_attr_token_tree(&attr.meta()?.token_tree()?)?;
-    let enabled = krate.cfg_options(db).check(&cfg) != Some(false);
-    Some(enabled)
+struct ItemIsCfgedOut;
+
+#[derive(Debug)]
+struct ExpandedAttrToProcess {
+    range: TextRange,
 }
 
-fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: Crate) -> Option<bool> {
-    if !attr.simple_name().as_deref().map(|v| v == "cfg_attr")? {
-        return None;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NextExpandedAttrState {
+    NotStarted,
+    InTheMiddle,
+}
+
+#[derive(Debug)]
+struct AstAttrToProcess {
+    range: TextRange,
+    expanded_attrs: SmallVec<[ExpandedAttrToProcess; 1]>,
+    expanded_attrs_idx: usize,
+    next_expanded_attr: NextExpandedAttrState,
+    pound_span: Span,
+    brackets_span: DelimSpan,
+    /// If `Some`, this is an inner attribute.
+    excl_span: Option<Span>,
+}
+
+fn macro_input_callback(
+    db: &dyn ExpandDatabase,
+    is_derive: bool,
+    censor_item_tree_attr_ids: &[AttrId],
+    krate: Crate,
+    default_span: Span,
+    span_map: SpanMapRef<'_>,
+) -> impl FnMut(&mut PreorderWithTokens, &WalkEvent<SyntaxElement>) -> (bool, Vec<tt::Leaf>) {
+    let cfg_options = OnceCell::new();
+    let cfg_options = move || *cfg_options.get_or_init(|| krate.cfg_options(db));
+
+    let mut should_strip_attr = {
+        let mut item_tree_attr_id = 0;
+        let mut censor_item_tree_attr_ids_index = 0;
+        move || {
+            let mut result = false;
+            if let Some(&next_censor_attr_id) =
+                censor_item_tree_attr_ids.get(censor_item_tree_attr_ids_index)
+                && next_censor_attr_id.item_tree_index() == item_tree_attr_id
+            {
+                censor_item_tree_attr_ids_index += 1;
+                result = true;
+            }
+            item_tree_attr_id += 1;
+            result
+        }
+    };
+
+    let mut attrs = Vec::new();
+    let mut attrs_idx = 0;
+    let mut has_inner_attrs_owner = false;
+    let mut in_attr = false;
+    let mut done_with_attrs = false;
+    let mut did_top_attrs = false;
+    move |preorder, event| {
+        match event {
+            WalkEvent::Enter(SyntaxElement::Node(node)) => {
+                if done_with_attrs {
+                    return (true, Vec::new());
+                }
+
+                if ast::Attr::can_cast(node.kind()) {
+                    in_attr = true;
+                    let node_range = node.text_range();
+                    while attrs
+                        .get(attrs_idx)
+                        .is_some_and(|it: &AstAttrToProcess| it.range != node_range)
+                    {
+                        attrs_idx += 1;
+                    }
+                } else if !in_attr && let Some(has_attrs) = ast::AnyHasAttrs::cast(node.clone()) {
+                    // Attributes of the form `key = value` have `ast::Expr` in them, which returns `Some` for
+                    // `AnyHasAttrs::cast()`, so we also need to check `in_attr`.
+
+                    if has_inner_attrs_owner {
+                        has_inner_attrs_owner = false;
+                        return (true, Vec::new());
+                    }
+
+                    if did_top_attrs && !is_derive {
+                        // Derives need all attributes handled, but attribute macros need only the top attributes handled.
+                        done_with_attrs = true;
+                        return (true, Vec::new());
+                    }
+                    did_top_attrs = true;
+
+                    if let Some(inner_attrs_node) = has_attrs.inner_attributes_node()
+                        && inner_attrs_node != *node
+                    {
+                        has_inner_attrs_owner = true;
+                    }
+
+                    let node_attrs = ast::attrs_including_inner(&has_attrs);
+
+                    attrs.clear();
+                    node_attrs.clone().for_each(|attr| {
+                        let span_for = |token: Option<SyntaxToken>| {
+                            token
+                                .map(|token| span_map.span_for_range(token.text_range()))
+                                .unwrap_or(default_span)
+                        };
+                        attrs.push(AstAttrToProcess {
+                            range: attr.syntax().text_range(),
+                            pound_span: span_for(attr.pound_token()),
+                            brackets_span: DelimSpan {
+                                open: span_for(attr.l_brack_token()),
+                                close: span_for(attr.r_brack_token()),
+                            },
+                            excl_span: attr
+                                .excl_token()
+                                .map(|token| span_map.span_for_range(token.text_range())),
+                            expanded_attrs: SmallVec::new(),
+                            expanded_attrs_idx: 0,
+                            next_expanded_attr: NextExpandedAttrState::NotStarted,
+                        });
+                    });
+
+                    attrs_idx = 0;
+                    let strip_current_item = expand_cfg_attr(
+                        node_attrs,
+                        &cfg_options,
+                        |attr, _container, range, top_attr| {
+                            // Find the attr.
+                            while attrs[attrs_idx].range != top_attr.syntax().text_range() {
+                                attrs_idx += 1;
+                            }
+
+                            let mut strip_current_attr = false;
+                            match attr {
+                                Meta::NamedKeyValue { name, .. } => {
+                                    if name
+                                        .is_none_or(|name| !is_item_tree_filtered_attr(name.text()))
+                                    {
+                                        strip_current_attr = should_strip_attr();
+                                    }
+                                }
+                                Meta::TokenTree { path, tt } => {
+                                    if path.is1("cfg") {
+                                        let cfg_expr = CfgExpr::parse_from_ast(
+                                            &mut TokenTreeChildren::new(&tt).peekable(),
+                                        );
+                                        if cfg_options().check(&cfg_expr) == Some(false) {
+                                            return ControlFlow::Break(ItemIsCfgedOut);
+                                        }
+                                        strip_current_attr = true;
+                                    } else if path.segments.len() != 1
+                                        || !is_item_tree_filtered_attr(path.segments[0].text())
+                                    {
+                                        strip_current_attr = should_strip_attr();
+                                    }
+                                }
+                                Meta::Path { path } => {
+                                    if path.segments.len() != 1
+                                        || !is_item_tree_filtered_attr(path.segments[0].text())
+                                    {
+                                        strip_current_attr = should_strip_attr();
+                                    }
+                                }
+                            }
+
+                            if !strip_current_attr {
+                                attrs[attrs_idx]
+                                    .expanded_attrs
+                                    .push(ExpandedAttrToProcess { range });
+                            }
+
+                            ControlFlow::Continue(())
+                        },
+                    );
+                    attrs_idx = 0;
+
+                    if strip_current_item.is_some() {
+                        preorder.skip_subtree();
+                        attrs.clear();
+
+                        'eat_comma: {
+                            // If there is a comma after this node, eat it too.
+                            let mut events_until_comma = 0;
+                            for event in preorder.clone() {
+                                match event {
+                                    WalkEvent::Enter(SyntaxElement::Node(_))
+                                    | WalkEvent::Leave(_) => {}
+                                    WalkEvent::Enter(SyntaxElement::Token(token)) => {
+                                        let kind = token.kind();
+                                        if kind == T![,] {
+                                            break;
+                                        } else if !kind.is_trivia() {
+                                            break 'eat_comma;
+                                        }
+                                    }
+                                }
+                                events_until_comma += 1;
+                            }
+                            preorder.nth(events_until_comma);
+                        }
+
+                        return (false, Vec::new());
+                    }
+                }
+            }
+            WalkEvent::Leave(SyntaxElement::Node(node)) => {
+                if ast::Attr::can_cast(node.kind()) {
+                    in_attr = false;
+                    attrs_idx += 1;
+                }
+            }
+            WalkEvent::Enter(SyntaxElement::Token(token)) => {
+                if !in_attr {
+                    return (true, Vec::new());
+                }
+
+                let Some(ast_attr) = attrs.get_mut(attrs_idx) else {
+                    return (true, Vec::new());
+                };
+                let token_range = token.text_range();
+                let Some(expanded_attr) = ast_attr.expanded_attrs.get(ast_attr.expanded_attrs_idx)
+                else {
+                    // No expanded attributes in this `ast::Attr`, or we finished them all already, either way
+                    // the remaining tokens should be discarded.
+                    return (false, Vec::new());
+                };
+                match ast_attr.next_expanded_attr {
+                    NextExpandedAttrState::NotStarted => {
+                        if token_range.start() >= expanded_attr.range.start() {
+                            // We started the next attribute.
+                            let mut insert_tokens = Vec::with_capacity(3);
+                            insert_tokens.push(tt::Leaf::Punct(tt::Punct {
+                                char: '#',
+                                spacing: tt::Spacing::Alone,
+                                span: ast_attr.pound_span,
+                            }));
+                            if let Some(span) = ast_attr.excl_span {
+                                insert_tokens.push(tt::Leaf::Punct(tt::Punct {
+                                    char: '!',
+                                    spacing: tt::Spacing::Alone,
+                                    span,
+                                }));
+                            }
+                            insert_tokens.push(tt::Leaf::Punct(tt::Punct {
+                                char: '[',
+                                spacing: tt::Spacing::Alone,
+                                span: ast_attr.brackets_span.open,
+                            }));
+
+                            ast_attr.next_expanded_attr = NextExpandedAttrState::InTheMiddle;
+
+                            return (true, insert_tokens);
+                        } else {
+                            // Before any attribute or between the attributes.
+                            return (false, Vec::new());
+                        }
+                    }
+                    NextExpandedAttrState::InTheMiddle => {
+                        if token_range.start() >= expanded_attr.range.end() {
+                            // Finished the current attribute.
+                            let insert_tokens = vec![tt::Leaf::Punct(tt::Punct {
+                                char: ']',
+                                spacing: tt::Spacing::Alone,
+                                span: ast_attr.brackets_span.close,
+                            })];
+
+                            ast_attr.next_expanded_attr = NextExpandedAttrState::NotStarted;
+                            ast_attr.expanded_attrs_idx += 1;
+
+                            // It's safe to ignore the current token because between attributes
+                            // there is always at least one token we skip - either the closing bracket
+                            // in `#[]` or the comma in case of multiple attrs in `cfg_attr` expansion.
+                            return (false, insert_tokens);
+                        } else {
+                            // Still in the middle.
+                            return (true, Vec::new());
+                        }
+                    }
+                }
+            }
+            WalkEvent::Leave(SyntaxElement::Token(_)) => {}
+        }
+        (true, Vec::new())
     }
-    check_cfg_attr_value(db, &attr.token_tree()?, krate)
+}
+
+pub(crate) fn attr_macro_input_to_token_tree(
+    db: &dyn ExpandDatabase,
+    node: &SyntaxNode,
+    span_map: SpanMapRef<'_>,
+    span: Span,
+    is_derive: bool,
+    censor_item_tree_attr_ids: &[AttrId],
+    krate: Crate,
+) -> (tt::TopSubtree, SyntaxFixupUndoInfo) {
+    let fixups = fixup::fixup_syntax(span_map, node, span, DocCommentDesugarMode::ProcMacro);
+    (
+        syntax_bridge::syntax_node_to_token_tree_modified(
+            node,
+            span_map,
+            fixups.append,
+            fixups.remove,
+            span,
+            DocCommentDesugarMode::ProcMacro,
+            macro_input_callback(db, is_derive, censor_item_tree_attr_ids, krate, span, span_map),
+        ),
+        fixups.undo_info,
+    )
 }
 
 pub fn check_cfg_attr_value(
     db: &dyn ExpandDatabase,
-    attr: &TokenTree,
+    attr: &ast::TokenTree,
     krate: Crate,
 ) -> Option<bool> {
-    let cfg_expr = parse_from_attr_token_tree(attr)?;
-    let enabled = krate.cfg_options(db).check(&cfg_expr) != Some(false);
-    Some(enabled)
-}
-
-fn process_has_attrs_with_possible_comma<I: HasAttrs>(
-    db: &dyn ExpandDatabase,
-    items: impl Iterator<Item = I>,
-    krate: Crate,
-    remove: &mut FxHashSet<SyntaxElement>,
-) -> Option<()> {
-    for item in items {
-        let field_attrs = item.attrs();
-        'attrs: for attr in field_attrs {
-            if let Some(enabled) = check_cfg(db, &attr, krate) {
-                if enabled {
-                    debug!("censoring {:?}", attr.syntax());
-                    remove.insert(attr.syntax().clone().into());
-                } else {
-                    debug!("censoring {:?}", item.syntax());
-                    remove.insert(item.syntax().clone().into());
-                    // We need to remove the , as well
-                    remove_possible_comma(&item, remove);
-                    break 'attrs;
-                }
-            }
-
-            if let Some(enabled) = check_cfg_attr(db, &attr, krate) {
-                if enabled {
-                    debug!("Removing cfg_attr tokens {:?}", attr);
-                    let meta = attr.meta()?;
-                    let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
-                    remove.extend(removes_from_cfg_attr);
-                } else {
-                    debug!("censoring type cfg_attr {:?}", item.syntax());
-                    remove.insert(attr.syntax().clone().into());
-                }
-            }
-        }
-    }
-    Some(())
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum CfgExprStage {
-    /// Stripping the CFGExpr part of the attribute
-    StrippigCfgExpr,
-    /// Found the comma after the CFGExpr. Will keep all tokens until the next comma or the end of the attribute
-    FoundComma,
-    /// Everything following the attribute. This could be another attribute or the end of the attribute.
-    // FIXME: cfg_attr with multiple attributes will not be handled correctly. We will only keep the first attribute
-    // Related Issue: https://github.com/rust-lang/rust-analyzer/issues/10110
-    EverythingElse,
-}
-
-/// This function creates its own set of tokens to remove. To help prevent malformed syntax as input.
-fn remove_tokens_within_cfg_attr(meta: Meta) -> Option<FxHashSet<SyntaxElement>> {
-    let mut remove: FxHashSet<SyntaxElement> = FxHashSet::default();
-    debug!("Enabling attribute {}", meta);
-    let meta_path = meta.path()?;
-    debug!("Removing {:?}", meta_path.syntax());
-    remove.insert(meta_path.syntax().clone().into());
-
-    let meta_tt = meta.token_tree()?;
-    debug!("meta_tt {}", meta_tt);
-    let mut stage = CfgExprStage::StrippigCfgExpr;
-    for tt in meta_tt.token_trees_and_tokens() {
-        debug!("Checking {:?}. Stage: {:?}", tt, stage);
-        match (stage, tt) {
-            (CfgExprStage::StrippigCfgExpr, syntax::NodeOrToken::Node(node)) => {
-                remove.insert(node.syntax().clone().into());
-            }
-            (CfgExprStage::StrippigCfgExpr, syntax::NodeOrToken::Token(token)) => {
-                if token.kind() == T![,] {
-                    stage = CfgExprStage::FoundComma;
-                }
-                remove.insert(token.into());
-            }
-            (CfgExprStage::FoundComma, syntax::NodeOrToken::Token(token))
-                if (token.kind() == T![,] || token.kind() == T![')']) =>
-            {
-                // The end of the attribute or separator for the next attribute
-                stage = CfgExprStage::EverythingElse;
-                remove.insert(token.into());
-            }
-            (CfgExprStage::EverythingElse, syntax::NodeOrToken::Node(node)) => {
-                remove.insert(node.syntax().clone().into());
-            }
-            (CfgExprStage::EverythingElse, syntax::NodeOrToken::Token(token)) => {
-                remove.insert(token.into());
-            }
-            // This is an actual attribute
-            _ => {}
-        }
-    }
-    if stage != CfgExprStage::EverythingElse {
-        warn!("Invalid cfg_attr attribute. {:?}", meta_tt);
-        return None;
-    }
-    Some(remove)
-}
-/// Removes a possible comma after the [AstNode]
-fn remove_possible_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>) {
-    if let Some(comma) = item.syntax().next_sibling_or_token().filter(|it| it.kind() == T![,]) {
-        res.insert(comma);
-    }
-}
-fn process_enum(
-    db: &dyn ExpandDatabase,
-    variants: VariantList,
-    krate: Crate,
-    remove: &mut FxHashSet<SyntaxElement>,
-) -> Option<()> {
-    'variant: for variant in variants.variants() {
-        for attr in variant.attrs() {
-            if let Some(enabled) = check_cfg(db, &attr, krate) {
-                if enabled {
-                    debug!("censoring {:?}", attr.syntax());
-                    remove.insert(attr.syntax().clone().into());
-                } else {
-                    // Rustc does not strip the attribute if it is enabled. So we will leave it
-                    debug!("censoring type {:?}", variant.syntax());
-                    remove.insert(variant.syntax().clone().into());
-                    // We need to remove the , as well
-                    remove_possible_comma(&variant, remove);
-                    continue 'variant;
-                }
-            }
-
-            if let Some(enabled) = check_cfg_attr(db, &attr, krate) {
-                if enabled {
-                    debug!("Removing cfg_attr tokens {:?}", attr);
-                    let meta = attr.meta()?;
-                    let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
-                    remove.extend(removes_from_cfg_attr);
-                } else {
-                    debug!("censoring type cfg_attr {:?}", variant.syntax());
-                    remove.insert(attr.syntax().clone().into());
-                }
-            }
-        }
-        if let Some(fields) = variant.field_list() {
-            match fields {
-                ast::FieldList::RecordFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(db, fields.fields(), krate, remove)?;
-                }
-                ast::FieldList::TupleFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(db, fields.fields(), krate, remove)?;
-                }
-            }
-        }
-    }
-    Some(())
-}
-
-pub(crate) fn process_cfg_attrs(
-    db: &dyn ExpandDatabase,
-    node: &SyntaxNode,
-    loc: &MacroCallLoc,
-) -> Option<FxHashSet<SyntaxElement>> {
-    // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
-    let is_derive = match loc.def.kind {
-        MacroDefKind::BuiltInDerive(..)
-        | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive) => true,
-        MacroDefKind::BuiltInAttr(_, expander) => expander.is_derive(),
-        _ => false,
-    };
-    let mut remove = FxHashSet::default();
-
-    let item = ast::Item::cast(node.clone())?;
-    for attr in item.attrs() {
-        if let Some(enabled) = check_cfg_attr(db, &attr, loc.krate) {
-            if enabled {
-                debug!("Removing cfg_attr tokens {:?}", attr);
-                let meta = attr.meta()?;
-                let removes_from_cfg_attr = remove_tokens_within_cfg_attr(meta)?;
-                remove.extend(removes_from_cfg_attr);
-            } else {
-                debug!("Removing type cfg_attr {:?}", item.syntax());
-                remove.insert(attr.syntax().clone().into());
-            }
-        }
-    }
-
-    if is_derive {
-        // Only derives get their code cfg-clean, normal attribute macros process only the cfg at their level
-        // (cfg_attr is handled above, cfg is handled in the def map).
-        match item {
-            ast::Item::Struct(it) => match it.field_list()? {
-                ast::FieldList::RecordFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(
-                        db,
-                        fields.fields(),
-                        loc.krate,
-                        &mut remove,
-                    )?;
-                }
-                ast::FieldList::TupleFieldList(fields) => {
-                    process_has_attrs_with_possible_comma(
-                        db,
-                        fields.fields(),
-                        loc.krate,
-                        &mut remove,
-                    )?;
-                }
-            },
-            ast::Item::Enum(it) => {
-                process_enum(db, it.variant_list()?, loc.krate, &mut remove)?;
-            }
-            ast::Item::Union(it) => {
-                process_has_attrs_with_possible_comma(
-                    db,
-                    it.record_field_list()?.fields(),
-                    loc.krate,
-                    &mut remove,
-                )?;
-            }
-            // FIXME: Implement for other items if necessary. As we do not support #[cfg_eval] yet, we do not need to implement it for now
-            _ => {}
-        }
-    }
-    Some(remove)
-}
-/// Parses a `cfg` attribute from the meta
-fn parse_from_attr_token_tree(tt: &TokenTree) -> Option<CfgExpr> {
-    let mut iter = tt
-        .token_trees_and_tokens()
-        .filter(is_not_whitespace)
-        .skip(1)
-        .take_while(is_not_closing_paren)
-        .peekable();
-    next_cfg_expr_from_syntax(&mut iter)
-}
-
-fn is_not_closing_paren(element: &NodeOrToken<ast::TokenTree, syntax::SyntaxToken>) -> bool {
-    !matches!(element, NodeOrToken::Token(token) if (token.kind() == syntax::T![')']))
-}
-fn is_not_whitespace(element: &NodeOrToken<ast::TokenTree, syntax::SyntaxToken>) -> bool {
-    !matches!(element, NodeOrToken::Token(token) if (token.kind() == SyntaxKind::WHITESPACE))
-}
-
-fn next_cfg_expr_from_syntax<I>(iter: &mut Peekable<I>) -> Option<CfgExpr>
-where
-    I: Iterator<Item = NodeOrToken<ast::TokenTree, syntax::SyntaxToken>>,
-{
-    let name = match iter.next() {
-        None => return None,
-        Some(NodeOrToken::Token(element)) => match element.kind() {
-            syntax::T![ident] => Symbol::intern(element.text()),
-            _ => return Some(CfgExpr::Invalid),
-        },
-        Some(_) => return Some(CfgExpr::Invalid),
-    };
-    let result = match &name {
-        s if [&sym::all, &sym::any, &sym::not].contains(&s) => {
-            let mut preds = Vec::new();
-            let Some(NodeOrToken::Node(tree)) = iter.next() else {
-                return Some(CfgExpr::Invalid);
-            };
-            let mut tree_iter = tree
-                .token_trees_and_tokens()
-                .filter(is_not_whitespace)
-                .skip(1)
-                .take_while(is_not_closing_paren)
-                .peekable();
-            while tree_iter.peek().is_some() {
-                let pred = next_cfg_expr_from_syntax(&mut tree_iter);
-                if let Some(pred) = pred {
-                    preds.push(pred);
-                }
-            }
-            let group = match &name {
-                s if *s == sym::all => CfgExpr::All(preds.into_boxed_slice()),
-                s if *s == sym::any => CfgExpr::Any(preds.into_boxed_slice()),
-                s if *s == sym::not => {
-                    CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid)))
-                }
-                _ => unreachable!(),
-            };
-            Some(group)
-        }
-        _ => match iter.peek() {
-            Some(NodeOrToken::Token(element)) if (element.kind() == syntax::T![=]) => {
-                iter.next();
-                match iter.next() {
-                    Some(NodeOrToken::Token(value_token))
-                        if (value_token.kind() == syntax::SyntaxKind::STRING) =>
-                    {
-                        let value = value_token.text();
-                        Some(CfgExpr::Atom(CfgAtom::KeyValue {
-                            key: name,
-                            value: Symbol::intern(value.trim_matches('"')),
-                        }))
-                    }
-                    _ => None,
-                }
-            }
-            _ => Some(CfgExpr::Atom(CfgAtom::Flag(name))),
-        },
-    };
-    if let Some(NodeOrToken::Token(element)) = iter.peek()
-        && element.kind() == syntax::T![,]
-    {
-        iter.next();
-    }
-    result
-}
-#[cfg(test)]
-mod tests {
-    use cfg::DnfExpr;
-    use expect_test::{Expect, expect};
-    use syntax::{AstNode, SourceFile, ast::Attr};
-
-    use crate::cfg_process::parse_from_attr_token_tree;
-
-    fn check_dnf_from_syntax(input: &str, expect: Expect) {
-        let parse = SourceFile::parse(input, span::Edition::CURRENT);
-        let node = match parse.tree().syntax().descendants().find_map(Attr::cast) {
-            Some(it) => it,
-            None => {
-                let node = std::any::type_name::<Attr>();
-                panic!("Failed to make ast node `{node}` from text {input}")
-            }
-        };
-        let node = node.clone_subtree();
-        assert_eq!(node.syntax().text_range().start(), 0.into());
-
-        let cfg = parse_from_attr_token_tree(&node.meta().unwrap().token_tree().unwrap()).unwrap();
-        let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
-        expect.assert_eq(&actual);
-    }
-    #[test]
-    fn cfg_from_attr() {
-        check_dnf_from_syntax(r#"#[cfg(test)]"#, expect![[r#"#![cfg(test)]"#]]);
-        check_dnf_from_syntax(r#"#[cfg(not(never))]"#, expect![[r#"#![cfg(not(never))]"#]]);
-    }
+    let cfg_expr = CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(attr).peekable());
+    krate.cfg_options(db).check(&cfg_expr)
 }

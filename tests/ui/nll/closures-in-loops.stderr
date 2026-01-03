@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/closures-in-loops.rs:6:9
+  --> $DIR/closures-in-loops.rs:7:9
    |
 LL | fn repreated_move(x: String) {
    |                   - move occurs because `x` has type `String`, which does not implement the `Copy` trait
@@ -16,7 +16,7 @@ LL |         || x.clone();
    |             ++++++++
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/closures-in-loops.rs:13:16
+  --> $DIR/closures-in-loops.rs:14:16
    |
 LL |         v.push(|| x = String::new());
    |         -      ^^ - borrows occur due to use of `x` in closure
@@ -25,7 +25,7 @@ LL |         v.push(|| x = String::new());
    |         first borrow used here, in later iteration of loop
 
 error[E0524]: two closures require unique access to `x` at the same time
-  --> $DIR/closures-in-loops.rs:20:16
+  --> $DIR/closures-in-loops.rs:21:16
    |
 LL |         v.push(|| *x = String::new());
    |         -      ^^ -- borrows occur due to use of `x` in closure

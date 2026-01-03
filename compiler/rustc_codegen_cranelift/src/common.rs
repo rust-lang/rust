@@ -377,26 +377,28 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             size.is_multiple_of(align),
             "size must be a multiple of alignment (size={size}, align={align})"
         );
+        debug_assert!(align.is_power_of_two(), "alignment must be a power of two (align={align})");
 
         let abi_align = if self.tcx.sess.target.arch == Arch::S390x { 8 } else { 16 };
+        // Cranelift can only guarantee alignment up to the ABI alignment provided by the target.
+        // If the requested alignment is less than the abi_align it can be used directly.
         if align <= abi_align {
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,
-                // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
-                // a way to specify stack slot alignment.
-                size: size.div_ceil(abi_align) * abi_align,
-                align_shift: 4,
+                size,
+                // The maximum value of ilog2 is 31 which will always fit in a u8.
+                align_shift: align.ilog2().try_into().unwrap(),
+                key: None,
             });
             Pointer::stack_slot(stack_slot)
         } else {
-            // Alignment is too big to handle using the above hack. Dynamically realign a stack slot
+            // Alignment is larger than the ABI alignment guaranteed. Dynamically realign a stack slot
             // instead. This wastes some space for the realignment.
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,
-                // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
-                // a way to specify stack slot alignment.
-                size: (size + align) / abi_align * abi_align,
-                align_shift: 4,
+                size: size + align,
+                align_shift: abi_align.ilog2().try_into().unwrap(),
+                key: None,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
             let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));

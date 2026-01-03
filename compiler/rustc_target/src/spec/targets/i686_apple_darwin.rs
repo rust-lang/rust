@@ -1,8 +1,8 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("macos", Arch::I686, TargetEnv::Normal);
+    let (opts, llvm_target, arch) = base(Os::MacOs, Arch::I686, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {

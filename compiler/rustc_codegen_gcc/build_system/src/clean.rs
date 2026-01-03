@@ -69,8 +69,13 @@ fn clean_all() -> Result<(), String> {
 }
 
 fn clean_ui_tests() -> Result<(), String> {
-    let path = Path::new(crate::BUILD_DIR).join("rust/build/x86_64-unknown-linux-gnu/test/ui/");
-    run_command(&[&"find", &path, &"-name", &"stamp", &"-delete"], None)?;
+    let directories = ["run-make", "run-make-cargo", "ui"];
+    for directory in directories {
+        let path = Path::new(crate::BUILD_DIR)
+            .join("rust/build/x86_64-unknown-linux-gnu/test/")
+            .join(directory);
+        run_command(&[&"find", &path, &"-name", &"stamp", &"-delete"], None)?;
+    }
     Ok(())
 }
 

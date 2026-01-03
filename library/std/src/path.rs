@@ -1877,9 +1877,7 @@ impl From<&Path> for Box<Path> {
     ///
     /// This will allocate and clone `path` to it.
     fn from(path: &Path) -> Box<Path> {
-        let boxed: Box<OsStr> = path.inner.into();
-        let rw = Box::into_raw(boxed) as *mut Path;
-        unsafe { Box::from_raw(rw) }
+        Box::clone_from_ref(path)
     }
 }
 
@@ -3206,6 +3204,17 @@ impl Path {
     #[inline]
     pub fn display(&self) -> Display<'_> {
         Display { inner: self.inner.display() }
+    }
+
+    /// Returns the same path as `&Path`.
+    ///
+    /// This method is redundant when used directly on `&Path`, but
+    /// it helps dereferencing other `PathBuf`-like types to `Path`s,
+    /// for example references to `Box<Path>` or `Arc<Path>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_path(&self) -> &Path {
+        self
     }
 
     /// Queries the file system to get information about a file, directory, etc.

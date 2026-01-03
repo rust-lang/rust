@@ -19,5 +19,11 @@ error: transmuting a known null pointer into a reference
 LL |         let _: &u64 = std::mem::transmute(ZPTR);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:35:23
+   |
+LL |         let _: &u64 = std::mem::transmute(u64::MIN as *const u64);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

@@ -46,10 +46,10 @@ disabled as needed with `-C target-feature=(+/-)`.
 
 ## Start-up and Low-Level Code
 
-The [Rust Embedded Devices Working Group Arm Team] maintain the [`cortex-ar`]
-and [`cortex-r-rt`] crates, which may be useful for writing bare-metal code
+The [Rust Embedded Devices Working Group Arm Team] maintain the [`aarch32-cpu`]
+and [`aarch32-rt`] crates, which may be useful for writing bare-metal code
 using this target. Those crates include several examples which run in QEMU and
 build using these targets.
 
-[`cortex-ar`]: https://docs.rs/cortex-ar
-[`cortex-r-rt`]: https://docs.rs/cortex-r-rt
+[`aarch32-cpu`]: https://docs.rs/aarch32-cpu
+[`aarch32-rt`]: https://docs.rs/aarch32-rt

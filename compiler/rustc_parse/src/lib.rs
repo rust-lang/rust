@@ -22,10 +22,10 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
+pub use rustc_lexer::UNICODE_VERSION;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, SourceFile, Span};
-pub use unicode_normalization::UNICODE_VERSION as UNICODE_NORMALIZATION_VERSION;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
@@ -38,6 +38,44 @@ use crate::lexer::StripTokens;
 pub mod lexer;
 
 mod errors;
+
+// Make sure that the Unicode version of the dependencies is the same.
+const _: () = {
+    let rustc_lexer = rustc_lexer::UNICODE_VERSION;
+    let rustc_span = rustc_span::UNICODE_VERSION;
+    let normalization = unicode_normalization::UNICODE_VERSION;
+    let width = unicode_width::UNICODE_VERSION;
+
+    if rustc_lexer.0 != rustc_span.0
+        || rustc_lexer.1 != rustc_span.1
+        || rustc_lexer.2 != rustc_span.2
+    {
+        panic!(
+            "rustc_lexer and rustc_span must use the same Unicode version, \
+            `rustc_lexer::UNICODE_VERSION` and `rustc_span::UNICODE_VERSION` are \
+            different."
+        );
+    }
+
+    if rustc_lexer.0 != normalization.0
+        || rustc_lexer.1 != normalization.1
+        || rustc_lexer.2 != normalization.2
+    {
+        panic!(
+            "rustc_lexer and unicode-normalization must use the same Unicode version, \
+            `rustc_lexer::UNICODE_VERSION` and `unicode_normalization::UNICODE_VERSION` are \
+            different."
+        );
+    }
+
+    if rustc_lexer.0 != width.0 || rustc_lexer.1 != width.1 || rustc_lexer.2 != width.2 {
+        panic!(
+            "rustc_lexer and unicode-width must use the same Unicode version, \
+            `rustc_lexer::UNICODE_VERSION` and `unicode_width::UNICODE_VERSION` are \
+            different."
+        );
+    }
+};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -129,7 +167,20 @@ pub fn utf8_error<E: EmissionGuarantee>(
         note.clone()
     };
     let contents = String::from_utf8_lossy(contents).to_string();
-    let source = sm.new_source_file(PathBuf::from(path).into(), contents);
+
+    // We only emit this error for files in the current session
+    // so the working directory can only be the current working directory
+    let filename = FileName::Real(
+        sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path).as_path()),
+    );
+    let source = sm.new_source_file(filename, contents);
+
+    // Avoid out-of-bounds span from lossy UTF-8 conversion.
+    if start as u32 > source.normalized_source_len.0 {
+        err.note(note);
+        return;
+    }
+
     let span = Span::with_root_ctxt(
         source.normalized_byte_pos(start as u32),
         source.normalized_byte_pos(start as u32),

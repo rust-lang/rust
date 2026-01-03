@@ -5,7 +5,7 @@ use std::fmt::{Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use std::{env, fs};
 
@@ -66,6 +66,12 @@ pub struct Builder<'a> {
 
     /// Cached list of submodules from self.build.src.
     submodule_paths_cache: OnceLock<Vec<String>>,
+
+    /// When enabled by tests, this causes the top-level steps that _would_ be
+    /// executed to be logged instead. Used by snapshot tests of command-line
+    /// paths-to-steps handling.
+    #[expect(clippy::type_complexity)]
+    log_cli_step_for_tests: Option<Box<dyn Fn(&StepDescription, &[PathSet], &[TargetSelection])>>,
 }
 
 impl Deref for Builder<'_> {
@@ -95,13 +101,6 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Result type of `Step::run`.
     type Output: Clone;
 
-    /// Whether this step is run by default as part of its respective phase, as defined by the `describe`
-    /// macro in [`Builder::get_step_descriptions`].
-    ///
-    /// Note: Even if set to `true`, it can still be overridden with [`ShouldRun::default_condition`]
-    /// by `Step::should_run`.
-    const DEFAULT: bool = false;
-
     /// If this value is true, then the values of `run.target` passed to the `make_run` function of
     /// this Step will be determined based on the `--host` flag.
     /// If this value is false, then they will be determined based on the `--target` flag.
@@ -109,6 +108,27 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// A corollary of the above is that if this is set to true, then the step will be skipped if
     /// `--target` was specified, but `--host` was explicitly set to '' (empty string).
     const IS_HOST: bool = false;
+
+    /// Called to allow steps to register the command-line paths that should
+    /// cause them to run.
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_>;
+
+    /// Should this step run when the user invokes bootstrap with a subcommand
+    /// but no paths/aliases?
+    ///
+    /// For example, `./x test` runs all default test steps, and `./x dist`
+    /// runs all default dist steps.
+    ///
+    /// Most steps are always default or always non-default, and just return
+    /// true or false. But some steps are conditionally default, based on
+    /// bootstrap config or the availability of ambient tools.
+    ///
+    /// If the underlying check should not be performed repeatedly
+    /// (e.g. because it probes command-line tools),
+    /// consider memoizing its outcome via a field in the builder.
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
+    }
 
     /// Primary function to implement `Step` logic.
     ///
@@ -124,9 +144,6 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// When triggered indirectly from other `Step`s, it may still run twice (as dry-run and real mode)
     /// depending on the `Step::run` implementation of the caller.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
-
-    /// Determines if this `Step` should be run when given specific paths (e.g., `x build $path`).
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_>;
 
     /// Called directly by the bootstrap `Step` handler when not triggered indirectly by other `Step`s using [`Builder::ensure`].
     /// For example, `./x.py test bootstrap` runs this for `test::Bootstrap`. Similarly, `./x.py test` runs it for every step
@@ -307,9 +324,9 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
 }
 
 struct StepDescription {
-    default: bool,
     is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
+    is_default_step_fn: fn(&Builder<'_>) -> bool,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
     kind: Kind,
@@ -428,9 +445,9 @@ impl PathSet {
 impl StepDescription {
     fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
-            default: S::DEFAULT,
             is_host: S::IS_HOST,
             should_run: S::should_run,
+            is_default_step_fn: S::is_default_step,
             make_run: S::make_run,
             name: std::any::type_name::<S>(),
             kind,
@@ -446,6 +463,13 @@ impl StepDescription {
 
         // Determine the targets participating in this rule.
         let targets = if self.is_host { &builder.hosts } else { &builder.targets };
+
+        // Log the step that's about to run, for snapshot tests.
+        if let Some(ref log_cli_step) = builder.log_cli_step_for_tests {
+            log_cli_step(self, &pathsets, targets);
+            // Return so that the step won't actually run in snapshot tests.
+            return;
+        }
 
         for target in targets {
             let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
@@ -475,48 +499,23 @@ impl StepDescription {
     }
 }
 
-enum ReallyDefault<'a> {
-    Bool(bool),
-    Lazy(LazyLock<bool, Box<dyn Fn() -> bool + 'a>>),
-}
-
+/// Builder that allows steps to register command-line paths/aliases that
+/// should cause those steps to be run.
+///
+/// For example, if the user invokes `./x test compiler` or `./x doc unstable-book`,
+/// this allows bootstrap to determine what steps "compiler" or "unstable-book"
+/// correspond to.
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
     kind: Kind,
 
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<PathSet>,
-
-    // If this is a default rule, this is an additional constraint placed on
-    // its run. Generally something like compiler docs being enabled.
-    is_really_default: ReallyDefault<'a>,
 }
 
 impl<'a> ShouldRun<'a> {
     fn new(builder: &'a Builder<'_>, kind: Kind) -> ShouldRun<'a> {
-        ShouldRun {
-            builder,
-            kind,
-            paths: BTreeSet::new(),
-            is_really_default: ReallyDefault::Bool(true), // by default no additional conditions
-        }
-    }
-
-    pub fn default_condition(mut self, cond: bool) -> Self {
-        self.is_really_default = ReallyDefault::Bool(cond);
-        self
-    }
-
-    pub fn lazy_default_condition(mut self, lazy_cond: Box<dyn Fn() -> bool + 'a>) -> Self {
-        self.is_really_default = ReallyDefault::Lazy(LazyLock::new(lazy_cond));
-        self
-    }
-
-    pub fn is_really_default(&self) -> bool {
-        match &self.is_really_default {
-            ReallyDefault::Bool(val) => *val,
-            ReallyDefault::Lazy(lazy) => *lazy.deref(),
-        }
+        ShouldRun { builder, kind, paths: BTreeSet::new() }
     }
 
     /// Indicates it should run if the command-line selects the given crate or
@@ -891,6 +890,7 @@ impl<'a> Builder<'a> {
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,
+                test::RemoteTestClientTests,
                 test::Linkcheck,
                 test::TierCheck,
                 test::Cargotest,
@@ -986,6 +986,7 @@ impl<'a> Builder<'a> {
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
+                dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
                 dist::Gcc
@@ -998,6 +999,7 @@ impl<'a> Builder<'a> {
                 // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
                 // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
                 install::Rustc,
+                install::RustcDev,
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,
@@ -1079,6 +1081,7 @@ impl<'a> Builder<'a> {
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths,
             submodule_paths_cache: Default::default(),
+            log_cli_step_for_tests: None,
         }
     }
 
@@ -1634,7 +1637,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { Some(self.ensure(step)) } else { None }
+        if (desc.is_default_step_fn)(self) { Some(self.ensure(step)) } else { None }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.

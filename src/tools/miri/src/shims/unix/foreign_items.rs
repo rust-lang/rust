@@ -5,6 +5,7 @@ use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Os;
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
@@ -16,7 +17,7 @@ use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
-pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
+pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
     match name {
         // Used for tests.
         "isatty" => true,
@@ -27,12 +28,12 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         "getentropy" | "getrandom" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
-            match target_os {
-                "android" => android::is_dyn_sym(name),
-                "freebsd" => freebsd::is_dyn_sym(name),
-                "linux" => linux::is_dyn_sym(name),
-                "macos" => macos::is_dyn_sym(name),
-                "solaris" | "illumos" => solarish::is_dyn_sym(name),
+            match *target_os {
+                Os::Android => android::is_dyn_sym(name),
+                Os::FreeBsd => freebsd::is_dyn_sym(name),
+                Os::Linux => linux::is_dyn_sym(name),
+                Os::MacOs => macos::is_dyn_sym(name),
+                Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
                 _ => false,
             },
     }
@@ -234,33 +235,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 this.write(fd, buf, count, Some(offset), dest)?;
             }
-            "pread64" => {
-                let [fd, buf, count, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(count)?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                this.read(fd, buf, count, Some(offset), dest)?;
-            }
-            "pwrite64" => {
-                let [fd, buf, n, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *const _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(n)?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
-                this.write(fd, buf, count, Some(offset), dest)?;
-            }
             "close" => {
                 let [fd] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32) -> i32),
@@ -302,7 +276,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "flock" => {
                 // Currently this function does not exist on all Unixes, e.g. on Solaris.
-                this.check_target_os(&["linux", "freebsd", "macos", "illumos"], link_name)?;
+                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::MacOs, Os::Illumos], link_name)?;
                 let [fd, op] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
                     link_name,
@@ -316,7 +290,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // File and file system access
-            "open" | "open64" => {
+            "open" => {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 let ([path_raw, flag], varargs) =
@@ -342,6 +316,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     args,
                 )?;
                 let result = this.symlink(target, linkpath)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fstat" => {
+                let [fd, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "rename" => {
@@ -394,18 +373,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.closedir(dirp)?;
                 this.write_scalar(result, dest)?;
             }
-            "lseek64" => {
-                let [fd, offset, whence] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                let whence = this.read_scalar(whence)?.to_i32()?;
-                this.lseek64(fd, offset, whence, dest)?;
-            }
             "lseek" => {
                 let [fd, offset, whence] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t, i32) -> libc::off_t),
@@ -417,18 +384,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
                 let whence = this.read_scalar(whence)?.to_i32()?;
                 this.lseek64(fd, offset, whence, dest)?;
-            }
-            "ftruncate64" => {
-                let [fd, length] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(result, dest)?;
             }
             "ftruncate" => {
                 let [fd, length] = this.check_shim_sig(
@@ -486,6 +441,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
             }
+
+            "posix_fallocate" => {
+                // posix_fallocate is not supported by macos.
+                this.check_target_os(
+                    &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos, Os::Android],
+                    link_name,
+                )?;
+                let [fd, offset, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off_t, libc::off_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                // We don't support platforms which have libc::off_t bigger than 64 bits.
+                let offset =
+                    i64::try_from(this.read_scalar(offset)?.to_int(offset.layout.size)?).unwrap();
+                let len = i64::try_from(this.read_scalar(len)?.to_int(len.layout.size)?).unwrap();
+
+                let result = this.posix_fallocate(fd, offset, len)?;
+                this.write_scalar(result, dest)?;
+            }
+
             "realpath" => {
                 let [path, resolved_path] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*const _, *mut _) -> *mut _),
@@ -530,7 +509,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pipe2" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&["linux", "freebsd", "solaris", "illumos"], link_name)?;
+                this.check_target_os(
+                    &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos],
+                    link_name,
+                )?;
                 let [pipefd, flags] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _, i32) -> i32),
                     link_name,
@@ -596,7 +578,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
+                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
                 let [ptr, nmemb, size] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
@@ -652,7 +634,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = if !this.ptr_is_null(dtor)? {
-                    Some(this.get_ptr_fn(dtor)?.as_instance()?)
+                    Some((
+                        this.get_ptr_fn(dtor)?.as_instance()?,
+                        this.machine.current_user_relevant_span(),
+                    ))
                 } else {
                     None
                 };
@@ -861,7 +846,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "clock_nanosleep" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(
-                    &["freebsd", "linux", "android", "solaris", "illumos"],
+                    &[Os::FreeBsd, Os::Linux, Os::Android, Os::Solaris, Os::Illumos],
                     link_name,
                 )?;
                 let [clock_id, flags, req, rem] =
@@ -871,7 +856,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "sched_getaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
+                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
                 let [pid, cpusetsize, mask] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
@@ -909,7 +894,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "sched_setaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
+                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
                 let [pid, cpusetsize, mask] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
@@ -968,7 +953,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, macOS, FreeBSD and Solaris/Illumos.
                 this.check_target_os(
-                    &["linux", "macos", "freebsd", "illumos", "solaris", "android"],
+                    &[Os::Linux, Os::MacOs, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android],
                     link_name,
                 )?;
                 let [buf, bufsize] =
@@ -1000,7 +985,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, FreeBSD and Solaris/Illumos.
                 this.check_target_os(
-                    &["linux", "freebsd", "illumos", "solaris", "android"],
+                    &[Os::Linux, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android],
                     link_name,
                 )?;
                 let [ptr, len, flags] =
@@ -1015,7 +1000,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "arc4random_buf" => {
                 // This function is non-standard but exists with the same signature and
                 // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
-                this.check_target_os(&["freebsd", "illumos", "solaris"], link_name)?;
+                this.check_target_os(&[Os::FreeBsd, Os::Illumos, Os::Solaris], link_name)?;
                 let [ptr, len] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
@@ -1036,7 +1021,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `_Unwind_RaiseException` impl in miri should work:
                 // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
                 this.check_target_os(
-                    &["linux", "freebsd", "illumos", "solaris", "android", "macos"],
+                    &[Os::Linux, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android, Os::MacOs],
                     link_name,
                 )?;
                 // This function looks and behaves excatly like miri_start_unwind.
@@ -1146,25 +1131,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Platform-specific shims
             _ => {
-                let target_os = &*this.tcx.sess.target.os;
+                let target_os = &this.tcx.sess.target.os;
                 return match target_os {
-                    "android" =>
+                    Os::Android =>
                         android::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    "freebsd" =>
+                    Os::FreeBsd =>
                         freebsd::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    "linux" =>
+                    Os::Linux =>
                         linux::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    "macos" =>
+                    Os::MacOs =>
                         macos::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    "solaris" | "illumos" =>
+                    Os::Solaris | Os::Illumos =>
                         solarish::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),

@@ -763,9 +763,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         err: &mut Diag<'_, impl EmissionGuarantee>,
     ) {
-        let trait_ = match self.tcx.trait_of_assoc(self.def_id) {
-            Some(def_id) => def_id,
-            None => return,
+        let Some(trait_) = self.tcx.trait_of_assoc(self.def_id) else {
+            return;
         };
 
         // Skip suggestion when the associated function is itself generic, it is unclear
@@ -1077,15 +1076,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     /// Builds the `type defined here` message.
     fn show_definition(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
-        let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
-            if self.tcx.sess.source_map().is_span_accessible(def_span) {
-                def_span.into()
-            } else {
-                return;
-            }
-        } else {
+        let Some(def_span) = self.tcx.def_ident_span(self.def_id) else { return };
+        if !self.tcx.sess.source_map().is_span_accessible(def_span) {
             return;
         };
+        let mut spans: MultiSpan = def_span.into();
 
         let msg = {
             let def_kind = self.tcx.def_descr(self.def_id);

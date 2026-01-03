@@ -8,7 +8,13 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:9:26
    |
 LL |         closure(&mut p, &y);
-   |                          ^ help: a local variable with a similar name exists: `p`
+   |                          ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -         closure(&mut p, &y);
+LL +         closure(&mut p, &p);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:9:17

@@ -130,7 +130,7 @@ with additional low-level types and annotations added (e.g. an ELF object or
 the final binary.
 
 [*trait solving*]: traits/resolution.md
-[*type checking*]: type-checking.md
+[*type checking*]: hir-typeck/summary.md
 [*type inference*]: type-inference.md
 [`bump`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.bump
 [`check`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.check

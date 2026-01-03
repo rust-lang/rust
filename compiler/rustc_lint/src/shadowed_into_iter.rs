@@ -1,8 +1,7 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::edition::Edition;
 
 use crate::lints::{ShadowedIntoIterDiag, ShadowedIntoIterDiagSub};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -31,8 +30,7 @@ declare_lint! {
     Warn,
     "detects calling `into_iter` on arrays in Rust 2015 and 2018",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/IntoIterator-for-arrays.html>",
+        reason: fcw!(EditionSemanticsChange 2021 "IntoIterator-for-arrays"),
     };
 }
 
@@ -60,8 +58,7 @@ declare_lint! {
     Warn,
     "detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>"
+        reason: fcw!(EditionSemanticsChange 2024 "intoiterator-box-slice"),
     };
 }
 
@@ -124,6 +121,11 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
                 return;
             };
 
+        // This check needs to avoid ICE from when `receiver_arg` is from macro expansion
+        // Which leads to empty span in span arithmetic below
+        // cc: https://github.com/rust-lang/rust/issues/147408
+        let span = receiver_arg.span.find_ancestor_in_same_ctxt(expr.span);
+
         // If this expression comes from the `IntoIter::into_iter` inside of a for loop,
         // we should just suggest removing the `.into_iter()` or changing it to `.iter()`
         // to disambiguate if we want to iterate by-value or by-ref.
@@ -134,14 +136,15 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
             && let hir::ExprKind::Call(path, [_]) = &arg.kind
             && let hir::ExprKind::Path(qpath) = path.kind
             && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
+            && let Some(span) = span
         {
             Some(ShadowedIntoIterDiagSub::RemoveIntoIter {
-                span: receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                span: span.shrink_to_hi().to(expr.span.shrink_to_hi()),
             })
-        } else if can_suggest_ufcs {
+        } else if can_suggest_ufcs && let Some(span) = span {
             Some(ShadowedIntoIterDiagSub::UseExplicitIntoIter {
                 start_span: expr.span.shrink_to_lo(),
-                end_span: receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                end_span: span.shrink_to_hi().to(expr.span.shrink_to_hi()),
             })
         } else {
             None

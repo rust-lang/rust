@@ -336,6 +336,7 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     unsafe {
+        #[allow(function_casts_as_integer)]
         atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut THROW_INFO.pmfnUnwind).cast(),
             ptr_t::new(exception_cleanup as *mut u8).raw(),
@@ -352,6 +353,7 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
             (&raw mut CATCHABLE_TYPE.pType).cast(),
             ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
         );
+        #[allow(function_casts_as_integer)]
         atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
             ptr_t::new(exception_copy as *mut u8).raw(),

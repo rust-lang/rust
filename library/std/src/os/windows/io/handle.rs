@@ -5,8 +5,7 @@
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-use crate::sys::cvt;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 use crate::{fmt, fs, io, ptr, sys};
 
 /// A borrowed handle.

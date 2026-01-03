@@ -8,6 +8,7 @@ Target for 64-bit little endian PowerPC Linux programs
 
 [@daltenty](https://github.com/daltenty)
 [@gilamn5tr](https://github.com/gilamn5tr)
+[@amy-kwan](https://github.com/amy-kwan)
 
 ## Requirements
 

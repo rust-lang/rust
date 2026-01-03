@@ -1,5 +1,5 @@
 /// Test that `--cfg false` doesn't cause `cfg(false)` to evaluate to `true`
-//@ compile-flags: --cfg false
+//@ compile-flags: --cfg r#false
 
 #[cfg(false)]
 fn foo() {}

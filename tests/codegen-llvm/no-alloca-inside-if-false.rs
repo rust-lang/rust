@@ -7,10 +7,10 @@
 
 #[inline(never)]
 fn test<const SIZE: usize>() {
-    // CHECK-LABEL: no_alloca_inside_if_false::test
+    // CHECK-LABEL: no_alloca_inside_if_false::test::<8192>
     // CHECK: start:
-    // CHECK-NEXT: alloca [{{12|24}} x i8]
-    // CHECK-NOT: alloca
+    // CHECK-NEXT: = alloca [{{12|24}} x i8]
+    // CHECK-NOT: = alloca
     if const { SIZE < 4096 } {
         let arr = [0u8; SIZE];
         std::hint::black_box(&arr);

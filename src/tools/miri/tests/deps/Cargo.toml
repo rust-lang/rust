@@ -23,6 +23,7 @@ page_size = "0.6"
 # Avoid pulling in all of tokio's dependencies.
 # However, without `net` and `signal`, tokio uses fewer relevant system APIs.
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
+futures = { version = "0.3.0", default-features = false, features = ["alloc", "async-await"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = [

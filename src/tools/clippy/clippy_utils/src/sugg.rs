@@ -8,7 +8,7 @@ use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{UnOp, ast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Closure, ExprKind, HirId, MutTy, Node, TyKind};
+use rustc_hir::{self as hir, Closure, ExprKind, HirId, MatchSource, MutTy, Node, TyKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
@@ -146,7 +146,9 @@ impl<'a> Sugg<'a> {
             | ExprKind::Let(..)
             | ExprKind::Closure { .. }
             | ExprKind::Unary(..)
-            | ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
+            | ExprKind::Match(_, _,
+                MatchSource::Normal | MatchSource::Postfix | MatchSource::ForLoopDesugar
+            ) => Sugg::MaybeParen(get_snippet(expr.span)),
             ExprKind::Continue(..)
             | ExprKind::Yield(..)
             | ExprKind::Array(..)
@@ -169,7 +171,10 @@ impl<'a> Sugg<'a> {
             | ExprKind::Tup(..)
             | ExprKind::Use(..)
             | ExprKind::Err(_)
-            | ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(get_snippet(expr.span)),
+            | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::Match(_, _,
+                MatchSource::AwaitDesugar | MatchSource::TryDesugar(_) | MatchSource::FormatArgs
+            ) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(cx, inner, get_snippet),
             ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))

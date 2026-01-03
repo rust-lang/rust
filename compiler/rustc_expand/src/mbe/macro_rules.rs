@@ -788,11 +788,10 @@ pub fn compile_declarative_macro(
         let lhs_span = lhs_tt.span();
         // Convert the lhs into `MatcherLoc` form, which is better for doing the
         // actual matching.
-        let lhs = if let mbe::TokenTree::Delimited(.., delimited) = lhs_tt {
-            mbe::macro_parser::compute_locs(&delimited.tts)
-        } else {
+        let mbe::TokenTree::Delimited(.., delimited) = lhs_tt else {
             return dummy_syn_ext(guar.unwrap());
         };
+        let lhs = mbe::macro_parser::compute_locs(&delimited.tts);
         if let Some(args) = args {
             let args_span = args.span();
             let mbe::TokenTree::Delimited(.., delimited) = args else {

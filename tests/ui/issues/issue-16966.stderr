@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-16966.rs:2:12
+  --> $DIR/issue-16966.rs:3:12
    |
 LL |     panic!(std::default::Default::default());
    |     -------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-

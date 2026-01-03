@@ -1,5 +1,4 @@
 //! Test that we properly error when there is a pointer fragment in the final value.
-//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 use std::{mem::{self, MaybeUninit}, ptr};
 
@@ -21,6 +20,21 @@ const MEMCPY_RET: MaybeUninit<*const i32> = unsafe { //~ERROR: partial pointer i
     ptr2
 };
 
-fn main() {
-    assert_eq!(unsafe { MEMCPY_RET.assume_init().read() }, 42);
-}
+// Mixing two different pointers that have the same provenance.
+const MIXED_PTR: MaybeUninit<*const u8> = { //~ERROR: partial pointer in final value
+    static A: u8 = 123;
+    const HALF_PTR: usize = std::mem::size_of::<*const ()>() / 2;
+
+    unsafe {
+        let x: *const u8 = &raw const A;
+        let mut y = MaybeUninit::new(x.wrapping_add(usize::MAX / 4));
+        core::ptr::copy_nonoverlapping(
+            (&raw const x).cast::<u8>(),
+            (&raw mut y).cast::<u8>(),
+            HALF_PTR,
+        );
+        y
+    }
+};
+
+fn main() {}

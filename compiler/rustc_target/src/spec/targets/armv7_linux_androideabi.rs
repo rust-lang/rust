@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetMetadata, TargetOptions,
-    base,
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetMetadata,
+    TargetOptions, base,
 };
 
 // This target if is for the baseline of the Android v7a ABI
@@ -26,9 +26,9 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: Arch::Arm,
         options: TargetOptions {
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
-            features: "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".into(),
+            features: "+v7,+thumb-mode,+thumb2,+vfp3d16,-neon".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
             ..base

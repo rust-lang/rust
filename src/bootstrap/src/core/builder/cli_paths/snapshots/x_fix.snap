@@ -1,0 +1,134 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: fix
+---
+[Fix] check::Rustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::compiler})
+    - Set({fix::compiler/rustc})
+    - Set({fix::compiler/rustc_abi})
+    - Set({fix::compiler/rustc_arena})
+    - Set({fix::compiler/rustc_ast})
+    - Set({fix::compiler/rustc_ast_ir})
+    - Set({fix::compiler/rustc_ast_lowering})
+    - Set({fix::compiler/rustc_ast_passes})
+    - Set({fix::compiler/rustc_ast_pretty})
+    - Set({fix::compiler/rustc_attr_parsing})
+    - Set({fix::compiler/rustc_baked_icu_data})
+    - Set({fix::compiler/rustc_borrowck})
+    - Set({fix::compiler/rustc_builtin_macros})
+    - Set({fix::compiler/rustc_codegen_llvm})
+    - Set({fix::compiler/rustc_codegen_ssa})
+    - Set({fix::compiler/rustc_const_eval})
+    - Set({fix::compiler/rustc_data_structures})
+    - Set({fix::compiler/rustc_driver})
+    - Set({fix::compiler/rustc_driver_impl})
+    - Set({fix::compiler/rustc_error_codes})
+    - Set({fix::compiler/rustc_error_messages})
+    - Set({fix::compiler/rustc_errors})
+    - Set({fix::compiler/rustc_expand})
+    - Set({fix::compiler/rustc_feature})
+    - Set({fix::compiler/rustc_fluent_macro})
+    - Set({fix::compiler/rustc_fs_util})
+    - Set({fix::compiler/rustc_graphviz})
+    - Set({fix::compiler/rustc_hashes})
+    - Set({fix::compiler/rustc_hir})
+    - Set({fix::compiler/rustc_hir_analysis})
+    - Set({fix::compiler/rustc_hir_id})
+    - Set({fix::compiler/rustc_hir_pretty})
+    - Set({fix::compiler/rustc_hir_typeck})
+    - Set({fix::compiler/rustc_incremental})
+    - Set({fix::compiler/rustc_index})
+    - Set({fix::compiler/rustc_index_macros})
+    - Set({fix::compiler/rustc_infer})
+    - Set({fix::compiler/rustc_interface})
+    - Set({fix::compiler/rustc_lexer})
+    - Set({fix::compiler/rustc_lint})
+    - Set({fix::compiler/rustc_lint_defs})
+    - Set({fix::compiler/rustc_llvm})
+    - Set({fix::compiler/rustc_log})
+    - Set({fix::compiler/rustc_macros})
+    - Set({fix::compiler/rustc_metadata})
+    - Set({fix::compiler/rustc_middle})
+    - Set({fix::compiler/rustc_mir_build})
+    - Set({fix::compiler/rustc_mir_dataflow})
+    - Set({fix::compiler/rustc_mir_transform})
+    - Set({fix::compiler/rustc_monomorphize})
+    - Set({fix::compiler/rustc_next_trait_solver})
+    - Set({fix::compiler/rustc_parse})
+    - Set({fix::compiler/rustc_parse_format})
+    - Set({fix::compiler/rustc_passes})
+    - Set({fix::compiler/rustc_pattern_analysis})
+    - Set({fix::compiler/rustc_privacy})
+    - Set({fix::compiler/rustc_proc_macro})
+    - Set({fix::compiler/rustc_public})
+    - Set({fix::compiler/rustc_public_bridge})
+    - Set({fix::compiler/rustc_query_impl})
+    - Set({fix::compiler/rustc_query_system})
+    - Set({fix::compiler/rustc_resolve})
+    - Set({fix::compiler/rustc_sanitizers})
+    - Set({fix::compiler/rustc_serialize})
+    - Set({fix::compiler/rustc_session})
+    - Set({fix::compiler/rustc_span})
+    - Set({fix::compiler/rustc_symbol_mangling})
+    - Set({fix::compiler/rustc_target})
+    - Set({fix::compiler/rustc_thread_pool})
+    - Set({fix::compiler/rustc_trait_selection})
+    - Set({fix::compiler/rustc_traits})
+    - Set({fix::compiler/rustc_transmute})
+    - Set({fix::compiler/rustc_ty_utils})
+    - Set({fix::compiler/rustc_type_ir})
+    - Set({fix::compiler/rustc_type_ir_macros})
+    - Set({fix::compiler/rustc_windows_rc})
+[Fix] check::Rustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/librustdoc, fix::src/tools/rustdoc})
+[Fix] check::CraneliftCodegenBackend
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::cg_clif})
+    - Set({fix::rustc_codegen_cranelift})
+[Fix] check::GccCodegenBackend
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::cg_gcc})
+    - Set({fix::rustc_codegen_gcc})
+[Fix] check::Clippy
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/clippy})
+[Fix] check::Miri
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/miri})
+[Fix] check::CargoMiri
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/miri/cargo-miri})
+[Fix] check::MiroptTestTools
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/miropt-test-tools})
+[Fix] check::Rustfmt
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/rustfmt})
+[Fix] check::RustAnalyzer
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/rust-analyzer})
+[Fix] check::TestFloatParse
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/test-float-parse})
+[Fix] check::FeaturesStatusDump
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({fix::src/tools/features-status-dump})
+[Fix] check::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({fix::library})
+    - Set({fix::library/alloc})
+    - Set({fix::library/alloctests})
+    - Set({fix::library/compiler-builtins/compiler-builtins})
+    - Set({fix::library/core})
+    - Set({fix::library/coretests})
+    - Set({fix::library/panic_abort})
+    - Set({fix::library/panic_unwind})
+    - Set({fix::library/proc_macro})
+    - Set({fix::library/rustc-std-workspace-core})
+    - Set({fix::library/std})
+    - Set({fix::library/std_detect})
+    - Set({fix::library/sysroot})
+    - Set({fix::library/test})
+    - Set({fix::library/unwind})

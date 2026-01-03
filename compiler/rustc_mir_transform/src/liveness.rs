@@ -45,6 +45,9 @@ struct Access {
     /// When we encounter multiple statements at the same location, we only increase the liveness,
     /// in order to avoid false positives.
     live: bool,
+    /// Is this a direct access to the place itself, no projections, or to a field?
+    /// This helps distinguish `x = ...` from `x.field = ...`
+    is_direct: bool,
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
@@ -650,15 +653,17 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             |place: Place<'tcx>, kind, source_info: SourceInfo, live: &DenseBitSet<PlaceIndex>| {
                 if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
                     if !is_indirect(extra_projections) {
+                        let is_direct = extra_projections.is_empty();
                         match assignments[index].entry(source_info) {
                             IndexEntry::Vacant(v) => {
-                                let access = Access { kind, live: live.contains(index) };
+                                let access = Access { kind, live: live.contains(index), is_direct };
                                 v.insert(access);
                             }
                             IndexEntry::Occupied(mut o) => {
                                 // There were already a sighting. Mark this statement as live if it
                                 // was, to avoid false positives.
                                 o.get_mut().live |= live.contains(index);
+                                o.get_mut().is_direct &= is_direct;
                             }
                         }
                     }
@@ -742,7 +747,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     continue;
                 };
                 let source_info = body.local_decls[place.local].source_info;
-                let access = Access { kind, live: live.contains(index) };
+                let access = Access { kind, live: live.contains(index), is_direct: true };
                 assignments[index].insert(source_info, access);
             }
         }
@@ -836,6 +841,33 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
         dead_captures
     }
 
+    /// Check if a local is referenced in any reachable basic block.
+    /// Variables in unreachable code (e.g., after `todo!()`) should not trigger unused warnings.
+    fn is_local_in_reachable_code(&self, local: Local) -> bool {
+        struct LocalVisitor {
+            target_local: Local,
+            found: bool,
+        }
+
+        impl<'tcx> Visitor<'tcx> for LocalVisitor {
+            fn visit_local(&mut self, local: Local, _context: PlaceContext, _location: Location) {
+                if local == self.target_local {
+                    self.found = true;
+                }
+            }
+        }
+
+        let mut visitor = LocalVisitor { target_local: local, found: false };
+        for (bb, bb_data) in traversal::postorder(self.body) {
+            visitor.visit_basic_block_data(bb, bb_data);
+            if visitor.found {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Report fully unused locals, and forget the corresponding assignments.
     fn report_fully_unused(&mut self) {
         let tcx = self.tcx;
@@ -927,6 +959,10 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
+                if !self.is_local_in_reachable_code(local) {
+                    continue;
+                }
+
                 let sugg = if from_macro {
                     errors::UnusedVariableSugg::NoSugg { span: def_span, name }
                 } else {
@@ -976,8 +1012,10 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     self.checked_places,
                     self.body,
                 ) {
-                    statements.clear();
-                    continue;
+                    statements.retain(|_, access| access.is_direct);
+                    if statements.is_empty() {
+                        continue;
+                    }
                 }
 
                 let typo = maybe_suggest_typo();
@@ -1048,23 +1086,25 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
             let Some((name, decl_span)) = self.checked_places.names[index] else { continue };
 
-            // We have outstanding assignments and with non-trivial drop.
-            // This is probably a drop-guard, so we do not issue a warning there.
-            if maybe_drop_guard(
+            let is_maybe_drop_guard = maybe_drop_guard(
                 tcx,
                 self.typing_env,
                 index,
                 &self.ever_dropped,
                 self.checked_places,
                 self.body,
-            ) {
-                continue;
-            }
+            );
 
             // We probed MIR in reverse order for dataflow.
             // We revert the vector to give a consistent order to the user.
-            for (source_info, Access { live, kind }) in statements.into_iter().rev() {
+            for (source_info, Access { live, kind, is_direct }) in statements.into_iter().rev() {
                 if live {
+                    continue;
+                }
+
+                // If this place was dropped and has non-trivial drop,
+                // skip reporting field assignments.
+                if !is_direct && is_maybe_drop_guard {
                     continue;
                 }
 

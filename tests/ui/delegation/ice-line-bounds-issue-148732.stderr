@@ -1,0 +1,45 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ice-line-bounds-issue-148732.rs:4:5
+   |
+LL |     dbg!(b);
+   |     ^^^^^^^ expected named lifetime parameter
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `a` in this scope
+  --> $DIR/ice-line-bounds-issue-148732.rs:1:7
+   |
+LL | reuse a as b {
+   |       ^ not found in this scope
+
+error[E0658]: functions delegation is not yet fully implemented
+  --> $DIR/ice-line-bounds-issue-148732.rs:1:1
+   |
+LL | / reuse a as b {
+LL | |
+LL | |
+LL | |     dbg!(b);
+...  |
+LL | | }
+   | |_^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+   = help: add `#![feature(fn_delegation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: `fn() {b}` doesn't implement `Debug`
+  --> $DIR/ice-line-bounds-issue-148732.rs:4:5
+   |
+LL | reuse a as b {
+   |            - consider calling this function
+...
+LL |     dbg!(b);
+   |     ^^^^^^^ the trait `Debug` is not implemented for fn item `fn() {b}`
+   |
+   = help: use parentheses to call this function: `b()`
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0106, E0277, E0425, E0658.
+For more information about an error, try `rustc --explain E0106`.

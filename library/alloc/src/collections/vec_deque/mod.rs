@@ -7,6 +7,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
+use core::clone::TrivialClone;
 use core::cmp::{self, Ordering};
 use core::hash::{Hash, Hasher};
 use core::iter::{ByRefSized, repeat_n, repeat_with};
@@ -59,6 +61,13 @@ mod spec_extend;
 use self::spec_from_iter::SpecFromIter;
 
 mod spec_from_iter;
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deque_extend_front", issue = "146975")]
+pub use self::splice::Splice;
+
+#[cfg(not(no_global_oom_handling))]
+mod splice;
 
 #[cfg(test)]
 mod tests;
@@ -674,7 +683,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
-    /// Use [`retain_mut`] with a negated predicate if you do not need the returned iterator.
+    /// Use `extract_if().for_each(drop)` if you do not need the returned iterator,
+    /// or [`retain_mut`] with a negated predicate if you also do not need to restrict the range.
     ///
     /// [`retain_mut`]: VecDeque::retain_mut
     ///
@@ -1835,6 +1845,64 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { Drain::new(self, drain_start, drain_len) }
     }
 
+    /// Creates a splicing iterator that replaces the specified range in the deque with the given
+    /// `replace_with` iterator and yields the removed items. `replace_with` does not need to be the
+    /// same length as `range`.
+    ///
+    /// `range` is removed even if the `Splice` iterator is not consumed before it is dropped.
+    ///
+    /// It is unspecified how many elements are removed from the deque if the `Splice` value is
+    /// leaked.
+    ///
+    /// The input iterator `replace_with` is only consumed when the `Splice` value is dropped.
+    ///
+    /// This is optimal if:
+    ///
+    /// * The tail (elements in the deque after `range`) is empty,
+    /// * or `replace_with` yields fewer or equal elements than `range`'s length
+    /// * or the lower bound of its `size_hint()` is exact.
+    ///
+    /// Otherwise, a temporary vector is allocated and the tail is moved twice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and past the length of the deque.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(deque_extend_front)]
+    /// # use std::collections::VecDeque;
+    ///
+    /// let mut v = VecDeque::from(vec![1, 2, 3, 4]);
+    /// let new = [7, 8, 9];
+    /// let u: Vec<_> = v.splice(1..3, new).collect();
+    /// assert_eq!(v, [1, 7, 8, 9, 4]);
+    /// assert_eq!(u, [2, 3]);
+    /// ```
+    ///
+    /// Using `splice` to insert new items into a vector efficiently at a specific position
+    /// indicated by an empty range:
+    ///
+    /// ```
+    /// # #![feature(deque_extend_front)]
+    /// # use std::collections::VecDeque;
+    ///
+    /// let mut v = VecDeque::from(vec![1, 5]);
+    /// let new = [2, 3, 4];
+    /// v.splice(1..1, new);
+    /// assert_eq!(v, [1, 2, 3, 4, 5]);
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
+    where
+        R: RangeBounds<usize>,
+        I: IntoIterator<Item = T>,
+    {
+        Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
+    }
+
     /// Clears the deque, removing all values.
     ///
     /// # Examples
@@ -2050,7 +2118,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [1, 2, 3, 4]);
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
-    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
     pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
@@ -2072,7 +2140,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [0, 1, 2, 3]);
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
-    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
     pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.back_mut()?;
         if predicate(last) { self.pop_back() } else { None }
@@ -2476,11 +2544,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let other_len = len - at;
         let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
 
-        unsafe {
-            let (first_half, second_half) = self.as_slices();
+        let (first_half, second_half) = self.as_slices();
+        let first_len = first_half.len();
+        let second_len = second_half.len();
 
-            let first_len = first_half.len();
-            let second_len = second_half.len();
+        unsafe {
             if at < first_len {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
@@ -3419,7 +3487,7 @@ impl<T: Clone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let dst = self.len();
         let count = src.end - src.start;

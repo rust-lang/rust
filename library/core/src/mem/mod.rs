@@ -6,6 +6,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::alloc::Layout;
+use crate::clone::TrivialClone;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
@@ -17,6 +18,10 @@ pub use manually_drop::ManuallyDrop;
 mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
+
+mod maybe_dangling;
+#[unstable(feature = "maybe_dangling", issue = "118166")]
+pub use maybe_dangling::MaybeDangling;
 
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
@@ -807,7 +812,8 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 /// ```
 #[inline]
 #[stable(feature = "mem_take", since = "1.40.0")]
-pub fn take<T: Default>(dest: &mut T) -> T {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+pub const fn take<T: [const] Default>(dest: &mut T) -> T {
     replace(dest, T::default())
 }
 
@@ -896,8 +902,6 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This does so by calling the argument's implementation of [`Drop`][drop].
-///
 /// This effectively does nothing for types which implement `Copy`, e.g.
 /// integers. Such values are copied and _then_ moved into the function, so the
 /// value persists after this function call.
@@ -908,7 +912,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// pub fn drop<T>(_x: T) {}
 /// ```
 ///
-/// Because `_x` is moved into the function, it is automatically dropped before
+/// Because `_x` is moved into the function, it is automatically [dropped][drop] before
 /// the function returns.
 ///
 /// [drop]: Drop
@@ -1069,6 +1073,10 @@ impl<T> clone::Clone for Discriminant<T> {
         *self
     }
 }
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for Discriminant<T> {}
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> cmp::PartialEq for Discriminant<T> {
@@ -1277,7 +1285,12 @@ pub trait SizedTypeProperties: Sized {
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const LAYOUT: Layout = Layout::new::<Self>();
+    const LAYOUT: Layout = {
+        // SAFETY: if the type is instantiated, rustc already ensures that its
+        // layout is valid. Use the unchecked constructor to avoid inserting a
+        // panicking codepath that needs to be optimized out.
+        unsafe { Layout::from_size_align_unchecked(Self::SIZE, Self::ALIGN) }
+    };
 
     /// The largest safe length for a `[Self]`.
     ///
@@ -1418,10 +1431,10 @@ impl<T> SizedTypeProperties for T {}
 /// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
 /// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
-#[allow_internal_unstable(builtin_syntax)]
+#[allow_internal_unstable(builtin_syntax, core_intrinsics)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
-    {builtin # offset_of($Container, $($fields)+)}
+    const {builtin # offset_of($Container, $($fields)+)}
 }
 
 /// Create a fresh instance of the inhabited ZST type `T`.

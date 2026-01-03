@@ -96,6 +96,17 @@ Thanks! <3
 """
 label = "O-ARM"
 
+[ping.loongarch]
+message = """\
+Hey LoongArch Group! This bug has been identified as a good "LoongArch candidate".
+In case it's useful, here are some [instructions] for tackling these sorts of
+bugs. Maybe take a look?
+Thanks! <3
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/loongarch.html
+"""
+label = "O-loongarch"
+
 [ping.risc-v]
 message = """\
 Hey RISC-V Group! This bug has been identified as a good "RISC-V candidate".
@@ -218,6 +229,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "F-*",
 ]
 
 [autolabel."T-rustdoc"]
@@ -455,8 +467,7 @@ trigger_files = [
 
 [autolabel."O-wasi"]
 trigger_files = [
-    "library/std/src/sys/pal/wasip1",
-    "library/std/src/sys/pal/wasip2",
+    "library/std/src/sys/pal/wasi",
     "library/std/src/os/wasi"
 ]
 
@@ -922,9 +933,6 @@ cc = ["@davidtwco", "@wesleywiser"]
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
-[mentions."compiler/rustc_codegen_ssa"]
-cc = ["@WaffleLapkin"]
-
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
@@ -1073,7 +1081,6 @@ source file via `./x run src/tools/unicode-table-generator` instead of editing \
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
-    "@jsha",
     "@lolbinarycat",
 ]
 
@@ -1159,7 +1166,7 @@ cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
-cc = ["@oli-obk", "@celinval", "@ouz-a"]
+cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -1431,6 +1438,7 @@ compiler = [
     "@JonathanBrouwer",
     "@lcnr",
     "@madsmtm",
+    "@mati865",
     "@Nadrieril",
     "@nnethercote",
     "@oli-obk",
@@ -1546,6 +1554,7 @@ project-stable-mir = [
     "@celinval",
     "@oli-obk",
     "@scottmcm",
+    "@makai410",
 ]
 project-exploit-mitigations = [
     "@cuviper",
@@ -1663,7 +1672,7 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 format = "rustc"
 project-name = "Rust"
 changelog-path = "RELEASES.md"
-changelog-branch = "master"
+changelog-branch = "main"
 
 [shortcut]
 
@@ -1682,12 +1691,6 @@ days-threshold = 28
 # when commits are included in subtrees, as well as warning links in commits.
 # Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
 [issue-links]
-
-# Prevents mentions in commits to avoid users being spammed
-# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
-[no-mentions]
-# Subtree update authors can't fix it, no point in warning.
-exclude-titles = ["subtree update"]
 
 # Allow members to formally register concerns (`@rustbot concern my concern`)
 # Documentation at: https://forge.rust-lang.org/triagebot/concern.html

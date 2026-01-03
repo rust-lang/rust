@@ -89,13 +89,6 @@ impl Tls {
         ActiveTls { tls: self }
     }
 
-    #[allow(unused)]
-    pub unsafe fn activate_persistent(self: Box<Self>) {
-        // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
-        let ptr = Box::into_raw(self).cast_const().cast::<u8>();
-        unsafe { set_tls_ptr(ptr) };
-    }
-
     unsafe fn current<'a>() -> &'a Tls {
         // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
         unsafe { &*(get_tls_ptr() as *const Tls) }

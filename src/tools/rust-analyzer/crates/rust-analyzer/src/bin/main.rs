@@ -307,6 +307,11 @@ fn run_server() -> anyhow::Result<()> {
         config.rediscover_workspaces();
     }
 
+    rayon::ThreadPoolBuilder::new()
+        .thread_name(|ix| format!("RayonWorker{}", ix))
+        .build_global()
+        .unwrap();
+
     // If the io_threads have an error, there's usually an error on the main
     // loop too because the channels are closed. Ensure we report both errors.
     match (rust_analyzer::main_loop(config, connection), io_threads.join()) {

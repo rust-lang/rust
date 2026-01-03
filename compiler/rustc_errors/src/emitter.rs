@@ -46,17 +46,14 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HumanReadableErrorType {
-    Default { short: bool },
-    AnnotateSnippet { short: bool, unicode: bool },
+pub struct HumanReadableErrorType {
+    pub short: bool,
+    pub unicode: bool,
 }
 
 impl HumanReadableErrorType {
     pub fn short(&self) -> bool {
-        match self {
-            HumanReadableErrorType::Default { short }
-            | HumanReadableErrorType::AnnotateSnippet { short, .. } => *short,
-        }
+        self.short
     }
 }
 
@@ -474,9 +471,12 @@ pub trait Emitter {
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
                 if !sp.is_dummy() && source_map.is_imported(sp) {
-                    let maybe_callsite = sp.source_callsite();
-                    if sp != maybe_callsite {
-                        return Some((sp, maybe_callsite));
+                    let mut span = sp;
+                    while let Some(callsite) = span.parent_callsite() {
+                        span = callsite;
+                        if !source_map.is_imported(span) {
+                            return Some((sp, span));
+                        }
                     }
                 }
                 None
@@ -532,30 +532,24 @@ impl Emitter for HumanEmitter {
     }
 }
 
-/// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
-/// failures of rustc, as witnessed e.g. in issue #89358.
-pub struct FatalOnlyEmitter {
-    pub fatal_emitter: Box<dyn Emitter + DynSend>,
-    pub fatal_note: Option<String>,
+/// An emitter that adds a note to each diagnostic.
+pub struct EmitterWithNote {
+    pub emitter: Box<dyn Emitter + DynSend>,
+    pub note: String,
 }
 
-impl Emitter for FatalOnlyEmitter {
+impl Emitter for EmitterWithNote {
     fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
-        if diag.level == Level::Fatal {
-            if let Some(fatal_note) = &self.fatal_note {
-                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
-            }
-            self.fatal_emitter.emit_diagnostic(diag, registry);
-        }
+        diag.sub(Level::Note, self.note.clone(), MultiSpan::new());
+        self.emitter.emit_diagnostic(diag, registry);
     }
 
     fn translator(&self) -> &Translator {
-        self.fatal_emitter.translator()
+        self.emitter.translator()
     }
 }
 
@@ -610,7 +604,7 @@ pub enum OutputTheme {
     Unicode,
 }
 
-/// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
+/// Handles the writing of `HumanReadableErrorType`
 #[derive(Setters)]
 pub struct HumanEmitter {
     #[setters(skip)]
@@ -1704,7 +1698,7 @@ impl HumanEmitter {
             }
             // print out the span location and spacer before we print the annotated source
             // to do this, we need to know if this span will be primary
-            let is_primary = primary_lo.file.name == annotated_file.file.name;
+            let is_primary = primary_lo.file.stable_id == annotated_file.file.stable_id;
             if is_primary {
                 let loc = primary_lo.clone();
                 if !self.short_message {
@@ -2322,11 +2316,6 @@ impl HumanEmitter {
                 show_code_change
             {
                 for part in parts {
-                    let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
-                        snippet
-                    } else {
-                        String::new()
-                    };
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
@@ -2402,7 +2391,7 @@ impl HumanEmitter {
                         // LL - REMOVED <- row_num - 2 - (newlines - first_i - 1)
                         // LL + NEWER
                         //    |         <- row_num
-
+                        let snippet = sm.span_to_snippet(part.span).unwrap_or_default();
                         let newlines = snippet.lines().count();
                         if newlines > 0 && row_num > newlines {
                             // Account for removals where the part being removed spans multiple
@@ -3108,7 +3097,7 @@ impl FileWithAnnotatedLines {
         ) {
             for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
-                if slot.file.name == file.name {
+                if slot.file.stable_id == file.stable_id {
                     // See if we already have a line for it
                     for line_slot in &mut slot.lines {
                         if line_slot.line_index == line_index {
@@ -3471,14 +3460,9 @@ impl Drop for Buffy {
 
 pub fn stderr_destination(color: ColorConfig) -> Destination {
     let buffer_writer = std::io::stderr();
-    let choice = color.to_color_choice();
     // We need to resolve `ColorChoice::Auto` before `Box`ing since
     // `ColorChoice::Auto` on `dyn Write` will always resolve to `Never`
-    let choice = if matches!(choice, ColorChoice::Auto) {
-        AutoStream::choice(&buffer_writer)
-    } else {
-        choice
-    };
+    let choice = get_stderr_color_choice(color, &buffer_writer);
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer
     // anything.
@@ -3491,6 +3475,11 @@ pub fn stderr_destination(color: ColorConfig) -> Destination {
         let buffer = Vec::new();
         AutoStream::new(Box::new(Buffy { buffer_writer, buffer }), choice)
     }
+}
+
+pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> ColorChoice {
+    let choice = color.to_color_choice();
+    if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
 }
 
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
@@ -3555,6 +3544,8 @@ pub fn detect_confusion_type(sm: &SourceMap, suggested: &str, sp: Span) -> Confu
         let mut has_digit_letter_confusable = false;
         let mut has_other_diff = false;
 
+        // Letters whose lowercase version is very similar to the uppercase
+        // version.
         let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
 
         let digit_letter_confusables = [('0', 'O'), ('1', 'l'), ('5', 'S'), ('8', 'B'), ('9', 'g')];

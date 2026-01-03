@@ -7,7 +7,7 @@
 extern crate link_cfg_works_transitive_dylib;
 extern crate link_cfg_works_transitive_rlib;
 
-#[link(name = "foo", cfg(foo))]
+#[link(name = "foo", cfg(false))]
 extern "C" {}
 
 fn main() {}

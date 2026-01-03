@@ -1,6 +1,13 @@
 #[cfg(test)]
 mod tests;
 
+// On 64-bit platforms, `io::Error` may use a bit-packed representation to
+// reduce size. However, this representation assumes that error codes are
+// always 32-bit wide.
+//
+// This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
+// Therefore, the packed representation is explicitly disabled for UEFI
+// targets, and the unpacked representation must be used instead.
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
@@ -139,7 +146,7 @@ enum ErrorData<C> {
 ///
 /// [`into`]: Into::into
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = sys::RawOsError;
+pub type RawOsError = sys::io::RawOsError;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -950,19 +957,19 @@ impl Error {
     where
         E: error::Error + Send + Sync + 'static,
     {
-        match self.repr.into_data() {
-            ErrorData::Custom(b) if b.error.is::<E>() => {
-                let res = (*b).error.downcast::<E>();
-
-                // downcast is a really trivial and is marked as inline, so
-                // it's likely be inlined here.
-                //
-                // And the compiler should be able to eliminate the branch
-                // that produces `Err` here since b.error.is::<E>()
-                // returns true.
-                Ok(*res.unwrap())
+        if let ErrorData::Custom(c) = self.repr.data()
+            && c.error.is::<E>()
+        {
+            if let ErrorData::Custom(b) = self.repr.into_data()
+                && let Ok(err) = b.error.downcast::<E>()
+            {
+                Ok(*err)
+            } else {
+                // Safety: We have just checked that the condition is true
+                unsafe { crate::hint::unreachable_unchecked() }
             }
-            repr_data => Err(Self { repr: Repr::new(repr_data) }),
+        } else {
+            Err(self)
         }
     }
 

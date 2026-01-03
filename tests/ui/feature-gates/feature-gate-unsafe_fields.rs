@@ -4,7 +4,7 @@
 
 #![cfg_attr(with_gate, feature(unsafe_fields))] //[with_gate]~ WARNING
 
-#[cfg(any())]
+#[cfg(false)]
 struct Foo {
     unsafe field: (), //[without_gate]~ ERROR
 }
@@ -12,14 +12,14 @@ struct Foo {
 // This should not parse as an unsafe field definition.
 struct FooTuple(unsafe fn());
 
-#[cfg(any())]
+#[cfg(false)]
 enum Bar {
     Variant { unsafe field: () }, //[without_gate]~ ERROR
     // This should not parse as an unsafe field definition.
     VariantTuple(unsafe fn()),
 }
 
-#[cfg(any())]
+#[cfg(false)]
 union Baz {
     unsafe field: (), //[without_gate]~ ERROR
 }

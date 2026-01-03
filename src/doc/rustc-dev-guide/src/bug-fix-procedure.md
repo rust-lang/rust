@@ -91,39 +91,45 @@ future-compatibility warnings. These are a special category of lint warning.
 Adding a new future-compatibility warning can be done as follows.
 
 ```rust
-// 1. Define the lint in `compiler/rustc_middle/src/lint/builtin.rs`:
+// 1. Define the lint in `compiler/rustc_lint/src/builtin.rs` and 
+//    add the metadata for the future incompatibility:
 declare_lint! {
-    pub YOUR_ERROR_HERE,
+    pub YOUR_LINT_HERE,
     Warn,
     "illegal use of foo bar baz"
-}
-
-// 2. Add to the list of HardwiredLints in the same file:
-impl LintPass for HardwiredLints {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            ..,
-            YOUR_ERROR_HERE
-        )
-    }
-}
-
-// 3. Register the lint in `compiler/rustc_lint/src/lib.rs`:
-store.register_future_incompatible(sess, vec![
-    ...,
-    FutureIncompatibleInfo {
-        id: LintId::of(YOUR_ERROR_HERE),
-        reference: "issue #1234", // your tracking issue here!
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #1234) // your tracking issue here!
     },
-]);
+}
 
-// 4. Report the lint:
-tcx.lint_node(
-    lint::builtin::YOUR_ERROR_HERE,
-    path_id,
-    binding.span,
-    format!("some helper message here"));
+// 2. Add a decidacted lint pass for it.
+//    This step can be skipped if you emit the lint as part of an existing pass.
+
+#[derive(Default)]
+pub struct MyLintPass {
+    ...
+}
+
+impl {Early,Late}LintPass for MyLintPass { 
+    ...
+}
+
+impl_lint_pass!(MyLintPass => [YOUR_LINT_HERE]);
+
+// 3. emit the lint somewhere in your lint pass:
+cx.emit_span_lint(
+    YOUR_LINT_HERE,
+    pat.span,
+    // some diagnostic struct
+    MyDiagnostic {
+        ...
+    },
+);
+
 ```
+
+Finally, register the lint in `compiler/rustc_lint/src/lib.rs`. 
+There are many examples in that file that already show how to do so.
 
 #### Helpful techniques
 
@@ -221,7 +227,10 @@ The first reference you will likely find is the lint definition [in
 declare_lint! {
     pub OVERLAPPING_INHERENT_IMPLS,
     Deny, // this may also say Warning
-    "two overlapping inherent impls define an item with the same name were erroneously allowed"
+    "two overlapping inherent impls define an item with the same name were erroneously allowed",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #1234), // your tracking issue here!
+    },
 }
 ```
 
@@ -230,19 +239,6 @@ will also find that there is a mention of `OVERLAPPING_INHERENT_IMPLS` later in
 the file as [part of a `lint_array!`][lintarraysource]; remove it too.
 
 [lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L252-L290
-
-Next, you see [a reference to `OVERLAPPING_INHERENT_IMPLS` in
-`rustc_lint/src/lib.rs`][futuresource]. This is defining the lint as a "future
-compatibility lint":
-
-```rust
-FutureIncompatibleInfo {
-    id: LintId::of(OVERLAPPING_INHERENT_IMPLS),
-    reference: "issue #36889 <https://github.com/rust-lang/rust/issues/36889>",
-},
-```
-
-Remove this too.
 
 #### Add the lint to the list of removed lints.
 
@@ -269,6 +265,8 @@ self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
                        msg);
 ```
 
+You'll also often find `node_span_lint` used for this.
+
 We want to convert this into an error. In some cases, there may be an
 existing error for this scenario. In others, we will need to allocate a
 fresh diagnostic code.  [Instructions for allocating a fresh diagnostic
@@ -283,6 +281,17 @@ Let's say that we've adopted `E0592` as our code. Then we can change the
 ```rust
 struct_span_code_err!(self.dcx(), self.tcx.span_of_impl(item1).unwrap(), E0592, msg)
     .emit();
+```
+
+Or better: a structured diagnostic like this:
+
+```rust
+#[derive(Diagnostic)]
+struct MyDiagnostic {
+    #[label]
+    span: Span,
+    ...
+}
 ```
 
 #### Update tests

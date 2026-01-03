@@ -14,6 +14,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
 
+use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
 
 #[cfg(test)]
@@ -191,6 +192,7 @@ symbols! {
         Borrow,
         BorrowMut,
         Break,
+        BuildHasher,
         C,
         CStr,
         C_dash_unwind: "C-unwind",
@@ -372,6 +374,7 @@ symbols! {
         ToString,
         TokenStream,
         Trait,
+        TrivialClone,
         Try,
         TryCaptureGeneric,
         TryCapturePrintable,
@@ -469,6 +472,8 @@ symbols! {
         arith_offset,
         arm,
         arm64ec,
+        arm_a32: "arm::a32",
+        arm_t32: "arm::t32",
         arm_target_feature,
         array,
         as_dash_needed: "as-needed",
@@ -569,6 +574,7 @@ symbols! {
         begin_panic,
         bench,
         bevy_ecs,
+        bikeshed,
         bikeshed_guaranteed_no_drop,
         bin,
         binaryheap_iter,
@@ -611,6 +617,7 @@ symbols! {
         c_str_literals,
         c_unwind,
         c_variadic,
+        c_variadic_naked_functions,
         c_void,
         call,
         call_mut,
@@ -875,6 +882,7 @@ symbols! {
         destructuring_assignment,
         diagnostic,
         diagnostic_namespace,
+        diagnostic_on_const,
         dialect,
         direct,
         discriminant_kind,
@@ -898,7 +906,6 @@ symbols! {
         doc_primitive,
         doc_spotlight,
         doctest,
-        document_private_items,
         dotdot: "..",
         dotdot_in_tuple_patterns,
         dotdoteq_in_patterns,
@@ -924,6 +931,11 @@ symbols! {
         effects,
         eh_catch_typeinfo,
         eh_personality,
+        eii,
+        eii_extern_target,
+        eii_impl,
+        eii_internals,
+        eii_shared_macro,
         emit,
         emit_enum,
         emit_enum_variant,
@@ -983,6 +995,7 @@ symbols! {
         extern_crate_item_prelude,
         extern_crate_self,
         extern_in_paths,
+        extern_item_impls,
         extern_prelude,
         extern_system_varargs,
         extern_types,
@@ -1095,10 +1108,7 @@ symbols! {
         format_args_nl,
         format_argument,
         format_arguments,
-        format_count,
         format_macro,
-        format_placeholder,
-        format_unsafe_arg,
         framework,
         freeze,
         freeze_impls,
@@ -1113,7 +1123,9 @@ symbols! {
         from_output,
         from_residual,
         from_size_align_unchecked,
+        from_str,
         from_str_method,
+        from_str_nonconst,
         from_u16,
         from_usize,
         from_yeet,
@@ -1259,6 +1271,7 @@ symbols! {
         into_async_iter_into_iter,
         into_future,
         into_iter,
+        into_try_type,
         intra_doc_pointers,
         intrinsics,
         intrinsics_unaligned_volatile_load,
@@ -1582,6 +1595,7 @@ symbols! {
         object_safe_for_dispatch,
         of,
         off,
+        offload,
         offset,
         offset_of,
         offset_of_enum,
@@ -1591,6 +1605,7 @@ symbols! {
         old_name,
         omit_gdb_pretty_printer_section,
         on,
+        on_const,
         on_unimplemented,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
@@ -1931,6 +1946,7 @@ symbols! {
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
+        rustc_eii_extern_item,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_force_inline,
@@ -1964,6 +1980,7 @@ symbols! {
         rustc_objc_class,
         rustc_objc_selector,
         rustc_object_lifetime_default,
+        rustc_offload_kernel,
         rustc_on_unimplemented,
         rustc_outlives,
         rustc_paren_sugar,
@@ -1983,7 +2000,9 @@ symbols! {
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_scalable_vector,
         rustc_serialize,
+        rustc_should_not_be_called_on_const_items,
         rustc_simd_monomorphize_lane_limit,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
@@ -2136,6 +2155,7 @@ symbols! {
         sparc,
         sparc64,
         sparc_target_feature,
+        spe_acc,
         specialization,
         speed,
         spirv,
@@ -2269,16 +2289,19 @@ symbols! {
         transparent_enums,
         transparent_unions,
         trivial_bounds,
+        trivial_clone,
         truncf16,
         truncf32,
         truncf64,
         truncf128,
         try_blocks,
+        try_blocks_heterogeneous,
         try_capture,
         try_from,
         try_from_fn,
         try_into,
         try_trait_v2,
+        try_trait_v2_residual,
         try_update,
         tt,
         tuple,
@@ -2373,6 +2396,7 @@ symbols! {
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_cell_raw_get,
+        unsafe_eii,
         unsafe_extern_blocks,
         unsafe_fields,
         unsafe_no_drop_flag,
@@ -2452,6 +2476,7 @@ symbols! {
         vsreg,
         vsx,
         vtable_align,
+        vtable_for,
         vtable_size,
         warn,
         wasip2,
@@ -2832,6 +2857,27 @@ impl Symbol {
     pub fn to_ident_string(self) -> String {
         // Avoid creating an empty identifier, because that asserts in debug builds.
         if self == sym::empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
+    }
+
+    /// Checks if `self` is similar to any symbol in `candidates`.
+    ///
+    /// The returned boolean represents whether the candidate is the same symbol with a different
+    /// casing.
+    ///
+    /// All the candidates are assumed to be lowercase.
+    pub fn find_similar(
+        self,
+        candidates: &[Symbol],
+    ) -> Option<(Symbol, /* is incorrect case */ bool)> {
+        let lowercase = self.as_str().to_lowercase();
+        let lowercase_sym = Symbol::intern(&lowercase);
+        if candidates.contains(&lowercase_sym) {
+            Some((lowercase_sym, true))
+        } else if let Some(similar_sym) = find_best_match_for_name(candidates, self, None) {
+            Some((similar_sym, false))
+        } else {
+            None
+        }
     }
 }
 

@@ -7,7 +7,7 @@ source shared.sh
 # This version is specified in the Dockerfile
 GCC=$GCC_VERSION
 
-curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
+curl https://ci-mirrors.rust-lang.org/rustc/gcc/gcc-$GCC.tar.xz | xzcat | tar xf -
 cd gcc-$GCC
 
 # FIXME(#49246): Remove the `sed` below.

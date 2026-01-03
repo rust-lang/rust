@@ -2,7 +2,7 @@ error: unknown `doc` attribute `primitive`
   --> $DIR/doc-primitive.rs:3:7
    |
 LL | #[doc(primitive = "foo")]
-   |       ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/doc-primitive.rs:1:9

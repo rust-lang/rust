@@ -68,7 +68,7 @@ This instructs `git` to perform a "shallow clone", cloning the repository but tr
 the last `N` commits.
 
 Passing `--depth 1` tells `git` to clone the repository but truncate the history to the latest
-commit that is on the `master` branch, which is usually fine for browsing the source code or
+commit that is on the `main` branch, which is usually fine for browsing the source code or
 building the compiler.
 
 ```bash
@@ -172,7 +172,7 @@ You can install it with `cargo install --path src/tools/x`.
 
 To clarify that this is another global installed binary util, which is
 similar to the one declared in section [What is `x.py`](#what-is-xpy), but
-it works as an independent process to execute the `x.py` rather than calling the 
+it works as an independent process to execute the `x.py` rather than calling the
 shell to run the platform related scripts.
 
 ## Create a `bootstrap.toml`
@@ -277,18 +277,20 @@ default).
 Once you have successfully built `rustc`, you will have created a bunch
 of files in your `build` directory. In order to actually run the
 resulting `rustc`, we recommend creating rustup toolchains. The first
-one will run the stage1 compiler (which we built above). The second
-will execute the stage2 compiler (which we did not build, but which
-you will likely need to build at some point; for example, if you want
-to run the entire test suite).
+command listed below creates the stage1 toolchain, which was built in the
+steps above, with the name `stage1`. The second command creates the stage2 
+toolchain using the stage1 compiler. This will be needed in the future 
+if running the entire test suite, but will not be built in this page. 
+Building stage2 is done with the same `./x build` command as for stage1,
+specifying that the stage is 2 instead.
 
 ```bash
 rustup toolchain link stage1 build/host/stage1
 rustup toolchain link stage2 build/host/stage2
 ```
 
-Now you can run the `rustc` you built with. If you run with `-vV`, you
-should see a version number ending in `-dev`, indicating a build from
+Now you can run the `rustc` you built with via the toolchain. If you run with 
+`-vV`, you should see a version number ending in `-dev`, indicating a build from
 your local environment:
 
 ```bash

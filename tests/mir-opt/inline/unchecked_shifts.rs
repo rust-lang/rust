@@ -1,6 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![crate_type = "lib"]
-#![feature(unchecked_shifts)]
 
 //@ compile-flags: -Zmir-opt-level=2 -Zinline-mir
 

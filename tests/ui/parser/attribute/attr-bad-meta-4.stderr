@@ -1,8 +1,8 @@
-error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/attr-bad-meta-4.rs:11:17
    |
 LL | #[cfg(feature = -1)]
-   |                 ^
+   |                 ^^ expressions are not allowed here
    |
 help: negative numbers are not literals, try removing the `-` sign
    |

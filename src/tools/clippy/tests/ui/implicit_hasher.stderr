@@ -122,5 +122,33 @@ help: add a type parameter for `BuildHasher`
 LL | pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32, S>) {}
    |                           +++++++++++++++++++++++++++++                        +++
 
-error: aborting due to 9 previous errors
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:122:40
+   |
+LL |     impl<K: Hash + Eq, V> Foo<u64> for HashMap<K, V> {
+   |                                        ^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~     impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u64> for HashMap<K, V, S> {
+LL |
+LL |         fn make() -> (Self, Self) {
+LL ~             (HashMap::default(), HashMap::with_capacity_and_hasher(times_ten!(5), Default::default()))
+   |
+
+error: impl for `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:129:37
+   |
+LL |     impl<V: Hash + Eq> Foo<u64> for HashSet<V> {
+   |                                     ^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~     impl<V: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<u64> for HashSet<V, S> {
+LL |
+LL |         fn make() -> (Self, Self) {
+LL ~             (HashSet::default(), HashSet::with_capacity_and_hasher(times_ten!(5), Default::default()))
+   |
+
+error: aborting due to 11 previous errors
 

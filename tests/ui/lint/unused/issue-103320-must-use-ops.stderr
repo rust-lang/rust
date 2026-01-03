@@ -1,5 +1,5 @@
 warning: unused return value of `add` that must be used
-  --> $DIR/issue-103320-must-use-ops.rs:16:5
+  --> $DIR/issue-103320-must-use-ops.rs:15:5
    |
 LL |     x.add(4);
    |     ^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = x.add(4);
    |     +++++++
 
 warning: unused return value of `sub` that must be used
-  --> $DIR/issue-103320-must-use-ops.rs:18:5
+  --> $DIR/issue-103320-must-use-ops.rs:17:5
    |
 LL |     x.sub(4);
    |     ^^^^^^^^
@@ -28,7 +28,7 @@ LL |     let _ = x.sub(4);
    |     +++++++
 
 warning: unused return value of `mul` that must be used
-  --> $DIR/issue-103320-must-use-ops.rs:20:5
+  --> $DIR/issue-103320-must-use-ops.rs:19:5
    |
 LL |     x.mul(4);
    |     ^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _ = x.mul(4);
    |     +++++++
 
 warning: unused return value of `div` that must be used
-  --> $DIR/issue-103320-must-use-ops.rs:22:5
+  --> $DIR/issue-103320-must-use-ops.rs:21:5
    |
 LL |     x.div(4);
    |     ^^^^^^^^
@@ -52,7 +52,7 @@ LL |     let _ = x.div(4);
    |     +++++++
 
 warning: unused return value of `rem` that must be used
-  --> $DIR/issue-103320-must-use-ops.rs:24:5
+  --> $DIR/issue-103320-must-use-ops.rs:23:5
    |
 LL |     x.rem(4);
    |     ^^^^^^^^

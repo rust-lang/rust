@@ -1,17 +1,17 @@
 error[E0603]: module `sub_mod` is private
-  --> $DIR/append-import-suggestion.rs:13:12
+  --> $DIR/append-import-suggestion.rs:14:12
    |
 LL | use mod2::{sub_mod::TraitA};
    |            ^^^^^^^ private module
    |
 help: consider importing this trait instead:
       mod1::TraitA
-  --> $DIR/append-import-suggestion.rs:13:12
+  --> $DIR/append-import-suggestion.rs:14:12
    |
 LL | use mod2::{sub_mod::TraitA};
    |            ^^^^^^^^^^^^^^^
 note: the module `sub_mod` is defined here
-  --> $DIR/append-import-suggestion.rs:8:5
+  --> $DIR/append-import-suggestion.rs:9:5
    |
 LL |     mod sub_mod {
    |     ^^^^^^^^^^^

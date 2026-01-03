@@ -1,0 +1,19 @@
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
+  --> $DIR/dispatch-from-dyn-blanket-impl.rs:6:6
+   |
+LL | impl<T> std::ops::DispatchFromDyn<T> for T {}
+   |      ^ type parameter `T` must be used as the type parameter for some local type
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error[E0377]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/dispatch-from-dyn-blanket-impl.rs:6:1
+   |
+LL | impl<T> std::ops::DispatchFromDyn<T> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0210, E0377.
+For more information about an error, try `rustc --explain E0210`.

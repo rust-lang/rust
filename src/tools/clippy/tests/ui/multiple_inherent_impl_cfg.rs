@@ -13,8 +13,7 @@ impl A {}
 //~^ multiple_inherent_impl
 
 #[cfg(test)]
-impl A {} // false positive
-//~^ multiple_inherent_impl
+impl A {}
 
 #[cfg(test)]
 impl A {}
@@ -25,8 +24,7 @@ struct B;
 impl B {}
 
 #[cfg(test)]
-impl B {} // false positive
-//~^ multiple_inherent_impl
+impl B {}
 
 impl B {}
 //~^ multiple_inherent_impl

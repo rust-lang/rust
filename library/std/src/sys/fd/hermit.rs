@@ -4,8 +4,7 @@ use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, SeekFrom};
 use crate::os::hermit::hermit_abi;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::{cvt, unsupported};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt, unsupported};
 
 const fn max_iov() -> usize {
     hermit_abi::IOV_MAX

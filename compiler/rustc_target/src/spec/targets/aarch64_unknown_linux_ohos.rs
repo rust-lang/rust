@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
         metadata: TargetMetadata {
             description: Some("ARM64 OpenHarmony".into()),
             tier: Some(2),
-            host_tools: Some(false),
+            host_tools: Some(true),
             std: Some(true),
         },
         pointer_width: 64,

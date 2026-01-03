@@ -2,7 +2,7 @@
 //! representation for the common case where PTR_SIZE consecutive bytes have the same provenance.
 
 use std::cmp;
-use std::ops::Range;
+use std::ops::{Range, RangeBounds};
 
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -13,6 +13,23 @@ use tracing::trace;
 use super::{AllocRange, CtfeProvenance, Provenance, alloc_range};
 use crate::mir::interpret::{AllocError, AllocResult};
 
+/// A pointer fragment represents one byte of a pointer.
+/// If the bytes are re-assembled in their original order, the pointer can be used again.
+/// Wildcard provenance is allowed to have index 0 everywhere.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(HashStable)]
+pub struct PointerFrag<Prov> {
+    /// The position of this fragment inside the pointer (in `0..8`).
+    pub idx: u8,
+    /// The provenance of the pointer this is a fragment of.
+    pub prov: Prov,
+    /// The raw bytes of the pointer this is a fragment of.
+    /// This is taken as a direct subslice of the raw allocation data, so we don't have to worry
+    /// about endianness. If the pointer size is less than 8, only the first N bytes of this are
+    /// ever non-zero.
+    pub bytes: [u8; 8],
+}
+
 /// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable)]
@@ -21,10 +38,7 @@ pub struct ProvenanceMap<Prov = CtfeProvenance> {
     /// bytes. Two entries in this map are always at least a pointer size apart.
     ptrs: SortedMap<Size, Prov>,
     /// This stores byte-sized provenance fragments.
-    /// The `u8` indicates the position of this byte inside its original pointer.
-    /// If the bytes are re-assembled in their original order, the pointer can be used again.
-    /// Wildcard provenance is allowed to have index 0 everywhere.
-    bytes: Option<Box<SortedMap<Size, (Prov, u8)>>>,
+    bytes: Option<Box<SortedMap<Size, PointerFrag<Prov>>>>,
 }
 
 // These impls are generic over `Prov` since `CtfeProvenance` is only decodable/encodable
@@ -49,7 +63,7 @@ impl<Prov> ProvenanceMap<Prov> {
     }
 
     /// The caller must guarantee that the given provenance list is already sorted
-    /// by address and contain no duplicates.
+    /// by offset and contain no duplicates.
     pub fn from_presorted_ptrs(r: Vec<(Size, Prov)>) -> Self {
         ProvenanceMap { ptrs: SortedMap::from_presorted_elements(r), bytes: None }
     }
@@ -80,11 +94,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     /// Returns all ptr-sized provenance in the given range.
     /// If the range has length 0, returns provenance that crosses the edge between `start-1` and
     /// `start`.
-    pub(super) fn range_ptrs_get(
-        &self,
-        range: AllocRange,
-        cx: &impl HasDataLayout,
-    ) -> &[(Size, Prov)] {
+    fn range_ptrs_get(&self, range: AllocRange, cx: &impl HasDataLayout) -> &[(Size, Prov)] {
         self.ptrs.range(Self::adjusted_range_ptrs(range, cx))
     }
 
@@ -93,8 +103,14 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         self.ptrs.range_is_empty(Self::adjusted_range_ptrs(range, cx))
     }
 
+    /// Check if there is ptr-sized provenance at the given index.
+    /// Does not mean anything for bytewise provenance! But can be useful as an optimization.
+    pub fn get_ptr(&self, offset: Size) -> Option<Prov> {
+        self.ptrs.get(&offset).copied()
+    }
+
     /// Returns all byte-wise provenance in the given range.
-    fn range_bytes_get(&self, range: AllocRange) -> &[(Size, (Prov, u8))] {
+    fn range_bytes_get(&self, range: AllocRange) -> &[(Size, PointerFrag<Prov>)] {
         if let Some(bytes) = self.bytes.as_ref() {
             bytes.range(range.start..range.end())
         } else {
@@ -107,68 +123,126 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         self.bytes.as_ref().is_none_or(|bytes| bytes.range_is_empty(range.start..range.end()))
     }
 
-    /// Get the provenance of a single byte.
-    pub fn get_byte(&self, offset: Size, cx: &impl HasDataLayout) -> Option<(Prov, u8)> {
-        let prov = self.range_ptrs_get(alloc_range(offset, Size::from_bytes(1)), cx);
-        debug_assert!(prov.len() <= 1);
-        if let Some(entry) = prov.first() {
-            // If it overlaps with this byte, it is on this byte.
-            debug_assert!(self.bytes.as_ref().is_none_or(|b| !b.contains_key(&offset)));
-            Some((entry.1, (offset - entry.0).bytes() as u8))
-        } else {
-            // Look up per-byte provenance.
-            self.bytes.as_ref().and_then(|b| b.get(&offset).copied())
-        }
+    /// Get the provenance of a single byte. Must only be called if there is no
+    /// pointer-sized provenance here.
+    pub fn get_byte(&self, offset: Size, cx: &impl HasDataLayout) -> Option<&PointerFrag<Prov>> {
+        debug_assert!(self.range_ptrs_is_empty(alloc_range(offset, Size::from_bytes(1)), cx));
+        self.bytes.as_ref().and_then(|b| b.get(&offset))
     }
 
     /// Gets the provenances of all bytes (including from pointers) in a range.
     pub fn get_range(
         &self,
-        cx: &impl HasDataLayout,
         range: AllocRange,
-    ) -> impl Iterator<Item = Prov> {
-        let ptr_provs = self.range_ptrs_get(range, cx).iter().map(|(_, p)| *p);
-        let byte_provs = self.range_bytes_get(range).iter().map(|(_, (p, _))| *p);
+        cx: &impl HasDataLayout,
+    ) -> impl Iterator<Item = (AllocRange, Prov)> {
+        let ptr_size = cx.data_layout().pointer_size();
+        let ptr_provs = self
+            .range_ptrs_get(range, cx)
+            .iter()
+            .map(move |(offset, p)| (alloc_range(*offset, ptr_size), *p));
+        let byte_provs = self
+            .range_bytes_get(range)
+            .iter()
+            .map(move |(offset, frag)| (alloc_range(*offset, Size::from_bytes(1)), frag.prov));
         ptr_provs.chain(byte_provs)
     }
 
     /// Attempt to merge per-byte provenance back into ptr chunks, if the right fragments
-    /// sit next to each other. Return `false` is that is not possible due to partial pointers.
+    /// sit next to each other. Return `false` if that is not possible due to partial pointers.
     pub fn merge_bytes(&mut self, cx: &impl HasDataLayout) -> bool {
         let Some(bytes) = self.bytes.as_deref_mut() else {
             return true;
         };
-        if !Prov::OFFSET_IS_ADDR {
-            // FIXME(#146291): We need to ensure that we don't mix different pointers with
-            // the same provenance.
-            return false;
-        }
         let ptr_size = cx.data_layout().pointer_size();
-        while let Some((offset, (prov, _))) = bytes.iter().next().copied() {
+        while let Some((offset, first_frag)) = bytes.iter().next() {
+            let offset = *offset;
             // Check if this fragment starts a pointer.
             let range = offset..offset + ptr_size;
             let frags = bytes.range(range.clone());
             if frags.len() != ptr_size.bytes_usize() {
+                // We can't merge this one, no point in trying to merge the rest.
                 return false;
             }
-            for (idx, (_offset, (frag_prov, frag_idx))) in frags.iter().copied().enumerate() {
-                if frag_prov != prov || frag_idx != idx as u8 {
+            for (idx, (_offset, frag)) in frags.iter().enumerate() {
+                if !(frag.prov == first_frag.prov
+                    && frag.bytes == first_frag.bytes
+                    && frag.idx == idx as u8)
+                {
                     return false;
                 }
             }
             // Looks like a pointer! Move it over to the ptr provenance map.
+            self.ptrs.insert(offset, first_frag.prov);
             bytes.remove_range(range);
-            self.ptrs.insert(offset, prov);
         }
         // We managed to convert everything into whole pointers.
         self.bytes = None;
         true
     }
 
-    /// Check if there is ptr-sized provenance at the given index.
-    /// Does not mean anything for bytewise provenance! But can be useful as an optimization.
-    pub fn get_ptr(&self, offset: Size) -> Option<Prov> {
-        self.ptrs.get(&offset).copied()
+    /// Try to read a pointer from the given location, possibly by loading from many per-byte
+    /// provenances.
+    pub fn read_ptr(&self, offset: Size, cx: &impl HasDataLayout) -> AllocResult<Option<Prov>> {
+        // If there is pointer-sized provenance exactly here, we can just return that.
+        if let Some(prov) = self.get_ptr(offset) {
+            return Ok(Some(prov));
+        }
+        // The other easy case is total absence of provenance, that also always works.
+        let range = alloc_range(offset, cx.data_layout().pointer_size());
+        let no_ptrs = self.range_ptrs_is_empty(range, cx);
+        if no_ptrs && self.range_bytes_is_empty(range) {
+            return Ok(None);
+        }
+        // If we get here, we have to check whether we can merge per-byte provenance.
+        let prov = 'prov: {
+            // If there is any ptr-sized provenance overlapping with this range,
+            // this is definitely mixing multiple pointers and we can bail.
+            if !no_ptrs {
+                break 'prov None;
+            }
+            // Scan all fragments, and ensure their indices, provenance, and bytes match.
+            // However, we have to ignore wildcard fragments for this (this is needed for Miri's
+            // native-lib mode). Therefore, we will only know the expected provenance and bytes
+            // once we find the first non-wildcard fragment.
+            let mut expected = None;
+            for idx in Size::ZERO..range.size {
+                // Ensure there is provenance here.
+                let Some(frag) = self.get_byte(offset + idx, cx) else {
+                    break 'prov None;
+                };
+                // If this is wildcard provenance, ignore this fragment.
+                if Some(frag.prov) == Prov::WILDCARD {
+                    continue;
+                }
+                // For non-wildcard fragments, the index must match.
+                if u64::from(frag.idx) != idx.bytes() {
+                    break 'prov None;
+                }
+                // If there are expectations registered, check them.
+                // If not, record this fragment as setting the expectations.
+                match expected {
+                    Some(expected) => {
+                        if (frag.prov, frag.bytes) != expected {
+                            break 'prov None;
+                        }
+                    }
+                    None => {
+                        expected = Some((frag.prov, frag.bytes));
+                    }
+                }
+            }
+            // The final provenance is the expected one we found along the way, or wildcard if
+            // we didn't find any.
+            Some(expected.map(|(prov, _addr)| prov).or_else(|| Prov::WILDCARD).unwrap())
+        };
+        if prov.is_none() && !Prov::OFFSET_IS_ADDR {
+            // There are some bytes with provenance here but overall the provenance does not add up.
+            // We need `OFFSET_IS_ADDR` to fall back to no-provenance here; without that option, we
+            // must error.
+            return Err(AllocError::ReadPartialPointer(offset));
+        }
+        Ok(prov)
     }
 
     /// Returns whether this allocation has provenance overlapping with the given range.
@@ -182,8 +256,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 
     /// Yields all the provenances stored in this map.
     pub fn provenances(&self) -> impl Iterator<Item = Prov> {
-        let bytes = self.bytes.iter().flat_map(|b| b.values().map(|(p, _i)| p));
-        self.ptrs.values().chain(bytes).copied()
+        let bytes = self.bytes.iter().flat_map(|b| b.values().map(|frag| frag.prov));
+        self.ptrs.values().copied().chain(bytes)
     }
 
     pub fn insert_ptr(&mut self, offset: Size, prov: Prov, cx: &impl HasDataLayout) {
@@ -191,9 +265,37 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         self.ptrs.insert(offset, prov);
     }
 
+    /// Returns an iterator that yields the fragments of this pointer whose absolute positions are
+    /// inside `pos_range`.
+    fn ptr_fragments(
+        pos_range: impl RangeBounds<Size>,
+        ptr_pos: Size,
+        prov: Prov,
+        data_bytes: &[u8],
+        ptr_size: Size,
+    ) -> impl Iterator<Item = (Size, PointerFrag<Prov>)> {
+        if pos_range.is_empty() {
+            return either::Left(std::iter::empty());
+        }
+        // Read ptr_size many bytes starting at ptr_pos.
+        let mut bytes = [0u8; 8];
+        (&mut bytes[..ptr_size.bytes_usize()])
+            .copy_from_slice(&data_bytes[ptr_pos.bytes_usize()..][..ptr_size.bytes_usize()]);
+        // Yield the fragments of this pointer.
+        either::Right(
+            (ptr_pos..ptr_pos + ptr_size).filter(move |pos| pos_range.contains(pos)).map(
+                move |pos| (pos, PointerFrag { idx: (pos - ptr_pos).bytes() as u8, bytes, prov }),
+            ),
+        )
+    }
+
     /// Removes all provenance inside the given range.
-    /// If there is provenance overlapping with the edges, might result in an error.
-    pub fn clear(&mut self, range: AllocRange, cx: &impl HasDataLayout) {
+    #[allow(irrefutable_let_patterns)] // these actually make the code more clear
+    pub fn clear(&mut self, range: AllocRange, data_bytes: &[u8], cx: &impl HasDataLayout) {
+        if range.size == Size::ZERO {
+            return;
+        }
+
         let start = range.start;
         let end = range.end();
         // Clear the bytewise part -- this is easy.
@@ -201,46 +303,42 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             bytes.remove_range(start..end);
         }
 
+        // Find all provenance overlapping the given range.
+        let ptrs_range = Self::adjusted_range_ptrs(range, cx);
+        if self.ptrs.range_is_empty(ptrs_range.clone()) {
+            // No provenance in this range, we are done. This is the common case.
+            return;
+        }
         let pointer_size = cx.data_layout().pointer_size();
 
-        // For the ptr-sized part, find the first (inclusive) and last (exclusive) byte of
-        // provenance that overlaps with the given range.
-        let (first, last) = {
-            // Find all provenance overlapping the given range.
-            if self.range_ptrs_is_empty(range, cx) {
-                // No provenance in this range, we are done. This is the common case.
-                return;
-            }
-
-            // This redoes some of the work of `range_get_ptrs_is_empty`, but this path is much
-            // colder than the early return above, so it's worth it.
-            let provenance = self.range_ptrs_get(range, cx);
-            (provenance.first().unwrap().0, provenance.last().unwrap().0 + pointer_size)
-        };
+        // This redoes some of the work of `range_is_empty`, but this path is much
+        // colder than the early return above, so it's worth it.
+        let ptrs = self.ptrs.range(ptrs_range.clone());
 
         // We need to handle clearing the provenance from parts of a pointer.
-        if first < start {
+        if let &(first, prov) = ptrs.first().unwrap()
+            && first < start
+        {
             // Insert the remaining part in the bytewise provenance.
-            let prov = self.ptrs[&first];
             let bytes = self.bytes.get_or_insert_with(Box::default);
-            for offset in first..start {
-                bytes.insert(offset, (prov, (offset - first).bytes() as u8));
+            for (pos, frag) in Self::ptr_fragments(..start, first, prov, data_bytes, pointer_size) {
+                bytes.insert(pos, frag);
             }
         }
-        if last > end {
-            let begin_of_last = last - pointer_size;
+        if let &(last, prov) = ptrs.last().unwrap()
+            && last + pointer_size > end
+        {
             // Insert the remaining part in the bytewise provenance.
-            let prov = self.ptrs[&begin_of_last];
             let bytes = self.bytes.get_or_insert_with(Box::default);
-            for offset in end..last {
-                bytes.insert(offset, (prov, (offset - begin_of_last).bytes() as u8));
+            for (pos, frag) in Self::ptr_fragments(end.., last, prov, data_bytes, pointer_size) {
+                bytes.insert(pos, frag);
             }
         }
 
         // Forget all the provenance.
         // Since provenance do not overlap, we know that removing until `last` (exclusive) is fine,
         // i.e., this will not remove any other provenance just after the ones we care about.
-        self.ptrs.remove_range(first..last);
+        self.ptrs.remove_range(ptrs_range);
     }
 
     /// Overwrites all provenance in the given range with wildcard provenance.
@@ -248,30 +346,25 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     /// bytewise on their remaining bytes.
     ///
     /// Provided for usage in Miri and panics otherwise.
-    pub fn write_wildcards(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
+    pub fn write_wildcards(
+        &mut self,
+        cx: &impl HasDataLayout,
+        data_bytes: &[u8],
+        range: AllocRange,
+    ) {
         let wildcard = Prov::WILDCARD.unwrap();
 
+        // Clear existing provenance in this range.
+        self.clear(range, data_bytes, cx);
+
+        // Make everything in the range wildcards.
         let bytes = self.bytes.get_or_insert_with(Box::default);
-
-        // Remove pointer provenances that overlap with the range, then readd the edge ones bytewise.
-        let ptr_range = Self::adjusted_range_ptrs(range, cx);
-        let ptrs = self.ptrs.range(ptr_range.clone());
-        if let Some((offset, prov)) = ptrs.first().copied() {
-            for byte_ofs in offset..range.start {
-                bytes.insert(byte_ofs, (prov, (byte_ofs - offset).bytes() as u8));
-            }
-        }
-        if let Some((offset, prov)) = ptrs.last().copied() {
-            for byte_ofs in range.end()..offset + cx.data_layout().pointer_size() {
-                bytes.insert(byte_ofs, (prov, (byte_ofs - offset).bytes() as u8));
-            }
-        }
-        self.ptrs.remove_range(ptr_range);
-
-        // Overwrite bytewise provenance.
         for offset in range.start..range.end() {
-            // The fragment index does not matter for wildcard provenance.
-            bytes.insert(offset, (wildcard, 0));
+            // The fragment index and bytes do not matter for wildcard provenance.
+            bytes.insert(
+                offset,
+                PointerFrag { prov: wildcard, idx: Default::default(), bytes: Default::default() },
+            );
         }
     }
 }
@@ -281,15 +374,16 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 /// Offsets are relative to the beginning of the copied range.
 pub struct ProvenanceCopy<Prov> {
     ptrs: Box<[(Size, Prov)]>,
-    bytes: Box<[(Size, (Prov, u8))]>,
+    bytes: Box<[(Size, PointerFrag<Prov>)]>,
 }
 
 impl<Prov: Provenance> ProvenanceMap<Prov> {
     pub fn prepare_copy(
         &self,
         range: AllocRange,
+        data_bytes: &[u8],
         cx: &impl HasDataLayout,
-    ) -> AllocResult<ProvenanceCopy<Prov>> {
+    ) -> ProvenanceCopy<Prov> {
         let shift_offset = move |offset| offset - range.start;
         let ptr_size = cx.data_layout().pointer_size();
 
@@ -312,14 +406,15 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         let end_overlap = self.range_ptrs_get(alloc_range(range.end(), Size::ZERO), cx).first();
         // We only need to go here if there is some overlap or some bytewise provenance.
         if begin_overlap.is_some() || end_overlap.is_some() || self.bytes.is_some() {
-            let mut bytes: Vec<(Size, (Prov, u8))> = Vec::new();
+            let mut bytes: Vec<(Size, PointerFrag<Prov>)> = Vec::new();
             // First, if there is a part of a pointer at the start, add that.
-            if let Some(entry) = begin_overlap {
-                trace!("start overlapping entry: {entry:?}");
+            if let Some(&(pos, prov)) = begin_overlap {
                 // For really small copies, make sure we don't run off the end of the range.
-                let entry_end = cmp::min(entry.0 + ptr_size, range.end());
-                for offset in range.start..entry_end {
-                    bytes.push((shift_offset(offset), (entry.1, (offset - entry.0).bytes() as u8)));
+                let end = cmp::min(pos + ptr_size, range.end());
+                for (pos, frag) in
+                    Self::ptr_fragments(range.start..end, pos, prov, data_bytes, ptr_size)
+                {
+                    bytes.push((shift_offset(pos), frag));
                 }
             } else {
                 trace!("no start overlapping entry");
@@ -329,45 +424,35 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             bytes.extend(
                 self.range_bytes_get(range)
                     .iter()
-                    .map(|&(offset, reloc)| (shift_offset(offset), reloc)),
+                    .map(|(offset, frag)| (shift_offset(*offset), frag.clone())),
             );
 
             // And finally possibly parts of a pointer at the end.
-            if let Some(entry) = end_overlap {
-                trace!("end overlapping entry: {entry:?}");
-                // For really small copies, make sure we don't start before `range` does.
-                let entry_start = cmp::max(entry.0, range.start);
-                for offset in entry_start..range.end() {
-                    if bytes.last().is_none_or(|bytes_entry| bytes_entry.0 < offset) {
-                        // The last entry, if it exists, has a lower offset than us, so we
-                        // can add it at the end and remain sorted.
-                        bytes.push((
-                            shift_offset(offset),
-                            (entry.1, (offset - entry.0).bytes() as u8),
-                        ));
-                    } else {
-                        // There already is an entry for this offset in there! This can happen when the
-                        // start and end range checks actually end up hitting the same pointer, so we
-                        // already added this in the "pointer at the start" part above.
-                        assert!(entry.0 <= range.start);
-                    }
+            // We only have to go here if this is actually different than the begin_overlap.
+            if let Some(&(pos, prov)) = end_overlap
+                && begin_overlap.is_none_or(|(begin, _)| *begin != pos)
+            {
+                // If this was a really small copy, we'd have handled this in begin_overlap.
+                assert!(pos >= range.start);
+                for (pos, frag) in
+                    Self::ptr_fragments(pos..range.end(), pos, prov, data_bytes, ptr_size)
+                {
+                    let pos = shift_offset(pos);
+                    // The last entry, if it exists, has a lower offset than us, so we
+                    // can add it at the end and remain sorted.
+                    debug_assert!(bytes.last().is_none_or(|bytes_entry| bytes_entry.0 < pos));
+                    bytes.push((pos, frag));
                 }
             } else {
                 trace!("no end overlapping entry");
             }
             trace!("byte provenances: {bytes:?}");
 
-            if !bytes.is_empty() && !Prov::OFFSET_IS_ADDR {
-                // FIXME(#146291): We need to ensure that we don't mix different pointers with
-                // the same provenance.
-                return Err(AllocError::ReadPartialPointer(range.start));
-            }
-
             // And again a buffer for the new list on the target side.
             bytes_box = bytes.into_boxed_slice();
         }
 
-        Ok(ProvenanceCopy { ptrs: ptrs_box, bytes: bytes_box })
+        ProvenanceCopy { ptrs: ptrs_box, bytes: bytes_box }
     }
 
     /// Applies a provenance copy.
@@ -381,8 +466,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             let chunk_len = copy.ptrs.len() as u64;
             self.ptrs.insert_presorted((0..chunk_len * repeat).map(|i| {
                 let chunk = i / chunk_len;
-                let (offset, reloc) = copy.ptrs[(i % chunk_len) as usize];
-                (shift_offset(chunk, offset), reloc)
+                let (offset, prov) = copy.ptrs[(i % chunk_len) as usize];
+                (shift_offset(chunk, offset), prov)
             }));
         }
         if !copy.bytes.is_empty() {
@@ -390,8 +475,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             self.bytes.get_or_insert_with(Box::default).insert_presorted(
                 (0..chunk_len * repeat).map(|i| {
                     let chunk = i / chunk_len;
-                    let (offset, reloc) = copy.bytes[(i % chunk_len) as usize];
-                    (shift_offset(chunk, offset), reloc)
+                    let (offset, frag) = &copy.bytes[(i % chunk_len) as usize];
+                    (shift_offset(chunk, *offset), frag.clone())
                 }),
             );
         }

@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics, sym};
+use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
@@ -67,9 +67,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             }
             .map(move |pat| (pat, has_guard))
         })
-        .map(|(pat, has_guard)| {
+        .filter_map(|(pat, has_guard)| {
             has_catch_all_arm |= !has_guard && matches!(pat, Pat::WildcardPat(_));
-            pat
+            (!has_guard).then_some(pat)
         })
         // Exclude top level wildcards so that they are expanded by this assist, retains status quo in #8129.
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
@@ -92,24 +92,25 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         bool,
         bool,
     ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr, self_ty.as_ref()) {
-        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
+        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate(ctx.db()));
 
         let variants = enum_def.variants(ctx.db());
 
-        let has_hidden_variants =
-            variants.iter().any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+        let has_hidden_variants = variants
+            .iter()
+            .any(|variant| variant.should_be_hidden(ctx.db(), module.krate(ctx.db())));
 
         let missing_pats = variants
             .into_iter()
             .filter_map(|variant| {
                 Some((
                     build_pat(ctx, &make, module, variant, cfg)?,
-                    variant.should_be_hidden(ctx.db(), module.krate()),
+                    variant.should_be_hidden(ctx.db(), module.krate(ctx.db())),
                 ))
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
-        let option_enum = FamousDefs(&ctx.sema, module.krate()).core_option_Option();
+        let option_enum = FamousDefs(&ctx.sema, module.krate(ctx.db())).core_option_Option();
         let missing_pats: Box<dyn Iterator<Item = _>> = if matches!(enum_def, ExtendedEnum::Enum { enum_: e, .. } if Some(e) == option_enum)
         {
             // Match `Some` variant first.
@@ -120,8 +121,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         };
         (missing_pats.peekable(), is_non_exhaustive, has_hidden_variants)
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr, self_ty.as_ref()) {
-        let is_non_exhaustive =
-            enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db(), module.krate()));
+        let is_non_exhaustive = enum_defs
+            .iter()
+            .any(|enum_def| enum_def.is_non_exhaustive(ctx.db(), module.krate(ctx.db())));
 
         let mut n_arms = 1;
         let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
@@ -145,7 +147,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         let has_hidden_variants = variants_of_enums
             .iter()
             .flatten()
-            .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+            .any(|variant| variant.should_be_hidden(ctx.db(), module.krate(ctx.db())));
 
         let missing_pats = variants_of_enums
             .into_iter()
@@ -154,7 +156,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .map(|variants| {
                 let is_hidden = variants
                     .iter()
-                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate(ctx.db())));
                 let patterns = variants
                     .into_iter()
                     .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
@@ -170,15 +172,16 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     } else if let Some((enum_def, len)) =
         resolve_array_of_enum_def(&ctx.sema, &expr, self_ty.as_ref())
     {
-        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
+        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate(ctx.db()));
         let variants = enum_def.variants(ctx.db());
 
         if len.pow(variants.len() as u32) > 256 {
             return None;
         }
 
-        let has_hidden_variants =
-            variants.iter().any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+        let has_hidden_variants = variants
+            .iter()
+            .any(|variant| variant.should_be_hidden(ctx.db(), module.krate(ctx.db())));
 
         let variants_of_enums = vec![variants; len];
 
@@ -189,7 +192,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .map(|variants| {
                 let is_hidden = variants
                     .iter()
-                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate(ctx.db())));
                 let patterns = variants
                     .into_iter()
                     .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
@@ -401,7 +404,7 @@ impl ExtendedVariant {
     fn should_be_hidden(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedVariant::Variant { variant: var, .. } => {
-                var.attrs(db).has_doc_hidden() && var.module(db).krate() != krate
+                var.attrs(db).is_doc_hidden() && var.module(db).krate(db) != krate
             }
             _ => false,
         }
@@ -424,7 +427,7 @@ impl ExtendedEnum {
     fn is_non_exhaustive(&self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedEnum::Enum { enum_: e, .. } => {
-                e.attrs(db).by_key(sym::non_exhaustive).exists() && e.module(db).krate() != krate
+                e.attrs(db).is_non_exhaustive() && e.module(db).krate(db) != krate
             }
             _ => false,
         }
@@ -502,7 +505,7 @@ fn build_pat(
     let db = ctx.db();
     match var {
         ExtendedVariant::Variant { variant: var, use_self } => {
-            let edition = module.krate().edition(db);
+            let edition = module.krate(db).edition(db);
             let path = if use_self {
                 make::path_from_segments(
                     [
@@ -998,7 +1001,8 @@ fn main() {
         A::Ds(_value) => { let x = 1; }
         A::Es(B::Xs) => (),
         A::As => ${1:todo!()},
-        A::Cs => ${2:todo!()},$0
+        A::Bs => ${2:todo!()},
+        A::Cs => ${3:todo!()},$0
     }
 }
 "#,

@@ -173,6 +173,10 @@ impl TestContext {
                         p.envs.push(("RUSTC_SNAPSHOT".into(), Some(rustc.into())));
                         p.envs.push(("RUSTC_SNAPSHOT_LIBDIR".into(), Some(libdir.into())));
                         p.envs.push(("RUSTC_SYSROOT".into(), Some(sysroot.into())));
+                        // Ensure we rebuild the dependencies when the sysroot changes.
+                        // (Bootstrap usually sets this automatically, but since we invoke cargo
+                        // ourselves we have to do it.)
+                        p.args.push("-Zbinary-dep-depinfo".into());
                     }
                     p
                 },

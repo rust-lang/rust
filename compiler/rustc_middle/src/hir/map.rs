@@ -2,6 +2,8 @@
 //! eliminated, and all its methods are now on `TyCtxt`. But the module name
 //! stays as `map` because there isn't an obviously better name for it.
 
+use std::ops::ControlFlow;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -321,7 +323,6 @@ impl<'tcx> TyCtxt<'tcx> {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if self.is_const_default_method(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
@@ -738,6 +739,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(_) => node_str("const"),
             Node::Expr(_) => node_str("expr"),
             Node::ExprField(_) => node_str("expr field"),
+            Node::ConstArgExprField(_) => node_str("const arg expr field"),
             Node::Stmt(_) => node_str("stmt"),
             Node::PathSegment(_) => node_str("path segment"),
             Node::Ty(_) => node_str("type"),
@@ -1006,6 +1008,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
+            Node::ConstArgExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
             Node::PathSegment(seg) => {
                 let ident_span = seg.ident.span;
@@ -1086,6 +1089,52 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         None
+    }
+
+    // FIXME(mgca): this is pretty iffy. In the long term we should make
+    // HIR ty lowering able to return `Error` versions of types/consts when
+    // lowering them in contexts that aren't supposed to use generic parameters.
+    //
+    // This current impl strategy is incomplete and doesn't handle `Self` ty aliases.
+    pub fn check_anon_const_invalid_param_uses(
+        self,
+        anon: LocalDefId,
+    ) -> Result<(), ErrorGuaranteed> {
+        struct GenericParamVisitor<'tcx>(TyCtxt<'tcx>);
+        impl<'tcx> Visitor<'tcx> for GenericParamVisitor<'tcx> {
+            type NestedFilter = nested_filter::OnlyBodies;
+            type Result = ControlFlow<ErrorGuaranteed>;
+
+            fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+                self.0
+            }
+
+            fn visit_path(
+                &mut self,
+                path: &crate::hir::Path<'tcx>,
+                _id: HirId,
+            ) -> ControlFlow<ErrorGuaranteed> {
+                if let Res::Def(
+                    DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam,
+                    _,
+                ) = path.res
+                {
+                    let e = self.0.dcx().struct_span_err(
+                        path.span,
+                        "generic parameters may not be used in const operations",
+                    );
+                    return ControlFlow::Break(e.emit());
+                }
+
+                intravisit::walk_path(self, path)
+            }
+        }
+
+        let body = self.hir_maybe_body_owned_by(anon).unwrap();
+        match GenericParamVisitor(self).visit_expr(&body.value) {
+            ControlFlow::Break(e) => Err(e),
+            ControlFlow::Continue(()) => Ok(()),
+        }
     }
 }
 
@@ -1225,6 +1274,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners,
         opaques,
         nested_bodies,
+        eiis,
         ..
     } = collector;
     ModuleItems {
@@ -1238,6 +1288,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         delayed_lint_items: Box::new([]),
+        eiis: eiis.into_boxed_slice(),
     }
 }
 
@@ -1260,6 +1311,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques,
         nested_bodies,
         mut delayed_lint_items,
+        eiis,
         ..
     } = collector;
 
@@ -1282,6 +1334,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         delayed_lint_items: delayed_lint_items.into_boxed_slice(),
+        eiis: eiis.into_boxed_slice(),
     }
 }
 
@@ -1299,6 +1352,7 @@ struct ItemCollector<'tcx> {
     opaques: Vec<LocalDefId>,
     nested_bodies: Vec<LocalDefId>,
     delayed_lint_items: Vec<OwnerId>,
+    eiis: Vec<LocalDefId>,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
@@ -1315,6 +1369,7 @@ impl<'tcx> ItemCollector<'tcx> {
             opaques: Vec::default(),
             nested_bodies: Vec::default(),
             delayed_lint_items: Vec::default(),
+            eiis: Vec::default(),
         }
     }
 }
@@ -1334,6 +1389,12 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         self.items.push(item.item_id());
         if self.crate_collector && item.has_delayed_lints {
             self.delayed_lint_items.push(item.item_id().owner_id);
+        }
+
+        if let ItemKind::Static(..) | ItemKind::Fn { .. } | ItemKind::Macro(..) = &item.kind
+            && item.eii
+        {
+            self.eiis.push(item.owner_id.def_id)
         }
 
         // Items that are modules are handled here instead of in visit_mod.

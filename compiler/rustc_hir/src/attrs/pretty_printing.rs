@@ -1,9 +1,12 @@
 use std::num::NonZero;
+use std::ops::Deref;
 
 use rustc_abi::Align;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
@@ -35,6 +38,15 @@ impl<T: PrintAttribute> PrintAttribute for &T {
         T::print_attribute(self, p)
     }
 }
+impl<T: PrintAttribute> PrintAttribute for Box<T> {
+    fn should_render(&self) -> bool {
+        self.deref().should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        T::print_attribute(self.deref(), p)
+    }
+}
 impl<T: PrintAttribute> PrintAttribute for Option<T> {
     fn should_render(&self) -> bool {
         self.as_ref().is_some_and(|x| x.should_render())
@@ -64,6 +76,25 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
         p.word("]");
     }
 }
+impl<T: PrintAttribute> PrintAttribute for FxIndexMap<T, Span> {
+    fn should_render(&self) -> bool {
+        self.is_empty() || self[0].should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        let mut last_printed = false;
+        p.word("[");
+        for (i, _) in self {
+            if last_printed {
+                p.word_space(",");
+            }
+            i.print_attribute(p);
+            last_printed = i.should_render();
+        }
+        p.word("]");
+    }
+}
+
 macro_rules! print_skip {
     ($($t: ty),* $(,)?) => {$(
         impl PrintAttribute for $t {
@@ -138,7 +169,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, u128, bool, NonZero<u32>, Limit);
+print_disp!(u16, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,
@@ -147,6 +178,8 @@ print_debug!(
     Align,
     AttrStyle,
     CommentKind,
+    DocFragmentKind,
     Transparency,
     SanitizerSet,
+    DefId,
 );

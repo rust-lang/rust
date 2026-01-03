@@ -104,7 +104,7 @@
 //! unlikely, for [`HashMap`] to experience significantly worse performance than
 //! the expected cost. This is due to the probabilistic nature of hashing - i.e.
 //! it is possible to generate a duplicate hash given some input key that will
-//! requires extra computation to correct.
+//! require extra computation to correct.
 //!
 //! ## Cost of Collection Operations
 //!

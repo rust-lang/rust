@@ -776,6 +776,13 @@ pub(crate) struct LowerRangeBoundMustBeLessThanUpper {
     pub(crate) span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(mir_build_upper_range_bound_cannot_be_min, code = E0579)]
+pub(crate) struct UpperRangeBoundCannotBeMin {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(mir_build_leading_irrefutable_let_patterns)]
 #[note]

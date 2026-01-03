@@ -14,10 +14,10 @@ use rustc_session::config::{
     CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
     Externs, FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
     InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans,
-    NextSolverConfig, Offload, OomStrategy, Options, OutFileName, OutputType, OutputTypes,
-    PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
-    build_session_options, rustc_optgroups,
+    NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
+    Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
+    rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -321,7 +321,7 @@ fn test_search_paths_tracking_hash_different_order() {
     let early_dcx = EarlyDiagCtxt::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
-        json_rendered: HumanReadableErrorType::Default { short: false },
+        json_rendered: HumanReadableErrorType { short: false, unicode: false },
         color_config: ColorConfig::Never,
     };
 
@@ -798,7 +798,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(embed_metadata, false);
     tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
-    tracked!(emscripten_wasm_eh, true);
+    tracked!(emscripten_wasm_eh, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
@@ -837,9 +837,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
-    tracked!(offload, vec![Offload::Enable]);
+    tracked!(offload, vec![Offload::Device]);
     tracked!(on_broken_pipe, OnBrokenPipe::Kill);
-    tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
     tracked!(panic_abort_tests, true);

@@ -561,11 +561,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             VarDebugInfoContents::Place(ref p) => p == place,
             _ => false,
         });
-        let arg_name = if let Some(var_info) = var_info {
-            var_info.name
-        } else {
-            return;
-        };
+        let Some(var_info) = var_info else { return };
+        let arg_name = var_info.name;
         struct MatchArgFinder {
             expr_span: Span,
             match_arg_span: Option<Span>,
@@ -3087,6 +3084,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             });
 
             explanation.add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
+
+            // Detect buffer reuse pattern
+            if let BorrowExplanation::UsedLater(_dropped_local, _, _, _) = explanation {
+                // Check all locals at the borrow location to find Vec<&T> types
+                for (local, local_decl) in self.body.local_decls.iter_enumerated() {
+                    if let ty::Adt(adt_def, args) = local_decl.ty.kind()
+                        && self.infcx.tcx.is_diagnostic_item(sym::Vec, adt_def.did())
+                        && args.len() > 0
+                    {
+                        let vec_inner_ty = args.type_at(0);
+                        // Check if Vec contains references
+                        if vec_inner_ty.is_ref() {
+                            let local_place = local.into();
+                            if let Some(local_name) = self.describe_place(local_place) {
+                                err.span_label(
+                                    local_decl.source_info.span,
+                                    format!("variable `{local_name}` declared here"),
+                                );
+                                err.note(
+                                    format!(
+                                        "`{local_name}` is a collection that stores borrowed references, \
+                                         but {name} does not live long enough to be stored in it"
+                                    )
+                                );
+                                err.help(
+                                    "buffer reuse with borrowed references requires unsafe code or restructuring"
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         err
@@ -3907,13 +3937,30 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
+            let is_for_loop = matches!(
+                            decl.local_info(),
+                            LocalInfo::User(BindingForm::Var(VarBindingForm {
+                                opt_match_place: Some((_, match_span)),
+                                ..
+                            })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
+            );
+            let message = if is_for_loop
+                && let Ok(binding_name) =
+                    self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
+            {
+                format!("(mut {}) ", binding_name)
+            } else {
+                "mut ".to_string()
+            };
             err.span_suggestion_verbose(
                 decl.source_info.span.shrink_to_lo(),
                 "consider making this binding mutable",
-                "mut ".to_string(),
+                message,
                 Applicability::MachineApplicable,
             );
+
             if !from_arg
+                && !is_for_loop
                 && matches!(
                     decl.local_info(),
                     LocalInfo::User(BindingForm::Var(VarBindingForm {
@@ -4471,7 +4518,9 @@ struct BreakFinder {
 impl<'hir> Visitor<'hir> for BreakFinder {
     fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
         match ex.kind {
-            hir::ExprKind::Break(destination, _) => {
+            hir::ExprKind::Break(destination, _)
+                if !ex.span.is_desugaring(DesugaringKind::ForLoop) =>
+            {
                 self.found_breaks.push((destination, ex.span));
             }
             hir::ExprKind::Continue(destination) => {

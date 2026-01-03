@@ -420,6 +420,13 @@ pub enum ObligationCauseCode<'tcx> {
     /// Only reachable if the `unsized_fn_params` feature is used. Unsized function arguments must
     /// be place expressions because we can't store them in MIR locals as temporaries.
     UnsizedNonPlaceExpr(Span),
+
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
+    CompareEii {
+        external_impl: LocalDefId,
+        declaration: DefId,
+    },
 }
 
 /// Whether a value can be extracted into a const.

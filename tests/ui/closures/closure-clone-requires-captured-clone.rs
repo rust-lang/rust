@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //! Test that closures only implement `Clone` if all captured values implement `Clone`.
 //!
 //! When a closure captures variables from its environment, it can only be cloned

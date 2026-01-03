@@ -129,7 +129,7 @@ pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rand",
 );
 
-static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand_target");
+static RAND: CargoProject = CargoProject::new(RAND_REPO.source_dir(), "rand_target");
 
 pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -139,15 +139,15 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "regex",
 );
 
-static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
+static REGEX: CargoProject = CargoProject::new(REGEX_REPO.source_dir(), "regex_target");
 
 static PORTABLE_SIMD_SRC: RelPath = RelPath::build("portable-simd");
 
-static PORTABLE_SIMD: CargoProject = CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
+static PORTABLE_SIMD: CargoProject = CargoProject::new(PORTABLE_SIMD_SRC, "portable-simd_target");
 
 static SYSROOT_TESTS_SRC: RelPath = RelPath::build("sysroot_tests");
 
-static SYSROOT_TESTS: CargoProject = CargoProject::new(&SYSROOT_TESTS_SRC, "sysroot_tests_target");
+static SYSROOT_TESTS: CargoProject = CargoProject::new(SYSROOT_TESTS_SRC, "sysroot_tests_target");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {

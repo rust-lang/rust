@@ -183,10 +183,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_expr(&mut self, expr: ExprId, depth_lvl: usize) {
-        let Expr { ty, temp_lifetime, span, kind } = &self.thir[expr];
+        let Expr { ty, temp_scope_id, span, kind } = &self.thir[expr];
         print_indented!(self, "Expr {", depth_lvl);
         print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 1);
-        print_indented!(self, format!("temp_lifetime: {:?}", temp_lifetime), depth_lvl + 1);
+        print_indented!(self, format!("temp_scope_id: {:?}", temp_scope_id), depth_lvl + 1);
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
         print_indented!(self, "kind: ", depth_lvl + 1);
         self.print_expr_kind(kind, depth_lvl + 2);
@@ -573,19 +573,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "InlineAsm {", depth_lvl);
                 print_indented!(self, "expr:", depth_lvl + 1);
                 self.print_inline_asm_expr(&**expr, depth_lvl + 2);
-                print_indented!(self, "}", depth_lvl);
-            }
-            OffsetOf { container, fields } => {
-                print_indented!(self, "OffsetOf {", depth_lvl);
-                print_indented!(self, format!("container: {:?}", container), depth_lvl + 1);
-                print_indented!(self, "fields: [", depth_lvl + 1);
-
-                for field in fields.iter() {
-                    print_indented!(self, format!("{:?}", field), depth_lvl + 2);
-                    print_indented!(self, ",", depth_lvl + 1);
-                }
-
-                print_indented!(self, "]", depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             ThreadLocalRef(def_id) => {

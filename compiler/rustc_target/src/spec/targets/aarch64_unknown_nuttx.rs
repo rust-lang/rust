@@ -7,8 +7,8 @@
 // For example, `-C target-cpu=cortex-a53`.
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
-    TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, SanitizerSet, StackProbeType,
+    Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &["--fix-cortex-a53-843419"],
         ),
-        features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
+        features: "+v8a,+strict-align,+neon".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
@@ -28,7 +28,7 @@ pub(crate) fn target() -> Target {
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         families: cvs!["unix"],
-        os: "nuttx".into(),
+        os: Os::NuttX,
         ..Default::default()
     };
     Target {

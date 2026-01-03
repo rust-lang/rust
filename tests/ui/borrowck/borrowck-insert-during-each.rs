@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 use std::collections::HashSet;
 
 struct Foo {

@@ -5,7 +5,7 @@ LL |     if cfg!(not()) { }
    |        ^^^^^^^^--^
    |        |       |
    |        |       expected a single argument here
-   |        help: must be of the form: `cfg(predicate)`
+   |        help: must be of the form: `cfg!(predicate)`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 

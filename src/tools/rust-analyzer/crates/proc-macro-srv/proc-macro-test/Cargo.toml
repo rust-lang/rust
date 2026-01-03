@@ -10,4 +10,4 @@ license = "MIT OR Apache-2.0"
 doctest = false
 
 [build-dependencies]
-cargo_metadata = "0.20.0"
+cargo_metadata = "0.23.0"

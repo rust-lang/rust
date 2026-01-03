@@ -70,10 +70,16 @@ $ ../gcc/configure \
 $ make -j4 # You can replace `4` with another number depending on how many cores you have.
 ```
 
-If you want to run libgccjit tests, you will need to also enable the C++ language in the `configure`:
+If you want to run libgccjit tests, you will need to
+* Enable the C++ language in the `configure` step:
 
 ```bash
 --enable-languages=jit,c++
+```
+* Install [dejagnu](https://www.gnu.org/software/dejagnu/#downloading) to run the tests:
+
+```bash
+$ sudo apt install dejagnu
 ```
 
 Then to run libgccjit tests:
@@ -134,16 +140,6 @@ $ CHANNEL="release" $CG_GCCJIT_DIR/y.sh cargo run
 ```
 
 If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./y.sh test`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
-
-### LTO
-
-To use LTO, you need to set the variable `EMBED_LTO_BITCODE=1` in addition to setting `lto = "fat"` in the `Cargo.toml`.
-
-Failing to set `EMBED_LTO_BITCODE` will give you the following error:
-
-```
-error: failed to copy bitcode to object file: No such file or directory (os error 2)
-```
 
 ### Rustc
 

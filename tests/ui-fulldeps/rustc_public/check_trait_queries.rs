@@ -28,19 +28,20 @@ fn test_traits() -> ControlFlow<()> {
     let local_crate = rustc_public::local_crate();
     let local_traits = local_crate.trait_decls();
     assert_eq!(local_traits.len(), 1, "Expected `Max` trait, but found {:?}", local_traits);
-    assert_eq!(&local_traits[0].name(), "Max");
+    assert_eq!(&local_traits[0].trimmed_name(), "Max");
 
     let local_impls = local_crate.trait_impls();
-    let impl_names = local_impls.iter().map(|trait_impl| trait_impl.name()).collect::<HashSet<_>>();
+    let impl_names =
+        local_impls.iter().map(|trait_impl| trait_impl.trimmed_name()).collect::<HashSet<_>>();
     assert_impl(&impl_names, "<Positive as Max>");
-    assert_impl(&impl_names, "<Positive as std::marker::Copy>");
-    assert_impl(&impl_names, "<Positive as std::clone::Clone>");
-    assert_impl(&impl_names, "<Positive as std::fmt::Debug>");
-    assert_impl(&impl_names, "<Positive as std::cmp::PartialEq>");
-    assert_impl(&impl_names, "<Positive as std::cmp::Eq>");
-    assert_impl(&impl_names, "<Positive as std::convert::TryFrom<u64>>");
+    assert_impl(&impl_names, "<Positive as Copy>");
+    assert_impl(&impl_names, "<Positive as Clone>");
+    assert_impl(&impl_names, "<Positive as Debug>");
+    assert_impl(&impl_names, "<Positive as PartialEq>");
+    assert_impl(&impl_names, "<Positive as Eq>");
+    assert_impl(&impl_names, "<Positive as TryFrom<u64>>");
     assert_impl(&impl_names, "<u64 as Max>");
-    assert_impl(&impl_names, "<impl std::convert::From<Positive> for u64>");
+    assert_impl(&impl_names, "<impl From<Positive> for u64>");
 
     let all_traits = rustc_public::all_trait_decls();
     assert!(all_traits.len() > local_traits.len());

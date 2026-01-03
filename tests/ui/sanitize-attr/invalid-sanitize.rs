@@ -37,4 +37,9 @@ fn test() {
         #[sanitize(realtime = "nonblocking")] //~ WARN: the async executor can run blocking code, without realtime sanitizer catching it [rtsan_nonblocking_async]
         async || {}
     };
+
+    let _regular_closure = {
+        #[sanitize(realtime = "nonblocking")] // no warning on a regular closure
+        || 0
+    };
 }

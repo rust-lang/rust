@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/leak_check_fndef_lub_deadcode_breakage.rs:25:14
+   |
+LL |     unsafe { std::mem::transmute::<_, ()>(lubbed) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `fn()` (64 bits)
+   = note: target type: `()` (0 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

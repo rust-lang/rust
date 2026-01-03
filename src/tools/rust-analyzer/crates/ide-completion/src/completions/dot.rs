@@ -4,6 +4,7 @@ use std::ops::ControlFlow;
 
 use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
 use ide_db::FxHashSet;
+use itertools::Either;
 use syntax::SmolStr;
 
 use crate::{
@@ -91,9 +92,9 @@ pub(crate) fn complete_dot(
         // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
         // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
         let iter = receiver_ty
-            .strip_references()
-            .add_reference(hir::Mutability::Shared)
-            .into_iterator_iter(ctx.db)
+            .autoderef(ctx.db)
+            .map(|ty| ty.strip_references().add_reference(hir::Mutability::Shared))
+            .find_map(|ty| ty.into_iterator_iter(ctx.db))
             .map(|ty| (ty, SmolStr::new_static("iter()")));
         // Does <receiver_ty as IntoIterator>::IntoIter` exist?
         let into_iter = || {
@@ -146,11 +147,14 @@ pub(crate) fn complete_undotted_self(
         _ => return,
     };
 
-    let ty = self_param.ty(ctx.db);
+    let (param_name, ty) = match self_param {
+        Either::Left(self_param) => ("self", &self_param.ty(ctx.db)),
+        Either::Right(this_param) => ("this", this_param.ty()),
+    };
     complete_fields(
         acc,
         ctx,
-        &ty,
+        ty,
         |acc, field, ty| {
             acc.add_field(
                 ctx,
@@ -163,15 +167,17 @@ pub(crate) fn complete_undotted_self(
                         in_breakable: expr_ctx.in_breakable,
                     },
                 },
-                Some(SmolStr::new_static("self")),
+                Some(SmolStr::new_static(param_name)),
                 field,
                 &ty,
             )
         },
-        |acc, field, ty| acc.add_tuple_field(ctx, Some(SmolStr::new_static("self")), field, &ty),
+        |acc, field, ty| {
+            acc.add_tuple_field(ctx, Some(SmolStr::new_static(param_name)), field, &ty)
+        },
         false,
     );
-    complete_methods(ctx, &ty, &ctx.traits_in_scope(), |func| {
+    complete_methods(ctx, ty, &ctx.traits_in_scope(), |func| {
         acc.add_method(
             ctx,
             &DotAccess {
@@ -184,7 +190,7 @@ pub(crate) fn complete_undotted_self(
                 },
             },
             func,
-            Some(SmolStr::new_static("self")),
+            Some(SmolStr::new_static(param_name)),
             None,
         )
     });
@@ -270,7 +276,6 @@ fn complete_methods(
         ctx.db,
         &ctx.scope,
         traits_in_scope,
-        Some(ctx.module),
         None,
         Callback { ctx, f, seen_methods: FxHashSet::default() },
     );
@@ -597,7 +602,6 @@ fn foo(a: A) {
 }
 "#,
             expect![[r#"
-                me local_method()      fn(&self)
                 me pub_module_method() fn(&self)
             "#]],
         );
@@ -648,7 +652,7 @@ fn foo(u: U) { u.$0 }
     fn test_method_completion_only_fitting_impls() {
         check_no_kw(
             r#"
-struct A<T> {}
+struct A<T>(T);
 impl A<u32> {
     fn the_method(&self) {}
 }
@@ -658,6 +662,7 @@ impl A<i32> {
 fn foo(a: A<u32>) { a.$0 }
 "#,
             expect![[r#"
+                fd 0                  u32
                 me the_method() fn(&self)
             "#]],
         )
@@ -1076,6 +1081,96 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
     }
 
     #[test]
+    fn completes_bare_fields_and_methods_in_this_closure() {
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&mut self) { let _: fn(&mut Self) = |this| { $0 } } }"#,
+            expect![[r#"
+                fd this.field           i32
+                me this.foo() fn(&mut self)
+                lc self            &mut Foo
+                lc this            &mut Foo
+                md core
+                sp Self                 Foo
+                st Foo                  Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32                  u32
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_bare_fields_and_methods_in_other_closure() {
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self) = |foo| { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc foo             &Foo
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self) = || { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self, &Self) = |foo, other| { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc foo             &Foo
+                lc other           &Foo
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
+            "#]],
+        );
+    }
+
+    #[test]
     fn macro_completion_after_dot() {
         check_no_kw(
             r#"
@@ -1468,6 +1563,40 @@ fn foo() {
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
         );
+        check_no_kw(
+            r#"
+//- minicore: iterator, deref
+struct Foo;
+impl Foo { fn iter(&self) -> Iter { Iter } }
+impl IntoIterator for &Foo {
+    type Item = ();
+    type IntoIter = Iter;
+    fn into_iter(self) -> Self::IntoIter { Iter }
+}
+struct Ref;
+impl core::ops::Deref for Ref {
+    type Target = Foo;
+    fn deref(&self) -> &Self::Target { &Foo }
+}
+struct Iter;
+impl Iterator for Iter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+fn foo() {
+    Ref.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref)                 fn(&self) -> &<Self as Deref>::Target
+                me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter()                                                             fn(&self) -> Iter
+                me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
+                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
+                me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
+            "#]],
+        );
     }
 
     #[test]
@@ -1526,6 +1655,8 @@ async fn bar() {
         check_no_kw(
             r#"
 //- minicore: receiver
+#![feature(arbitrary_self_types)]
+
 use core::ops::Receiver;
 
 struct Foo;

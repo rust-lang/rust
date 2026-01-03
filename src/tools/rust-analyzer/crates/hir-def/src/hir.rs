@@ -45,7 +45,7 @@ pub type PatId = Idx<Pat>;
 
 // FIXME: Encode this as a single u32, we won't ever reach all 32 bits especially given these counts
 // are local to the body.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, salsa::Update)]
 pub enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),
@@ -322,6 +322,72 @@ pub enum Expr {
     InlineAsm(InlineAsm),
 }
 
+impl Expr {
+    pub fn precedence(&self) -> ast::prec::ExprPrecedence {
+        use ast::prec::ExprPrecedence;
+
+        match self {
+            Expr::Array(_)
+            | Expr::InlineAsm(_)
+            | Expr::Block { .. }
+            | Expr::Unsafe { .. }
+            | Expr::Const(_)
+            | Expr::Async { .. }
+            | Expr::If { .. }
+            | Expr::Literal(_)
+            | Expr::Loop { .. }
+            | Expr::Match { .. }
+            | Expr::Missing
+            | Expr::Path(_)
+            | Expr::RecordLit { .. }
+            | Expr::Tuple { .. }
+            | Expr::OffsetOf(_)
+            | Expr::Underscore => ExprPrecedence::Unambiguous,
+
+            Expr::Await { .. }
+            | Expr::Call { .. }
+            | Expr::Field { .. }
+            | Expr::Index { .. }
+            | Expr::MethodCall { .. } => ExprPrecedence::Postfix,
+
+            Expr::Box { .. } | Expr::Let { .. } | Expr::UnaryOp { .. } | Expr::Ref { .. } => {
+                ExprPrecedence::Prefix
+            }
+
+            Expr::Cast { .. } => ExprPrecedence::Cast,
+
+            Expr::BinaryOp { op, .. } => match op {
+                None => ExprPrecedence::Unambiguous,
+                Some(BinaryOp::LogicOp(LogicOp::Or)) => ExprPrecedence::LOr,
+                Some(BinaryOp::LogicOp(LogicOp::And)) => ExprPrecedence::LAnd,
+                Some(BinaryOp::CmpOp(_)) => ExprPrecedence::Compare,
+                Some(BinaryOp::Assignment { .. }) => ExprPrecedence::Assign,
+                Some(BinaryOp::ArithOp(arith_op)) => match arith_op {
+                    ArithOp::Add | ArithOp::Sub => ExprPrecedence::Sum,
+                    ArithOp::Mul | ArithOp::Div | ArithOp::Rem => ExprPrecedence::Product,
+                    ArithOp::Shl | ArithOp::Shr => ExprPrecedence::Shift,
+                    ArithOp::BitXor => ExprPrecedence::BitXor,
+                    ArithOp::BitOr => ExprPrecedence::BitOr,
+                    ArithOp::BitAnd => ExprPrecedence::BitAnd,
+                },
+            },
+
+            Expr::Assignment { .. } => ExprPrecedence::Assign,
+
+            Expr::Become { .. }
+            | Expr::Break { .. }
+            | Expr::Closure { .. }
+            | Expr::Return { .. }
+            | Expr::Yeet { .. }
+            | Expr::Yield { .. } => ExprPrecedence::Jump,
+
+            Expr::Continue { .. } => ExprPrecedence::Unambiguous,
+
+            Expr::Range { .. } => ExprPrecedence::Range,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OffsetOf {
     pub container: TypeRefId,
@@ -595,6 +661,7 @@ pub enum Pat {
     Range {
         start: Option<ExprId>,
         end: Option<ExprId>,
+        range_type: RangeOp,
     },
     Slice {
         prefix: Box<[PatId]>,

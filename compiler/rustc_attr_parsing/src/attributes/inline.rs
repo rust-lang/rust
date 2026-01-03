@@ -3,6 +3,7 @@
 //                      SingleAttributeParser which is what we have two of here.
 
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
 
@@ -33,7 +34,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
@@ -56,9 +57,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                 }
             }
             ArgParser::NameValue(_) => {
-                let suggestions = cx.suggestions();
-                let span = cx.attr_span;
-                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                 return None;
             }
         }
@@ -78,7 +77,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
 
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {

@@ -28,13 +28,10 @@ fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u
         expected_notifications.len().try_into().unwrap(),
         "got wrong number of notifications"
     );
-    let slice = unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
-    for (return_event, expected_event) in slice.iter().zip(expected_notifications.iter()) {
-        let event = return_event.events;
-        let data = return_event.u64;
-        assert_eq!(event, expected_event.0, "got wrong events");
-        assert_eq!(data, expected_event.1, "got wrong data");
-    }
+    let got_notifications =
+        unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
+    let got_notifications = got_notifications.iter().map(|e| (e.events, e.u64)).collect::<Vec<_>>();
+    assert_eq!(got_notifications, expected_notifications, "got wrong notifications");
 }
 
 fn main() {

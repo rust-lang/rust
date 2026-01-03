@@ -8,8 +8,8 @@ use std::sync::Arc;
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::emitter::stderr_destination;
-use rustc_errors::{AutoStream, ColorConfig, DiagCtxtHandle};
+use rustc_errors::emitter::get_stderr_color_choice;
+use rustc_errors::{AutoStream, ColorChoice, ColorConfig, DiagCtxtHandle};
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -20,6 +20,7 @@ use rustc_span::{DUMMY_SP, FileName, Span, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
+use crate::config::MergeDoctests;
 use crate::display::Joined as _;
 use crate::html::markdown::LangString;
 
@@ -41,7 +42,7 @@ pub(crate) struct BuildDocTestBuilder<'a> {
     source: &'a str,
     crate_name: Option<&'a str>,
     edition: Edition,
-    can_merge_doctests: bool,
+    can_merge_doctests: MergeDoctests,
     // If `test_id` is `None`, it means we're generating code for a code example "run" link.
     test_id: Option<String>,
     lang_str: Option<&'a LangString>,
@@ -55,7 +56,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             source,
             crate_name: None,
             edition: DEFAULT_EDITION,
-            can_merge_doctests: false,
+            can_merge_doctests: MergeDoctests::Never,
             test_id: None,
             lang_str: None,
             span: DUMMY_SP,
@@ -70,7 +71,7 @@ impl<'a> BuildDocTestBuilder<'a> {
     }
 
     #[inline]
-    pub(crate) fn can_merge_doctests(mut self, can_merge_doctests: bool) -> Self {
+    pub(crate) fn can_merge_doctests(mut self, can_merge_doctests: MergeDoctests) -> Self {
         self.can_merge_doctests = can_merge_doctests;
         self
     }
@@ -117,10 +118,6 @@ impl<'a> BuildDocTestBuilder<'a> {
             span,
             global_crate_attrs,
         } = self;
-        let can_merge_doctests = can_merge_doctests
-            && lang_str.is_some_and(|lang_str| {
-                !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
-            });
 
         let result = rustc_driver::catch_fatal_errors(|| {
             rustc_span::create_session_if_not_set_then(edition, |_| {
@@ -155,14 +152,27 @@ impl<'a> BuildDocTestBuilder<'a> {
         debug!("crate_attrs:\n{crate_attrs}{maybe_crate_attrs}");
         debug!("crates:\n{crates}");
         debug!("after:\n{everything_else}");
+        debug!("merge-doctests: {can_merge_doctests:?}");
 
-        // If it contains `#[feature]` or `#[no_std]`, we don't want it to be merged either.
-        let can_be_merged = can_merge_doctests
-            && !has_global_allocator
-            && crate_attrs.is_empty()
-            // If this is a merged doctest and a defined macro uses `$crate`, then the path will
-            // not work, so better not put it into merged doctests.
-            && !(has_macro_def && everything_else.contains("$crate"));
+        // Up until now, we've been dealing with settings for the whole crate.
+        // Now, infer settings for this particular test.
+        //
+        // Avoid tests with incompatible attributes.
+        let opt_out = lang_str.is_some_and(|lang_str| {
+            lang_str.compile_fail || lang_str.test_harness || lang_str.standalone_crate
+        });
+        let can_be_merged = if can_merge_doctests == MergeDoctests::Auto {
+            // We try to look at the contents of the test to detect whether it should be merged.
+            // This is not a complete list of possible failures, but it catches many cases.
+            let will_probably_fail = has_global_allocator
+                || !crate_attrs.is_empty()
+                // If this is a merged doctest and a defined macro uses `$crate`, then the path will
+                // not work, so better not put it into merged doctests.
+                || (has_macro_def && everything_else.contains("$crate"));
+            !opt_out && !will_probably_fail
+        } else {
+            can_merge_doctests != MergeDoctests::Never && !opt_out
+        };
         DocTestBuilder {
             supports_color,
             has_main_fn,
@@ -446,7 +456,7 @@ fn parse_source(
     span: Span,
 ) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
-    use rustc_errors::emitter::{Emitter, HumanEmitter};
+    use rustc_errors::emitter::HumanEmitter;
     use rustc_span::source_map::FilePathMapping;
 
     let mut info =
@@ -458,9 +468,12 @@ fn parse_source(
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let translator = rustc_driver::default_translator();
-    info.supports_color =
-        HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator.clone())
-            .supports_color();
+    let supports_color = match get_stderr_color_choice(ColorConfig::Auto, &std::io::stderr()) {
+        ColorChoice::Auto => unreachable!(),
+        ColorChoice::AlwaysAnsi | ColorChoice::Always => true,
+        ColorChoice::Never => false,
+    };
+    info.supports_color = supports_color;
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
     let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);

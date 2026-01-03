@@ -13,6 +13,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(control_flow_into_value)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
@@ -26,6 +27,7 @@
 use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::fmt::{self};
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
@@ -41,7 +43,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    LitKind, NodeId, Path, attr,
+    NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -51,7 +53,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
@@ -59,19 +61,19 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
-use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
-    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverAstLowering,
-    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RegisteredTools,
+    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
@@ -97,12 +99,6 @@ pub use macros::registered_tools_ast;
 use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
-#[derive(Debug)]
-enum Weak {
-    Yes,
-    No,
-}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -191,6 +187,7 @@ struct InvocationParent {
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
+    const_arg_context: ConstArgContext,
 }
 
 impl InvocationParent {
@@ -198,6 +195,7 @@ impl InvocationParent {
         parent_def: CRATE_DEF_ID,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
+        const_arg_context: ConstArgContext::NonDirect,
     };
 }
 
@@ -206,6 +204,13 @@ enum ImplTraitContext {
     Existential,
     Universal,
     InBinding,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ConstArgContext {
+    Direct,
+    /// Either inside of an `AnonConst` or not inside a const argument at all.
+    NonDirect,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
@@ -932,6 +937,18 @@ impl<'ra> NameBindingData<'ra> {
         }
     }
 
+    fn descent_to_ambiguity(
+        self: NameBinding<'ra>,
+    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>, AmbiguityKind)> {
+        match self.ambiguity {
+            Some((ambig_binding, ambig_kind)) => Some((self, ambig_binding, ambig_kind)),
+            None => match self.kind {
+                NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
+                _ => None,
+            },
+        }
+    }
+
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
@@ -993,6 +1010,16 @@ impl<'ra> NameBindingData<'ra> {
 
     fn macro_kinds(&self) -> Option<MacroKinds> {
         self.res().macro_kinds()
+    }
+
+    fn reexport_chain(self: NameBinding<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
+        let mut reexport_chain = SmallVec::new();
+        let mut next_binding = self;
+        while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
+            reexport_chain.push(import.simplify(r));
+            next_binding = binding;
+        }
+        reexport_chain
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1128,6 +1155,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
+    ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1168,6 +1196,7 @@ pub struct Resolver<'ra, 'tcx> {
     privacy_errors: Vec<PrivacyError<'ra>> = Vec::new(),
     /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'ra>> = Vec::new(),
+    issue_145575_hack_applied: bool = false,
     /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'tcx>> = Vec::new(),
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
@@ -1251,10 +1280,10 @@ pub struct Resolver<'ra, 'tcx> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
-    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+    delegation_infos: LocalDefIdMap<DelegationInfo>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1585,6 +1614,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
+            ambig_module_children: Default::default(),
             trait_map: NodeMap::default(),
             empty_module,
             local_modules,
@@ -1655,7 +1685,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             disambiguator: DisambiguatorState::new(),
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
             trait_impls: Default::default(),
             confused_type_with_std_module: Default::default(),
@@ -1672,6 +1701,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             mods_with_parse_errors: Default::default(),
             impl_trait_names: Default::default(),
+            delegation_infos: Default::default(),
             ..
         };
 
@@ -1771,6 +1801,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
+            ambig_module_children: self.ambig_module_children,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
@@ -1783,7 +1814,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,
@@ -1799,6 +1829,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,
+            delegation_infos: self.delegation_infos,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
@@ -1917,7 +1948,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
-            None::<()>
+            ControlFlow::<()>::Continue(())
         });
 
         found_traits
@@ -2071,7 +2102,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        BuiltinLintDiag::MacroIsPrivate(ident),
+                        errors::MacroIsPrivate { ident },
                     );
                 }
             }
@@ -2321,7 +2352,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
             // Query `def_span` is not used because hashing its result span is expensive.
-            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
+            None => self.cstore().def_span_untracked(self.tcx(), def_id),
         }
     }
 
@@ -2373,43 +2404,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            // Don't perform legacy const generics rewriting if the path already
-            // has generic arguments.
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
-
-            let res = self.partial_res_map.get(&expr.id)?.full_res()?;
-            if let Res::Def(def::DefKind::Fn, def_id) = res {
-                // We only support cross-crate argument rewriting. Uses
-                // within the same crate should be updated to use the new
-                // const generics style.
-                if def_id.is_local() {
-                    return None;
-                }
-
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
-                    return v.clone();
-                }
-
-                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
-                let mut ret = Vec::new();
-                for meta in attr.meta_item_list()? {
-                    match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a.get() as usize),
-                        _ => panic!("invalid arg index"),
-                    }
-                }
-                // Cache the lookup to avoid parsing attributes for an item multiple times.
-                self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
-                return Some(ret);
-            }
+        let ExprKind::Path(None, path) = &expr.kind else {
+            return None;
+        };
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
         }
-        None
+
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        find_attr!(
+            // we can use parsed attrs here since for other crates they're already available
+            self.tcx.get_all_attrs(def_id),
+            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+        )
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
     fn resolve_main(&mut self) {
+        let any_exe = self.tcx.crate_types().contains(&CrateType::Executable);
+        // Don't try to resolve main unless it's an executable
+        if !any_exe {
+            return;
+        }
+
         let module = self.graph_root;
         let ident = Ident::with_dummy_span(sym::main);
         let parent_scope = &ParentScope::module(module, self.arenas);
@@ -2489,6 +2516,7 @@ enum Stage {
     Late,
 }
 
+/// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.

@@ -123,7 +123,7 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
 /// modulo certain carve-outs" in [`validate_job_database`].
 ///
 /// This invariant is important to make sure that it's not easily possible (without modifying
-/// `citool`) to have PRs with red PR-only CI jobs merged into `master`, causing all subsequent PR
+/// `citool`) to have PRs with red PR-only CI jobs merged into `main`, causing all subsequent PR
 /// CI runs to be red until the cause is fixed.
 fn register_pr_jobs_as_auto_jobs(db: &mut JobDatabase) -> anyhow::Result<()> {
     for pr_job in &db.pr_jobs {
@@ -273,7 +273,7 @@ pub enum RunType {
     /// Merge attempt workflow
     AutoJob,
     /// Fake job only used for sharing Github Actions cache.
-    MasterJob,
+    MainJob,
 }
 
 /// Maximum number of custom try jobs that can be requested in a single
@@ -323,7 +323,7 @@ fn calculate_jobs(
             (jobs, "try", &db.envs.try_env)
         }
         RunType::AutoJob => (db.auto_jobs.clone(), "auto", &db.envs.auto_env),
-        RunType::MasterJob => return Ok(vec![]),
+        RunType::MainJob => return Ok(vec![]),
     };
     let jobs = substitute_github_vars(jobs.clone())
         .context("Failed to substitute GitHub context variables in jobs")?;
@@ -376,7 +376,7 @@ pub fn calculate_job_matrix(
     eprintln!("Run type: {run_type:?}");
 
     let jobs = calculate_jobs(&run_type, &db, channel)?;
-    if jobs.is_empty() && !matches!(run_type, RunType::MasterJob) {
+    if jobs.is_empty() && !matches!(run_type, RunType::MainJob) {
         return Err(anyhow::anyhow!("Computed job list is empty"));
     }
 
@@ -384,7 +384,7 @@ pub fn calculate_job_matrix(
         RunType::PullRequest => "pr",
         RunType::TryJob { .. } => "try",
         RunType::AutoJob => "auto",
-        RunType::MasterJob => "master",
+        RunType::MainJob => "main",
     };
 
     eprintln!("Output");

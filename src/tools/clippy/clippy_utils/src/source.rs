@@ -13,8 +13,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine,
-    Span, SpanData, SyntaxContext, hygiene,
+    BytePos, DUMMY_SP, DesugaringKind, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
+    SyntaxContext, hygiene,
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -268,7 +268,7 @@ fn map_range(
         debug_assert!(
             range.start <= text.len() && range.end <= text.len(),
             "Range `{range:?}` is outside the source file (file `{}`, length `{}`)",
-            src.sf.name.display(FileNameDisplayPreference::Local),
+            src.sf.name.prefer_local_unconditionally(),
             text.len(),
         );
         debug_assert!(range.start <= range.end, "Range `{range:?}` has overlapping bounds");

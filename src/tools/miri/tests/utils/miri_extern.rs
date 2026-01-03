@@ -155,4 +155,7 @@ extern "Rust" {
 
     /// Blocks the current execution if the argument is false
     pub fn miri_genmc_assume(condition: bool);
+
+    /// Indicate to Miri that this thread is busy-waiting in a spin loop.
+    pub fn miri_spin_loop();
 }

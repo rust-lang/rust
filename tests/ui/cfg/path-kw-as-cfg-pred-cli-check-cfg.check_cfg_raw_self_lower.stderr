@@ -1,0 +1,9 @@
+error: `self` cannot be a raw identifier
+  |
+  = note: this occurred on the command line: `--check-cfg=cfg(r#self)`
+
+error: invalid `--check-cfg` argument: `cfg(r#self)`
+   |
+   = note: expected `cfg(name, values("value1", "value2", ... "valueN"))`
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

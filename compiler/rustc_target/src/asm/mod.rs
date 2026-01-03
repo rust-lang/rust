@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::spec::{Arch, RelocModel, Target};
+use crate::spec::{Abi, Arch, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -273,7 +273,7 @@ impl InlineAsmArch {
             Arch::Msp430 => Some(Self::Msp430),
             Arch::M68k => Some(Self::M68k),
             Arch::CSky => Some(Self::CSKY),
-            Arch::AmdGpu | Arch::Xtensa | Arch::Unknown(_) => None,
+            Arch::AmdGpu | Arch::Xtensa | Arch::Other(_) => None,
         }
     }
 }
@@ -936,6 +936,7 @@ pub enum InlineAsmClobberAbi {
     RiscVE,
     LoongArch,
     PowerPC,
+    PowerPCSPE,
     S390x,
     Bpf,
     Msp430,
@@ -996,11 +997,15 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
-                _ => Err(&["C", "system"]),
+                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::LoongArch),
+                _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::PowerPC),
+                "C" | "system" => Ok(if target.abi == Abi::Spe {
+                    InlineAsmClobberAbi::PowerPCSPE
+                } else {
+                    InlineAsmClobberAbi::PowerPC
+                }),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::S390x => match name {
@@ -1271,6 +1276,22 @@ impl InlineAsmClobberAbi {
                     ctr,
                     lr,
                     xer,
+                }
+            },
+            InlineAsmClobberAbi::PowerPCSPE => clobbered_regs! {
+                PowerPC PowerPCInlineAsmReg {
+                    // r0, r3-r12
+                    r0,
+                    r3, r4, r5, r6, r7,
+                    r8, r9, r10, r11, r12,
+
+                    // cr0-cr1, cr5-cr7, ctr, lr, xer, spe_acc
+                    cr0, cr1,
+                    cr5, cr6, cr7,
+                    ctr,
+                    lr,
+                    xer,
+                    spe_acc,
                 }
             },
             InlineAsmClobberAbi::S390x => clobbered_regs! {

@@ -16,7 +16,7 @@ doctest = false
 drop_bomb = "0.1.5"
 ra-ap-rustc_lexer.workspace = true
 rustc-literal-escaper.workspace = true
-tracing = { workspace = true, optional = true }
+tracing.workspace = true
 
 edition.workspace = true
 winnow = { version = "0.7.13", default-features = false }
@@ -27,7 +27,7 @@ expect-test = "1.5.1"
 stdx.workspace = true
 
 [features]
-default = ["tracing"]
+default = []
 in-rust-tree = []
 
 [lints]

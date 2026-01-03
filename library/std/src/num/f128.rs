@@ -19,6 +19,11 @@ use crate::sys::cmath;
 impl f128 {
     /// Raises a number to a floating point power.
     ///
+    /// Note that this function is special in that it can return non-NaN results for NaN inputs. For
+    /// example, `f128::powf(f128::NAN, 0.0)` returns `1.0`. However, if an input is a *signaling*
+    /// NaN, then the result is non-deterministically either a NaN or the result that the
+    /// corresponding quiet NaN would produce.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -37,6 +42,7 @@ impl f128 {
     ///
     /// assert_eq!(f128::powf(1.0, f128::NAN), 1.0);
     /// assert_eq!(f128::powf(f128::NAN, 0.0), 1.0);
+    /// assert_eq!(f128::powf(0.0, 0.0), 1.0);
     /// # }
     /// ```
     #[inline]

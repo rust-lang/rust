@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::process::Command;
@@ -8,7 +9,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
 use crate::edition::Edition;
-use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -251,10 +251,7 @@ pub struct Config {
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/lib`
-    ///
-    /// FIXME: maybe rename this to reflect (1) which target platform (host, not target), and (2)
-    /// which `rustc` (the `rustc`-under-test, not the stage 0 `rustc` unless forced).
-    pub compile_lib_path: Utf8PathBuf,
+    pub host_compile_lib_path: Utf8PathBuf,
 
     /// Path to libraries needed to run the compiled executable for the **target** platform. This
     /// corresponds to the **target** sysroot libraries, including the **target** standard library.
@@ -262,21 +259,28 @@ pub struct Config {
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/i686-unknown-linux-gnu/lib`
     ///
-    /// FIXME: maybe rename this to reflect (1) which target platform (target, not host), and (2)
-    /// what "run libraries" are against.
-    ///
     /// FIXME: this is very under-documented in conjunction with the `remote-test-client` scheme and
     /// `RUNNER` scheme to actually run the target executable under the target platform environment,
     /// cf. [`Self::remote_test_client`] and [`Self::runner`].
-    pub run_lib_path: Utf8PathBuf,
+    pub target_run_lib_path: Utf8PathBuf,
 
-    /// Path to the *staged*  `rustc`-under-test. Unless forced, this `rustc` is *staged*, and must
-    /// not be confused with [`Self::stage0_rustc_path`].
+    /// Path to the `rustc`-under-test.
+    ///
+    /// For `ui-fulldeps` test suite specifically:
+    ///
+    /// - This is the **stage 0** compiler when testing `ui-fulldeps` under `--stage=1`.
+    /// - This is the **stage 2** compiler when testing `ui-fulldeps` under `--stage=2`.
+    ///
+    /// See [`Self::query_rustc_path`] for the `--stage=1` `ui-fulldeps` scenario where a separate
+    /// in-tree `rustc` is used for querying target information.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc`
     ///
-    /// FIXME: maybe rename this to reflect that this is the `rustc`-under-test.
+    /// # Note on forced stage0
+    ///
+    /// It is possible for this `rustc` to be a stage 0 `rustc` if explicitly configured with the
+    /// bootstrap option `build.compiletest-allow-stage0=true` and specifying `--stage=0`.
     pub rustc_path: Utf8PathBuf,
 
     /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
@@ -312,17 +316,14 @@ pub struct Config {
     /// Path to the `src/tools/coverage-dump/` bootstrap tool executable.
     pub coverage_dump_path: Option<Utf8PathBuf>,
 
-    /// Path to the Python 3 executable to use for LLDB and htmldocck.
-    ///
-    /// FIXME: the `lldb` setup currently requires I believe Python 3.10 **exactly**, it can't even
-    /// be Python 3.11 or 3.9...
+    /// Path to the Python 3 executable to use for htmldocck and some run-make tests.
     pub python: String,
 
     /// Path to the `src/tools/jsondocck/` bootstrap tool executable.
-    pub jsondocck_path: Option<String>,
+    pub jsondocck_path: Option<Utf8PathBuf>,
 
     /// Path to the `src/tools/jsondoclint/` bootstrap tool executable.
-    pub jsondoclint_path: Option<String>,
+    pub jsondoclint_path: Option<Utf8PathBuf>,
 
     /// Path to a host LLVM `FileCheck` executable.
     pub llvm_filecheck: Option<Utf8PathBuf>,
@@ -335,7 +336,7 @@ pub struct Config {
 
     /// The path to the **target** `clang` executable to run `clang`-based tests with. If `None`,
     /// then these tests will be ignored.
-    pub run_clang_based_tests_with: Option<String>,
+    pub run_clang_based_tests_with: Option<Utf8PathBuf>,
 
     /// Path to the directory containing the sources. This corresponds to the root folder of a
     /// `rust-lang/rust` checkout.
@@ -437,6 +438,11 @@ pub struct Config {
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub with_std_debug_assertions: bool,
 
+    /// Whether *staged* `std` was built with remapping of debuginfo.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
+    pub with_std_remap_debuginfo: bool,
+
     /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
     ///
     /// FIXME(#139660): the current hand-rolled test executor intentionally mimics the `libtest`
@@ -528,7 +534,7 @@ pub struct Config {
     ///
     /// FIXME: we are propagating a python from `PYTHONPATH`, not from an explicit config for gdb
     /// debugger script.
-    pub gdb: Option<String>,
+    pub gdb: Option<Utf8PathBuf>,
 
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     ///
@@ -540,6 +546,9 @@ pub struct Config {
     ///
     /// FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     pub gdb_version: Option<u32>,
+
+    /// Path to or name of the LLDB executable to use for debuginfo tests.
+    pub lldb: Option<Utf8PathBuf>,
 
     /// Version of LLDB.
     ///
@@ -561,7 +570,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub android_cross_path: Utf8PathBuf,
+    pub android_cross_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run adb on `arm-linux-androideabi`.
     ///
@@ -570,7 +579,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_path: String,
+    pub adb_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run test suite on `arm-linux-androideabi`.
     ///
@@ -579,7 +588,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_test_dir: String,
+    pub adb_test_dir: Option<Utf8PathBuf>,
 
     /// Status whether android device available or not. When unavailable, this will cause tests to
     /// panic when the test binary is attempted to be run.
@@ -587,20 +596,10 @@ pub struct Config {
     /// FIXME: take a look at this; this also influences adb in gdb code paths in a strange way.
     pub adb_device_status: bool,
 
-    /// Path containing LLDB's Python module.
-    ///
-    /// FIXME: `PYTHONPATH` takes precedence over this flag...? See `runtest::run_lldb`.
-    pub lldb_python_dir: Option<String>,
-
     /// Verbose dump a lot of info.
     ///
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
-
-    /// Whether to use colors in test output.
-    ///
-    /// Note: the exact control mechanism is delegated to [`colored`].
-    pub color: ColorConfig,
 
     /// Where to find the remote test client process, if we're using it.
     ///
@@ -623,11 +622,11 @@ pub struct Config {
     /// created in `$test_suite_build_root/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// Whether to run `tidy` (html-tidy) when a rustdoc test fails.
-    pub has_html_tidy: bool,
-
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
+
+    /// Whether to run `offload` autodiff tests.
+    pub has_offload: bool,
 
     /// The current Rust channel info.
     ///
@@ -660,7 +659,7 @@ pub struct Config {
     pub llvm_components: String,
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
-    pub nodejs: Option<String>,
+    pub nodejs: Option<Utf8PathBuf>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
@@ -687,9 +686,12 @@ pub struct Config {
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
     pub supported_crate_types: OnceLock<HashSet<String>>,
 
-    /// FIXME: rename this to the more canonical `no_capture`, or better, invert this to `capture`
-    /// to avoid `!nocapture` double-negatives.
-    pub nocapture: bool,
+    /// Should we capture console output that would be printed by test runners via their `stdout`
+    /// and `stderr` trait objects, or via the custom panic hook.
+    ///
+    /// The default is `true`. This can be disabled via the compiletest cli flag `--no-capture`
+    /// (which mirrors the libtest `--no-capture` flag).
+    pub capture: bool,
 
     /// Needed both to construct [`build_helper::git::GitConfig`].
     pub nightly_branch: String,
@@ -1016,6 +1018,13 @@ pub struct TargetCfg {
     // target spec).
     pub(crate) rustc_abi: Option<String>,
 
+    /// ELF is the "default" binary format, so the compiler typically doesn't
+    /// emit a `"binary-format"` field for ELF targets.
+    ///
+    /// See `impl ToJson for Target` in `compiler/rustc_target/src/spec/json.rs`.
+    #[serde(default = "default_binary_format_elf")]
+    pub(crate) binary_format: Cow<'static, str>,
+
     // Not present in target cfg json output, additional derived information.
     #[serde(skip)]
     /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
@@ -1035,6 +1044,10 @@ fn default_os() -> String {
 
 fn default_reloc_model() -> String {
     "pic".into()
+}
+
+fn default_binary_format_elf() -> Cow<'static, str> {
+    Cow::Borrowed("elf")
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
@@ -1082,11 +1095,15 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
     crate_types
 }
 
-fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
+pub(crate) fn query_rustc_output(
+    config: &Config,
+    args: &[&str],
+    envs: HashMap<String, String>,
+) -> String {
     let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
 
     let mut command = Command::new(query_rustc_path);
-    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    add_dylib_path(&mut command, iter::once(&config.host_compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);

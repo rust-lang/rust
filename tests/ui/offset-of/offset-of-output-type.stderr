@@ -41,9 +41,6 @@ LL |     let _: isize = offset_of!(S, v);
 error[E0308]: mismatched types
   --> $DIR/offset-of-output-type.rs:17:5
    |
-LL | fn main() {
-   |          - expected `()` because of default return type
-...
 LL |     offset_of!(S, v)
    |     ^^^^^^^^^^^^^^^^ expected `()`, found `usize`
    |

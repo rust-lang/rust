@@ -3,6 +3,7 @@ use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_target::spec::Os;
 
 use self::helpers::windows_check_buffer_size;
 use crate::*;
@@ -45,7 +46,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // ^ Returns DWORD (u32 on Windows)
 
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetEnvironmentVariableW");
+        this.assert_target_os(Os::Windows, "GetEnvironmentVariableW");
 
         let name_ptr = this.read_pointer(name_op)?;
         let buf_ptr = this.read_pointer(buf_op)?;
@@ -73,7 +74,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetEnvironmentStringsW");
+        this.assert_target_os(Os::Windows, "GetEnvironmentStringsW");
 
         // Info on layout of environment blocks in Windows:
         // https://docs.microsoft.com/en-us/windows/win32/procthread/environment-variables
@@ -95,7 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn FreeEnvironmentStringsW(&mut self, env_block_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "FreeEnvironmentStringsW");
+        this.assert_target_os(Os::Windows, "FreeEnvironmentStringsW");
 
         let env_block_ptr = this.read_pointer(env_block_op)?;
         this.deallocate_ptr(env_block_ptr, None, MiriMemoryKind::Runtime.into())?;
@@ -110,7 +111,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         value_op: &OpTy<'tcx>, // LPCWSTR
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "SetEnvironmentVariableW");
+        this.assert_target_os(Os::Windows, "SetEnvironmentVariableW");
 
         let name_ptr = this.read_pointer(name_op)?;
         let value_ptr = this.read_pointer(value_op)?;
@@ -143,7 +144,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         buf_op: &OpTy<'tcx>,  // LPTSTR
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetCurrentDirectoryW");
+        this.assert_target_os(Os::Windows, "GetCurrentDirectoryW");
 
         let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
         let buf = this.read_pointer(buf_op)?;
@@ -176,7 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // ^ Returns BOOL (i32 on Windows)
 
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "SetCurrentDirectoryW");
+        this.assert_target_os(Os::Windows, "SetCurrentDirectoryW");
 
         let path = this.read_path_from_wide_str(this.read_pointer(path_op)?)?;
 
@@ -199,7 +200,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn GetCurrentProcessId(&mut self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetCurrentProcessId");
+        this.assert_target_os(Os::Windows, "GetCurrentProcessId");
 
         interp_ok(Scalar::from_u32(this.get_pid()))
     }
@@ -213,7 +214,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> // returns BOOL
     {
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetUserProfileDirectoryW");
+        this.assert_target_os(Os::Windows, "GetUserProfileDirectoryW");
         this.check_no_isolation("`GetUserProfileDirectoryW`")?;
 
         let token = this.read_target_isize(token)?;

@@ -2,6 +2,6 @@
 //@ needs-asm-support
 //@ only-x86_64
 fn main() {
-    let peb: *const PEB; //~ ERROR cannot find type `PEB` in this scope [E0412]
+    let peb: *const PEB; //~ ERROR cannot find type `PEB` in this scope [E0425]
     unsafe { std::arch::asm!("mov {0}, fs:[0x30]", out(reg) peb); }
 }

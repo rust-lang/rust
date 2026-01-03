@@ -346,7 +346,7 @@ fn test_test_coverage() {
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
-            cache.all::<test::Coverage>().iter().map(|(step, ())| step.mode).collect::<Vec<_>>();
+            cache.inspect_all_steps_of_type::<test::Coverage, _>(|step, ()| step.mode.as_str());
         assert_eq!(modes, expected);
     }
 }
@@ -2912,6 +2912,7 @@ mod snapshot {
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rust-analyzer-proc-macro-srv 2 <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> GenerateCopyright 1 <x86_64-unknown-linux-gnu>
         [dist] rustc <x86_64-unknown-linux-gnu>
+        [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rustc-dev 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
         [dist] rustc 1 <x86_64-unknown-linux-gnu> -> cargo 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rust-analyzer 2 <x86_64-unknown-linux-gnu>

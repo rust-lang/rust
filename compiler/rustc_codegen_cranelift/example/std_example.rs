@@ -259,6 +259,9 @@ unsafe fn test_simd() {
         test_mm_cvttps_epi32();
         test_mm_cvtsi128_si64();
 
+        #[cfg(not(jit))]
+        test_mm_cvtps_ph();
+
         test_mm_extract_epi8();
         test_mm_insert_epi16();
         test_mm_shuffle_epi8();
@@ -556,6 +559,21 @@ unsafe fn test_mm_cvttps_epi32() {
 
         assert_eq!(ints, expected_ints);
     }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "f16c")]
+#[cfg(not(jit))]
+unsafe fn test_mm_cvtps_ph() {
+    const F16_ONE: i16 = 0x3c00;
+    const F16_TWO: i16 = 0x4000;
+    const F16_THREE: i16 = 0x4200;
+    const F16_FOUR: i16 = 0x4400;
+
+    let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+    let r = _mm_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(a);
+    let e = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
+    assert_eq_m128i(r, e);
 }
 
 fn test_checked_mul() {

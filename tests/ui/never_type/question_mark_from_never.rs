@@ -1,4 +1,4 @@
-// issue: rust-lang/rust#66757
+// Regression test for <https://github.com/rust-lang/rust/issues/66757>.
 //
 // See also: `tests/ui/never_type/from_infer_breaking_with_unit_fallback.rs`.
 //

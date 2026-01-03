@@ -1,9 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::visitors::for_each_local_use_after_expr;
+use clippy_utils::visitors::local_used_once;
+use clippy_utils::{get_enclosing_block, is_from_proc_macro};
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, Node, PatKind};
@@ -11,7 +11,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use std::iter::once;
-use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -86,7 +85,7 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
             ExprKind::Path(_) => Some(elements.iter().collect()),
             _ => None,
         })
-        && all_bindings_are_for_conv(cx, &[ty], expr, elements, &locals, ToType::Array)
+        && all_bindings_are_for_conv(cx, &[ty], elements, &locals, ToType::Array)
         && !is_from_proc_macro(cx, expr)
     {
         span_lint_and_help(
@@ -123,7 +122,7 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
             ExprKind::Path(_) => Some(elements.iter().collect()),
             _ => None,
         })
-        && all_bindings_are_for_conv(cx, tys, expr, elements, &locals, ToType::Tuple)
+        && all_bindings_are_for_conv(cx, tys, elements, &locals, ToType::Tuple)
         && !is_from_proc_macro(cx, expr)
     {
         span_lint_and_help(
@@ -148,7 +147,6 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
 fn all_bindings_are_for_conv<'tcx>(
     cx: &LateContext<'tcx>,
     final_tys: &[Ty<'tcx>],
-    expr: &Expr<'_>,
     elements: &[Expr<'_>],
     locals: &[&Expr<'_>],
     kind: ToType,
@@ -166,13 +164,30 @@ fn all_bindings_are_for_conv<'tcx>(
             _ => None,
         })
         .all_equal()
-        // Fix #11124, very convenient utils function! ❤️
-        && locals
-            .iter()
-            .all(|&l| for_each_local_use_after_expr(cx, l, expr.hir_id, |_| ControlFlow::Break::<()>(())).is_continue())
+        && locals.iter().zip(local_parents.iter()).all(|(&l, &parent)| {
+            if let Node::LetStmt(_) = parent {
+                return true;
+            }
+
+            let Some(b) = get_enclosing_block(cx, l) else {
+                return true;
+            };
+            local_used_once(cx, b, l).is_some()
+        })
         && local_parents.first().is_some_and(|node| {
             let Some(ty) = match node {
-                Node::Pat(pat) => Some(pat.hir_id),
+                Node::Pat(pat)
+                    if let PatKind::Tuple(pats, _) | PatKind::Slice(pats, None, []) = &pat.kind
+                        && pats.iter().zip(locals.iter()).all(|(p, l)| {
+                            if let PatKind::Binding(_, id, _, _) = p.kind {
+                                id == *l
+                            } else {
+                                true
+                            }
+                        }) =>
+                {
+                    Some(pat.hir_id)
+                },
                 Node::LetStmt(l) => Some(l.hir_id),
                 _ => None,
             }
@@ -186,7 +201,9 @@ fn all_bindings_are_for_conv<'tcx>(
                     tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
                 },
                 (ToType::Tuple, ty::Array(ty, len)) => {
-                    let Some(len) = len.try_to_target_usize(cx.tcx) else { return false };
+                    let Some(len) = len.try_to_target_usize(cx.tcx) else {
+                        return false;
+                    };
                     len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
                 },
                 _ => false,

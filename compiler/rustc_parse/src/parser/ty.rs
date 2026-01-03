@@ -2,12 +2,12 @@ use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
-    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MgcaDisambiguation,
+    MutTy, Mutability, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers,
+    TraitObjectSyntax, Ty, TyKind, UnsafeBinderTy,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diag, PResult};
+use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
-            self.parse_typeof_ty()?
+            self.parse_typeof_ty(lo)?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -658,7 +658,19 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = self.parse_expr_anon_const()?;
+            let mut length = if self.token.is_keyword(kw::Const)
+                && self.look_ahead(1, |t| *t == token::OpenBrace)
+            {
+                // While we could just disambiguate `Direct` from `AnonConst` by
+                // treating all const block exprs as `AnonConst`, that would
+                // complicate the DefCollector and likely all other visitors.
+                // So we strip the const blockiness and just store it as a block
+                // in the AST with the extra disambiguator on the AnonConst
+                self.parse_mgca_const_block(false)?
+            } else {
+                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
+            };
+
             if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
@@ -699,8 +711,9 @@ impl<'a> Parser<'a> {
         _ = self.eat(exp!(Comma)) || self.eat(exp!(Colon)) || self.eat(exp!(Star));
         let suggestion_span = self.prev_token.span.with_lo(hi);
 
+        // FIXME(mgca): recovery is broken for `const {` args
         // we first try to parse pattern like `[u8 5]`
-        let length = match self.parse_expr_anon_const() {
+        let length = match self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct) {
             Ok(length) => length,
             Err(e) => {
                 e.cancel();
@@ -728,10 +741,7 @@ impl<'a> Parser<'a> {
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         let and_span = self.prev_token.span;
         let mut opt_lifetime = self.check_lifetime().then(|| self.expect_lifetime());
-        let (pinned, mut mutbl) = match self.parse_pin_and_mut() {
-            Some(pin_mut) => pin_mut,
-            None => (Pinnedness::Not, self.parse_mutability()),
-        };
+        let (pinned, mut mutbl) = self.parse_pin_and_mut();
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
@@ -773,38 +783,34 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses `pin` and `mut` annotations on references.
+    /// Parses `pin` and `mut` annotations on references, patterns, or borrow modifiers.
     ///
-    /// It must be either `pin const` or `pin mut`.
-    pub(crate) fn parse_pin_and_mut(&mut self) -> Option<(Pinnedness, Mutability)> {
-        if self.token.is_ident_named(sym::pin) {
-            let result = self.look_ahead(1, |token| {
-                if token.is_keyword(kw::Const) {
-                    Some((Pinnedness::Pinned, Mutability::Not))
-                } else if token.is_keyword(kw::Mut) {
-                    Some((Pinnedness::Pinned, Mutability::Mut))
-                } else {
-                    None
-                }
-            });
-            if result.is_some() {
-                self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
-                self.bump();
-                self.bump();
-            }
-            result
+    /// It must be either `pin const`, `pin mut`, `mut`, or nothing (immutable).
+    pub(crate) fn parse_pin_and_mut(&mut self) -> (Pinnedness, Mutability) {
+        if self.token.is_ident_named(sym::pin) && self.look_ahead(1, Token::is_mutability) {
+            self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+            assert!(self.eat_keyword(exp!(Pin)));
+            let mutbl = self.parse_const_or_mut().unwrap();
+            (Pinnedness::Pinned, mutbl)
         } else {
-            None
+            (Pinnedness::Not, self.parse_mutability())
         }
     }
 
-    // Parses the `typeof(EXPR)`.
-    // To avoid ambiguity, the type is surrounded by parentheses.
-    fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
+    /// Parses the `typeof(EXPR)` for better diagnostics before returning
+    /// an error type.
+    fn parse_typeof_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr_anon_const()?;
+        let _expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
         self.expect(exp!(CloseParen))?;
-        Ok(TyKind::Typeof(expr))
+        let span = lo.to(self.prev_token.span);
+        let guar = self
+            .dcx()
+            .struct_span_err(span, "`typeof` is a reserved keyword but unimplemented")
+            .with_note("consider replacing `typeof(...)` with an actual type")
+            .with_code(E0516)
+            .emit();
+        Ok(TyKind::Err(guar))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).
@@ -838,7 +844,7 @@ impl<'a> Parser<'a> {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
         let mode = crate::parser::item::FnParseMode {
-            req_name: |_| false,
+            req_name: |_, _| false,
             context: FnContext::Free,
             req_body: false,
         };
@@ -1394,7 +1400,8 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
+        let mode =
+            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
@@ -1485,7 +1492,8 @@ impl<'a> Parser<'a> {
 
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
-        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
+        let mode =
+            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         let inputs: ThinVec<_> =
             self.parse_fn_params(&mode)?.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
@@ -1543,9 +1551,7 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
-            if matches!(is_raw, IdentIsRaw::No)
-                && ident.without_first_quote().is_reserved_lifetime()
-            {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved_lifetime() {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
             }
 

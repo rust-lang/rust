@@ -12,8 +12,8 @@ LL |     fn method();
 note: the lint level is defined here
   --> $DIR/definition-site.rs:2:9
    |
-LL | #![deny(supertrait_item_shadowing_definition)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(shadowing_supertrait_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait item `method` from `Sub` shadows identically named item from supertrait
   --> $DIR/definition-site.rs:14:5

@@ -7,9 +7,8 @@ use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{helpers, unsupported};
 
-#[expect(dead_code)]
 const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
 
 pub struct File(!);
@@ -18,11 +17,17 @@ pub struct File(!);
 pub struct FileAttr {
     attr: u64,
     size: u64,
+    file_time: FileTimes,
+    created: Option<SystemTime>,
 }
 
-pub struct ReadDir(!);
+pub struct ReadDir(uefi_fs::File);
 
-pub struct DirEntry(!);
+pub struct DirEntry {
+    attr: FileAttr,
+    file_name: OsString,
+    path: PathBuf,
+}
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
@@ -33,7 +38,10 @@ pub struct OpenOptions {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
+pub struct FileTimes {
+    accessed: Option<SystemTime>,
+    modified: Option<SystemTime>,
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 // Bool indicates if file is readonly
@@ -60,15 +68,34 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        unsupported()
+        self.file_time
+            .modified
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "modification time is not valid"))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        unsupported()
+        self.file_time
+            .accessed
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "last access time is not valid"))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        unsupported()
+        self.created
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "creation time is not valid"))
+    }
+
+    fn from_uefi(info: helpers::UefiBox<file::Info>) -> Self {
+        unsafe {
+            Self {
+                attr: (*info.as_ptr()).attribute,
+                size: (*info.as_ptr()).file_size,
+                file_time: FileTimes {
+                    modified: uefi_fs::uefi_to_systemtime((*info.as_ptr()).modification_time),
+                    accessed: uefi_fs::uefi_to_systemtime((*info.as_ptr()).last_access_time),
+                },
+                created: uefi_fs::uefi_to_systemtime((*info.as_ptr()).create_time),
+            }
+        }
     }
 }
 
@@ -85,15 +112,19 @@ impl FilePermissions {
         Self(attr & r_efi::protocols::file::READ_ONLY != 0)
     }
 
-    #[expect(dead_code)]
     const fn to_attr(&self) -> u64 {
         if self.0 { r_efi::protocols::file::READ_ONLY } else { 0 }
     }
 }
 
 impl FileTimes {
-    pub fn set_accessed(&mut self, _t: SystemTime) {}
-    pub fn set_modified(&mut self, _t: SystemTime) {}
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t);
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t);
+    }
 }
 
 impl FileType {
@@ -116,8 +147,10 @@ impl FileType {
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut b = f.debug_struct("ReadDir");
+        b.field("path", &self.0.path());
+        b.finish()
     }
 }
 
@@ -125,25 +158,43 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0
+        match self.0.read_dir_entry() {
+            Ok(None) => None,
+            Ok(Some(x)) => {
+                let temp = DirEntry::from_uefi(x, self.0.path());
+                // Ignore "." and "..". This is how ReadDir behaves in Unix.
+                if temp.file_name == "." || temp.file_name == ".." {
+                    self.next()
+                } else {
+                    Some(Ok(temp))
+                }
+            }
+            Err(e) => Some(Err(e)),
+        }
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.0
+        self.path.clone()
     }
 
     pub fn file_name(&self) -> OsString {
-        self.0
+        self.file_name.clone()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        self.0
+        Ok(self.attr.clone())
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        self.0
+        Ok(self.attr.file_type())
+    }
+
+    fn from_uefi(info: helpers::UefiBox<file::Info>, parent: &Path) -> Self {
+        let file_name = uefi_fs::file_name_from_uefi(&info);
+        let path = parent.join(&file_name);
+        Self { file_name, path, attr: FileAttr::from_uefi(info) }
     }
 }
 
@@ -317,32 +368,81 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
+pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    let path = crate::path::absolute(p)?;
+    let f = uefi_fs::File::from_path(&path, file::MODE_READ, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_dir() {
+        Ok(ReadDir(f))
+    } else {
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
+    }
 }
 
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn unlink(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_file() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::IsADirectory, "expected a file but got a directory"))
+    }
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
-    unsupported()
+pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let mut file_info = f.file_info()?;
+
+    unsafe {
+        (*file_info.as_mut_ptr()).attribute =
+            ((*file_info.as_ptr()).attribute & !FILE_PERMISSIONS_MASK) | perm.to_attr()
+    };
+
+    f.set_file_info(file_info)
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    unsupported()
+pub fn set_times(p: &Path, times: FileTimes) -> io::Result<()> {
+    // UEFI does not support symlinks
+    set_times_nofollow(p, times)
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    unsupported()
+pub fn set_times_nofollow(p: &Path, times: FileTimes) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let mut file_info = f.file_info()?;
+
+    if let Some(x) = times.accessed {
+        unsafe {
+            (*file_info.as_mut_ptr()).last_access_time = uefi_fs::systemtime_to_uefi(x);
+        }
+    }
+
+    if let Some(x) = times.modified {
+        unsafe {
+            (*file_info.as_mut_ptr()).modification_time = uefi_fs::systemtime_to_uefi(x);
+        }
+    }
+
+    f.set_file_info(file_info)
 }
 
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rmdir(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_dir() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
+    }
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -370,8 +470,10 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn stat(p: &Path) -> io::Result<FileAttr> {
+    let f = uefi_fs::File::from_path(p, r_efi::protocols::file::MODE_READ, 0)?;
+    let inf = f.file_info()?;
+    Ok(FileAttr::from_uefi(inf))
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
@@ -390,12 +492,18 @@ mod uefi_fs {
     use r_efi::protocols::{device_path, file, simple_file_system};
 
     use crate::boxed::Box;
+    use crate::ffi::OsString;
     use crate::io;
+    use crate::os::uefi::ffi::OsStringExt;
     use crate::path::Path;
     use crate::ptr::NonNull;
-    use crate::sys::helpers;
+    use crate::sys::helpers::{self, UefiBox};
+    use crate::sys::time::{self, SystemTime};
 
-    pub(crate) struct File(NonNull<file::Protocol>);
+    pub(crate) struct File {
+        protocol: NonNull<file::Protocol>,
+        path: crate::path::PathBuf,
+    }
 
     impl File {
         pub(crate) fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
@@ -404,7 +512,8 @@ mod uefi_fs {
             let p = helpers::OwnedDevicePath::from_text(absolute.as_os_str())?;
             let (vol, mut path_remaining) = Self::open_volume_from_device_path(p.borrow())?;
 
-            vol.open(&mut path_remaining, open_mode, attr)
+            let protocol = Self::open(vol, &mut path_remaining, open_mode, attr)?;
+            Ok(Self { protocol, path: absolute })
         }
 
         /// Open Filesystem volume given a devicepath to the volume, or a file/directory in the
@@ -420,7 +529,7 @@ mod uefi_fs {
         /// and return the remaining file path "\abc\run.efi".
         fn open_volume_from_device_path(
             path: helpers::BorrowedDevicePath<'_>,
-        ) -> io::Result<(Self, Box<[u16]>)> {
+        ) -> io::Result<(NonNull<file::Protocol>, Box<[u16]>)> {
             let handles = match helpers::locate_handles(simple_file_system::PROTOCOL_GUID) {
                 Ok(x) => x,
                 Err(e) => return Err(e),
@@ -442,7 +551,9 @@ mod uefi_fs {
         }
 
         // Open volume on device_handle using SIMPLE_FILE_SYSTEM_PROTOCOL
-        fn open_volume(device_handle: NonNull<crate::ffi::c_void>) -> io::Result<Self> {
+        fn open_volume(
+            device_handle: NonNull<crate::ffi::c_void>,
+        ) -> io::Result<NonNull<file::Protocol>> {
             let simple_file_system_protocol = helpers::open_protocol::<simple_file_system::Protocol>(
                 device_handle,
                 simple_file_system::PROTOCOL_GUID,
@@ -461,11 +572,16 @@ mod uefi_fs {
 
             // Since no error was returned, file protocol should be non-NULL.
             let p = NonNull::new(file_protocol).unwrap();
-            Ok(Self(p))
+            Ok(p)
         }
 
-        fn open(&self, path: &mut [u16], open_mode: u64, attr: u64) -> io::Result<Self> {
-            let file_ptr = self.0.as_ptr();
+        fn open(
+            protocol: NonNull<file::Protocol>,
+            path: &mut [u16],
+            open_mode: u64,
+            attr: u64,
+        ) -> io::Result<NonNull<file::Protocol>> {
+            let file_ptr = protocol.as_ptr();
             let mut file_opened = crate::ptr::null_mut();
 
             let r = unsafe {
@@ -478,14 +594,96 @@ mod uefi_fs {
 
             // Since no error was returned, file protocol should be non-NULL.
             let p = NonNull::new(file_opened).unwrap();
-            Ok(File(p))
+            Ok(p)
+        }
+
+        pub(crate) fn read_dir_entry(&self) -> io::Result<Option<UefiBox<file::Info>>> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut buf_size = 0;
+
+            let r = unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, crate::ptr::null_mut()) };
+
+            if buf_size == 0 {
+                return Ok(None);
+            }
+
+            assert!(r.is_error());
+            if r != r_efi::efi::Status::BUFFER_TOO_SMALL {
+                return Err(io::Error::from_raw_os_error(r.as_usize()));
+            }
+
+            let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
+            let r =
+                unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, info.as_mut_ptr().cast()) };
+
+            if r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                Ok(Some(info))
+            }
+        }
+
+        pub(crate) fn file_info(&self) -> io::Result<UefiBox<file::Info>> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut info_id = file::INFO_ID;
+            let mut buf_size = 0;
+
+            let r = unsafe {
+                ((*file_ptr).get_info)(
+                    file_ptr,
+                    &mut info_id,
+                    &mut buf_size,
+                    crate::ptr::null_mut(),
+                )
+            };
+            assert!(r.is_error());
+            if r != r_efi::efi::Status::BUFFER_TOO_SMALL {
+                return Err(io::Error::from_raw_os_error(r.as_usize()));
+            }
+
+            let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
+            let r = unsafe {
+                ((*file_ptr).get_info)(
+                    file_ptr,
+                    &mut info_id,
+                    &mut buf_size,
+                    info.as_mut_ptr().cast(),
+                )
+            };
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
+        }
+
+        pub(crate) fn set_file_info(&self, mut info: UefiBox<file::Info>) -> io::Result<()> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut info_id = file::INFO_ID;
+
+            let r = unsafe {
+                ((*file_ptr).set_info)(file_ptr, &mut info_id, info.len(), info.as_mut_ptr().cast())
+            };
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
+        pub(crate) fn delete(self) -> io::Result<()> {
+            let file_ptr = self.protocol.as_ptr();
+            let r = unsafe { ((*file_ptr).delete)(file_ptr) };
+
+            // Spec states that even in case of failure, the file handle will be closed.
+            crate::mem::forget(self);
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
+        pub(crate) fn path(&self) -> &Path {
+            &self.path
         }
     }
 
     impl Drop for File {
         fn drop(&mut self) {
-            let file_ptr = self.0.as_ptr();
-            let _ = unsafe { ((*self.0.as_ptr()).close)(file_ptr) };
+            let file_ptr = self.protocol.as_ptr();
+            let _ = unsafe { ((*file_ptr).close)(file_ptr) };
         }
     }
 
@@ -525,7 +723,7 @@ mod uefi_fs {
         let (vol, mut path_remaining) = File::open_volume_from_device_path(p.borrow())?;
 
         // Check if file exists
-        match vol.open(&mut path_remaining, file::MODE_READ, 0) {
+        match File::open(vol, &mut path_remaining, file::MODE_READ, 0) {
             Ok(_) => {
                 return Err(io::Error::new(io::ErrorKind::AlreadyExists, "Path already exists"));
             }
@@ -533,12 +731,40 @@ mod uefi_fs {
             Err(e) => return Err(e),
         }
 
-        let _ = vol.open(
+        let _ = File::open(
+            vol,
             &mut path_remaining,
             file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE,
             file::DIRECTORY,
         )?;
 
         Ok(())
+    }
+
+    /// EDK2 FAT driver uses EFI_UNSPECIFIED_TIMEZONE to represent localtime. So for proper
+    /// conversion to SystemTime, we use the current time to get the timezone in such cases.
+    pub(crate) fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> Option<SystemTime> {
+        time.timezone = if time.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
+            time::system_time_internal::now().timezone
+        } else {
+            time.timezone
+        };
+        SystemTime::from_uefi(time)
+    }
+
+    /// Convert to UEFI Time with the current timezone.
+    pub(crate) fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
+        let now = time::system_time_internal::now();
+        time.to_uefi_loose(now.timezone, now.daylight)
+    }
+
+    pub(crate) fn file_name_from_uefi(info: &UefiBox<file::Info>) -> OsString {
+        let file_name = {
+            let size = unsafe { (*info.as_ptr()).size };
+            let strlen = (size as usize - crate::mem::size_of::<file::Info<0>>() - 1) / 2;
+            unsafe { crate::slice::from_raw_parts((*info.as_ptr()).file_name.as_ptr(), strlen) }
+        };
+
+        OsString::from_wide(file_name)
     }
 }

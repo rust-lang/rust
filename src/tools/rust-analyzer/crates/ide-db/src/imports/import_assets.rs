@@ -5,7 +5,7 @@ use std::{convert::Infallible, ops::ControlFlow};
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Complete, Crate, FindPathConfig, HasCrate,
     ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
-    SemanticsScope, Trait, TyFingerprint, Type, db::HirDatabase,
+    SemanticsScope, Trait, Type,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -315,7 +315,7 @@ impl<'db> ImportAssets<'db> {
             allow_unstable: sema.is_nightly(scope.krate()),
         };
         let db = sema.db;
-        let krate = self.module_with_candidate.krate();
+        let krate = self.module_with_candidate.krate(sema.db);
         let scope_definitions = self.scope_definitions(sema);
         let mod_path = |item| {
             get_mod_path(
@@ -500,44 +500,37 @@ fn validate_resolvable(
         ModuleDef::Adt(adt) => adt.ty(db),
         _ => return SmallVec::new(),
     };
-    ty.iterate_path_candidates::<Infallible>(
-        db,
-        scope,
-        &FxHashSet::default(),
-        None,
-        None,
-        |assoc| {
-            // FIXME: Support extra trait imports
-            if assoc.container_or_implemented_trait(db).is_some() {
-                return None;
+    ty.iterate_path_candidates::<Infallible>(db, scope, &FxHashSet::default(), None, |assoc| {
+        // FIXME: Support extra trait imports
+        if assoc.container_or_implemented_trait(db).is_some() {
+            return None;
+        }
+        let name = assoc.name(db)?;
+        let is_match = match candidate {
+            NameToImport::Prefix(text, true) => name.as_str().starts_with(text),
+            NameToImport::Prefix(text, false) => {
+                name.as_str().chars().zip(text.chars()).all(|(name_char, candidate_char)| {
+                    name_char.eq_ignore_ascii_case(&candidate_char)
+                })
             }
-            let name = assoc.name(db)?;
-            let is_match = match candidate {
-                NameToImport::Prefix(text, true) => name.as_str().starts_with(text),
-                NameToImport::Prefix(text, false) => {
-                    name.as_str().chars().zip(text.chars()).all(|(name_char, candidate_char)| {
-                        name_char.eq_ignore_ascii_case(&candidate_char)
-                    })
-                }
-                NameToImport::Exact(text, true) => name.as_str() == text,
-                NameToImport::Exact(text, false) => name.as_str().eq_ignore_ascii_case(text),
-                NameToImport::Fuzzy(text, true) => text.chars().all(|c| name.as_str().contains(c)),
-                NameToImport::Fuzzy(text, false) => text.chars().all(|c| {
-                    name.as_str().chars().any(|name_char| name_char.eq_ignore_ascii_case(&c))
-                }),
-            };
-            if !is_match {
-                return None;
-            }
-            result.push(LocatedImport::new(
-                import_path_candidate.clone(),
-                resolved_qualifier,
-                assoc_to_item(assoc),
-                complete_in_flyimport,
-            ));
-            None
-        },
-    );
+            NameToImport::Exact(text, true) => name.as_str() == text,
+            NameToImport::Exact(text, false) => name.as_str().eq_ignore_ascii_case(text),
+            NameToImport::Fuzzy(text, true) => text.chars().all(|c| name.as_str().contains(c)),
+            NameToImport::Fuzzy(text, false) => text
+                .chars()
+                .all(|c| name.as_str().chars().any(|name_char| name_char.eq_ignore_ascii_case(&c))),
+        };
+        if !is_match {
+            return None;
+        }
+        result.push(LocatedImport::new(
+            import_path_candidate.clone(),
+            resolved_qualifier,
+            assoc_to_item(assoc),
+            complete_in_flyimport,
+        ));
+        None
+    });
     result
 }
 
@@ -608,7 +601,6 @@ fn trait_applicable_items<'db>(
         deref_chain
             .into_iter()
             .filter_map(|ty| Some((ty.krate(db).into(), ty.fingerprint_for_trait_impl()?)))
-            .sorted()
             .unique()
             .collect::<Vec<_>>()
     };
@@ -619,11 +611,11 @@ fn trait_applicable_items<'db>(
     }
 
     // in order to handle implied bounds through an associated type, keep all traits if any
-    // type in the deref chain matches `TyFingerprint::Unnameable`. This fingerprint
+    // type in the deref chain matches `SimplifiedType::Placeholder`. This fingerprint
     // won't be in `TraitImpls` anyways, as `TraitImpls` only contains actual implementations.
     if !autoderef_method_receiver
         .iter()
-        .any(|(_, fingerprint)| matches!(fingerprint, TyFingerprint::Unnameable))
+        .any(|(_, fingerprint)| matches!(fingerprint, hir::SimplifiedType::Placeholder))
     {
         trait_candidates.retain(|&candidate_trait_id| {
             // we care about the following cases:
@@ -635,17 +627,18 @@ fn trait_applicable_items<'db>(
             //    a. This is recursive for fundamental types
             let defining_crate_for_trait = Trait::from(candidate_trait_id).krate(db);
 
-            let trait_impls_in_crate = db.trait_impls_in_crate(defining_crate_for_trait.into());
+            let trait_impls_in_crate =
+                hir::TraitImpls::for_crate(db, defining_crate_for_trait.into());
             let definitions_exist_in_trait_crate =
-                autoderef_method_receiver.iter().any(|&(_, fingerprint)| {
+                autoderef_method_receiver.iter().any(|(_, fingerprint)| {
                     trait_impls_in_crate
                         .has_impls_for_trait_and_self_ty(candidate_trait_id, fingerprint)
                 });
             // this is a closure for laziness: if `definitions_exist_in_trait_crate` is true,
             // we can avoid a second db lookup.
             let definitions_exist_in_receiver_crate = || {
-                autoderef_method_receiver.iter().any(|&(krate, fingerprint)| {
-                    db.trait_impls_in_crate(krate)
+                autoderef_method_receiver.iter().any(|(krate, fingerprint)| {
+                    hir::TraitImpls::for_crate(db, *krate)
                         .has_impls_for_trait_and_self_ty(candidate_trait_id, fingerprint)
                 })
             };
@@ -662,7 +655,6 @@ fn trait_applicable_items<'db>(
             db,
             scope,
             &trait_candidates,
-            None,
             None,
             |assoc| {
                 if let Some(&complete_in_flyimport) = required_assoc_items.get(&assoc) {
@@ -687,7 +679,6 @@ fn trait_applicable_items<'db>(
             db,
             scope,
             &trait_candidates,
-            None,
             None,
             |function| {
                 let assoc = function.as_assoc_item(db)?;

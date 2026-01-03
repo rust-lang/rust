@@ -108,7 +108,7 @@ struct ConfError {
 
 impl ConfError {
     fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
-        let span = error.span().unwrap_or(0..file.source_len.0 as usize);
+        let span = error.span().unwrap_or(0..file.normalized_source_len.0 as usize);
         Self::spanned(file, error.message(), None, span)
     }
 
@@ -373,6 +373,9 @@ define_Conf! {
     /// Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
     #[lints(indexing_slicing)]
     allow_indexing_slicing_in_tests: bool = false,
+    /// Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
+    #[lints(large_stack_frames)]
+    allow_large_stack_frames_in_tests: bool = true,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
@@ -666,6 +669,10 @@ define_Conf! {
     /// Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
     #[lints(multiple_inherent_impl)]
     inherent_impl_lint_scope: InherentImplLintScope = InherentImplLintScope::Crate,
+    /// A list of paths to types that should be ignored as overly large `Err`-variants in a
+    /// `Result` returned from a function
+    #[lints(result_large_err)]
+    large_error_ignored: Vec<String> = Vec::default(),
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,

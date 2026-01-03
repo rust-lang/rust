@@ -1462,8 +1462,8 @@ impl<T> *const [T] {
     /// Gets a raw pointer to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {
@@ -1567,6 +1567,10 @@ impl<T, const N: usize> *const [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> PartialEq for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
@@ -1577,10 +1581,18 @@ impl<T: PointeeSized> PartialEq for *const T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> Eq for *const T {}
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> Ord for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
@@ -1597,6 +1609,10 @@ impl<T: PointeeSized> Ord for *const T {
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> PartialOrd for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]

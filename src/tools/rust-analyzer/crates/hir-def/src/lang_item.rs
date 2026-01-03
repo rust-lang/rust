@@ -4,99 +4,35 @@
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
-use rustc_hash::FxHashMap;
-use triomphe::Arc;
+use stdx::impl_from;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
     StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    attrs::AttrFlags,
     db::DefDatabase,
-    expr_store::path::Path,
-    nameres::{assoc::TraitItems, crate_def_map, crate_local_def_map},
+    nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LangItemTarget {
     EnumId(EnumId),
-    Function(FunctionId),
-    ImplDef(ImplId),
-    Static(StaticId),
-    Struct(StructId),
-    Union(UnionId),
-    TypeAlias(TypeAliasId),
-    Trait(TraitId),
-    EnumVariant(EnumVariantId),
+    FunctionId(FunctionId),
+    ImplId(ImplId),
+    StaticId(StaticId),
+    StructId(StructId),
+    UnionId(UnionId),
+    TypeAliasId(TypeAliasId),
+    TraitId(TraitId),
+    EnumVariantId(EnumVariantId),
 }
 
-impl LangItemTarget {
-    pub fn as_enum(self) -> Option<EnumId> {
-        match self {
-            LangItemTarget::EnumId(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_function(self) -> Option<FunctionId> {
-        match self {
-            LangItemTarget::Function(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_impl_def(self) -> Option<ImplId> {
-        match self {
-            LangItemTarget::ImplDef(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_static(self) -> Option<StaticId> {
-        match self {
-            LangItemTarget::Static(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_struct(self) -> Option<StructId> {
-        match self {
-            LangItemTarget::Struct(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_trait(self) -> Option<TraitId> {
-        match self {
-            LangItemTarget::Trait(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_enum_variant(self) -> Option<EnumVariantId> {
-        match self {
-            LangItemTarget::EnumVariant(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_type_alias(self) -> Option<TypeAliasId> {
-        match self {
-            LangItemTarget::TypeAlias(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    pub fn as_adt(self) -> Option<AdtId> {
-        match self {
-            LangItemTarget::Union(it) => Some(it.into()),
-            LangItemTarget::EnumId(it) => Some(it.into()),
-            LangItemTarget::Struct(it) => Some(it.into()),
-            _ => None,
-        }
-    }
-}
+impl_from!(
+    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId for LangItemTarget
+);
 
 /// Salsa query. This will look for lang items in a specific crate.
-#[salsa_macros::tracked(returns(ref))]
+#[salsa_macros::tracked(returns(as_deref))]
 pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangItems>> {
     let _p = tracing::info_span!("crate_lang_items_query").entered();
 
@@ -106,15 +42,11 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
 
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.impls() {
-            lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
+            lang_items.collect_lang_item(db, impl_def);
             for &(_, assoc) in impl_def.impl_items(db).items.iter() {
                 match assoc {
-                    AssocItemId::FunctionId(f) => {
-                        lang_items.collect_lang_item(db, f, LangItemTarget::Function)
-                    }
-                    AssocItemId::TypeAliasId(t) => {
-                        lang_items.collect_lang_item(db, t, LangItemTarget::TypeAlias)
-                    }
+                    AssocItemId::FunctionId(f) => lang_items.collect_lang_item(db, f),
+                    AssocItemId::TypeAliasId(t) => lang_items.collect_lang_item(db, t),
                     AssocItemId::ConstId(_) => (),
                 }
             }
@@ -123,62 +55,59 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
         for def in module_data.scope.declarations() {
             match def {
                 ModuleDefId::TraitId(trait_) => {
-                    lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
+                    lang_items.collect_lang_item(db, trait_);
                     TraitItems::query(db, trait_).items.iter().for_each(|&(_, assoc_id)| {
                         match assoc_id {
                             AssocItemId::FunctionId(f) => {
-                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                                lang_items.collect_lang_item(db, f);
                             }
                             AssocItemId::TypeAliasId(alias) => {
-                                lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
+                                lang_items.collect_lang_item(db, alias)
                             }
                             AssocItemId::ConstId(_) => {}
                         }
                     });
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
-                    lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
+                    lang_items.collect_lang_item(db, e);
                     e.enum_variants(db).variants.iter().for_each(|&(id, _, _)| {
-                        lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
+                        lang_items.collect_lang_item(db, id);
                     });
                 }
                 ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                    lang_items.collect_lang_item(db, s, LangItemTarget::Struct);
+                    lang_items.collect_lang_item(db, s);
                 }
                 ModuleDefId::AdtId(AdtId::UnionId(u)) => {
-                    lang_items.collect_lang_item(db, u, LangItemTarget::Union);
+                    lang_items.collect_lang_item(db, u);
                 }
                 ModuleDefId::FunctionId(f) => {
-                    lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                    lang_items.collect_lang_item(db, f);
                 }
                 ModuleDefId::StaticId(s) => {
-                    lang_items.collect_lang_item(db, s, LangItemTarget::Static);
+                    lang_items.collect_lang_item(db, s);
                 }
                 ModuleDefId::TypeAliasId(t) => {
-                    lang_items.collect_lang_item(db, t, LangItemTarget::TypeAlias);
+                    lang_items.collect_lang_item(db, t);
                 }
                 _ => {}
             }
         }
     }
 
-    if lang_items.items.is_empty() { None } else { Some(Box::new(lang_items)) }
+    if matches!(krate.data(db).origin, base_db::CrateOrigin::Lang(base_db::LangCrateOrigin::Core)) {
+        lang_items.fill_non_lang_core_traits(db, crate_def_map);
+    }
+
+    if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
 }
 
-/// Salsa query. Look for a lang item, starting from the specified crate and recursively
+/// Salsa query. Look for a lang items, starting from the specified crate and recursively
 /// traversing its dependencies.
-#[salsa_macros::tracked]
-pub fn lang_item(
-    db: &dyn DefDatabase,
-    start_crate: Crate,
-    item: LangItem,
-) -> Option<LangItemTarget> {
-    let _p = tracing::info_span!("lang_item_query").entered();
-    if let Some(target) =
-        crate_lang_items(db, start_crate).as_ref().and_then(|it| it.items.get(&item).copied())
-    {
-        return Some(target);
-    }
+#[salsa_macros::tracked(returns(ref))]
+pub fn lang_items(db: &dyn DefDatabase, start_crate: Crate) -> LangItems {
+    let _p = tracing::info_span!("lang_items_query").entered();
+
+    let mut result = crate_lang_items(db, start_crate).cloned().unwrap_or_default();
 
     // Our `CrateGraph` eagerly inserts sysroot dependencies like `core` or `std` into dependencies
     // even if the target crate has `#![no_std]`, `#![no_core]` or shadowed sysroot dependencies
@@ -187,52 +116,57 @@ pub fn lang_item(
     // while nameres.
     //
     // See https://github.com/rust-lang/rust-analyzer/pull/20475 for details.
-    crate_local_def_map(db, start_crate).local(db).extern_prelude().find_map(|(_, (krate, _))| {
+    for (_, (module, _)) in crate_local_def_map(db, start_crate).local(db).extern_prelude() {
         // Some crates declares themselves as extern crate like `extern crate self as core`.
         // Ignore these to prevent cycles.
-        if krate.krate == start_crate { None } else { lang_item(db, krate.krate, item) }
-    })
-}
+        let krate = module.krate(db);
+        if krate != start_crate {
+            result.merge_prefer_self(lang_items(db, krate));
+        }
+    }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LangItems {
-    items: FxHashMap<LangItem, LangItemTarget>,
+    result
 }
 
 impl LangItems {
-    pub fn target(&self, item: LangItem) -> Option<LangItemTarget> {
-        self.items.get(&item).copied()
-    }
-
-    fn collect_lang_item<T>(
-        &mut self,
-        db: &dyn DefDatabase,
-        item: T,
-        constructor: fn(T) -> LangItemTarget,
-    ) where
-        T: Into<AttrDefId> + Copy,
+    fn collect_lang_item<T>(&mut self, db: &dyn DefDatabase, item: T)
+    where
+        T: Into<AttrDefId> + Into<LangItemTarget> + Copy,
     {
         let _p = tracing::info_span!("collect_lang_item").entered();
-        if let Some(lang_item) = lang_attr(db, item.into()) {
-            self.items.entry(lang_item).or_insert_with(|| constructor(item));
+        if let Some(lang_item) = AttrFlags::lang_item(db, item.into()) {
+            self.assign_lang_item(lang_item, item.into());
         }
     }
 }
 
-pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
-    db.attrs(item).lang_item()
+fn resolve_core_trait(
+    db: &dyn DefDatabase,
+    core_def_map: &DefMap,
+    modules: &[Symbol],
+    name: Symbol,
+) -> Option<TraitId> {
+    let mut current = &core_def_map[core_def_map.root];
+    for module in modules {
+        let Some((ModuleDefId::ModuleId(cur), _)) =
+            current.scope.type_(&Name::new_symbol_root(module.clone()))
+        else {
+            return None;
+        };
+        if cur.krate(db) != core_def_map.krate() || cur.block(db) != core_def_map.block_id() {
+            return None;
+        }
+        current = &core_def_map[cur];
+    }
+    let Some((ModuleDefId::TraitId(trait_), _)) = current.scope.type_(&Name::new_symbol_root(name))
+    else {
+        return None;
+    };
+    Some(trait_)
 }
 
-pub(crate) fn notable_traits_in_deps(db: &dyn DefDatabase, krate: Crate) -> Arc<[Arc<[TraitId]>]> {
-    let _p = tracing::info_span!("notable_traits_in_deps", ?krate).entered();
-    Arc::from_iter(
-        db.transitive_deps(krate).into_iter().filter_map(|krate| db.crate_notable_traits(krate)),
-    )
-}
-
-pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Arc<[TraitId]>> {
-    let _p = tracing::info_span!("crate_notable_traits", ?krate).entered();
-
+#[salsa::tracked(returns(as_deref))]
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
     let mut traits = Vec::new();
 
     let crate_def_map = crate_def_map(db, krate);
@@ -240,7 +174,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
     for (_, module_data) in crate_def_map.modules() {
         for def in module_data.scope.declarations() {
             if let ModuleDefId::TraitId(trait_) = def
-                && db.attrs(trait_.into()).has_doc_notable_trait()
+                && AttrFlags::query(db, trait_.into()).contains(AttrFlags::IS_DOC_NOTABLE_TRAIT)
             {
                 traits.push(trait_);
             }
@@ -250,38 +184,76 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
     if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
 }
 
-pub enum GenericRequirement {
-    None,
-    Minimum(usize),
-    Exact(usize),
-}
-
 macro_rules! language_item_table {
     (
-        $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
-    ) => {
+        $LangItems:ident =>
+        $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $target:ident; )*
 
-        /// A representation of all the valid language items in Rust.
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        pub enum LangItem {
+        @non_lang_core_traits:
+
+        $( core::$($non_lang_module:ident)::*, $non_lang_trait:ident; )*
+    ) => {
+        #[allow(non_snake_case)] // FIXME: Should we remove this?
+        #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+        pub struct $LangItems {
             $(
-                #[doc = concat!("The `", stringify!($name), "` lang item.")]
                 $(#[$attr])*
-                $variant,
+                pub $lang_item: Option<$target>,
+            )*
+            $(
+                pub $non_lang_trait: Option<TraitId>,
             )*
         }
 
-        impl LangItem {
-            pub fn name(self) -> &'static str {
-                match self {
-                    $( LangItem::$variant => stringify!($name), )*
+        impl LangItems {
+            fn is_empty(&self) -> bool {
+                $( self.$lang_item.is_none() )&&*
+            }
+
+            /// Merges `self` with `other`, with preference to `self` items.
+            fn merge_prefer_self(&mut self, other: &Self) {
+                $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
+                $( self.$non_lang_trait = self.$non_lang_trait.or(other.$non_lang_trait); )*
+            }
+
+            fn assign_lang_item(&mut self, name: Symbol, target: LangItemTarget) {
+                match name {
+                    $(
+                        _ if name == $module::$name => {
+                            if let LangItemTarget::$target(target) = target {
+                                self.$lang_item = Some(target);
+                            }
+                        }
+                    )*
+                    _ => {}
                 }
             }
 
-            /// Opposite of [`LangItem::name`]
-            pub fn from_symbol(sym: &Symbol) -> Option<Self> {
-                match sym {
-                    $(sym if *sym == $module::$name => Some(LangItem::$variant), )*
+            fn fill_non_lang_core_traits(&mut self, db: &dyn DefDatabase, core_def_map: &DefMap) {
+                $( self.$non_lang_trait = resolve_core_trait(db, core_def_map, &[ $(sym::$non_lang_module),* ], sym::$non_lang_trait); )*
+            }
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum LangItemEnum {
+            $(
+                $(#[$attr])*
+                $lang_item,
+            )*
+        }
+
+        impl LangItemEnum {
+            #[inline]
+            pub fn from_lang_items(self, lang_items: &LangItems) -> Option<LangItemTarget> {
+                match self {
+                    $( LangItemEnum::$lang_item => lang_items.$lang_item.map(Into::into), )*
+                }
+            }
+
+            #[inline]
+            pub fn from_symbol(symbol: &Symbol) -> Option<Self> {
+                match symbol {
+                    $( _ if *symbol == $module::$name => Some(Self::$lang_item), )*
                     _ => None,
                 }
             }
@@ -289,142 +261,102 @@ macro_rules! language_item_table {
     }
 }
 
-impl LangItem {
-    pub fn resolve_function(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<FunctionId> {
-        lang_item(db, start_crate, self).and_then(|t| t.as_function())
-    }
-
-    pub fn resolve_trait(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<TraitId> {
-        lang_item(db, start_crate, self).and_then(|t| t.as_trait())
-    }
-
-    pub fn resolve_adt(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<AdtId> {
-        lang_item(db, start_crate, self).and_then(|t| t.as_adt())
-    }
-
-    pub fn resolve_enum(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<EnumId> {
-        lang_item(db, start_crate, self).and_then(|t| t.as_enum())
-    }
-
-    pub fn resolve_type_alias(
-        self,
-        db: &dyn DefDatabase,
-        start_crate: Crate,
-    ) -> Option<TypeAliasId> {
-        lang_item(db, start_crate, self).and_then(|t| t.as_type_alias())
-    }
-
-    /// Opposite of [`LangItem::name`]
-    pub fn from_name(name: &hir_expand::name::Name) -> Option<Self> {
-        Self::from_symbol(name.symbol())
-    }
-
-    pub fn path(&self, db: &dyn DefDatabase, start_crate: Crate) -> Option<Path> {
-        let t = lang_item(db, start_crate, *self)?;
-        Some(Path::LangItem(t, None))
-    }
-
-    pub fn ty_rel_path(&self, db: &dyn DefDatabase, start_crate: Crate, seg: Name) -> Option<Path> {
-        let t = lang_item(db, start_crate, *self)?;
-        Some(Path::LangItem(t, Some(seg)))
-    }
-}
-
-language_item_table! {
-//  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
-    Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
-    MetaSized,               sym::meta_sized,          sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
-    PointeeSized,            sym::pointee_sized,       sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
-    Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
+language_item_table! { LangItems =>
+//  Variant name,            Name,                     Target;
+    Sized,                   sym::sized,               TraitId;
+    MetaSized,               sym::meta_sized,          TraitId;
+    PointeeSized,            sym::pointee_sized,       TraitId;
+    Unsize,                  sym::unsize,              TraitId;
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
-    StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
+    StructuralPeq,           sym::structural_peq,      TraitId;
     /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
-    StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait,          GenericRequirement::None;
-    Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
-    Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
-    Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
-    DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
-    /// The associated item of the [`DiscriminantKind`] trait.
-    Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
+    StructuralTeq,           sym::structural_teq,      TraitId;
+    Copy,                    sym::copy,                TraitId;
+    Clone,                   sym::clone,               TraitId;
+    TrivialClone,            sym::trivial_clone,       TraitId;
+    Sync,                    sym::sync,                TraitId;
+    DiscriminantKind,        sym::discriminant_kind,   TraitId;
+    /// The associated item of the `DiscriminantKind` trait.
+    Discriminant,            sym::discriminant_type,   TypeAliasId;
 
-    PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;
-    Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy,        GenericRequirement::None;
-    DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
+    PointeeTrait,            sym::pointee_trait,       TraitId;
+    Metadata,                sym::metadata_type,       TypeAliasId;
+    DynMetadata,             sym::dyn_metadata,        StructId;
 
-    Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
+    Freeze,                  sym::freeze,              TraitId;
 
-    FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    FnPtrAddr,               sym::fn_ptr_addr,         fn_ptr_addr,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnPtrTrait,              sym::fn_ptr_trait,        TraitId;
+    FnPtrAddr,               sym::fn_ptr_addr,         FunctionId;
 
-    Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
-    Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
+    Drop,                    sym::drop,                TraitId;
+    Destruct,                sym::destruct,            TraitId;
 
-    CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
-    DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
+    CoerceUnsized,           sym::coerce_unsized,      TraitId;
+    DispatchFromDyn,         sym::dispatch_from_dyn,   TraitId;
 
     // language items relating to transmutability
-    TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
-    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(3);
+    TransmuteOpts,           sym::transmute_opts,      StructId;
+    TransmuteTrait,          sym::transmute_trait,     TraitId;
 
-    Add,                     sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Sub,                     sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Mul,                     sym::mul,                 mul_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Div,                     sym::div,                 div_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Rem,                     sym::rem,                 rem_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Neg,                     sym::neg,                 neg_trait,                  Target::Trait,          GenericRequirement::Exact(0);
-    Not,                     sym::not,                 not_trait,                  Target::Trait,          GenericRequirement::Exact(0);
-    BitXor,                  sym::bitxor,              bitxor_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    BitAnd,                  sym::bitand,              bitand_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    BitOr,                   sym::bitor,               bitor_trait,                Target::Trait,          GenericRequirement::Exact(1);
-    Shl,                     sym::shl,                 shl_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Shr,                     sym::shr,                 shr_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    AddAssign,               sym::add_assign,          add_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    SubAssign,               sym::sub_assign,          sub_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    MulAssign,               sym::mul_assign,          mul_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    DivAssign,               sym::div_assign,          div_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    RemAssign,               sym::rem_assign,          rem_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    BitXorAssign,            sym::bitxor_assign,       bitxor_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    BitAndAssign,            sym::bitand_assign,       bitand_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    BitOrAssign,             sym::bitor_assign,        bitor_assign_trait,         Target::Trait,          GenericRequirement::Exact(1);
-    ShlAssign,               sym::shl_assign,          shl_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    ShrAssign,               sym::shr_assign,          shr_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    Index,                   sym::index,               index_trait,                Target::Trait,          GenericRequirement::Exact(1);
-    IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
+    Add,                     sym::add,                 TraitId;
+    Sub,                     sym::sub,                 TraitId;
+    Mul,                     sym::mul,                 TraitId;
+    Div,                     sym::div,                 TraitId;
+    Rem,                     sym::rem,                 TraitId;
+    Neg,                     sym::neg,                 TraitId;
+    Not,                     sym::not,                 TraitId;
+    BitXor,                  sym::bitxor,              TraitId;
+    BitAnd,                  sym::bitand,              TraitId;
+    BitOr,                   sym::bitor,               TraitId;
+    Shl,                     sym::shl,                 TraitId;
+    Shr,                     sym::shr,                 TraitId;
+    AddAssign,               sym::add_assign,          TraitId;
+    SubAssign,               sym::sub_assign,          TraitId;
+    MulAssign,               sym::mul_assign,          TraitId;
+    DivAssign,               sym::div_assign,          TraitId;
+    RemAssign,               sym::rem_assign,          TraitId;
+    BitXorAssign,            sym::bitxor_assign,       TraitId;
+    BitAndAssign,            sym::bitand_assign,       TraitId;
+    BitOrAssign,             sym::bitor_assign,        TraitId;
+    ShlAssign,               sym::shl_assign,          TraitId;
+    ShrAssign,               sym::shr_assign,          TraitId;
+    Index,                   sym::index,               TraitId;
+    IndexMut,                sym::index_mut,           TraitId;
 
-    UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
-    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
-    VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
+    UnsafeCell,              sym::unsafe_cell,         StructId;
+    UnsafePinned,            sym::unsafe_pinned,       StructId;
+    VaList,                  sym::va_list,             StructId;
 
-    Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
-    DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
-    DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
-    Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
-    ReceiverTarget,           sym::receiver_target,     receiver_target,            Target::AssocTy,        GenericRequirement::None;
+    Deref,                   sym::deref,               TraitId;
+    DerefMut,                sym::deref_mut,           TraitId;
+    DerefTarget,             sym::deref_target,        TypeAliasId;
+    Receiver,                sym::receiver,            TraitId;
+    ReceiverTarget,           sym::receiver_target,    TypeAliasId;
 
-    Fn,                      sym::fn_,                 fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
+    Fn,                      sym::fn_,                 TraitId;
+    FnMut,                   sym::fn_mut,              TraitId;
+    FnOnce,                  sym::fn_once,             TraitId;
+    AsyncFn,                 sym::async_fn,            TraitId;
+    AsyncFnMut,              sym::async_fn_mut,        TraitId;
+    AsyncFnOnce,             sym::async_fn_once,       TraitId;
 
-    CallRefFuture,           sym::call_ref_future,     call_ref_future_ty,         Target::AssocTy,        GenericRequirement::None;
-    CallOnceFuture,          sym::call_once_future,    call_once_future_ty,        Target::AssocTy,        GenericRequirement::None;
-    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output_ty,   Target::AssocTy,        GenericRequirement::None;
+    CallRefFuture,           sym::call_ref_future,     TypeAliasId;
+    CallOnceFuture,          sym::call_once_future,    TypeAliasId;
+    AsyncFnOnceOutput,       sym::async_fn_once_output, TypeAliasId;
 
-    FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
+    FnOnceOutput,            sym::fn_once_output,      TypeAliasId;
 
-    Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
-    Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
-    CoroutineReturn,         sym::coroutine_return,    coroutine_return_ty,        Target::AssocTy,        GenericRequirement::None;
-    CoroutineYield,          sym::coroutine_yield,     coroutine_yield_ty,         Target::AssocTy,        GenericRequirement::None;
-    Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
-    Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
+    Future,                  sym::future_trait,        TraitId;
+    CoroutineState,          sym::coroutine_state,     EnumId;
+    Coroutine,               sym::coroutine,           TraitId;
+    CoroutineReturn,         sym::coroutine_return,    TypeAliasId;
+    CoroutineYield,          sym::coroutine_yield,     TypeAliasId;
+    Unpin,                   sym::unpin,               TraitId;
+    Pin,                     sym::pin,                 StructId;
 
-    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
-    CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
+    PartialEq,               sym::eq,                  TraitId;
+    PartialOrd,              sym::partial_ord,         TraitId;
+    CVoid,                   sym::c_void,              EnumId;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -433,107 +365,114 @@ language_item_table! {
     // in the sense that a crate is not required to have it defined to use it, but a final product
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
-    Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
-    PanicNounwind,           sym::panic_nounwind,      panic_nounwind,             Target::Fn,             GenericRequirement::Exact(0);
-    PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
-    PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
-    ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
-    PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
-    PanicMisalignedPointerDereference,        sym::panic_misaligned_pointer_dereference,  panic_misaligned_pointer_dereference_fn,      Target::Fn,             GenericRequirement::Exact(0);
-    PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
-    PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
-    PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
-    PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
-    PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, Target::Fn, GenericRequirement::None;
+    Panic,                   sym::panic,               FunctionId;
+    PanicNounwind,           sym::panic_nounwind,      FunctionId;
+    PanicFmt,                sym::panic_fmt,           FunctionId;
+    PanicDisplay,            sym::panic_display,       FunctionId;
+    ConstPanicFmt,           sym::const_panic_fmt,     FunctionId;
+    PanicBoundsCheck,        sym::panic_bounds_check,  FunctionId;
+    PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, FunctionId;
+    PanicInfo,               sym::panic_info,          StructId;
+    PanicLocation,           sym::panic_location,      StructId;
+    PanicImpl,               sym::panic_impl,          FunctionId;
+    PanicCannotUnwind,       sym::panic_cannot_unwind, FunctionId;
+    PanicNullPointerDereference, sym::panic_null_pointer_dereference, FunctionId;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
-    BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
+    BeginPanic,              sym::begin_panic,         FunctionId;
 
     // Lang items needed for `format_args!()`.
-    FormatAlignment,         sym::format_alignment,    format_alignment,           Target::Enum,           GenericRequirement::None;
-    FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
-    FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
-    FormatCount,             sym::format_count,        format_count,               Target::Enum,           GenericRequirement::None;
-    FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         Target::Struct,         GenericRequirement::None;
-    FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          Target::Struct,         GenericRequirement::None;
+    FormatAlignment,         sym::format_alignment,    EnumId;
+    FormatArgument,          sym::format_argument,     StructId;
+    FormatArguments,         sym::format_arguments,    StructId;
+    FormatCount,             sym::format_count,        EnumId;
+    FormatPlaceholder,       sym::format_placeholder,  StructId;
+    FormatUnsafeArg,         sym::format_unsafe_arg,   StructId;
 
-    ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
-    BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn,             GenericRequirement::Minimum(1);
-    DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
-    AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
+    ExchangeMalloc,          sym::exchange_malloc,     FunctionId;
+    BoxFree,                 sym::box_free,            FunctionId;
+    DropInPlace,             sym::drop_in_place,       FunctionId;
+    AllocLayout,             sym::alloc_layout,        StructId;
 
-    Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
+    Start,                   sym::start,               FunctionId;
 
-    EhPersonality,           sym::eh_personality,      eh_personality,             Target::Fn,             GenericRequirement::None;
-    EhCatchTypeinfo,         sym::eh_catch_typeinfo,   eh_catch_typeinfo,          Target::Static,         GenericRequirement::None;
+    EhPersonality,           sym::eh_personality,      FunctionId;
+    EhCatchTypeinfo,         sym::eh_catch_typeinfo,   StaticId;
 
-    OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
+    OwnedBox,                sym::owned_box,           StructId;
 
-    PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);
+    PhantomData,             sym::phantom_data,        StructId;
 
-    ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct,         GenericRequirement::None;
+    ManuallyDrop,            sym::manually_drop,       StructId;
 
-    MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
+    MaybeUninit,             sym::maybe_uninit,        UnionId;
 
     /// Align offset for stride != 1; must not panic.
-    AlignOffset,             sym::align_offset,        align_offset_fn,            Target::Fn,             GenericRequirement::None;
+    AlignOffset,             sym::align_offset,        FunctionId;
 
-    Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
+    Termination,             sym::termination,         TraitId;
 
-    Try,                     sym::Try,                 try_trait,                  Target::Trait,          GenericRequirement::None;
+    Try,                     sym::Try,                 TraitId;
 
-    Tuple,                   sym::tuple_trait,         tuple_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    Tuple,                   sym::tuple_trait,         TraitId;
 
-    SliceLen,                sym::slice_len_fn,        slice_len_fn,               Target::Method(MethodKind::Inherent), GenericRequirement::None;
+    SliceLen,                sym::slice_len_fn,        FunctionId;
 
     // Language items from AST lowering
-    TryTraitFromResidual,    sym::from_residual,       from_residual_fn,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    TryTraitFromOutput,      sym::from_output,         from_output_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
+    TryTraitFromResidual,    sym::from_residual,       FunctionId;
+    TryTraitFromOutput,      sym::from_output,         FunctionId;
+    TryTraitBranch,          sym::branch,              FunctionId;
+    TryTraitFromYeet,        sym::from_yeet,           FunctionId;
 
-    PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
+    PointerLike,             sym::pointer_like,        TraitId;
 
-    ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
+    ConstParamTy,            sym::const_param_ty,      TraitId;
 
-    Poll,                    sym::Poll,                poll,                       Target::Enum,           GenericRequirement::None;
-    PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
-    PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
+    Poll,                    sym::Poll,                EnumId;
+    PollReady,               sym::Ready,               EnumVariantId;
+    PollPending,             sym::Pending,             EnumVariantId;
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
-    ResumeTy,                sym::ResumeTy,            resume_ty,                  Target::Struct,         GenericRequirement::None;
-    GetContext,              sym::get_context,         get_context_fn,             Target::Fn,             GenericRequirement::None;
+    ResumeTy,                sym::ResumeTy,            StructId;
+    GetContext,              sym::get_context,         FunctionId;
 
-    Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
-    FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    FutureOutput,            sym::future_output,       future_output,              Target::TypeAlias,      GenericRequirement::None;
+    Context,                 sym::Context,             StructId;
+    FuturePoll,              sym::poll,                FunctionId;
+    FutureOutput,            sym::future_output,       TypeAliasId;
 
-    Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
-    OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
-    OptionNone,              sym::None,                option_none_variant,        Target::Variant,        GenericRequirement::None;
+    Option,                  sym::Option,              EnumId;
+    OptionSome,              sym::Some,                EnumVariantId;
+    OptionNone,              sym::None,                EnumVariantId;
 
-    ResultOk,                sym::Ok,                  result_ok_variant,          Target::Variant,        GenericRequirement::None;
-    ResultErr,               sym::Err,                 result_err_variant,         Target::Variant,        GenericRequirement::None;
+    ResultOk,                sym::Ok,                  EnumVariantId;
+    ResultErr,               sym::Err,                 EnumVariantId;
 
-    ControlFlowContinue,     sym::Continue,            cf_continue_variant,        Target::Variant,        GenericRequirement::None;
-    ControlFlowBreak,        sym::Break,               cf_break_variant,           Target::Variant,        GenericRequirement::None;
+    ControlFlowContinue,     sym::Continue,            EnumVariantId;
+    ControlFlowBreak,        sym::Break,               EnumVariantId;
 
-    IntoFutureIntoFuture,    sym::into_future,         into_future_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
-    IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false}), GenericRequirement::None;
-    Iterator,                sym::iterator,            iterator,                   Target::Trait,           GenericRequirement::None;
+    IntoFutureIntoFuture,    sym::into_future,         FunctionId;
+    IntoIterIntoIter,        sym::into_iter,           FunctionId;
+    IteratorNext,            sym::next,                FunctionId;
+    Iterator,                sym::iterator,            TraitId;
 
-    PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent), GenericRequirement::None;
+    PinNewUnchecked,         sym::new_unchecked,       FunctionId;
 
-    RangeFrom,               sym::RangeFrom,           range_from_struct,          Target::Struct,         GenericRequirement::None;
-    RangeFull,               sym::RangeFull,           range_full_struct,          Target::Struct,         GenericRequirement::None;
-    RangeInclusiveStruct,    sym::RangeInclusive,      range_inclusive_struct,     Target::Struct,         GenericRequirement::None;
-    RangeInclusiveNew,       sym::range_inclusive_new, range_inclusive_new_method, Target::Method(MethodKind::Inherent), GenericRequirement::None;
-    Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
-    RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
-    RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+    RangeFrom,               sym::RangeFrom,           StructId;
+    RangeFull,               sym::RangeFull,           StructId;
+    RangeInclusiveStruct,    sym::RangeInclusive,      StructId;
+    RangeInclusiveNew,       sym::range_inclusive_new, FunctionId;
+    Range,                   sym::Range,               StructId;
+    RangeToInclusive,        sym::RangeToInclusive,    StructId;
+    RangeTo,                 sym::RangeTo,             StructId;
 
-    String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
-    CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
-    Ordering,                sym::Ordering,            ordering,                   Target::Enum,           GenericRequirement::None;
+    String,                  sym::String,              StructId;
+    CStr,                    sym::CStr,                StructId;
+    Ordering,                sym::Ordering,            EnumId;
+
+    @non_lang_core_traits:
+    core::default, Default;
+    core::fmt, Debug;
+    core::hash, Hash;
+    core::cmp, Ord;
+    core::cmp, Eq;
 }

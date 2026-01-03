@@ -28,3 +28,19 @@ fn main() {
     //
     //~^^ manual_instant_elapsed
 }
+
+fn issue16236() {
+    use std::ops::Sub as _;
+    macro_rules! deref {
+        ($e:expr) => {
+            *$e
+        };
+    }
+
+    let start = &Instant::now();
+    let _ = deref!(start).elapsed();
+    //~^ manual_instant_elapsed
+
+    deref!(start).elapsed();
+    //~^ manual_instant_elapsed
+}

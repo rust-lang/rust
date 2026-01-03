@@ -6,17 +6,17 @@
 // `thumb` & `aarch64` targets.
 
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
-        abi: "eabihf".into(),
+        abi: Abi::EabiHf,
         llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".into(),
+        features: "+v7,+vfp3d16,+thumb2,-neon,+strict-align".into(),
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(64),

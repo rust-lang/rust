@@ -17,7 +17,7 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: ["transparent", "semitransparent", "opaque"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;

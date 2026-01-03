@@ -1,14 +1,10 @@
-use rustc_ast::expand::typetree::FncTree;
-#[cfg(feature = "llvm_enzyme")]
-use {
-    crate::attributes,
-    rustc_ast::expand::typetree::TypeTree as RustTypeTree,
-    std::ffi::{CString, c_char, c_uint},
-};
+use std::ffi::{CString, c_char, c_uint};
 
-use crate::llvm::{self, Value};
+use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
 
-#[cfg(feature = "llvm_enzyme")]
+use crate::attributes;
+use crate::llvm::{self, EnzymeWrapper, Value};
+
 fn to_enzyme_typetree(
     rust_typetree: RustTypeTree,
     _data_layout: &str,
@@ -18,7 +14,6 @@ fn to_enzyme_typetree(
     process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
     enzyme_tt
 }
-#[cfg(feature = "llvm_enzyme")]
 fn process_typetree_recursive(
     enzyme_tt: &mut llvm::TypeTree,
     rust_typetree: &RustTypeTree,
@@ -56,13 +51,21 @@ fn process_typetree_recursive(
     }
 }
 
-#[cfg(feature = "llvm_enzyme")]
+#[cfg_attr(not(feature = "llvm_enzyme"), allow(unused))]
 pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
     fn_def: &'ll Value,
     tt: FncTree,
 ) {
+    // TypeTree processing uses functions from Enzyme, which we might not have available if we did
+    // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
+    // skipping this function increases the chance that Enzyme fails to compile some code.
+    // FIXME(autodiff): In the future we should conditionally run this function even without the
+    // `llvm_enzyme` feature, in case that libEnzyme was provided via rustup.
+    #[cfg(not(feature = "llvm_enzyme"))]
+    return;
+
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
@@ -77,7 +80,8 @@ pub(crate) fn add_tt<'ll>(
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
             let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
-            let c_str = llvm::EnzymeTypeTreeToString(enzyme_tt.inner);
+            let enzyme_wrapper = EnzymeWrapper::get_instance();
+            let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
             let c_str = std::ffi::CStr::from_ptr(c_str);
 
             let attr = llvm::LLVMCreateStringAttribute(
@@ -89,13 +93,14 @@ pub(crate) fn add_tt<'ll>(
             );
 
             attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
-            llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+            enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
         }
     }
 
     unsafe {
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
-        let c_str = llvm::EnzymeTypeTreeToString(enzyme_tt.inner);
+        let enzyme_wrapper = EnzymeWrapper::get_instance();
+        let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
         let c_str = std::ffi::CStr::from_ptr(c_str);
 
         let ret_attr = llvm::LLVMCreateStringAttribute(
@@ -107,16 +112,6 @@ pub(crate) fn add_tt<'ll>(
         );
 
         attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
-        llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+        enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
     }
-}
-
-#[cfg(not(feature = "llvm_enzyme"))]
-pub(crate) fn add_tt<'ll>(
-    _llmod: &'ll llvm::Module,
-    _llcx: &'ll llvm::Context,
-    _fn_def: &'ll Value,
-    _tt: FncTree,
-) {
-    unimplemented!()
 }

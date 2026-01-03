@@ -2,7 +2,7 @@ error: empty string literal in `println!`
   --> tests/ui/crashes/ice-10148.rs:8:5
    |
 LL |     println!(with_span!(""something ""));
-   |     ^^^^^^^^^^^^^^^^^^^^-----------^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^---------------^
    |                         |
    |                         help: remove the empty string
    |

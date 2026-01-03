@@ -8,25 +8,28 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::ProcMacroKind;
+use crate::{Codec, ProcMacroKind};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
+    // IMPORTANT: Keep his first, otherwise postcard will break as its not a self describing format
+    // As such, this is the only request that needs to be supported across all protocol versions
+    // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
+    /// Performs an API version check between the client and the server.
+    /// Since [`crate::version::VERSION_CHECK_VERSION`]
+    ApiVersionCheck {},
+
     /// Retrieves a list of macros from a given dynamic library.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: Utf8PathBuf },
 
     /// Expands a procedural macro.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Box<ExpandMacro>),
 
-    /// Performs an API version check between the client and the server.
-    /// Since [`VERSION_CHECK_VERSION`]
-    ApiVersionCheck {},
-
     /// Sets server-specific configurations.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
 }
 
@@ -44,24 +47,27 @@ pub enum SpanMode {
 /// Represents responses sent from the proc-macro-srv to the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
+    // IMPORTANT: Keep his first, otherwise postcard will break as its not a self describing format
+    // As such, this is the only request that needs to be supported across all protocol versions
+    // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
+    /// Returns the API version supported by the server.
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
+    ApiVersionCheck(u32),
+
     /// Returns a list of available macros in a dynamic library.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
 
     /// Returns result of a macro expansion.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
 
-    /// Returns the API version supported by the server.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
-    ApiVersionCheck(u32),
-
     /// Confirms the application of a configuration update.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
 
     /// Returns the result of a macro expansion, including extended span data.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
 }
 
@@ -149,42 +155,24 @@ impl ExpnGlobals {
 }
 
 pub trait Message: serde::Serialize + DeserializeOwned {
-    fn read<R: BufRead>(
-        from_proto: ProtocolRead<R>,
-        inp: &mut R,
-        buf: &mut String,
-    ) -> io::Result<Option<Self>> {
-        Ok(match from_proto(inp, buf)? {
+    fn read<R: BufRead, C: Codec>(inp: &mut R, buf: &mut C::Buf) -> io::Result<Option<Self>> {
+        Ok(match C::read(inp, buf)? {
             None => None,
-            Some(text) => {
-                let mut deserializer = serde_json::Deserializer::from_str(text);
-                // Note that some proc-macro generate very deep syntax tree
-                // We have to disable the current limit of serde here
-                deserializer.disable_recursion_limit();
-                Some(Self::deserialize(&mut deserializer)?)
-            }
+            Some(buf) => Some(C::decode(buf)?),
         })
     }
-    fn write<W: Write>(self, to_proto: ProtocolWrite<W>, out: &mut W) -> io::Result<()> {
-        let text = serde_json::to_string(&self)?;
-        to_proto(out, &text)
+    fn write<W: Write, C: Codec>(self, out: &mut W) -> io::Result<()> {
+        let value = C::encode(&self)?;
+        C::write(out, &value)
     }
 }
 
 impl Message for Request {}
 impl Message for Response {}
 
-/// Type alias for a function that reads protocol messages from a buffered input stream.
-#[allow(type_alias_bounds)]
-type ProtocolRead<R: BufRead> =
-    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
-/// Type alias for a function that writes protocol messages to an output stream.
-#[allow(type_alias_bounds)]
-type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
-
 #[cfg(test)]
 mod tests {
-    use intern::{Symbol, sym};
+    use intern::Symbol;
     use span::{
         Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
     };
@@ -197,7 +185,7 @@ mod tests {
 
     use super::*;
 
-    fn fixture_token_tree() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_many_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -213,7 +201,7 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
             close: Span {
-                range: TextRange::empty(TextSize::new(19)),
+                range: TextRange::empty(TextSize::new(0)),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
@@ -244,16 +232,15 @@ mod tests {
             }
             .into(),
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: Symbol::intern("Foo"),
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new_no_suffix(
+            "Foo",
+            Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Str,
-            suffix: None,
-        }));
+            tt::LitKind::Str,
+        )));
         builder.push(Leaf::Punct(Punct {
             char: '@',
             span: Span {
@@ -271,18 +258,32 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: sym::INTEGER_0,
-            span: Span {
-                range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
+        builder.open(
+            DelimiterKind::Bracket,
+            Span {
+                range: TextRange::at(TextSize::new(15), TextSize::of('[')),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32),
-        }));
+        );
+        builder.push(Leaf::Literal(Literal::new(
+            "0",
+            Span {
+                range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            tt::LitKind::Integer,
+            "u32",
+        )));
         builder.close(Span {
-            range: TextRange::at(TextSize::new(19), TextSize::of('}')),
+            range: TextRange::at(TextSize::new(20), TextSize::of(']')),
+            anchor,
+            ctx: SyntaxContext::root(Edition::CURRENT),
+        });
+
+        builder.close(Span {
+            range: TextRange::at(TextSize::new(21), TextSize::of('}')),
             anchor,
             ctx: SyntaxContext::root(Edition::CURRENT),
         });
@@ -290,37 +291,126 @@ mod tests {
         builder.build()
     }
 
+    fn fixture_token_tree_top_empty_none() -> TopSubtree {
+        let anchor = SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        };
+
+        let builder = TopSubtreeBuilder::new(Delimiter {
+            open: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            close: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            kind: DelimiterKind::Invisible,
+        });
+
+        builder.build()
+    }
+
+    fn fixture_token_tree_top_empty_brace() -> TopSubtree {
+        let anchor = SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        };
+
+        let builder = TopSubtreeBuilder::new(Delimiter {
+            open: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            close: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            kind: DelimiterKind::Brace,
+        });
+
+        builder.build()
+    }
+
     #[test]
     fn test_proc_macro_rpc_works() {
-        let tt = fixture_token_tree();
-        for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
-            let mut span_data_table = Default::default();
-            let task = ExpandMacro {
-                data: ExpandMacroData {
-                    macro_body: FlatTree::new(tt.view(), v, &mut span_data_table),
-                    macro_name: Default::default(),
-                    attributes: None,
-                    has_global_spans: ExpnGlobals {
-                        serialize: true,
-                        def_site: 0,
-                        call_site: 0,
-                        mixed_site: 0,
+        for tt in [
+            fixture_token_tree_top_many_none,
+            fixture_token_tree_top_empty_none,
+            fixture_token_tree_top_empty_brace,
+        ] {
+            for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
+                let tt = tt();
+                let mut span_data_table = Default::default();
+                let task = ExpandMacro {
+                    data: ExpandMacroData {
+                        macro_body: FlatTree::from_subtree(tt.view(), v, &mut span_data_table),
+                        macro_name: Default::default(),
+                        attributes: None,
+                        has_global_spans: ExpnGlobals {
+                            serialize: true,
+                            def_site: 0,
+                            call_site: 0,
+                            mixed_site: 0,
+                        },
+                        span_data_table: Vec::new(),
                     },
-                    span_data_table: Vec::new(),
-                },
-                lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
-                env: Default::default(),
-                current_dir: Default::default(),
-            };
+                    lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
+                    env: Default::default(),
+                    current_dir: Default::default(),
+                };
 
-            let json = serde_json::to_string(&task).unwrap();
-            // println!("{}", json);
-            let back: ExpandMacro = serde_json::from_str(&json).unwrap();
+                let json = serde_json::to_string(&task).unwrap();
+                // println!("{}", json);
+                let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-            assert!(
-                tt == back.data.macro_body.to_subtree_resolved(v, &span_data_table),
-                "version: {v}"
-            );
+                assert_eq!(
+                    tt,
+                    back.data.macro_body.to_subtree_resolved(v, &span_data_table),
+                    "version: {v}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "sysroot-abi")]
+    fn test_proc_macro_rpc_works_ts() {
+        for tt in [
+            fixture_token_tree_top_many_none,
+            fixture_token_tree_top_empty_none,
+            fixture_token_tree_top_empty_brace,
+        ] {
+            let tt = tt();
+            for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
+                let mut span_data_table = Default::default();
+                let flat_tree = FlatTree::from_subtree(tt.view(), v, &mut span_data_table);
+                assert_eq!(
+                    tt,
+                    flat_tree.clone().to_subtree_resolved(v, &span_data_table),
+                    "version: {v}"
+                );
+                let ts = flat_tree.to_tokenstream_resolved(v, &span_data_table, |a, b| a.cover(b));
+                let call_site = *span_data_table.first().unwrap();
+                let mut span_data_table = Default::default();
+                assert_eq!(
+                    tt,
+                    FlatTree::from_tokenstream(ts.clone(), v, call_site, &mut span_data_table)
+                        .to_subtree_resolved(v, &span_data_table),
+                    "version: {v}, ts:\n{ts:#?}"
+                );
+            }
         }
     }
 }

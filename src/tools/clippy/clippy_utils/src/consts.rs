@@ -578,7 +578,6 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     Some(val)
                 }
             },
-            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
         }
     }
@@ -809,10 +808,12 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                                 | sym::i128_legacy_const_max
                         )
                     ) || self.tcx.opt_parent(did).is_some_and(|parent| {
-                        parent.is_diag_item(&self.tcx, sym::f16_consts_mod)
-                            || parent.is_diag_item(&self.tcx, sym::f32_consts_mod)
-                            || parent.is_diag_item(&self.tcx, sym::f64_consts_mod)
-                            || parent.is_diag_item(&self.tcx, sym::f128_consts_mod)
+                        matches!(
+                            parent.opt_diag_name(&self.tcx),
+                            Some(
+                                sym::f16_consts_mod | sym::f32_consts_mod | sym::f64_consts_mod | sym::f128_consts_mod
+                            )
+                        )
                     })) =>
             {
                 did
@@ -1138,9 +1139,10 @@ pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
         ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
-            ConstArgKind::Path(_) => None,
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
-            ConstArgKind::Error(..) | ConstArgKind::Infer(..) => None,
+            ConstArgKind::Struct(..) | ConstArgKind::Path(_) | ConstArgKind::Error(..) | ConstArgKind::Infer(..) => {
+                None
+            },
         },
     }
 }

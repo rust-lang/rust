@@ -1,6 +1,6 @@
 pub mod ambiguity;
 pub mod call_kind;
-mod fulfillment_errors;
+pub mod fulfillment_errors;
 pub mod on_unimplemented;
 pub mod on_unimplemented_condition;
 pub mod on_unimplemented_format;
@@ -10,8 +10,9 @@ pub mod suggestions;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::traits::solve::Goal;
@@ -21,6 +22,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
@@ -350,6 +352,100 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }
+    }
+
+    /// If the crates of `expected_def_id` and `trait_def_id` are imported as extern crate
+    /// under the same name (`extern crate foo as a` and `extern crate bar as a`) returns true,
+    /// otherwise returns false.
+    fn extern_crates_with_the_same_name(
+        &self,
+        expected_def_id: DefId,
+        trait_def_id: DefId,
+    ) -> bool {
+        if expected_def_id.is_local() || trait_def_id.is_local() {
+            return false;
+        }
+        // We only compare direct dependencies of the current crate, so it avoids unnecessary
+        // processing and excludes indirect dependencies, like `std` or `core`. In such a case
+        // both would be imported under the same name `std`.
+        match (
+            self.tcx.extern_crate(expected_def_id.krate),
+            self.tcx.extern_crate(trait_def_id.krate),
+        ) {
+            (
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(expected_def_id),
+                    dependency_of: LOCAL_CRATE,
+                    ..
+                }),
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(trait_def_id),
+                    dependency_of: LOCAL_CRATE,
+                    ..
+                }),
+            ) => self.tcx.item_name(expected_def_id) == self.tcx.item_name(trait_def_id),
+            _ => false,
+        }
+    }
+
+    pub fn check_same_definition_different_crate<F>(
+        &self,
+        err: &mut Diag<'_>,
+        expected_did: DefId,
+        found_dids: impl Iterator<Item = DefId>,
+        get_impls: F,
+        ty: &str,
+    ) -> bool
+    where
+        F: Fn(DefId) -> Vec<Span>,
+    {
+        let krate = self.tcx.crate_name(expected_did.krate);
+        let name = self.tcx.item_name(expected_did);
+        let definitions_with_same_path: UnordSet<_> = found_dids
+            .filter(|def_id| {
+                def_id.krate != expected_did.krate
+                    && (self.extern_crates_with_the_same_name(expected_did, *def_id)
+                        || self.tcx.crate_name(def_id.krate) == krate)
+                    && self.tcx.item_name(def_id) == name
+            })
+            .map(|def_id| (self.tcx.def_path_str(def_id), def_id))
+            .collect();
+
+        let definitions_with_same_path =
+            definitions_with_same_path.into_items().into_sorted_stable_ord_by_key(|(p, _)| p);
+        let mut suggested = false;
+        let mut trait_is_impl = false;
+
+        if !definitions_with_same_path.is_empty() {
+            let mut span: MultiSpan = self.tcx.def_span(expected_did).into();
+            span.push_span_label(
+                self.tcx.def_span(expected_did),
+                format!("this is the expected {ty}"),
+            );
+            suggested = true;
+            for (_, definition_with_same_path) in &definitions_with_same_path {
+                let definitions_impls = get_impls(*definition_with_same_path);
+                if definitions_impls.is_empty() {
+                    continue;
+                }
+
+                for candidate_span in definitions_impls {
+                    span.push_span_label(candidate_span, format!("this is the found {ty}"));
+                    trait_is_impl = true;
+                }
+            }
+            if !trait_is_impl {
+                for (_, def_id) in definitions_with_same_path {
+                    span.push_span_label(
+                        self.tcx.def_span(def_id),
+                        format!("this is the {ty} that was imported"),
+                    );
+                }
+            }
+            self.note_two_crate_versions(expected_did, span, err);
+            err.help("you can use `cargo tree` to explore your dependency tree");
+        }
+        suggested
     }
 }
 

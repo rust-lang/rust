@@ -1,10 +1,10 @@
-error: expected one of `!` or `::`, found `Foor`
-  --> $DIR/struct.rs:1:8
+error: keyword `struct` is written in the wrong case
+  --> $DIR/struct.rs:1:1
    |
 LL | Struct Foor {
-   |        ^^^^ expected one of `!` or `::`
+   | ^^^^^^
    |
-help: write keyword `struct` in lowercase (notice the capitalization)
+help: write it in lowercase (notice the capitalization)
    |
 LL - Struct Foor {
 LL + struct Foor {

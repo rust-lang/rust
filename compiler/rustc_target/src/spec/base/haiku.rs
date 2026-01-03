@@ -1,8 +1,8 @@
-use crate::spec::{RelroLevel, TargetOptions, cvs};
+use crate::spec::{Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "haiku".into(),
+        os: Os::Haiku,
         dynamic_linking: true,
         families: cvs!["unix"],
         relro_level: RelroLevel::Full,

@@ -1,5 +1,5 @@
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:16:1
+  --> $DIR/never-type-fallback-breaking.rs:20:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -8,7 +8,7 @@ LL | fn m() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:20:17
+  --> $DIR/never-type-fallback-breaking.rs:24:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let x: () = match true {
    |          ++++
 
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:28:1
+  --> $DIR/never-type-fallback-breaking.rs:32:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | fn q() -> Option<()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:35:5
+  --> $DIR/never-type-fallback-breaking.rs:39:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |     deserialize::<()>()?;
    |                ++++++
 
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:45:1
+  --> $DIR/never-type-fallback-breaking.rs:49:1
    |
 LL | fn meow() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | fn meow() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:48:5
+  --> $DIR/never-type-fallback-breaking.rs:52:5
    |
 LL |     help(1)?;
    |     ^^^^^^^
@@ -57,7 +57,7 @@ LL |     help::<(), _>(1)?;
    |         +++++++++
 
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:57:1
+  --> $DIR/never-type-fallback-breaking.rs:61:1
    |
 LL | pub fn fallback_return() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL | pub fn fallback_return() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:60:19
+  --> $DIR/never-type-fallback-breaking.rs:64:19
    |
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL |     takes_apit::<()>(|| Default::default())?;
    |               ++++++
 
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:71:1
+  --> $DIR/never-type-fallback-breaking.rs:75:1
    |
 LL | fn fully_apit() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL | fn fully_apit() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:74:17
+  --> $DIR/never-type-fallback-breaking.rs:78:17
    |
 LL |     takes_apit2(mk()?);
    |                 ^^^^^
@@ -98,7 +98,7 @@ error: aborting due to 5 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:16:1
+  --> $DIR/never-type-fallback-breaking.rs:20:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -107,7 +107,7 @@ LL | fn m() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:20:17
+  --> $DIR/never-type-fallback-breaking.rs:24:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |     let x: () = match true {
 
 Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:28:1
+  --> $DIR/never-type-fallback-breaking.rs:32:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -128,7 +128,7 @@ LL | fn q() -> Option<()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:35:5
+  --> $DIR/never-type-fallback-breaking.rs:39:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -140,7 +140,7 @@ LL |     deserialize::<()>()?;
 
 Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:45:1
+  --> $DIR/never-type-fallback-breaking.rs:49:1
    |
 LL | fn meow() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,7 +149,7 @@ LL | fn meow() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:48:5
+  --> $DIR/never-type-fallback-breaking.rs:52:5
    |
 LL |     help(1)?;
    |     ^^^^^^^
@@ -161,7 +161,7 @@ LL |     help::<(), _>(1)?;
 
 Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:57:1
+  --> $DIR/never-type-fallback-breaking.rs:61:1
    |
 LL | pub fn fallback_return() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,7 +170,7 @@ LL | pub fn fallback_return() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:60:19
+  --> $DIR/never-type-fallback-breaking.rs:64:19
    |
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^
@@ -182,7 +182,7 @@ LL |     takes_apit::<()>(|| Default::default())?;
 
 Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:71:1
+  --> $DIR/never-type-fallback-breaking.rs:75:1
    |
 LL | fn fully_apit() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,7 +191,7 @@ LL | fn fully_apit() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:74:17
+  --> $DIR/never-type-fallback-breaking.rs:78:17
    |
 LL |     takes_apit2(mk()?);
    |                 ^^^^^

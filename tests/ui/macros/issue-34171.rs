@@ -6,5 +6,5 @@ macro_rules! apply_null {
 }
 
 fn main() {
-    apply_null!(#[cfg(all())] fn f() {});
+    apply_null!(#[cfg(true)] fn f() {});
 }

@@ -104,9 +104,14 @@ where
 {
     type Item = (K, V);
 
-    /// If two keys are equal, returns the key-value pair from the right source.
+    /// If two keys are equal, returns the key from the left and the value from the right.
     fn next(&mut self) -> Option<(K, V)> {
         let (a_next, b_next) = self.0.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
-        b_next.or(a_next)
+        match (a_next, b_next) {
+            (Some((a_k, _)), Some((_, b_v))) => Some((a_k, b_v)),
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        }
     }
 }

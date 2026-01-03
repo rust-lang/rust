@@ -53,13 +53,13 @@ impl !DynSend for std::env::VarsOs {}
 
 macro_rules! already_send {
     ($([$ty: ty])*) => {
-        $(unsafe impl DynSend for $ty where $ty: Send {})*
+        $(unsafe impl DynSend for $ty where Self: Send {})*
     };
 }
 
 // These structures are already `Send`.
 already_send!(
-    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File]
+    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File][std::panic::Location<'_>]
         [rustc_arena::DroplessArena][jobserver_crate::Client][jobserver_crate::HelperThread]
         [crate::memmap::Mmap][crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );
@@ -75,6 +75,7 @@ impl_dyn_send!(
     [std::sync::Mutex<T> where T: ?Sized+ DynSend]
     [std::sync::mpsc::Sender<T> where T: DynSend]
     [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
+    [std::sync::Weak<T> where T: ?Sized + DynSync + DynSend]
     [std::sync::LazyLock<T, F> where T: DynSend, F: DynSend]
     [std::collections::HashSet<K, S> where K: DynSend, S: DynSend]
     [std::collections::HashMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
@@ -127,14 +128,14 @@ impl !DynSync for std::env::VarsOs {}
 
 macro_rules! already_sync {
     ($([$ty: ty])*) => {
-        $(unsafe impl DynSync for $ty where $ty: Sync {})*
+        $(unsafe impl DynSync for $ty where Self: Sync {})*
     };
 }
 
 // These structures are already `Sync`.
 already_sync!(
     [std::sync::atomic::AtomicBool][std::sync::atomic::AtomicUsize][std::sync::atomic::AtomicU8]
-        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File]
+        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File][std::panic::Location<'_>]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
         [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );
@@ -157,6 +158,7 @@ impl_dyn_sync!(
     [std::sync::OnceLock<T> where T: DynSend + DynSync]
     [std::sync::Mutex<T> where T: ?Sized + DynSend]
     [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
+    [std::sync::Weak<T> where T: ?Sized + DynSync + DynSend]
     [std::sync::LazyLock<T, F> where T: DynSend + DynSync, F: DynSend]
     [std::collections::HashSet<K, S> where K: DynSync, S: DynSync]
     [std::collections::HashMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]

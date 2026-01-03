@@ -1,4 +1,4 @@
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 
@@ -18,9 +18,9 @@ pub(crate) fn target() -> Target {
         // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
         // target.
         options: TargetOptions {
-            abi: "eabihf".into(),
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
             // FIXME(compiler-team#422): musl targets should be dynamically linked by default.

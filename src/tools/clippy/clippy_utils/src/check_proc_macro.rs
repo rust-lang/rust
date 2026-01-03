@@ -265,7 +265,14 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Trait(_, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
-        _ => return (Pat::Str(""), Pat::Str("")),
+        ItemKind::Mod(..) => (Pat::Str("mod"), Pat::Str("")),
+        ItemKind::Macro(_, def, _) => (
+            Pat::Str(if def.macro_rules { "macro_rules" } else { "macro" }),
+            Pat::Str(""),
+        ),
+        ItemKind::TraitAlias(..) => (Pat::Str("trait"), Pat::Str(";")),
+        ItemKind::GlobalAsm { .. } => return (Pat::Str("global_asm"), Pat::Str("")),
+        ItemKind::Use(..) => return (Pat::Str(""), Pat::Str("")),
     };
     if item.vis_span.is_empty() {
         (start_pat, end_pat)
@@ -524,11 +531,10 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::ImplicitSelf
 
         // experimental
-        |TyKind::Pat(..)
+        | TyKind::Pat(..)
 
         // unused
         | TyKind::CVarArgs
-        | TyKind::Typeof(_)
 
         // placeholder
         | TyKind::Dummy

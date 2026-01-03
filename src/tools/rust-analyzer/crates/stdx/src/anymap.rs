@@ -117,7 +117,7 @@ impl<A: ?Sized + Downcast> Map<A> {
     #[inline]
     #[must_use]
     pub fn get<T: IntoBox<A>>(&self) -> Option<&T> {
-        self.raw.get(&TypeId::of::<T>()).map(|any| unsafe { any.downcast_ref_unchecked::<T>() })
+        self.raw.get(&TypeId::of::<T>()).map(|any| unsafe { any.downcast_unchecked_ref::<T>() })
     }
 
     /// Gets the entry for the given type in the collection for in-place manipulation
@@ -172,7 +172,7 @@ impl<'map, A: ?Sized + Downcast, V: IntoBox<A>> OccupiedEntry<'map, A, V> {
     #[inline]
     #[must_use]
     pub fn into_mut(self) -> &'map mut V {
-        unsafe { self.inner.into_mut().downcast_mut_unchecked() }
+        unsafe { self.inner.into_mut().downcast_unchecked_mut() }
     }
 }
 
@@ -181,7 +181,7 @@ impl<'map, A: ?Sized + Downcast, V: IntoBox<A>> VacantEntry<'map, A, V> {
     /// and returns a mutable reference to it
     #[inline]
     pub fn insert(self, value: V) -> &'map mut V {
-        unsafe { self.inner.insert(value.into_box()).downcast_mut_unchecked() }
+        unsafe { self.inner.insert(value.into_box()).downcast_unchecked_mut() }
     }
 }
 
@@ -244,14 +244,14 @@ pub trait Downcast {
     /// # Safety
     ///
     /// The caller must ensure that `T` matches the trait object, on pain of *undefined behavior*.
-    unsafe fn downcast_ref_unchecked<T: 'static>(&self) -> &T;
+    unsafe fn downcast_unchecked_ref<T: 'static>(&self) -> &T;
 
     /// Downcast from `&mut Any` to `&mut T`, without checking the type matches.
     ///
     /// # Safety
     ///
     /// The caller must ensure that `T` matches the trait object, on pain of *undefined behavior*.
-    unsafe fn downcast_mut_unchecked<T: 'static>(&mut self) -> &mut T;
+    unsafe fn downcast_unchecked_mut<T: 'static>(&mut self) -> &mut T;
 }
 
 /// A trait for the conversion of an object into a boxed trait object.
@@ -269,12 +269,12 @@ macro_rules! implement {
             }
 
             #[inline]
-            unsafe fn downcast_ref_unchecked<T: 'static>(&self) -> &T {
+            unsafe fn downcast_unchecked_ref<T: 'static>(&self) -> &T {
                 unsafe { &*std::ptr::from_ref::<Self>(self).cast::<T>() }
             }
 
             #[inline]
-            unsafe fn downcast_mut_unchecked<T: 'static>(&mut self) -> &mut T {
+            unsafe fn downcast_unchecked_mut<T: 'static>(&mut self) -> &mut T {
                 unsafe { &mut *std::ptr::from_mut::<Self>(self).cast::<T>() }
             }
         }

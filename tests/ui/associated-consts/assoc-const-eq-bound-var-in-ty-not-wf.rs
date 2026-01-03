@@ -18,11 +18,10 @@ trait Trait<T: ConstParamTy_> {
 fn take(
     _: impl Trait<
         <<for<'a> fn(&'a str) -> &'a str as Project>::Out as Discard>::Out,
-        K = { () }
+        K = const { () }
     >,
 ) {}
-//~^^^^^ ERROR implementation of `Project` is not general enough
-//~^^^^ ERROR higher-ranked subtype error
+//~^^^ ERROR higher-ranked subtype error
 //~| ERROR higher-ranked subtype error
 
 trait Project { type Out; }

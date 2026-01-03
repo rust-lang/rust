@@ -21,6 +21,7 @@ use super::format;
 use crate::clean::PrimitiveType;
 use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
+use crate::html::format::HrefInfo;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::render::span_map::{DUMMY_SP, Span};
 use crate::html::render::{Context, LinkFromSrc};
@@ -831,6 +832,20 @@ impl<'a> PeekIter<'a> {
         .copied()
     }
 
+    fn peek_next_if<F: Fn((TokenKind, &'a str)) -> bool>(
+        &mut self,
+        f: F,
+    ) -> Option<(TokenKind, &'a str)> {
+        let next = self.peek_next()?;
+        if f(next) {
+            Some(next)
+        } else {
+            // We go one step back.
+            self.peek_pos -= 1;
+            None
+        }
+    }
+
     fn stop_peeking(&mut self) {
         self.peek_pos = 0;
     }
@@ -902,18 +917,17 @@ fn classify<'src>(
             }
         }
 
-        if let Some((TokenKind::Colon | TokenKind::Ident, _)) = classifier.tokens.peek() {
-            let tokens = classifier.get_full_ident_path();
-            for &(token, start, end) in &tokens {
-                let text = &classifier.src[start..end];
-                classifier.advance(token, text, sink, start as u32);
-                classifier.byte_pos += text.len() as u32;
-            }
-            if !tokens.is_empty() {
-                continue;
-            }
-        }
-        if let Some((token, text, before)) = classifier.next() {
+        if let Some((TokenKind::Colon | TokenKind::Ident, _)) = classifier.tokens.peek()
+            && let Some(nb_items) = classifier.get_full_ident_path()
+        {
+            let start = classifier.byte_pos as usize;
+            let len: usize = iter::from_fn(|| classifier.next())
+                .take(nb_items)
+                .map(|(_, text, _)| text.len())
+                .sum();
+            let text = &classifier.src[start..start + len];
+            classifier.advance(TokenKind::Ident, text, sink, start as u32);
+        } else if let Some((token, text, before)) = classifier.next() {
             classifier.advance(token, text, sink, before);
         } else {
             break;
@@ -956,47 +970,47 @@ impl<'src> Classifier<'src> {
     }
 
     /// Concatenate colons and idents as one when possible.
-    fn get_full_ident_path(&mut self) -> Vec<(TokenKind, usize, usize)> {
-        let start = self.byte_pos as usize;
-        let mut pos = start;
+    fn get_full_ident_path(&mut self) -> Option<usize> {
         let mut has_ident = false;
+        let mut nb_items = 0;
 
-        loop {
+        let ret = loop {
             let mut nb = 0;
-            while let Some((TokenKind::Colon, _)) = self.tokens.peek() {
-                self.tokens.next();
+            while self.tokens.peek_next_if(|(token, _)| token == TokenKind::Colon).is_some() {
                 nb += 1;
+                nb_items += 1;
             }
             // Ident path can start with "::" but if we already have content in the ident path,
             // the "::" is mandatory.
             if has_ident && nb == 0 {
-                return vec![(TokenKind::Ident, start, pos)];
+                break Some(nb_items);
             } else if nb != 0 && nb != 2 {
                 if has_ident {
-                    return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
+                    // Following `;` will be handled on its own.
+                    break Some(nb_items - 1);
                 } else {
-                    return vec![(TokenKind::Colon, start, pos + nb)];
+                    break None;
                 }
             }
 
-            if let Some((TokenKind::Ident, text)) = self.tokens.peek()
+            if let Some((TokenKind::Ident, text)) =
+                self.tokens.peek_next_if(|(token, _)| token == TokenKind::Ident)
                 && let symbol = Symbol::intern(text)
                 && (symbol.is_path_segment_keyword() || !is_keyword(symbol))
             {
-                // We only "add" the colon if there is an ident behind.
-                pos += text.len() + nb;
                 has_ident = true;
-                self.tokens.next();
+                nb_items += 1;
             } else if nb > 0 && has_ident {
-                return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
-            } else if nb > 0 {
-                return vec![(TokenKind::Colon, start, start + nb)];
+                // Following `;` will be handled on its own.
+                break Some(nb_items - 1);
             } else if has_ident {
-                return vec![(TokenKind::Ident, start, pos)];
+                break Some(nb_items);
             } else {
-                return Vec::new();
+                break None;
             }
-        }
+        };
+        self.tokens.stop_peeking();
+        ret
     }
 
     /// Wraps the tokens iteration to ensure that the `byte_pos` is always correct.
@@ -1242,7 +1256,6 @@ impl<'src> Classifier<'src> {
                 Class::MacroNonTerminal
             }
             TokenKind::Ident => {
-                let file_span = self.file_span;
                 let span = || new_span(before, text, file_span);
 
                 match text {
@@ -1357,7 +1370,7 @@ fn generate_link_to_def(
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
-                            .map(|(url, _, _)| url)
+                            .map(|HrefInfo { url, .. }| url)
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
@@ -1365,11 +1378,11 @@ fn generate_link_to_def(
                         Some(href_context.root_path),
                     )
                     .ok()
-                    .map(|(url, _, _)| url),
+                    .map(|HrefInfo { url, .. }| url),
                     LinkFromSrc::Doc(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
-                            .map(|(doc_link, _, _)| doc_link)
+                            .map(|HrefInfo { url, .. }| url)
                     }
                 }
             })

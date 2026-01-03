@@ -1,3 +1,4 @@
+//@ edition:2015
 mod foo {
     extern crate core;
 }

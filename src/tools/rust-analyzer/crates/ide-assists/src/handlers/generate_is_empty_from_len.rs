@@ -95,7 +95,7 @@ fn get_impl_method(
 
     let scope = ctx.sema.scope(impl_.syntax())?;
     let ty = impl_def.self_ty(db);
-    ty.iterate_method_candidates(db, &scope, None, Some(fn_name), Some)
+    ty.iterate_method_candidates(db, &scope, Some(fn_name), Some)
 }
 
 #[cfg(test)]

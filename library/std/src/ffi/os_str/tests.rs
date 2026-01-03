@@ -303,3 +303,9 @@ fn clone_to_uninit() {
     unsafe { a.clone_to_uninit(ptr::from_mut::<OsStr>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }
+
+#[test]
+fn debug() {
+    let s = "'single quotes'";
+    assert_eq!(format!("{:?}", OsStr::new(s)), format!("{:?}", s));
+}

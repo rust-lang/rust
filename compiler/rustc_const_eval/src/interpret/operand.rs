@@ -522,6 +522,10 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     pub(super) fn op(&self) -> &Operand<Prov> {
         &self.op
     }
+
+    pub fn is_immediate_uninit(&self) -> bool {
+        matches!(self.op, Operand::Immediate(Immediate::Uninit))
+    }
 }
 
 impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
@@ -840,6 +844,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
+
+            &RuntimeChecks(checks) => {
+                let val = M::runtime_checks(self, checks)?;
+                ImmTy::from_bool(val, self.tcx()).into()
+            }
 
             Constant(constant) => {
                 let c = self.instantiate_from_current_frame_and_normalize_erasing_regions(

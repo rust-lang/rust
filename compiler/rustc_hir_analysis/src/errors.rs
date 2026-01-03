@@ -379,17 +379,6 @@ pub(crate) struct ParenthesizedFnTraitExpansion {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_typeof_reserved_keyword_used, code = E0516)]
-pub(crate) struct TypeofReservedKeywordUsed<'tcx> {
-    pub ty: Ty<'tcx>,
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[suggestion(style = "verbose", code = "{ty}")]
-    pub opt_sugg: Option<(Span, Applicability)>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_value_of_associated_struct_already_specified, code = E0719)]
 pub(crate) struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
@@ -750,66 +739,6 @@ pub(crate) struct EnumDiscriminantOverflowed {
 pub(crate) struct ParenSugarAttribute {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_must_implement_one_of_attribute)]
-pub(crate) struct MustImplementOneOfAttribute {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_must_be_name_of_associated_function)]
-pub(crate) struct MustBeNameOfAssociatedFunction {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_function_not_have_default_implementation)]
-pub(crate) struct FunctionNotHaveDefaultImplementation {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub note_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_must_implement_not_function)]
-pub(crate) struct MustImplementNotFunction {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub span_note: MustImplementNotFunctionSpanNote,
-    #[subdiagnostic]
-    pub note: MustImplementNotFunctionNote,
-}
-
-#[derive(Subdiagnostic)]
-#[note(hir_analysis_must_implement_not_function_span_note)]
-pub(crate) struct MustImplementNotFunctionSpanNote {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[note(hir_analysis_must_implement_not_function_note)]
-pub(crate) struct MustImplementNotFunctionNote {}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_function_not_found_in_trait)]
-pub(crate) struct FunctionNotFoundInTrait {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_functions_names_duplicated)]
-#[note]
-pub(crate) struct FunctionNamesDuplicated {
-    #[primary_span]
-    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -1562,11 +1491,11 @@ pub(crate) struct UnconstrainedGenericParameter {
 #[diag(hir_analysis_opaque_captures_higher_ranked_lifetime, code = E0657)]
 pub(crate) struct OpaqueCapturesHigherRankedLifetime {
     #[primary_span]
-    pub span: Span,
+    pub span: MultiSpan,
     #[label]
     pub label: Option<Span>,
     #[note]
-    pub decl_span: Span,
+    pub decl_span: MultiSpan,
     pub bad_place: &'static str,
 }
 
@@ -1707,4 +1636,29 @@ pub(crate) struct AbiCustomClothedFunction {
 pub(crate) struct AsyncDropWithoutSyncDrop {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_lifetimes_or_bounds_mismatch_on_eii)]
+pub(crate) struct LifetimesOrBoundsMismatchOnEii {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_analysis_generics_label)]
+    pub generics_span: Span,
+    #[label(hir_analysis_where_label)]
+    pub where_span: Option<Span>,
+    #[label(hir_analysis_bounds_label)]
+    pub bounds_span: Vec<Span>,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_eii_with_generics)]
+pub(crate) struct EiiWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr: Span,
+    pub eii_name: Symbol,
 }

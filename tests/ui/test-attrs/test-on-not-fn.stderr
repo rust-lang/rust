@@ -1,4 +1,4 @@
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:3:1
    |
 LL | #[test]
@@ -12,7 +12,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:6:1
    |
 LL |   #[test]
@@ -32,7 +32,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:20:1
    |
 LL | #[test]
@@ -46,7 +46,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:23:1
    |
 LL | #[test]
@@ -60,7 +60,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:26:1
    |
 LL | #[test]
@@ -74,7 +74,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:29:1
    |
 LL | #[test]
@@ -88,7 +88,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:32:1
    |
 LL | #[test]
@@ -102,7 +102,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:35:1
    |
 LL |   #[test]
@@ -118,7 +118,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:40:1
    |
 LL | #[test]
@@ -132,7 +132,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:43:1
    |
 LL |   #[test]
@@ -149,7 +149,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:50:1
    |
 LL |   #[test]
@@ -167,7 +167,7 @@ LL - #[test]
 LL + #[cfg(test)]
    |
 
-warning: the `#[test]` attribute may only be used on a non-associated function
+warning: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-on-not-fn.rs:61:1
    |
 LL | #[test]

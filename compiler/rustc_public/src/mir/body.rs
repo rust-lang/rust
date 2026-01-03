@@ -587,9 +587,6 @@ pub enum Rvalue {
     /// nature of this operation?
     ThreadLocalRef(crate::CrateItem),
 
-    /// Computes a value as described by the operation.
-    NullaryOp(NullOp, Ty),
-
     /// Exactly like `BinaryOp`, but less operands.
     ///
     /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
@@ -641,8 +638,6 @@ impl Rvalue {
                     .discriminant_ty()
                     .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
             }
-            Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => Ok(Ty::usize_ty()),
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
                 AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => Ok(Ty::new_tuple(
@@ -678,6 +673,7 @@ pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(ConstOperand),
+    RuntimeChecks(RuntimeChecks),
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Serialize)]
@@ -698,6 +694,16 @@ pub struct ConstOperand {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
     pub const_: MirConst,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum RuntimeChecks {
+    /// cfg!(ub_checks), but at codegen time
+    UbChecks,
+    /// cfg!(contract_checks), but at codegen time
+    ContractChecks,
+    /// cfg!(overflow_checks), but at codegen time
+    OverflowChecks,
 }
 
 /// Debug information pertaining to a user variable.
@@ -979,7 +985,7 @@ pub enum Safety {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
-    ReifyFnPointer,
+    ReifyFnPointer(Safety),
 
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
@@ -1019,24 +1025,6 @@ pub enum CastKind {
     Subtype,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub enum NullOp {
-    /// Returns the offset of a field.
-    OffsetOf(Vec<(VariantIdx, FieldIdx)>),
-    /// Codegen conditions for runtime checks.
-    RuntimeChecks(RuntimeChecks),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub enum RuntimeChecks {
-    /// cfg!(ub_checks), but at codegen time
-    UbChecks,
-    /// cfg!(contract_checks), but at codegen time
-    ContractChecks,
-    /// cfg!(overflow_checks), but at codegen time
-    OverflowChecks,
-}
-
 impl Operand {
     /// Get the type of an operand relative to the local declaration.
     ///
@@ -1048,6 +1036,7 @@ impl Operand {
         match self {
             Operand::Copy(place) | Operand::Move(place) => place.ty(locals),
             Operand::Constant(c) => Ok(c.ty()),
+            Operand::RuntimeChecks(_) => Ok(Ty::bool_ty()),
         }
     }
 }

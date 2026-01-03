@@ -1,16 +1,13 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use std::mem;
-
-use either::Either;
-use hir::{EditionedFileId, HirFileId, InFile, Semantics, sym};
-use ide_db::range_mapper::RangeMapper;
+use hir::{EditionedFileId, HirFileId, InFile, Semantics};
 use ide_db::{
-    SymbolKind, defs::Definition, documentation::docs_with_rangemap, rust_doc::is_rust_fence,
+    SymbolKind, defs::Definition, documentation::Documentation, range_mapper::RangeMapper,
+    rust_doc::is_rust_fence,
 };
 use syntax::{
-    AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
-    ast::{self, AstNode, IsString, QuoteOffsets},
+    SyntaxNode, TextRange, TextSize,
+    ast::{self, IsString},
 };
 
 use crate::{
@@ -96,118 +93,79 @@ pub(super) fn doc_comment(
         None => return,
     };
     let src_file_id: HirFileId = src_file_id.into();
+    let Some(docs) = attributes.hir_docs(sema.db) else { return };
 
     // Extract intra-doc links and emit highlights for them.
-    if let Some((docs, doc_mapping)) = docs_with_rangemap(sema.db, &attributes) {
-        extract_definitions_from_docs(&docs)
-            .into_iter()
-            .filter_map(|(range, link, ns)| {
-                doc_mapping
-                    .map(range)
-                    .filter(|(mapping, _)| mapping.file_id == src_file_id)
-                    .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
-                        Some(mapped_range).zip(resolve_doc_path_for_def(
-                            sema.db,
-                            def,
-                            &link,
-                            ns,
-                            attr_id.is_inner_attr(),
-                        ))
-                    })
-            })
-            .for_each(|(range, def)| {
-                hl.add(HlRange {
-                    range,
-                    highlight: module_def_to_hl_tag(def)
-                        | HlMod::Documentation
-                        | HlMod::Injected
-                        | HlMod::IntraDocLink,
-                    binding_hash: None,
+    extract_definitions_from_docs(&Documentation::new_borrowed(docs.docs()))
+        .into_iter()
+        .filter_map(|(range, link, ns)| {
+            docs.find_ast_range(range)
+                .filter(|(mapping, _)| mapping.file_id == src_file_id)
+                .and_then(|(InFile { value: mapped_range, .. }, is_inner)| {
+                    Some(mapped_range)
+                        .zip(resolve_doc_path_for_def(sema.db, def, &link, ns, is_inner))
                 })
+        })
+        .for_each(|(range, def)| {
+            hl.add(HlRange {
+                range,
+                highlight: module_def_to_hl_tag(def)
+                    | HlMod::Documentation
+                    | HlMod::Injected
+                    | HlMod::IntraDocLink,
+                binding_hash: None,
             })
-    }
+        });
 
     // Extract doc-test sources from the docs and calculate highlighting for them.
 
     let mut inj = RangeMapper::default();
     inj.add_unmapped("fn doctest() {\n");
 
-    let attrs_source_map = attributes.source_map(sema.db);
-
     let mut is_codeblock = false;
     let mut is_doctest = false;
 
-    let mut new_comments = Vec::new();
-    let mut string;
+    let mut has_doctests = false;
 
-    for attr in attributes.by_key(sym::doc).attrs() {
-        let InFile { file_id, value: src } = attrs_source_map.source_of(attr);
+    let mut docs_offset = TextSize::new(0);
+    for mut line in docs.docs().split('\n') {
+        let mut line_docs_offset = docs_offset;
+        docs_offset += TextSize::of(line) + TextSize::of("\n");
+
+        match RUSTDOC_FENCES.into_iter().find_map(|fence| line.find(fence)) {
+            Some(idx) => {
+                is_codeblock = !is_codeblock;
+                // Check whether code is rust by inspecting fence guards
+                let guards = &line[idx + RUSTDOC_FENCE_LENGTH..];
+                let is_rust = is_rust_fence(guards);
+                is_doctest = is_codeblock && is_rust;
+                continue;
+            }
+            None if !is_doctest => continue,
+            None => (),
+        }
+
+        // lines marked with `#` should be ignored in output, we skip the `#` char
+        if line.starts_with('#') {
+            line_docs_offset += TextSize::of("#");
+            line = &line["#".len()..];
+        }
+
+        let Some((InFile { file_id, value: mapped_range }, _)) =
+            docs.find_ast_range(TextRange::at(line_docs_offset, TextSize::of(line)))
+        else {
+            continue;
+        };
         if file_id != src_file_id {
             continue;
         }
-        let (line, range) = match &src {
-            Either::Left(it) => {
-                string = match find_doc_string_in_attr(attr, it) {
-                    Some(it) => it,
-                    None => continue,
-                };
-                let text = string.text();
-                let text_range = string.syntax().text_range();
-                match string.quote_offsets() {
-                    Some(QuoteOffsets { contents, .. }) => {
-                        (&text[contents - text_range.start()], contents)
-                    }
-                    None => (text, text_range),
-                }
-            }
-            Either::Right(comment) => {
-                let value = comment.prefix().len();
-                let range = comment.syntax().text_range();
-                (
-                    &comment.text()[value..],
-                    TextRange::new(range.start() + TextSize::try_from(value).unwrap(), range.end()),
-                )
-            }
-        };
 
-        let mut range_start = range.start();
-        for line in line.split('\n') {
-            let line_len = TextSize::from(line.len() as u32);
-            let prev_range_start = {
-                let next_range_start = range_start + line_len + TextSize::from(1);
-                mem::replace(&mut range_start, next_range_start)
-            };
-            let mut pos = TextSize::from(0);
-
-            match RUSTDOC_FENCES.into_iter().find_map(|fence| line.find(fence)) {
-                Some(idx) => {
-                    is_codeblock = !is_codeblock;
-                    // Check whether code is rust by inspecting fence guards
-                    let guards = &line[idx + RUSTDOC_FENCE_LENGTH..];
-                    let is_rust = is_rust_fence(guards);
-                    is_doctest = is_codeblock && is_rust;
-                    continue;
-                }
-                None if !is_doctest => continue,
-                None => (),
-            }
-
-            // whitespace after comment is ignored
-            if let Some(ws) = line[pos.into()..].chars().next().filter(|c| c.is_whitespace()) {
-                pos += TextSize::of(ws);
-            }
-            // lines marked with `#` should be ignored in output, we skip the `#` char
-            if line[pos.into()..].starts_with('#') {
-                pos += TextSize::of('#');
-            }
-
-            new_comments.push(TextRange::at(prev_range_start, pos));
-            inj.add(&line[pos.into()..], TextRange::new(pos, line_len) + prev_range_start);
-            inj.add_unmapped("\n");
-        }
+        has_doctests = true;
+        inj.add(line, mapped_range);
+        inj.add_unmapped("\n");
     }
 
-    if new_comments.is_empty() {
+    if !has_doctests {
         return; // no need to run an analysis on an empty file
     }
 
@@ -239,37 +197,6 @@ pub(super) fn doc_comment(
                 hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });
             }
         }
-    }
-
-    for range in new_comments {
-        hl.add(HlRange {
-            range,
-            highlight: HlTag::Comment | HlMod::Documentation,
-            binding_hash: None,
-        });
-    }
-}
-
-fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::String> {
-    match it.expr() {
-        // #[doc = lit]
-        Some(ast::Expr::Literal(lit)) => match lit.kind() {
-            ast::LiteralKind::String(it) => Some(it),
-            _ => None,
-        },
-        // #[cfg_attr(..., doc = "", ...)]
-        None => {
-            // We gotta hunt the string token manually here
-            let text = attr.string_value()?.as_str();
-            // FIXME: We just pick the first string literal that has the same text as the doc attribute
-            // This means technically we might highlight the wrong one
-            it.syntax()
-                .descendants_with_tokens()
-                .filter_map(NodeOrToken::into_token)
-                .filter_map(ast::String::cast)
-                .find(|string| string.text().get(1..string.text().len() - 1) == Some(text))
-        }
-        _ => None,
     }
 }
 

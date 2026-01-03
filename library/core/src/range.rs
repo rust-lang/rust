@@ -26,7 +26,7 @@ pub mod legacy;
 
 use Bound::{Excluded, Included, Unbounded};
 #[doc(inline)]
-pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
+pub use iter::{RangeFromIter, RangeInclusiveIter, RangeIter};
 
 #[doc(inline)]
 pub use crate::iter::Step;
@@ -89,7 +89,7 @@ impl<Idx: Step> Range<Idx> {
     /// ```
     #[unstable(feature = "new_range_api", issue = "125687")]
     #[inline]
-    pub fn iter(&self) -> IterRange<Idx> {
+    pub fn iter(&self) -> RangeIter<Idx> {
         self.clone().into_iter()
     }
 }
@@ -340,7 +340,7 @@ impl<Idx: Step> RangeInclusive<Idx> {
     /// ```
     #[unstable(feature = "new_range_api", issue = "125687")]
     #[inline]
-    pub fn iter(&self) -> IterRangeInclusive<Idx> {
+    pub fn iter(&self) -> RangeInclusiveIter<Idx> {
         self.clone().into_iter()
     }
 }
@@ -477,7 +477,7 @@ impl<Idx: Step> RangeFrom<Idx> {
     /// ```
     #[unstable(feature = "new_range_api", issue = "125687")]
     #[inline]
-    pub fn iter(&self) -> IterRangeFrom<Idx> {
+    pub fn iter(&self) -> RangeFromIter<Idx> {
         self.clone().into_iter()
     }
 }

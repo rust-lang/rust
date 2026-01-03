@@ -19,39 +19,39 @@ fn declval<T>() -> T {
 
 fn main() {
     declval::<CString>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `CString` will be dropped
+    //~^ ERROR dangling pointer because temporary `CString`
     declval::<String>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+    //~^ ERROR dangling pointer because temporary `String`
     declval::<Vec<u8>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Vec<u8>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Vec<u8>`
     declval::<Box<CString>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<CString>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<CString>`
     declval::<Box<[u8]>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<[u8]>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<[u8]>`
     declval::<Box<str>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<str>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<str>`
     declval::<Box<CStr>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<CStr>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<CStr>`
     declval::<[u8; 10]>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `[u8; 10]` will be dropped
+    //~^ ERROR dangling pointer because temporary `[u8; 10]`
     declval::<Box<[u8; 10]>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<[u8; 10]>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<[u8; 10]>`
     declval::<Box<Vec<u8>>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<Vec<u8>>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<Vec<u8>>`
     declval::<Box<String>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<String>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<String>`
     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Box<Box<Box<Box<[u8]>>>>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Box<Box<Box<Box<[u8]>>>>`
     declval::<Cell<u8>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Cell<u8>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Cell<u8>`
     declval::<MaybeUninit<u8>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `MaybeUninit<u8>` will be dropped
+    //~^ ERROR dangling pointer because temporary `MaybeUninit<u8>`
     declval::<Vec<AsPtrFake>>().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Vec<AsPtrFake>` will be dropped
+    //~^ ERROR dangling pointer because temporary `Vec<AsPtrFake>`
     declval::<UnsafeCell<u8>>().get();
-    //~^ ERROR a dangling pointer will be produced because the temporary `UnsafeCell<u8>` will be dropped
+    //~^ ERROR dangling pointer because temporary `UnsafeCell<u8>`
     declval::<SyncUnsafeCell<u8>>().get();
-    //~^ ERROR a dangling pointer will be produced because the temporary `SyncUnsafeCell<u8>` will be dropped
+    //~^ ERROR dangling pointer because temporary `SyncUnsafeCell<u8>`
     declval::<Box<AsPtrFake>>().as_ptr();
     declval::<AsPtrFake>().as_ptr();
 }

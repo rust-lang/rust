@@ -51,5 +51,6 @@ codegen-units = 1
 lto = "fat"
 
 [profile.bench]
-# Required for iai-callgrind
+# Required for gungraun
 debug = true
+strip = false

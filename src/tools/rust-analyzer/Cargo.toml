@@ -1,10 +1,10 @@
 [workspace]
-members = ["xtask/", "lib/*", "crates/*"]
+members = ["xtask/", "lib/*", "lib/ungrammar/ungrammar2json", "crates/*"]
 exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.88"
+rust-version = "1.91"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -42,7 +42,7 @@ debug = 2
 # lsp-server = { path = "lib/lsp-server" }
 
 
-# ungrammar = { path = "../ungrammar" }
+# ungrammar = { path = "lin/ungrammar" }
 
 # salsa = { path = "../salsa" }
 # salsa-macros = { path = "../salsa/components/salsa-macros" }
@@ -52,7 +52,7 @@ debug = 2
 # local crates
 macros = { path = "./crates/macros", version = "0.0.0" }
 base-db = { path = "./crates/base-db", version = "0.0.0" }
-cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
+cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt", "syntax"] }
 hir = { path = "./crates/hir", version = "0.0.0" }
 hir-def = { path = "./crates/hir-def", version = "0.0.0" }
 hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
@@ -86,14 +86,14 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.137", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.137", default-features = false }
-ra-ap-rustc_index = { version = "0.137", default-features = false }
-ra-ap-rustc_abi = { version = "0.137", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.137", default-features = false }
-ra-ap-rustc_ast_ir = { version = "0.137", default-features = false }
-ra-ap-rustc_type_ir = { version = "0.137", default-features = false }
-ra-ap-rustc_next_trait_solver = { version = "0.137", default-features = false }
+ra-ap-rustc_lexer = { version = "0.143", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.143", default-features = false }
+ra-ap-rustc_index = { version = "0.143", default-features = false }
+ra-ap-rustc_abi = { version = "0.143", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.143", default-features = false }
+ra-ap-rustc_ast_ir = { version = "0.143", default-features = false }
+ra-ap-rustc_type_ir = { version = "0.143", default-features = false }
+ra-ap-rustc_next_trait_solver = { version = "0.143", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -106,7 +106,7 @@ lsp-server = { version = "0.7.9" }
 anyhow = "1.0.98"
 arrayvec = "0.7.6"
 bitflags = "2.9.1"
-cargo_metadata = "0.21.0"
+cargo_metadata = "0.23.0"
 camino = "1.1.10"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
@@ -127,19 +127,21 @@ object = { version = "0.36.7", default-features = false, features = [
     "macho",
     "pe",
 ] }
+postcard = {version = "1.1.3", features = ["alloc"]}
 process-wrap = { version = "8.2.1", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
-rowan = "=0.15.15"
+rowan = "=0.15.17"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.24.0", default-features = true, features = [
+salsa = { version = "0.25.2", default-features = false, features = [
     "rayon",
     "salsa_unstable",
     "macros",
+    "inventory",
 ] }
-salsa-macros = "0.24.0"
+salsa-macros = "0.25.2"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
@@ -154,7 +156,8 @@ smallvec = { version = "1.15.1", features = [
 smol_str = "0.3.2"
 temp-dir = "0.1.16"
 text-size = "1.1.1"
-tracing = "0.1.41"
+toml = "0.9.8"
+tracing = { version = "0.1.41", default-features = false, features = ["std"] }
 tracing-tree = "0.4.0"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "registry",
@@ -167,6 +170,7 @@ tracing-subscriber = { version = "0.3.20", default-features = false, features = 
 triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.5.4"
 xshell = "0.2.7"
+thin-vec = "0.2.14"
 petgraph = { version = "0.8.2", default-features = false }
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
@@ -182,7 +186,7 @@ hashbrown = { version = "0.14.*", features = [
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 unsafe_op_in_unsafe_fn = "warn"
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)', "cfg(no_salsa_async_drops)"] }
 unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"

@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
@@ -261,7 +261,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     if context == hir::Constness::Const { called_in_const } else { called_at_rt };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
-                        Operand::Constant(_) => {
+                        Operand::Constant(_) | Operand::RuntimeChecks(_) => {
                             // There is no good way of extracting a tuple arg from a constant
                             // (const generic stuff) so we just create a temporary and deconstruct
                             // that.
@@ -429,8 +429,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const
-                || tcx.is_const_default_method(def.to_def_id()) =>
+            if tcx.constness(def) == hir::Constness::Const =>
         {
             tcx.mir_const_qualif(def)
         }

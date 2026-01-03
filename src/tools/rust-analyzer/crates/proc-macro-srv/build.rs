@@ -4,8 +4,6 @@
 use std::{env, process::Command};
 
 fn main() {
-    println!("cargo::rustc-check-cfg=cfg(rust_analyzer)");
-
     let rustc = env::var("RUSTC").expect("proc-macro-srv's build script expects RUSTC to be set");
     #[allow(clippy::disallowed_methods)]
     let output = Command::new(rustc).arg("--version").output().expect("rustc --version must run");

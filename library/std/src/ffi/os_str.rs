@@ -13,7 +13,7 @@ use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{cmp, fmt, slice};
 
 /// A type that can represent owned, mutable platform-native strings, but is
@@ -1278,6 +1278,17 @@ impl OsStr {
     pub fn display(&self) -> Display<'_> {
         Display { os_str: self }
     }
+
+    /// Returns the same string as a string slice `&OsStr`.
+    ///
+    /// This method is redundant when used directly on `&OsStr`, but
+    /// it helps dereferencing other string-like types to string slices,
+    /// for example references to `Box<OsStr>` or `Arc<OsStr>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_os_str(&self) -> &OsStr {
+        self
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -1285,8 +1296,7 @@ impl From<&OsStr> for Box<OsStr> {
     /// Copies the string into a newly allocated <code>[Box]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Box<OsStr> {
-        let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
-        unsafe { Box::from_raw(rw) }
+        Box::clone_from_ref(s)
     }
 }
 

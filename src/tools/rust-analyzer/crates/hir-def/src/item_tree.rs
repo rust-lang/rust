@@ -30,6 +30,7 @@
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
 
+mod attrs;
 mod lower;
 mod pretty;
 #[cfg(test)]
@@ -43,25 +44,31 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
-use base_db::Crate;
+use cfg::CfgOptions;
 use hir_expand::{
     ExpandTo, HirFileId,
-    attrs::RawAttrs,
     mod_path::{ModPath, PathKind},
     name::Name,
 };
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
 use rustc_hash::FxHashMap;
-use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
+use span::{
+    AstIdNode, Edition, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SpanAnchor,
+    SyntaxContext,
+};
 use stdx::never;
-use syntax::{SyntaxKind, ast, match_ast};
+use syntax::{SourceFile, SyntaxKind, ast, match_ast};
 use thin_vec::ThinVec;
 use triomphe::Arc;
+use tt::TextRange;
 
-use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
+use crate::{BlockId, Lookup, attrs::parse_extra_crate_attrs, db::DefDatabase};
 
-pub(crate) use crate::item_tree::lower::{lower_use_tree, visibility_from_ast};
+pub(crate) use crate::item_tree::{
+    attrs::*,
+    lower::{lower_use_tree, visibility_from_ast},
+};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct RawVisibilityId(u32);
@@ -86,6 +93,33 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
+fn lower_extra_crate_attrs<'a>(
+    db: &dyn DefDatabase,
+    crate_attrs_as_src: SourceFile,
+    file_id: span::EditionedFileId,
+    cfg_options: &dyn Fn() -> &'a CfgOptions,
+) -> AttrsOrCfg {
+    #[derive(Copy, Clone)]
+    struct FakeSpanMap {
+        file_id: span::EditionedFileId,
+    }
+    impl syntax_bridge::SpanMapper for FakeSpanMap {
+        fn span_for(&self, range: TextRange) -> Span {
+            Span {
+                range,
+                anchor: SpanAnchor {
+                    file_id: self.file_id,
+                    ast_id: NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER,
+                },
+                ctx: SyntaxContext::root(self.file_id.edition()),
+            }
+        }
+    }
+
+    let span_map = FakeSpanMap { file_id };
+    AttrsOrCfg::lower(db, &crate_attrs_as_src, cfg_options, span_map)
+}
+
 #[salsa_macros::tracked(returns(deref))]
 pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
@@ -96,7 +130,19 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
     let mut item_tree = match_ast! {
         match syntax {
             ast::SourceFile(file) => {
-                let top_attrs = RawAttrs::new(db, &file, ctx.span_map());
+                let krate = file_id.krate(db);
+                let root_file_id = krate.root_file_id(db);
+                let extra_top_attrs = (file_id == root_file_id).then(|| {
+                    parse_extra_crate_attrs(db, krate).map(|crate_attrs| {
+                        let file_id = root_file_id.editioned_file_id(db);
+                        lower_extra_crate_attrs(db, crate_attrs, file_id, &|| ctx.cfg_options())
+                    })
+                }).flatten();
+                let top_attrs = match extra_top_attrs {
+                    Some(attrs @ AttrsOrCfg::Enabled { .. }) => attrs.merge(ctx.lower_attrs(&file)),
+                    Some(attrs @ AttrsOrCfg::CfgDisabled(_)) => attrs,
+                    None => ctx.lower_attrs(&file)
+                };
                 let mut item_tree = ctx.lower_module_items(&file);
                 item_tree.top_attrs = top_attrs;
                 item_tree
@@ -132,7 +178,7 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
                     attrs: FxHashMap::default(),
                     small_data: FxHashMap::default(),
                     big_data: FxHashMap::default(),
-                    top_attrs: RawAttrs::EMPTY,
+                    top_attrs: AttrsOrCfg::empty(),
                     vis: ItemVisibilities { arena: ThinVec::new() },
                 })
             })
@@ -168,7 +214,7 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
                     attrs: FxHashMap::default(),
                     small_data: FxHashMap::default(),
                     big_data: FxHashMap::default(),
-                    top_attrs: RawAttrs::EMPTY,
+                    top_attrs: AttrsOrCfg::empty(),
                     vis: ItemVisibilities { arena: ThinVec::new() },
                 })
             })
@@ -182,8 +228,8 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Box<[ModItemId]>,
-    top_attrs: RawAttrs,
-    attrs: FxHashMap<FileAstId<ast::Item>, RawAttrs>,
+    top_attrs: AttrsOrCfg,
+    attrs: FxHashMap<FileAstId<ast::Item>, AttrsOrCfg>,
     vis: ItemVisibilities,
     big_data: FxHashMap<FileAstId<ast::Item>, BigModItem>,
     small_data: FxHashMap<FileAstId<ast::Item>, SmallModItem>,
@@ -197,26 +243,12 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub(crate) fn top_level_raw_attrs(&self) -> &RawAttrs {
+    pub(crate) fn top_level_attrs(&self) -> &AttrsOrCfg {
         &self.top_attrs
     }
 
-    /// Returns the inner attributes of the source file.
-    pub(crate) fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
-        Attrs::expand_cfg_attr(db, krate, self.top_attrs.clone())
-    }
-
-    pub(crate) fn raw_attrs(&self, of: FileAstId<ast::Item>) -> &RawAttrs {
-        self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
-    }
-
-    pub(crate) fn attrs(
-        &self,
-        db: &dyn DefDatabase,
-        krate: Crate,
-        of: FileAstId<ast::Item>,
-    ) -> Attrs {
-        Attrs::expand_cfg_attr(db, krate, self.raw_attrs(of).clone())
+    pub(crate) fn attrs(&self, of: FileAstId<ast::Item>) -> Option<&AttrsOrCfg> {
+        self.attrs.get(&of)
     }
 
     /// Returns a count of a few, expensive items.

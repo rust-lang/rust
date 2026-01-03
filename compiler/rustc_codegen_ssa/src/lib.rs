@@ -24,7 +24,7 @@ use std::sync::Arc;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, NativeLibKind};
+use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_metadata::EncodedMetadata;
@@ -225,7 +225,7 @@ pub struct CrateInfo {
     pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
     pub dependency_formats: Arc<Dependencies>,
-    pub windows_subsystem: Option<String>,
+    pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,
     pub metadata_symbol: String,

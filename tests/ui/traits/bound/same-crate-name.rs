@@ -32,13 +32,15 @@ fn main() {
         extern crate crate_a1 as a;
         a::try_foo(foo);
         //~^ ERROR E0277
-        //~| HELP trait impl with same name found
-        //~| NOTE perhaps two different versions of crate `crate_a2`
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| HELP you can use `cargo tree` to explore your dependency tree
 
         // We don't want to see the "version mismatch" help message here
         // because `implements_no_traits` has no impl for `Foo`
         a::try_foo(implements_no_traits);
         //~^ ERROR E0277
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| HELP you can use `cargo tree` to explore your dependency tree
 
         // We don't want to see the "version mismatch" help message here
         // because `other_variant_implements_mismatched_trait`
@@ -46,6 +48,8 @@ fn main() {
         // only for its `<usize>` variant.
         a::try_foo(other_variant_implements_mismatched_trait);
         //~^ ERROR E0277
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| HELP you can use `cargo tree` to explore your dependency tree
 
         // We don't want to see the "version mismatch" help message here
         // because `ImplementsTraitForUsize` only has
@@ -53,5 +57,7 @@ fn main() {
         a::try_foo(other_variant_implements_correct_trait);
         //~^ ERROR E0277
         //~| HELP the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| HELP you can use `cargo tree` to explore your dependency tree
     }
 }

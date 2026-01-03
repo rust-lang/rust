@@ -9,6 +9,9 @@ LL |     i
    = help: the trait `PartialEq<Bar<'b, 'static>>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `Foo<'static, 'b>`
@@ -22,6 +25,9 @@ LL |     i
    = help: the trait `PartialEq<Foo<'static, 'b>>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `Moo<'static, 'a>`
@@ -35,6 +41,9 @@ LL |     i
    = help: the trait `PartialEq<Moo<'static, 'a>>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

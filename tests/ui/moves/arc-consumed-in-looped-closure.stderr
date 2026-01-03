@@ -1,0 +1,27 @@
+error[E0382]: use of moved value: `results`
+  --> $DIR/arc-consumed-in-looped-closure.rs:30:22
+   |
+LL |     let results = Arc::new(Mutex::new(Vec::new()));
+   |         ------- move occurs because `results` has type `Arc<std::sync::Mutex<Vec<i32>>>`, which does not implement the `Copy` trait
+...
+LL |     for i in 0..20 {
+   |     -------------- inside of this loop
+LL |         // let results = Arc::clone(&results); // Forgot this.
+LL |         pool.execute(move || {
+   |                      ^^^^^^^ value moved into closure here, in previous iteration of loop
+...
+LL |             let mut r = results.lock().unwrap();
+   |                         ------- use occurs due to use in closure
+   |
+help: consider cloning the value before moving it into the closure
+   |
+LL ~         let value = results.clone();
+LL ~         pool.execute(move || {
+LL |
+LL |
+LL ~             let mut r = value.lock().unwrap();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

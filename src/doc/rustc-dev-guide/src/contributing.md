@@ -28,7 +28,7 @@ conditions that trigger the bug, or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
 
-Opening an issue is as easy as following [thi link][create an issue] and filling out the fields
+Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
 ## Bug fixes or "normal" code changes
@@ -52,15 +52,18 @@ the CI to build and test their PR (e.g. when developing on a slow machine).
 Rust has strong backwards-compatibility guarantees.
 Thus, new features can't just be implemented directly in stable Rust.
 Instead, we have 3 release channels: stable, beta, and nightly.
+See [The Rust Book] for more details on Rust’s train release model.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
-- **Nightly**: follows the `master` branch of the repo.
+- **Nightly**: follows the `main` branch of the repo.
   This is the only channel where unstable features are intended to be used,
   which happens via opt-in feature gates.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
+
+[The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
 
 ### Breaking changes
 
@@ -97,7 +100,7 @@ before approving).
 This is yet another bot that will compile a collection of
 benchmarks on a compiler with your changes.
 The numbers are reported
-[here][perf], and you can see a comparison of your changes against the latest master.
+[here][perf], and you can see a comparison of your changes against the latest `main`.
 
 > For an introduction to the performance of Rust code in general
 > which would also be useful in rustc development, see [The Rust Performance Book].
@@ -153,7 +156,7 @@ We have [a chapter](git.md) on how to use Git when contributing to Rust.
 
 ### Keeping your branch up-to-date
 
-The CI in rust-lang/rust applies your patches directly against the current master,
+The CI in rust-lang/rust applies your patches directly against current `main`,
 not against the commit your branch is based on.
 This can lead to unexpected failures
 if your branch is outdated, even when there are no explicit merge conflicts.
@@ -164,7 +167,7 @@ During review, make incremental commits to address feedback.
 Prefer to squash or rebase only at the end, or when a reviewer requests it.
 
 When updating, use `git push --force-with-lease` and leave a brief comment explaining what changed.
-Some repos prefer merging from `upstream/master` instead of rebasing;
+Some repos prefer merging from `upstream/main` instead of rebasing;
 follow the project's conventions.
 See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
 
@@ -264,7 +267,7 @@ It will look something like this:
 This tells [@bors], our lovable integration bot, that your pull request has been approved.
 The PR then enters the [merge queue], where [@bors]
 will run *all* the tests on *every* platform we support.
-If it all works out, [@bors] will merge your code into `master` and close the pull request.
+If it all works out, [@bors] will merge your code into `main` and close the pull request.
 
 Depending on the scale of the change, you may see a slightly different form of `r+`:
 
@@ -288,7 +291,7 @@ You are now ready to file a pull request (PR)?
 Great!
 Here are a few points you should be aware of.
 
-All pull requests should be filed against the `master` branch,
+All pull requests should be filed against the `main` branch,
 unless you know for sure that you should target a different branch.
 
 Run some style checks before you submit the PR:
@@ -303,7 +306,7 @@ Rust follows a _no merge-commit policy_,
 meaning that when you encounter merge conflicts,
 you are expected to always rebase instead of merging.
 For example,
-always use rebase when bringing the latest changes from the master branch to your feature branch.
+always use rebase when bringing the latest changes from the `main` branch to your feature branch.
 If your PR contains merge commits, it will get marked as `has-merge-commits`.
 Once you have removed the merge commits, e.g., through an interactive rebase, you
 should remove the label again:
@@ -328,7 +331,7 @@ the issue in question.
 However, if your PR fixes a stable-to-beta or stable-to-stable regression and has
 been accepted for a beta and/or stable backport (i.e., it is marked `beta-accepted`
 and/or `stable-accepted`), please do *not* use any such keywords since we don't
-want the corresponding issue to get auto-closed once the fix lands on master.
+want the corresponding issue to get auto-closed once the fix lands on `main`.
 Please update the PR description while still mentioning the issue somewhere.
 For example, you could write `Fixes (after beta backport) #NNN.`.
 
@@ -465,7 +468,7 @@ Just a few things to keep in mind:
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
-see [the rustc-dev-guide working group documentation].
+see [the rustc-dev-guide team documentation].
 
 ## Issue triage
 
@@ -482,7 +485,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
-[the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
+[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
 ### rfcbot labels
 

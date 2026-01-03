@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use super::{IntErrorKind, ParseIntError};
-use crate::clone::UseCloned;
+use crate::clone::{TrivialClone, UseCloned};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Destruct, Freeze, StructuralPartialEq};
@@ -198,6 +198,10 @@ impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -1653,7 +1657,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
                       without modifying the original"]
         #[inline]
         pub const fn ilog10(self) -> u32 {
-            super::int_log10::$Int(self.get())
+            super::int_log10::$Int(self)
         }
 
         /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1776,6 +1780,33 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         pub const fn cast_signed(self) -> NonZero<$Sint> {
             // SAFETY: `self.get()` can't be zero
             unsafe { NonZero::new_unchecked(self.get().cast_signed()) }
+        }
+
+        /// Returns the minimum number of bits required to represent `self`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(uint_bit_width)]
+        ///
+        /// # use core::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::MIN.bit_width(), NonZero::new(1)?);")]
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b111)?.bit_width(), NonZero::new(3)?);")]
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1110)?.bit_width(), NonZero::new(4)?);")]
+        /// # Some(())
+        /// # }
+        /// ```
+        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn bit_width(self) -> NonZero<u32> {
+            // SAFETY: Since `self.leading_zeros()` is always less than
+            // `Self::BITS`, this subtraction can never be zero.
+            unsafe { NonZero::new_unchecked(Self::BITS - self.leading_zeros()) }
         }
     };
 

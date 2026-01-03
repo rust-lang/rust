@@ -46,8 +46,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom,
 use crate::path::{Path, PathBuf};
 use crate::sealed::Sealed;
 use crate::sync::Arc;
-use crate::sys::fs as fs_imp;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
 
@@ -1324,7 +1323,7 @@ impl Read for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
@@ -1385,7 +1384,7 @@ impl Write for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
@@ -2918,7 +2917,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::canonicalize(path.as_ref())
 }
 
-/// Creates a new, empty directory at the provided path
+/// Creates a new, empty directory at the provided path.
 ///
 /// # Platform-specific behavior
 ///

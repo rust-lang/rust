@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, CodeModel, LinkSelfContainedDefault, LldFlavor, RelocModel, RelroLevel, Target, base,
+    Arch, CodeModel, LinkSelfContainedDefault, RelocModel, RelroLevel, Target, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -15,7 +15,6 @@ pub(crate) fn target() -> Target {
     base.relro_level = RelroLevel::Full;
     base.static_position_independent_executables = true;
     base.relocation_model = RelocModel::Pic;
-    base.lld_flavor_json = LldFlavor::Ld;
     base.link_self_contained = LinkSelfContainedDefault::True;
     base.dynamic_linking = false;
     base.crt_static_default = true;

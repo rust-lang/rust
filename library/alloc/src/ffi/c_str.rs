@@ -766,8 +766,7 @@ impl From<&CStr> for Box<CStr> {
     /// Converts a `&CStr` into a `Box<CStr>`,
     /// by copying the contents into a newly allocated [`Box`].
     fn from(s: &CStr) -> Box<CStr> {
-        let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+        Box::clone_from_ref(s)
     }
 }
 

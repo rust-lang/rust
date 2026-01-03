@@ -22,5 +22,23 @@ error: transmute from a reference to a reference
 LL |         let alt_slice: &[u32] = unsafe { std::mem::transmute(bytes) };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(bytes as *const [u8] as *const [u32])`
 
-error: aborting due to 3 previous errors
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ref_to_ref.rs:35:29
+   |
+LL |         let _: *const f32 = std::mem::transmute(call!(make_ptr));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast` instead
+   |
+LL -         let _: *const f32 = std::mem::transmute(call!(make_ptr));
+LL +         let _: *const f32 = call!(make_ptr).cast::<f32>();
+   |
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ref_to_ref.rs:37:23
+   |
+LL |         let _: &f32 = std::mem::transmute(take_ref!(1u32));
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(take_ref!(1u32) as *const u32 as *const f32)`
+
+error: aborting due to 5 previous errors
 

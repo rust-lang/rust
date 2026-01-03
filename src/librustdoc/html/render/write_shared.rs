@@ -14,7 +14,8 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
-use std::ffi::OsString;
+use std::cmp::Ordering;
+use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
 use std::iter::once;
@@ -47,6 +48,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::format::{print_impl, print_path};
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
+use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
 use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
@@ -66,8 +68,14 @@ pub(crate) fn write_shared(
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    let search_index =
-        build_index(krate, &mut cx.shared.cache, tcx, &cx.dst, &cx.shared.resource_suffix)?;
+    let search_index = build_index(
+        krate,
+        &mut cx.shared.cache,
+        tcx,
+        &cx.dst,
+        &cx.shared.resource_suffix,
+        &opt.should_merge,
+    )?;
 
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
@@ -84,9 +92,11 @@ pub(crate) fn write_shared(
     };
 
     if let Some(parts_out_dir) = &opt.parts_out_dir {
-        create_parents(&parts_out_dir.0)?;
+        let mut parts_out_file = parts_out_dir.0.clone();
+        parts_out_file.push(&format!("{crate_name}.json"));
+        create_parents(&parts_out_file)?;
         try_err!(
-            fs::write(&parts_out_dir.0, serde_json::to_string(&info).unwrap()),
+            fs::write(&parts_out_file, serde_json::to_string(&info).unwrap()),
             &parts_out_dir.0
         );
     }
@@ -238,13 +248,25 @@ impl CrateInfo {
     pub(crate) fn read_many(parts_paths: &[PathToParts]) -> Result<Vec<Self>, Error> {
         parts_paths
             .iter()
-            .map(|parts_path| {
-                let path = &parts_path.0;
-                let parts = try_err!(fs::read(path), &path);
-                let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), &path);
-                Ok::<_, Error>(parts)
+            .fold(Ok(Vec::new()), |acc, parts_path| {
+                let mut acc = acc?;
+                let dir = &parts_path.0;
+                acc.append(&mut try_err!(std::fs::read_dir(dir), dir.as_path())
+                    .filter_map(|file| {
+                        let to_crate_info = |file: Result<std::fs::DirEntry, std::io::Error>| -> Result<Option<CrateInfo>, Error> {
+                            let file = try_err!(file, dir.as_path());
+                            if file.path().extension() != Some(OsStr::new("json")) {
+                                return Ok(None);
+                            }
+                            let parts = try_err!(fs::read(file.path()), file.path());
+                            let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), file.path());
+                            Ok(Some(parts))
+                        };
+                        to_crate_info(file).transpose()
+                    })
+                    .collect::<Result<Vec<CrateInfo>, Error>>()?);
+                Ok(acc)
             })
-            .collect::<Result<Vec<CrateInfo>, Error>>()
     }
 }
 
@@ -568,18 +590,14 @@ impl TypeAliasPart {
                         if let Some(ret) = &mut ret {
                             ret.aliases.push(type_alias_fqp);
                         } else {
-                            let target_did = impl_
-                                .inner_impl()
-                                .trait_
-                                .as_ref()
-                                .map(|trait_| trait_.def_id())
-                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let target_trait_did =
+                                impl_.inner_impl().trait_.as_ref().map(|trait_| trait_.def_id());
                             let provided_methods;
-                            let assoc_link = if let Some(target_did) = target_did {
+                            let assoc_link = if let Some(target_trait_did) = target_trait_did {
                                 provided_methods =
                                     impl_.inner_impl().provided_trait_methods(cx.tcx());
                                 AssocItemLink::GotoSource(
-                                    ItemId::DefId(target_did),
+                                    ItemId::DefId(target_trait_did),
                                     &provided_methods,
                                 )
                             } else {
@@ -651,7 +669,7 @@ impl TraitAliasPart {
     fn blank() -> SortedTemplate<<Self as CciPart>::FileFormat> {
         SortedTemplate::from_before_after(
             r"(function() {
-    var implementors = Object.fromEntries([",
+    const implementors = Object.fromEntries([",
             r"]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
@@ -704,10 +722,12 @@ impl TraitAliasPart {
                     {
                         None
                     } else {
+                        let impl_ = imp.inner_impl();
                         Some(Implementor {
-                            text: print_impl(imp.inner_impl(), false, cx).to_string(),
+                            text: print_impl(impl_, false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
+                            is_negative: impl_.is_negative_trait_impl(),
                         })
                     }
                 })
@@ -726,8 +746,22 @@ impl TraitAliasPart {
             }
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
-            let part = OrderedJson::array_sorted(
-                implementors.map(|implementor| OrderedJson::serialize(implementor).unwrap()),
+            let mut implementors = implementors.collect::<Vec<_>>();
+            implementors.sort_unstable_by(|a, b| {
+                // We sort negative impls first.
+                match (a.is_negative, b.is_negative) {
+                    (false, true) => Ordering::Greater,
+                    (true, false) => Ordering::Less,
+                    _ => compare_names(&a.text, &b.text),
+                }
+            });
+
+            let part = OrderedJson::array_unsorted(
+                implementors
+                    .iter()
+                    .map(OrderedJson::serialize)
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap(),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -739,6 +773,7 @@ struct Implementor {
     text: String,
     synthetic: bool,
     types: Vec<String>,
+    is_negative: bool,
 }
 
 impl Serialize for Implementor {
@@ -748,6 +783,7 @@ impl Serialize for Implementor {
     {
         let mut seq = serializer.serialize_seq(None)?;
         seq.serialize_element(&self.text)?;
+        seq.serialize_element(if self.is_negative { &1 } else { &0 })?;
         if self.synthetic {
             seq.serialize_element(&1)?;
             seq.serialize_element(&self.types)?;

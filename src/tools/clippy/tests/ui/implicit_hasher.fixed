@@ -109,3 +109,27 @@ pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32,
 //~^ implicit_hasher
 
 fn main() {}
+
+mod issue16128 {
+    use super::*;
+
+    macro_rules! times_ten {
+        ($num:expr) => {
+            $num * 10
+        };
+    }
+
+    impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u64> for HashMap<K, V, S> {
+        //~^ implicit_hasher
+        fn make() -> (Self, Self) {
+            (HashMap::default(), HashMap::with_capacity_and_hasher(times_ten!(5), Default::default()))
+        }
+    }
+
+    impl<V: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<u64> for HashSet<V, S> {
+        //~^ implicit_hasher
+        fn make() -> (Self, Self) {
+            (HashSet::default(), HashSet::with_capacity_and_hasher(times_ten!(5), Default::default()))
+        }
+    }
+}

@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `**t1`, which is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:9:5
    |
 LL |     **t1 = 22;
-   |     ^^^^^^^^^ `t1` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^^ `t1` is a `&` reference, so it cannot be written to
    |
 help: consider specifying this binding's type
    |
@@ -23,7 +23,7 @@ error[E0596]: cannot borrow `**t0` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:26
    |
 LL |     let x:  &mut isize = &mut **t0;
-   |                          ^^^^^^^^^ `t0` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                          ^^^^^^^^^ `t0` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

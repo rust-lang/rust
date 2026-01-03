@@ -1,6 +1,4 @@
 //@only-target: linux android illumos
-//~^ERROR: deadlocked
-//~^^ERROR: deadlocked
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 

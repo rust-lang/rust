@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:65:10
    |
 LL |     &mut x.y
-   |          ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |          ^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -45,7 +45,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:92:5
    |
 LL |     x.y = 3;
-   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -77,7 +77,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:121:5
    |
 LL |     x.y_mut()
-   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -99,7 +99,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:133:6
    |
 LL |     *x.y_mut() = 3;
-   |      ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |      ^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

@@ -1,5 +1,5 @@
 error[E0599]: no function or associated item named `try_from` found for type parameter `T` in the current scope
-  --> $DIR/missing-method-on-type-parameter.rs:3:8
+  --> $DIR/missing-method-on-type-parameter.rs:4:8
    |
 LL | fn x<T: Copy>() {
    |      - function or associated item `try_from` not found for this type parameter

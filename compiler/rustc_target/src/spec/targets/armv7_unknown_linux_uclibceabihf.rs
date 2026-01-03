@@ -1,4 +1,4 @@
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for uclibc Linux on ARMv7 without NEON or
 // thumb-mode. See the thumbv7neon variant for enabling both.
@@ -19,11 +19,11 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
             cpu: "generic".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
-            abi: "eabihf".into(),
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             ..base
         },

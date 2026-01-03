@@ -15,33 +15,36 @@ use paths::Utf8PathBuf;
 use process_wrap::std::{StdChildWrapper, StdCommandWrap};
 use stdx::process::streaming_output;
 
-/// Cargo output is structured as one JSON per line. This trait abstracts parsing one line of
-/// cargo output into a Rust data type
-pub(crate) trait CargoParser<T>: Send + 'static {
+/// This trait abstracts parsing one line of JSON output into a Rust
+/// data type.
+///
+/// This is useful for `cargo check` output, `cargo test` output, as
+/// well as custom discover commands.
+pub(crate) trait JsonLinesParser<T>: Send + 'static {
     fn from_line(&self, line: &str, error: &mut String) -> Option<T>;
     fn from_eof(&self) -> Option<T>;
 }
 
-struct CargoActor<T> {
-    parser: Box<dyn CargoParser<T>>,
+struct CommandActor<T> {
+    parser: Box<dyn JsonLinesParser<T>>,
     sender: Sender<T>,
     stdout: ChildStdout,
     stderr: ChildStderr,
 }
 
-impl<T: Sized + Send + 'static> CargoActor<T> {
+impl<T: Sized + Send + 'static> CommandActor<T> {
     fn new(
-        parser: impl CargoParser<T>,
+        parser: impl JsonLinesParser<T>,
         sender: Sender<T>,
         stdout: ChildStdout,
         stderr: ChildStderr,
     ) -> Self {
         let parser = Box::new(parser);
-        CargoActor { parser, sender, stdout, stderr }
+        CommandActor { parser, sender, stdout, stderr }
     }
 }
 
-impl<T: Sized + Send + 'static> CargoActor<T> {
+impl<T: Sized + Send + 'static> CommandActor<T> {
     fn run(self, outfile: Option<Utf8PathBuf>) -> io::Result<(bool, String)> {
         // We manually read a line at a time, instead of using serde's
         // stream deserializers, because the deserializer cannot recover
@@ -113,6 +116,9 @@ impl<T: Sized + Send + 'static> CargoActor<T> {
     }
 }
 
+/// 'Join On Drop' wrapper for a child process.
+///
+/// This wrapper kills the process when the wrapper is dropped.
 struct JodGroupChild(Box<dyn StdChildWrapper>);
 
 impl Drop for JodGroupChild {
@@ -122,9 +128,9 @@ impl Drop for JodGroupChild {
     }
 }
 
-/// A handle to a cargo process used for fly-checking.
+/// A handle to a shell command, such as cargo for diagnostics (flycheck).
 pub(crate) struct CommandHandle<T> {
-    /// The handle to the actual cargo process. As we cannot cancel directly from with
+    /// The handle to the actual child process. As we cannot cancel directly from with
     /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodGroupChild,
     thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
@@ -147,7 +153,7 @@ impl<T> fmt::Debug for CommandHandle<T> {
 impl<T: Sized + Send + 'static> CommandHandle<T> {
     pub(crate) fn spawn(
         mut command: Command,
-        parser: impl CargoParser<T>,
+        parser: impl JsonLinesParser<T>,
         sender: Sender<T>,
         out_file: Option<Utf8PathBuf>,
     ) -> std::io::Result<Self> {
@@ -167,7 +173,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         let stdout = child.0.stdout().take().unwrap();
         let stderr = child.0.stderr().take().unwrap();
 
-        let actor = CargoActor::<T>::new(parser, sender, stdout, stderr);
+        let actor = CommandActor::<T>::new(parser, sender, stdout, stderr);
         let thread =
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "CommandHandle")
                 .spawn(move || actor.run(out_file))
@@ -189,6 +195,24 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
             Err(io::Error::other(format!(
                 "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
             )))
+        }
+    }
+
+    pub(crate) fn has_exited(&mut self) -> bool {
+        match self.child.0.try_wait() {
+            Ok(Some(_exit_code)) => {
+                // We have an exit code.
+                true
+            }
+            Ok(None) => {
+                // Hasn't exited yet.
+                false
+            }
+            Err(_) => {
+                // Couldn't get an exit code. Assume that we've
+                // exited.
+                true
+            }
         }
     }
 }

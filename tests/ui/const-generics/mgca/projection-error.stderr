@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/projection-error.rs:14:17
    |
 LL | pub trait Tr<A> {
@@ -16,7 +16,7 @@ help: you might be missing a type parameter
 LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |            +++
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/projection-error.rs:14:29
    |
 LL | pub trait Tr<A> {
@@ -36,4 +36,4 @@ LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

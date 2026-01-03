@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
-use crate::ty::{Align, Ty, VariantIdx};
-use crate::{Error, Opaque, error};
+use crate::ty::{Align, Ty, VariantIdx, index_impl};
+use crate::{Error, Opaque, ThreadLocalIndex, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -109,21 +109,13 @@ impl LayoutShape {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct Layout(usize);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Layout(usize, ThreadLocalIndex);
+index_impl!(Layout);
 
 impl Layout {
     pub fn shape(self) -> LayoutShape {
         with(|cx| cx.layout_shape(self))
-    }
-}
-
-impl crate::IndexedVal for Layout {
-    fn to_val(index: usize) -> Self {
-        Layout(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
     }
 }
 
@@ -233,6 +225,10 @@ pub enum ValueAbi {
         element: Scalar,
         count: u64,
     },
+    ScalableVector {
+        element: Scalar,
+        count: u64,
+    },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
@@ -243,7 +239,15 @@ impl ValueAbi {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            ValueAbi::Scalar(_) | ValueAbi::ScalarPair(..) | ValueAbi::Vector { .. } => false,
+            ValueAbi::Scalar(_)
+            | ValueAbi::ScalarPair(..)
+            | ValueAbi::Vector { .. }
+            // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
+            // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
+            // fully implemented, scalable vectors will remain `Sized`, they just won't be
+            // `const Sized` - whether `is_unsized` continues to return `false` at that point will
+            // need to be revisited and will depend on what `is_unsized` is used for.
+            | ValueAbi::ScalableVector { .. } => false,
             ValueAbi::Aggregate { sized } => !sized,
         }
     }

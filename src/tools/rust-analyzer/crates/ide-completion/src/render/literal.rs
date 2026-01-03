@@ -180,7 +180,7 @@ impl Variant {
         }
     }
 
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation<'_>> {
         match self {
             Variant::Struct(it) => it.docs(db),
             Variant::EnumVariant(it) => it.docs(db),

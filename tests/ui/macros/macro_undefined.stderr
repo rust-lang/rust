@@ -5,7 +5,12 @@ LL |     macro_rules! kl {
    |     --------------- similarly named macro `kl` defined here
 ...
 LL |     k!();
-   |     ^ help: a macro with a similar name exists: `kl`
+   |     ^
+   |
+help: a macro with a similar name exists
+   |
+LL |     kl!();
+   |      +
 
 error: aborting due to 1 previous error
 

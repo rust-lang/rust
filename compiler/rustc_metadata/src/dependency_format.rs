@@ -242,7 +242,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == CrateDepKind::Explicit
+            && tcx.dep_kind(cnum) == CrateDepKind::Unconditional
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
@@ -355,8 +355,8 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     for &cnum in tcx.crates(()) {
         assert_eq!(
             ret.push(match tcx.dep_kind(cnum) {
-                CrateDepKind::Explicit => Linkage::Static,
-                CrateDepKind::MacrosOnly | CrateDepKind::Implicit => Linkage::NotLinked,
+                CrateDepKind::Unconditional => Linkage::Static,
+                CrateDepKind::MacrosOnly | CrateDepKind::Conditional => Linkage::NotLinked,
             }),
             cnum
         );

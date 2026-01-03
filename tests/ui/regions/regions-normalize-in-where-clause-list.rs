@@ -25,6 +25,7 @@ fn bar<'a, 'b>()
 where
     <() as Project<'a, 'b>>::Item: Eq,
     //~^ ERROR cannot infer
+    //~| ERROR cannot infer
 {
 }
 

@@ -141,8 +141,6 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
   ...
 - Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`
-- WASM: `wasm32-bare` matches `wasm32-unknown-unknown`. `emscripten` also
-  matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
 - Stage: `stage1`, `stage2`
@@ -191,6 +189,10 @@ settings:
   assertions.
 - `needs-std-debug-assertions` — ignores if std was not built with debug
   assertions.
+- `ignore-std-remap-debuginfo` — ignores if std was built with remapping of
+  it's sources.
+- `needs-std-remap-debugino` — ignores if std was not built with remapping of
+  it's sources.
 - `ignore-rustc-debug-assertions` — ignores if rustc was built with debug
   assertions.
 - `needs-rustc-debug-assertions` — ignores if rustc was not built with debug
@@ -211,6 +213,8 @@ settings:
   that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
   flag. 
 - `needs-backends` — only runs the test if current codegen backend is listed.
+- `needs-offload` — ignores if our LLVM backend was not built with offload support.
+- `needs-enzyme` — ignores if our Enzyme submodule was not built.
 
 The following directives will check LLVM support:
 
@@ -275,7 +279,9 @@ This affects which edition is used by `./x test` to run the test.
 For example:
 
 - A test with the `//@ edition: 2018` directive will only run under the 2018 edition.
-- A test with the `//@ edition: 2015..2021` directive can be run under the 2015, 2018, and 2021 editions.
+- A test with the `//@ edition: 2015..2021` directive can be run under the 2015 and the 2018 edition,
+  so the upper bound is exclusive just like in Rust
+  (note that there's no equivalent to Rust's `..=` where the upper bound is inclusive).
   However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
 - A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
   However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).

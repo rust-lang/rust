@@ -4,8 +4,8 @@ error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
 LL | impl<TA> Pins<TA> for NoPin {}
    | --------------------------- first implementation here
 ...
-LL | impl<USART, T> Pins<USART> for T where T: PinA<USART, A = { &() }> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoPin`
+LL | impl<USART, T> Pins<USART> for T where T: PinA<USART, A = const { &() }> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoPin`
    |
    = note: downstream crates may implement trait `PinA<_>` for type `NoPin`
 

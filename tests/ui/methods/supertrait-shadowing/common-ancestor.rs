@@ -2,8 +2,8 @@
 //@ check-run-results
 
 #![feature(supertrait_item_shadowing)]
-#![warn(supertrait_item_shadowing_usage)]
-#![warn(supertrait_item_shadowing_definition)]
+#![warn(resolving_to_items_shadowing_supertrait_items)]
+#![warn(shadowing_supertrait_items)]
 #![allow(dead_code)]
 
 trait A {

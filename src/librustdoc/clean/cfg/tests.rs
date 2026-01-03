@@ -1,21 +1,55 @@
 use rustc_ast::ast::LitIntType;
 use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, StrStyle};
 use rustc_data_structures::thin_vec::thin_vec;
+use rustc_hir::attrs::CfgEntry;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, create_default_session_globals_then};
 
 use super::*;
 
-fn word_cfg(s: &str) -> Cfg {
-    Cfg::Cfg(Symbol::intern(s), None)
+fn word_cfg(name: &str) -> Cfg {
+    Cfg(word_cfg_e(name))
+}
+
+fn word_cfg_e(name: &str) -> CfgEntry {
+    CfgEntry::NameValue { name: Symbol::intern(name), value: None, span: DUMMY_SP }
 }
 
 fn name_value_cfg(name: &str, value: &str) -> Cfg {
-    Cfg::Cfg(Symbol::intern(name), Some(Symbol::intern(value)))
+    Cfg(name_value_cfg_e(name, value))
+}
+
+fn name_value_cfg_e(name: &str, value: &str) -> CfgEntry {
+    CfgEntry::NameValue {
+        name: Symbol::intern(name),
+
+        value: Some(Symbol::intern(value)),
+        span: DUMMY_SP,
+    }
 }
 
 fn dummy_lit(symbol: Symbol, kind: LitKind) -> MetaItemInner {
     MetaItemInner::Lit(MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP })
+}
+
+fn cfg_all(v: ThinVec<CfgEntry>) -> Cfg {
+    Cfg(cfg_all_e(v))
+}
+
+fn cfg_all_e(v: ThinVec<CfgEntry>) -> CfgEntry {
+    CfgEntry::All(v, DUMMY_SP)
+}
+
+fn cfg_any(v: ThinVec<CfgEntry>) -> Cfg {
+    Cfg(cfg_any_e(v))
+}
+
+fn cfg_any_e(v: ThinVec<CfgEntry>) -> CfgEntry {
+    CfgEntry::Any(v, DUMMY_SP)
+}
+
+fn cfg_not(v: CfgEntry) -> Cfg {
+    Cfg(CfgEntry::Not(Box::new(v), DUMMY_SP))
 }
 
 fn dummy_meta_item_word(name: &str) -> MetaItemInner {
@@ -63,40 +97,48 @@ macro_rules! dummy_meta_item_list {
     };
 }
 
+fn cfg_true() -> Cfg {
+    Cfg(CfgEntry::Bool(true, DUMMY_SP))
+}
+
+fn cfg_false() -> Cfg {
+    Cfg(CfgEntry::Bool(false, DUMMY_SP))
+}
+
 #[test]
 fn test_cfg_not() {
     create_default_session_globals_then(|| {
-        assert_eq!(!Cfg::False, Cfg::True);
-        assert_eq!(!Cfg::True, Cfg::False);
-        assert_eq!(!word_cfg("test"), Cfg::Not(Box::new(word_cfg("test"))));
+        assert_eq!(!cfg_false(), cfg_true());
+        assert_eq!(!cfg_true(), cfg_false());
+        assert_eq!(!word_cfg("test"), cfg_not(word_cfg_e("test")));
         assert_eq!(
-            !Cfg::All(vec![word_cfg("a"), word_cfg("b")]),
-            Cfg::Not(Box::new(Cfg::All(vec![word_cfg("a"), word_cfg("b")])))
+            !cfg_all(thin_vec![word_cfg_e("a"), word_cfg_e("b")]),
+            cfg_not(cfg_all_e(thin_vec![word_cfg_e("a"), word_cfg_e("b")]))
         );
         assert_eq!(
-            !Cfg::Any(vec![word_cfg("a"), word_cfg("b")]),
-            Cfg::Not(Box::new(Cfg::Any(vec![word_cfg("a"), word_cfg("b")])))
+            !cfg_any(thin_vec![word_cfg_e("a"), word_cfg_e("b")]),
+            cfg_not(cfg_any_e(thin_vec![word_cfg_e("a"), word_cfg_e("b")]))
         );
-        assert_eq!(!Cfg::Not(Box::new(word_cfg("test"))), word_cfg("test"));
+        assert_eq!(!cfg_not(word_cfg_e("test")), word_cfg("test"));
     })
 }
 
 #[test]
 fn test_cfg_and() {
     create_default_session_globals_then(|| {
-        let mut x = Cfg::False;
-        x &= Cfg::True;
-        assert_eq!(x, Cfg::False);
+        let mut x = cfg_false();
+        x &= cfg_true();
+        assert_eq!(x, cfg_false());
 
         x = word_cfg("test");
-        x &= Cfg::False;
-        assert_eq!(x, Cfg::False);
+        x &= cfg_false();
+        assert_eq!(x, cfg_false());
 
         x = word_cfg("test2");
-        x &= Cfg::True;
+        x &= cfg_true();
         assert_eq!(x, word_cfg("test2"));
 
-        x = Cfg::True;
+        x = cfg_true();
         x &= word_cfg("test3");
         assert_eq!(x, word_cfg("test3"));
 
@@ -104,63 +146,69 @@ fn test_cfg_and() {
         assert_eq!(x, word_cfg("test3"));
 
         x &= word_cfg("test4");
-        assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4")]));
+        assert_eq!(x, cfg_all(thin_vec![word_cfg_e("test3"), word_cfg_e("test4")]));
 
         x &= word_cfg("test4");
-        assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4")]));
+        assert_eq!(x, cfg_all(thin_vec![word_cfg_e("test3"), word_cfg_e("test4")]));
 
         x &= word_cfg("test5");
-        assert_eq!(x, Cfg::All(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
-
-        x &= Cfg::All(vec![word_cfg("test6"), word_cfg("test7")]);
         assert_eq!(
             x,
-            Cfg::All(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
+            cfg_all(thin_vec![word_cfg_e("test3"), word_cfg_e("test4"), word_cfg_e("test5")])
+        );
+
+        x &= cfg_all(thin_vec![word_cfg_e("test6"), word_cfg_e("test7")]);
+        assert_eq!(
+            x,
+            cfg_all(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
             ])
         );
 
-        x &= Cfg::All(vec![word_cfg("test6"), word_cfg("test7")]);
+        x &= cfg_all(thin_vec![word_cfg_e("test6"), word_cfg_e("test7")]);
         assert_eq!(
             x,
-            Cfg::All(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
+            cfg_all(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
             ])
         );
 
-        let mut y = Cfg::Any(vec![word_cfg("a"), word_cfg("b")]);
+        let mut y = cfg_any(thin_vec![word_cfg_e("a"), word_cfg_e("b")]);
         y &= x;
         assert_eq!(
             y,
-            Cfg::All(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
-                Cfg::Any(vec![word_cfg("a"), word_cfg("b")]),
+            cfg_all(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
+                cfg_any_e(thin_vec![word_cfg_e("a"), word_cfg_e("b")]),
             ])
         );
 
         let mut z = word_cfg("test8");
-        z &= Cfg::All(vec![word_cfg("test9"), word_cfg("test10")]);
-        assert_eq!(z, Cfg::All(vec![word_cfg("test9"), word_cfg("test10"), word_cfg("test8")]));
+        z &= cfg_all(thin_vec![word_cfg_e("test9"), word_cfg_e("test10")]);
+        assert_eq!(
+            z,
+            cfg_all(thin_vec![word_cfg_e("test9"), word_cfg_e("test10"), word_cfg_e("test8"),]),
+        );
 
         let mut z = word_cfg("test11");
-        z &= Cfg::All(vec![word_cfg("test11"), word_cfg("test12")]);
-        assert_eq!(z, Cfg::All(vec![word_cfg("test11"), word_cfg("test12")]));
+        z &= cfg_all(thin_vec![word_cfg_e("test11"), word_cfg_e("test12")]);
+        assert_eq!(z, cfg_all(thin_vec![word_cfg_e("test11"), word_cfg_e("test12")]));
 
         assert_eq!(
             word_cfg("a") & word_cfg("b") & word_cfg("c"),
-            Cfg::All(vec![word_cfg("a"), word_cfg("b"), word_cfg("c")])
+            cfg_all(thin_vec![word_cfg_e("a"), word_cfg_e("b"), word_cfg_e("c")])
         );
     })
 }
@@ -168,19 +216,19 @@ fn test_cfg_and() {
 #[test]
 fn test_cfg_or() {
     create_default_session_globals_then(|| {
-        let mut x = Cfg::True;
-        x |= Cfg::False;
-        assert_eq!(x, Cfg::True);
+        let mut x = cfg_true();
+        x |= cfg_false();
+        assert_eq!(x, cfg_true());
 
         x = word_cfg("test");
-        x |= Cfg::True;
+        x |= cfg_true();
         assert_eq!(x, word_cfg("test"));
 
         x = word_cfg("test2");
-        x |= Cfg::False;
+        x |= cfg_false();
         assert_eq!(x, word_cfg("test2"));
 
-        x = Cfg::False;
+        x = cfg_false();
         x |= word_cfg("test3");
         assert_eq!(x, word_cfg("test3"));
 
@@ -188,63 +236,69 @@ fn test_cfg_or() {
         assert_eq!(x, word_cfg("test3"));
 
         x |= word_cfg("test4");
-        assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4")]));
+        assert_eq!(x, cfg_any(thin_vec![word_cfg_e("test3"), word_cfg_e("test4")]));
 
         x |= word_cfg("test4");
-        assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4")]));
+        assert_eq!(x, cfg_any(thin_vec![word_cfg_e("test3"), word_cfg_e("test4")]));
 
         x |= word_cfg("test5");
-        assert_eq!(x, Cfg::Any(vec![word_cfg("test3"), word_cfg("test4"), word_cfg("test5")]));
-
-        x |= Cfg::Any(vec![word_cfg("test6"), word_cfg("test7")]);
         assert_eq!(
             x,
-            Cfg::Any(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
+            cfg_any(thin_vec![word_cfg_e("test3"), word_cfg_e("test4"), word_cfg_e("test5")])
+        );
+
+        x |= cfg_any(thin_vec![word_cfg_e("test6"), word_cfg_e("test7")]);
+        assert_eq!(
+            x,
+            cfg_any(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
             ])
         );
 
-        x |= Cfg::Any(vec![word_cfg("test6"), word_cfg("test7")]);
+        x |= cfg_any(thin_vec![word_cfg_e("test6"), word_cfg_e("test7")]);
         assert_eq!(
             x,
-            Cfg::Any(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
+            cfg_any(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
             ])
         );
 
-        let mut y = Cfg::All(vec![word_cfg("a"), word_cfg("b")]);
+        let mut y = cfg_all(thin_vec![word_cfg_e("a"), word_cfg_e("b")]);
         y |= x;
         assert_eq!(
             y,
-            Cfg::Any(vec![
-                word_cfg("test3"),
-                word_cfg("test4"),
-                word_cfg("test5"),
-                word_cfg("test6"),
-                word_cfg("test7"),
-                Cfg::All(vec![word_cfg("a"), word_cfg("b")]),
+            cfg_any(thin_vec![
+                word_cfg_e("test3"),
+                word_cfg_e("test4"),
+                word_cfg_e("test5"),
+                word_cfg_e("test6"),
+                word_cfg_e("test7"),
+                cfg_all_e(thin_vec![word_cfg_e("a"), word_cfg_e("b")]),
             ])
         );
 
         let mut z = word_cfg("test8");
-        z |= Cfg::Any(vec![word_cfg("test9"), word_cfg("test10")]);
-        assert_eq!(z, Cfg::Any(vec![word_cfg("test9"), word_cfg("test10"), word_cfg("test8")]));
+        z |= cfg_any(thin_vec![word_cfg_e("test9"), word_cfg_e("test10")]);
+        assert_eq!(
+            z,
+            cfg_any(thin_vec![word_cfg_e("test9"), word_cfg_e("test10"), word_cfg_e("test8")])
+        );
 
         let mut z = word_cfg("test11");
-        z |= Cfg::Any(vec![word_cfg("test11"), word_cfg("test12")]);
-        assert_eq!(z, Cfg::Any(vec![word_cfg("test11"), word_cfg("test12")]));
+        z |= cfg_any(thin_vec![word_cfg_e("test11"), word_cfg_e("test12")]);
+        assert_eq!(z, cfg_any(thin_vec![word_cfg_e("test11"), word_cfg_e("test12")]));
 
         assert_eq!(
             word_cfg("a") | word_cfg("b") | word_cfg("c"),
-            Cfg::Any(vec![word_cfg("a"), word_cfg("b"), word_cfg("c")])
+            cfg_any(thin_vec![word_cfg_e("a"), word_cfg_e("b"), word_cfg_e("c")])
         );
     })
 }
@@ -254,11 +308,11 @@ fn test_parse_ok() {
     create_default_session_globals_then(|| {
         let r#true = Symbol::intern("true");
         let mi = dummy_lit(r#true, LitKind::Bool(true));
-        assert_eq!(Cfg::parse(&mi), Ok(Cfg::True));
+        assert_eq!(Cfg::parse(&mi), Ok(cfg_true()));
 
         let r#false = Symbol::intern("false");
         let mi = dummy_lit(r#false, LitKind::Bool(false));
-        assert_eq!(Cfg::parse(&mi), Ok(Cfg::False));
+        assert_eq!(Cfg::parse(&mi), Ok(cfg_false()));
 
         let mi = dummy_meta_item_word("all");
         assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
@@ -464,33 +518,36 @@ fn test_simplify_with() {
     // This is a tiny subset of things that could be simplified, but it likely covers 90% of
     // real world usecases well.
     create_default_session_globals_then(|| {
-        let foo = word_cfg("foo");
-        let bar = word_cfg("bar");
-        let baz = word_cfg("baz");
-        let quux = word_cfg("quux");
+        let foo = word_cfg_e("foo");
+        let bar = word_cfg_e("bar");
+        let baz = word_cfg_e("baz");
+        let quux = word_cfg_e("quux");
 
-        let foobar = Cfg::All(vec![foo.clone(), bar.clone()]);
-        let barbaz = Cfg::All(vec![bar.clone(), baz.clone()]);
-        let foobarbaz = Cfg::All(vec![foo.clone(), bar.clone(), baz.clone()]);
-        let bazquux = Cfg::All(vec![baz.clone(), quux.clone()]);
+        let foobar = cfg_all(thin_vec![foo.clone(), bar.clone()]);
+        let barbaz = cfg_all(thin_vec![bar.clone(), baz.clone()]);
+        let foobarbaz = cfg_all(thin_vec![foo.clone(), bar.clone(), baz.clone()]);
+        let bazquux = cfg_all(thin_vec![baz.clone(), quux.clone()]);
 
         // Unrelated cfgs don't affect each other
-        assert_eq!(foo.simplify_with(&bar).as_ref(), Some(&foo));
+        assert_eq!(
+            Cfg(foo.clone()).simplify_with(&Cfg(bar.clone())).as_ref(),
+            Some(&Cfg(foo.clone()))
+        );
         assert_eq!(foobar.simplify_with(&bazquux).as_ref(), Some(&foobar));
 
         // Identical cfgs are eliminated
-        assert_eq!(foo.simplify_with(&foo), None);
+        assert_eq!(Cfg(foo.clone()).simplify_with(&Cfg(foo.clone())), None);
         assert_eq!(foobar.simplify_with(&foobar), None);
 
         // Multiple cfgs eliminate a single assumed cfg
-        assert_eq!(foobar.simplify_with(&foo).as_ref(), Some(&bar));
-        assert_eq!(foobar.simplify_with(&bar).as_ref(), Some(&foo));
+        assert_eq!(foobar.simplify_with(&Cfg(foo.clone())).as_ref(), Some(&Cfg(bar.clone())));
+        assert_eq!(foobar.simplify_with(&Cfg(bar)).as_ref(), Some(&Cfg(foo.clone())));
 
         // A single cfg is eliminated by multiple assumed cfg containing it
-        assert_eq!(foo.simplify_with(&foobar), None);
+        assert_eq!(Cfg(foo.clone()).simplify_with(&foobar), None);
 
         // Multiple cfgs eliminate the matching subset of multiple assumed cfg
-        assert_eq!(foobar.simplify_with(&barbaz).as_ref(), Some(&foo));
+        assert_eq!(foobar.simplify_with(&barbaz).as_ref(), Some(&Cfg(foo)));
         assert_eq!(foobar.simplify_with(&foobarbaz), None);
     });
 }

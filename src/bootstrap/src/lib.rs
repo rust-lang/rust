@@ -846,6 +846,10 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
+        if self.config.llvm_enzyme {
+            features.insert("llvm_enzyme");
+        }
+
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -868,6 +872,9 @@ impl Build {
         }
         if self.config.llvm_enzyme {
             features.push("llvm_enzyme");
+        }
+        if self.config.llvm_offload {
+            features.push("llvm_offload");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
@@ -968,8 +975,8 @@ impl Build {
         self.out.join(&*target.triple).join("enzyme")
     }
 
-    fn gcc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("gcc")
+    fn offload_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("offload")
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
@@ -1522,21 +1529,6 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
     }
 
-    /// Path to the python interpreter to use
-    fn python(&self) -> &Path {
-        if self.config.host_target.ends_with("apple-darwin") {
-            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
-            // LLDB plugin's compiled module which only works with the system python
-            // (namely not Homebrew-installed python)
-            Path::new("/usr/bin/python3")
-        } else {
-            self.config
-                .python
-                .as_ref()
-                .expect("python is required for running LLDB or rustdoc tests")
-        }
-    }
-
     /// Temporary directory that extended error information is emitted to.
     fn extended_error_dir(&self) -> PathBuf {
         self.out.join("tmp/extended-error-metadata")
@@ -1636,24 +1628,18 @@ impl Build {
         self.release(&self.version)
     }
 
-    /// Returns the "package version" for a component given the `num` release
-    /// number.
+    /// Returns the "package version" for a component.
     ///
     /// The package version is typically what shows up in the names of tarballs.
-    /// For channels like beta/nightly it's just the channel name, otherwise
-    /// it's the `num` provided.
-    fn package_vers(&self, num: &str) -> String {
+    /// For channels like beta/nightly it's just the channel name, otherwise it's the release
+    /// version.
+    fn rust_package_vers(&self) -> String {
         match &self.config.channel[..] {
-            "stable" => num.to_string(),
+            "stable" => self.version.to_string(),
             "beta" => "beta".to_string(),
             "nightly" => "nightly".to_string(),
-            _ => format!("{num}-dev"),
+            _ => format!("{}-dev", self.version),
         }
-    }
-
-    /// Returns the value of `package_vers` above for Rust itself.
-    fn rust_package_vers(&self) -> String {
-        self.package_vers(&self.version)
     }
 
     /// Returns the `version` string associated with this compiler for Rust
