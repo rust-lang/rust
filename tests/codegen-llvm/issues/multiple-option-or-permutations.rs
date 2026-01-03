@@ -3,16 +3,15 @@
 
 #![crate_type = "lib"]
 
-extern crate core;
-use core::num::NonZero;
+use std::num::NonZero;
 
 // CHECK-LABEL: @or_match_u8
 // CHECK-SAME: (i1{{.+}}%0, i8 %1, i1{{.+}}%optb.0, i8 %optb.1)
 #[no_mangle]
 pub fn or_match_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
     // CHECK: start:
-    // CHECK-DAG: or i1 %0
     // CHECK-DAG: select i1 %0
+    // CHECK-DAG: or i1 %0
     // CHECK-NEXT: insertvalue { i1, i8 }
     // CHECK-NEXT: insertvalue { i1, i8 }
     // ret { i1, i8 }
@@ -27,8 +26,8 @@ pub fn or_match_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
 #[no_mangle]
 pub fn or_match_alt_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
     // CHECK: start:
-    // CHECK-DAG: select i1
-    // CHECK-DAG: or i1
+    // CHECK-DAG: select i1 %opta.0, i8 %opta.1, i8 %optb.1
+    // CHECK-DAG: or i1 {{%opta.0, %optb.0|%optb.0, %opta.0}}
     // CHECK-NEXT: insertvalue { i1, i8 }
     // CHECK-NEXT: insertvalue { i1, i8 }
     // ret { i1, i8 }
