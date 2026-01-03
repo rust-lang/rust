@@ -239,8 +239,6 @@ declare_features! (
     (internal, negative_bounds, "1.71.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity_limit, "1.78.0", None),
-    /// Allows using pattern types.
-    (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.
@@ -251,8 +249,6 @@ declare_features! (
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
-    /// Helps with formatting for `group_imports = "StdExternalCrate"`.
-    (unstable, unqualified_local_imports, "1.83.0", Some(138299)),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -293,6 +289,8 @@ declare_features! (
     (internal, needs_panic_runtime, "1.10.0", Some(32837)),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837)),
+    /// Allows using pattern types.
+    (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows using `#[rustc_allow_const_fn_unstable]`.
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
@@ -311,6 +309,8 @@ declare_features! (
     (unstable, structural_match, "1.8.0", Some(31434)),
     /// Allows using the `rust-call` ABI.
     (unstable, unboxed_closures, "1.0.0", Some(29625)),
+    /// Helps with formatting for `group_imports = "StdExternalCrate"`.
+    (unstable, unqualified_local_imports, "1.83.0", Some(138299)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
