@@ -34,7 +34,7 @@ use proc_macro_api::{
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
-    AbsPath, AbsPathBuf, VfsPath,
+    AbsPath, AbsPathBuf, FileId, VfsPath,
     file_set::FileSetConfig,
     loader::{Handle, LoadingProgress},
 };
@@ -541,8 +541,8 @@ impl ProcMacroExpander for Expander {
         current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
         let mut cb = |req| match req {
-            SubRequest::LocalFilePath { span } => {
-                let file_id = span.anchor.file_id.file_id();
+            SubRequest::LocalFilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
                 let source_root_id = db.file_source_root(file_id).source_root_id(db);
                 let source_root = db.source_root(source_root_id).source_root(db);
                 let name = source_root
@@ -552,22 +552,26 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::LocalFilePathResult { name })
             }
-            SubRequest::SourceText { span } => {
-                let anchor = span.anchor;
-                let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
-                let range = db
-                    .ast_id_map(hir_expand::HirFileId::FileId(file_id))
-                    .get_erased(anchor.ast_id)
-                    .text_range();
-                let source = db.file_text(anchor.file_id.file_id()).text(db);
-                let text = source
-                    .get(usize::from(range.start())..usize::from(range.end()))
-                    .map(ToOwned::to_owned);
+            SubRequest::SourceText { file_id, ast_id, start, end } => {
+                let raw_file_id = FileId::from_raw(file_id);
+                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+                let hir_file_id = EditionedFileId::from_span_guess_origin(db, editioned_file_id);
+                let anchor_offset = db
+                    .ast_id_map(hir_expand::HirFileId::FileId(hir_file_id))
+                    .get_erased(ast_id)
+                    .text_range()
+                    .start();
+                let anchor_offset = u32::from(anchor_offset);
+                let abs_start = start + anchor_offset;
+                let abs_end = end + anchor_offset;
+                let source = db.file_text(raw_file_id).text(db);
+                let text = source.get(abs_start as usize..abs_end as usize).map(ToOwned::to_owned);
 
                 Ok(SubResponse::SourceTextResult { text })
             }
-            SubRequest::FilePath { span } => {
-                let file_id = span.anchor.file_id.file_id();
+            SubRequest::FilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
                 let source_root_id = db.file_source_root(file_id).source_root_id(db);
                 let source_root = db.source_root(source_root_id).source_root(db);
                 let name = source_root

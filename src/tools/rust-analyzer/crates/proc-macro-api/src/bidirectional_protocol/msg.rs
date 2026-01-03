@@ -2,7 +2,6 @@
 
 use paths::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
-use tt::Span;
 
 use crate::{
     ProcMacroKind,
@@ -11,9 +10,9 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubRequest {
-    FilePath { span: Span },
-    SourceText { span: Span },
-    LocalFilePath { span: Span },
+    FilePath { file_id: u32 },
+    SourceText { file_id: u32, ast_id: u32, start: u32, end: u32 },
+    LocalFilePath { file_id: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
