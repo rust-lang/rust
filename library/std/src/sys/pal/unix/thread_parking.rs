@@ -2,23 +2,10 @@
 // separate modules for each platform.
 #![cfg(target_os = "netbsd")]
 
-use libc::{_lwp_self, CLOCK_MONOTONIC, c_long, clockid_t, lwpid_t, time_t, timespec};
+use libc::{_lwp_park, _lwp_self, _lwp_unpark, CLOCK_MONOTONIC, c_long, lwpid_t, time_t, timespec};
 
-use crate::ffi::{c_int, c_void};
 use crate::ptr;
 use crate::time::Duration;
-
-unsafe extern "C" {
-    fn ___lwp_park60(
-        clock_id: clockid_t,
-        flags: c_int,
-        ts: *mut timespec,
-        unpark: lwpid_t,
-        hint: *const c_void,
-        unparkhint: *const c_void,
-    ) -> c_int;
-    fn _lwp_unpark(lwp: lwpid_t, hint: *const c_void) -> c_int;
-}
 
 pub type ThreadId = lwpid_t;
 
@@ -30,7 +17,7 @@ pub fn current() -> ThreadId {
 #[inline]
 pub fn park(hint: usize) {
     unsafe {
-        ___lwp_park60(0, 0, ptr::null_mut(), 0, ptr::without_provenance(hint), ptr::null());
+        _lwp_park(0, 0, ptr::null_mut(), 0, ptr::without_provenance(hint), ptr::null_mut());
     }
 }
 
@@ -45,13 +32,13 @@ pub fn park_timeout(dur: Duration, hint: usize) {
     // Timeout needs to be mutable since it is modified on NetBSD 9.0 and
     // above.
     unsafe {
-        ___lwp_park60(
+        _lwp_park(
             CLOCK_MONOTONIC,
             0,
             &mut timeout,
             0,
             ptr::without_provenance(hint),
-            ptr::null(),
+            ptr::null_mut(),
         );
     }
 }
