@@ -4,6 +4,7 @@ mod check_match;
 mod const_to_pat;
 mod migration;
 
+use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::sync::Arc;
 
@@ -21,7 +22,7 @@ use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::ErrorGuaranteed;
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
@@ -129,15 +130,20 @@ impl<'tcx> PatCtxt<'tcx> {
 
     fn lower_pattern_range_endpoint(
         &mut self,
+        pat: &'tcx hir::Pat<'tcx>, // Range pattern containing the endpoint
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
         // Out-parameter collecting extra data to be reapplied by the caller
         ascriptions: &mut Vec<Ascription<'tcx>>,
     ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
+        assert_matches!(pat.kind, hir::PatKind::Range(..));
+
+        // For partly-bounded ranges like `X..` or `..X`, an endpoint will be absent.
+        // Return None in that case; the caller will use NegInfinity or PosInfinity instead.
         let Some(expr) = expr else { return Ok(None) };
 
         // Lower the endpoint into a temporary `PatKind` that will then be
         // deconstructed to obtain the constant value and other data.
-        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr, None);
+        let mut kind: PatKind<'tcx> = self.lower_pat_expr(pat, expr);
 
         // Unpeel any ascription or inline-const wrapper nodes.
         loop {
@@ -214,12 +220,14 @@ impl<'tcx> PatCtxt<'tcx> {
 
     fn lower_pattern_range(
         &mut self,
+        pat: &'tcx hir::Pat<'tcx>,
         lo_expr: Option<&'tcx hir::PatExpr<'tcx>>,
         hi_expr: Option<&'tcx hir::PatExpr<'tcx>>,
         end: RangeEnd,
-        ty: Ty<'tcx>,
-        span: Span,
     ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
+        let ty = self.typeck_results.node_type(pat.hir_id);
+        let span = pat.span;
+
         if lo_expr.is_none() && hi_expr.is_none() {
             let msg = "found twice-open range pattern (`..`) outside of error recovery";
             self.tcx.dcx().span_bug(span, msg);
@@ -227,7 +235,8 @@ impl<'tcx> PatCtxt<'tcx> {
 
         // Collect extra data while lowering the endpoints, to be reapplied later.
         let mut ascriptions = vec![];
-        let mut lower_endpoint = |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions);
+        let mut lower_endpoint =
+            |expr| self.lower_pattern_range_endpoint(pat, expr, &mut ascriptions);
 
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
@@ -299,12 +308,10 @@ impl<'tcx> PatCtxt<'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Expr(value) => self.lower_pat_expr(value, Some(ty)),
+            hir::PatKind::Expr(value) => self.lower_pat_expr(pat, value),
 
-            hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
-                let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
-                self.lower_pattern_range(lo_expr, hi_expr, end, ty, span)
-                    .unwrap_or_else(PatKind::Error)
+            hir::PatKind::Range(lo_expr, hi_expr, end) => {
+                self.lower_pattern_range(pat, lo_expr, hi_expr, end).unwrap_or_else(PatKind::Error)
             }
 
             hir::PatKind::Deref(subpattern) => {
@@ -327,7 +334,7 @@ impl<'tcx> PatCtxt<'tcx> {
             },
 
             hir::PatKind::Slice(prefix, slice, suffix) => {
-                self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
+                self.slice_or_array_pattern(pat, prefix, slice, suffix)
             }
 
             hir::PatKind::Tuple(pats, ddpos) => {
@@ -389,7 +396,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 };
                 let variant_def = adt_def.variant_of_res(res);
                 let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
-                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(pat, None, res, subpatterns)
             }
 
             hir::PatKind::Struct(ref qpath, fields, _) => {
@@ -406,7 +413,7 @@ impl<'tcx> PatCtxt<'tcx> {
                     })
                     .collect();
 
-                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(pat, None, res, subpatterns)
             }
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
@@ -445,12 +452,13 @@ impl<'tcx> PatCtxt<'tcx> {
 
     fn slice_or_array_pattern(
         &mut self,
-        span: Span,
-        ty: Ty<'tcx>,
+        pat: &'tcx hir::Pat<'tcx>,
         prefix: &'tcx [hir::Pat<'tcx>],
         slice: Option<&'tcx hir::Pat<'tcx>>,
         suffix: &'tcx [hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
+        let ty = self.typeck_results.node_type(pat.hir_id);
+
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
         let suffix = self.lower_patterns(suffix);
@@ -465,18 +473,32 @@ impl<'tcx> PatCtxt<'tcx> {
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatKind::Array { prefix, slice, suffix }
             }
-            _ => span_bug!(span, "bad slice pattern type {:?}", ty),
+            _ => span_bug!(pat.span, "bad slice pattern type {ty:?}"),
         }
     }
 
     fn lower_variant_or_leaf(
         &mut self,
+        pat: &'tcx hir::Pat<'tcx>,
+        expr: Option<&'tcx hir::PatExpr<'tcx>>,
         res: Res,
-        hir_id: hir::HirId,
-        span: Span,
-        ty: Ty<'tcx>,
         subpatterns: Vec<FieldPat<'tcx>>,
     ) -> PatKind<'tcx> {
+        // Check whether the caller should have provided an `expr` for this pattern kind.
+        assert_matches!(
+            (pat.kind, expr),
+            (hir::PatKind::Expr(..) | hir::PatKind::Range(..), Some(_))
+                | (hir::PatKind::Struct(..) | hir::PatKind::TupleStruct(..), None)
+        );
+
+        // Use the id/span of the `hir::PatExpr`, if provided.
+        // Otherwise, use the id/span of the `hir::Pat`.
+        let (hir_id, span) = match expr {
+            Some(expr) => (expr.hir_id, expr.span),
+            None => (pat.hir_id, pat.span),
+        };
+        let ty = self.typeck_results.node_type(hir_id);
+
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
                 let variant_id = self.tcx.parent(variant_ctor_id);
@@ -563,7 +585,16 @@ impl<'tcx> PatCtxt<'tcx> {
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     #[instrument(skip(self), level = "debug")]
-    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Box<Pat<'tcx>> {
+    fn lower_path(
+        &mut self,
+        pat: &'tcx hir::Pat<'tcx>, // Pattern that directly contains `expr`
+        expr: &'tcx hir::PatExpr<'tcx>,
+        qpath: &hir::QPath<'_>,
+    ) -> Box<Pat<'tcx>> {
+        assert_matches!(pat.kind, hir::PatKind::Expr(..) | hir::PatKind::Range(..));
+
+        let id = expr.hir_id;
+        let span = expr.span;
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
@@ -575,7 +606,7 @@ impl<'tcx> PatCtxt<'tcx> {
             _ => {
                 // The path isn't the name of a constant, so it must actually
                 // be a unit struct or unit variant (e.g. `Option::None`).
-                let kind = self.lower_variant_or_leaf(res, id, span, ty, vec![]);
+                let kind = self.lower_variant_or_leaf(pat, Some(expr), res, vec![]);
                 return Box::new(Pat { span, ty, kind });
             }
         };
@@ -615,24 +646,26 @@ impl<'tcx> PatCtxt<'tcx> {
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
     fn lower_pat_expr(
         &mut self,
+        pat: &'tcx hir::Pat<'tcx>, // Pattern that directly contains `expr`
         expr: &'tcx hir::PatExpr<'tcx>,
-        pat_ty: Option<Ty<'tcx>>,
     ) -> PatKind<'tcx> {
+        assert_matches!(pat.kind, hir::PatKind::Expr(..) | hir::PatKind::Range(..));
         match &expr.kind {
-            hir::PatExprKind::Path(qpath) => self.lower_path(qpath, expr.hir_id, expr.span).kind,
+            hir::PatExprKind::Path(qpath) => self.lower_path(pat, expr, qpath).kind,
             hir::PatExprKind::Lit { lit, negated } => {
                 // We handle byte string literal patterns by using the pattern's type instead of the
                 // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
                 // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
                 // pattern's type means we'll properly translate it to a slice reference pattern. This works
                 // because slices and arrays have the same valtree representation.
-                let ct_ty = match pat_ty {
-                    Some(pat_ty) => pat_ty,
-                    None => self.typeck_results.node_type(expr.hir_id),
-                };
-                let lit_input = LitToConstInput { lit: lit.node, ty: ct_ty, neg: *negated };
+                //
+                // Under `feature(deref_patterns)`, this adjustment can also convert string literal
+                // patterns to `str`, and byte-string literal patterns to `[u8; N]` or `[u8]`.
+
+                let pat_ty = self.typeck_results.node_type(pat.hir_id);
+                let lit_input = LitToConstInput { lit: lit.node, ty: pat_ty, neg: *negated };
                 let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
-                self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+                self.const_to_pat(constant, pat_ty, expr.hir_id, lit.span).kind
             }
         }
     }
