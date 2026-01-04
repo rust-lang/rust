@@ -1,8 +1,6 @@
 //! A pool of proc-macro server processes
 use std::sync::Arc;
 
-use tt::Span;
-
 use crate::{
     MacroDylib, ProcMacro, ServerError, bidirectional_protocol::SubCallback,
     process::ProcMacroServerProcess,
@@ -29,7 +27,7 @@ impl ProcMacroServerPool {
         self.workers[0].exited()
     }
 
-    fn pick_process(&self) -> Result<&ProcMacroServerProcess, ServerError> {
+    pub(crate) fn pick_process(&self) -> Result<&ProcMacroServerProcess, ServerError> {
         self.workers
             .iter()
             .filter(|w| w.exited().is_none())
@@ -73,33 +71,6 @@ impl ProcMacroServerPool {
                 dylib_last_modified,
             })
             .collect())
-    }
-
-    pub(crate) fn expand(
-        &self,
-        proc_macro: &ProcMacro,
-        subtree: tt::SubtreeView<'_>,
-        attr: Option<tt::SubtreeView<'_>>,
-        env: Vec<(String, String)>,
-        def_site: Span,
-        call_site: Span,
-        mixed_site: Span,
-        current_dir: String,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
-        let process = self.pick_process()?;
-
-        process.expand(
-            proc_macro,
-            subtree,
-            attr,
-            env,
-            def_site,
-            call_site,
-            mixed_site,
-            current_dir,
-            callback,
-        )
     }
 
     pub(crate) fn version(&self) -> u32 {

@@ -254,7 +254,7 @@ impl ProcMacro {
             }
         }
 
-        self.pool.expand(
+        self.pool.pick_process()?.expand(
             self,
             subtree,
             attr,
