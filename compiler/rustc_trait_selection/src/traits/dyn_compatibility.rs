@@ -686,13 +686,16 @@ enum AllowSelfProjections {
     No,
 }
 
-/// This is somewhat subtle. In general, we want to forbid
-/// references to `Self` in the argument and return types,
-/// since the value of `Self` is erased. However, there is one
-/// exception: it is ok to reference `Self` in order to access
-/// an associated type of the current trait, since we retain
-/// the value of those associated types in the object type
-/// itself.
+/// Check if the given value contains illegal `Self` references.
+///
+/// This is somewhat subtle. In general, we want to forbid references to `Self` in the
+/// argument and return types, since the value of `Self` is erased.
+///
+/// However, there is one exception: It is ok to reference `Self` in order to access an
+/// associated type of the current trait, since we retain the value of those associated
+/// types in the trait object type itself.
+///
+/// The same thing holds for associated consts under feature `min_generic_const_args`.
 ///
 /// ```rust,ignore (example)
 /// trait SuperTrait {
@@ -747,82 +750,88 @@ struct IllegalSelfTypeVisitor<'tcx> {
     allow_self_projections: AllowSelfProjections,
 }
 
+impl<'tcx> IllegalSelfTypeVisitor<'tcx> {
+    fn is_supertrait_of_current_trait(&mut self, trait_ref: ty::TraitRef<'tcx>) -> bool {
+        // Compute supertraits of current trait lazily.
+        let supertraits = self.supertraits.get_or_insert_with(|| {
+            util::supertraits(
+                self.tcx,
+                ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id)),
+            )
+            .map(|trait_ref| {
+                self.tcx.erase_and_anonymize_regions(
+                    self.tcx.instantiate_bound_regions_with_erased(trait_ref),
+                )
+            })
+            .collect()
+        });
+
+        // Determine whether the given trait ref is in fact a supertrait of the current trait.
+        // In that case, any derived projections are legal, because the term will be specified
+        // in the trait object type.
+        // Note that we can just use direct equality here because all of these types are part of
+        // the formal parameter listing, and hence there should be no inference variables.
+        let trait_ref = trait_ref
+            .fold_with(&mut EraseEscapingBoundRegions { tcx: self.tcx, binder: ty::INNERMOST });
+        supertraits.contains(&trait_ref)
+    }
+}
+
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
     type Result = ControlFlow<()>;
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        match t.kind() {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        match ty.kind() {
             ty::Param(_) => {
-                if t == self.tcx.types.self_param {
+                if ty == self.tcx.types.self_param {
                     ControlFlow::Break(())
                 } else {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::Projection, data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(ty::Projection, data) => {
+            ty::Alias(ty::Projection, proj) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
-                        // This is a projected type `<Foo as SomeTrait>::X`.
-
-                        // Compute supertraits of current trait lazily.
-                        if self.supertraits.is_none() {
-                            self.supertraits = Some(
-                                util::supertraits(
-                                    self.tcx,
-                                    ty::Binder::dummy(ty::TraitRef::identity(
-                                        self.tcx,
-                                        self.trait_def_id,
-                                    )),
-                                )
-                                .map(|trait_ref| {
-                                    self.tcx.erase_and_anonymize_regions(
-                                        self.tcx.instantiate_bound_regions_with_erased(trait_ref),
-                                    )
-                                })
-                                .collect(),
-                            );
-                        }
-
-                        // Determine whether the trait reference `Foo as
-                        // SomeTrait` is in fact a supertrait of the
-                        // current trait. In that case, this type is
-                        // legal, because the type `X` will be specified
-                        // in the object type. Note that we can just use
-                        // direct equality here because all of these types
-                        // are part of the formal parameter listing, and
-                        // hence there should be no inference variables.
-                        let is_supertrait_of_current_trait =
-                            self.supertraits.as_ref().unwrap().contains(
-                                &data.trait_ref(self.tcx).fold_with(
-                                    &mut EraseEscapingBoundRegions {
-                                        tcx: self.tcx,
-                                        binder: ty::INNERMOST,
-                                    },
-                                ),
-                            );
-
-                        // only walk contained types if it's not a super trait
-                        if is_supertrait_of_current_trait {
+                        // Only walk contained types if the parent trait is not a supertrait.
+                        if self.is_supertrait_of_current_trait(proj.trait_ref(self.tcx)) {
                             ControlFlow::Continue(())
                         } else {
-                            t.super_visit_with(self) // POSSIBLY reporting an error
+                            ty.super_visit_with(self)
                         }
                     }
-                    AllowSelfProjections::No => t.super_visit_with(self),
+                    AllowSelfProjections::No => ty.super_visit_with(self),
                 }
             }
-            _ => t.super_visit_with(self),
+            _ => ty.super_visit_with(self),
         }
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
-        // Constants can only influence dyn-compatibility if they are generic and reference `Self`.
-        // This is only possible for unevaluated constants, so we walk these here.
-        self.tcx.expand_abstract_consts(ct).super_visit_with(self)
+        let ct = self.tcx.expand_abstract_consts(ct);
+
+        match ct.kind() {
+            ty::ConstKind::Unevaluated(proj) if self.tcx.features().min_generic_const_args() => {
+                match self.allow_self_projections {
+                    AllowSelfProjections::Yes => {
+                        let trait_def_id = self.tcx.parent(proj.def);
+                        let trait_ref = ty::TraitRef::from_assoc(self.tcx, trait_def_id, proj.args);
+
+                        // Only walk contained consts if the parent trait is not a supertrait.
+                        if self.is_supertrait_of_current_trait(trait_ref) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ct.super_visit_with(self)
+                        }
+                    }
+                    AllowSelfProjections::No => ct.super_visit_with(self),
+                }
+            }
+            _ => ct.super_visit_with(self),
+        }
     }
 }
 
