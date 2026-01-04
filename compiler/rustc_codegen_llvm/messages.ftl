@@ -1,4 +1,5 @@
-codegen_llvm_autodiff_component_unavailable = failed to load our autodiff backend. Did you install it via rustup?
+codegen_llvm_autodiff_component_unavailable = failed to load our autodiff backend.
+    .note = load error: {$err}
 
 codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z autodiff=Enable
 codegen_llvm_autodiff_without_lto = using the autodiff feature requires setting `lto="fat"` in your Cargo.toml

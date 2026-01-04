@@ -249,8 +249,10 @@ impl CodegenBackend for LlvmCodegenBackend {
 
             use crate::back::lto::enable_autodiff_settings;
             if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
-                if let Err(_) = llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
-                    sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable);
+                if let Err(err) = llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
+                    sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable {
+                        err: format!("{err:?}"),
+                    });
                 }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
             }
