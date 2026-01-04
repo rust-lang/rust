@@ -154,10 +154,16 @@ impl server::Span for RaSpanServer<'_> {
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
         let file_id = span.anchor.file_id;
+        let ast_id = span.anchor.ast_id;
         let start: u32 = span.range.start().into();
         let end: u32 = span.range.end().into();
 
-        self.callback.as_mut()?.source_text(file_id.file_id().index(), start, end)
+        self.callback.as_mut()?.source_text(
+            file_id.file_id().index(),
+            ast_id.into_raw(),
+            start,
+            end,
+        )
     }
 
     fn parent(&mut self, _span: Self::Span) -> Option<Self::Span> {

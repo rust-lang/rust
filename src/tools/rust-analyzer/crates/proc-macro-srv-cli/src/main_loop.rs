@@ -194,8 +194,9 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
         }
     }
 
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::SourceText { file_id, start, end }) {
+    fn source_text(&mut self, file_id: u32, ast_id: u32, start: u32, end: u32) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::SourceText { file_id, ast_id, start, end })
+        {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::SourceTextResult { text },
             )) => text,

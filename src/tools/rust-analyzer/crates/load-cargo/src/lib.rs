@@ -11,15 +11,16 @@ extern crate rustc_driver as _;
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
-use hir_expand::proc_macro::{
-    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-    ProcMacrosBuilder,
+use hir_expand::{
+    db::ExpandDatabase,
+    proc_macro::{
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+        ProcMacrosBuilder,
+    },
 };
 use ide_db::{
-    ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{
-        CrateGraphBuilder, Env, ProcMacroLoadingError, SourceDatabase, SourceRoot, SourceRootId,
-    },
+    ChangeWithProcMacros, EditionedFileId, FxHashMap, RootDatabase,
+    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
 use itertools::Itertools;
@@ -530,7 +531,7 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        db: &dyn SourceDatabase,
+        db: &dyn ExpandDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -541,30 +542,40 @@ impl ProcMacroExpander for Expander {
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
         let mut cb = |req| match req {
             SubRequest::LocalFilePath { file_id } => {
-                let file = FileId::from_raw(file_id);
-                let source_root_id = db.file_source_root(file).source_root_id(db);
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
                 let source_root = db.source_root(source_root_id).source_root(db);
-
                 let name = source_root
-                    .path_for_file(&file)
+                    .path_for_file(&file_id)
                     .and_then(|path| path.as_path())
                     .map(|path| path.to_string());
 
                 Ok(SubResponse::LocalFilePathResult { name })
             }
-            SubRequest::SourceText { file_id, start, end } => {
-                let file = FileId::from_raw(file_id);
-                let text = db.file_text(file).text(db);
-                let slice = text.get(start as usize..end as usize).map(ToOwned::to_owned);
-                Ok(SubResponse::SourceTextResult { text: slice })
+            SubRequest::SourceText { file_id, ast_id, start, end } => {
+                let raw_file_id = FileId::from_raw(file_id);
+                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+                let hir_file_id = EditionedFileId::from_span_guess_origin(db, editioned_file_id);
+                let anchor_offset = db
+                    .ast_id_map(hir_expand::HirFileId::FileId(hir_file_id))
+                    .get_erased(ast_id)
+                    .text_range()
+                    .start();
+                let anchor_offset = u32::from(anchor_offset);
+                let abs_start = start + anchor_offset;
+                let abs_end = end + anchor_offset;
+                let source = db.file_text(raw_file_id).text(db);
+                let text = source.get(abs_start as usize..abs_end as usize).map(ToOwned::to_owned);
+
+                Ok(SubResponse::SourceTextResult { text })
             }
             SubRequest::FilePath { file_id } => {
-                let file = FileId::from_raw(file_id);
-                let source_root_id = db.file_source_root(file).source_root_id(db);
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
                 let source_root = db.source_root(source_root_id).source_root(db);
-
                 let name = source_root
-                    .path_for_file(&file)
+                    .path_for_file(&file_id)
                     .and_then(|path| path.as_path())
                     .map(|path| path.to_string())
                     .unwrap_or_default();

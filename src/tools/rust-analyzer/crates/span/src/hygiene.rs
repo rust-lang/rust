@@ -19,9 +19,8 @@
 //! # The Call-site Hierarchy
 //!
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
-use std::fmt;
-
 use crate::Edition;
+use std::fmt;
 
 /// A syntax context describes a hierarchy tracking order of macro definitions.
 #[cfg(feature = "salsa")]
