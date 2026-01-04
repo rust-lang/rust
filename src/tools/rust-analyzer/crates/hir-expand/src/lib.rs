@@ -901,11 +901,8 @@ impl ExpansionInfo {
         let span = self.exp_map.span_at(token.start());
         match &self.arg_map {
             SpanMap::RealSpanMap(_) => {
-                let file_id =
-                    EditionedFileId::from_span_guess_origin(db, span.anchor.file_id).into();
-                let anchor_offset =
-                    db.ast_id_map(file_id).get_erased(span.anchor.ast_id).text_range().start();
-                InFile { file_id, value: smallvec::smallvec![span.range + anchor_offset] }
+                let range = db.resolve_span(span);
+                InFile { file_id: range.file_id.into(), value: smallvec::smallvec![range.range] }
             }
             SpanMap::ExpansionSpanMap(arg_map) => {
                 let Some(arg_node) = &self.arg.value else {
@@ -947,7 +944,7 @@ pub fn map_node_range_up_rooted(
     range: TextRange,
 ) -> Option<FileRange> {
     let mut spans = exp_map.spans_for_range(range).filter(|span| span.ctx.is_root());
-    let Span { range, anchor, ctx: _ } = spans.next()?;
+    let Span { range, anchor, ctx } = spans.next()?;
     let mut start = range.start();
     let mut end = range.end();
 
@@ -958,10 +955,7 @@ pub fn map_node_range_up_rooted(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
-    let anchor_offset =
-        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
-    Some(FileRange { file_id, range: TextRange::new(start, end) + anchor_offset })
+    Some(db.resolve_span(Span { range: TextRange::new(start, end), anchor, ctx }))
 }
 
 /// Maps up the text range out of the expansion hierarchy back into the original file its from.
@@ -984,10 +978,7 @@ pub fn map_node_range_up(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
-    let anchor_offset =
-        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
-    Some((FileRange { file_id, range: TextRange::new(start, end) + anchor_offset }, ctx))
+    Some((db.resolve_span(Span { range: TextRange::new(start, end), anchor, ctx }), ctx))
 }
 
 /// Looks up the span at the given offset.
@@ -997,10 +988,7 @@ pub fn span_for_offset(
     offset: TextSize,
 ) -> (FileRange, SyntaxContext) {
     let span = exp_map.span_at(offset);
-    let file_id = EditionedFileId::from_span_guess_origin(db, span.anchor.file_id);
-    let anchor_offset =
-        db.ast_id_map(file_id.into()).get_erased(span.anchor.ast_id).text_range().start();
-    (FileRange { file_id, range: span.range + anchor_offset }, span.ctx)
+    (db.resolve_span(span), span.ctx)
 }
 
 /// In Rust, macros expand token trees to token trees. When we want to turn a
