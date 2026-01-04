@@ -19,7 +19,7 @@ use hir_expand::{
     },
 };
 use ide_db::{
-    ChangeWithProcMacros, EditionedFileId, FxHashMap, RootDatabase,
+    ChangeWithProcMacros, FxHashMap, RootDatabase,
     base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
@@ -32,7 +32,8 @@ use proc_macro_api::{
     },
 };
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
-use span::Span;
+use span::{Span, SpanAnchor, SyntaxContext};
+use tt::{TextRange, TextSize};
 use vfs::{
     AbsPath, AbsPathBuf, FileId, VfsPath,
     file_set::FileSetConfig,
@@ -553,20 +554,18 @@ impl ProcMacroExpander for Expander {
                 Ok(SubResponse::LocalFilePathResult { name })
             }
             SubRequest::SourceText { file_id, ast_id, start, end } => {
-                let raw_file_id = FileId::from_raw(file_id);
-                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
                 let ast_id = span::ErasedFileAstId::from_raw(ast_id);
-                let hir_file_id = EditionedFileId::from_span_guess_origin(db, editioned_file_id);
-                let anchor_offset = db
-                    .ast_id_map(hir_expand::HirFileId::FileId(hir_file_id))
-                    .get_erased(ast_id)
-                    .text_range()
-                    .start();
-                let anchor_offset = u32::from(anchor_offset);
-                let abs_start = start + anchor_offset;
-                let abs_end = end + anchor_offset;
-                let source = db.file_text(raw_file_id).text(db);
-                let text = source.get(abs_start as usize..abs_end as usize).map(ToOwned::to_owned);
+                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
+                    ctx: SyntaxContext::root(editioned_file_id.edition()),
+                };
+                let range = db.resolve_span(span);
+                let source = db.file_text(range.file_id.file_id(db)).text(db);
+                let text = source
+                    .get(usize::from(range.range.start())..usize::from(range.range.end()))
+                    .map(ToOwned::to_owned);
 
                 Ok(SubResponse::SourceTextResult { text })
             }

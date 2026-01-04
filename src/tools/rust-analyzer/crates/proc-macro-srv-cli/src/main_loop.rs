@@ -185,8 +185,8 @@ impl<'a, C: Codec> ProcMacroClientHandle<'a, C> {
 }
 
 impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
-    fn file(&mut self, file_id: u32) -> String {
-        match self.roundtrip(bidirectional::SubRequest::FilePath { file_id }) {
+    fn file(&mut self, file_id: proc_macro_srv::span::FileId) -> String {
+        match self.roundtrip(bidirectional::SubRequest::FilePath { file_id: file_id.index() }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::FilePathResult { name },
             )) => name,
@@ -194,9 +194,16 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
         }
     }
 
-    fn source_text(&mut self, file_id: u32, ast_id: u32, start: u32, end: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::SourceText { file_id, ast_id, start, end })
-        {
+    fn source_text(
+        &mut self,
+        proc_macro_srv::span::Span { range, anchor, ctx: _ }: proc_macro_srv::span::Span,
+    ) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::SourceText {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            start: range.start().into(),
+            end: range.end().into(),
+        }) {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::SourceTextResult { text },
             )) => text,
@@ -204,8 +211,9 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
         }
     }
 
-    fn local_file(&mut self, file_id: u32) -> Option<String> {
-        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { file_id }) {
+    fn local_file(&mut self, file_id: proc_macro_srv::span::FileId) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { file_id: file_id.index() })
+        {
             Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::LocalFilePathResult { name },
             )) => name,
