@@ -599,6 +599,9 @@ pub struct MiriMachine<'tcx> {
     pub native_lib: Vec<(libloading::Library, std::path::PathBuf)>,
     #[cfg(not(all(unix, feature = "native-lib")))]
     pub native_lib: Vec<!>,
+    /// A memory location for exchanging the current `ecx` pointer with native code.
+    #[cfg(all(unix, feature = "native-lib"))]
+    pub native_lib_ecx_interchange: &'static Cell<usize>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -790,6 +793,8 @@ impl<'tcx> MiriMachine<'tcx> {
                     lib_file_path.clone(),
                 )
             }).collect(),
+            #[cfg(all(unix, feature = "native-lib"))]
+            native_lib_ecx_interchange: Box::leak(Box::new(Cell::new(0))),
             #[cfg(not(all(unix, feature = "native-lib")))]
             native_lib: config.native_lib.iter().map(|_| {
                 panic!("calling functions from native libraries via FFI is not supported in this build of Miri")
@@ -1026,6 +1031,8 @@ impl VisitProvenance for MiriMachine<'_> {
             report_progress: _,
             basic_block_count: _,
             native_lib: _,
+            #[cfg(all(unix, feature = "native-lib"))]
+            native_lib_ecx_interchange: _,
             gc_interval: _,
             since_gc: _,
             num_cpus: _,

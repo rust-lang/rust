@@ -30,14 +30,15 @@ export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 
 # Determine configuration for installed build (used by test-cargo-miri and `./miri bench`).
+# We use the default set of features for this.
 echo "Installing release version of Miri"
 time ./miri install
 
 # Prepare debug build for direct `./miri` invocations.
-# We enable all features to make sure the Stacked Borrows consistency check runs.
+# Here we enable some more features and checks.
 echo "Building debug version of Miri"
-export CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS --all-features"
-time ./miri build # the build that all the `./miri test` below will use
+export FEATURES="--features=expensive-consistency-checks,genmc"
+time ./miri build $FEATURES # the build that all the `./miri test` below will use
 
 endgroup
 
@@ -63,7 +64,7 @@ function run_tests {
   if [ -n "${GC_STRESS-}" ]; then
     time MIRIFLAGS="${MIRIFLAGS-} -Zmiri-provenance-gc=1" ./miri test $TARGET_FLAG
   else
-    time ./miri test $TARGET_FLAG
+    time ./miri test $FEATURES $TARGET_FLAG
   fi
 
   ## advanced tests
@@ -74,20 +75,20 @@ function run_tests {
     # them. Also error locations change so we don't run the failing tests.
     # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
     # which exist to check that we panic on debug assertion failures.
-    time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $TARGET_FLAG tests/{pass,panic}
+    time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $FEATURES $TARGET_FLAG tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
     # Run many-seeds tests. (Also tests `./miri run`.)
     time for FILE in tests/many-seeds/*.rs; do
-      ./miri run "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
+      ./miri run $FEATURES "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
     done
+    # Smoke-test `./miri run --dep`.
+    ./miri run $FEATURES $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
   fi
   if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but only once.
     time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
-  # Smoke-test `./miri run --dep`.
-  ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
 
   ## test-cargo-miri
   # On Windows, there is always "python", not "python3" or "python2".
@@ -149,10 +150,11 @@ case $HOST_TARGET in
   i686-unknown-linux-gnu)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Fully, but not officially, supported tier 2
+    MANY_SEEDS=16 TEST_TARGET=aarch64-linux-android run_tests
     # Partially supported targets (tier 2)
     BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random thread sync concurrency epoll eventfd prctl
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     ;;

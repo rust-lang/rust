@@ -391,7 +391,8 @@ impl Command {
         Ok(())
     }
 
-    fn check(features: Vec<String>, flags: Vec<String>) -> Result<()> {
+    fn check(mut features: Vec<String>, flags: Vec<String>) -> Result<()> {
+        features.push("check_only".into());
         let e = MiriEnv::new()?;
         e.check(".", &features, &flags)?;
         e.check("cargo-miri", &[], &flags)?;
@@ -405,7 +406,8 @@ impl Command {
         Ok(())
     }
 
-    fn clippy(features: Vec<String>, flags: Vec<String>) -> Result<()> {
+    fn clippy(mut features: Vec<String>, flags: Vec<String>) -> Result<()> {
+        features.push("check_only".into());
         let e = MiriEnv::new()?;
         e.clippy(".", &features, &flags)?;
         e.clippy("cargo-miri", &[], &flags)?;
