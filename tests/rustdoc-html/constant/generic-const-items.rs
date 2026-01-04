@@ -3,7 +3,7 @@
 
 //@ has 'generic_const_items/constant.K.html'
 //@ has - '//*[@class="rust item-decl"]//code' \
-// "pub const K<'a, T: 'a + Copy, const N: usize>: Option<[T; N]> \
+// "pub const K<'a, T: 'a + Copy, const N: usize>: Option<[T; N]> = None \
 // where \
 //     String: From<T>;"
 pub const K<'a, T: 'a + Copy, const N: usize>: Option<[T; N]> = None

@@ -5,7 +5,7 @@
 
 //@ has 'user/constant.K.html'
 //@ has - '//*[@class="rust item-decl"]//code' \
-// "pub const K<'a, T: 'a + Copy, const N: usize>: Option<[T; N]> \
+// "pub const K<'a, T: 'a + Copy, const N: usize>: Option<[T; N]> = _ \
 // where \
 //     String: From<T>;"
 pub use generic_const_items::K;

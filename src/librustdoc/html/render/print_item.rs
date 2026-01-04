@@ -1920,9 +1920,19 @@ fn item_constant(
             let tcx = cx.tcx();
             render_attributes_in_code(w, it, "", cx)?;
 
+            let val = fmt::from_fn(|f| {
+                let is_literal = c.is_literal(tcx);
+                let expr = c.expr(tcx);
+                if is_literal {
+                    write!(f, " = {expr}", expr = Escape(&expr))
+                } else {
+                    f.write_str(" = _")
+                }
+            });
+
             write!(
                 w,
-                "{vis}const {name}{generics}: {typ}{where_clause}",
+                "{vis}const {name}{generics}: {typ}{val}{where_clause};",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(generics, cx),
@@ -1931,34 +1941,6 @@ fn item_constant(
                     print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display(),
             )?;
 
-            // FIXME: The code below now prints
-            //            ` = _; // 100i32`
-            //        if the expression is
-            //            `50 + 50`
-            //        which looks just wrong.
-            //        Should we print
-            //            ` = 100i32;`
-            //        instead?
-
-            let value = c.value(tcx);
-            let is_literal = c.is_literal(tcx);
-            let expr = c.expr(tcx);
-            if value.is_some() || is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr))?;
-            } else {
-                w.write_str(";")?;
-            }
-
-            if !is_literal && let Some(value) = &value {
-                let value_lowercase = value.to_lowercase();
-                let expr_lowercase = expr.to_lowercase();
-
-                if value_lowercase != expr_lowercase
-                    && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                {
-                    write!(w, " // {value}", value = Escape(value))?;
-                }
-            }
             Ok::<(), fmt::Error>(())
         })?;
 

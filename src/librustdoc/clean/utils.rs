@@ -442,19 +442,16 @@ fn print_const_with_custom_print_scalar<'tcx>(
 }
 
 pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = tcx.hir_node(hir_id) {
-        if let hir::ExprKind::Lit(_) = &expr.kind {
-            return true;
-        }
+    use ExprKind::{Lit, Path, Unary};
+    use hir::{Expr, ExprKind, Node, UnOp};
 
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind
-            && let hir::ExprKind::Lit(_) = &expr.kind
-        {
-            return true;
-        }
-    }
-
-    false
+    matches!(
+        tcx.hir_node(hir_id),
+        Node::Expr(Expr {
+            kind: Lit(_) | Path(_) | Unary(UnOp::Neg, Expr { kind: Lit(_) | Path(_), .. }),
+            ..
+        })
+    )
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
