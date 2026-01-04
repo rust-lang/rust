@@ -1079,6 +1079,9 @@ range_incl_exact_iter_impl! {
     u8
     i8
     NonZero<u8>
+    // Since RangeInclussive<NonZero<uN>> can only be 1..uN::MAX the length of this range is always
+    // <= uN::MAX, so they are always valid ExactSizeIterator unlike the ranges that include zero.
+    NonZero<u16> NonZero<usize>
 
     // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.26.0.
