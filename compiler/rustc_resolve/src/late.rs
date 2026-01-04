@@ -2851,6 +2851,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ref define_opaque,
                 ..
             }) => {
+                let is_type_const = attr::contains_name(&item.attrs, sym::type_const);
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(
@@ -2869,7 +2870,22 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                         this.with_lifetime_rib(
                             LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| this.visit_ty(ty),
+                            |this| {
+                                if is_type_const
+                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                {
+                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
+                                            this.with_lifetime_rib(
+                                                LifetimeRibKind::ConstParamTy,
+                                                |this| this.visit_ty(ty),
+                                            )
+                                        })
+                                    });
+                                } else {
+                                    this.visit_ty(ty);
+                                }
+                            },
                         );
 
                         if let Some(rhs) = rhs {
@@ -3209,6 +3225,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     define_opaque,
                     ..
                 }) => {
+                    let is_type_const = attr::contains_name(&item.attrs, sym::type_const);
                     self.with_generic_param_rib(
                         &generics.params,
                         RibKind::AssocItem,
@@ -3223,7 +3240,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 },
                                 |this| {
                                     this.visit_generics(generics);
-                                    this.visit_ty(ty);
+                                    if is_type_const
+                                        && !this.r.tcx.features().generic_const_parameter_types()
+                                    {
+                                        this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                            this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
+                                                this.with_lifetime_rib(
+                                                    LifetimeRibKind::ConstParamTy,
+                                                    |this| this.visit_ty(ty),
+                                                )
+                                            })
+                                        });
+                                    } else {
+                                        this.visit_ty(ty);
+                                    }
 
                                     // Only impose the restrictions of `ConstRibKind` for an
                                     // actual constant expression in a provided default.
@@ -3417,6 +3447,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ..
             }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
+                let is_type_const = attr::contains_name(&item.attrs, sym::type_const);
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::AssocItem,
@@ -3453,7 +3484,28 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         );
 
                                         this.visit_generics(generics);
-                                        this.visit_ty(ty);
+                                        if is_type_const
+                                            && !this
+                                                .r
+                                                .tcx
+                                                .features()
+                                                .generic_const_parameter_types()
+                                        {
+                                            this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                                this.with_rib(
+                                                    ValueNS,
+                                                    RibKind::ConstParamTy,
+                                                    |this| {
+                                                        this.with_lifetime_rib(
+                                                            LifetimeRibKind::ConstParamTy,
+                                                            |this| this.visit_ty(ty),
+                                                        )
+                                                    },
+                                                )
+                                            });
+                                        } else {
+                                            this.visit_ty(ty);
+                                        }
                                         if let Some(rhs) = rhs {
                                             // We allow arbitrary const expressions inside of associated consts,
                                             // even if they are potentially not const evaluatable.
