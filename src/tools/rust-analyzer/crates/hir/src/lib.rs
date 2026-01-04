@@ -920,6 +920,48 @@ impl Module {
                     }
                 }
 
+                // HACK: When specialization is enabled in the current crate, and there exists
+                // *any* blanket impl that provides a default implementation for the missing item,
+                // suppress the missing associated item diagnostic.
+                // This can lead to false negatives when the impl in question does not actually
+                // specialize that blanket impl, but determining the exact specialization
+                // relationship here would be significantly more expensive.
+                if !missing.is_empty() {
+                    let krate = self.krate(db).id;
+                    let def_map = crate_def_map(db, krate);
+                    if def_map.is_unstable_feature_enabled(&sym::specialization)
+                        || def_map.is_unstable_feature_enabled(&sym::min_specialization)
+                    {
+                        missing.retain(|(assoc_name, assoc_item)| {
+                            let AssocItem::Function(_) = assoc_item else {
+                                return true;
+                            };
+
+                            for &impl_ in TraitImpls::for_crate(db, krate).blanket_impls(trait_.id)
+                            {
+                                if impl_ == impl_id {
+                                    continue;
+                                }
+
+                                for (name, item) in &impl_.impl_items(db).items {
+                                    let AssocItemId::FunctionId(fn_) = item else {
+                                        continue;
+                                    };
+                                    if name != assoc_name {
+                                        continue;
+                                    }
+
+                                    if db.function_signature(*fn_).is_default() {
+                                        return false;
+                                    }
+                                }
+                            }
+
+                            true
+                        });
+                    }
+                }
+
                 if !missing.is_empty() {
                     acc.push(
                         TraitImplMissingAssocItems {
