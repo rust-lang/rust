@@ -160,10 +160,49 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
+    ///
+    /// This method does not consume `self`, and leaves deallocation to `impl Drop for IntoIter`.
+    /// If consuming `self` is possible, consider calling
+    /// [`Self::forget_remaining_elements_and_dealloc()`] instead.
     pub(crate) fn forget_remaining_elements(&mut self) {
         // For the ZST case, it is crucial that we mutate `end` here, not `ptr`.
         // `ptr` must stay aligned, while `end` may be unaligned.
         self.end = self.ptr.as_ptr();
+    }
+
+    /// Forgets to Drop the remaining elements and frees the backing allocation.
+    /// Consuming version of [`Self::forget_remaining_elements()`].
+    ///
+    /// This can be used in place of `drop(self)` when `self` is known to be exhausted,
+    /// to avoid producing a needless `drop_in_place::<[T]>()`.
+    #[inline]
+    pub(crate) fn forget_remaining_elements_and_dealloc(self) {
+        let mut this = ManuallyDrop::new(self);
+        // SAFETY: `this` is in ManuallyDrop, so it will not be double-freed.
+        unsafe {
+            this.dealloc_only();
+        }
+    }
+
+    /// Frees the allocation, without checking or dropping anything else.
+    ///
+    /// The safe version of this method is [`Self::forget_remaining_elements_and_dealloc()`].
+    /// This function exists only to share code between that method and the `impl Drop`.
+    ///
+    /// # Safety
+    ///
+    /// This function must only be called with an [`IntoIter`] that is not going to be dropped
+    /// or otherwise used in any way, either because it is being forgotten or because its `Drop`
+    /// is already executing; otherwise a double-free will occur, and possibly a read from freed
+    /// memory if there are any remaining elements.
+    #[inline]
+    unsafe fn dealloc_only(&mut self) {
+        unsafe {
+            // SAFETY: our caller promises not to touch `*self` again
+            let alloc = ManuallyDrop::take(&mut self.alloc);
+            // RawVec handles deallocation
+            let _ = RawVec::from_nonnull_in(self.buf, self.cap, alloc);
+        }
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -329,6 +368,12 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
                 accum = f(accum, tmp);
             }
         }
+
+        // There are in fact no remaining elements to forget, but by doing this we can avoid
+        // potentially generating a needless loop to drop the elements that cannot exist at
+        // this point.
+        self.forget_remaining_elements_and_dealloc();
+
         accum
     }
 
@@ -501,10 +546,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
         impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
-                    let alloc = ManuallyDrop::take(&mut self.0.alloc);
-                    // RawVec handles deallocation
-                    let _ = RawVec::from_nonnull_in(self.0.buf, self.0.cap, alloc);
+                    self.0.dealloc_only();
                 }
             }
         }

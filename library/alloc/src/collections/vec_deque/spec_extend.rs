@@ -78,7 +78,7 @@ where
 
 #[cfg(not(test))]
 impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
-    fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {
+    fn spec_extend(&mut self, iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
         self.reserve(slice.len());
 
@@ -86,7 +86,7 @@ impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
             self.copy_slice(self.to_physical_idx(self.len), slice);
             self.len += slice.len();
         }
-        iterator.forget_remaining_elements();
+        iterator.forget_remaining_elements_and_dealloc();
     }
 }
 
