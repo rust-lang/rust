@@ -50,8 +50,9 @@ fn single_variant_enum() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         let SingleVariant::Point(_, _, str) = point;
-        //~^ NOTE: Capturing point[(2, 0)] -> ByValue
-        //~| NOTE: Min Capture point[(2, 0)] -> ByValue
+        //~^ NOTE: Capturing point[] -> Immutable
+        //~| NOTE: Capturing point[(2, 0)] -> ByValue
+        //~| NOTE: Min Capture point[] -> ByValue
         println!("{}", str);
     };
 
