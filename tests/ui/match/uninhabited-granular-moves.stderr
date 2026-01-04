@@ -1,4 +1,19 @@
 error[E0382]: use of partially moved value: `thefoo`
+  --> $DIR/uninhabited-granular-moves.rs:20:11
+   |
+LL |         Foo::Bar((a, _)) => { }
+   |                   - value partially moved here
+...
+LL |     match thefoo {
+   |           ^^^^^^ value used here after partial move
+   |
+   = note: partial move occurs because value has type `Box<u64>`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Foo::Bar((ref a, _)) => { }
+   |                   +++
+
+error[E0382]: use of partially moved value: `thefoo`
   --> $DIR/uninhabited-granular-moves.rs:30:11
    |
 LL |         Foo::Bar((a, _)) => { }
@@ -13,6 +28,21 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         Foo::Bar((ref a, _)) => { }
    |                   +++
 
-error: aborting due to 1 previous error
+error[E0382]: use of partially moved value: `thefoo`
+  --> $DIR/uninhabited-granular-moves.rs:41:11
+   |
+LL |         Foo::Bar((a, _)) => { }
+   |                   - value partially moved here
+...
+LL |     match thefoo {
+   |           ^^^^^^ value used here after partial move
+   |
+   = note: partial move occurs because value has type `Box<u64>`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Foo::Bar((ref a, _)) => { }
+   |                   +++
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

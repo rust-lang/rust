@@ -17,9 +17,11 @@ fn both_inhabited(x: &mut Result<String, String>) {
     };
 }
 
+// this used to be accepted, even though it shouldn't
 fn ref_uninhabited(x: &mut Result<Never, String>) {
     match x {
         &mut Ok(ref mut y) => match x {
+        //~^ ERROR: cannot use `*x` because it was mutably borrowed
             &mut Err(ref mut z) => {
                 let _y = y;
                 let _z = z;

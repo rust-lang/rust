@@ -17,7 +17,7 @@ fn test1(thefoo: Foo<(Box<u64>, Box<u64>)>) {
         Foo::Bar((a, _)) => { }
     }
 
-    match thefoo {
+    match thefoo { //~ ERROR: use of partially moved value: `thefoo`
         Foo::Bar((_, a)) => { }
     }
 }
@@ -38,7 +38,7 @@ fn test3(thefoo: Foo<(Box<u64>, Box<u64>)>) {
         Foo::Bar((a, _)) => { }
         Foo::Qux(_) => { }
     }
-    match thefoo {
+    match thefoo { //~ ERROR: use of partially moved value: `thefoo`
         Foo::Bar((_, a)) => { }
     }
 }
