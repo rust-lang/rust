@@ -445,9 +445,8 @@ fn declare_offload_fn<'ll>(
 // the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
 // Since in our frontend users (by default) don't have to specify data transfer, this is something
-// we should optimize in the future! We also assume that everything should be copied back and forth,
-// but sometimes we can directly zero-allocate on the device and only move back, or if something is
-// immutable, we might only copy it to the device, but not back.
+// we should optimize in the future! In some cases we can directly zero-allocate ont he device and
+// only move data back, or if something is immutable, we might only copy it to the device.
 //
 // Current steps:
 // 0. Alloca some variables for the following steps
