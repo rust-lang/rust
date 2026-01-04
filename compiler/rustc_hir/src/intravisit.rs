@@ -1081,6 +1081,10 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     let ConstArg { hir_id, kind } = const_arg;
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
+        ConstArgKind::Tup(_, exprs) => {
+            walk_list!(visitor, visit_const_arg, *exprs);
+            V::Result::output()
+        }
         ConstArgKind::Struct(qpath, field_exprs) => {
             try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
 

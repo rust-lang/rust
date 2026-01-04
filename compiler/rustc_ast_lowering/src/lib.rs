@@ -2427,6 +2427,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     kind: hir::ConstArgKind::TupleCall(qpath, lowered_args),
                 }
             }
+            ExprKind::Tup(exprs) => {
+                let exprs = self.arena.alloc_from_iter(exprs.iter().map(|expr| {
+                    let expr = if let ExprKind::ConstBlock(anon_const) = &expr.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        let def_kind = self.tcx.def_kind(def_id);
+                        assert_eq!(DefKind::AnonConst, def_kind);
+
+                        self.lower_anon_const_to_const_arg(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(&expr)
+                    };
+
+                    &*self.arena.alloc(expr)
+                }));
+
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Tup(expr.span, exprs) }
+            }
             ExprKind::Path(qself, path) => {
                 let qpath = self.lower_qpath(
                     expr.id,
@@ -2495,6 +2512,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             | ExprKind::Path(..)
                             | ExprKind::Struct(..)
                             | ExprKind::Call(..)
+                            | ExprKind::Tup(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);

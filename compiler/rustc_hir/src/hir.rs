@@ -497,6 +497,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 
     pub fn span(&self) -> Span {
         match self.kind {
+            ConstArgKind::Tup(span, ..) => span,
             ConstArgKind::Struct(path, _) => path.span(),
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::TupleCall(path, _) => path.span(),
@@ -511,6 +512,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
+    Tup(Span, &'hir [&'hir ConstArg<'hir, Unambig>]),
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
