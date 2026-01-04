@@ -9,7 +9,12 @@ pub(crate) fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-v1:8:8-i64:64-i128:128-n32".into(),
         arch: Arch::Xtensa,
-        metadata: TargetMetadata { description: None, tier: None, host_tools: None, std: None },
+        metadata: TargetMetadata {
+            description: Some("Xtensa ESP32".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
+        },
 
         options: TargetOptions {
             endian: Endian::Little,
