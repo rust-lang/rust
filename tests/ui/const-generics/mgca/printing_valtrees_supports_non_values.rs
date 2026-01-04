@@ -25,3 +25,14 @@ fn baz<T: Trait>() {
 }
 
 fn main() {}
+
+fn test_ice_missing_bound<T>() {
+    foo::<{Option::Some::<u32>{0: <T as Trait>::ASSOC}}>();
+    //~^ ERROR the trait bound `T: Trait` is not satisfied
+    //~| ERROR the constant `Option::<u32>::Some(_)` is not of type `Foo`
+}
+
+fn test_underscore_inference() {
+    foo::<{ Option::Some::<u32> { 0: _ } }>();
+    //~^ ERROR the constant `Option::<u32>::Some(_)` is not of type `Foo`
+}
