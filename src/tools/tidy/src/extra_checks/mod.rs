@@ -28,6 +28,9 @@ use crate::{CiInfo, ensure_version};
 
 mod rustdoc_js;
 
+#[cfg(test)]
+mod tests;
+
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
 
@@ -735,7 +738,7 @@ impl From<io::Error> for Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ExtraCheckParseError {
     #[allow(dead_code, reason = "shown through Debug")]
     UnknownKind(String),
@@ -752,6 +755,7 @@ enum ExtraCheckParseError {
     IfInstalledRequiresLang,
 }
 
+#[derive(PartialEq, Debug)]
 struct ExtraCheckArg {
     /// Only run the check if files to check have been modified.
     auto: bool,
@@ -854,30 +858,32 @@ impl FromStr for ExtraCheckArg {
         let mut auto = false;
         let mut if_installed = false;
         let mut parts = s.split(':');
-        let Some(mut first) = parts.next() else {
-            return Err(ExtraCheckParseError::Empty);
+        let mut first = match parts.next() {
+            Some("") | None => return Err(ExtraCheckParseError::Empty),
+            Some(part) => part,
         };
+
         // The loop allows users to specify `auto` and `if-installed` in any order.
         // Both auto:if-installed:<check> and if-installed:auto:<check> are valid.
         loop {
-            if !auto && first == "auto" {
-                let Some(part) = parts.next() else {
-                    return Err(ExtraCheckParseError::AutoRequiresLang);
-                };
-                auto = true;
-                first = part;
-                continue;
+            match (first, auto, if_installed) {
+                ("auto", false, _) => {
+                    let Some(part) = parts.next() else {
+                        return Err(ExtraCheckParseError::AutoRequiresLang);
+                    };
+                    auto = true;
+                    first = part;
+                }
+                ("if-installed", _, false) => {
+                    let Some(part) = parts.next() else {
+                        return Err(ExtraCheckParseError::IfInstalledRequiresLang);
+                    };
+                    if_installed = true;
+                    first = part;
+                    continue;
+                }
+                _ => break,
             }
-
-            if !if_installed && first == "if-installed" {
-                let Some(part) = parts.next() else {
-                    return Err(ExtraCheckParseError::IfInstalledRequiresLang);
-                };
-                if_installed = true;
-                first = part;
-                continue;
-            }
-            break;
         }
         let second = parts.next();
         if parts.next().is_some() {
@@ -897,7 +903,7 @@ impl FromStr for ExtraCheckArg {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 enum ExtraCheckLang {
     Py,
     Shell,
@@ -921,7 +927,7 @@ impl FromStr for ExtraCheckLang {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 enum ExtraCheckKind {
     Lint,
     Fmt,
