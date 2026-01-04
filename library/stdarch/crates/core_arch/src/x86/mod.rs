@@ -401,7 +401,7 @@ types! {
 }
 
 types! {
-    #![unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+    #![stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 
     /// 128-bit wide set of 8 `f16` types, x86-specific
     ///
@@ -768,7 +768,7 @@ mod avxneconvert;
 pub use self::avxneconvert::*;
 
 mod avx512fp16;
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub use self::avx512fp16::*;
 
 mod kl;

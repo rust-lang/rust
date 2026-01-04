@@ -2149,7 +2149,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 self.check_param_uses_if_mcg(tcx.types.self_param, span, false)
             }
-            Res::SelfTyAlias { alias_to: def_id, forbid_generic: _, .. } => {
+            Res::SelfTyAlias { alias_to: def_id, .. } => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.

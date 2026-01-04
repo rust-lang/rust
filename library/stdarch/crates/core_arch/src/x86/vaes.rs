@@ -146,9 +146,9 @@ mod tests {
     // ideally we'd be using quickcheck here instead
 
     #[target_feature(enable = "avx2")]
-    unsafe fn helper_for_256_vaes(
-        linear: unsafe fn(__m128i, __m128i) -> __m128i,
-        vectorized: unsafe fn(__m256i, __m256i) -> __m256i,
+    fn helper_for_256_vaes(
+        linear: fn(__m128i, __m128i) -> __m128i,
+        vectorized: fn(__m256i, __m256i) -> __m256i,
     ) {
         let a = _mm256_set_epi64x(
             0xDCB4DB3657BF0B7D,
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[target_feature(enable = "sse2")]
-    unsafe fn setup_state_key<T>(broadcast: unsafe fn(__m128i) -> T) -> (T, T) {
+    fn setup_state_key<T>(broadcast: fn(__m128i) -> T) -> (T, T) {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664949.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let k = _mm_set_epi64x(0x1133557799bbddff, 0x0022446688aaccee);
@@ -186,17 +186,17 @@ mod tests {
     }
 
     #[target_feature(enable = "avx2")]
-    unsafe fn setup_state_key_256() -> (__m256i, __m256i) {
+    fn setup_state_key_256() -> (__m256i, __m256i) {
         setup_state_key(_mm256_broadcastsi128_si256)
     }
 
     #[target_feature(enable = "avx512f")]
-    unsafe fn setup_state_key_512() -> (__m512i, __m512i) {
+    fn setup_state_key_512() -> (__m512i, __m512i) {
         setup_state_key(_mm512_broadcast_i32x4)
     }
 
     #[simd_test(enable = "vaes,avx512vl")]
-    unsafe fn test_mm256_aesdec_epi128() {
+    fn test_mm256_aesdec_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664949.aspx.
         let (a, k) = setup_state_key_256();
         let e = _mm_set_epi64x(0x044e4f5176fec48f, 0xb57ecfa381da39ee);
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512vl")]
-    unsafe fn test_mm256_aesdeclast_epi128() {
+    fn test_mm256_aesdeclast_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714178.aspx.
         let (a, k) = setup_state_key_256();
         let e = _mm_set_epi64x(0x36cad57d9072bf9e, 0xf210dd981fa4a493);
@@ -220,7 +220,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512vl")]
-    unsafe fn test_mm256_aesenc_epi128() {
+    fn test_mm256_aesenc_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664810.aspx.
         // they are repeated appropriately
         let (a, k) = setup_state_key_256();
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512vl")]
-    unsafe fn test_mm256_aesenclast_epi128() {
+    fn test_mm256_aesenclast_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714136.aspx.
         let (a, k) = setup_state_key_256();
         let e = _mm_set_epi64x(0xb6dd7df25d7ab320, 0x4b04f98cf4c860f8);
@@ -245,9 +245,9 @@ mod tests {
     }
 
     #[target_feature(enable = "avx512f")]
-    unsafe fn helper_for_512_vaes(
-        linear: unsafe fn(__m128i, __m128i) -> __m128i,
-        vectorized: unsafe fn(__m512i, __m512i) -> __m512i,
+    fn helper_for_512_vaes(
+        linear: fn(__m128i, __m128i) -> __m128i,
+        vectorized: fn(__m512i, __m512i) -> __m512i,
     ) {
         let a = _mm512_set_epi64(
             0xDCB4DB3657BF0B7D,
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512f")]
-    unsafe fn test_mm512_aesdec_epi128() {
+    fn test_mm512_aesdec_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664949.aspx.
         let (a, k) = setup_state_key_512();
         let e = _mm_set_epi64x(0x044e4f5176fec48f, 0xb57ecfa381da39ee);
@@ -303,7 +303,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512f")]
-    unsafe fn test_mm512_aesdeclast_epi128() {
+    fn test_mm512_aesdeclast_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714178.aspx.
         let (a, k) = setup_state_key_512();
         let e = _mm_set_epi64x(0x36cad57d9072bf9e, 0xf210dd981fa4a493);
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512f")]
-    unsafe fn test_mm512_aesenc_epi128() {
+    fn test_mm512_aesenc_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664810.aspx.
         let (a, k) = setup_state_key_512();
         let e = _mm_set_epi64x(0x16ab0e57dfc442ed, 0x28e4ee1884504333);
@@ -327,7 +327,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vaes,avx512f")]
-    unsafe fn test_mm512_aesenclast_epi128() {
+    fn test_mm512_aesenclast_epi128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714136.aspx.
         let (a, k) = setup_state_key_512();
         let e = _mm_set_epi64x(0xb6dd7df25d7ab320, 0x4b04f98cf4c860f8);

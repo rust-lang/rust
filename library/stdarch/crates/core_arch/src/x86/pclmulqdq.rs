@@ -45,7 +45,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "pclmulqdq")]
-    unsafe fn test_mm_clmulepi64_si128() {
+    fn test_mm_clmulepi64_si128() {
         // Constants taken from https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf
         let a = _mm_set_epi64x(0x7b5b546573745665, 0x63746f725d53475d);
         let b = _mm_set_epi64x(0x4869285368617929, 0x5b477565726f6e5d);
