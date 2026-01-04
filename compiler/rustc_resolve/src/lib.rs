@@ -123,10 +123,14 @@ enum Scope<'ra> {
     DeriveHelpersCompat,
     /// Textual `let`-like scopes introduced by `macro_rules!` items.
     MacroRules(MacroRulesScopeRef<'ra>),
-    /// Names declared in the given module.
+    /// Non-glob names declared in the given module.
     /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     /// lint if it should be reported.
-    Module(Module<'ra>, Option<NodeId>),
+    ModuleNonGlobs(Module<'ra>, Option<NodeId>),
+    /// Glob names declared in the given module.
+    /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
+    /// lint if it should be reported.
+    ModuleGlobs(Module<'ra>, Option<NodeId>),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -149,6 +153,8 @@ enum Scope<'ra> {
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
+    /// Two scopes inside a module, for non-glob and glob bindings.
+    Module(Namespace, Module<'ra>),
     /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
     ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// Just two extern prelude scopes.
@@ -801,7 +807,7 @@ impl<'ra> fmt::Debug for Module<'ra> {
 #[derive(Clone, Copy, Debug)]
 struct NameBindingData<'ra> {
     kind: NameBindingKind<'ra>,
-    ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+    ambiguity: Option<NameBinding<'ra>>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
@@ -931,9 +937,9 @@ impl<'ra> NameBindingData<'ra> {
 
     fn descent_to_ambiguity(
         self: NameBinding<'ra>,
-    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>, AmbiguityKind)> {
+    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>)> {
         match self.ambiguity {
-            Some((ambig_binding, ambig_kind)) => Some((self, ambig_binding, ambig_kind)),
+            Some(ambig_binding) => Some((self, ambig_binding)),
             None => match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
                 _ => None,
@@ -1926,8 +1932,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let scope_set = ScopeSet::All(TypeNS);
         self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |this, scope, _, _| {
             match scope {
-                Scope::Module(module, _) => {
+                Scope::ModuleNonGlobs(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                }
+                Scope::ModuleGlobs(..) => {
+                    // Already handled in `ModuleNonGlobs` (but see #144993).
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
@@ -2055,14 +2064,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         used: Used,
         warn_ambiguity: bool,
     ) {
-        if let Some((b2, kind)) = used_binding.ambiguity {
+        if let Some(b2) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
-                kind,
+                kind: AmbiguityKind::GlobVsGlob,
                 ident,
                 b1: used_binding,
                 b2,
-                scope1: Scope::Module(self.empty_module, None),
-                scope2: Scope::Module(self.empty_module, None),
+                scope1: Scope::ModuleGlobs(self.empty_module, None),
+                scope2: Scope::ModuleGlobs(self.empty_module, None),
                 warning: warn_ambiguity,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {

@@ -155,11 +155,10 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         let cx = relation.cx();
 
         if a.c_variadic != b.c_variadic {
-            return Err(TypeError::VariadicMismatch({
-                let a = a.c_variadic;
-                let b = b.c_variadic;
-                ExpectedFound::new(a, b)
-            }));
+            return Err(TypeError::VariadicMismatch(ExpectedFound::new(
+                a.c_variadic,
+                b.c_variadic,
+            )));
         }
 
         if a.safety != b.safety {

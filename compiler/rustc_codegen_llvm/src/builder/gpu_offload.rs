@@ -49,8 +49,9 @@ impl<'ll> OffloadGlobals<'ll> {
         let bin_desc = cx.type_named_struct("struct.__tgt_bin_desc");
         cx.set_struct_body(bin_desc, &tgt_bin_desc_ty, false);
 
-        let register_lib = declare_offload_fn(&cx, "__tgt_register_lib", mapper_fn_ty);
-        let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", mapper_fn_ty);
+        let reg_lib_decl = cx.type_func(&[cx.type_ptr()], cx.type_void());
+        let register_lib = declare_offload_fn(&cx, "__tgt_register_lib", reg_lib_decl);
+        let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
         let init_ty = cx.type_func(&[], cx.type_void());
         let init_rtls = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
 

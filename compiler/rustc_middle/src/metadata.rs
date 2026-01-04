@@ -45,16 +45,9 @@ pub struct ModChild {
     pub reexport_chain: SmallVec<[Reexport; 2]>,
 }
 
-#[derive(Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum AmbigModChildKind {
-    GlobVsGlob,
-    GlobVsExpanded,
-}
-
 /// Same as `ModChild`, however, it includes ambiguity error.
 #[derive(Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct AmbigModChild {
     pub main: ModChild,
     pub second: ModChild,
-    pub kind: AmbigModChildKind,
 }

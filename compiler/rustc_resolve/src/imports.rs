@@ -9,7 +9,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
-use rustc_middle::metadata::{AmbigModChild, AmbigModChildKind, ModChild, Reexport};
+use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::lint::BuiltinLintDiag;
@@ -32,10 +32,9 @@ use crate::errors::{
 };
 use crate::ref_mut::CmCell;
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
-    Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope,
-    PathResult, PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    AmbiguityError, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion, Module,
+    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
+    PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 type Res = def::Res<NodeId>;
@@ -373,7 +372,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             resolution.glob_binding = Some(glob_binding);
                         } else if res != old_glob_binding.res() {
                             resolution.glob_binding = Some(this.new_ambiguity_binding(
-                                AmbiguityKind::GlobVsGlob,
                                 old_glob_binding,
                                 glob_binding,
                                 warn_ambiguity,
@@ -389,25 +387,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_binding, non_glob_binding) =
                             if old_glob { (old_binding, binding) } else { (binding, old_binding) };
-                        if ns == MacroNS
-                            && non_glob_binding.expansion != LocalExpnId::ROOT
-                            && glob_binding.res() != non_glob_binding.res()
-                        {
-                            resolution.non_glob_binding = Some(this.new_ambiguity_binding(
-                                AmbiguityKind::GlobVsExpanded,
-                                non_glob_binding,
-                                glob_binding,
-                                false,
-                            ));
-                        } else {
-                            resolution.non_glob_binding = Some(non_glob_binding);
-                        }
-
+                        resolution.non_glob_binding = Some(non_glob_binding);
                         if let Some(old_glob_binding) = resolution.glob_binding {
                             assert!(old_glob_binding.is_glob_import());
                             if glob_binding.res() != old_glob_binding.res() {
                                 resolution.glob_binding = Some(this.new_ambiguity_binding(
-                                    AmbiguityKind::GlobVsGlob,
                                     old_glob_binding,
                                     glob_binding,
                                     false,
@@ -437,12 +421,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn new_ambiguity_binding(
         &self,
-        ambiguity_kind: AmbiguityKind,
         primary_binding: NameBinding<'ra>,
         secondary_binding: NameBinding<'ra>,
         warn_ambiguity: bool,
     ) -> NameBinding<'ra> {
-        let ambiguity = Some((secondary_binding, ambiguity_kind));
+        let ambiguity = Some(secondary_binding);
         let data = NameBindingData { ambiguity, warn_ambiguity, ..*primary_binding };
         self.arenas.alloc_name_binding(data)
     }
@@ -658,7 +641,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let Some(binding) = resolution.best_binding() else { continue };
 
                 if let NameBindingKind::Import { import, .. } = binding.kind
-                    && let Some((amb_binding, _)) = binding.ambiguity
+                    && let Some(amb_binding) = binding.ambiguity
                     && binding.res() != Res::Err
                     && exported_ambiguities.contains(&binding)
                 {
@@ -1566,9 +1549,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     vis: binding.vis,
                     reexport_chain,
                 };
-                if let Some((ambig_binding1, ambig_binding2, ambig_kind)) =
-                    binding.descent_to_ambiguity()
-                {
+                if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
                     let main = child(ambig_binding1.reexport_chain(this));
                     let second = ModChild {
                         ident: ident.0,
@@ -1576,13 +1557,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         vis: ambig_binding2.vis,
                         reexport_chain: ambig_binding2.reexport_chain(this),
                     };
-                    let kind = match ambig_kind {
-                        AmbiguityKind::GlobVsGlob => AmbigModChildKind::GlobVsGlob,
-                        AmbiguityKind::GlobVsExpanded => AmbigModChildKind::GlobVsExpanded,
-                        _ => unreachable!(),
-                    };
-
-                    ambig_children.push(AmbigModChild { main, second, kind })
+                    ambig_children.push(AmbigModChild { main, second })
                 } else {
                     children.push(child(binding.reexport_chain(this)));
                 }
