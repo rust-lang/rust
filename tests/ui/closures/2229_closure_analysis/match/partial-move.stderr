@@ -70,54 +70,6 @@ help: to force the closure to take ownership of `x.0` (and any other referenced 
 LL |     move || {
    |     ++++
 
-error[E0373]: closure may outlive the current function, but it borrows `x.0`, which is owned by the current function
-  --> $DIR/partial-move.rs:83:5
-   |
-LL |     || {
-   |     ^^ may outlive borrowed value `x.0`
-LL |
-LL |         match x {
-   |               - `x.0` is borrowed here
-   |
-note: closure is returned here
-  --> $DIR/partial-move.rs:83:5
-   |
-LL | /     || {
-LL | |
-LL | |         match x {
-LL | |             NonExhaustive::A(a, b) => {
-...  |
-LL | |     }
-   | |_____^
-help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
-
-error[E0373]: closure may outlive the current function, but it borrows `x.0`, which is owned by the current function
-  --> $DIR/partial-move.rs:96:5
-   |
-LL |     || {
-   |     ^^ may outlive borrowed value `x.0`
-LL |
-LL |         match x {
-   |               - `x.0` is borrowed here
-   |
-note: closure is returned here
-  --> $DIR/partial-move.rs:96:5
-   |
-LL | /     || {
-LL | |
-LL | |         match x {
-LL | |             NonExhaustive::A(a, b) => {
-...  |
-LL | |     }
-   | |_____^
-help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0373`.

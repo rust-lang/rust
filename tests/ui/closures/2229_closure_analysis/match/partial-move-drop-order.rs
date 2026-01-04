@@ -1,3 +1,8 @@
+// Make sure that #[non_exhaustive] cannot cause drop order to depend on which
+// crate the code is in.
+//
+// See rust-lang/rust#147722
+//
 //@ edition:2021
 //@ run-pass
 //@ check-run-results

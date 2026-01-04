@@ -12,8 +12,8 @@ dropping b
 
 non exhaustive:
 before assign
-dropping a
 after assign
+dropping a
 dropping b
 
 external non exhaustive:

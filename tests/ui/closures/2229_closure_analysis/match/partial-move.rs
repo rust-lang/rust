@@ -78,10 +78,9 @@ pub fn test_two_variants(x: TwoVariants) -> impl FnOnce() {
     }
 }
 
-// ...and single-variant, non-exhaustive enums *should* behave as if they had multiple variants
+// ...and single-variant, non-exhaustive enums behave as if they had multiple variants
 pub fn test_non_exhaustive1(x: NonExhaustive) -> impl FnOnce() {
     || {
-    //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
             NonExhaustive::A(a, b) => {
                 drop((a, b));
@@ -94,7 +93,6 @@ pub fn test_non_exhaustive1(x: NonExhaustive) -> impl FnOnce() {
 // (again, wildcard branch or not)
 pub fn test_non_exhaustive2(x: NonExhaustive) -> impl FnOnce() {
     || {
-    //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
             NonExhaustive::A(a, b) => {
                 drop((a, b));
