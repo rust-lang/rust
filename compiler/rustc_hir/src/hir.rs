@@ -440,7 +440,7 @@ impl<'hir> ConstItemRhs<'hir> {
 /// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
@@ -3374,7 +3374,7 @@ pub enum AmbigArg {}
 /// Represents a type in the `HIR`.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 #[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
@@ -3713,7 +3713,7 @@ pub enum InferDelegationKind {
 /// The various kinds of types recognized by the compiler.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 // SAFETY: `repr(u8)` is required so that `TyKind<()>` and `TyKind<!>` are layout compatible
 #[repr(u8, C)]
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
