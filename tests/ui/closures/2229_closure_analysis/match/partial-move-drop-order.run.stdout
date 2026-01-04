@@ -1,0 +1,23 @@
+one variant:
+before assign
+dropping a
+after assign
+dropping b
+
+two variants:
+before assign
+after assign
+dropping a
+dropping b
+
+non exhaustive:
+before assign
+dropping a
+after assign
+dropping b
+
+external non exhaustive:
+before assign
+after assign
+dropping a
+dropping b
