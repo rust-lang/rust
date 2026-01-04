@@ -1,15 +1,10 @@
-//@ compile-flags: -Zoffload=Enable -Zunstable-options -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zoffload=Test -Zunstable-options -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
-//@ needs-enzyme
+//@ needs-offload
 
 // This test is verifying that we generate __tgt_target_data_*_mapper before and after a call to the
 // kernel_1. Better documentation to what each global or variable means is available in the gpu
-// offlaod code, or the LLVM offload documentation. This code does not launch any GPU kernels yet,
-// and will be rewritten once a proper offload frontend has landed.
-//
-// We currently only handle memory transfer for specific calls to functions named `kernel_{num}`,
-// when inside of a function called main. This, too, is a temporary workaround for not having a
-// frontend.
+// offload code, or the LLVM offload documentation.
 
 #![feature(rustc_attrs)]
 #![feature(core_intrinsics)]
@@ -20,6 +15,20 @@ fn main() {
     let mut x = [3.0; 256];
     kernel_1(&mut x);
     core::hint::black_box(&x);
+}
+
+#[unsafe(no_mangle)]
+#[inline(never)]
+pub fn kernel_1(x: &mut [f32; 256]) {
+    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x,))
+}
+
+#[unsafe(no_mangle)]
+#[inline(never)]
+pub fn _kernel_1(x: &mut [f32; 256]) {
+    for i in 0..256 {
+        x[i] = 21.0;
+    }
 }
 
 // CHECK: %struct.ident_t = type { i32, i32, i32, i32, ptr }
@@ -36,8 +45,9 @@ fn main() {
 // CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
 // CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
 
-// CHECK: Function Attrs: nounwind
 // CHECK: declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr)
+// CHECK: declare void @__tgt_register_lib(ptr) local_unnamed_addr
+// CHECK: declare void @__tgt_unregister_lib(ptr) local_unnamed_addr
 
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NEXT: start:
@@ -94,17 +104,3 @@ fn main() {
 // CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   ret void
 // CHECK-NEXT: }
-
-#[unsafe(no_mangle)]
-#[inline(never)]
-pub fn kernel_1(x: &mut [f32; 256]) {
-    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x,))
-}
-
-#[unsafe(no_mangle)]
-#[inline(never)]
-pub fn _kernel_1(x: &mut [f32; 256]) {
-    for i in 0..256 {
-        x[i] = 21.0;
-    }
-}
