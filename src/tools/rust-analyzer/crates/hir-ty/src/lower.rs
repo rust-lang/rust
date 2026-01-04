@@ -77,6 +77,7 @@ pub struct ImplTraits {
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
     pub(crate) predicates: StoredClauses,
+    pub(crate) assoc_ty_bounds_start: u32,
 }
 
 pub type ImplTraitIdx = Idx<ImplTrait>;
@@ -164,6 +165,12 @@ impl<'db> LifetimeElisionKind<'db> {
         // FIXME: We should use the elided lifetime here, or `ElisionFailure`.
         LifetimeElisionKind::Elided(Region::error(interner))
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum GenericPredicateSource {
+    SelfOnly,
+    AssocTyBound,
 }
 
 #[derive(Debug)]
@@ -465,10 +472,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // this dance is to make sure the data is in the right
                         // place even if we encounter more opaque types while
                         // lowering the bounds
-                        let idx = self
-                            .impl_trait_mode
-                            .opaque_type_data
-                            .alloc(ImplTrait { predicates: Clauses::empty(interner).store() });
+                        let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
+                            predicates: Clauses::empty(interner).store(),
+                            assoc_ty_bounds_start: 0,
+                        });
 
                         let impl_trait_id = origin.either(
                             |f| ImplTraitId::ReturnTypeImplTrait(f, idx),
@@ -608,7 +615,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         ignore_bindings: bool,
         generics: &Generics,
         predicate_filter: PredicateFilter,
-    ) -> impl Iterator<Item = Clause<'db>> + use<'a, 'b, 'db> {
+    ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -634,8 +641,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 let self_ty = self.lower_ty(*target);
                 Either::Left(Either::Right(self.lower_type_bound(bound, self_ty, ignore_bindings)))
             }
-            &WherePredicate::Lifetime { bound, target } => {
-                Either::Right(iter::once(Clause(Predicate::new(
+            &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
+                Clause(Predicate::new(
                     self.interner,
                     Binder::dummy(rustc_type_ir::PredicateKind::Clause(
                         rustc_type_ir::ClauseKind::RegionOutlives(OutlivesPredicate(
@@ -643,8 +650,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             self.lower_lifetime(target),
                         )),
                     )),
-                ))))
-            }
+                )),
+                GenericPredicateSource::SelfOnly,
+            ))),
         }
         .into_iter()
     }
@@ -654,7 +662,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         bound: &'b TypeBound,
         self_ty: Ty<'db>,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = Clause<'db>> + use<'b, 'a, 'db> {
+    ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'b, 'a, 'db> {
         let interner = self.interner;
         let meta_sized = self.lang_items.MetaSized;
         let pointee_sized = self.lang_items.PointeeSized;
@@ -712,7 +720,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
             TypeBound::Use(_) | TypeBound::Error => {}
         }
-        clause.into_iter().chain(assoc_bounds.into_iter().flatten())
+        clause
+            .into_iter()
+            .map(|pred| (pred, GenericPredicateSource::SelfOnly))
+            .chain(assoc_bounds.into_iter().flatten())
     }
 
     fn lower_dyn_trait(&mut self, bounds: &[TypeBound]) -> Ty<'db> {
@@ -732,7 +743,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
             for b in bounds {
                 let db = ctx.db;
-                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|b| {
+                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|(b, _)| {
                     match b.kind().skip_binder() {
                         rustc_type_ir::ClauseKind::Trait(t) => {
                             let id = t.def_id();
@@ -990,35 +1001,49 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             rustc_type_ir::AliasTyKind::Opaque,
             AliasTy::new_from_args(interner, def_id, args),
         );
-        let predicates = self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
-            let mut predicates = Vec::new();
-            for b in bounds {
-                predicates.extend(ctx.lower_type_bound(b, self_ty, false));
-            }
+        let (predicates, assoc_ty_bounds_start) =
+            self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
+                let mut predicates = Vec::new();
+                let mut assoc_ty_bounds = Vec::new();
+                for b in bounds {
+                    for (pred, source) in ctx.lower_type_bound(b, self_ty, false) {
+                        match source {
+                            GenericPredicateSource::SelfOnly => predicates.push(pred),
+                            GenericPredicateSource::AssocTyBound => assoc_ty_bounds.push(pred),
+                        }
+                    }
+                }
 
-            if !ctx.unsized_types.contains(&self_ty) {
-                let sized_trait = self.lang_items.Sized;
-                let sized_clause = sized_trait.map(|trait_id| {
-                    let trait_ref = TraitRef::new_from_args(
-                        interner,
-                        trait_id.into(),
-                        GenericArgs::new_from_slice(&[self_ty.into()]),
-                    );
-                    Clause(Predicate::new(
-                        interner,
-                        Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                            rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                trait_ref,
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            }),
-                        )),
-                    ))
-                });
-                predicates.extend(sized_clause);
-            }
-            predicates
-        });
-        ImplTrait { predicates: Clauses::new_from_slice(&predicates).store() }
+                if !ctx.unsized_types.contains(&self_ty) {
+                    let sized_trait = self.lang_items.Sized;
+                    let sized_clause = sized_trait.map(|trait_id| {
+                        let trait_ref = TraitRef::new_from_args(
+                            interner,
+                            trait_id.into(),
+                            GenericArgs::new_from_slice(&[self_ty.into()]),
+                        );
+                        Clause(Predicate::new(
+                            interner,
+                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                                    trait_ref,
+                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                }),
+                            )),
+                        ))
+                    });
+                    predicates.extend(sized_clause);
+                }
+
+                let assoc_ty_bounds_start = predicates.len() as u32;
+                predicates.extend(assoc_ty_bounds);
+                (predicates, assoc_ty_bounds_start)
+            });
+
+        ImplTrait {
+            predicates: Clauses::new_from_slice(&predicates).store(),
+            assoc_ty_bounds_start,
+        }
     }
 
     pub(crate) fn lower_lifetime(&mut self, lifetime: LifetimeRefId) -> Region<'db> {
@@ -1139,12 +1164,45 @@ impl ImplTraitId {
             .expect("owner should have opaque type")
             .get_with(|it| it.impl_traits[idx].predicates.as_ref().as_slice())
     }
+
+    #[inline]
+    pub fn self_predicates<'db>(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        let (impl_traits, idx) = match self {
+            ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
+                (ImplTraits::return_type_impl_traits(db, owner), idx)
+            }
+            ImplTraitId::TypeAliasImplTrait(owner, idx) => {
+                (ImplTraits::type_alias_impl_traits(db, owner), idx)
+            }
+        };
+        let predicates =
+            impl_traits.as_deref().expect("owner should have opaque type").get_with(|it| {
+                let impl_trait = &it.impl_traits[idx];
+                (
+                    impl_trait.predicates.as_ref().as_slice(),
+                    impl_trait.assoc_ty_bounds_start as usize,
+                )
+            });
+
+        predicates.map_bound(|(preds, len)| &preds[..len])
+    }
 }
 
 impl InternedOpaqueTyId {
     #[inline]
     pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
         self.loc(db).predicates(db)
+    }
+
+    #[inline]
+    pub fn self_predicates<'db>(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        self.loc(db).self_predicates(db)
     }
 }
 
@@ -1655,12 +1713,15 @@ pub(crate) fn generic_predicates_for_param<'db>(
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
             if predicate(pred, &mut ctx) {
-                predicates.extend(ctx.lower_where_predicate(
-                    pred,
-                    true,
-                    maybe_parent_generics,
-                    PredicateFilter::All,
-                ));
+                predicates.extend(
+                    ctx.lower_where_predicate(
+                        pred,
+                        true,
+                        maybe_parent_generics,
+                        PredicateFilter::All,
+                    )
+                    .map(|(pred, _)| pred),
+                );
             }
         }
     }
@@ -1696,21 +1757,44 @@ pub(crate) fn type_alias_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
 ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-    type_alias_bounds_with_diagnostics(db, type_alias).0.map_bound(|it| it.as_slice())
+    type_alias_bounds_with_diagnostics(db, type_alias).0.predicates.map_bound(|it| it.as_slice())
 }
 
-pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
+#[inline]
+pub(crate) fn type_alias_self_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> (EarlyBinder<'db, Clauses<'db>>, Diagnostics) {
-    let (bounds, diags) = type_alias_bounds_with_diagnostics_query(db, type_alias);
-    return (bounds.get(), diags.clone());
+) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    let (TypeAliasBounds { predicates, assoc_ty_bounds_start }, _) =
+        type_alias_bounds_with_diagnostics(db, type_alias);
+    predicates.map_bound(|it| &it.as_slice()[..assoc_ty_bounds_start as usize])
+}
+
+#[derive(PartialEq, Eq, Debug, Hash)]
+struct TypeAliasBounds<T> {
+    predicates: T,
+    assoc_ty_bounds_start: u32,
+}
+
+fn type_alias_bounds_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
+    type_alias: TypeAliasId,
+) -> (TypeAliasBounds<EarlyBinder<'db, Clauses<'db>>>, Diagnostics) {
+    let (TypeAliasBounds { predicates, assoc_ty_bounds_start }, diags) =
+        type_alias_bounds_with_diagnostics_query(db, type_alias);
+    return (
+        TypeAliasBounds {
+            predicates: predicates.get(),
+            assoc_ty_bounds_start: *assoc_ty_bounds_start,
+        },
+        diags.clone(),
+    );
 
     #[salsa::tracked(returns(ref))]
     pub fn type_alias_bounds_with_diagnostics_query<'db>(
         db: &'db dyn HirDatabase,
         type_alias: TypeAliasId,
-    ) -> (StoredEarlyBinder<StoredClauses>, Diagnostics) {
+    ) -> (TypeAliasBounds<StoredEarlyBinder<StoredClauses>>, Diagnostics) {
         let type_alias_data = db.type_alias_signature(type_alias);
         let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
         let mut ctx = TyLoweringContext::new(
@@ -1727,10 +1811,18 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
         let interner_ty = Ty::new_projection_from_args(interner, def_id, item_args);
 
         let mut bounds = Vec::new();
+        let mut assoc_ty_bounds = Vec::new();
         for bound in &type_alias_data.bounds {
-            ctx.lower_type_bound(bound, interner_ty, false).for_each(|pred| {
-                bounds.push(pred);
-            });
+            ctx.lower_type_bound(bound, interner_ty, false).for_each(
+                |(pred, source)| match source {
+                    GenericPredicateSource::SelfOnly => {
+                        bounds.push(pred);
+                    }
+                    GenericPredicateSource::AssocTyBound => {
+                        assoc_ty_bounds.push(pred);
+                    }
+                },
+            );
         }
 
         if !ctx.unsized_types.contains(&interner_ty) {
@@ -1745,8 +1837,14 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
             };
         }
 
+        let assoc_ty_bounds_start = bounds.len() as u32;
+        bounds.extend(assoc_ty_bounds);
+
         (
-            StoredEarlyBinder::bind(Clauses::new_from_slice(&bounds).store()),
+            TypeAliasBounds {
+                predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&bounds).store()),
+                assoc_ty_bounds_start,
+            },
             create_diagnostics(ctx.diagnostics),
         )
     }
@@ -1754,11 +1852,15 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericPredicates {
-    // The order is the following: first, if `parent_is_trait == true`, comes the implicit trait predicate for the
-    // parent. Then come the explicit predicates for the parent, then the explicit trait predicate for the child,
+    // The order is the following: first, if `parent_is_trait == true`, comes the implicit trait
+    // predicate for the parent. Then come the bounds of the associated types of the parents,
+    // then the explicit, self-only predicates for the parent, then the explicit, self-only trait
+    // predicate for the child, then the bounds of the associated types of the child,
     // then the implicit trait predicate for the child, if `is_trait` is `true`.
     predicates: StoredEarlyBinder<StoredClauses>,
+    parent_explicit_self_predicates_start: u32,
     own_predicates_start: u32,
+    own_assoc_ty_bounds_start: u32,
     is_trait: bool,
     parent_is_trait: bool,
 }
@@ -1782,7 +1884,15 @@ impl GenericPredicates {
     pub(crate) fn from_explicit_own_predicates(
         predicates: StoredEarlyBinder<StoredClauses>,
     ) -> Self {
-        Self { predicates, own_predicates_start: 0, is_trait: false, parent_is_trait: false }
+        let len = predicates.get().skip_binder().len() as u32;
+        Self {
+            predicates,
+            parent_explicit_self_predicates_start: 0,
+            own_predicates_start: 0,
+            own_assoc_ty_bounds_start: len,
+            is_trait: false,
+            parent_is_trait: false,
+        }
     }
 
     #[inline]
@@ -1815,6 +1925,14 @@ impl GenericPredicates {
     }
 
     #[inline]
+    pub fn query_explicit_implied<'db>(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        Self::query(db, def).explicit_implied_predicates()
+    }
+
+    #[inline]
     pub fn all_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
         self.predicates.get().map_bound(|it| it.as_slice())
     }
@@ -1824,9 +1942,18 @@ impl GenericPredicates {
         self.predicates.get().map_bound(|it| &it.as_slice()[self.own_predicates_start as usize..])
     }
 
-    /// Returns the predicates, minus the implicit `Self: Trait` predicate for a trait.
+    /// Returns the predicates, minus the implicit `Self: Trait` predicate and bounds of the
+    /// associated types for a trait.
     #[inline]
     pub fn explicit_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.predicates.get().map_bound(|it| {
+            &it.as_slice()[self.parent_explicit_self_predicates_start as usize
+                ..self.own_assoc_ty_bounds_start as usize]
+        })
+    }
+
+    #[inline]
+    pub fn explicit_implied_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
         self.predicates.get().map_bound(|it| {
             &it.as_slice()[usize::from(self.parent_is_trait)..it.len() - usize::from(self.is_trait)]
         })
@@ -1902,26 +2029,22 @@ where
     );
     let sized_trait = ctx.lang_items.Sized;
 
-    let mut predicates = Vec::new();
+    // We need to lower parents and self separately - see the comment below lowering of implicit
+    // `Sized` predicates for why.
+    let mut own_predicates = Vec::new();
+    let mut parent_predicates = Vec::new();
+    let mut own_assoc_ty_bounds = Vec::new();
+    let mut parent_assoc_ty_bounds = Vec::new();
     let all_generics =
         std::iter::successors(Some(&generics), |generics| generics.parent_generics())
             .collect::<ArrayVec<_, 2>>();
-    let mut is_trait = false;
-    let mut parent_is_trait = false;
-    if all_generics.len() > 1 {
-        add_implicit_trait_predicate(
-            interner,
-            all_generics.last().unwrap().def(),
-            predicate_filter,
-            &mut predicates,
-            &mut parent_is_trait,
-        );
-    }
-    // We need to lower parent predicates first - see the comment below lowering of implicit `Sized` predicates
-    // for why.
-    let mut own_predicates_start = 0;
+    let own_implicit_trait_predicate = implicit_trait_predicate(interner, def, predicate_filter);
+    let parent_implicit_trait_predicate = if all_generics.len() > 1 {
+        implicit_trait_predicate(interner, all_generics.last().unwrap().def(), predicate_filter)
+    } else {
+        None
+    };
     for &maybe_parent_generics in all_generics.iter().rev() {
-        let current_def_predicates_start = predicates.len();
         // Collect only diagnostics from the child, not including parents.
         ctx.diagnostics.clear();
 
@@ -1929,15 +2052,37 @@ where
             ctx.store = maybe_parent_generics.store();
             for pred in maybe_parent_generics.where_predicates() {
                 tracing::debug!(?pred);
-                predicates.extend(ctx.lower_where_predicate(
-                    pred,
-                    false,
-                    maybe_parent_generics,
-                    predicate_filter,
-                ));
+                for (pred, source) in
+                    ctx.lower_where_predicate(pred, false, maybe_parent_generics, predicate_filter)
+                {
+                    match source {
+                        GenericPredicateSource::SelfOnly => {
+                            if maybe_parent_generics.def() == def {
+                                own_predicates.push(pred);
+                            } else {
+                                parent_predicates.push(pred);
+                            }
+                        }
+                        GenericPredicateSource::AssocTyBound => {
+                            if maybe_parent_generics.def() == def {
+                                own_assoc_ty_bounds.push(pred);
+                            } else {
+                                parent_assoc_ty_bounds.push(pred);
+                            }
+                        }
+                    }
+                }
             }
 
-            push_const_arg_has_type_predicates(db, &mut predicates, maybe_parent_generics);
+            if maybe_parent_generics.def() == def {
+                push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
+            } else {
+                push_const_arg_has_type_predicates(
+                    db,
+                    &mut parent_predicates,
+                    maybe_parent_generics,
+                );
+            }
 
             if let Some(sized_trait) = sized_trait {
                 let mut add_sized_clause = |param_idx, param_id, param_data| {
@@ -1971,7 +2116,11 @@ where
                             }),
                         )),
                     ));
-                    predicates.push(clause);
+                    if maybe_parent_generics.def() == def {
+                        own_predicates.push(clause);
+                    } else {
+                        parent_predicates.push(clause);
+                    }
                 };
                 let parent_params_len = maybe_parent_generics.len_parent();
                 maybe_parent_generics.iter_self().enumerate().for_each(
@@ -1990,30 +2139,55 @@ where
             // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
             // But we do have to lower the parent first.
         }
-
-        if maybe_parent_generics.def() == def {
-            own_predicates_start = current_def_predicates_start as u32;
-        }
     }
 
-    add_implicit_trait_predicate(interner, def, predicate_filter, &mut predicates, &mut is_trait);
-
     let diagnostics = create_diagnostics(ctx.diagnostics);
+
+    // The order is:
+    //
+    // 1. parent implicit trait pred
+    // 2. parent assoc bounds
+    // 3. parent self only preds
+    // 4. own self only preds
+    // 5. own assoc ty bounds
+    // 6. own implicit trait pred
+    //
+    // The purpose of this is to index the slice of the followings, without making extra `Vec`s or
+    // iterators:
+    // - explicit self only predicates, of own or own + self
+    // - explicit predicates, of own or own + self
+    let predicates = parent_implicit_trait_predicate
+        .iter()
+        .chain(parent_assoc_ty_bounds.iter())
+        .chain(parent_predicates.iter())
+        .chain(own_predicates.iter())
+        .chain(own_assoc_ty_bounds.iter())
+        .chain(own_implicit_trait_predicate.iter())
+        .copied()
+        .collect::<Vec<_>>();
+    let parent_is_trait = parent_implicit_trait_predicate.is_some();
+    let is_trait = own_implicit_trait_predicate.is_some();
+    let parent_explicit_self_predicates_start =
+        parent_is_trait as u32 + parent_assoc_ty_bounds.len() as u32;
+    let own_predicates_start =
+        parent_explicit_self_predicates_start + parent_predicates.len() as u32;
+    let own_assoc_ty_bounds_start = own_predicates_start + own_predicates.len() as u32;
+
     let predicates = GenericPredicates {
+        parent_explicit_self_predicates_start,
         own_predicates_start,
+        own_assoc_ty_bounds_start,
         is_trait,
         parent_is_trait,
         predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
     };
     return (predicates, diagnostics);
 
-    fn add_implicit_trait_predicate<'db>(
+    fn implicit_trait_predicate<'db>(
         interner: DbInterner<'db>,
         def: GenericDefId,
         predicate_filter: PredicateFilter,
-        predicates: &mut Vec<Clause<'db>>,
-        set_is_trait: &mut bool,
-    ) {
+    ) -> Option<Clause<'db>> {
         // For traits, add `Self: Trait` predicate. This is
         // not part of the predicates that a user writes, but it
         // is something that one must prove in order to invoke a
@@ -2029,8 +2203,9 @@ where
         if let GenericDefId::TraitId(def_id) = def
             && predicate_filter == PredicateFilter::All
         {
-            *set_is_trait = true;
-            predicates.push(TraitRef::identity(interner, def_id.into()).upcast(interner));
+            Some(TraitRef::identity(interner, def_id.into()).upcast(interner))
+        } else {
+            None
         }
     }
 }
@@ -2327,7 +2502,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
 
     let mut bounds = Vec::new();
     for bound in &type_alias_data.bounds {
-        ctx.lower_type_bound(bound, self_ty, false).for_each(|pred| {
+        ctx.lower_type_bound(bound, self_ty, false).for_each(|(pred, _)| {
             if let Some(bound) = pred
                 .kind()
                 .map_bound(|c| match c {
