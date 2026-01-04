@@ -248,10 +248,8 @@ macro_rules! step_identical_methods {
 
 macro_rules! step_integer_impls {
     {
-        narrower than or same width as usize:
-            $( [ $u_narrower:ident $i_narrower:ident ] ),+;
-        wider than usize:
-            $( [ $u_wider:ident $i_wider:ident ] ),+;
+        [ $( [ $u_narrower:ident $i_narrower:ident ] ),+ ] <= usize <
+        [ $( [ $u_wider:ident $i_wider:ident ] ),+ ]
     } => {
         $(
             #[allow(unreachable_patterns)]
@@ -426,20 +424,17 @@ macro_rules! step_integer_impls {
 
 #[cfg(target_pointer_width = "64")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [u64 i64], [usize isize];
-    wider than usize: [u128 i128];
+    [ [u8 i8], [u16 i16], [u32 i32], [u64 i64], [usize isize] ] <= usize < [ [u128 i128] ]
 }
 
 #[cfg(target_pointer_width = "32")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [usize isize];
-    wider than usize: [u64 i64], [u128 i128];
+    [ [u8 i8], [u16 i16], [u32 i32], [usize isize] ] <= usize < [ [u64 i64], [u128 i128] ]
 }
 
 #[cfg(target_pointer_width = "16")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [usize isize];
-    wider than usize: [u32 i32], [u64 i64], [u128 i128];
+    [ [u8 i8], [u16 i16], [usize isize] ] <= usize < [ [u32 i32], [u64 i64], [u128 i128] ]
 }
 
 // These are still macro-generated because the integer literals resolve to different types.
@@ -501,10 +496,7 @@ macro_rules! step_nonzero_identical_methods {
 
 macro_rules! step_nonzero_impls {
     {
-        narrower than or same width as usize:
-            $( $narrower:ident ),+;
-        wider than usize:
-            $( $wider:ident ),+;
+        [$( $narrower:ident ),+] <= usize < [$( $wider:ident ),+]
     } => {
         $(
             #[allow(unreachable_patterns)]
@@ -553,20 +545,17 @@ macro_rules! step_nonzero_impls {
 
 #[cfg(target_pointer_width = "64")]
 step_nonzero_impls! {
-    narrower than or same width as usize: u8, u16, u32, u64, usize;
-    wider than usize: u128;
+    [u8, u16, u32, u64, usize] <= usize < [u128]
 }
 
 #[cfg(target_pointer_width = "32")]
 step_nonzero_impls! {
-    narrower than or same width as usize: u8, u16, u32, usize;
-    wider than usize: u64, u128;
+    [u8, u16, u32, usize] <= usize < [u64, u128]
 }
 
 #[cfg(target_pointer_width = "16")]
 step_nonzero_impls! {
-    narrower than or same width as usize: u8, u16, usize;
-    wider than usize: u32, u64, u128;
+    [u8, u16, usize] <= usize < [u32, u64, u128]
 }
 
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
