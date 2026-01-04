@@ -1,3 +1,6 @@
+// Like single_variant.rs, but with a non_exhaustive enum, as the generated MIR used to differ
+// between these cases.
+//
 // See: rust-lang/rust#147722
 //
 // This UB should be detected even with validation disabled.
@@ -5,17 +8,18 @@
 #![allow(dead_code)]
 
 #[repr(u8)]
-enum Exhaustive {
+#[non_exhaustive]
+enum NonExhaustive {
     A(u8) = 42,
 }
 
 fn main() {
     unsafe {
         let x: &[u8; 2] = &[21, 37];
-        let y: &Exhaustive = std::mem::transmute(x);
+        let y: &NonExhaustive = std::mem::transmute(x);
         match y {
             //~^ ERROR: enum value has invalid tag
-            Exhaustive::A(_) => {}
+            NonExhaustive::A(_) => {}
         }
     }
 }
