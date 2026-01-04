@@ -1206,8 +1206,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                 }
-                Scope::Module(module, _) => {
+                Scope::ModuleNonGlobs(module, _) => {
                     this.add_module_candidates(module, suggestions, filter_fn, None);
+                }
+                Scope::ModuleGlobs(..) => {
+                    // Already handled in `ModuleNonGlobs`.
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -2033,7 +2036,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
 
-            if let Scope::Module(module, _) = scope {
+            if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
                 if module == self.graph_root {
                     help_msgs.push(format!(
                         "use `crate::{ident}` to refer to this {thing} unambiguously"

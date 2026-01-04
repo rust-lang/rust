@@ -22,7 +22,7 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::{AmbigModChildKind, ModChild, Reexport};
+use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
@@ -36,9 +36,9 @@ use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    AmbiguityKind, BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, Segment, Used, VisResolutionError, errors,
+    BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
+    NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, Segment, Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -82,7 +82,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+        ambiguity: Option<NameBinding<'ra>>,
     ) {
         let binding = self.arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(res),
@@ -254,7 +254,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &child.main,
                 parent_scope,
                 children.len() + i,
-                Some((&child.second, child.kind)),
+                Some(&child.second),
             )
         }
     }
@@ -265,7 +265,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         child: &ModChild,
         parent_scope: ParentScope<'ra>,
         child_index: usize,
-        ambig_child: Option<(&ModChild, AmbigModChildKind)>,
+        ambig_child: Option<&ModChild>,
     ) {
         let parent = parent_scope.module;
         let child_span = |this: &Self, reexport_chain: &[Reexport], res: def::Res<_>| {
@@ -280,15 +280,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let span = child_span(self, reexport_chain, res);
         let res = res.expect_non_local();
         let expansion = parent_scope.expansion;
-        let ambig = ambig_child.map(|(ambig_child, ambig_kind)| {
+        let ambig = ambig_child.map(|ambig_child| {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            let ambig_kind = match ambig_kind {
-                AmbigModChildKind::GlobVsGlob => AmbiguityKind::GlobVsGlob,
-                AmbigModChildKind::GlobVsExpanded => AmbiguityKind::GlobVsExpanded,
-            };
-            (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind)
+            self.arenas.new_res_binding(res, vis, span, expansion)
         });
 
         // Record primary definitions.
