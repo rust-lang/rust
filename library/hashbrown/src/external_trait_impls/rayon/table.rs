@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashTable`.
 
 use super::raw::{RawIntoParIter, RawParDrain, RawParIter};
-use crate::hash_table::HashTable;
-use crate::raw::{Allocator, Global};
+use crate::HashTable;
+use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::marker::PhantomData;
 use rayon::iter::plumbing::UnindexedConsumer;
@@ -206,8 +206,8 @@ impl<'a, T: Send, A: Allocator> IntoParallelIterator for &'a mut HashTable<T, A>
 
 #[cfg(test)]
 mod test_par_table {
-    use alloc::vec::Vec;
     use core::sync::atomic::{AtomicUsize, Ordering};
+    use stdalloc::vec::Vec;
 
     use rayon::prelude::*;
 

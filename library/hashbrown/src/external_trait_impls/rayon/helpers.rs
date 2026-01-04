@@ -1,5 +1,5 @@
-use alloc::collections::LinkedList;
-use alloc::vec::Vec;
+use stdalloc::collections::LinkedList;
+use stdalloc::vec::Vec;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 

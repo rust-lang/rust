@@ -43,7 +43,7 @@ extern crate std;
 
 #[cfg_attr(test, macro_use)]
 #[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
-extern crate alloc;
+extern crate alloc as stdalloc;
 
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]
@@ -52,6 +52,7 @@ pub struct ReadmeDoctests;
 #[macro_use]
 mod macros;
 
+mod alloc;
 mod control;
 mod hasher;
 mod raw;
@@ -170,6 +171,6 @@ pub enum TryReserveError {
     /// The memory allocator returned an error
     AllocError {
         /// The layout of the allocation request that failed.
-        layout: alloc::alloc::Layout,
+        layout: stdalloc::alloc::Layout,
     },
 }

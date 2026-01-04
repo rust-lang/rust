@@ -1,5 +1,5 @@
-use crate::raw::Bucket;
-use crate::raw::{Allocator, Global, RawIter, RawIterRange, RawTable};
+use crate::alloc::{Allocator, Global};
+use crate::raw::{Bucket, RawIter, RawIterRange, RawTable};
 use crate::scopeguard::guard;
 use core::marker::PhantomData;
 use core::mem;

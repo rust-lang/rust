@@ -7,7 +7,8 @@ use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
 use crate::DefaultHashBuilder;
-use crate::raw::{Allocator, Global, RawExtractIf};
+use crate::alloc::{Allocator, Global};
+use crate::raw::RawExtractIf;
 
 // Future Optimization (FIXME!)
 // =============================
@@ -616,7 +617,7 @@ where
     /// in case of allocation error. Use [`try_reserve`](HashSet::try_reserve) instead
     /// if you want to handle memory allocation failure.
     ///
-    /// [`abort`]: alloc::alloc::handle_alloc_error
+    /// [`abort`]: stdalloc::alloc::handle_alloc_error
     ///
     /// # Examples
     ///

@@ -1,5 +1,4 @@
 use crate::TryReserveError;
-use crate::alloc::alloc::{Layout, handle_alloc_error};
 use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
 use crate::scopeguard::{ScopeGuard, guard};
 use crate::util::{invalid_mut, likely, unlikely};
@@ -10,11 +9,11 @@ use core::mem;
 use core::ptr::NonNull;
 use core::slice;
 use core::{hint, ptr};
+use stdalloc::alloc::{Layout, handle_alloc_error};
 
-mod alloc;
 #[cfg(test)]
-pub(crate) use self::alloc::AllocError;
-pub(crate) use self::alloc::{Allocator, Global, do_alloc};
+use crate::alloc::AllocError;
+use crate::alloc::{Allocator, Global, do_alloc};
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
@@ -1571,7 +1570,7 @@ impl RawTableInner {
     ///
     /// See also [`Allocator`] API for other safety concerns.
     ///
-    /// [`Allocator`]: alloc::alloc::Allocator
+    /// [`Allocator`]: stdalloc::alloc::Allocator
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized<A>(
         alloc: &A,
@@ -1670,7 +1669,7 @@ impl RawTableInner {
     /// All the control bytes are initialized with the [`Tag::EMPTY`] bytes.
     ///
     /// [`fallible_with_capacity`]: RawTableInner::fallible_with_capacity
-    /// [`abort`]: alloc::abort::handle_alloc_error
+    /// [`abort`]: stdalloc::abort::handle_alloc_error
     fn with_capacity<A>(alloc: &A, table_layout: TableLayout, capacity: usize) -> Self
     where
         A: Allocator,
@@ -3118,8 +3117,8 @@ impl RawTableInner {
     /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
     ///
     /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [`GlobalAlloc::dealloc`]: alloc::alloc::GlobalAlloc::dealloc
-    /// [`Allocator::deallocate`]: alloc::alloc::Allocator::deallocate
+    /// [`GlobalAlloc::dealloc`]: stdalloc::alloc::GlobalAlloc::dealloc
+    /// [`Allocator::deallocate`]: stdalloc::alloc::Allocator::deallocate
     #[inline]
     unsafe fn free_buckets<A>(&mut self, alloc: &A, table_layout: TableLayout)
     where
@@ -3150,8 +3149,8 @@ impl RawTableInner {
     /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [`GlobalAlloc::dealloc`]: alloc::GlobalAlloc::dealloc
-    /// [`Allocator::deallocate`]: alloc::Allocator::deallocate
+    /// [`GlobalAlloc::dealloc`]: stdalloc::GlobalAlloc::dealloc
+    /// [`Allocator::deallocate`]: stdalloc::Allocator::deallocate
     #[inline]
     unsafe fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
         debug_assert!(
@@ -4441,7 +4440,7 @@ mod test_map {
     /// AN UNINITIALIZED TABLE DURING THE DROP
     #[test]
     fn test_drop_uninitialized() {
-        use ::alloc::vec::Vec;
+        use stdalloc::vec::Vec;
 
         let table = unsafe {
             // SAFETY: The `buckets` is power of two and we're not
@@ -4456,7 +4455,7 @@ mod test_map {
     /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
     #[test]
     fn test_drop_zero_items() {
-        use ::alloc::vec::Vec;
+        use stdalloc::vec::Vec;
         unsafe {
             // SAFETY: The `buckets` is power of two and we're not
             // trying to actually use the returned RawTable.
@@ -4502,10 +4501,10 @@ mod test_map {
     #[test]
     fn test_catch_panic_clone_from() {
         use super::{AllocError, Allocator, Global};
-        use ::alloc::sync::Arc;
-        use ::alloc::vec::Vec;
         use core::sync::atomic::{AtomicI8, Ordering};
         use std::thread;
+        use stdalloc::sync::Arc;
+        use stdalloc::vec::Vec;
 
         struct MyAllocInner {
             drop_count: Arc<AtomicI8>,

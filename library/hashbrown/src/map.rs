@@ -1,8 +1,6 @@
-use crate::raw::{
-    Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawTable,
-};
+use crate::alloc::{Allocator, Global};
+use crate::raw::{Bucket, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawTable};
 use crate::{DefaultHashBuilder, Equivalent, TryReserveError};
-use ::alloc::borrow::ToOwned;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -10,6 +8,7 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
+use stdalloc::borrow::ToOwned;
 
 #[cfg(feature = "raw-entry")]
 pub use crate::raw_entry::*;
@@ -1055,7 +1054,7 @@ where
     /// in case of allocation error. Use [`try_reserve`](HashMap::try_reserve) instead
     /// if you want to handle memory allocation failure.
     ///
-    /// [`abort`]: alloc::alloc::handle_alloc_error
+    /// [`abort`]: stdalloc::alloc::handle_alloc_error
     ///
     /// # Examples
     ///
@@ -4863,9 +4862,7 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use super::EntryRef;
     use super::HashMap;
-    use crate::raw::{AllocError, Allocator, Global};
-    use alloc::string::{String, ToString};
-    use alloc::sync::Arc;
+    use crate::alloc::{AllocError, Allocator, Global};
     use core::alloc::Layout;
     use core::ptr::NonNull;
     use core::sync::atomic::{AtomicI8, Ordering};
@@ -4873,6 +4870,8 @@ mod test_map {
     use std::borrow::ToOwned;
     use std::cell::RefCell;
     use std::vec::Vec;
+    use stdalloc::string::{String, ToString};
+    use stdalloc::sync::Arc;
 
     #[test]
     fn test_zero_capacities() {
@@ -6241,7 +6240,7 @@ mod test_map {
     #[test]
     #[should_panic = "panic in clone"]
     fn test_clone_from_memory_leaks() {
-        use alloc::vec::Vec;
+        use stdalloc::vec::Vec;
 
         struct CheckedClone {
             panic_in_clone: bool,

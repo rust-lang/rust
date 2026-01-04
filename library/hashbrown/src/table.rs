@@ -2,10 +2,11 @@ use core::{fmt, iter::FusedIterator, marker::PhantomData, ptr::NonNull};
 
 use crate::{
     TryReserveError,
+    alloc::{Allocator, Global},
     control::Tag,
     raw::{
-        Allocator, Bucket, FullBucketsIndices, Global, RawDrain, RawExtractIf, RawIntoIter,
-        RawIter, RawIterHash, RawIterHashIndices, RawTable,
+        Bucket, FullBucketsIndices, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
+        RawIterHashIndices, RawTable,
     },
 };
 
@@ -816,7 +817,7 @@ where
     /// in case of allocation error. Use [`try_reserve`](HashTable::try_reserve) instead
     /// if you want to handle memory allocation failure.
     ///
-    /// [`abort`]: alloc::alloc::handle_alloc_error
+    /// [`abort`]: stdalloc::alloc::handle_alloc_error
     ///
     /// # Examples
     ///
