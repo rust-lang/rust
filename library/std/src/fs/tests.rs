@@ -2,6 +2,8 @@ use rand::RngCore;
 
 #[cfg(not(miri))]
 use super::Dir;
+#[cfg(not(miri))]
+use crate::fs::exists;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 #[cfg(not(miri))]
 use crate::io;
@@ -2494,4 +2496,51 @@ fn test_dir_read_file() {
     let f = check!(dir.open_file(tmpdir.join("foo.txt")));
     let buf = check!(io::read_to_string(f));
     assert_eq!("bar", &buf);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_write_file() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    let mut f = check!(dir.open_file_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let mut f = check!(File::open(tmpdir.join("foo.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_remove_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.remove_file("foo.txt"));
+    assert!(!matches!(exists(tmpdir.join("foo.txt")), Ok(true)));
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_rename_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.rename("foo.txt", &dir, "baz.txt"));
+    let mut f = check!(File::open(tmpdir.join("baz.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
 }

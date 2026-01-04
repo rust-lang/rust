@@ -1,5 +1,6 @@
 #![allow(dead_code)] // not used on all platforms
 
+use crate::fs::{remove_file, rename};
 use crate::io::{self, Error, ErrorKind};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs::{File, OpenOptions};
@@ -71,6 +72,14 @@ impl Dir {
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         File::open(&self.path.join(path), &opts)
+    }
+
+    pub fn remove_file(&self, path: &Path) -> io::Result<()> {
+        remove_file(self.path.join(path))
+    }
+
+    pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
+        rename(self.path.join(from), to_dir.path.join(to))
     }
 }
 
