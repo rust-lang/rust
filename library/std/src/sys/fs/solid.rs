@@ -9,7 +9,7 @@ use crate::os::raw::{c_int, c_short};
 use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
-pub use crate::sys::fs::common::exists;
+pub use crate::sys::fs::common::{Dir, exists};
 use crate::sys::helpers::ignore_notfound;
 use crate::sys::pal::{abi, error};
 use crate::sys::time::SystemTime;
