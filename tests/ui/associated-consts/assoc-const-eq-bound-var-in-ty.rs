@@ -8,6 +8,7 @@
     min_generic_const_args,
     adt_const_params,
     unsized_const_params,
+    generic_const_parameter_types,
 )]
 #![allow(incomplete_features)]
 

@@ -238,8 +238,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// This function might panic if the iterator has more than [`usize::MAX`]
-    /// elements.
+    /// This function might panic if the iterator is infinite.
     ///
     /// # Examples
     ///
