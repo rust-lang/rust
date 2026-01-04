@@ -481,7 +481,7 @@ macro_rules! step_nonzero_identical_methods {
         #[inline]
         fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
             if *start <= *end {
-                #[allow(irrefutable_let_patterns, reason = "happens on narrower than usize")]
+                #[allow(irrefutable_let_patterns, reason = "happens on usize or narrower")]
                 if let Ok(steps) = usize::try_from(end.get() - start.get()) {
                     (steps, Some(steps))
                 } else {
