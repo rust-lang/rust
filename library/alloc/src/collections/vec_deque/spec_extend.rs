@@ -1,7 +1,7 @@
 use core::iter::{Copied, Rev, TrustedLen};
 use core::slice;
 
-use super::VecDeque;
+use super::{Drain, VecDeque};
 use crate::alloc::Allocator;
 #[cfg(not(test))]
 use crate::vec;
@@ -157,7 +157,8 @@ impl<T, A: Allocator> SpecExtendFront<T, vec::IntoIter<T>> for VecDeque<T, A> {
     #[track_caller]
     fn spec_extend_front(&mut self, mut iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
-        // SAFETY: elements in the slice are forgotten after this call
+        self.reserve(slice.len());
+        // SAFETY: `slice.len()` space was just reserved and elements in the slice are forgotten after this call
         unsafe { prepend_reversed(self, slice) };
         iterator.forget_remaining_elements();
     }
@@ -169,7 +170,8 @@ impl<T, A: Allocator> SpecExtendFront<T, Rev<vec::IntoIter<T>>> for VecDeque<T, 
     fn spec_extend_front(&mut self, iterator: Rev<vec::IntoIter<T>>) {
         let mut iterator = iterator.into_inner();
         let slice = iterator.as_slice();
-        // SAFETY: elements in the slice are forgotten after this call
+        self.reserve(slice.len());
+        // SAFETY: `slice.len()` space was just reserved and elements in the slice are forgotten after this call
         unsafe { prepend(self, slice) };
         iterator.forget_remaining_elements();
     }
@@ -182,7 +184,8 @@ where
     #[track_caller]
     fn spec_extend_front(&mut self, iter: Copied<slice::Iter<'a, T>>) {
         let slice = iter.into_inner().as_slice();
-        // SAFETY: T is Copy because Copied<slice::Iter<'a, T>> is Iterator
+        self.reserve(slice.len());
+        // SAFETY: `slice.len()` space was just reserved and T is Copy because Copied<slice::Iter<'a, T>> is Iterator
         unsafe { prepend_reversed(self, slice) };
     }
 }
@@ -194,17 +197,69 @@ where
     #[track_caller]
     fn spec_extend_front(&mut self, iter: Rev<Copied<slice::Iter<'a, T>>>) {
         let slice = iter.into_inner().into_inner().as_slice();
-        // SAFETY: T is Copy because Rev<Copied<slice::Iter<'a, T>>> is Iterator
+        self.reserve(slice.len());
+        // SAFETY: `slice.len()` space was just reserved and T is Copy because Rev<Copied<slice::Iter<'a, T>>> is Iterator
         unsafe { prepend(self, slice) };
     }
 }
 
+impl<'a, T, A1: Allocator, A2: Allocator> SpecExtendFront<T, Drain<'a, T, A2>> for VecDeque<T, A1> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, mut iter: Drain<'a, T, A2>) {
+        if iter.remaining == 0 {
+            return;
+        }
+
+        self.reserve(iter.remaining);
+        unsafe {
+            // SAFETY: iter.remaining != 0.
+            let (left, right) = iter.as_slices();
+            // SAFETY:
+            // - `iter.remaining` space was reserved, `iter.remaining == left.len() + right.len()`.
+            // - The elements in `left` and `right` are forgotten after these calls.
+            prepend_reversed(self, &*left);
+            prepend_reversed(self, &*right);
+        }
+
+        iter.idx += iter.remaining;
+        iter.remaining = 0;
+    }
+}
+
+impl<'a, T, A1: Allocator, A2: Allocator> SpecExtendFront<T, Rev<Drain<'a, T, A2>>>
+    for VecDeque<T, A1>
+{
+    #[track_caller]
+    fn spec_extend_front(&mut self, iter: Rev<Drain<'a, T, A2>>) {
+        let mut iter = iter.into_inner();
+
+        if iter.remaining == 0 {
+            return;
+        }
+
+        self.reserve(iter.remaining);
+        unsafe {
+            // SAFETY: iter.remaining != 0.
+            let (left, right) = iter.as_slices();
+            // SAFETY:
+            // - `iter.remaining` space was reserved, `iter.remaining == left.len() + right.len()`.
+            // - The elements in `left` and `right` are forgotten after these calls.
+            prepend(self, &*right);
+            prepend(self, &*left);
+        }
+
+        iter.idx += iter.remaining;
+        iter.remaining = 0;
+    }
+}
+
+/// Prepends elements of `slice` to `deque` using a copy.
+///
 /// # Safety
 ///
-/// Elements of `slice` will be copied into the deque, make sure to forget the items if `T` is not `Copy`.
+/// - `deque` must have space for `slice.len()` new elements.
+/// - Elements of `slice` will be copied into the deque, make sure to forget the elements if `T` is not `Copy`.
 unsafe fn prepend<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
-    deque.reserve(slice.len());
-
     unsafe {
         deque.head = deque.wrap_sub(deque.head, slice.len());
         deque.copy_slice(deque.head, slice);
@@ -212,12 +267,13 @@ unsafe fn prepend<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
     }
 }
 
+/// Prepends elements of `slice` to `deque` in reverse order using a copy.
+///
 /// # Safety
 ///
-/// Elements of `slice` will be copied into the deque, make sure to forget the items if `T` is not `Copy`.
+/// - `deque` must have space for `slice.len()` new elements.
+/// - Elements of `slice` will be copied into the deque, make sure to forget the elements if `T` is not `Copy`.
 unsafe fn prepend_reversed<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
-    deque.reserve(slice.len());
-
     unsafe {
         deque.head = deque.wrap_sub(deque.head, slice.len());
         deque.copy_slice_reversed(deque.head, slice);
