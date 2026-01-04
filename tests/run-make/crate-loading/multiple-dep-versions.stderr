@@ -144,7 +144,51 @@ note: function defined here
 LL | pub fn do_something_trait(_: Box<dyn Trait2>) {}
    |        ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0277]: `?` couldn't convert the error to `dependency::Error`
+  --> replaced
+   |
+LL | fn main() -> Result<(), Error> {
+   |              ----------------- expected `dependency::Error` because of this
+...
+LL |     Err(Error2)?;
+   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::Error`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<Error2>` is not implemented for `dependency::Error`
+      but trait `From<()>` is implemented for it
+  --> replaced
+   |
+LL | impl From<()> for Error {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `()`, found `Error2`
+   = note: there are multiple different versions of crate `dependency` in the dependency graph
+   = help: you can use `cargo tree` to explore your dependency tree
+
+error[E0277]: `?` couldn't convert the error to `dependency::OtherError`
+  --> replaced
+   |
+LL | fn foo() -> Result<(), OtherError> {
+   |             ---------------------- expected `dependency::OtherError` because of this
+LL |     Err(Error2)?;
+   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::OtherError`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the following other types implement trait `From<T>`
+  --> replaced
+   |
+LL | impl From<()> for OtherError {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<()>`
+...
+LL | impl From<i32> for OtherError {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<i32>`
+   = note: there are multiple different versions of crate `dependency` in the dependency graph
+   = help: you can use `cargo tree` to explore your dependency tree
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0599.
 For more information about an error, try `rustc --explain E0277`.

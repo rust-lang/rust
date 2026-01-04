@@ -154,18 +154,18 @@ mod tests {
     use crate::core_arch::x86_64::*;
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_bextri_u64() {
+    fn test_bextri_u64() {
         assert_eq!(_bextri_u64::<0x0404>(0b0101_0000u64), 0b0000_0101u64);
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blcfill_u64() {
+    const fn test_blcfill_u64() {
         assert_eq!(_blcfill_u64(0b0101_0111u64), 0b0101_0000u64);
         assert_eq!(_blcfill_u64(0b1111_1111u64), 0u64);
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blci_u64() {
+    const fn test_blci_u64() {
         assert_eq!(
             _blci_u64(0b0101_0000u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1110u64
@@ -177,25 +177,25 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blcic_u64() {
+    const fn test_blcic_u64() {
         assert_eq!(_blcic_u64(0b0101_0001u64), 0b0000_0010u64);
         assert_eq!(_blcic_u64(0b1111_1111u64), 0b1_0000_0000u64);
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blcmsk_u64() {
+    const fn test_blcmsk_u64() {
         assert_eq!(_blcmsk_u64(0b0101_0001u64), 0b0000_0011u64);
         assert_eq!(_blcmsk_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blcs_u64() {
+    const fn test_blcs_u64() {
         assert_eq!(_blcs_u64(0b0101_0001u64), 0b0101_0011u64);
         assert_eq!(_blcs_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blsfill_u64() {
+    const fn test_blsfill_u64() {
         assert_eq!(_blsfill_u64(0b0101_0100u64), 0b0101_0111u64);
         assert_eq!(
             _blsfill_u64(0u64),
@@ -204,7 +204,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_blsic_u64() {
+    const fn test_blsic_u64() {
         assert_eq!(
             _blsic_u64(0b0101_0100u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1011u64
@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_t1mskc_u64() {
+    const fn test_t1mskc_u64() {
         assert_eq!(
             _t1mskc_u64(0b0101_0111u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1000u64
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    const unsafe fn test_tzmsk_u64() {
+    const fn test_tzmsk_u64() {
         assert_eq!(_tzmsk_u64(0b0101_1000u64), 0b0000_0111u64);
         assert_eq!(_tzmsk_u64(0b0101_1001u64), 0b0000_0000u64);
     }

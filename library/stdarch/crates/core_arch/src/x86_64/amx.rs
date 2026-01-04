@@ -510,7 +510,7 @@ mod tests {
     use syscalls::{Sysno, syscall};
 
     #[allow(non_camel_case_types)]
-    #[repr(packed)]
+    #[repr(C, packed)]
     #[derive(Copy, Clone, Default, Debug, PartialEq)]
     struct __tilecfg {
         /// 0 `or` 1

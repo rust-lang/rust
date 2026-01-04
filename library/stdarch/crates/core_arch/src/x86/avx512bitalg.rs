@@ -460,7 +460,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_popcnt_epi16() {
+    const fn test_mm512_popcnt_epi16() {
         let test_data = _mm512_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF, 0xFF_FF, -1, -100, 255, 256, 2, 4, 8, 16, 32, 64, 128, 256, 512,
@@ -475,7 +475,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_maskz_popcnt_epi16() {
+    const fn test_mm512_maskz_popcnt_epi16() {
         let test_data = _mm512_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF, 0xFF_FF, -1, -100, 255, 256, 2, 4, 8, 16, 32, 64, 128, 256, 512,
@@ -491,7 +491,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_mask_popcnt_epi16() {
+    const fn test_mm512_mask_popcnt_epi16() {
         let test_data = _mm512_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF, 0xFF_FF, -1, -100, 255, 256, 2, 4, 8, 16, 32, 64, 128, 256, 512,
@@ -507,7 +507,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_popcnt_epi16() {
+    const fn test_mm256_popcnt_epi16() {
         let test_data = _mm256_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF,
@@ -519,7 +519,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_maskz_popcnt_epi16() {
+    const fn test_mm256_maskz_popcnt_epi16() {
         let test_data = _mm256_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF,
@@ -531,7 +531,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_mask_popcnt_epi16() {
+    const fn test_mm256_mask_popcnt_epi16() {
         let test_data = _mm256_set_epi16(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1_FF, 0x3_FF, 0x7_FF, 0xF_FF, 0x1F_FF,
             0x3F_FF, 0x7F_FF,
@@ -545,7 +545,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_popcnt_epi16() {
+    const fn test_mm_popcnt_epi16() {
         let test_data = _mm_set_epi16(0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F);
         let actual_result = _mm_popcnt_epi16(test_data);
         let reference_result = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
@@ -553,7 +553,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_maskz_popcnt_epi16() {
+    const fn test_mm_maskz_popcnt_epi16() {
         let test_data = _mm_set_epi16(0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F);
         let mask = 0xF0;
         let actual_result = _mm_maskz_popcnt_epi16(mask, test_data);
@@ -562,7 +562,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_mask_popcnt_epi16() {
+    const fn test_mm_mask_popcnt_epi16() {
         let test_data = _mm_set_epi16(0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F);
         let mask = 0xF0;
         let actual_result = _mm_mask_popcnt_epi16(test_data, mask, test_data);
@@ -571,7 +571,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_popcnt_epi8() {
+    const fn test_mm512_popcnt_epi8() {
         let test_data = _mm512_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 128, 171, 206, 100,
             217, 109, 253, 190, 177, 254, 179, 215, 230, 68, 201, 172, 183, 154, 84, 56, 227, 189,
@@ -588,7 +588,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_maskz_popcnt_epi8() {
+    const fn test_mm512_maskz_popcnt_epi8() {
         let test_data = _mm512_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 128, 171, 206, 100,
             217, 109, 253, 190, 177, 254, 179, 215, 230, 68, 201, 172, 183, 154, 84, 56, 227, 189,
@@ -606,7 +606,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    const unsafe fn test_mm512_mask_popcnt_epi8() {
+    const fn test_mm512_mask_popcnt_epi8() {
         let test_data = _mm512_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 128, 171, 206, 100,
             217, 109, 253, 190, 177, 254, 179, 215, 230, 68, 201, 172, 183, 154, 84, 56, 227, 189,
@@ -624,7 +624,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_popcnt_epi8() {
+    const fn test_mm256_popcnt_epi8() {
         let test_data = _mm256_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 128, 171, 206, 100,
             217, 109, 253, 190, 177, 254, 179, 215, 230, 68, 201, 172,
@@ -638,7 +638,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_maskz_popcnt_epi8() {
+    const fn test_mm256_maskz_popcnt_epi8() {
         let test_data = _mm256_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 251, 73, 121, 143,
             145, 85, 91, 137, 90, 225, 21, 249, 211, 155, 228, 70,
@@ -653,7 +653,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm256_mask_popcnt_epi8() {
+    const fn test_mm256_mask_popcnt_epi8() {
         let test_data = _mm256_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64, 251, 73, 121, 143,
             145, 85, 91, 137, 90, 225, 21, 249, 211, 155, 228, 70,
@@ -668,7 +668,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_popcnt_epi8() {
+    const fn test_mm_popcnt_epi8() {
         let test_data = _mm_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, -1, 2, 4, 8, 16, 32, 64,
         );
@@ -678,7 +678,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_maskz_popcnt_epi8() {
+    const fn test_mm_maskz_popcnt_epi8() {
         let test_data = _mm_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 90, 225, 21, 249, 211, 155, 228, 70,
         );
@@ -689,7 +689,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    const unsafe fn test_mm_mask_popcnt_epi8() {
+    const fn test_mm_mask_popcnt_epi8() {
         let test_data = _mm_set_epi8(
             0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 90, 225, 21, 249, 211, 155, 228, 70,
         );
@@ -701,7 +701,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    unsafe fn test_mm512_bitshuffle_epi64_mask() {
+    fn test_mm512_bitshuffle_epi64_mask() {
         let test_indices = _mm512_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56, 32, 32, 16, 16, 0, 0,
             8, 8, 56, 48, 40, 32, 24, 16, 8, 0, 63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59,
@@ -731,7 +731,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f")]
-    unsafe fn test_mm512_mask_bitshuffle_epi64_mask() {
+    fn test_mm512_mask_bitshuffle_epi64_mask() {
         let test_indices = _mm512_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56, 32, 32, 16, 16, 0, 0,
             8, 8, 56, 48, 40, 32, 24, 16, 8, 0, 63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59,
@@ -762,7 +762,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    unsafe fn test_mm256_bitshuffle_epi64_mask() {
+    fn test_mm256_bitshuffle_epi64_mask() {
         let test_indices = _mm256_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56, 32, 32, 16, 16, 0, 0,
             8, 8, 56, 48, 40, 32, 24, 16, 8, 0,
@@ -780,7 +780,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    unsafe fn test_mm256_mask_bitshuffle_epi64_mask() {
+    fn test_mm256_mask_bitshuffle_epi64_mask() {
         let test_indices = _mm256_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56, 32, 32, 16, 16, 0, 0,
             8, 8, 56, 48, 40, 32, 24, 16, 8, 0,
@@ -799,7 +799,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    unsafe fn test_mm_bitshuffle_epi64_mask() {
+    fn test_mm_bitshuffle_epi64_mask() {
         let test_indices = _mm_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56,
         );
@@ -811,7 +811,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bitalg,avx512f,avx512vl")]
-    unsafe fn test_mm_mask_bitshuffle_epi64_mask() {
+    fn test_mm_mask_bitshuffle_epi64_mask() {
         let test_indices = _mm_set_epi8(
             63, 62, 61, 60, 59, 58, 57, 56, 63, 62, 61, 60, 59, 58, 57, 56,
         );
