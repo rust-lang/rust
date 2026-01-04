@@ -4,9 +4,7 @@
 //! to be used by tools.
 
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, io};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
@@ -156,85 +154,6 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
     let mut v = vec![()];
     files_modified_batch_filter(ci_info, &mut v, |_, p| pred(p));
     !v.is_empty()
-}
-
-/// Check if the given executable is installed and the version is expected.
-pub fn ensure_version(build_dir: &Path, bin_name: &str, version: &str) -> io::Result<PathBuf> {
-    let bin_path = build_dir.join("misc-tools").join("bin").join(bin_name);
-
-    match Command::new(&bin_path).arg("--version").output() {
-        Ok(output) => {
-            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last()
-            else {
-                return Err(io::Error::other("version check failed"));
-            };
-
-            if v != version {
-                eprintln!(
-                    "warning: the tool `{bin_name}` is detected, but version {v} doesn't match with the expected version {version}"
-                );
-            }
-            Ok(bin_path)
-        }
-        Err(e) => Err(e),
-    }
-}
-
-/// If the given executable is installed with the given version, use that,
-/// otherwise install via cargo.
-pub fn ensure_version_or_cargo_install(
-    build_dir: &Path,
-    cargo: &Path,
-    pkg_name: &str,
-    bin_name: &str,
-    version: &str,
-) -> io::Result<PathBuf> {
-    if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
-        return Ok(bin_path);
-    }
-
-    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
-
-    let tool_root_dir = build_dir.join("misc-tools");
-    let tool_bin_dir = tool_root_dir.join("bin");
-    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
-
-    // use --force to ensure that if the required version is bumped, we update it.
-    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
-    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
-    let mut cmd = Command::new(cargo);
-    cmd.args(["install", "--locked", "--force", "--quiet"])
-        .arg("--root")
-        .arg(&tool_root_dir)
-        .arg("--target-dir")
-        .arg(tool_root_dir.join("target"))
-        .arg(format!("{pkg_name}@{version}"))
-        .env(
-            "PATH",
-            env::join_paths(
-                env::split_paths(&env::var("PATH").unwrap())
-                    .chain(std::iter::once(tool_bin_dir.clone())),
-            )
-            .expect("build dir contains invalid char"),
-        );
-
-    // On CI, we set opt-level flag for quicker installation.
-    // Since lower opt-level decreases the tool's performance,
-    // we don't set this option on local.
-    if CiEnv::is_ci() {
-        cmd.env("RUSTFLAGS", "-Copt-level=0");
-    }
-
-    let cargo_exit_code = cmd.spawn()?.wait()?;
-    if !cargo_exit_code.success() {
-        return Err(io::Error::other("cargo install failed"));
-    }
-    assert!(
-        matches!(bin_path.try_exists(), Ok(true)),
-        "cargo install did not produce the expected binary"
-    );
-    eprintln!("finished building tool {bin_name}");
-    Ok(bin_path)
 }
 
 pub mod alphabetical;

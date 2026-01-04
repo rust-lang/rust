@@ -21,10 +21,12 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
-use std::{fmt, fs, io};
+use std::{env, fmt, fs, io};
 
+use build_helper::ci::CiEnv;
+
+use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
-use crate::{CiInfo, ensure_version};
 
 mod rustdoc_js;
 
@@ -630,13 +632,8 @@ fn spellcheck_runner(
     cargo: &Path,
     args: &[&str],
 ) -> Result<(), Error> {
-    let bin_path = crate::ensure_version_or_cargo_install(
-        outdir,
-        cargo,
-        "typos-cli",
-        "typos",
-        SPELLCHECK_VER,
-    )?;
+    let bin_path =
+        ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", SPELLCHECK_VER)?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -688,6 +685,83 @@ fn find_with_extension(
     }
 
     Ok(output)
+}
+
+/// Check if the given executable is installed and the version is expected.
+fn ensure_version(build_dir: &Path, bin_name: &str, version: &str) -> Result<PathBuf, Error> {
+    let bin_path = build_dir.join("misc-tools").join("bin").join(bin_name);
+
+    match Command::new(&bin_path).arg("--version").output() {
+        Ok(output) => {
+            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last()
+            else {
+                return Err(Error::Generic("version check failed".to_string()));
+            };
+
+            if v != version {
+                return Err(Error::Version { program: "", required: "", installed: v.to_string() });
+            }
+            Ok(bin_path)
+        }
+        Err(e) => Err(Error::Io(e)),
+    }
+}
+
+/// If the given executable is installed with the given version, use that,
+/// otherwise install via cargo.
+fn ensure_version_or_cargo_install(
+    build_dir: &Path,
+    cargo: &Path,
+    pkg_name: &str,
+    bin_name: &str,
+    version: &str,
+) -> Result<PathBuf, Error> {
+    if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
+        return Ok(bin_path);
+    }
+
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
+
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
+
+    // use --force to ensure that if the required version is bumped, we update it.
+    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
+    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
+    let mut cmd = Command::new(cargo);
+    cmd.args(["install", "--locked", "--force", "--quiet"])
+        .arg("--root")
+        .arg(&tool_root_dir)
+        .arg("--target-dir")
+        .arg(tool_root_dir.join("target"))
+        .arg(format!("{pkg_name}@{version}"))
+        .env(
+            "PATH",
+            env::join_paths(
+                env::split_paths(&env::var("PATH").unwrap())
+                    .chain(std::iter::once(tool_bin_dir.clone())),
+            )
+            .expect("build dir contains invalid char"),
+        );
+
+    // On CI, we set opt-level flag for quicker installation.
+    // Since lower opt-level decreases the tool's performance,
+    // we don't set this option on local.
+    if CiEnv::is_ci() {
+        cmd.env("RUSTFLAGS", "-Copt-level=0");
+    }
+
+    let cargo_exit_code = cmd.spawn()?.wait()?;
+    if !cargo_exit_code.success() {
+        return Err(Error::Generic("cargo install failed".to_string()));
+    }
+    assert!(
+        matches!(bin_path.try_exists(), Ok(true)),
+        "cargo install did not produce the expected binary"
+    );
+    eprintln!("finished building tool {bin_name}");
+    Ok(bin_path)
 }
 
 #[derive(Debug)]
@@ -778,7 +852,16 @@ impl ExtraCheckArg {
 
         match self.lang {
             ExtraCheckLang::Spellcheck => {
-                ensure_version(build_dir, "typos", SPELLCHECK_VER).is_ok()
+                match ensure_version(build_dir, "typos", SPELLCHECK_VER) {
+                    Ok(_) => true,
+                    Err(Error::Version { installed, .. }) => {
+                        eprintln!(
+                            "warning: the tool `typos` is detected, but version {installed} doesn't match with the expected version {SPELLCHECK_VER}"
+                        );
+                        false
+                    }
+                    _ => false,
+                }
             }
             ExtraCheckLang::Shell => has_shellcheck().is_ok(),
             ExtraCheckLang::Js => {
