@@ -109,6 +109,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
+
     fn canonicalize_param_env(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
@@ -280,15 +281,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let mut var_kinds = self.var_kinds;
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
-        match self.canonicalize_mode {
+        let max_universe = match self.canonicalize_mode {
             // All placeholders and vars are canonicalized in the root universe.
             CanonicalizeMode::Input { .. } => {
                 debug_assert!(
                     var_kinds.iter().all(|var| var.universe() == ty::UniverseIndex::ROOT),
                     "expected all vars to be canonicalized in root universe: {var_kinds:#?}"
                 );
-                let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
-                (ty::UniverseIndex::ROOT, var_kinds)
+                ty::UniverseIndex::ROOT
             }
             // When canonicalizing a response we map a universes already entered
             // by the caller to the root universe and only return useful universe
@@ -302,15 +302,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     );
                     *var = var.with_updated_universe(new_uv);
                 }
-                let max_universe = var_kinds
+                var_kinds
                     .iter()
                     .map(|kind| kind.universe())
                     .max()
-                    .unwrap_or(ty::UniverseIndex::ROOT);
-                let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
-                (max_universe, var_kinds)
+                    .unwrap_or(ty::UniverseIndex::ROOT)
             }
-        }
+        };
+        let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
+        (max_universe, var_kinds)
     }
 
     fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
