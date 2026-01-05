@@ -82,10 +82,7 @@ where
     I: Interner,
     T: TypeFoldable<I>,
 {
-    let mut orig_values = Default::default();
-    let canonical =
-        Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut orig_values, value);
-    canonical
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, value)
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -308,7 +305,7 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = eager_resolve_vars(delegate, state);
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream

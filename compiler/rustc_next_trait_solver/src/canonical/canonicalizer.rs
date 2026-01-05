@@ -84,14 +84,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
-        variables: &'a mut Vec<I::GenericArg>,
         value: T,
     ) -> ty::Canonical<I, T> {
+        let mut variables = Vec::new();
         let mut canonicalizer = Canonicalizer {
             delegate,
             canonicalize_mode: CanonicalizeMode::Response { max_input_universe },
 
-            variables,
+            variables: &mut variables,
             variable_lookup_table: Default::default(),
             sub_root_lookup_table: Default::default(),
             var_kinds: Vec::new(),
