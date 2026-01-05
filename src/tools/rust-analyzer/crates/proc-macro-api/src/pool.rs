@@ -77,7 +77,3 @@ impl ProcMacroServerPool {
         self.version
     }
 }
-
-pub(crate) fn default_pool_size() -> usize {
-    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1).min(4)
-}
