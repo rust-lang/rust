@@ -14,13 +14,8 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
-    let (main_def_id, sigpipe) = match tcx.entry_fn(()) {
-        Some((def_id, entry_ty)) => (
-            def_id,
-            match entry_ty {
-                EntryFnType::Main { sigpipe } => sigpipe,
-            },
-        ),
+    let main_def_id = match tcx.entry_fn(()) {
+        Some((def_id, EntryFnType::Main)) => def_id,
         None => return,
     };
 
@@ -33,14 +28,13 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, main_def_id, is_jit, sigpipe);
+    create_entry_fn(tcx, module, main_def_id, is_jit);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut dyn Module,
         rust_main_def_id: DefId,
         ignore_lang_start_wrapper: bool,
-        sigpipe: u8,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).no_bound_vars().unwrap().output();
         // Given that `main()` has no arguments,
@@ -91,7 +85,6 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.switch_to_block(block);
             let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
-            let arg_sigpipe = bcx.ins().iconst(types::I8, sigpipe as i64);
 
             let main_func_ref = m.declare_func_in_func(main_func_id, bcx.func);
 
@@ -149,8 +142,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, bcx.func);
-                let call_inst =
-                    bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv, arg_sigpipe]);
+                let call_inst = bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv]);
                 bcx.inst_results(call_inst)[0]
             };
 

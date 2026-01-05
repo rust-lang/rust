@@ -25,12 +25,7 @@ extern "C" fn rust_eh_personality() {
 // CHECK: load volatile i8, {{.+}} @__rustc_debug_gdb_scripts_section__
 
 #[lang = "start"]
-fn lang_start<T: 'static>(
-    _main: fn() -> T,
-    _argc: isize,
-    _argv: *const *const u8,
-    _sigpipe: u8,
-) -> isize {
+fn lang_start<T: 'static>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {
     return 0;
 }
 

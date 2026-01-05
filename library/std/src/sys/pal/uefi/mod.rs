@@ -32,7 +32,7 @@ static EXIT_BOOT_SERVICE_EVENT: Atomic<*mut crate::ffi::c_void> =
 /// - must be called only once during runtime initialization.
 /// - argc must be 2.
 /// - argv must be &[Handle, *mut SystemTable].
-pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
+pub(crate) unsafe fn init(argc: isize, argv: *const *const u8) {
     assert_eq!(argc, 2);
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
     let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };

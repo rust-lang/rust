@@ -352,10 +352,10 @@ impl Command {
             // Inherit the signal mask from the parent rather than resetting it (i.e. do not call
             // pthread_sigmask).
 
-            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
-            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If `OnBrokenPipe` is used, don't reset SIGPIPE to SIG_DFL.
+            // If `OnBrokenPipe` is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // -Zon-broken-pipe is an opportunity to change the default here.
+            // `OnBrokenPipe` is an opportunity to change the default here.
             if !crate::sys::pal::on_broken_pipe_used() {
                 #[cfg(target_os = "android")] // see issue #88585
                 {
@@ -727,10 +727,10 @@ impl Command {
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
             // posix_spawnattr_setsigmask).
 
-            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
-            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If `OnBrokenPipe` is used, don't reset SIGPIPE to SIG_DFL.
+            // If `OnBrokenPipe` is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // -Zon-broken-pipe is an opportunity to change the default here.
+            // `OnBrokenPipe` is an opportunity to change the default here.
             if !on_broken_pipe_used() {
                 let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
                 cvt(sigemptyset(default_set.as_mut_ptr()))?;

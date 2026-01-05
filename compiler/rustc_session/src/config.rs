@@ -44,7 +44,6 @@ mod cfg;
 mod externs;
 mod native_libs;
 mod print_request;
-pub mod sigpipe;
 
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -1526,15 +1525,7 @@ impl UnstableOptions {
 // The type of entry function, so users can have their own entry functions
 #[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable_Generic)]
 pub enum EntryFnType {
-    Main {
-        /// Specifies what to do with `SIGPIPE` before calling `fn main()`.
-        ///
-        /// What values that are valid and what they mean must be in sync
-        /// across rustc and libstd, but we don't want it public in libstd,
-        /// so we take a bit of an unusual approach with simple constants
-        /// and an `include!()`.
-        sigpipe: u8,
-    },
+    Main,
 }
 
 pub use rustc_hir::attrs::CrateType;
@@ -3066,9 +3057,8 @@ pub(crate) mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
-        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
-        TlsModel,
+        CodeModel, FramePointer, MergeFunctions, PanicStrategy, RelocModel, RelroLevel,
+        SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple, TlsModel,
     };
 
     use super::{
@@ -3142,7 +3132,6 @@ pub(crate) mod dep_tracking {
         InstrumentXRay,
         CrateType,
         MergeFunctions,
-        OnBrokenPipe,
         PanicStrategy,
         RelroLevel,
         OptLevel,
