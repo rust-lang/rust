@@ -314,6 +314,7 @@ pub enum PermitVariants {
 enum TypeRelativePath<'tcx> {
     AssocItem(DefId, GenericArgsRef<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
+    Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes
@@ -1375,6 +1376,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);
                 Ok((adt, DefKind::Variant, variant_did))
             }
+            TypeRelativePath::Ctor { .. } => {
+                let e = tcx.dcx().span_err(span, "expected type, found tuple constructor");
+                Err(e)
+            }
         }
     }
 
@@ -1410,6 +1415,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
+            TypeRelativePath::Ctor { ctor_def_id, args } => {
+                return Ok(ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, ctor_def_id, args)));
+            }
             // FIXME(mgca): implement support for this once ready to support all adt ctor expressions,
             // not just const ctors
             TypeRelativePath::Variant { .. } => {
@@ -1441,6 +1449,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .iter()
                     .find(|vd| tcx.hygienic_eq(segment.ident, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
+                    // FIXME(mgca): do we want constructor resolutions to take priority over
+                    // other possible resolutions?
+                    if matches!(mode, LowerTypeRelativePathMode::Const)
+                        && let Some((CtorKind::Fn, ctor_def_id)) = variant_def.ctor
+                    {
+                        tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
+                        let _ = self.prohibit_generic_args(
+                            slice::from_ref(segment).iter(),
+                            GenericsArgsErrExtend::EnumVariant {
+                                qself: hir_self_ty,
+                                assoc_segment: segment,
+                                adt_def,
+                            },
+                        );
+                        let ty::Adt(_, enum_args) = self_ty.kind() else { unreachable!() };
+                        return Ok(TypeRelativePath::Ctor { ctor_def_id, args: enum_args });
+                    }
                     if let PermitVariants::Yes = mode.permit_variants() {
                         tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
                         let _ = self.prohibit_generic_args(
@@ -2349,10 +2374,104 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::ConstArgKind::Struct(qpath, inits) => {
                 self.lower_const_arg_struct(hir_id, qpath, inits, const_arg.span())
             }
+            hir::ConstArgKind::TupleCall(qpath, args) => {
+                self.lower_const_arg_tuple_call(hir_id, qpath, args, const_arg.span())
+            }
             hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
             hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
         }
+    }
+
+    fn lower_const_arg_tuple_call(
+        &self,
+        hir_id: HirId,
+        qpath: hir::QPath<'tcx>,
+        args: &'tcx [&'tcx hir::ConstArg<'tcx>],
+        span: Span,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        let non_adt_or_variant_res = || {
+            let e = tcx.dcx().span_err(span, "tuple constructor with invalid base path");
+            ty::Const::new_error(tcx, e)
+        };
+
+        let ctor_const = match qpath {
+            hir::QPath::Resolved(maybe_qself, path) => {
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                self.lower_resolved_const_path(opt_self_ty, path, hir_id)
+            }
+            hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                let self_ty = self.lower_ty(hir_self_ty);
+                match self.lower_type_relative_const_path(
+                    self_ty,
+                    hir_self_ty,
+                    segment,
+                    hir_id,
+                    span,
+                ) {
+                    Ok(c) => c,
+                    Err(_) => return non_adt_or_variant_res(),
+                }
+            }
+        };
+
+        let Some(value) = ctor_const.try_to_value() else {
+            return non_adt_or_variant_res();
+        };
+
+        let (adt_def, adt_args, variant_did) = match value.ty.kind() {
+            ty::FnDef(def_id, fn_args)
+                if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(*def_id) =>
+            {
+                let parent_did = tcx.parent(*def_id);
+                let enum_did = tcx.parent(parent_did);
+                (tcx.adt_def(enum_did), fn_args, parent_did)
+            }
+            ty::FnDef(def_id, fn_args)
+                if let DefKind::Ctor(CtorOf::Struct, _) = tcx.def_kind(*def_id) =>
+            {
+                let parent_did = tcx.parent(*def_id);
+                (tcx.adt_def(parent_did), fn_args, parent_did)
+            }
+            _ => return non_adt_or_variant_res(),
+        };
+
+        let variant_def = adt_def.variant_with_id(variant_did);
+        let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
+
+        if args.len() != variant_def.fields.len() {
+            let e = tcx.dcx().span_err(
+                span,
+                format!(
+                    "tuple constructor has {} arguments but {} were provided",
+                    variant_def.fields.len(),
+                    args.len()
+                ),
+            );
+            return ty::Const::new_error(tcx, e);
+        }
+
+        let fields = variant_def
+            .fields
+            .iter()
+            .zip(args)
+            .map(|(field_def, arg)| {
+                self.lower_const_arg(arg, FeedConstTy::Param(field_def.did, adt_args))
+            })
+            .collect::<Vec<_>>();
+
+        let opt_discr_const = if adt_def.is_enum() {
+            let valtree = ty::ValTree::from_scalar_int(tcx, variant_idx.into());
+            Some(ty::Const::new_value(tcx, valtree, tcx.types.u32))
+        } else {
+            None
+        };
+
+        let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
+        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args);
+        ty::Const::new_value(tcx, valtree, adt_ty)
     }
 
     fn lower_const_arg_struct(
@@ -2486,6 +2605,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
                 ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
             }
+            Res::Def(DefKind::Ctor(_, CtorKind::Fn), did) => {
+                assert_eq!(opt_self_ty, None);
+                let [leading_segments @ .., segment] = path.segments else { bug!() };
+                let _ = self
+                    .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+                let parent_did = tcx.parent(did);
+                let generics_did = if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(did) {
+                    tcx.parent(parent_did)
+                } else {
+                    parent_did
+                };
+                let args = self.lower_generic_args_of_path_segment(span, generics_did, segment);
+                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+            }
             Res::Def(DefKind::AssocConst, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
                     let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
@@ -2521,9 +2654,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 DefKind::Mod
                 | DefKind::Enum
                 | DefKind::Variant
-                | DefKind::Ctor(CtorOf::Variant, CtorKind::Fn)
                 | DefKind::Struct
-                | DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
                 | DefKind::OpaqueTy
                 | DefKind::TyAlias
                 | DefKind::TraitAlias

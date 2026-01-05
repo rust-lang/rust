@@ -320,6 +320,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.body(field!(anon_const.body));
             },
             ConstArgKind::Struct(..) => chain!(self, "let ConstArgKind::Struct(..) = {const_arg}.kind"),
+            ConstArgKind::TupleCall(..) => chain!(self, "let ConstArgKind::TupleCall(..) = {const_arg}.kind"),
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
             ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
         }
