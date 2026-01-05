@@ -111,7 +111,10 @@ pub(crate) struct MarkdownWithToc<'a> {
 }
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
-pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
+pub(crate) struct MarkdownItemInfo<'a> {
+    pub(crate) content: &'a str,
+    pub(crate) ids: &'a mut IdMap,
+}
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -1459,15 +1462,19 @@ impl MarkdownWithToc<'_> {
     }
 }
 
-impl MarkdownItemInfo<'_> {
+impl<'a> MarkdownItemInfo<'a> {
+    pub(crate) fn new(content: &'a str, ids: &'a mut IdMap) -> Self {
+        Self { content, ids }
+    }
+
     pub(crate) fn write_into(self, mut f: impl fmt::Write) -> fmt::Result {
-        let MarkdownItemInfo(md, ids) = self;
+        let MarkdownItemInfo { content, ids } = self;
 
         // This is actually common enough to special-case
-        if md.is_empty() {
+        if content.is_empty() {
             return Ok(());
         }
-        let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
+        let p = Parser::new_ext(content, main_body_opts()).into_offset_iter();
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event.0 {
