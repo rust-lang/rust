@@ -878,9 +878,11 @@ impl<'db> InferCtxt<'db> {
         self.tainted_by_errors.set(Some(e));
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
-    pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
-        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
+    #[instrument(level = "debug", skip(self))]
+    pub fn take_opaque_types(
+        &self,
+    ) -> impl IntoIterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> + use<'db> {
+        self.inner.borrow_mut().opaque_type_storage.take_opaque_types()
     }
 
     #[instrument(level = "debug", skip(self), ret)]

@@ -183,7 +183,8 @@ mod tests {
     use crate::{ClosureReturnTypeHints, fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_no_edit, check_with_config,
+        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_expect, check_no_edit,
+        check_with_config,
     };
 
     #[track_caller]
@@ -1253,6 +1254,132 @@ where
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn type_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn identity<T>(t: T) -> T {
+    let x = t;
+    x
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        36..37,
+                        [
+                            InlayHintLabelPart {
+                                text: "T",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 12..13,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn const_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn f<const N: usize>() {
+    let x = [0; N];
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        33..34,
+                        [
+                            "[i32; ",
+                            InlayHintLabelPart {
+                                text: "N",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 11..12,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "]",
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn lifetime_param_inlay_hint_has_location_link() {
+        check_expect(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+struct S<'lt>(*mut &'lt ());
+
+fn f<'a>() {
+    let x = S::<'a>(loop {});
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        51..52,
+                        [
+                            InlayHintLabelPart {
+                                text: "S",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 7..8,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "'a",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 35..37,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            ">",
+                        ],
+                    ),
+                ]
+            "#]],
         );
     }
 }

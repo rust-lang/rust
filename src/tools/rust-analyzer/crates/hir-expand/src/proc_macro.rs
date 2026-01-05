@@ -4,7 +4,7 @@ use core::fmt;
 use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError, SourceDatabase};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::Span;
@@ -25,7 +25,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + Any {
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
-        db: &dyn SourceDatabase,
+        db: &dyn ExpandDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,

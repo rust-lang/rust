@@ -1096,7 +1096,7 @@ impl<'db> ExprCollector<'db> {
             ast::Expr::WhileExpr(e) => self.collect_while_loop(syntax_ptr, e),
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
-                // FIXME: Remove this once we drop support for <1.86, https://github.com/rust-lang/rust/commit/ac9cb908ac4301dfc25e7a2edee574320022ae2c
+                // FIXME(MINIMUM_SUPPORTED_TOOLCHAIN_VERSION): Remove this once we drop support for <1.86, https://github.com/rust-lang/rust/commit/ac9cb908ac4301dfc25e7a2edee574320022ae2c
                 let is_rustc_box = {
                     let attrs = e.attrs();
                     attrs.filter_map(|it| it.as_simple_atom()).any(|it| it == "rustc_box")
@@ -1649,7 +1649,7 @@ impl<'db> ExprCollector<'db> {
     fn desugar_try_block(&mut self, e: BlockExpr) -> ExprId {
         let try_from_output = self.lang_path(self.lang_items().TryTraitFromOutput);
         let label = self.generate_new_name();
-        let label = self.alloc_label_desugared(Label { name: label });
+        let label = self.alloc_label_desugared(Label { name: label }, AstPtr::new(&e).wrap_right());
         let old_label = self.current_try_block_label.replace(label);
 
         let ptr = AstPtr::new(&e).upcast();
@@ -2319,7 +2319,6 @@ impl<'db> ExprCollector<'db> {
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
-                // FIXME properly handle `RestPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p, binding_list)).collect(),
                     slice: slice.map(|p| self.collect_pat(p, binding_list)),
@@ -2399,7 +2398,6 @@ impl<'db> ExprCollector<'db> {
                 };
                 let start = range_part_lower(p.start());
                 let end = range_part_lower(p.end());
-                // FIXME: Exclusive ended pattern range is stabilised
                 match p.op_kind() {
                     Some(range_type) => Pat::Range { start, end, range_type },
                     None => Pat::Missing,
@@ -2519,9 +2517,9 @@ impl<'db> ExprCollector<'db> {
         let mut hygiene_info = if hygiene_id.is_root() {
             None
         } else {
-            hygiene_id.lookup().outer_expn(self.db).map(|expansion| {
+            hygiene_id.syntax_context().outer_expn(self.db).map(|expansion| {
                 let expansion = self.db.lookup_intern_macro_call(expansion.into());
-                (hygiene_id.lookup().parent(self.db), expansion.def)
+                (hygiene_id.syntax_context().parent(self.db), expansion.def)
             })
         };
         let name = Name::new_lifetime(&lifetime.text());
@@ -2727,16 +2725,16 @@ impl ExprCollector<'_> {
         self.store.pats.alloc(Pat::Missing)
     }
 
-    fn alloc_label(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
+    fn alloc_label(&mut self, label: Label, ptr: AstPtr<ast::Label>) -> LabelId {
+        self.alloc_label_desugared(label, ptr.wrap_left())
+    }
+
+    fn alloc_label_desugared(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
         let src = self.expander.in_file(ptr);
         let id = self.store.labels.alloc(label);
         self.store.label_map_back.insert(id, src);
         self.store.label_map.insert(src, id);
         id
-    }
-    // FIXME: desugared labels don't have ptr, that's wrong and should be fixed somehow.
-    fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
-        self.store.labels.alloc(label)
     }
 
     fn is_lowering_awaitable_block(&self) -> &Awaitable {
