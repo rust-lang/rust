@@ -537,7 +537,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
-        let EntryFnType::Main { sigpipe } = entry_type;
+        let EntryFnType::Main = entry_type;
         let (start_fn, start_ty, args, instance) = {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, DUMMY_SP);
             let start_instance = ty::Instance::expect_resolve(
@@ -549,16 +549,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             );
             let start_fn = cx.get_fn_addr(start_instance);
 
-            let i8_ty = cx.type_i8();
-            let arg_sigpipe = bx.const_u8(sigpipe);
-
-            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, ptr_ty, i8_ty], isize_ty);
-            (
-                start_fn,
-                start_ty,
-                vec![rust_main, arg_argc, arg_argv, arg_sigpipe],
-                Some(start_instance),
-            )
+            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, ptr_ty], isize_ty);
+            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv], Some(start_instance))
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
