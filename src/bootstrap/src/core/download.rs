@@ -381,7 +381,7 @@ impl Config {
         }
         let base = &self.stage0_metadata.config.artifacts_server;
         let version = self.artifact_version_part(gcc_sha);
-        let filename = format!("gcc-{version}-{}.tar.xz", self.host_target.triple);
+        let filename = format!("gcc-dev-{version}-{}.tar.xz", self.host_target.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci

@@ -2871,24 +2871,26 @@ impl Step for ReproducibleArtifacts {
 /// Tarball containing a prebuilt version of the libgccjit library,
 /// needed as a dependency for the GCC codegen backend (similarly to the LLVM
 /// backend needing a prebuilt libLLVM).
+///
+/// This component is used for `download-ci-gcc`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Gcc {
+pub struct GccDev {
     target: TargetSelection,
 }
 
-impl Step for Gcc {
+impl Step for GccDev {
     type Output = GeneratedTarball;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("gcc")
+        run.alias("gcc-dev")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Gcc { target: run.target });
+        run.builder.ensure(GccDev { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let tarball = Tarball::new(builder, "gcc", &self.target.triple);
+        let tarball = Tarball::new(builder, "gcc-dev", &self.target.triple);
         let output = builder
             .ensure(super::gcc::Gcc { target_pair: GccTargetPair::for_native_build(self.target) });
         tarball.add_file(output.libgccjit(), "lib", FileType::NativeLibrary);
@@ -2896,6 +2898,6 @@ impl Step for Gcc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("gcc", self.target))
+        Some(StepMetadata::dist("gcc-dev", self.target))
     }
 }
