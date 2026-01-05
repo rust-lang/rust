@@ -126,6 +126,7 @@
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
 #![feature(legacy_receiver_trait)]
+#![feature(likely_unlikely)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
