@@ -28,14 +28,26 @@ impl ProcMacroServerPool {
     }
 
     pub(crate) fn pick_process(&self) -> Result<&ProcMacroServerProcess, ServerError> {
-        self.workers
-            .iter()
-            .filter(|w| w.exited().is_none())
-            .min_by_key(|w| w.number_of_active_req())
-            .ok_or_else(|| ServerError {
-                message: "all proc-macro server workers have exited".into(),
-                io: None,
-            })
+        let mut best: Option<&ProcMacroServerProcess> = None;
+        let mut best_load = u32::MAX;
+
+        for w in self.workers.iter().filter(|w| w.exited().is_none()) {
+            let load = w.number_of_active_req();
+
+            if load == 0 {
+                return Ok(w);
+            }
+
+            if load < best_load {
+                best = Some(w);
+                best_load = load;
+            }
+        }
+
+        best.ok_or_else(|| ServerError {
+            message: "all proc-macro server workers have exited".into(),
+            io: None,
+        })
     }
 
     pub(crate) fn load_dylib(

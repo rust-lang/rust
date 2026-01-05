@@ -380,7 +380,7 @@ config_data! {
         /// The number of worker threads in the main loop. The default `null` means to pick
         /// automatically.
         numThreads: Option<NumThreads> = None,
-        /// The number of proc-macro-srv processes 
+        /// The number of proc-macro-srv processes
         proc_macro_processes: NumProcesses = NumProcesses::Concrete(1),
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
