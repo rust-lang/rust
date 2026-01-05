@@ -365,6 +365,7 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[cold]
 pub fn abort() -> !;
 
 /// Informs the optimizer that this point in the code is not reachable,
