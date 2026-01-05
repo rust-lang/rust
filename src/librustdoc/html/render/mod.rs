@@ -877,7 +877,7 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
-            let html = MarkdownItemInfo(note, &mut id_map);
+            let html = MarkdownItemInfo::new(note, &mut id_map);
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
         }
