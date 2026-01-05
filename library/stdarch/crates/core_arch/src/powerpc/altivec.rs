@@ -364,8 +364,6 @@ unsafe extern "C" {
     fn vrfin(a: vector_float) -> vector_float;
 }
 
-impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, f32x4 }
-
 impl_neg! { i8x16 : 0 }
 impl_neg! { i16x8 : 0 }
 impl_neg! { i32x4 : 0 }

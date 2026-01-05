@@ -3280,11 +3280,7 @@ mod tests {
         core_arch::{simd::*, x86::*},
         hint::black_box,
     };
-    use std::{
-        boxed, f32, f64,
-        mem::{self, transmute},
-        ptr,
-    };
+    use std::{boxed, f32, f64, mem, ptr};
     use stdarch_test::simd_test;
 
     const NAN: f64 = f64::NAN;
@@ -4593,38 +4589,38 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_and_pd() {
-        let a = transmute(u64x2::splat(5));
-        let b = transmute(u64x2::splat(3));
+    const fn test_mm_and_pd() {
+        let a = f64x2::from_bits(u64x2::splat(5)).as_m128d();
+        let b = f64x2::from_bits(u64x2::splat(3)).as_m128d();
         let r = _mm_and_pd(a, b);
-        let e = transmute(u64x2::splat(1));
+        let e = f64x2::from_bits(u64x2::splat(1)).as_m128d();
         assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_andnot_pd() {
-        let a = transmute(u64x2::splat(5));
-        let b = transmute(u64x2::splat(3));
+    const fn test_mm_andnot_pd() {
+        let a = f64x2::from_bits(u64x2::splat(5)).as_m128d();
+        let b = f64x2::from_bits(u64x2::splat(3)).as_m128d();
         let r = _mm_andnot_pd(a, b);
-        let e = transmute(u64x2::splat(2));
+        let e = f64x2::from_bits(u64x2::splat(2)).as_m128d();
         assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_or_pd() {
-        let a = transmute(u64x2::splat(5));
-        let b = transmute(u64x2::splat(3));
+    const fn test_mm_or_pd() {
+        let a = f64x2::from_bits(u64x2::splat(5)).as_m128d();
+        let b = f64x2::from_bits(u64x2::splat(3)).as_m128d();
         let r = _mm_or_pd(a, b);
-        let e = transmute(u64x2::splat(7));
+        let e = f64x2::from_bits(u64x2::splat(7)).as_m128d();
         assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_xor_pd() {
-        let a = transmute(u64x2::splat(5));
-        let b = transmute(u64x2::splat(3));
+    const fn test_mm_xor_pd() {
+        let a = f64x2::from_bits(u64x2::splat(5)).as_m128d();
+        let b = f64x2::from_bits(u64x2::splat(3)).as_m128d();
         let r = _mm_xor_pd(a, b);
-        let e = transmute(u64x2::splat(6));
+        let e = f64x2::from_bits(u64x2::splat(6)).as_m128d();
         assert_eq_m128d(r, e);
     }
 
