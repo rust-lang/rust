@@ -16,6 +16,12 @@ macro_rules! eight {
     };
 }
 
+macro_rules! plus_one {
+    ($val:expr) => {
+        ($val + 1)
+    };
+}
+
 fn main() {
     let x = 7_u32;
     let y = 4_u32;
@@ -54,6 +60,9 @@ fn main() {
 
     // Also test if RHS should be result of macro expansion
     let _ = (33u32 + 7) / eight!();
+    //~^ manual_div_ceil
+
+    let _ = (plus_one!(x) + (y - 1)) / y;
     //~^ manual_div_ceil
 }
 
