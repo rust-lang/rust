@@ -89,3 +89,17 @@ fn msrv_1_82() {
     (0..10).map(|_| 3);
     //~^ map_with_unused_argument_over_ranges
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test {
+        ($val:expr) => {
+            ($val * 2 + 1)
+        };
+    }
+
+    (0..test!(10)).map(|_| do_something());
+    //~^ map_with_unused_argument_over_ranges
+
+    (0..10).map(|_| test!(3));
+    //~^ map_with_unused_argument_over_ranges
+}

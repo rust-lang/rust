@@ -89,3 +89,17 @@ fn msrv_1_82() {
     std::iter::repeat(3).take(10);
     //~^ map_with_unused_argument_over_ranges
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test {
+        ($val:expr) => {
+            ($val * 2 + 1)
+        };
+    }
+
+    std::iter::repeat_with(|| do_something()).take(test!(10));
+    //~^ map_with_unused_argument_over_ranges
+
+    std::iter::repeat_n(test!(3), 10);
+    //~^ map_with_unused_argument_over_ranges
+}
