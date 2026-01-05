@@ -394,8 +394,43 @@ pub fn unlink(p: &Path) -> io::Result<()> {
     }
 }
 
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
+/// The implementation mirrors `mv` implementation in UEFI shell:
+/// https://github.com/tianocore/edk2/blob/66346d5edeac2a00d3cf2f2f3b5f66d423c07b3e/ShellPkg/Library/UefiShellLevel2CommandsLib/Mv.c#L455
+///
+/// In a nutshell we do the following:
+/// 1. Convert both old and new paths to absolute paths.
+/// 2. Check that both lie in the same disk.
+/// 3. Construct the target path relative to the current disk root.
+/// 4. Set this target path as the file_name in the file_info structure.
+pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
+    let old_absolute = crate::path::absolute(old)?;
+    let new_absolute = crate::path::absolute(new)?;
+
+    let mut old_components = old_absolute.components();
+    let mut new_components = new_absolute.components();
+
+    let Some(old_disk) = old_components.next() else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "Old path is not valid"));
+    };
+    let Some(new_disk) = new_components.next() else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "New path is not valid"));
+    };
+
+    // Ensure that paths are on the same device.
+    if old_disk != new_disk {
+        return Err(io::const_error!(io::ErrorKind::CrossesDevices, "Cannot rename across device"));
+    }
+
+    // Construct an path relative the current disk root.
+    let new_relative =
+        [crate::path::Component::RootDir].into_iter().chain(new_components).collect::<PathBuf>();
+
+    let f = uefi_fs::File::from_path(old, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+
+    let new_info = file_info.with_file_name(new_relative.as_os_str())?;
+
+    f.set_file_info(new_info)
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
@@ -760,12 +795,7 @@ mod uefi_fs {
     }
 
     pub(crate) fn file_name_from_uefi(info: &UefiBox<file::Info>) -> OsString {
-        let file_name = {
-            let size = unsafe { (*info.as_ptr()).size };
-            let strlen = (size as usize - crate::mem::size_of::<file::Info<0>>() - 1) / 2;
-            unsafe { crate::slice::from_raw_parts((*info.as_ptr()).file_name.as_ptr(), strlen) }
-        };
-
-        OsString::from_wide(file_name)
+        let fname = info.file_name();
+        OsString::from_wide(&fname[..fname.len() - 1])
     }
 }
