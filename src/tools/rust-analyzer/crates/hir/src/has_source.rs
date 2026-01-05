@@ -330,7 +330,7 @@ impl HasSource for Label {
         let (_body, source_map) = db.body_with_source_map(self.parent);
         let src = source_map.label_syntax(self.label_id);
         let root = src.file_syntax(db);
-        Some(src.map(|ast| ast.to_node(&root)))
+        src.map(|ast| ast.to_node(&root).left()).transpose()
     }
 }
 

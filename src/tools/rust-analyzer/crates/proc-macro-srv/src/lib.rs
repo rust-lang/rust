@@ -53,6 +53,7 @@ use temp_dir::TempDir;
 pub use crate::server_impl::token_id::SpanId;
 
 pub use proc_macro::Delimiter;
+pub use span;
 
 pub use crate::bridge::*;
 pub use crate::server_impl::literal_from_str;
@@ -94,7 +95,9 @@ impl<'env> ProcMacroSrv<'env> {
 pub type ProcMacroClientHandle<'a> = &'a mut (dyn ProcMacroClientInterface + Sync + Send);
 
 pub trait ProcMacroClientInterface {
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
+    fn file(&mut self, file_id: span::FileId) -> String;
+    fn source_text(&mut self, span: Span) -> Option<String>;
+    fn local_file(&mut self, file_id: span::FileId) -> Option<String>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

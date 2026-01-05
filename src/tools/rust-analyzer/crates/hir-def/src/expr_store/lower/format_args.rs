@@ -3,6 +3,7 @@
 use base_db::FxIndexSet;
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
+use span::SyntaxContext;
 use syntax::{AstPtr, AstToken as _, ast};
 
 use crate::{
@@ -49,7 +50,7 @@ impl<'db> ExprCollector<'db> {
             self.expand_macros_to_string(template.clone()).map(|it| (it, template))
         }) {
             Some(((s, is_direct_literal), template)) => {
-                let call_ctx = self.expander.call_syntax_ctx();
+                let call_ctx = SyntaxContext::root(self.def_map.edition());
                 let hygiene = self.hygiene_id_for(s.syntax().text_range());
                 let fmt = format_args::parse(
                     &s,

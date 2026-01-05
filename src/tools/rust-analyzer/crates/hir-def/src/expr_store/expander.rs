@@ -11,7 +11,7 @@ use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
     eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
 };
-use span::{AstIdMap, Edition, SyntaxContext};
+use span::{AstIdMap, SyntaxContext};
 use syntax::ast::HasAttrs;
 use syntax::{AstNode, Parse, ast};
 use triomphe::Arc;
@@ -73,11 +73,6 @@ impl Expander {
         cfg_options: &CfgOptions,
     ) -> Result<(), cfg::CfgExpr> {
         AttrFlags::is_cfg_enabled_for(owner, cfg_options)
-    }
-
-    pub(super) fn call_syntax_ctx(&self) -> SyntaxContext {
-        // FIXME:
-        SyntaxContext::root(Edition::CURRENT_FIXME)
     }
 
     pub(super) fn enter_expand<T: ast::AstNode>(

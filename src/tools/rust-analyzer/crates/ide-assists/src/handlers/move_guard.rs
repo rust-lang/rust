@@ -1,6 +1,11 @@
+use itertools::Itertools;
 use syntax::{
     SyntaxKind::WHITESPACE,
-    ast::{AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make},
+    ast::{
+        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make,
+        syntax_factory::SyntaxFactory,
+    },
+    syntax_editor::Element,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -131,8 +136,10 @@ pub(crate) fn move_arm_cond_to_match_guard(
         AssistId::refactor_rewrite("move_arm_cond_to_match_guard"),
         "Move condition to match guard",
         replace_node.text_range(),
-        |edit| {
-            edit.delete(match_arm.syntax().text_range());
+        |builder| {
+            let make = SyntaxFactory::without_mappings();
+            let mut replace_arms = vec![];
+
             // Dedent if if_expr is in a BlockExpr
             let dedent = if needs_dedent {
                 cov_mark::hit!(move_guard_ifelse_in_block);
@@ -141,47 +148,30 @@ pub(crate) fn move_arm_cond_to_match_guard(
                 cov_mark::hit!(move_guard_ifelse_else_block);
                 0
             };
-            let then_arm_end = match_arm.syntax().text_range().end();
             let indent_level = match_arm.indent_level();
-            let spaces = indent_level;
 
-            let mut first = true;
             for (cond, block) in conds_blocks {
-                if !first {
-                    edit.insert(then_arm_end, format!("\n{spaces}"));
-                } else {
-                    first = false;
-                }
-                let guard = format!("{match_pat} if {cond} => ");
-                edit.insert(then_arm_end, guard);
                 let only_expr = block.statements().next().is_none();
-                match &block.tail_expr() {
-                    Some(then_expr) if only_expr => {
-                        edit.insert(then_arm_end, then_expr.syntax().text());
-                        edit.insert(then_arm_end, ",");
-                    }
-                    _ => {
-                        let to_insert = block.dedent(dedent.into()).syntax().text();
-                        edit.insert(then_arm_end, to_insert)
-                    }
-                }
+                let expr = match block.tail_expr() {
+                    Some(then_expr) if only_expr => then_expr,
+                    _ => block.dedent(dedent.into()).into(),
+                };
+                let guard = make.match_guard(cond);
+                let new_arm = make.match_arm(match_pat.clone(), Some(guard), expr);
+                replace_arms.push(new_arm);
             }
-            if let Some(e) = tail {
+            if let Some(block) = tail {
                 cov_mark::hit!(move_guard_ifelse_else_tail);
-                let guard = format!("\n{spaces}{match_pat} => ");
-                edit.insert(then_arm_end, guard);
-                let only_expr = e.statements().next().is_none();
-                match &e.tail_expr() {
+                let only_expr = block.statements().next().is_none();
+                let expr = match block.tail_expr() {
                     Some(expr) if only_expr => {
                         cov_mark::hit!(move_guard_ifelse_expr_only);
-                        edit.insert(then_arm_end, expr.syntax().text());
-                        edit.insert(then_arm_end, ",");
+                        expr
                     }
-                    _ => {
-                        let to_insert = e.dedent(dedent.into()).syntax().text();
-                        edit.insert(then_arm_end, to_insert)
-                    }
-                }
+                    _ => block.dedent(dedent.into()).into(),
+                };
+                let new_arm = make.match_arm(match_pat, None, expr);
+                replace_arms.push(new_arm);
             } else {
                 // There's no else branch. Add a pattern without guard, unless the following match
                 // arm is `_ => ...`
@@ -193,9 +183,21 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     {
                         cov_mark::hit!(move_guard_ifelse_has_wildcard);
                     }
-                    _ => edit.insert(then_arm_end, format!("\n{spaces}{match_pat} => {{}}")),
+                    _ => {
+                        let block_expr = make.expr_empty_block().into();
+                        replace_arms.push(make.match_arm(match_pat, None, block_expr));
+                    }
                 }
             }
+
+            let mut edit = builder.make_editor(match_arm.syntax());
+
+            let newline = make.whitespace(&format!("\n{indent_level}"));
+            let replace_arms = replace_arms.iter().map(|it| it.syntax().syntax_element());
+            let replace_arms = Itertools::intersperse(replace_arms, newline.syntax_element());
+            edit.replace_with_many(match_arm.syntax(), replace_arms.collect());
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
