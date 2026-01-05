@@ -45,6 +45,7 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+    pub proc_macro_processes: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,15 +114,25 @@ pub fn load_workspace_into_db(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
             it.and_then(|it| {
-                ProcMacroClient::spawn(&it, extra_env, ws.toolchain.as_ref()).map_err(Into::into)
+                ProcMacroClient::spawn(
+                    &it,
+                    extra_env,
+                    ws.toolchain.as_ref(),
+                    load_config.proc_macro_processes,
+                )
+                .map_err(Into::into)
             })
             .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
         }),
-        ProcMacroServerChoice::Explicit(path) => {
-            Some(ProcMacroClient::spawn(path, extra_env, ws.toolchain.as_ref()).map_err(|e| {
-                ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
-            }))
-        }
+        ProcMacroServerChoice::Explicit(path) => Some(
+            ProcMacroClient::spawn(
+                path,
+                extra_env,
+                ws.toolchain.as_ref(),
+                load_config.proc_macro_processes,
+            )
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
+        ),
         ProcMacroServerChoice::None => Some(Err(ProcMacroLoadingError::Disabled)),
     };
     match &proc_macro_server {
@@ -657,6 +668,7 @@ mod tests {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
