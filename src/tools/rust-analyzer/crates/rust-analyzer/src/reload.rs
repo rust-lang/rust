@@ -701,15 +701,19 @@ impl GlobalState {
                     _ => Default::default(),
                 };
                 info!("Using proc-macro server at {path}");
+                let num_process = self.config.proc_macro_num_processes();
 
-                Some(ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref()).map_err(|err| {
-                    tracing::error!(
-                        "Failed to run proc-macro server from path {path}, error: {err:?}",
-                    );
-                    anyhow::format_err!(
-                        "Failed to run proc-macro server from path {path}, error: {err:?}",
-                    )
-                }))
+                Some(
+                    ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref(), num_process)
+                        .map_err(|err| {
+                            tracing::error!(
+                                "Failed to run proc-macro server from path {path}, error: {err:?}",
+                            );
+                            anyhow::format_err!(
+                                "Failed to run proc-macro server from path {path}, error: {err:?}",
+                            )
+                        }),
+                )
             }))
         }
 

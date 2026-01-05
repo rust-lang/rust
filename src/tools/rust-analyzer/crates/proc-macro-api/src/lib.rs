@@ -29,9 +29,7 @@ use std::{fmt, io, sync::Arc, time::SystemTime};
 
 pub use crate::transport::codec::Codec;
 use crate::{
-    bidirectional_protocol::SubCallback,
-    pool::{ProcMacroServerPool, default_pool_size},
-    process::ProcMacroServerProcess,
+    bidirectional_protocol::SubCallback, pool::ProcMacroServerPool, process::ProcMacroServerProcess,
 };
 
 /// The versions of the server protocol
@@ -155,6 +153,7 @@ impl ProcMacroClient {
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
         version: Option<&Version>,
+        num_process: usize,
     ) -> io::Result<ProcMacroClient> {
         let process = ProcMacroServerProcess::spawn(process_path, env, version)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
