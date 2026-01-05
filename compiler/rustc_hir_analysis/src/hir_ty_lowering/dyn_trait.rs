@@ -161,8 +161,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 b
             });
 
+            let item_def_id = proj.item_def_id();
+
             let key = (
-                proj.skip_binder().projection_term.def_id,
+                item_def_id,
                 tcx.anonymize_bound_vars(
                     proj.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
                 ),
@@ -171,19 +173,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 projection_bounds.insert(key, (proj, proj_span))
                 && tcx.anonymize_bound_vars(proj) != tcx.anonymize_bound_vars(old_proj)
             {
-                let item = tcx.item_name(proj.item_def_id());
+                let kind = tcx.def_descr(item_def_id);
+                let name = tcx.item_name(item_def_id);
                 self.dcx()
-                    .struct_span_err(
-                        span,
-                        format!("conflicting associated type bounds for `{item}`"),
-                    )
+                    .struct_span_err(span, format!("conflicting {kind} bindings for `{name}`"))
                     .with_span_label(
                         old_proj_span,
-                        format!("`{item}` is specified to be `{}` here", old_proj.term()),
+                        format!("`{name}` is specified to be `{}` here", old_proj.term()),
                     )
                     .with_span_label(
                         proj_span,
-                        format!("`{item}` is specified to be `{}` here", proj.term()),
+                        format!("`{name}` is specified to be `{}` here", proj.term()),
                     )
                     .emit();
             }
@@ -261,7 +261,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // the discussion in #56288 for alternatives.
                         if !references_self {
                             let key = (
-                                pred.skip_binder().projection_term.def_id,
+                                pred.item_def_id(),
                                 tcx.anonymize_bound_vars(
                                     pred.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
                                 ),
