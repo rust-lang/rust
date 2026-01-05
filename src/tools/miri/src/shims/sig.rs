@@ -20,8 +20,12 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 /// shim_sig!(extern "C" fn (*const T, i32) -> usize)
 /// ```
 ///
-/// In type position, `winapi::` can be used as a shorthand for the full path used by
-/// `windows_ty_layout`.
+/// The following types are supported:
+/// - primitive integer types
+/// - `()`
+/// - (thin) raw pointers, written `*const _` and `*mut _` since the pointee type is irrelevant
+/// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
+/// - `winapi::$ty` for a type from `std::sys::pal::windows::c`
 #[macro_export]
 macro_rules! shim_sig {
     (extern $abi:literal fn($($arg:ty),* $(,)?) -> $ret:ty) => {
@@ -55,10 +59,11 @@ macro_rules! shim_sig_arg {
             "()" => $this.tcx.types.unit,
             "*const _" => $this.machine.layouts.const_raw_ptr.ty,
             "*mut _" => $this.machine.layouts.mut_raw_ptr.ty,
-            ty if let Some(libc_ty) = ty.strip_prefix("libc::") => $this.libc_ty_layout(libc_ty).ty,
             ty if let Some(win_ty) = ty.strip_prefix("winapi::") =>
                 $this.windows_ty_layout(win_ty).ty,
-            ty => helpers::path_ty_layout($this, &ty.split("::").collect::<Vec<_>>()).ty,
+            ty if ty.contains("::") =>
+                helpers::path_ty_layout($this, &ty.split("::").collect::<Vec<_>>()).ty,
+            ty => panic!("unsupported signature type {ty:?}"),
         }
     }};
 }
