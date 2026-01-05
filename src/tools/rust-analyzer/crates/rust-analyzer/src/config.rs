@@ -380,8 +380,6 @@ config_data! {
         /// The number of worker threads in the main loop. The default `null` means to pick
         /// automatically.
         numThreads: Option<NumThreads> = None,
-        /// The number of proc-macro-srv processes
-        proc_macro_processes: NumProcesses = NumProcesses::Concrete(1),
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = true,
@@ -391,6 +389,12 @@ config_data! {
 
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
+
+        /// Number of proc-macro server processes to spawn.
+        ///
+        /// Controls how many independent `proc-macro-srv` processes rust-analyzer
+        /// runs in parallel to handle macro expansion.
+        proc_macro_processes: NumProcesses = NumProcesses::Concrete(1),
 
         /// The path where to save memory profiling output.
         ///
@@ -3916,6 +3920,22 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     "enumDescriptions": [
                         "Use the number of physical cores",
                         "Use the number of logical cores",
+                    ],
+                },
+            ],
+        },
+        "NumProcesses" => set! {
+            "anyOf": [
+                {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical"],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
                     ],
                 },
             ],
