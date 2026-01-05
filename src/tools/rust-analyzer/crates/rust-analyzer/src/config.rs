@@ -380,6 +380,8 @@ config_data! {
         /// The number of worker threads in the main loop. The default `null` means to pick
         /// automatically.
         numThreads: Option<NumThreads> = None,
+        /// The number of proc-macro-srv processes 
+        proc_macro_processes: NumProcesses = NumProcesses::Concrete(1),
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = true,
@@ -2641,6 +2643,13 @@ impl Config {
         }
     }
 
+    pub fn proc_macro_num_processes(&self) -> usize {
+        match self.proc_macro_processes() {
+            NumProcesses::Concrete(0) | NumProcesses::Physical => num_cpus::get_physical(),
+            &NumProcesses::Concrete(n) => n,
+        }
+    }
+
     pub fn main_loop_num_threads(&self) -> usize {
         match self.numThreads() {
             Some(NumThreads::Concrete(0)) | None | Some(NumThreads::Physical) => {
@@ -3073,6 +3082,14 @@ pub enum TargetDirectory {
 pub enum NumThreads {
     Physical,
     Logical,
+    #[serde(untagged)]
+    Concrete(usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NumProcesses {
+    Physical,
     #[serde(untagged)]
     Concrete(usize),
 }
