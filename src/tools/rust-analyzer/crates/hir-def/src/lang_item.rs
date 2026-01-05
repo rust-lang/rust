@@ -40,8 +40,12 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
 
     let crate_def_map = crate_def_map(db, krate);
 
+    if !crate_def_map.is_unstable_feature_enabled(&sym::lang_items) {
+        return None;
+    }
+
     for (_, module_data) in crate_def_map.modules() {
-        for impl_def in module_data.scope.impls() {
+        for impl_def in module_data.scope.inherent_impls() {
             lang_items.collect_lang_item(db, impl_def);
             for &(_, assoc) in impl_def.impl_items(db).items.iter() {
                 match assoc {

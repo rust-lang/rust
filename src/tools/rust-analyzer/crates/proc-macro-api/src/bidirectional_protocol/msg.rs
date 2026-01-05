@@ -10,12 +10,16 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubRequest {
-    SourceText { file_id: u32, start: u32, end: u32 },
+    FilePath { file_id: u32 },
+    SourceText { file_id: u32, ast_id: u32, start: u32, end: u32 },
+    LocalFilePath { file_id: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubResponse {
+    FilePathResult { name: String },
     SourceTextResult { text: Option<String> },
+    LocalFilePathResult { name: Option<String> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

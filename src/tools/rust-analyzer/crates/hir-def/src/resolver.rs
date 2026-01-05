@@ -950,7 +950,7 @@ fn hygiene_info(
     hygiene_id: HygieneId,
 ) -> Option<(SyntaxContext, MacroDefId)> {
     if !hygiene_id.is_root() {
-        let ctx = hygiene_id.lookup();
+        let ctx = hygiene_id.syntax_context();
         ctx.outer_expn(db).map(|expansion| {
             let expansion = db.lookup_intern_macro_call(expansion.into());
             (ctx.parent(db), expansion.def)

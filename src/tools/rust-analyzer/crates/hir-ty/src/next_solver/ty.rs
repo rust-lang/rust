@@ -383,6 +383,11 @@ impl<'db> Ty<'db> {
         matches!(self.kind(), TyKind::Bool)
     }
 
+    #[inline]
+    pub fn is_char(self) -> bool {
+        matches!(self.kind(), TyKind::Char)
+    }
+
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
     /// (A RawPtr is scalar because it represents a non-managed pointer, so its
     /// contents are abstract to rustc.)
@@ -423,6 +428,11 @@ impl<'db> Ty<'db> {
     }
 
     #[inline]
+    pub fn is_u8(self) -> bool {
+        matches!(self.kind(), TyKind::Uint(UintTy::U8))
+    }
+
+    #[inline]
     pub fn is_raw_ptr(self) -> bool {
         matches!(self.kind(), TyKind::RawPtr(..))
     }
@@ -452,6 +462,14 @@ impl<'db> Ty<'db> {
     pub fn as_adt(self) -> Option<(AdtId, GenericArgs<'db>)> {
         match self.kind() {
             TyKind::Adt(adt_def, args) => Some((adt_def.def_id().0, args)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_slice(self) -> Option<Ty<'db>> {
+        match self.kind() {
+            TyKind::Slice(ty) => Some(ty),
             _ => None,
         }
     }

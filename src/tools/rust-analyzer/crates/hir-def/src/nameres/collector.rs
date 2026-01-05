@@ -2028,7 +2028,9 @@ impl ModCollector<'_, '_> {
                     let impl_id =
                         ImplLoc { container: module_id, id: InFile::new(self.file_id(), imp) }
                             .intern(db);
-                    self.def_collector.def_map.modules[self.module_id].scope.define_impl(impl_id)
+                    self.def_collector.def_map.modules[self.module_id]
+                        .scope
+                        .define_impl(impl_id, self.item_tree[imp].is_trait_impl)
                 }
                 ModItemId::Function(id) => {
                     let it = &self.item_tree[id];

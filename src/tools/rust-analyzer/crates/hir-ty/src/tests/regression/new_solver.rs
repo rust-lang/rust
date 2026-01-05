@@ -234,6 +234,7 @@ fn main() {
     // toolchains <= 1.88.0, before sized-hierarchy.
     check_no_mismatches(
         r#"
+#![feature(lang_items)]
 #[lang = "sized"]
 pub trait Sized {}
 

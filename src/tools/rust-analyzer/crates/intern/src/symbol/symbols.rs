@@ -297,6 +297,7 @@ define_symbols! {
     iterator,
     keyword,
     lang,
+    lang_items,
     le,
     Left,
     len,
