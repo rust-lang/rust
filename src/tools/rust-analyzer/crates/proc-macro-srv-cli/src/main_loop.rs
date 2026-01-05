@@ -220,6 +220,20 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
             _ => None,
         }
     }
+
+    fn line_column(&mut self, span: proc_macro_srv::span::Span) -> Option<(u32, u32)> {
+        let proc_macro_srv::span::Span { range, anchor, ctx: _ } = span;
+        match self.roundtrip(bidirectional::SubRequest::LineColumn {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            offset: range.start().into(),
+        }) {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::LineColumnResult { line, column },
+            )) => Some((line, column)),
+            _ => None,
+        }
+    }
 }
 
 fn handle_expand_ra<C: Codec>(

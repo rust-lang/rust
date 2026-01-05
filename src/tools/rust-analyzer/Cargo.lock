@@ -1864,6 +1864,7 @@ dependencies = [
  "intern",
  "libc",
  "libloading",
+ "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap2",
  "object",
  "paths",
