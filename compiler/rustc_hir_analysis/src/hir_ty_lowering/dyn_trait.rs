@@ -324,7 +324,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect();
 
         // If there are any associated items whose value wasn't provided, bail out with an error.
-        if let Err(guar) = self.check_for_required_assoc_tys(
+        if let Err(guar) = self.check_for_required_assoc_items(
             principal_trait.as_ref().map_or(smallvec![], |(_, spans)| spans.clone()),
             missing_assoc_items,
             potential_assoc_items,

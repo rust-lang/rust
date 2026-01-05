@@ -11,7 +11,7 @@ LL |     type Bar;
    |     -------- `Bar` defined here
 ...
 LL | type Foo = dyn Trait<F=i32>;
-   |                ^^^^^^^^^^^^ help: specify the associated type: `Trait<F=i32, Bar = Type>`
+   |                ^^^^^^^^^^^^ help: specify the associated type: `Trait<F=i32, Bar = /* Type */>`
 
 error: aborting due to 2 previous errors
 

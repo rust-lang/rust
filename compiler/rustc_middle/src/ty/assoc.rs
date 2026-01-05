@@ -223,7 +223,7 @@ impl std::fmt::Display for AssocKind {
 }
 
 // Like `AssocKind`, but just the tag, no fields. Used in various kinds of matching.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AssocTag {
     Const,
     Fn,

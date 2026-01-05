@@ -13,13 +13,13 @@ trait Trait {
 // fn ctxt / body
 fn main() {
     let _: dyn Trait;
-    //~^ ERROR the value of the associated type `K` in `Trait` must be specified
+    //~^ ERROR the value of the associated constant `K` in `Trait` must be specified
 }
 
 // item ctxt / signature / non-body
 struct Store(dyn Trait);
-//~^ ERROR the value of the associated type `K` in `Trait` must be specified
+//~^ ERROR the value of the associated constant `K` in `Trait` must be specified
 
 // item ctxt & no wfcking (eager ty alias)
 type DynTrait = dyn Trait;
-//~^ ERROR the value of the associated type `K` in `Trait` must be specified
+//~^ ERROR the value of the associated constant `K` in `Trait` must be specified
