@@ -1104,7 +1104,11 @@ impl<T, A: Allocator> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
+        // This `Acquire` synchronizes with the `Release` in the `Arc::drop`
+        // of the penultimate `Arc`, allowing the resulting value to contain
+        // all modifications that may have happened due to that copy of the
+        // `Arc`.
+        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             return Err(this);
         }
 
