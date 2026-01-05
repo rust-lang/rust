@@ -1,3 +1,4 @@
+//@ check-pass
 // Just check we don't get an ICE for `N`.
 
 use std::cell::Cell;
@@ -8,4 +9,3 @@ pub struct S {
 }
 
 pub const N: usize = 0 - (mem::size_of::<S>() != 400) as usize;
-//~^ ERROR overflow
