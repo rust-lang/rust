@@ -1,3 +1,5 @@
+#![crate_type = "lib"]
+
 #![feature(rustc_private)]
 extern crate libc;
 
