@@ -371,13 +371,7 @@ fn parse_cfg_attr_internal<'a>(
         attribute.span,
         attribute.get_normal_item().span(),
         attribute.style,
-        AttrPath {
-            segments: attribute
-                .ident_path()
-                .expect("cfg_attr is not a doc comment")
-                .into_boxed_slice(),
-            span: attribute.span,
-        },
+        AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
         ParsedDescription::Attribute,
         pred_span,

@@ -27,7 +27,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
         return;
     }
 
-    let builtin_attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
+    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
 
     // Check input tokens for built-in and key-value attributes.
     match builtin_attr_info {

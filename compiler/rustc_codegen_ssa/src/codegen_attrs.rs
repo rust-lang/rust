@@ -16,7 +16,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, Instance, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::Os;
 
 use crate::errors;
@@ -327,7 +327,7 @@ fn process_builtin_attrs(
             }
         }
 
-        let Some(Ident { name, .. }) = attr.ident() else {
+        let Some(name) = attr.name() else {
             continue;
         };
 
