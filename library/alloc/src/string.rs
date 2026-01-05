@@ -54,7 +54,7 @@ use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
 use core::str::pattern::{Pattern, Utf8Pattern};
-use core::{fmt, hash, ptr, slice};
+use core::{fmt, hash, hint, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
@@ -1645,52 +1645,72 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
-            idx: usize,
-            del_bytes: usize,
+        let len = self.len();
+        if len == 0 {
+            // Explicit check results in better optimization
+            return;
         }
 
-        impl<'a> Drop for SetLenOnDrop<'a> {
+        struct PanicGuard<'a> {
+            s: &'a mut String,
+            read: usize,
+            write: usize,
+        }
+
+        impl<'a> Drop for PanicGuard<'a> {
             fn drop(&mut self) {
-                let new_len = self.idx - self.del_bytes;
-                debug_assert!(new_len <= self.s.len());
-                unsafe { self.s.vec.set_len(new_len) };
+                debug_assert!(self.write <= self.s.len());
+                // SAFETY: On panic, we restore the string length to the number of bytes written so far.
+                unsafe { self.s.vec.set_len(self.write) }
             }
         }
 
-        let len = self.len();
-        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
-
-        while guard.idx < len {
-            let ch =
-                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
+        let mut read = 0;
+        let mut ch_len: usize;
+        // Faster read-path
+        loop {
+            let ch = unsafe {
+                // SAFETY: `read` is positive-or-zero and less that len so the `get_unchecked`
                 // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
                 // a unicode code point so the `Chars` always return one character.
-                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
-            let ch_len = ch.len_utf8();
+                self.get_unchecked(read..len).chars().next().unwrap_unchecked()
+            };
+            ch_len = ch.len_utf8();
 
-            if !f(ch) {
-                guard.del_bytes += ch_len;
-            } else if guard.del_bytes > 0 {
-                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
-                // bytes that are erased from the string so the resulting `guard.idx -
-                // guard.del_bytes` always represent a valid unicode code point.
-                //
-                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
-                // is safe.
-                ch.encode_utf8(unsafe {
-                    crate::slice::from_raw_parts_mut(
-                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch.len_utf8(),
-                    )
-                });
+            if hint::unlikely(!f(ch)) {
+                break;
             }
 
-            // Point idx to the next char
-            guard.idx += ch_len;
+            read += ch_len;
+            if read == len {
+                // SAFETY: all characters were kept, so the length remains unchanged.
+                return;
+            }
         }
 
+        // Critical section starts here, at least one character is going to be removed.
+        let mut guard = PanicGuard { s: self, read: read + ch_len, write: read };
+
+        // Slower write-path
+        while guard.read < len {
+            // SAFETY: same as above
+            let ch =
+                unsafe { guard.s.get_unchecked(guard.read..len).chars().next().unwrap_unchecked() };
+            ch_len = ch.len_utf8();
+
+            if f(ch) {
+                // SAFETY: `guard.read` is in bound because `guard.write` <= `guard.read` - `ch.len_utf8()`,
+                // so taking a slice with `ch.len_utf8()` len is safe.
+                ch.encode_utf8(unsafe {
+                    crate::slice::from_raw_parts_mut(guard.s.as_mut_ptr().add(guard.write), ch_len)
+                });
+                guard.write += ch_len;
+            }
+
+            guard.read += ch_len;
+        }
+
+        // SAFETY: All characters have been processed, so we can set the final length.
         drop(guard);
     }
 
