@@ -442,36 +442,37 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_ty_pat_mut(&mut self, pattern: &TyPat, base_type: Span) -> hir::TyPat<'hir> {
         // loop here to avoid recursion
         let pat_hir_id = self.lower_node_id(pattern.id);
-        let node = match &pattern.kind {
-            TyPatKind::Range(e1, e2, Spanned { node: end, span }) => hir::TyPatKind::Range(
-                e1.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)).unwrap_or_else(|| {
-                    self.lower_ty_pat_range_end(
-                        hir::LangItem::RangeMin,
-                        span.shrink_to_lo(),
-                        base_type,
-                    )
-                }),
-                e2.as_deref()
-                    .map(|e| match end {
-                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg(e),
-                        RangeEnd::Excluded => self.lower_excluded_range_end(e),
-                    })
-                    .unwrap_or_else(|| {
-                        self.lower_ty_pat_range_end(
-                            hir::LangItem::RangeMax,
-                            span.shrink_to_hi(),
-                            base_type,
-                        )
-                    }),
-            ),
-            TyPatKind::NotNull => hir::TyPatKind::NotNull,
-            TyPatKind::Or(variants) => {
-                hir::TyPatKind::Or(self.arena.alloc_from_iter(
+        let node =
+            match &pattern.kind {
+                TyPatKind::Range(e1, e2, Spanned { node: end, span }) => hir::TyPatKind::Range(
+                    e1.as_deref()
+                        .map(|e| self.lower_anon_const_to_const_arg_alloc(e))
+                        .unwrap_or_else(|| {
+                            self.lower_ty_pat_range_end(
+                                hir::LangItem::RangeMin,
+                                span.shrink_to_lo(),
+                                base_type,
+                            )
+                        }),
+                    e2.as_deref()
+                        .map(|e| match end {
+                            RangeEnd::Included(..) => self.lower_anon_const_to_const_arg_alloc(e),
+                            RangeEnd::Excluded => self.lower_excluded_range_end(e),
+                        })
+                        .unwrap_or_else(|| {
+                            self.lower_ty_pat_range_end(
+                                hir::LangItem::RangeMax,
+                                span.shrink_to_hi(),
+                                base_type,
+                            )
+                        }),
+                ),
+                TyPatKind::NotNull => hir::TyPatKind::NotNull,
+                TyPatKind::Or(variants) => hir::TyPatKind::Or(self.arena.alloc_from_iter(
                     variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),
-                ))
-            }
-            TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
-        };
+                )),
+                TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
+            };
 
         hir::TyPat { hir_id: pat_hir_id, kind: node, span: self.lower_span(pattern.span) }
     }

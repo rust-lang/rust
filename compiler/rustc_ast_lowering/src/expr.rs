@@ -158,14 +158,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    let ty = self
+                        .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(expr, ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    let ty = self
+                        .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ohs) => {
@@ -335,7 +335,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
-                    self.lower_ty(
+                    self.lower_ty_alloc(
                         container,
                         ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
                     ),
@@ -371,7 +371,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     *kind,
                     self.lower_expr(expr),
                     ty.as_ref().map(|ty| {
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast))
+                        self.lower_ty_alloc(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Cast),
+                        )
                     }),
                 ),
 
@@ -617,7 +620,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         if let Some(ty) = opt_ty {
-            let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path));
+            let ty = self.lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path));
             let block_expr = self.arena.alloc(self.expr_block(whole_block));
             hir::ExprKind::Type(block_expr, ty)
         } else {
