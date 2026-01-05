@@ -198,7 +198,6 @@ impl<'tcx> MatchPairTree<'tcx> {
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
                 ref subpattern,
-                ..
             } => {
                 MatchPairTree::for_pattern(
                     place_builder,
@@ -217,7 +216,15 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
+            PatKind::Binding {
+                name: _,
+                mode,
+                var,
+                ty: _,
+                ref subpattern,
+                is_primary: _,
+                is_shorthand,
+            } => {
                 // In order to please the borrow checker, when lowering a pattern
                 // like `x @ subpat` we must establish any bindings in `subpat`
                 // before establishing the binding for `x`.
@@ -263,8 +270,14 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
-                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
+            PatKind::ExpandedConstant { def_id: _, ref subpattern } => {
+                MatchPairTree::for_pattern(
+                    place_builder,
+                    subpattern,
+                    cx,
+                    &mut subpairs,
+                    extra_data,
+                );
                 None
             }
 
