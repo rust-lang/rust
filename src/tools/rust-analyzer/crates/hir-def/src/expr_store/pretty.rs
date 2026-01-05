@@ -16,7 +16,8 @@ use crate::{
     attrs::AttrFlags,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
-        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement,
+        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, RecordSpread,
+        Statement,
         generics::{GenericParams, WherePredicate},
     },
     lang_item::LangItemTarget,
@@ -139,7 +140,7 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
     }
 
     for (_, data) in fields.fields().iter() {
-        let FieldData { name, type_ref, visibility, is_unsafe } = data;
+        let FieldData { name, type_ref, visibility, is_unsafe, default_value: _ } = data;
         match visibility {
             crate::item_tree::RawVisibility::Module(interned, _visibility_explicitness) => {
                 w!(p, "pub(in {})", interned.display(db, p.edition))
@@ -679,10 +680,17 @@ impl Printer<'_> {
                         p.print_expr(field.expr);
                         wln!(p, ",");
                     }
-                    if let Some(spread) = spread {
-                        w!(p, "..");
-                        p.print_expr(*spread);
-                        wln!(p);
+                    match spread {
+                        RecordSpread::None => {}
+                        RecordSpread::FieldDefaults => {
+                            w!(p, "..");
+                            wln!(p);
+                        }
+                        RecordSpread::Expr(spread_expr) => {
+                            w!(p, "..");
+                            p.print_expr(*spread_expr);
+                            wln!(p);
+                        }
                     }
                 });
                 w!(self, "}}");

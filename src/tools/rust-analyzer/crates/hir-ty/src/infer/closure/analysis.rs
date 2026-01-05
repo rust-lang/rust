@@ -8,7 +8,7 @@ use hir_def::{
     expr_store::path::Path,
     hir::{
         Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, ExprOrPatId, Pat, PatId,
-        Statement, UnaryOp,
+        RecordSpread, Statement, UnaryOp,
     },
     item_tree::FieldsShape,
     resolver::ValueNs,
@@ -627,7 +627,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.consume_expr(expr);
             }
             Expr::RecordLit { fields, spread, .. } => {
-                if let &Some(expr) = spread {
+                if let RecordSpread::Expr(expr) = *spread {
                     self.consume_expr(expr);
                 }
                 self.consume_exprs(fields.iter().map(|it| it.expr));

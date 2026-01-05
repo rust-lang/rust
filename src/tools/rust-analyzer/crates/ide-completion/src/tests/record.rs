@@ -287,6 +287,24 @@ fn main() {
 }
 
 #[test]
+fn functional_update_fields_completion() {
+    // Complete fields before functional update `..`
+    check(
+        r#"
+struct Point { x: i32 = 0, y: i32 = 0 }
+
+fn main() {
+    let p = Point { $0, .. };
+}
+"#,
+        expect![[r#"
+            fd x i32
+            fd y i32
+        "#]],
+    );
+}
+
+#[test]
 fn empty_union_literal() {
     check(
         r#"
@@ -302,7 +320,27 @@ fn foo() {
             fd bar f32
             fd foo u32
         "#]],
-    )
+    );
+}
+
+#[test]
+fn record_pattern_field_with_rest_pat() {
+    // When .. is present, complete all unspecified fields (even those with default values)
+    check(
+        r#"
+struct UserInfo { id: i32, age: f32, email: u64 }
+
+fn foo(u1: UserInfo) {
+    let UserInfo { id, $0, .. } = u1;
+}
+"#,
+        expect![[r#"
+            fd age   f32
+            fd email u64
+            kw mut
+            kw ref
+        "#]],
+    );
 }
 
 #[test]

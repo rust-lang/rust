@@ -8,7 +8,7 @@ use hir_def::{
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        InlineAsmKind, LabelId, Literal, Pat, PatId, Statement, UnaryOp,
+        InlineAsmKind, LabelId, Literal, Pat, PatId, RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
 };
@@ -657,8 +657,8 @@ impl<'db> InferenceContext<'_, 'db> {
                         }
                     }
                 }
-                if let Some(expr) = spread {
-                    self.infer_expr(*expr, &Expectation::has_type(ty), ExprIsRead::Yes);
+                if let RecordSpread::Expr(expr) = *spread {
+                    self.infer_expr(expr, &Expectation::has_type(ty), ExprIsRead::Yes);
                 }
                 ty
             }
