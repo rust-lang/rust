@@ -5,8 +5,10 @@
 //@ ignore-aarch64: Doesn't work yet.
 //@ ignore-loongarch64: Doesn't work yet.
 //@ ignore-riscv64: Doesn't work yet.
-//@ compile-flags: -g
 //@ ignore-backends: gcc
+
+// Debugger tests need debuginfo
+//@ compile-flags: -g
 
 //@ gdb-command: run
 // FIXME(#97083): Should we be able to break on initialization of zero-sized types?
