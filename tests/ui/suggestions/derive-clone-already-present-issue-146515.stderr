@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/derive-clone-already-present-issue-146515.rs:12:5
+   |
+LL | fn clone_me<T>(x: &ContainsRc<T>) -> ContainsRc<T> {
+   |                                      ------------- expected `ContainsRc<T>` because of return type
+LL |
+LL |     x.clone()
+   |     ^^^^^^^^^ expected `ContainsRc<T>`, found `&ContainsRc<T>`
+   |
+   = note: expected struct `ContainsRc<_>`
+           found reference `&ContainsRc<_>`
+note: `ContainsRc<T>` does not implement `Clone`, so `&ContainsRc<T>` was cloned instead
+  --> $DIR/derive-clone-already-present-issue-146515.rs:12:5
+   |
+LL |     x.clone()
+   |     ^
+   = help: `Clone` is not implemented because the trait bound `T: Clone` is not satisfied
+note: the trait `Clone` must be implemented
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
