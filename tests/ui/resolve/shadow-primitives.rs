@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/20427>
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -31,17 +32,10 @@ mod char {
     mod char_ {}
 
     mod str {
-        use super::i8 as i8;
-        use super::i32_ as i32;
-        use super::i64_ as i64;
-        use super::u8_ as u8;
-        use super::f_ as f64;
-        use super::u16_ as u16;
-        use super::u32_ as u32;
-        use super::u64_ as u64;
-        use super::bool_ as bool;
-        use super::{bool_ as str};
-        use super::char_ as char;
+        use super::{
+            bool_ as bool, bool_ as str, char_ as char, f_ as f64, i8, i32_ as i32, i64_ as i64,
+            u8_ as u8, u16_ as u16, u32_ as u32, u64_ as u64,
+        };
     }
 }
 
@@ -49,7 +43,9 @@ trait isize_ {
     type isize;
 }
 
-fn usize<'usize>(usize: &'usize usize) -> &'usize usize { usize }
+fn usize<'usize>(usize: &'usize usize) -> &'usize usize {
+    usize
+}
 
 mod reuse {
     use std::mem::size_of;
@@ -68,9 +64,10 @@ mod reuse {
 mod guard {
     pub fn check() {
         use std::u8; // bring module u8 in scope
-        fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
+        fn f() -> u8 {
+            // OK, resolves to primitive u8, not to std::u8
             u8::max_value() // OK, resolves to associated function <u8>::max_value,
-                            // not to non-existent std::u8::max_value
+            // not to non-existent std::u8::max_value
         }
         assert_eq!(f(), u8::MAX); // OK, resolves to std::u8::MAX
     }
@@ -79,7 +76,13 @@ mod guard {
 fn main() {
     let bool = true;
     let _ = match bool {
-        str @ true => if str { i32 as i64 } else { i64 },
+        str @ true => {
+            if str {
+                i32 as i64
+            } else {
+                i64
+            }
+        }
         false => i64,
     };
 

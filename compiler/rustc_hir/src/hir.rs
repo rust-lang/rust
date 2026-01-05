@@ -1199,7 +1199,7 @@ pub enum AttrArgs {
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct AttrPath {
-    pub segments: Box<[Ident]>,
+    pub segments: Box<[Symbol]>,
     pub span: Span,
 }
 
@@ -1215,7 +1215,7 @@ impl AttrPath {
             segments: path
                 .segments
                 .iter()
-                .map(|i| Ident { name: i.ident.name, span: lower_span(i.ident.span) })
+                .map(|i| i.ident.name)
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
             span: lower_span(path.span),
@@ -1225,7 +1225,11 @@ impl AttrPath {
 
 impl fmt::Display for AttrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", join_path_idents(&self.segments))
+        write!(
+            f,
+            "{}",
+            join_path_idents(self.segments.iter().map(|i| Ident { name: *i, span: DUMMY_SP }))
+        )
     }
 }
 
@@ -1330,7 +1334,7 @@ impl AttributeExt for Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     #[inline]
-    fn ident(&self) -> Option<Ident> {
+    fn name(&self) -> Option<Symbol> {
         match &self {
             Attribute::Unparsed(n) => {
                 if let [ident] = n.path.segments.as_ref() {
@@ -1346,7 +1350,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {
-            Attribute::Unparsed(n) => n.path.segments.iter().map(|ident| &ident.name).eq(name),
+            Attribute::Unparsed(n) => n.path.segments.iter().eq(name),
             _ => false,
         }
     }
@@ -1382,10 +1386,17 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self {
             Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
             _ => None,
+        }
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        match &self {
+            Attribute::Unparsed(attr) => Some(attr.path.span),
+            Attribute::Parsed(_) => None,
         }
     }
 
@@ -1469,11 +1480,6 @@ impl Attribute {
     }
 
     #[inline]
-    pub fn ident(&self) -> Option<Ident> {
-        AttributeExt::ident(self)
-    }
-
-    #[inline]
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
         AttributeExt::path_matches(self, name)
     }
@@ -1506,11 +1512,6 @@ impl Attribute {
     #[inline]
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
         AttributeExt::path(self)
-    }
-
-    #[inline]
-    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        AttributeExt::ident_path(self)
     }
 
     #[inline]

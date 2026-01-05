@@ -270,7 +270,7 @@ fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx.hir_parent_id_iter(hir_id).any(|id| {
         cx.tcx.hir_attrs(id).iter().any(|attr| {
             matches!(
-                attr.ident().map(|ident| ident.name),
+                attr.name(),
                 Some(sym::cfg_trace | sym::cfg_attr_trace)
             )
         })
