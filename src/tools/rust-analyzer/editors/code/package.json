@@ -2773,20 +2773,7 @@
             {
                 "title": "Proc Macro",
                 "properties": {
-                    "rust-analyzer.procMacro.server": {
-                        "markdownDescription": "Internal config, path to proc-macro server executable.",
-                        "default": null,
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    }
-                }
-            },
-            {
-                "title": "Proc",
-                "properties": {
-                    "rust-analyzer.proc.macro.processes": {
+                    "rust-analyzer.procMacro.processes": {
                         "markdownDescription": "Number of proc-macro server processes to spawn.\n\nControls how many independent `proc-macro-srv` processes rust-analyzer\nruns in parallel to handle macro expansion.",
                         "default": 1,
                         "anyOf": [
@@ -2804,6 +2791,19 @@
                                     "Use the number of physical cores"
                                 ]
                             }
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Proc Macro",
+                "properties": {
+                    "rust-analyzer.procMacro.server": {
+                        "markdownDescription": "Internal config, path to proc-macro server executable.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "string"
                         ]
                     }
                 }

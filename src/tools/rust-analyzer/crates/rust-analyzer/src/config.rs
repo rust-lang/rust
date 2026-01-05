@@ -387,14 +387,14 @@ config_data! {
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
         procMacro_enable: bool = true,
 
-        /// Internal config, path to proc-macro server executable.
-        procMacro_server: Option<Utf8PathBuf> = None,
-
         /// Number of proc-macro server processes to spawn.
         ///
         /// Controls how many independent `proc-macro-srv` processes rust-analyzer
         /// runs in parallel to handle macro expansion.
-        proc_macro_processes: NumProcesses = NumProcesses::Concrete(1),
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+
+        /// Internal config, path to proc-macro server executable.
+        procMacro_server: Option<Utf8PathBuf> = None,
 
         /// The path where to save memory profiling output.
         ///
@@ -2648,7 +2648,7 @@ impl Config {
     }
 
     pub fn proc_macro_num_processes(&self) -> usize {
-        match self.proc_macro_processes() {
+        match self.procMacro_processes() {
             NumProcesses::Concrete(0) | NumProcesses::Physical => num_cpus::get_physical(),
             &NumProcesses::Concrete(n) => n,
         }
