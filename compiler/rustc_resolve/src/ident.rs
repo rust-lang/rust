@@ -433,12 +433,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
+                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+                // The passed `ctxt` is already normalized, so avoid expensive double normalization.
+                let ident = Macros20NormalizedIdent(ident);
                 let res = match this.reborrow().resolve_ident_in_scope(
-                    orig_ident,
+                    ident,
                     ns,
                     scope,
                     use_prelude,
-                    ctxt,
                     scope_set,
                     parent_scope,
                     // Shadowed decls don't need to be marked as used or non-speculatively loaded.
@@ -507,11 +509,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_ident_in_scope<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        orig_ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         scope: Scope<'ra>,
         use_prelude: UsePrelude,
-        ctxt: SyntaxContext,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
@@ -519,8 +520,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
-        let unnorm_ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
-        let ident = Macros20NormalizedIdent::new(unnorm_ident);
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
                 if let Some(decl) = self
@@ -599,11 +598,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             self.get_mut().lint_buffer.buffer_lint(
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
-                                orig_ident.span,
+                                ident.span,
                                 errors::ProcMacroDeriveResolutionFallback {
-                                    span: orig_ident.span,
+                                    span: ident.span,
                                     ns_descr: ns.descr(),
-                                    ident: unnorm_ident,
+                                    ident: ident.0,
                                 },
                             );
                         }
@@ -649,11 +648,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             self.get_mut().lint_buffer.buffer_lint(
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
-                                orig_ident.span,
+                                ident.span,
                                 errors::ProcMacroDeriveResolutionFallback {
-                                    span: orig_ident.span,
+                                    span: ident.span,
                                     ns_descr: ns.descr(),
-                                    ident: unnorm_ident,
+                                    ident: ident.0,
                                 },
                             );
                         }
@@ -699,7 +698,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut result = Err(Determinacy::Determined);
                 if let Some(prelude) = self.prelude
                     && let Ok(decl) = self.reborrow().resolve_ident_in_scope_set(
-                        unnorm_ident,
+                        ident.0,
                         ScopeSet::Module(ns, prelude),
                         parent_scope,
                         None,
