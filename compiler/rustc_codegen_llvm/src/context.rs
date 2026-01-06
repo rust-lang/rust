@@ -211,6 +211,10 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
             target_data_layout = target_data_layout.replace("-i256:256", "");
         }
+        if sess.target.arch == Arch::PowerPC64 {
+            // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
+            target_data_layout = target_data_layout.replace("-f64:32:64", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
