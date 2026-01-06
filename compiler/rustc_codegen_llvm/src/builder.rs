@@ -1788,6 +1788,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         if crate::llvm_util::get_version() >= (22, 0, 0) {
+            // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
+            // there can't be an addrspacecast in between.
+            let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
         } else {
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
