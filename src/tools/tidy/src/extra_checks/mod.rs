@@ -121,12 +121,12 @@ fn check_impl(
             .collect(),
         None => vec![],
     };
+    lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
             ck.is_non_auto_or_matches(path)
         });
     }
-    lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
 
     macro_rules! extra_check {
         ($lang:ident, $kind:ident) => {
@@ -963,7 +963,6 @@ impl FromStr for ExtraCheckArg {
                     };
                     if_installed = true;
                     first = part;
-                    continue;
                 }
                 _ => break,
             }
