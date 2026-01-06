@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::io;
 use crate::os::unix::ffi::OsStringExt;
-use crate::sys::pal::os::errno;
+use crate::sys::io::errno;
 
 pub fn hostname() -> io::Result<OsString> {
     // Query the system for the maximum host name length.

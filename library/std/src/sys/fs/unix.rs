@@ -726,7 +726,7 @@ impl Iterator for ReadDir {
         target_os = "wasi",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        use crate::sys::os::{errno, set_errno};
+        use crate::sys::io::{errno, set_errno};
 
         if self.end_of_stream {
             return None;
@@ -864,7 +864,7 @@ impl Iterator for ReadDir {
 /// The downside is that it costs an extra syscall, so we only do it for debug.
 #[inline]
 pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
-    use crate::sys::os::errno;
+    use crate::sys::io::errno;
 
     // this is similar to assert_unsafe_precondition!() but it doesn't require const
     if core::ub_checks::check_library_ub() {
