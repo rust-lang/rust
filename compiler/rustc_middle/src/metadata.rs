@@ -26,7 +26,7 @@ impl Reexport {
     }
 }
 
-/// This structure is supposed to keep enough data to re-create `NameBinding`s for other crates
+/// This structure is supposed to keep enough data to re-create `Decl`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
 /// need to add more data in the future to correctly support macros 2.0, for example.
 /// Module child can be either a proper item or a reexport (including private imports).
