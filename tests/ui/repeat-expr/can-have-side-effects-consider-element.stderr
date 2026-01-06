@@ -1,5 +1,5 @@
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/can-have-side-effects-consider-element.rs:11:15
+  --> $DIR/can-have-side-effects-consider-element.rs:12:15
    |
 LL |         () => drop([0; 1]), // No side effects
    |               ^^^^^------^
