@@ -46,6 +46,9 @@ mod native_libs;
 mod print_request;
 pub mod sigpipe;
 
+/// Special CPU name requesting the CPU of the current host.
+pub const NATIVE_CPU: &str = "native";
+
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Strip {
