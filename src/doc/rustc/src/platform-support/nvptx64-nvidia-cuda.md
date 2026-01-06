@@ -29,7 +29,8 @@ It is generally necessary to specify the target, such as `-C target-cpu=sm_89`, 
 One can use `-C target-feature=+ptx80` to choose a later PTX version without changing the target (the default in this case, `ptx78`, requires CUDA driver version 11.8, while `ptx80` would require driver version 12.0).
 Later PTX versions may allow more efficient code generation.
 
-Although Rust follows LLVM in representing `ptx*` and `sm_*` as target features, they should be thought of as having crate granularity, set via (either via `-Ctarget-cpu` and optionally `-Ctarget-feature`).
+For this target, the compiler enforces that all crates built into a binary use the same value for `-C target-cpu`. Therefore, it is necessary to manually build `core` every time a crate is compiled. This can be done by adding the flag `-Z build-std=core` when invoking cargo.
+Although Rust follows LLVM in representing `ptx*` and `sm_*` as target features, they should also be thought of as having binary granularity. However, this is not enforced by the compiler. When building crates together, the same value for all crates should be set via `-C target-feature`.
 While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")]`, it is not supported, may not behave as intended, and may become erroneous in the future.
 
 ## Building Rust kernels

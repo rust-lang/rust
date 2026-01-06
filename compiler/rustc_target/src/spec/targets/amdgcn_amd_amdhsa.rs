@@ -23,7 +23,7 @@ pub(crate) fn target() -> Target {
 
             // There are many CPUs, one for each hardware generation.
             // Require to set one explicitly as there is no good default.
-            need_explicit_cpu: true,
+            requires_explicit_and_consistent_cpu: true,
 
             max_atomic_width: Some(64),
 
