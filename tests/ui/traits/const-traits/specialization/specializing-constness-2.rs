@@ -1,5 +1,6 @@
 #![feature(const_trait_impl, min_specialization, rustc_attrs)]
-//@ known-bug: #110395
+#![allow(internal_features)]
+
 #[rustc_specialization_trait]
 pub const trait Sup {}
 
@@ -23,7 +24,7 @@ impl<T: Default + [const] Sup> const A for T {
 
 const fn generic<T: Default>() {
     <T as A>::a();
-    //FIXME ~^ ERROR: the trait bound `T: [const] Sup` is not satisfied
+    //~^ ERROR: the trait bound `T: [const] A` is not satisfied
 }
 
 fn main() {}

@@ -33,31 +33,33 @@ use tracing::debug;
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
-    NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, Segment, Used, VisResolutionError, errors,
+    BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, MacroData, Module,
+    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver, Segment,
+    Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
-    /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
-    /// otherwise, reports an error.
-    pub(crate) fn define_binding_local(
+    /// Attempt to put the declaration with the given name and namespace into the module,
+    /// and report an error in case of a collision.
+    pub(crate) fn plant_decl_into_local_module(
         &mut self,
         parent: Module<'ra>,
         ident: Ident,
         ns: Namespace,
-        binding: NameBinding<'ra>,
+        decl: Decl<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
-            self.report_conflict(parent, ident, ns, old_binding, binding);
+        if let Err(old_decl) = self.try_plant_decl_into_local_module(parent, ident, ns, decl, false)
+        {
+            self.report_conflict(parent, ident, ns, old_decl, decl);
         }
     }
 
+    /// Create a name definitinon from the given components, and put it into the local module.
     fn define_local(
         &mut self,
         parent: Module<'ra>,
@@ -68,10 +70,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         expn_id: LocalExpnId,
     ) {
-        let binding = self.arenas.new_res_binding(res, vis.to_def_id(), span, expn_id);
-        self.define_binding_local(parent, ident, ns, binding);
+        let decl = self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id);
+        self.plant_decl_into_local_module(parent, ident, ns, decl);
     }
 
+    /// Create a name definitinon from the given components, and put it into the extern module.
     fn define_extern(
         &self,
         parent: Module<'ra>,
@@ -82,10 +85,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<NameBinding<'ra>>,
+        ambiguity: Option<Decl<'ra>>,
     ) {
-        let binding = self.arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Res(res),
+        let decl = self.arenas.alloc_decl(DeclData {
+            kind: DeclKind::Def(res),
             ambiguity,
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
             warn_ambiguity: true,
@@ -101,8 +104,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if self
             .resolution_or_default(parent, key)
             .borrow_mut_unchecked()
-            .non_glob_binding
-            .replace(binding)
+            .non_glob_decl
+            .replace(decl)
             .is_some()
         {
             span_bug!(span, "an external binding was already defined");
@@ -284,7 +287,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            self.arenas.new_res_binding(res, vis, span, expansion)
+            self.arenas.new_def_decl(res, vis, span, expansion)
         });
 
         // Record primary definitions.
@@ -691,7 +694,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 let kind = ImportKind::Single {
                     source: source.ident,
                     target: ident,
-                    bindings: Default::default(),
+                    decls: Default::default(),
                     type_ns_only,
                     nested,
                     id,
@@ -977,7 +980,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
 
-        let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
+        let (used, module, decl) = if orig_name.is_none() && ident.name == kw::SelfLower {
             self.r.dcx().emit_err(errors::ExternCrateSelfRequiresRenaming { span: sp });
             return;
         } else if orig_name == Some(kw::SelfLower) {
@@ -997,10 +1000,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
         .map(|module| {
             let used = self.process_macro_use_imports(item, module);
-            let binding = self.r.arenas.new_pub_res_binding(module.res().unwrap(), sp, expansion);
-            (used, Some(ModuleOrUniformRoot::Module(module)), binding)
+            let decl = self.r.arenas.new_pub_def_decl(module.res().unwrap(), sp, expansion);
+            (used, Some(ModuleOrUniformRoot::Module(module)), decl)
         })
-        .unwrap_or((true, None, self.r.dummy_binding));
+        .unwrap_or((true, None, self.r.dummy_decl));
         let import = self.r.arenas.alloc_import(ImportData {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
@@ -1019,7 +1022,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.import_use_map.insert(import, Used::Other);
         }
         self.r.potentially_unused_imports.push(import);
-        let imported_binding = self.r.import(binding, import);
+        let import_decl = self.r.new_import_decl(decl, import);
         if ident.name != kw::Underscore && parent == self.r.graph_root {
             let norm_ident = Macros20NormalizedIdent::new(ident);
             // FIXME: this error is technically unnecessary now when extern prelude is split into
@@ -1027,7 +1030,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
-                && entry.item_binding.is_none()
+                && entry.item_decl.is_none()
             {
                 self.r.dcx().emit_err(
                     errors::MacroExpandedExternCrateCannotShadowExternArguments { span: item.span },
@@ -1038,21 +1041,21 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             match self.r.extern_prelude.entry(norm_ident) {
                 Entry::Occupied(mut occupied) => {
                     let entry = occupied.get_mut();
-                    if entry.item_binding.is_some() {
+                    if entry.item_decl.is_some() {
                         let msg = format!("extern crate `{ident}` already in extern prelude");
                         self.r.tcx.dcx().span_delayed_bug(item.span, msg);
                     } else {
-                        entry.item_binding = Some((imported_binding, orig_name.is_some()));
+                        entry.item_decl = Some((import_decl, orig_name.is_some()));
                     }
                     entry
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
-                    item_binding: Some((imported_binding, true)),
-                    flag_binding: None,
+                    item_decl: Some((import_decl, true)),
+                    flag_decl: None,
                 }),
             };
         }
-        self.r.define_binding_local(parent, ident, TypeNS, imported_binding);
+        self.r.plant_decl_into_local_module(parent, ident, TypeNS, import_decl);
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -1089,14 +1092,14 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn add_macro_use_binding(
+    fn add_macro_use_decl(
         &mut self,
         name: Symbol,
-        binding: NameBinding<'ra>,
+        decl: Decl<'ra>,
         span: Span,
         allow_shadowing: bool,
     ) {
-        if self.r.macro_use_prelude.insert(name, binding).is_some() && !allow_shadowing {
+        if self.r.macro_use_prelude.insert(name, decl).is_some() && !allow_shadowing {
             self.r.dcx().emit_err(errors::MacroUseNameAlreadyInUse { span, name });
         }
     }
@@ -1167,8 +1170,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                         macro_use_import(this, span, true)
                     };
-                    let import_binding = this.r.import(binding, import);
-                    this.add_macro_use_binding(ident.name, import_binding, span, allow_shadowing);
+                    let import_decl = this.r.new_import_decl(binding, import);
+                    this.add_macro_use_decl(ident.name, import_decl, span, allow_shadowing);
                 }
             });
         } else {
@@ -1183,13 +1186,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span, false);
                     self.r.potentially_unused_imports.push(import);
-                    let imported_binding = self.r.import(binding, import);
-                    self.add_macro_use_binding(
-                        ident.name,
-                        imported_binding,
-                        ident.span,
-                        allow_shadowing,
-                    );
+                    let import_decl = self.r.new_import_decl(binding, import);
+                    self.add_macro_use_decl(ident.name, import_decl, ident.span, allow_shadowing);
                 } else {
                     self.r.dcx().emit_err(errors::ImportedMacroNotFound { span: ident.span });
                 }
@@ -1300,8 +1298,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             } else {
                 Visibility::Restricted(CRATE_DEF_ID)
             };
-            let binding = self.r.arenas.new_res_binding(res, vis.to_def_id(), span, expansion);
-            self.r.set_binding_parent_module(binding, parent_scope.module);
+            let decl = self.r.arenas.new_def_decl(res, vis.to_def_id(), span, expansion);
+            self.r.set_decl_parent_module(decl, parent_scope.module);
             self.r.all_macro_rules.insert(ident.name);
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
@@ -1319,17 +1317,17 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
-                let import_binding = self.r.import(binding, import);
-                self.r.define_binding_local(self.r.graph_root, ident, MacroNS, import_binding);
+                let import_decl = self.r.new_import_decl(decl, import);
+                self.r.plant_decl_into_local_module(self.r.graph_root, ident, MacroNS, import_decl);
             } else {
                 self.r.check_reserved_macro_name(ident, res);
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.feed_visibility(feed, vis);
-            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
-                self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
+            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Def(
+                self.r.arenas.alloc_macro_rules_decl(MacroRulesDecl {
                     parent_macro_rules_scope: parent_scope.macro_rules,
-                    binding,
+                    decl,
                     ident,
                 }),
             ));

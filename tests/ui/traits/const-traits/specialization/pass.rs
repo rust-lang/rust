@@ -1,8 +1,6 @@
-//@ known-bug: #110395
-
-#![feature(const_trait_impl, min_specialization, rustc_attrs)]
-
-use std::fmt::Debug;
+//@ check-pass
+#![feature(const_trait_impl, const_default, min_specialization, rustc_attrs)]
+#![allow(internal_features)]
 
 #[rustc_specialization_trait]
 pub const unsafe trait Sup {
@@ -30,19 +28,19 @@ pub const trait A {
     fn a() -> u32;
 }
 
-impl<T: [const] Debug> const A for T {
+impl<T: [const] Default> const A for T {
     default fn a() -> u32 {
         2
     }
 }
 
-impl<T: [const] Debug + [const] Sup> const A for T {
+impl<T: [const] Default + [const] Sup> const A for T {
     default fn a() -> u32 {
         3
     }
 }
 
-impl<T: [const] Debug + [const] Sub> const A for T {
+impl<T: [const] Default + [const] Sub> const A for T {
     fn a() -> u32 {
         T::foo()
     }
