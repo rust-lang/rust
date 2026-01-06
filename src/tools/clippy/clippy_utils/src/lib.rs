@@ -121,6 +121,7 @@ use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
     TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
 };
+use rustc_hir::attrs::CfgEntry;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
@@ -2401,17 +2402,12 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir_attrs(id).iter().any(|attr| {
-        if attr.has_name(sym::cfg_trace)
-            && let Some(items) = attr.meta_item_list()
-            && let [item] = &*items
-            && item.has_name(sym::test)
-        {
-            true
-        } else {
-            false
-        }
-    })
+    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), AttributeKind::CfgTrace(cfgs) => cfgs)
+        && cfgs.iter().any(|(cfg, _)| { matches!(cfg, CfgEntry::NameValue { name: sym::test, ..})}) {
+        true
+    } else {
+        false
+    }
 }
 
 /// Checks if any parent node of `HirId` has `#[cfg(test)]` attribute applied
@@ -2426,11 +2422,10 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.has_attr(def_id, sym::cfg_trace)
-        || tcx
+    find_attr!(tcx.get_all_attrs(def_id), AttributeKind::CfgTrace(..))
+        || find_attr!(tcx
             .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
-            .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id))
-            .any(|attr| attr.has_name(sym::cfg_trace))
+            .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id)), AttributeKind::CfgTrace(..))
 }
 
 /// Walks up the HIR tree from the given expression in an attempt to find where the value is

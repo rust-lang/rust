@@ -34,6 +34,7 @@ use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
@@ -3390,7 +3391,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
+                args: AttrItemKind::Unparsed(AttrArgs::Empty),
                 tokens: None,
             },
             tokens: None,
@@ -3402,9 +3403,51 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrArgs,
+    pub args: AttrItemKind,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
+}
+
+/// Some attributes are stored in a parsed form, for performance reasons.
+/// Their arguments don't have to be reparsed everytime they're used
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum AttrItemKind {
+    Parsed(EarlyParsedAttribute),
+    Unparsed(AttrArgs),
+}
+
+impl AttrItemKind {
+    pub fn unparsed(self) -> Option<AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            AttrItemKind::Unparsed(args) => args.span(),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+}
+
+/// Some attributes are stored in parsed form in the AST.
+/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+///
+/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
+/// When adding new early parsed attributes, consider whether they should be pretty printed.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {
