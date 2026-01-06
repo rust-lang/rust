@@ -1,7 +1,6 @@
 use super::{Custom, Error, ErrorData, ErrorKind, Repr, SimpleMessage, const_error};
 use crate::assert_matches::assert_matches;
-use crate::sys::decode_error_kind;
-use crate::sys::os::error_string;
+use crate::sys::io::{decode_error_kind, error_string};
 use crate::{error, fmt};
 
 #[test]
