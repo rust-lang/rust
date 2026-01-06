@@ -9,7 +9,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -519,7 +519,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
-        let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+        let unnorm_ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+        let ident = Macros20NormalizedIdent::new(unnorm_ident);
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
                 if let Some(decl) = self
@@ -602,7 +603,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 errors::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident.span,
                                     ns_descr: ns.descr(),
-                                    ident,
+                                    ident: unnorm_ident,
                                 },
                             );
                         }
@@ -652,7 +653,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 errors::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident.span,
                                     ns_descr: ns.descr(),
-                                    ident,
+                                    ident: unnorm_ident,
                                 },
                             );
                         }
@@ -698,7 +699,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut result = Err(Determinacy::Determined);
                 if let Some(prelude) = self.prelude
                     && let Ok(decl) = self.reborrow().resolve_ident_in_scope_set(
-                        ident,
+                        unnorm_ident,
                         ScopeSet::Module(ns, prelude),
                         parent_scope,
                         None,
@@ -982,7 +983,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_ident_in_module_non_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         module: Module<'ra>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
@@ -1005,7 +1006,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
-                ident,
+                ident.0,
                 binding,
                 parent_scope,
                 module,
@@ -1045,7 +1046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_ident_in_module_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         module: Module<'ra>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
@@ -1066,7 +1067,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
-                ident,
+                ident.0,
                 binding,
                 parent_scope,
                 module,
@@ -1135,9 +1136,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => return Err(ControlFlow::Continue(Undetermined)),
             };
             let tmp_parent_scope;
-            let (mut adjusted_parent_scope, mut ident) =
-                (parent_scope, ident.normalize_to_macros_2_0());
-            match ident.span.glob_adjust(module.expansion, glob_import.span) {
+            let (mut adjusted_parent_scope, mut ident) = (parent_scope, ident);
+            match ident.0.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
                         ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
@@ -1147,7 +1147,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => continue,
             };
             let result = self.reborrow().resolve_ident_in_scope_set(
-                ident,
+                ident.0,
                 ScopeSet::Module(ns, module),
                 adjusted_parent_scope,
                 None,
