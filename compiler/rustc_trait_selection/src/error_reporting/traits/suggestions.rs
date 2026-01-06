@@ -1391,25 +1391,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // return early in the caller.
 
             let mut label = || {
+                // Special case `Sized` as `old_pred` will be the trait itself instead of
+                // `Sized` when the trait bound is the source of the error.
+                let is_sized = match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                        self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Sized)
+                    }
+                    _ => false,
+                };
+
                 let msg = format!(
                     "the trait bound `{}` is not satisfied",
                     self.tcx.short_string(old_pred, err.long_ty_path()),
                 );
-                let self_ty_str =
-                    self.tcx.short_string(old_pred.self_ty().skip_binder(), err.long_ty_path());
+                let self_ty_str = self.tcx.short_string(old_pred.self_ty(), err.long_ty_path());
                 let trait_path = self
                     .tcx
                     .short_string(old_pred.print_modifiers_and_trait_path(), err.long_ty_path());
 
                 if has_custom_message {
+                    let msg = if is_sized {
+                        "the trait bound `Sized` is not satisfied".into()
+                    } else {
+                        msg
+                    };
                     err.note(msg);
                 } else {
                     err.messages = vec![(rustc_errors::DiagMessage::from(msg), Style::NoStyle)];
                 }
-                err.span_label(
-                    span,
-                    format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
-                );
+                if is_sized {
+                    err.span_label(
+                        span,
+                        format!("the trait `Sized` is not implemented for `{self_ty_str}`"),
+                    );
+                } else {
+                    err.span_label(
+                        span,
+                        format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
+                    );
+                }
             };
 
             let mut sugg_prefixes = vec![];
@@ -3578,10 +3598,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 "unsatisfied trait bound introduced in this `derive` macro",
                             );
                         } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
-                            spans.push_span_label(
-                                data.span,
-                                "unsatisfied trait bound introduced here",
-                            );
+                            // `Sized` may be an explicit or implicit trait bound. If it is
+                            // implicit, mention it as such.
+                            if let Some(pred) = predicate.as_trait_clause()
+                                && self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                                && self
+                                    .tcx
+                                    .generics_of(data.impl_or_alias_def_id)
+                                    .own_params
+                                    .iter()
+                                    .any(|param| self.tcx.def_span(param.def_id) == data.span)
+                            {
+                                spans.push_span_label(
+                                    data.span,
+                                    "unsatisfied trait bound implicitly introduced here",
+                                );
+                            } else {
+                                spans.push_span_label(
+                                    data.span,
+                                    "unsatisfied trait bound introduced here",
+                                );
+                            }
                         }
                         err.span_note(spans, msg);
                         point_at_assoc_type_restriction(
