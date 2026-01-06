@@ -194,7 +194,7 @@ impl Command {
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(target_os = "nto")]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
-        use crate::sys::os::errno;
+        use crate::sys::io::errno;
 
         let mut delay = MIN_FORKSPAWN_SLEEP;
 
