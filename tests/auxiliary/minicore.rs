@@ -211,7 +211,7 @@ impl Neg for isize {
 }
 
 #[lang = "sync"]
-trait Sync {}
+pub trait Sync {}
 impl_marker_trait!(
     Sync => [
         char, bool,
