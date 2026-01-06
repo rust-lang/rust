@@ -186,14 +186,9 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         }
 
-        // Wrap the pattern in a marker node to indicate that it is the result of lowering a
+        // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        thir_pat = Box::new(Pat {
-            ty: thir_pat.ty,
-            span: thir_pat.span,
-            kind: PatKind::ExpandedConstant { def_id: uv.def, subpattern: thir_pat },
-            extra: None,
-        });
+        thir_pat.extra.get_or_insert_default().expanded_const = Some(uv.def);
         thir_pat
     }
 

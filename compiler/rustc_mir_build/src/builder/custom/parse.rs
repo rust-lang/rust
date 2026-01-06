@@ -287,22 +287,14 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         self.parse_var(pattern)
     }
 
-    fn parse_var(&mut self, mut pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
-        // Make sure we throw out any `AscribeUserType` we find
-        loop {
-            match &pat.kind {
-                PatKind::Binding { var, ty, .. } => break Ok((*var, *ty, pat.span)),
-                PatKind::AscribeUserType { subpattern, .. } => {
-                    pat = subpattern;
-                }
-                _ => {
-                    break Err(ParseError {
-                        span: pat.span,
-                        item_description: format!("{:?}", pat.kind),
-                        expected: "local".to_string(),
-                    });
-                }
-            }
+    fn parse_var(&mut self, pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
+        match &pat.kind {
+            PatKind::Binding { var, ty, .. } => Ok((*var, *ty, pat.span)),
+            _ => Err(ParseError {
+                span: pat.span,
+                item_description: format!("{:?}", pat.kind),
+                expected: "local".to_string(),
+            }),
         }
     }
 

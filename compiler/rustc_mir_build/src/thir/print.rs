@@ -725,13 +725,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Never => {
                 print_indented!(self, "Never", depth_lvl + 1);
             }
-            PatKind::AscribeUserType { ascription, subpattern } => {
-                print_indented!(self, "AscribeUserType: {", depth_lvl + 1);
-                print_indented!(self, format!("ascription: {:?}", ascription), depth_lvl + 2);
-                print_indented!(self, "subpattern: ", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 3);
-                print_indented!(self, "}", depth_lvl + 1);
-            }
             PatKind::Binding { name, mode, var, ty, subpattern, is_primary, is_shorthand } => {
                 print_indented!(self, "Binding {", depth_lvl + 1);
                 print_indented!(self, format!("name: {:?}", name), depth_lvl + 2);
@@ -794,13 +787,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Constant { value } => {
                 print_indented!(self, "Constant {", depth_lvl + 1);
                 print_indented!(self, format!("value: {}", value), depth_lvl + 2);
-                print_indented!(self, "}", depth_lvl + 1);
-            }
-            PatKind::ExpandedConstant { def_id, subpattern } => {
-                print_indented!(self, "ExpandedConstant {", depth_lvl + 1);
-                print_indented!(self, format!("def_id: {def_id:?}"), depth_lvl + 2);
-                print_indented!(self, "subpattern:", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Range(pat_range) => {

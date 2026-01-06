@@ -778,11 +778,6 @@ pub enum PatKind<'tcx> {
     /// A wildcard pattern: `_`.
     Wild,
 
-    AscribeUserType {
-        ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
-    },
-
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         name: Symbol,
@@ -845,21 +840,6 @@ pub enum PatKind<'tcx> {
     ///   error.
     Constant {
         value: ty::Value<'tcx>,
-    },
-
-    /// Wrapper node representing a named constant that was lowered to a pattern
-    /// using `const_to_pat`.
-    ///
-    /// This is used by some diagnostics for non-exhaustive matches, to map
-    /// the pattern node back to the `DefId` of its original constant.
-    ///
-    /// FIXME(#150498): Can we make this an `Option<DefId>` field on `Pat`
-    /// instead, so that non-diagnostic code can ignore it more easily?
-    ExpandedConstant {
-        /// [DefId] of the constant item.
-        def_id: DefId,
-        /// The pattern that the constant lowered to.
-        subpattern: Box<Pat<'tcx>>,
     },
 
     Range(Arc<PatRange<'tcx>>),

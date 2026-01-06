@@ -71,15 +71,11 @@ pub(super) fn pat_from_hir<'tcx>(
             span: let_stmt_type.span,
             inferred_ty: typeck_results.node_type(let_stmt_type.hir_id),
         };
-        thir_pat = Box::new(Pat {
-            ty: thir_pat.ty,
-            span: thir_pat.span,
-            kind: PatKind::AscribeUserType {
-                ascription: Ascription { annotation, variance: ty::Covariant },
-                subpattern: thir_pat,
-            },
-            extra: None,
-        });
+        thir_pat
+            .extra
+            .get_or_insert_default()
+            .ascriptions
+            .push(Ascription { annotation, variance: ty::Covariant });
     }
 
     if let Some(m) = pcx.rust_2024_migration {
@@ -171,23 +167,11 @@ impl<'tcx> PatCtxt<'tcx> {
         // Lower the endpoint into a temporary `thir::Pat` that will then be
         // deconstructed to obtain the constant value and other data.
         let endpoint_pat: Box<Pat<'tcx>> = self.lower_pat_expr(pat, expr);
-        let box Pat { mut kind, .. } = endpoint_pat;
+        let box Pat { ref kind, extra, .. } = endpoint_pat;
 
-        // Unpeel any ascription or inline-const wrapper nodes.
-        loop {
-            match kind {
-                PatKind::AscribeUserType { ascription, subpattern } => {
-                    ascriptions.push(ascription);
-                    kind = subpattern.kind;
-                }
-                PatKind::ExpandedConstant { def_id: _, subpattern } => {
-                    // Expanded-constant nodes are currently only needed by
-                    // diagnostics that don't apply to range patterns, so we
-                    // can just discard them here.
-                    kind = subpattern.kind;
-                }
-                _ => break,
-            }
+        // Preserve any ascriptions from endpoint constants.
+        if let Some(extra) = extra {
+            ascriptions.extend(extra.ascriptions);
         }
 
         // The unpeeled kind should now be a constant, giving us the endpoint value.
@@ -313,15 +297,8 @@ impl<'tcx> PatCtxt<'tcx> {
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
-        for ascription in ascriptions {
-            thir_pat = Box::new(Pat {
-                ty,
-                span,
-                kind: PatKind::AscribeUserType { ascription, subpattern: thir_pat },
-                extra: None,
-            });
-        }
-        // `PatKind::ExpandedConstant` wrappers from range endpoints used to
+        thir_pat.extra.get_or_insert_default().ascriptions.extend(ascriptions);
+        // IDs of expanded constants from range endpoints used to
         // also be preserved here, but that was only needed for unsafeck of
         // inline `const { .. }` patterns, which were removed by
         // <https://github.com/rust-lang/rust/pull/138492>.
@@ -619,15 +596,11 @@ impl<'tcx> PatCtxt<'tcx> {
                 span,
                 inferred_ty: self.typeck_results.node_type(hir_id),
             };
-            thir_pat = Box::new(Pat {
-                ty,
-                span,
-                kind: PatKind::AscribeUserType {
-                    subpattern: thir_pat,
-                    ascription: Ascription { annotation, variance: ty::Covariant },
-                },
-                extra: None,
-            });
+            thir_pat
+                .extra
+                .get_or_insert_default()
+                .ascriptions
+                .push(Ascription { annotation, variance: ty::Covariant });
         }
 
         thir_pat
@@ -684,16 +657,13 @@ impl<'tcx> PatCtxt<'tcx> {
                 span,
                 inferred_ty: self.typeck_results.node_type(id),
             };
-            let kind = PatKind::AscribeUserType {
-                subpattern: pattern,
-                ascription: Ascription {
-                    annotation,
-                    // Note that we use `Contravariant` here. See the
-                    // `variance` field documentation for details.
-                    variance: ty::Contravariant,
-                },
-            };
-            pattern = Box::new(Pat { span, kind, ty, extra: None });
+            // Note that we use `Contravariant` here. See the
+            // `variance` field documentation for details.
+            pattern
+                .extra
+                .get_or_insert_default()
+                .ascriptions
+                .push(Ascription { annotation, variance: ty::Contravariant });
         }
 
         pattern
