@@ -8,6 +8,7 @@ autobins = false
 build_helper = { path = "../../build_helper" }
 cargo_metadata = "0.21"
 regex = "1"
+globset = "0.4.18"
 miropt-test-tools = { path = "../miropt-test-tools" }
 walkdir = "2"
 ignore = "0.4.18"
