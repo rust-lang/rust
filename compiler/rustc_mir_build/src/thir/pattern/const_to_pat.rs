@@ -174,10 +174,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        // Convert the valtree to a const.
-        let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
+        // Lower the valtree to a THIR pattern.
+        let mut thir_pat = self.valtree_to_pat(valtree, ty);
 
-        if !inlined_const_as_pat.references_error() {
+        if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
             if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
@@ -188,8 +188,12 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Wrap the pattern in a marker node to indicate that it is the result of lowering a
         // constant. This is used for diagnostics.
-        let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
-        Box::new(Pat { kind, ty, span: self.span })
+        thir_pat = Box::new(Pat {
+            ty: thir_pat.ty,
+            span: thir_pat.span,
+            kind: PatKind::ExpandedConstant { def_id: uv.def, subpattern: thir_pat },
+        });
+        thir_pat
     }
 
     fn field_pats(
