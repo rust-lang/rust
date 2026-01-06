@@ -613,6 +613,7 @@ mod tests {
     use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
+    use crate::core_arch::simd::*;
     use crate::core_arch::x86::*;
     use std::ptr;
 
@@ -625,7 +626,7 @@ mod tests {
         assert!(s.len() <= 16);
         let mut array = [0u8; 16];
         array[..s.len()].copy_from_slice(s);
-        unsafe { transmute(array) }
+        u8x16::from_array(array).as_m128i()
     }
 
     #[simd_test(enable = "sse4.2")]

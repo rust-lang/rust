@@ -1219,20 +1219,20 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    const unsafe fn test_mm_blendv_pd() {
+    const fn test_mm_blendv_pd() {
         let a = _mm_set1_pd(0.0);
         let b = _mm_set1_pd(1.0);
-        let mask = transmute(_mm_setr_epi64x(0, -1));
+        let mask = _mm_castsi128_pd(_mm_setr_epi64x(0, -1));
         let r = _mm_blendv_pd(a, b, mask);
         let e = _mm_setr_pd(0.0, 1.0);
         assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "sse4.1")]
-    const unsafe fn test_mm_blendv_ps() {
+    const fn test_mm_blendv_ps() {
         let a = _mm_set1_ps(0.0);
         let b = _mm_set1_ps(1.0);
-        let mask = transmute(_mm_setr_epi32(0, -1, 0, -1));
+        let mask = _mm_castsi128_ps(_mm_setr_epi32(0, -1, 0, -1));
         let r = _mm_blendv_ps(a, b, mask);
         let e = _mm_setr_ps(0.0, 1.0, 0.0, 1.0);
         assert_eq_m128(r, e);
@@ -1949,9 +1949,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    unsafe fn test_mm_stream_load_si128() {
+    fn test_mm_stream_load_si128() {
         let a = _mm_set_epi64x(5, 6);
-        let r = _mm_stream_load_si128(core::ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_stream_load_si128(core::ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(a, r);
     }
 }

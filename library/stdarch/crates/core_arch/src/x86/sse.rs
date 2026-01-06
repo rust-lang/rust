@@ -3147,21 +3147,21 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_load_ss() {
+    const fn test_mm_load_ss() {
         let a = 42.0f32;
-        let r = _mm_load_ss(ptr::addr_of!(a));
+        let r = unsafe { _mm_load_ss(ptr::addr_of!(a)) };
         assert_eq_m128(r, _mm_setr_ps(42.0, 0.0, 0.0, 0.0));
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_load1_ps() {
+    const fn test_mm_load1_ps() {
         let a = 42.0f32;
-        let r = _mm_load1_ps(ptr::addr_of!(a));
+        let r = unsafe { _mm_load1_ps(ptr::addr_of!(a)) };
         assert_eq_m128(r, _mm_setr_ps(42.0, 42.0, 42.0, 42.0));
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_load_ps() {
+    const fn test_mm_load_ps() {
         let vals = Memory {
             data: [1.0f32, 2.0, 3.0, 4.0],
         };
@@ -3169,21 +3169,21 @@ mod tests {
         // guaranteed to be aligned to 16 bytes
         let p = vals.data.as_ptr();
 
-        let r = _mm_load_ps(p);
+        let r = unsafe { _mm_load_ps(p) };
         let e = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_loadu_ps() {
+    const fn test_mm_loadu_ps() {
         let vals = &[1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let p = vals.as_ptr().add(3);
-        let r = _mm_loadu_ps(black_box(p));
+        let p = unsafe { vals.as_ptr().add(3) };
+        let r = unsafe { _mm_loadu_ps(black_box(p)) };
         assert_eq_m128(r, _mm_setr_ps(4.0, 5.0, 6.0, 7.0));
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_loadr_ps() {
+    const fn test_mm_loadr_ps() {
         let vals = Memory {
             data: [1.0f32, 2.0, 3.0, 4.0],
         };
@@ -3191,16 +3191,18 @@ mod tests {
         // guaranteed to be aligned to 16 bytes
         let p = vals.data.as_ptr();
 
-        let r = _mm_loadr_ps(p);
+        let r = unsafe { _mm_loadr_ps(p) };
         let e = _mm_setr_ps(4.0, 3.0, 2.0, 1.0);
         assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_store_ss() {
+    const fn test_mm_store_ss() {
         let mut vals = [0.0f32; 8];
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
-        _mm_store_ss(vals.as_mut_ptr().add(1), a);
+        unsafe {
+            _mm_store_ss(vals.as_mut_ptr().add(1), a);
+        }
 
         assert_eq!(vals[0], 0.0);
         assert_eq!(vals[1], 1.0);
@@ -3208,46 +3210,52 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_store1_ps() {
+    const fn test_mm_store1_ps() {
         let mut vals = Memory { data: [0.0f32; 4] };
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 
         // guaranteed to be aligned to 16 bytes
         let p = vals.data.as_mut_ptr();
 
-        _mm_store1_ps(p, *black_box(&a));
+        unsafe {
+            _mm_store1_ps(p, *black_box(&a));
+        }
 
         assert_eq!(vals.data, [1.0, 1.0, 1.0, 1.0]);
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_store_ps() {
+    const fn test_mm_store_ps() {
         let mut vals = Memory { data: [0.0f32; 4] };
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 
         // guaranteed to be aligned to 16 bytes
         let p = vals.data.as_mut_ptr();
 
-        _mm_store_ps(p, *black_box(&a));
+        unsafe {
+            _mm_store_ps(p, *black_box(&a));
+        }
 
         assert_eq!(vals.data, [1.0, 2.0, 3.0, 4.0]);
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_storer_ps() {
+    const fn test_mm_storer_ps() {
         let mut vals = Memory { data: [0.0f32; 4] };
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 
         // guaranteed to be aligned to 16 bytes
         let p = vals.data.as_mut_ptr();
 
-        _mm_storer_ps(p, *black_box(&a));
+        unsafe {
+            _mm_storer_ps(p, *black_box(&a));
+        }
 
         assert_eq!(vals.data, [4.0, 3.0, 2.0, 1.0]);
     }
 
     #[simd_test(enable = "sse")]
-    const unsafe fn test_mm_storeu_ps() {
+    const fn test_mm_storeu_ps() {
         #[repr(align(16))]
         struct Memory8 {
             data: [f32; 8],
@@ -3258,9 +3266,11 @@ mod tests {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 
         // guaranteed to be *not* aligned to 16 bytes
-        let p = vals.data.as_mut_ptr().offset(1);
+        let p = unsafe { vals.data.as_mut_ptr().offset(1) };
 
-        _mm_storeu_ps(p, *black_box(&a));
+        unsafe {
+            _mm_storeu_ps(p, *black_box(&a));
+        }
 
         assert_eq!(vals.data, [0.0, 1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0]);
     }
@@ -3315,11 +3325,13 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_ps() {
+    fn test_mm_stream_ps() {
         let a = _mm_set1_ps(7.0);
         let mut mem = Memory { data: [-1.0; 4] };
 
-        _mm_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        unsafe {
+            _mm_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        }
         _mm_sfence();
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m128(a, i));

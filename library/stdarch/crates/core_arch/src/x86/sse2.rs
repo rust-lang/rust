@@ -3291,9 +3291,11 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_clflush() {
+    fn test_mm_clflush() {
         let x = 0_u8;
-        _mm_clflush(ptr::addr_of!(x));
+        unsafe {
+            _mm_clflush(ptr::addr_of!(x));
+        }
     }
 
     #[simd_test(enable = "sse2")]
@@ -3725,7 +3727,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_sll_epi16() {
+    fn test_mm_sll_epi16() {
         let a = _mm_setr_epi16(0xCC, -0xCC, 0xDD, -0xDD, 0xEE, -0xEE, 0xFF, -0xFF);
         let r = _mm_sll_epi16(a, _mm_set_epi64x(0, 4));
         assert_eq_m128i(
@@ -4071,7 +4073,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_cvtps_epi32() {
+    fn test_mm_cvtps_epi32() {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         let r = _mm_cvtps_epi32(a);
         assert_eq_m128i(r, _mm_setr_epi32(1, 2, 3, 4));
@@ -4178,23 +4180,23 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadl_epi64() {
+    const fn test_mm_loadl_epi64() {
         let a = _mm_setr_epi64x(6, 5);
-        let r = _mm_loadl_epi64(ptr::addr_of!(a));
+        let r = unsafe { _mm_loadl_epi64(ptr::addr_of!(a)) };
         assert_eq_m128i(r, _mm_setr_epi64x(6, 0));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_load_si128() {
+    const fn test_mm_load_si128() {
         let a = _mm_set_epi64x(5, 6);
-        let r = _mm_load_si128(ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_load_si128(ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(a, r);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadu_si128() {
+    const fn test_mm_loadu_si128() {
         let a = _mm_set_epi64x(5, 6);
-        let r = _mm_loadu_si128(ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_loadu_si128(ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(a, r);
     }
 
@@ -4202,7 +4204,7 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_maskmoveu_si128() {
+    fn test_mm_maskmoveu_si128() {
         let a = _mm_set1_epi8(9);
         #[rustfmt::skip]
         let mask = _mm_set_epi8(
@@ -4210,33 +4212,41 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0,
         );
         let mut r = _mm_set1_epi8(0);
-        _mm_maskmoveu_si128(a, mask, ptr::addr_of_mut!(r) as *mut i8);
+        unsafe {
+            _mm_maskmoveu_si128(a, mask, ptr::addr_of_mut!(r) as *mut i8);
+        }
         _mm_sfence();
         let e = _mm_set_epi8(0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_store_si128() {
+    const fn test_mm_store_si128() {
         let a = _mm_set1_epi8(9);
         let mut r = _mm_set1_epi8(0);
-        _mm_store_si128(&mut r, a);
+        unsafe {
+            _mm_store_si128(&mut r, a);
+        }
         assert_eq_m128i(r, a);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeu_si128() {
+    const fn test_mm_storeu_si128() {
         let a = _mm_set1_epi8(9);
         let mut r = _mm_set1_epi8(0);
-        _mm_storeu_si128(&mut r, a);
+        unsafe {
+            _mm_storeu_si128(&mut r, a);
+        }
         assert_eq_m128i(r, a);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storel_epi64() {
+    const fn test_mm_storel_epi64() {
         let a = _mm_setr_epi64x(2, 9);
         let mut r = _mm_set1_epi8(0);
-        _mm_storel_epi64(&mut r, a);
+        unsafe {
+            _mm_storel_epi64(&mut r, a);
+        }
         assert_eq_m128i(r, _mm_setr_epi64x(2, 0));
     }
 
@@ -4244,10 +4254,12 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_si128() {
+    fn test_mm_stream_si128() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = _mm_undefined_si128();
-        _mm_stream_si128(ptr::addr_of_mut!(r), a);
+        unsafe {
+            _mm_stream_si128(ptr::addr_of_mut!(r), a);
+        }
         _mm_sfence();
         assert_eq_m128i(r, a);
     }
@@ -4256,10 +4268,12 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_si32() {
+    fn test_mm_stream_si32() {
         let a: i32 = 7;
         let mut mem = boxed::Box::<i32>::new(-1);
-        _mm_stream_si32(ptr::addr_of_mut!(*mem), a);
+        unsafe {
+            _mm_stream_si32(ptr::addr_of_mut!(*mem), a);
+        }
         _mm_sfence();
         assert_eq!(a, *mem);
     }
@@ -4909,40 +4923,40 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_load_pd() {
+    const fn test_mm_load_pd() {
         let mem = Memory {
             data: [1.0f64, 2.0, 3.0, 4.0],
         };
         let vals = &mem.data;
         let d = vals.as_ptr();
 
-        let r = _mm_load_pd(d);
+        let r = unsafe { _mm_load_pd(d) };
         assert_eq_m128d(r, _mm_setr_pd(1.0, 2.0));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_load_sd() {
+    const fn test_mm_load_sd() {
         let a = 1.;
         let expected = _mm_setr_pd(a, 0.);
-        let r = _mm_load_sd(&a);
+        let r = unsafe { _mm_load_sd(&a) };
         assert_eq_m128d(r, expected);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadh_pd() {
+    const fn test_mm_loadh_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = 3.;
         let expected = _mm_setr_pd(_mm_cvtsd_f64(a), 3.);
-        let r = _mm_loadh_pd(a, &b);
+        let r = unsafe { _mm_loadh_pd(a, &b) };
         assert_eq_m128d(r, expected);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadl_pd() {
+    const fn test_mm_loadl_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = 3.;
         let expected = _mm_setr_pd(3., get_m128d(a, 1));
-        let r = _mm_loadl_pd(a, &b);
+        let r = unsafe { _mm_loadl_pd(a, &b) };
         assert_eq_m128d(r, expected);
     }
 
@@ -4950,7 +4964,7 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_pd() {
+    fn test_mm_stream_pd() {
         #[repr(align(128))]
         struct Memory {
             pub data: [f64; 2],
@@ -4958,7 +4972,9 @@ mod tests {
         let a = _mm_set1_pd(7.0);
         let mut mem = Memory { data: [-1.0; 2] };
 
-        _mm_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        unsafe {
+            _mm_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        }
         _mm_sfence();
         for i in 0..2 {
             assert_eq!(mem.data[i], get_m128d(a, i));
@@ -4966,132 +4982,154 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_store_sd() {
+    const fn test_mm_store_sd() {
         let mut dest = 0.;
         let a = _mm_setr_pd(1., 2.);
-        _mm_store_sd(&mut dest, a);
+        unsafe {
+            _mm_store_sd(&mut dest, a);
+        }
         assert_eq!(dest, _mm_cvtsd_f64(a));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_store_pd() {
+    const fn test_mm_store_pd() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
 
-        _mm_store_pd(d, *black_box(&a));
+        unsafe {
+            _mm_store_pd(d, *black_box(&a));
+        }
         assert_eq!(vals[0], 1.0);
         assert_eq!(vals[1], 2.0);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeu_pd() {
+    const fn test_mm_storeu_pd() {
         // guaranteed to be aligned to 16 bytes
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
 
         // so p is *not* aligned to 16 bytes
-        let p = vals.as_mut_ptr().offset(1);
-        _mm_storeu_pd(p, *black_box(&a));
+        unsafe {
+            let p = vals.as_mut_ptr().offset(1);
+            _mm_storeu_pd(p, *black_box(&a));
+        }
 
         assert_eq!(*vals, [0.0, 1.0, 2.0, 0.0]);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeu_si16() {
+    const fn test_mm_storeu_si16() {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let mut r = _mm_setr_epi16(9, 10, 11, 12, 13, 14, 15, 16);
-        _mm_storeu_si16(ptr::addr_of_mut!(r).cast(), a);
+        unsafe {
+            _mm_storeu_si16(ptr::addr_of_mut!(r).cast(), a);
+        }
         let e = _mm_setr_epi16(1, 10, 11, 12, 13, 14, 15, 16);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeu_si32() {
+    const fn test_mm_storeu_si32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = _mm_setr_epi32(5, 6, 7, 8);
-        _mm_storeu_si32(ptr::addr_of_mut!(r).cast(), a);
+        unsafe {
+            _mm_storeu_si32(ptr::addr_of_mut!(r).cast(), a);
+        }
         let e = _mm_setr_epi32(1, 6, 7, 8);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeu_si64() {
+    const fn test_mm_storeu_si64() {
         let a = _mm_setr_epi64x(1, 2);
         let mut r = _mm_setr_epi64x(3, 4);
-        _mm_storeu_si64(ptr::addr_of_mut!(r).cast(), a);
+        unsafe {
+            _mm_storeu_si64(ptr::addr_of_mut!(r).cast(), a);
+        }
         let e = _mm_setr_epi64x(1, 4);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_store1_pd() {
+    const fn test_mm_store1_pd() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
 
-        _mm_store1_pd(d, *black_box(&a));
+        unsafe {
+            _mm_store1_pd(d, *black_box(&a));
+        }
         assert_eq!(vals[0], 1.0);
         assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_store_pd1() {
+    const fn test_mm_store_pd1() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
 
-        _mm_store_pd1(d, *black_box(&a));
+        unsafe {
+            _mm_store_pd1(d, *black_box(&a));
+        }
         assert_eq!(vals[0], 1.0);
         assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storer_pd() {
+    const fn test_mm_storer_pd() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
 
-        _mm_storer_pd(d, *black_box(&a));
+        unsafe {
+            _mm_storer_pd(d, *black_box(&a));
+        }
         assert_eq!(vals[0], 2.0);
         assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storeh_pd() {
+    const fn test_mm_storeh_pd() {
         let mut dest = 0.;
         let a = _mm_setr_pd(1., 2.);
-        _mm_storeh_pd(&mut dest, a);
+        unsafe {
+            _mm_storeh_pd(&mut dest, a);
+        }
         assert_eq!(dest, get_m128d(a, 1));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_storel_pd() {
+    const fn test_mm_storel_pd() {
         let mut dest = 0.;
         let a = _mm_setr_pd(1., 2.);
-        _mm_storel_pd(&mut dest, a);
+        unsafe {
+            _mm_storel_pd(&mut dest, a);
+        }
         assert_eq!(dest, _mm_cvtsd_f64(a));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadr_pd() {
+    const fn test_mm_loadr_pd() {
         let mut mem = Memory {
             data: [1.0f64, 2.0, 3.0, 4.0],
         };
         let vals = &mut mem.data;
         let d = vals.as_ptr();
 
-        let r = _mm_loadr_pd(d);
+        let r = unsafe { _mm_loadr_pd(d) };
         assert_eq_m128d(r, _mm_setr_pd(2.0, 1.0));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadu_pd() {
+    const fn test_mm_loadu_pd() {
         // guaranteed to be aligned to 16 bytes
         let mut mem = Memory {
             data: [1.0f64, 2.0, 3.0, 4.0],
@@ -5099,31 +5137,31 @@ mod tests {
         let vals = &mut mem.data;
 
         // so this will *not* be aligned to 16 bytes
-        let d = vals.as_ptr().offset(1);
+        let d = unsafe { vals.as_ptr().offset(1) };
 
-        let r = _mm_loadu_pd(d);
+        let r = unsafe { _mm_loadu_pd(d) };
         let e = _mm_setr_pd(2.0, 3.0);
         assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadu_si16() {
+    const fn test_mm_loadu_si16() {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = _mm_loadu_si16(ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_loadu_si16(ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(r, _mm_setr_epi16(1, 0, 0, 0, 0, 0, 0, 0));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadu_si32() {
+    const fn test_mm_loadu_si32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
-        let r = _mm_loadu_si32(ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_loadu_si32(ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(r, _mm_setr_epi32(1, 0, 0, 0));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_loadu_si64() {
+    const fn test_mm_loadu_si64() {
         let a = _mm_setr_epi64x(5, 6);
-        let r = _mm_loadu_si64(ptr::addr_of!(a) as *const _);
+        let r = unsafe { _mm_loadu_si64(ptr::addr_of!(a) as *const _) };
         assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
@@ -5302,16 +5340,16 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_load1_pd() {
+    const fn test_mm_load1_pd() {
         let d = -5.0;
-        let r = _mm_load1_pd(&d);
+        let r = unsafe { _mm_load1_pd(&d) };
         assert_eq_m128d(r, _mm_setr_pd(d, d));
     }
 
     #[simd_test(enable = "sse2")]
-    const unsafe fn test_mm_load_pd1() {
+    const fn test_mm_load_pd1() {
         let d = -5.0;
-        let r = _mm_load_pd1(&d);
+        let r = unsafe { _mm_load_pd1(&d) };
         assert_eq_m128d(r, _mm_setr_pd(d, d));
     }
 
