@@ -34,8 +34,14 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_component_unavailable)]
-#[note]
 pub(crate) struct AutoDiffComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_component_missing)]
+#[note]
+pub(crate) struct AutoDiffComponentMissing {
     pub err: String,
 }
 
