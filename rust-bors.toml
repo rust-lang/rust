@@ -29,8 +29,7 @@ labels_blocking_approval = [
 # If CI runs quicker than this duration, consider it to be a failure
 min_ci_time = 600
 
-# Flip this once new bors is used for actual merges on this repository
-merge_queue_enabled = false
+merge_queue_enabled = true
 report_merge_conflicts = true
 
 [labels]
@@ -55,7 +54,9 @@ try_failed = [
     "-S-waiting-on-review",
     "-S-waiting-on-crater"
 ]
-auto_build_succeeded = ["+merged-by-bors"]
+auto_build_succeeded = [
+    "+merged-by-bors"
+]
 auto_build_failed = [
     "+S-waiting-on-review",
     "-S-blocked",
