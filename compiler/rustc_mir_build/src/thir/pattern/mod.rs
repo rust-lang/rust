@@ -39,11 +39,14 @@ struct PatCtxt<'tcx> {
     rust_2024_migration: Option<PatMigration<'tcx>>,
 }
 
+#[instrument(level = "debug", skip(tcx, typing_env, typeck_results), ret)]
 pub(super) fn pat_from_hir<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
+    // Present if `pat` came from a let statement with an explicit type annotation
+    let_stmt_type: Option<&hir::Ty<'tcx>>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
         tcx,
@@ -54,12 +57,35 @@ pub(super) fn pat_from_hir<'tcx>(
             .get(pat.hir_id)
             .map(PatMigration::new),
     };
-    let result = pcx.lower_pattern(pat);
-    debug!("pat_from_hir({:?}) = {:?}", pat, result);
+
+    let mut thir_pat = pcx.lower_pattern(pat);
+
+    // If this pattern came from a let statement with an explicit type annotation
+    // (e.g. `let x: Foo = ...`), retain that user type information in the THIR pattern.
+    if let Some(let_stmt_type) = let_stmt_type
+        && let Some(&user_ty) = typeck_results.user_provided_types().get(let_stmt_type.hir_id)
+    {
+        debug!(?user_ty);
+        let annotation = CanonicalUserTypeAnnotation {
+            user_ty: Box::new(user_ty),
+            span: let_stmt_type.span,
+            inferred_ty: typeck_results.node_type(let_stmt_type.hir_id),
+        };
+        thir_pat = Box::new(Pat {
+            ty: thir_pat.ty,
+            span: thir_pat.span,
+            kind: PatKind::AscribeUserType {
+                ascription: Ascription { annotation, variance: ty::Covariant },
+                subpattern: thir_pat,
+            },
+        });
+    }
+
     if let Some(m) = pcx.rust_2024_migration {
         m.emit(tcx, pat.hir_id);
     }
-    result
+
+    thir_pat
 }
 
 impl<'tcx> PatCtxt<'tcx> {
