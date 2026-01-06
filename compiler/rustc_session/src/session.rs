@@ -38,8 +38,8 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
-    PointerAuthOption, SwitchWithOptPath,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName,
+    OutputType, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -1693,6 +1693,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.packed_stack {
         if sess.target.arch != Arch::S390x {
             sess.dcx().emit_err(diagnostics::UnsupportedPackedStack);
+        }
+    }
+
+    if let Some(ref cpu_name) = sess.opts.cg.target_cpu {
+        if cpu_name == NATIVE_CPU && sess.target.requires_consistent_cpu {
+            sess.dcx().emit_fatal(diagnostics::NativeTargetCpuNotAllowed {
+                target_triple: &sess.opts.target_triple,
+                need_explicit_cpu: sess.target.need_explicit_cpu,
+            });
         }
     }
 }
