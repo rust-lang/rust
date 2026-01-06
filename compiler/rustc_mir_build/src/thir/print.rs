@@ -73,6 +73,24 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         self.fmt
     }
 
+    fn print_list<T>(
+        &mut self,
+        label: &str,
+        list: &[T],
+        depth_lvl: usize,
+        print_fn: impl Fn(&mut Self, &T, usize),
+    ) {
+        if list.is_empty() {
+            print_indented!(self, format_args!("{label}: []"), depth_lvl);
+        } else {
+            print_indented!(self, format_args!("{label}: ["), depth_lvl);
+            for item in list {
+                print_fn(self, item, depth_lvl + 1)
+            }
+            print_indented!(self, "]", depth_lvl);
+        }
+    }
+
     fn print_param(&mut self, param: &Param<'tcx>, depth_lvl: usize) {
         let Param { pat, ty, ty_span, self_kind, hir_id } = param;
 
@@ -663,12 +681,34 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_pat(&mut self, pat: &Pat<'tcx>, depth_lvl: usize) {
-        let &Pat { ty, span, ref kind } = pat;
+        let &Pat { ty, span, ref kind, ref extra } = pat;
 
         print_indented!(self, "Pat: {", depth_lvl);
         print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 1);
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+        self.print_pat_extra(extra.as_deref(), depth_lvl + 1);
         self.print_pat_kind(kind, depth_lvl + 1);
+        print_indented!(self, "}", depth_lvl);
+    }
+
+    fn print_pat_extra(&mut self, extra: Option<&PatExtra<'tcx>>, depth_lvl: usize) {
+        let Some(extra) = extra else {
+            // Skip printing in the common case of a pattern node with no extra data.
+            return;
+        };
+
+        let PatExtra { expanded_const, ascriptions } = extra;
+
+        print_indented!(self, "extra: PatExtra {", depth_lvl);
+        print_indented!(self, format_args!("expanded_const: {expanded_const:?}"), depth_lvl + 1);
+        self.print_list(
+            "ascriptions",
+            ascriptions,
+            depth_lvl + 1,
+            |this, ascription, depth_lvl| {
+                print_indented!(this, format_args!("{ascription:?}"), depth_lvl);
+            },
+        );
         print_indented!(self, "}", depth_lvl);
     }
 

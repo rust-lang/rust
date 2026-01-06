@@ -643,10 +643,26 @@ pub struct FieldPat<'tcx> {
     pub pattern: Pat<'tcx>,
 }
 
+/// Additional per-node data that is not present on most THIR pattern nodes.
+#[derive(Clone, Debug, Default, HashStable, TypeVisitable)]
+pub struct PatExtra<'tcx> {
+    /// If present, this node represents a named constant that was lowered to
+    /// a pattern using `const_to_pat`.
+    ///
+    /// This is used by some diagnostics for non-exhaustive matches, to map
+    /// the pattern node back to the `DefId` of its original constant.
+    pub expanded_const: Option<DefId>,
+
+    /// User-written types that must be preserved into MIR so that they can be
+    /// checked.
+    pub ascriptions: Vec<Ascription<'tcx>>,
+}
+
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
+    pub extra: Option<Box<PatExtra<'tcx>>>,
     pub kind: PatKind<'tcx>,
 }
 
@@ -1119,7 +1135,7 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
     static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);

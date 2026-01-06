@@ -90,7 +90,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
+        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
     }
 
     fn unevaluated_to_pat(
@@ -192,6 +192,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty: thir_pat.ty,
             span: thir_pat.span,
             kind: PatKind::ExpandedConstant { def_id: uv.def, subpattern: thir_pat },
+            extra: None,
         });
         thir_pat
     }
@@ -355,7 +356,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind })
+        Box::new(Pat { span, ty, kind, extra: None })
     }
 }
 

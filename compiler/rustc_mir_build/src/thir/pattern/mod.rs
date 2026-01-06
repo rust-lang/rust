@@ -78,6 +78,7 @@ pub(super) fn pat_from_hir<'tcx>(
                 ascription: Ascription { annotation, variance: ty::Covariant },
                 subpattern: thir_pat,
             },
+            extra: None,
         });
     }
 
@@ -142,7 +143,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 }
                 PatAdjust::PinDeref => PatKind::Deref { subpattern: thir_pat },
             };
-            Box::new(Pat { span, ty: adjust.source, kind })
+            Box::new(Pat { span, ty: adjust.source, kind, extra: None })
         });
 
         if let Some(s) = &mut self.rust_2024_migration
@@ -307,7 +308,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 return Err(e);
             }
         }
-        let mut thir_pat = Box::new(Pat { ty, span, kind });
+        let mut thir_pat = Box::new(Pat { ty, span, kind, extra: None });
 
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
@@ -317,6 +318,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 ty,
                 span,
                 kind: PatKind::AscribeUserType { ascription, subpattern: thir_pat },
+                extra: None,
             });
         }
         // `PatKind::ExpandedConstant` wrappers from range endpoints used to
@@ -428,7 +430,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 };
                 // We might have modified the type or span, so use the modified
                 // values in the THIR pattern node.
-                return Box::new(Pat { ty: thir_pat_ty, span: thir_pat_span, kind });
+                return Box::new(Pat { ty: thir_pat_ty, span: thir_pat_span, kind, extra: None });
             }
 
             hir::PatKind::TupleStruct(ref qpath, pats, ddpos) => {
@@ -468,7 +470,7 @@ impl<'tcx> PatCtxt<'tcx> {
 
         // For pattern kinds that haven't already returned, create a `thir::Pat`
         // with the HIR pattern node's type and span.
-        Box::new(Pat { span, ty, kind })
+        Box::new(Pat { span, ty, kind, extra: None })
     }
 
     fn lower_tuple_subpats(
@@ -520,7 +522,7 @@ impl<'tcx> PatCtxt<'tcx> {
             }
             _ => span_bug!(span, "bad slice pattern type {ty:?}"),
         };
-        Box::new(Pat { ty, span, kind })
+        Box::new(Pat { ty, span, kind, extra: None })
     }
 
     fn lower_variant_or_leaf(
@@ -562,7 +564,12 @@ impl<'tcx> PatCtxt<'tcx> {
                         ty::Adt(_, args) | ty::FnDef(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
-                            return Box::new(Pat { ty, span, kind: PatKind::Error(*e) });
+                            return Box::new(Pat {
+                                ty,
+                                span,
+                                kind: PatKind::Error(*e),
+                                extra: None,
+                            });
                         }
                         _ => bug!("inappropriate type for def: {:?}", ty),
                     };
@@ -603,7 +610,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 PatKind::Error(e)
             }
         };
-        let mut thir_pat = Box::new(Pat { ty, span, kind });
+        let mut thir_pat = Box::new(Pat { ty, span, kind, extra: None });
 
         if let Some(user_ty) = self.user_args_applied_to_ty_of_hir_id(hir_id) {
             debug!(?thir_pat, ?user_ty, ?span, "lower_variant_or_leaf: applying ascription");
@@ -619,6 +626,7 @@ impl<'tcx> PatCtxt<'tcx> {
                     subpattern: thir_pat,
                     ascription: Ascription { annotation, variance: ty::Covariant },
                 },
+                extra: None,
             });
         }
 
@@ -685,7 +693,7 @@ impl<'tcx> PatCtxt<'tcx> {
                     variance: ty::Contravariant,
                 },
             };
-            pattern = Box::new(Pat { span, kind, ty });
+            pattern = Box::new(Pat { span, kind, ty, extra: None });
         }
 
         pattern
