@@ -1555,6 +1555,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(atomic_ptr_null)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atomic_ptr = AtomicPtr::<()>::null();
