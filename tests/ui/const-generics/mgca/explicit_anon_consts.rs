@@ -1,4 +1,4 @@
-#![feature(associated_const_equality, generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, min_generic_const_args)]
 #![expect(incomplete_features)]
 // library crates exercise weirder code paths around
 // DefIds which were created for const args.

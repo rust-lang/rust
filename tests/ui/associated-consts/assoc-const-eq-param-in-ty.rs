@@ -1,7 +1,6 @@
 // Regression test for issue #108271.
 // Detect and reject generic params in the type of assoc consts used in an equality bound.
 #![feature(
-    associated_const_equality,
     min_generic_const_args,
     adt_const_params,
     unsized_const_params,

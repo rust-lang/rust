@@ -3,7 +3,7 @@
 // readded once fixed.
 // Previous issue (before mgca): https://github.com/rust-lang/rust/issues/105952
 #![crate_name = "foo"]
-#![feature(associated_const_equality, min_generic_const_args)]
+#![feature(min_generic_const_args)]
 pub enum ParseMode {
     Raw,
 }

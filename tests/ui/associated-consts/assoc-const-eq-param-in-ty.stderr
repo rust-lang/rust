@@ -1,5 +1,5 @@
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:23:29
+  --> $DIR/assoc-const-eq-param-in-ty.rs:22:29
    |
 LL | fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
    |          -- the lifetime parameter `'r` is defined here
@@ -10,7 +10,7 @@ LL |     _: impl Trait<'r, A, Q, K = const { loop {} }>
    = note: `K` has type `&'r [A; Q]`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:23:29
+  --> $DIR/assoc-const-eq-param-in-ty.rs:22:29
    |
 LL | fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
    |              - the type parameter `A` is defined here
@@ -21,7 +21,7 @@ LL |     _: impl Trait<'r, A, Q, K = const { loop {} }>
    = note: `K` has type `&'r [A; Q]`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:23:29
+  --> $DIR/assoc-const-eq-param-in-ty.rs:22:29
    |
 LL | fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(
    |                                           - the const parameter `Q` is defined here
@@ -32,7 +32,7 @@ LL |     _: impl Trait<'r, A, Q, K = const { loop {} }>
    = note: `K` has type `&'r [A; Q]`
 
 error: the type of the associated constant `SELF` must not depend on `impl Trait`
-  --> $DIR/assoc-const-eq-param-in-ty.rs:40:26
+  --> $DIR/assoc-const-eq-param-in-ty.rs:39:26
    |
 LL | fn take1(_: impl Project<SELF = const {}>) {}
    |             -------------^^^^------------
@@ -41,7 +41,7 @@ LL | fn take1(_: impl Project<SELF = const {}>) {}
    |             the `impl Trait` is specified here
 
 error: the type of the associated constant `SELF` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:45:21
+  --> $DIR/assoc-const-eq-param-in-ty.rs:44:21
    |
 LL | fn take2<P: Project<SELF = const {}>>(_: P) {}
    |          -          ^^^^ its type must not depend on the type parameter `P`
@@ -51,7 +51,7 @@ LL | fn take2<P: Project<SELF = const {}>>(_: P) {}
    = note: `SELF` has type `P`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL | trait Iface<'r>: ConstParamTy_ {
    |             -- the lifetime parameter `'r` is defined here
@@ -62,7 +62,7 @@ LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    = note: `K` has type `&'r [Self; Q]`
 
 error: the type of the associated constant `K` must not depend on `Self`
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    |                                                    ^ its type must not depend on `Self`
@@ -70,7 +70,7 @@ LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    = note: `K` has type `&'r [Self; Q]`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    |                      -                             ^ its type must not depend on the const parameter `Q`
@@ -80,7 +80,7 @@ LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    = note: `K` has type `&'r [Self; Q]`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL | trait Iface<'r>: ConstParamTy_ {
    |             -- the lifetime parameter `'r` is defined here
@@ -92,7 +92,7 @@ LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: the type of the associated constant `K` must not depend on `Self`
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    |                                                    ^ its type must not depend on `Self`
@@ -101,7 +101,7 @@ LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: the type of the associated constant `K` must not depend on generic parameters
-  --> $DIR/assoc-const-eq-param-in-ty.rs:54:52
+  --> $DIR/assoc-const-eq-param-in-ty.rs:53:52
    |
 LL |     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = const { loop {} }>
    |                      -                             ^ its type must not depend on the const parameter `Q`
