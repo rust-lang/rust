@@ -113,6 +113,7 @@ pub(crate) struct MarkdownWithToc<'a> {
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a> {
     pub(crate) content: &'a str,
+    pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
 }
 /// A tuple struct like `Markdown` that renders only the first paragraph.
@@ -1463,18 +1464,27 @@ impl MarkdownWithToc<'_> {
 }
 
 impl<'a> MarkdownItemInfo<'a> {
-    pub(crate) fn new(content: &'a str, ids: &'a mut IdMap) -> Self {
-        Self { content, ids }
+    pub(crate) fn new(content: &'a str, links: &'a [RenderedLink], ids: &'a mut IdMap) -> Self {
+        Self { content, links, ids }
     }
 
     pub(crate) fn write_into(self, mut f: impl fmt::Write) -> fmt::Result {
-        let MarkdownItemInfo { content, ids } = self;
+        let MarkdownItemInfo { content: md, links, ids } = self;
 
         // This is actually common enough to special-case
-        if content.is_empty() {
+        if md.is_empty() {
             return Ok(());
         }
-        let p = Parser::new_ext(content, main_body_opts()).into_offset_iter();
+
+        let replacer = move |broken_link: BrokenLink<'_>| {
+            links
+                .iter()
+                .find(|link| *link.original_text == *broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+        };
+
+        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
+        let p = p.into_offset_iter();
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event.0 {
@@ -1484,6 +1494,7 @@ impl<'a> MarkdownItemInfo<'a> {
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
+            let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = p.filter(|event| {
