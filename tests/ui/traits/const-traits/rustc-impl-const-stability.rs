@@ -1,5 +1,4 @@
-//@ compile-flags: -Znext-solver
-//@ known-bug: #110395
+//@ check-pass
 
 #![crate_type = "lib"]
 #![feature(staged_api, const_trait_impl, const_default)]
@@ -12,8 +11,8 @@ pub struct Data {
 
 #[stable(feature = "potato", since = "1.27.0")]
 #[rustc_const_unstable(feature = "data_foo", issue = "none")]
-impl const std::fmt::Debug for Data {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        Ok(())
+impl const Default for Data {
+    fn default() -> Data {
+        Data { _data: 0xbeef }
     }
 }
