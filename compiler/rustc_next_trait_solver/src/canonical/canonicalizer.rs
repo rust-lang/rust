@@ -109,6 +109,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
+
     fn canonicalize_param_env(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
@@ -215,16 +216,12 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         };
 
         let predicate = input.goal.predicate;
-        let predicate = if predicate.has_type_flags(NEEDS_CANONICAL) {
-            predicate.fold_with(&mut rest_canonicalizer)
-        } else {
-            predicate
-        };
+        let predicate = predicate.fold_with(&mut rest_canonicalizer);
         let goal = Goal { param_env, predicate };
 
         let predefined_opaques_in_body = input.predefined_opaques_in_body;
         let predefined_opaques_in_body =
-            if input.predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
+            if predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
                 predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
             } else {
                 predefined_opaques_in_body
@@ -391,11 +388,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return if t.has_type_flags(NEEDS_CANONICAL) {
-                    ensure_sufficient_stack(|| t.super_fold_with(self))
-                } else {
-                    t
-                };
+                return ensure_sufficient_stack(|| t.super_fold_with(self));
             }
         };
 
@@ -477,7 +470,9 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
-        if let Some(&ty) = self.cache.get(&t) {
+        if !t.flags().intersects(NEEDS_CANONICAL) {
+            t
+        } else if let Some(&ty) = self.cache.get(&t) {
             ty
         } else {
             let res = self.inner_fold_ty(t);
@@ -488,6 +483,10 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     }
 
     fn fold_const(&mut self, c: I::Const) -> I::Const {
+        if !c.flags().intersects(NEEDS_CANONICAL) {
+            return c;
+        }
+
         let kind = match c.kind() {
             ty::ConstKind::Infer(i) => match i {
                 ty::InferConst::Var(vid) => {
@@ -527,9 +526,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
-            | ty::ConstKind::Expr(_) => {
-                return if c.has_type_flags(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c };
-            }
+            | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
         };
 
         let var = self.get_or_insert_bound_var(c, kind);
@@ -538,7 +535,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     }
 
     fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
-        if p.flags().intersects(NEEDS_CANONICAL) { p.super_fold_with(self) } else { p }
+        if !p.flags().intersects(NEEDS_CANONICAL) { p } else { p.super_fold_with(self) }
     }
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
@@ -549,6 +546,6 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 panic!("erasing 'static in env")
             }
         }
-        if c.flags().intersects(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c }
+        if !c.flags().intersects(NEEDS_CANONICAL) { c } else { c.super_fold_with(self) }
     }
 }
