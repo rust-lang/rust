@@ -1126,7 +1126,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     Term::Ty(ty) => self.lower_ty_alloc(ty, itctx).into(),
-                    Term::Const(c) => self.lower_anon_const_to_const_arg(c).into(),
+                    Term::Const(c) => self.lower_anon_const_to_const_arg_and_alloc(c).into(),
                 };
                 hir::AssocItemConstraintKind::Equality { term }
             }
@@ -1252,9 +1252,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty_alloc(ty, itctx).try_as_ambig_ty().unwrap())
             }
-            ast::GenericArg::Const(ct) => {
-                GenericArg::Const(self.lower_anon_const_to_const_arg(ct).try_as_ambig_ct().unwrap())
-            }
+            ast::GenericArg::Const(ct) => GenericArg::Const(
+                self.lower_anon_const_to_const_arg_and_alloc(ct).try_as_ambig_ct().unwrap(),
+            ),
         }
     }
 
@@ -2066,7 +2066,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             false
                         }
                     })
-                    .map(|def| self.lower_anon_const_to_const_arg(def));
+                    .map(|def| self.lower_anon_const_to_const_arg_and_alloc(def));
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
@@ -2288,7 +2288,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span), ());
                 self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
             }
-            _ => self.lower_anon_const_to_const_arg(c),
+            _ => self.lower_anon_const_to_const_arg_and_alloc(c),
         }
     }
 
@@ -2367,7 +2367,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::ConstItemRhs<'hir> {
         match rhs {
             Some(ConstItemRhs::TypeConst(anon)) => {
-                hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg(anon))
+                hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg_and_alloc(anon))
             }
             None if attr::contains_name(attrs, sym::type_const) => {
                 let const_arg = ConstArg {
@@ -2414,7 +2414,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let def_id = self.local_def_id(anon_const.id);
                         let def_kind = self.tcx.def_kind(def_id);
                         assert_eq!(DefKind::AnonConst, def_kind);
-                        self.lower_anon_const_to_const_arg_direct(anon_const)
+                        self.lower_anon_const_to_const_arg(anon_const)
                     } else {
                         self.lower_expr_to_const_arg_direct(arg)
                     };
@@ -2467,7 +2467,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let def_kind = self.tcx.def_kind(def_id);
                         assert_eq!(DefKind::AnonConst, def_kind);
 
-                        self.lower_anon_const_to_const_arg_direct(anon_const)
+                        self.lower_anon_const_to_const_arg(anon_const)
                     } else {
                         self.lower_expr_to_const_arg_direct(&f.expr)
                     };
@@ -2508,12 +2508,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_anon_const`].
-    fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
-        self.arena.alloc(self.lower_anon_const_to_const_arg_direct(anon))
+    fn lower_anon_const_to_const_arg_and_alloc(
+        &mut self,
+        anon: &AnonConst,
+    ) -> &'hir hir::ConstArg<'hir> {
+        self.arena.alloc(self.lower_anon_const_to_const_arg(anon))
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn lower_anon_const_to_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+    fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
         // We cannot change parsing depending on feature gates available,
