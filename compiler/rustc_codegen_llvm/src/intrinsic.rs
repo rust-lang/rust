@@ -1388,7 +1388,8 @@ fn codegen_offload<'ll, 'tcx>(
     let args = get_args_from_tuple(bx, args[3], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
-    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
+    let sig = tcx.fn_sig(fn_target.def_id()).instantiate_identity();
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
