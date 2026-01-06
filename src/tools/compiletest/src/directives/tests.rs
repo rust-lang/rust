@@ -225,6 +225,7 @@ impl ConfigBuilder {
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",
+            "--jobs=0",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 

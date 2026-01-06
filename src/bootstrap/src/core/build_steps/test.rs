@@ -2265,6 +2265,8 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--with-std-remap-debuginfo");
         }
 
+        cmd.arg("--jobs").arg(builder.jobs().to_string());
+
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(test_compiler.host) {
