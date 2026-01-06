@@ -2268,6 +2268,11 @@ pub fn parse_target_triple(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches
     }
 }
 
+/// Returns whether `cpu_name` requests the host CPU.
+pub fn is_native_cpu(cpu_name: &str) -> bool {
+    cpu_name == "native"
+}
+
 fn parse_opt_level(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
