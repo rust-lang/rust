@@ -1879,7 +1879,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(length_val) = sz.found.try_to_target_usize(self.tcx)
         {
             Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
-                span: length_arg.span(),
+                span: length_arg.span,
                 length: length_val,
             })
         } else {

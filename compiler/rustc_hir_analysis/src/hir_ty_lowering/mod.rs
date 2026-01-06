@@ -2331,7 +2331,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 && (anon_const_type.has_free_regions() || anon_const_type.has_erased_regions())
             {
                 let e = self.dcx().span_err(
-                    const_arg.span(),
+                    const_arg.span,
                     "anonymous constants with lifetimes in their type are not yet supported",
                 );
                 tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
@@ -2342,7 +2342,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // variables otherwise we will ICE.
             if anon_const_type.has_non_region_infer() {
                 let e = self.dcx().span_err(
-                    const_arg.span(),
+                    const_arg.span,
                     "anonymous constants with inferred types are not yet supported",
                 );
                 tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
@@ -2352,7 +2352,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // give the anon const any of the generics from the parent.
             if anon_const_type.has_non_region_param() {
                 let e = self.dcx().span_err(
-                    const_arg.span(),
+                    const_arg.span,
                     "anonymous constants referencing generics are not yet supported",
                 );
                 tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
@@ -2364,7 +2364,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let hir_id = const_arg.hir_id;
         match const_arg.kind {
-            hir::ConstArgKind::Tup(span, exprs) => self.lower_const_arg_tup(exprs, feed, span),
+            hir::ConstArgKind::Tup(exprs) => self.lower_const_arg_tup(exprs, feed, const_arg.span),
             hir::ConstArgKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
@@ -2378,19 +2378,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_self_ty,
                     segment,
                     hir_id,
-                    const_arg.span(),
+                    const_arg.span,
                 )
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
             hir::ConstArgKind::Struct(qpath, inits) => {
-                self.lower_const_arg_struct(hir_id, qpath, inits, const_arg.span())
+                self.lower_const_arg_struct(hir_id, qpath, inits, const_arg.span)
             }
             hir::ConstArgKind::TupleCall(qpath, args) => {
-                self.lower_const_arg_tuple_call(hir_id, qpath, args, const_arg.span())
+                self.lower_const_arg_tuple_call(hir_id, qpath, args, const_arg.span)
             }
             hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
-            hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
-            hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
+            hir::ConstArgKind::Infer(()) => self.ct_infer(None, const_arg.span),
+            hir::ConstArgKind::Error(e) => ty::Const::new_error(tcx, e),
         }
     }
 

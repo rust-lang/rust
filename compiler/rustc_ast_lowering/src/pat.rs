@@ -513,6 +513,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::ConstArg {
             hir_id: self.next_id(),
             kind: hir::ConstArgKind::Anon(self.arena.alloc(anon_const)),
+            span,
         })
     }
 
@@ -557,6 +558,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
         });
         let hir_id = self.next_id();
-        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id })
+        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id, span })
     }
 }
