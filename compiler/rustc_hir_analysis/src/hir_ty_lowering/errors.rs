@@ -171,7 +171,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| tcx.associated_items(r.def_id()).in_definition_order())
             .filter_map(|item| {
-                if !item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag {
+                if !item.is_impl_trait_in_trait() && item.tag() == assoc_tag {
                     item.opt_name()
                 } else {
                     None
@@ -207,7 +207,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag).then(|| item.name())
+                (!item.is_impl_trait_in_trait() && item.tag() == assoc_tag).then(|| item.name())
             })
             .collect();
 
@@ -220,7 +220,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .filter(|trait_def_id| {
                     tcx.associated_items(trait_def_id)
                         .filter_by_name_unhygienic(suggested_name)
-                        .any(|item| item.as_tag() == assoc_tag)
+                        .any(|item| item.tag() == assoc_tag)
                 })
                 .collect::<Vec<_>>()[..]
             {
@@ -383,9 +383,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::Term::Ty(ty) => ty.span,
                 hir::Term::Const(ct) => ct.span,
             };
-            (span, Some(ident.span), assoc_item.as_tag(), assoc_tag)
+            (span, Some(ident.span), assoc_item.tag(), assoc_tag)
         } else {
-            (ident.span, None, assoc_tag, assoc_item.as_tag())
+            (ident.span, None, assoc_tag, assoc_item.tag())
         };
 
         self.dcx().emit_err(errors::AssocKindMismatch {
@@ -393,7 +393,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             expected: assoc_tag_str(expected),
             got: assoc_tag_str(got),
             expected_because_label,
-            assoc_kind: assoc_tag_str(assoc_item.as_tag()),
+            assoc_kind: assoc_tag_str(assoc_item.tag()),
             def_span: tcx.def_span(assoc_item.def_id),
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
@@ -965,8 +965,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             names_len += 1;
 
             descr = match descr {
-                None => Some(Descr::Tag(assoc_item.as_tag())),
-                Some(Descr::Tag(tag)) if tag != assoc_item.as_tag() => Some(Descr::Item),
+                None => Some(Descr::Tag(assoc_item.tag())),
+                Some(Descr::Tag(tag)) if tag != assoc_item.tag() => Some(Descr::Item),
                 _ => continue,
             };
         }
@@ -1030,10 +1030,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let names = names.join(", ");
 
         let descr = match descr.unwrap() {
-            // FIXME(fmease): Create `ty::AssocTag::descr`.
-            Descr::Tag(ty::AssocTag::Type) => "associated type",
-            Descr::Tag(ty::AssocTag::Const) => "associated constant",
-            _ => "associated item",
+            Descr::Item => "associated item",
+            Descr::Tag(tag) => tag.descr(),
         };
         let mut err = struct_span_code_err!(
             self.dcx(),
@@ -1050,13 +1048,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut names: UnordMap<_, usize> = Default::default();
         for (item, _) in &missing_assoc_items {
             items_count += 1;
-            *names.entry((item.name(), item.as_tag())).or_insert(0) += 1;
+            *names.entry((item.name(), item.tag())).or_insert(0) += 1;
         }
         let mut dupes = false;
         let mut shadows = false;
         for (item, trait_ref) in &missing_assoc_items {
             let name = item.name();
-            let key = (name, item.as_tag());
+            let key = (name, item.tag());
 
             if names[&key] > 1 {
                 dupes = true;

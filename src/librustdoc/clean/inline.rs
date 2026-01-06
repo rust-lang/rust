@@ -561,7 +561,7 @@ pub(crate) fn build_impl(
                             .find_by_ident_and_kind(
                                 tcx,
                                 item.ident(tcx),
-                                item.as_tag(),
+                                item.tag(),
                                 associated_trait.def_id,
                             )
                             .unwrap(); // corresponding associated item has to exist
