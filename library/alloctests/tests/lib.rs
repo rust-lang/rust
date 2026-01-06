@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
+#![feature(const_heap)]
 #![feature(deque_extend_front)]
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]

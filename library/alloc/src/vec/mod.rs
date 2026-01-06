@@ -81,7 +81,9 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::PhantomData;
+#[cfg(not(no_global_oom_handling))]
+use core::marker::Destruct;
+use core::marker::{Freeze, PhantomData};
 use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, TransmuteFrom};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -519,7 +521,8 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "vec_with_capacity"]
-    pub fn with_capacity(capacity: usize) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
 
@@ -881,29 +884,28 @@ impl<T> Vec<T> {
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
+
+    /// Interns the `Vec<T>`, making the underlying memory read-only. This method should be
+    /// called during compile time. (This is a no-op if called during runtime)
+    ///
+    /// This method must be called if the memory used by `Vec` needs to appear in the final
+    /// values of constants.
+    #[unstable(feature = "const_heap", issue = "79597")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn const_make_global(mut self) -> &'static [T]
+    where
+        T: Freeze,
+    {
+        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+        let me = ManuallyDrop::new(self);
+        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+    }
 }
 
-impl<T, A: Allocator> Vec<T, A> {
-    /// Constructs a new, empty `Vec<T, A>`.
-    ///
-    /// The vector will not allocate until elements are pushed onto it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// # #[allow(unused_mut)]
-    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
-    /// ```
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> Self {
-        Vec { buf: RawVec::new_in(alloc), len: 0 }
-    }
-
+#[cfg(not(no_global_oom_handling))]
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
+const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
     /// with the provided allocator.
     ///
@@ -959,11 +961,107 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let vec_units = Vec::<(), System>::with_capacity_in(10, System);
     /// assert_eq!(vec_units.capacity(), usize::MAX);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
+    }
+
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2];
+    /// vec.push(3);
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push_back", "put", "append")]
+    pub fn push(&mut self, value: T) {
+        let _ = self.push_mut(value);
+    }
+
+    /// Appends an element to the back of a collection, returning a reference to it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    ///
+    ///
+    /// let mut vec = vec![1, 2];
+    /// let last = vec.push_mut(3);
+    /// assert_eq!(*last, 3);
+    /// assert_eq!(vec, [1, 2, 3]);
+    ///
+    /// let last = vec.push_mut(3);
+    /// *last += 1;
+    /// assert_eq!(vec, [1, 2, 3, 4]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[inline]
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
+    pub fn push_mut(&mut self, value: T) -> &mut T {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            &mut *end
+        }
+    }
+}
+
+impl<T, A: Allocator> Vec<T, A> {
+    /// Constructs a new, empty `Vec<T, A>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// # #[allow(unused_mut)]
+    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn new_in(alloc: A) -> Self {
+        Vec { buf: RawVec::new_in(alloc), len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
@@ -2546,34 +2644,6 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Appends an element to the back of a collection.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1, 2];
-    /// vec.push(3);
-    /// assert_eq!(vec, [1, 2, 3]);
-    /// ```
-    ///
-    /// # Time complexity
-    ///
-    /// Takes amortized *O*(1) time. If the vector's length would exceed its
-    /// capacity after the push, *O*(*capacity*) time is taken to copy the
-    /// vector's elements to a larger allocation. This expensive operation is
-    /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push_back", "put", "append")]
-    pub fn push(&mut self, value: T) {
-        let _ = self.push_mut(value);
-    }
-
     /// Appends an element and returns a reference to it if there is sufficient spare capacity,
     /// otherwise an error is returned with the element.
     ///
@@ -2624,55 +2694,6 @@ impl<T, A: Allocator> Vec<T, A> {
 
             // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
             Ok(&mut *end)
-        }
-    }
-
-    /// Appends an element to the back of a collection, returning a reference to it.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(push_mut)]
-    ///
-    ///
-    /// let mut vec = vec![1, 2];
-    /// let last = vec.push_mut(3);
-    /// assert_eq!(*last, 3);
-    /// assert_eq!(vec, [1, 2, 3]);
-    ///
-    /// let last = vec.push_mut(3);
-    /// *last += 1;
-    /// assert_eq!(vec, [1, 2, 3, 4]);
-    /// ```
-    ///
-    /// # Time complexity
-    ///
-    /// Takes amortized *O*(1) time. If the vector's length would exceed its
-    /// capacity after the push, *O*(*capacity*) time is taken to copy the
-    /// vector's elements to a larger allocation. This expensive operation is
-    /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[unstable(feature = "push_mut", issue = "135974")]
-    #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
-    pub fn push_mut(&mut self, value: T) -> &mut T {
-        // Inform codegen that the length does not change across grow_one().
-        let len = self.len;
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(len);
-            ptr::write(end, value);
-            self.len = len + 1;
-            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
-            &mut *end
         }
     }
 
