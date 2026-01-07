@@ -28,6 +28,25 @@ You can use the following options for the `x perf` command, which mirror the cor
 - `--profiles`: Select profiles (`Check`, `Debug`, `Opt`, `Doc`) which should be profiled/benchmarked.
 - `--scenarios`: Select scenarios (`Full`, `IncrFull`, `IncrPatched`, `IncrUnchanged`) which should be profiled/benchmarked.
 
+## Example profiling diff for external crates
+It can be of interest to generate a local diff for two commits of the compiler for external crates. 
+To start, in the `rustc-perf` repo, build the collector, which runs the Rust compiler benchmarks as follows.
+```
+cargo build --release -p collector
+```
+The collector can then be run using cargo, specifying the collector binary. It expects the following arguments:
+- `<PROFILE>`: Profiler selection for how performance should be measured. For this example we will use Cachegrind.
+- `<RUSTC>`: The Rust compiler revision to benchmark, specified as a commit SHA from `rust-lang/rust`.
+Optional arguments allow running profiles and scenarios as described above. More information regarding the mandatory and 
+optional arguments can be found in the [rustc-perf-readme-profilers].
+
+Then, for the case of generating a profile diff for the crate `serve_derive-1.0.136`, for two commits `<SHA1>` and `<SHA2>` from the `rust-lang/rust` repository, 
+run the following in the `rustc-perf` repo:
+```
+cargo run --release --bin collector profile_local cachegrind +<SHA1> --rustc2 +<SHA2> --exact-match serde_derive-1.0.136 --profiles Check --scenarios IncrUnchanged
+```
+
+
 [samply]: https://github.com/mstange/samply
 [cachegrind]: https://www.cs.cmu.edu/afs/cs.cmu.edu/project/cmt-40/Nice/RuleRefinement/bin/valgrind-3.2.0/docs/html/cg-manual.html
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
