@@ -16,7 +16,7 @@
 
 use std::cell::Cell;
 use std::iter;
-use std::ops::Bound;
+use std::ops::{Bound, ControlFlow};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
@@ -26,12 +26,13 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
 };
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
@@ -1510,6 +1511,13 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
+            } else if tcx.features().opaque_generic_const_args() {
+                let body = tcx.hir_body_owned_by(def);
+                let mut visitor = OGCAParamVisitor(tcx);
+                match visitor.visit_body(body) {
+                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::OGCA,
+                    ControlFlow::Continue(()) => ty::AnonConstKind::MCG,
+                }
             } else if tcx.features().min_generic_const_args() {
                 ty::AnonConstKind::MCG
             } else if let hir::Node::Expr(hir::Expr {
@@ -1524,6 +1532,29 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             }
         }
         _ => ty::AnonConstKind::NonTypeSystem,
+    }
+}
+
+struct OGCAParamVisitor<'tcx>(TyCtxt<'tcx>);
+
+struct UsesParam;
+
+impl<'tcx> Visitor<'tcx> for OGCAParamVisitor<'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+    type Result = ControlFlow<UsesParam>;
+
+    fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+        self.0
+    }
+
+    fn visit_path(&mut self, path: &crate::hir::Path<'tcx>, _id: HirId) -> ControlFlow<UsesParam> {
+        if let Res::Def(DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam, _) =
+            path.res
+        {
+            return ControlFlow::Break(UsesParam);
+        }
+
+        intravisit::walk_path(self, path)
     }
 }
 

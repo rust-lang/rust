@@ -599,6 +599,9 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
+    /// Allows using generics in more complex const expressions, based on definitional equality.
+    // TODO: create tracking issue
+    (unstable, opaque_generic_const_args, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
@@ -773,4 +776,10 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
     // boolean logic required to tell which typing rules to use.
     (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
+];
+
+/// Some features require one or more other features to be enabled.
+pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
+    (sym::opaque_generic_const_args, &[sym::min_generic_const_args]),
+    (sym::unsized_const_params, &[sym::adt_const_params]),
 ];
