@@ -750,3 +750,63 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn regression_19339() {
+    check_infer(
+        r#"
+trait Bar {
+    type Baz;
+
+    fn baz(&self) -> Self::Baz;
+}
+
+trait Foo {
+    type Bar;
+
+    fn bar(&self) -> Self::Bar;
+}
+
+trait FooFactory {
+    type Output: Foo<Bar: Bar<Baz = u8>>;
+
+    fn foo(&self) -> Self::Output;
+
+    fn foo_rpit(&self) -> impl Foo<Bar: Bar<Baz = u8>>;
+}
+
+fn test1(foo: impl Foo<Bar: Bar<Baz = u8>>) {
+    let baz = foo.bar().baz();
+}
+
+fn test2<T: FooFactory>(factory: T) {
+    let baz = factory.foo().bar().baz();
+    let baz = factory.foo_rpit().bar().baz();
+}
+"#,
+        expect![[r#"
+            39..43 'self': &'? Self
+            101..105 'self': &'? Self
+            198..202 'self': &'? Self
+            239..243 'self': &'? Self
+            290..293 'foo': impl Foo + ?Sized
+            325..359 '{     ...z(); }': ()
+            335..338 'baz': u8
+            341..344 'foo': impl Foo + ?Sized
+            341..350 'foo.bar()': impl Bar
+            341..356 'foo.bar().baz()': u8
+            385..392 'factory': T
+            397..487 '{     ...z(); }': ()
+            407..410 'baz': u8
+            413..420 'factory': T
+            413..426 'factory.foo()': <T as FooFactory>::Output
+            413..432 'factor....bar()': <<T as FooFactory>::Output as Foo>::Bar
+            413..438 'factor....baz()': u8
+            448..451 'baz': u8
+            454..461 'factory': T
+            454..472 'factor...rpit()': impl Foo + Bar<Baz = u8> + ?Sized
+            454..478 'factor....bar()': <impl Foo + Bar<Baz = u8> + ?Sized as Foo>::Bar
+            454..484 'factor....baz()': u8
+        "#]],
+    );
+}
