@@ -190,6 +190,12 @@ pub(super) fn check<'tcx>(
             } else {
                 "sort_by_key"
             };
+            let Some(std_or_core) = std_or_core(cx) else {
+                // To make it this far the crate has to reference diagnostic items defined in core. Either this is
+                // the `core` crate, there's an `extern crate core` somewhere, or another crate is defining the
+                // diagnostic items. It's fine to not lint in all those cases even if we might be able to.
+                return;
+            };
             span_lint_and_then(
                 cx,
                 UNNECESSARY_SORT_BY,
@@ -203,20 +209,15 @@ pub(super) fn check<'tcx>(
                     };
                     let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
                     let closure_body = Sugg::hir_with_applicability(cx, trigger.closure_body, "_", &mut app);
+                    let closure_body = if trigger.reverse {
+                        format!("{std_or_core}::cmp::Reverse({closure_body})")
+                    } else {
+                        closure_body.to_string()
+                    };
                     diag.span_suggestion(
                         expr.span,
                         "try",
-                        format!(
-                            "{recv}.{method}(|{}| {})",
-                            trigger.closure_arg,
-                            if let Some(std_or_core) = std_or_core(cx)
-                                && trigger.reverse
-                            {
-                                format!("{std_or_core}::cmp::Reverse({closure_body})")
-                            } else {
-                                closure_body.to_string()
-                            },
-                        ),
+                        format!("{recv}.{method}(|{}| {})", trigger.closure_arg, closure_body),
                         app,
                     );
                 },
