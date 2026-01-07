@@ -9,6 +9,7 @@ use hir_def::{
     ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
+    nameres::crate_def_map,
     per_ns::Item,
     src::{HasChildSource, HasSource},
     visibility::{Visibility, VisibilityExplicitness},
@@ -20,9 +21,12 @@ use hir_ty::{
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
+use syntax::{
+    AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr,
+    ast::{HasModuleItem, HasName},
+};
 
-use crate::{HasCrate, Module, ModuleDef, Semantics};
+use crate::{Crate, HasCrate, Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -54,6 +58,70 @@ impl DeclarationLocation {
     pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> SyntaxNode {
         let root = sema.parse_or_expand(self.hir_file_id);
         self.ptr.to_node(&root)
+    }
+}
+
+impl<'db> FileSymbol<'db> {
+    /// Create a `FileSymbol` representing a crate's root module.
+    /// This is used for crate search queries like `::` or `::foo`.
+    pub fn for_crate_root(db: &'db dyn HirDatabase, krate: Crate) -> Option<FileSymbol<'db>> {
+        let display_name = krate.display_name(db)?;
+        let crate_name = display_name.crate_name();
+        let root_module = krate.root_module(db);
+        let def_map = crate_def_map(db, krate.into());
+        let module_data = &def_map[root_module.into()];
+
+        // Get the definition source (the source file for crate roots)
+        let definition = module_data.origin.definition_source(db);
+        let hir_file_id = definition.file_id;
+
+        // For a crate root, the "declaration" is the source file itself
+        // We use the entire file's syntax node as the location
+        let syntax_node = definition.value.node();
+        let ptr = SyntaxNodePtr::new(&syntax_node);
+
+        // For the name, we need to create a synthetic name pointer.
+        // We'll use the first token of the file as a placeholder since crate roots
+        // don't have an explicit name in the source.
+        // We create a name_ptr pointing to the start of the file.
+        let name_ptr = match &definition.value {
+            crate::ModuleSource::SourceFile(sf) => {
+                // Try to find the first item with a name as a reasonable location for focus
+                // This is a bit of a hack but works for navigation purposes
+                let first_item: Option<syntax::ast::Item> = sf.items().next();
+                if let Some(item) = first_item {
+                    if let Some(name) = item.syntax().children().find_map(syntax::ast::Name::cast) {
+                        AstPtr::new(&name).wrap_left()
+                    } else {
+                        // No name found, try to use a NameRef instead
+                        if let Some(name_ref) =
+                            item.syntax().descendants().find_map(syntax::ast::NameRef::cast)
+                        {
+                            AstPtr::new(&name_ref).wrap_right()
+                        } else {
+                            return None;
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        };
+
+        let loc = DeclarationLocation { hir_file_id, ptr, name_ptr };
+
+        Some(FileSymbol {
+            name: Symbol::intern(crate_name.as_str()),
+            def: ModuleDef::Module(root_module),
+            loc,
+            container_name: None,
+            is_alias: false,
+            is_assoc: false,
+            is_import: false,
+            do_not_complete: Complete::Yes,
+            _marker: PhantomData,
+        })
     }
 }
 
