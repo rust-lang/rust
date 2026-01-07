@@ -124,6 +124,7 @@ llvm-config = "{llvm_config}"
             "tests/ui",
             "tests/crashes",
             "tests/rustdoc",
+            "tests/rustdoc-ui",
         ];
         for test_path in env.skipped_tests() {
             args.extend(["--skip", test_path]);
