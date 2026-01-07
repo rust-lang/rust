@@ -329,6 +329,8 @@ pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind 
         hir::ConstArgKind::Tup(..) => {
             // FIXME(mgca): proper printing :3
             ConstantKind::Path { path: "/* TUPLE EXPR */".to_string().into() }
+        hir::ConstArgKind::Array(..) => {
+            ConstantKind::Path { path: "/* ARRAY EXPR */".to_string().into() }
         }
         hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
         hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => ConstantKind::Infer,
@@ -1818,6 +1820,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 | hir::ConstArgKind::Path(..)
                 | hir::ConstArgKind::TupleCall(..)
                 | hir::ConstArgKind::Tup(..)
+                | hir::ConstArgKind::Array(..)
                 | hir::ConstArgKind::Literal(..) => {
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
                     print_const(cx, ct)
