@@ -1,5 +1,7 @@
 //! Bidirectional protocol messages
 
+use std::ops::Range;
+
 use paths::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +16,7 @@ pub enum SubRequest {
     SourceText { file_id: u32, ast_id: u32, start: u32, end: u32 },
     LocalFilePath { file_id: u32 },
     LineColumn { file_id: u32, ast_id: u32, offset: u32 },
+    ByteRange { file_id: u32, ast_id: u32, start: u32, end: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,6 +34,9 @@ pub enum SubResponse {
     LineColumnResult {
         line: u32,
         column: u32,
+    },
+    ByteRangeResult {
+        range: Range<usize>,
     },
 }
 
