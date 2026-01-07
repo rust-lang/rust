@@ -83,5 +83,74 @@ LL |
 LL ~         
    |
 
-error: aborting due to 4 previous errors
+error: temporary with significant `Drop` can be early dropped
+  --> tests/ui/significant_drop_tightening.rs:151:9
+   |
+LL |   fn issue15574() {
+   |  _________________-
+LL | |     use std::io::{BufRead, Read, stdin};
+LL | |     use std::process;
+...  |
+LL | |     let stdin = stdin().lock();
+   | |         ^^^^^
+...  |
+LL | |     println!("Hello {}!", buffer);
+LL | | }
+   | |_- temporary `stdin` is currently being dropped at the end of its contained scope
+   |
+   = note: this might lead to unnecessary resource contention
+help: merge the temporary construction with its single usage
+   |
+LL ~     
+LL +     let mut stdin = stdin().lock().take(40);
+LL |
+LL |     let mut buffer = String::with_capacity(10);
+LL |
+LL ~     
+   |
+
+error: temporary with significant `Drop` can be early dropped
+  --> tests/ui/significant_drop_tightening.rs:155:13
+   |
+LL |   fn issue15574() {
+   |  _________________-
+LL | |     use std::io::{BufRead, Read, stdin};
+LL | |     use std::process;
+...  |
+LL | |     let mut stdin = stdin.take(40);
+   | |             ^^^^^
+...  |
+LL | |     println!("Hello {}!", buffer);
+LL | | }
+   | |_- temporary `stdin` is currently being dropped at the end of its contained scope
+   |
+   = note: this might lead to unnecessary resource contention
+help: drop the temporary after the end of its last usage
+   |
+LL ~     }
+LL +     drop(stdin);
+   |
+
+error: temporary with significant `Drop` can be early dropped
+  --> tests/ui/significant_drop_tightening.rs:171:9
+   |
+LL |   fn issue16343() {
+   |  _________________-
+LL | |     fn get_items(x: &()) -> Vec<()> {
+LL | |         vec![*x]
+...  |
+LL | |     let lock = storage.lock().unwrap();
+   | |         ^^^^
+...  |
+LL | | }
+   | |_- temporary `lock` is currently being dropped at the end of its contained scope
+   |
+   = note: this might lead to unnecessary resource contention
+help: drop the temporary after the end of its last usage
+   |
+LL ~     let items = get_items(&lock);
+LL +     drop(lock);
+   |
+
+error: aborting due to 7 previous errors
 
