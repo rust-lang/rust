@@ -100,6 +100,77 @@ unsafe fn test_avx512() {
     }
     test_mm512_maddubs_epi16();
 
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_madd_epi16() {
+        // Input pairs
+        //
+        // - `i16::MIN * i16::MIN + i16::MIN * i16::MIN`: the 32-bit addition overflows
+        // - `i16::MAX * i16::MAX + i16::MAX * i16::MAX`: check that widening happens before
+        // arithmetic
+        // - `i16::MIN * i16::MAX + i16::MAX * i16::MIN`: check that large negative values are
+        // handled correctly
+        // - `3 * 1 + 4 * 2`: A sanity check, the result should be 14.
+
+        #[rustfmt::skip]
+        let a = _mm512_set_epi16(
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+        );
+
+        #[rustfmt::skip]
+        let b = _mm512_set_epi16(
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+        );
+
+        let r = _mm512_madd_epi16(a, b);
+
+        #[rustfmt::skip]
+        let e = _mm512_set_epi32(
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+        );
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_madd_epi16();
+
     #[target_feature(enable = "avx512f")]
     unsafe fn test_mm512_permutexvar_epi32() {
         let a = _mm512_set_epi32(
