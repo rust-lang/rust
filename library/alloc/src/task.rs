@@ -360,6 +360,7 @@ impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
 /// waker.wake_by_ref(); // Prints "woken".
 /// waker.wake();        // Prints "woken".
 /// ```
+// #[unstable(feature = "local_waker", issue = "118959")]
 #[unstable(feature = "waker_fn", issue = "149580")]
 pub fn local_waker_fn<F: Fn() + Send + Sync + 'static>(f: F) -> LocalWaker {
     struct LocalWakeFn<F> {
