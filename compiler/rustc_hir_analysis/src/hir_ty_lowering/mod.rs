@@ -2389,6 +2389,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::ConstArgKind::TupleCall(qpath, args) => {
                 self.lower_const_arg_tuple_call(hir_id, qpath, args, const_arg.span)
             }
+            hir::ConstArgKind::Array(_array_expr) => {
+                span_bug!(const_arg.span(), "lowering `{:?}` is not yet implemented", const_arg)
+            }
             hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
             hir::ConstArgKind::Infer(()) => self.ct_infer(None, const_arg.span),
             hir::ConstArgKind::Error(e) => ty::Const::new_error(tcx, e),
