@@ -454,6 +454,7 @@ symbols! {
         alu32,
         always,
         amdgpu,
+        amdgpu_dispatch_ptr,
         analysis,
         and,
         and_then,
