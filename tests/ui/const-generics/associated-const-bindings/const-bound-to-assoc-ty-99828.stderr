@@ -1,5 +1,5 @@
 error[E0658]: associated const equality is incomplete
-  --> $DIR/issue-99828.rs:1:43
+  --> $DIR/const-bound-to-assoc-ty-99828.rs:1:43
    |
 LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
    |                                           ^^^^^^^^^
@@ -9,7 +9,7 @@ LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: expected type, found constant
-  --> $DIR/issue-99828.rs:1:50
+  --> $DIR/const-bound-to-assoc-ty-99828.rs:1:50
    |
 LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
    |                                           ----   ^^ unexpected constant
@@ -20,7 +20,7 @@ note: the associated type is defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: expected type, found constant
-  --> $DIR/issue-99828.rs:1:50
+  --> $DIR/const-bound-to-assoc-ty-99828.rs:1:50
    |
 LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
    |                                           ----   ^^ unexpected constant
