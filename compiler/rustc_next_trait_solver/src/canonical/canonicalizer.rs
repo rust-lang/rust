@@ -244,8 +244,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         arg: impl Into<I::GenericArg>,
         kind: CanonicalVarKind<I>,
     ) -> ty::BoundVar {
-        // FIXME: 16 is made up and arbitrary. We should look at some
-        // perf data here.
+        // The exact value of 16 here doesn't matter that much (8 and 32 give extremely similar
+        // results). So long as we have protection against the rare cases where the length reaches
+        // 1000+ (e.g. `wg-grammar`).
         let arg = arg.into();
         let idx = if self.variables.len() > 16 {
             if self.variable_lookup_table.is_empty() {
