@@ -1,11 +1,11 @@
 error[E0080]: more C-variadic arguments read than were passed
-  --> $DIR/c-variadic-fail.rs:23:13
+  --> $DIR/c-variadic-fail.rs:25:13
    |
 LL |     const { read_n::<1>() }
    |             ^^^^^^^^^^^^^ evaluation of `read_too_many::{constant#2}` failed inside this call
    |
 note: inside `read_n::<1>`
-  --> $DIR/c-variadic-fail.rs:11:17
+  --> $DIR/c-variadic-fail.rs:13:17
    |
 LL |         let _ = ap.arg::<i32>();
    |                 ^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ note: inside `VaList::<'_>::arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:23:5
+  --> $DIR/c-variadic-fail.rs:25:5
    |
 LL |     const { read_n::<1>() }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:23:5
+  --> $DIR/c-variadic-fail.rs:25:5
    |
 LL |     const { read_n::<1>() }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,13 +27,13 @@ LL |     const { read_n::<1>() }
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: more C-variadic arguments read than were passed
-  --> $DIR/c-variadic-fail.rs:27:13
+  --> $DIR/c-variadic-fail.rs:29:13
    |
 LL |     const { read_n::<2>(1) }
    |             ^^^^^^^^^^^^^^ evaluation of `read_too_many::{constant#3}` failed inside this call
    |
 note: inside `read_n::<2>`
-  --> $DIR/c-variadic-fail.rs:11:17
+  --> $DIR/c-variadic-fail.rs:13:17
    |
 LL |         let _ = ap.arg::<i32>();
    |                 ^^^^^^^^^^^^^^^
@@ -41,13 +41,13 @@ note: inside `VaList::<'_>::arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:27:5
+  --> $DIR/c-variadic-fail.rs:29:5
    |
 LL |     const { read_n::<2>(1) }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:27:5
+  --> $DIR/c-variadic-fail.rs:29:5
    |
 LL |     const { read_n::<2>(1) }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,13 +55,13 @@ LL |     const { read_n::<2>(1) }
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: va_arg type mismatch: requested `u32`, but next argument is `i32`
-  --> $DIR/c-variadic-fail.rs:45:13
+  --> $DIR/c-variadic-fail.rs:47:13
    |
 LL |     const { read_as::<u32>(1i32) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast::{constant#6}` failed inside this call
    |
 note: inside `read_as::<u32>`
-  --> $DIR/c-variadic-fail.rs:32:5
+  --> $DIR/c-variadic-fail.rs:34:5
    |
 LL |     ap.arg::<T>()
    |     ^^^^^^^^^^^^^
@@ -69,13 +69,13 @@ note: inside `VaList::<'_>::arg::<u32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:45:5
+  --> $DIR/c-variadic-fail.rs:47:5
    |
 LL |     const { read_as::<u32>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:45:5
+  --> $DIR/c-variadic-fail.rs:47:5
    |
 LL |     const { read_as::<u32>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,13 +83,13 @@ LL |     const { read_as::<u32>(1i32) };
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: va_arg type mismatch: requested `i32`, but next argument is `u32`
-  --> $DIR/c-variadic-fail.rs:48:13
+  --> $DIR/c-variadic-fail.rs:50:13
    |
 LL |     const { read_as::<i32>(1u32) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast::{constant#7}` failed inside this call
    |
 note: inside `read_as::<i32>`
-  --> $DIR/c-variadic-fail.rs:32:5
+  --> $DIR/c-variadic-fail.rs:34:5
    |
 LL |     ap.arg::<T>()
    |     ^^^^^^^^^^^^^
@@ -97,13 +97,13 @@ note: inside `VaList::<'_>::arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:48:5
+  --> $DIR/c-variadic-fail.rs:50:5
    |
 LL |     const { read_as::<i32>(1u32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:48:5
+  --> $DIR/c-variadic-fail.rs:50:5
    |
 LL |     const { read_as::<i32>(1u32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,13 +111,13 @@ LL |     const { read_as::<i32>(1u32) };
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: va_arg type mismatch: requested `i32`, but next argument is `u64`
-  --> $DIR/c-variadic-fail.rs:51:13
+  --> $DIR/c-variadic-fail.rs:53:13
    |
 LL |     const { read_as::<i32>(1u64) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast::{constant#8}` failed inside this call
    |
 note: inside `read_as::<i32>`
-  --> $DIR/c-variadic-fail.rs:32:5
+  --> $DIR/c-variadic-fail.rs:34:5
    |
 LL |     ap.arg::<T>()
    |     ^^^^^^^^^^^^^
@@ -125,13 +125,13 @@ note: inside `VaList::<'_>::arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:51:5
+  --> $DIR/c-variadic-fail.rs:53:5
    |
 LL |     const { read_as::<i32>(1u64) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:51:5
+  --> $DIR/c-variadic-fail.rs:53:5
    |
 LL |     const { read_as::<i32>(1u64) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,13 +139,13 @@ LL |     const { read_as::<i32>(1u64) };
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: va_arg type mismatch: requested `f64`, but next argument is `i32`
-  --> $DIR/c-variadic-fail.rs:54:13
+  --> $DIR/c-variadic-fail.rs:56:13
    |
 LL |     const { read_as::<f64>(1i32) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast::{constant#9}` failed inside this call
    |
 note: inside `read_as::<f64>`
-  --> $DIR/c-variadic-fail.rs:32:5
+  --> $DIR/c-variadic-fail.rs:34:5
    |
 LL |     ap.arg::<T>()
    |     ^^^^^^^^^^^^^
@@ -153,13 +153,13 @@ note: inside `VaList::<'_>::arg::<f64>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:54:5
+  --> $DIR/c-variadic-fail.rs:56:5
    |
 LL |     const { read_as::<f64>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:54:5
+  --> $DIR/c-variadic-fail.rs:56:5
    |
 LL |     const { read_as::<f64>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -167,13 +167,13 @@ LL |     const { read_as::<f64>(1i32) };
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: va_arg type mismatch: requested `*const u8`, but next argument is `i32`
-  --> $DIR/c-variadic-fail.rs:57:13
+  --> $DIR/c-variadic-fail.rs:59:13
    |
 LL |     const { read_as::<*const u8>(1i32) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast::{constant#10}` failed inside this call
    |
 note: inside `read_as::<*const u8>`
-  --> $DIR/c-variadic-fail.rs:32:5
+  --> $DIR/c-variadic-fail.rs:34:5
    |
 LL |     ap.arg::<T>()
    |     ^^^^^^^^^^^^^
@@ -181,13 +181,13 @@ note: inside `VaList::<'_>::arg::<*const u8>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:57:5
+  --> $DIR/c-variadic-fail.rs:59:5
    |
 LL |     const { read_as::<*const u8>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/c-variadic-fail.rs:57:5
+  --> $DIR/c-variadic-fail.rs:59:5
    |
 LL |     const { read_as::<*const u8>(1i32) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

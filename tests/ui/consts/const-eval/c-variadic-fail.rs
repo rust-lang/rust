@@ -1,8 +1,10 @@
 //@ build-fail
 
 #![feature(c_variadic)]
-#![feature(const_destruct)]
 #![feature(c_variadic_const)]
+#![feature(const_trait_impl)]
+#![feature(const_destruct)]
+#![feature(const_clone)]
 
 const unsafe extern "C" fn read_n<const N: usize>(mut ap: ...) {
     let mut i = N;
@@ -58,9 +60,29 @@ unsafe fn read_cast() {
     //~^ ERROR va_arg type mismatch: requested `*const u8`, but next argument is `i32`
 }
 
+fn manual_copy() {
+    const unsafe extern "C" fn helper(ap: ...) -> i32 {
+        // A copy created using Clone is valid, and can be used to read arguments.
+        let mut copy = ap.clone();
+        assert!(copy.arg::<i32>() == 1i32);
+
+        let mut u = core::mem::MaybeUninit::uninit();
+        unsafe { core::ptr::copy_nonoverlapping(&ap, u.as_mut_ptr(), 1) };
+
+        // Manually creating the copy is fine.
+        let mut copy = unsafe { u.assume_init() };
+
+        // Reading arguments from this copy is UB.
+        copy.arg::<i32>()
+    }
+
+    const { unsafe { helper(1, 2, 3) } };
+}
+
 fn main() {
     unsafe {
         read_too_many();
         read_cast();
+        manual_copy();
     }
 }

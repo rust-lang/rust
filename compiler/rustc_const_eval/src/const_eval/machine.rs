@@ -22,7 +22,7 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
     compile_time_machine, err_inval, err_unsup_format, interp_ok, throw_exhaust, throw_inval,
     throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
@@ -590,6 +590,30 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
             }
+            sym::va_copy => {
+                // pub const unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
+
+                // `src` is `&VaList`, so grab the underlying `VaList` type/layout.
+                let src_va_list_ty = match args[1].layout.ty.kind() {
+                    ty::Ref(_, ty, _) => *ty,
+                    _ => bug!(
+                        "va_copy: expected second argument to be `&VaList`, got {:?}",
+                        args[1].layout.ty
+                    ),
+                };
+                let va_list_layout = ecx.layout_of(src_va_list_ty)?;
+
+                // Get the pointers to the actual VaList storage.
+                let dest_ptr = ecx.read_pointer(&args[0])?; // *mut VaList
+                let src_ptr = ecx.read_pointer(&args[1])?; // &VaList
+
+                // Turn them into places and copy the bytes.
+                let src_mplace = ecx.ptr_to_mplace(src_ptr, va_list_layout);
+                let dest_mplace = ecx.ptr_to_mplace(dest_ptr, va_list_layout);
+
+                ecx.copy_op(&src_mplace, &dest_mplace)?;
+            }
+
             sym::va_arg => {
                 let ptr_size = ecx.tcx.data_layout.pointer_size();
 

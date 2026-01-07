@@ -200,12 +200,13 @@ impl fmt::Debug for VaList<'_> {
 
 impl VaList<'_> {
     // Helper used in the implementation of the `va_copy` intrinsic.
-    pub(crate) fn duplicate(&self) -> Self {
-        Self { inner: self.inner.clone(), _marker: self._marker }
+    pub(crate) const fn duplicate(&self) -> Self {
+        Self { inner: self.inner, _marker: self._marker }
     }
 }
 
-impl Clone for VaList<'_> {
+#[rustc_const_unstable(feature = "c_variadic_const", issue = "none")]
+impl<'f> const Clone for VaList<'f> {
     #[inline]
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
