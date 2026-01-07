@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::std_or_core;
 use clippy_utils::sugg::Sugg;
@@ -14,19 +14,14 @@ use std::iter;
 
 use super::UNNECESSARY_SORT_BY;
 
-enum LintTrigger {
-    Sort(SortDetection),
-    SortByKey(SortByKeyDetection),
+enum LintTrigger<'tcx> {
+    Sort,
+    SortByKey(SortByKeyDetection<'tcx>),
 }
 
-struct SortDetection {
-    vec_name: Sugg<'static>,
-}
-
-struct SortByKeyDetection {
-    vec_name: Sugg<'static>,
+struct SortByKeyDetection<'tcx> {
     closure_arg: Symbol,
-    closure_body: Sugg<'static>,
+    closure_body: &'tcx Expr<'tcx>,
     reverse: bool,
 }
 
@@ -114,7 +109,7 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: Ident, b_expr: &Expr<'_>, b_ident:
     }
 }
 
-fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
+fn detect_lint<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger<'tcx>> {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().is_slice()
@@ -144,13 +139,12 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         && cx.ty_based_def(closure_body.value).opt_parent(cx).opt_def_id() == Some(ord_trait)
     {
         let (closure_body, closure_arg, reverse) = if mirrored_exprs(left_expr, left_ident, right_expr, right_ident) {
-            (Sugg::hir(cx, left_expr, "_"), left_ident.name, false)
+            (left_expr, left_ident.name, false)
         } else if mirrored_exprs(left_expr, right_ident, right_expr, left_ident) {
-            (Sugg::hir(cx, left_expr, "_"), right_ident.name, true)
+            (left_expr, right_ident.name, true)
         } else {
             return None;
         };
-        let vec_name = Sugg::hir(cx, recv, "(_)");
 
         if let ExprKind::Path(QPath::Resolved(
             _,
@@ -162,12 +156,11 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             && *left_name == left_ident
             && implements_trait(cx, cx.typeck_results().expr_ty(left_expr), ord_trait, &[])
         {
-            return Some(LintTrigger::Sort(SortDetection { vec_name }));
+            return Some(LintTrigger::Sort);
         }
 
         if !expr_borrows(cx, left_expr) {
             return Some(LintTrigger::SortByKey(SortByKeyDetection {
-                vec_name,
                 closure_arg,
                 closure_body,
                 reverse,
@@ -190,49 +183,57 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     is_unstable: bool,
 ) {
-    match detect_lint(cx, expr, recv, arg) {
+    match detect_lint(cx, expr, arg) {
         Some(LintTrigger::SortByKey(trigger)) => {
             let method = if is_unstable {
                 "sort_unstable_by_key"
             } else {
                 "sort_by_key"
             };
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
                 format!("consider using `{method}`"),
-                "try",
-                format!(
-                    "{}.{}(|{}| {})",
-                    trigger.vec_name,
-                    method,
-                    trigger.closure_arg,
-                    if let Some(std_or_core) = std_or_core(cx)
-                        && trigger.reverse
-                    {
-                        format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
+                |diag| {
+                    let mut app = if trigger.reverse {
+                        Applicability::MaybeIncorrect
                     } else {
-                        trigger.closure_body.to_string()
-                    },
-                ),
-                if trigger.reverse {
-                    Applicability::MaybeIncorrect
-                } else {
-                    Applicability::MachineApplicable
+                        Applicability::MachineApplicable
+                    };
+                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
+                    let closure_body = Sugg::hir_with_applicability(cx, trigger.closure_body, "_", &mut app);
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!(
+                            "{recv}.{method}(|{}| {})",
+                            trigger.closure_arg,
+                            if let Some(std_or_core) = std_or_core(cx)
+                                && trigger.reverse
+                            {
+                                format!("{std_or_core}::cmp::Reverse({closure_body})")
+                            } else {
+                                closure_body.to_string()
+                            },
+                        ),
+                        app,
+                    );
                 },
             );
         },
-        Some(LintTrigger::Sort(trigger)) => {
+        Some(LintTrigger::Sort) => {
             let method = if is_unstable { "sort_unstable" } else { "sort" };
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
                 format!("consider using `{method}`"),
-                "try",
-                format!("{}.{}()", trigger.vec_name, method),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
+                    diag.span_suggestion(expr.span, "try", format!("{recv}.{method}()"), app);
+                },
             );
         },
         None => {},
