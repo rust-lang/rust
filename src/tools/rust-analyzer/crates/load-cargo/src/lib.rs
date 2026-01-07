@@ -591,6 +591,16 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::FilePathResult { name })
             }
+            SubRequest::ByteRange { file_id, ast_id, start, end } => {
+                let range = resolve_sub_span(
+                    db,
+                    file_id,
+                    ast_id,
+                    TextRange::new(TextSize::from(start), TextSize::from(end)),
+                );
+
+                Ok(SubResponse::ByteRangeResult { range: range.range.into() })
+            }
         };
         match self.0.expand(
             subtree.view(),

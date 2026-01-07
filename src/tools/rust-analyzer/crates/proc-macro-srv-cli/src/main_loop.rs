@@ -6,7 +6,7 @@ use proc_macro_api::{
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version::CURRENT_API_VERSION,
 };
-use std::io::{self, BufRead, Write};
+use std::{io, ops::Range};
 
 use legacy::Message;
 
@@ -238,6 +238,23 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
                 bidirectional::SubResponse::LineColumnResult { line, column },
             )) => Some((line, column)),
             _ => None,
+        }
+    }
+
+    fn byte_range(
+        &mut self,
+        proc_macro_srv::span::Span { range, anchor, ctx: _ }: proc_macro_srv::span::Span,
+    ) -> Range<usize> {
+        match self.roundtrip(bidirectional::SubRequest::ByteRange {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            start: range.start().into(),
+            end: range.end().into(),
+        }) {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::ByteRangeResult { range },
+            )) => range,
+            _ => Range { start: range.start().into(), end: range.end().into() },
         }
     }
 }
