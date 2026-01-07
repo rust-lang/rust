@@ -45,4 +45,7 @@ fn main() {
         )
         .actual_text("(rustc -Whelp -Zhelp -Chelp --help)", &ordered_help)
         .run();
+
+    // Test that `rustc --help` does not suppress invalid flag errors
+    let help = bare_rustc().arg("--help --invalid-flag").run_fail().stdout_utf8();
 }
