@@ -10,6 +10,7 @@ use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -396,7 +397,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         assert!(force || finalize.is_none()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
-        if orig_ident.is_path_segment_keyword() && !matches!(scope_set, ScopeSet::Module(..)) {
+        if !matches!(scope_set, ScopeSet::Module(..)) && orig_ident.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
 
@@ -423,7 +424,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_results: Vec<(Decl<'_>, Scope<'_>)> = Vec::new();
+        let mut innermost_results: SmallVec<[(Decl<'_>, Scope<'_>); 2]> = SmallVec::new();
         let mut determinacy = Determinacy::Determined;
 
         // Go through all the scopes and try to resolve the name.
