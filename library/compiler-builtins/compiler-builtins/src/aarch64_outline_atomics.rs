@@ -135,18 +135,44 @@ macro_rules! stxp {
     };
 }
 
+// Apple and Elf have different symbol access syntax
+#[cfg(not(target_vendor = "apple"))]
+macro_rules! sym {
+    ($sym:literal) => {
+        $sym
+    };
+}
+#[cfg(target_vendor = "apple")]
+macro_rules! sym {
+    ($sym:literal) => {
+        concat!($sym, "@PAGE")
+    };
+}
+#[cfg(not(target_vendor = "apple"))]
+macro_rules! sym_off {
+    ($sym:literal) => {
+        concat!(":lo12:", $sym)
+    };
+}
+#[cfg(target_vendor = "apple")]
+macro_rules! sym_off {
+    ($sym:literal) => {
+        concat!($sym, "@PAGEOFF")
+    };
+}
+
 // If supported, perform the requested LSE op and return, or fallthrough.
 macro_rules! try_lse_op {
     ($op: literal, $ordering:ident, $bytes:tt, $($reg:literal,)* [ $mem:ident ] ) => {
         concat!(
-            ".arch_extension lse; ",
-            "adrp    x16, {have_lse}; ",
-            "ldrb    w16, [x16, :lo12:{have_lse}]; ",
-            "cbz     w16, 8f; ",
+            ".arch_extension lse\n",
+            concat!("adrp    x16, ", sym!("{have_lse}"), "\n"),
+            concat!("ldrb    w16, [x16, ", sym_off!("{have_lse}"), "]\n"),
+            "cbz     w16, 8f\n",
             // LSE_OP  s(reg),* [$mem]
-            concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]; ",),
-            "ret; ",
-            "8:"
+            concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]\n",),
+            "ret
+            8:"
         )
     };
 }
