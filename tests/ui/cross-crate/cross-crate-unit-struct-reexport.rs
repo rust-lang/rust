@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:issue-12660-aux.rs
+//@ aux-build:aux-12660.rs
 
 
 extern crate issue12660aux;
