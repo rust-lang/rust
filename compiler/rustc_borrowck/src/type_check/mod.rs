@@ -1581,12 +1581,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     .unwrap();
                                 }
                                 (None, None) => {
+                                    // `struct_tail` returns regions which haven't been mapped
+                                    // to nll vars yet so we do it here as `outlives_constraints`
+                                    // expects nll vars.
+                                    let src_lt = self.universal_regions.to_region_vid(src_lt);
+                                    let dst_lt = self.universal_regions.to_region_vid(dst_lt);
+
                                     // The principalless (no non-auto traits) case:
                                     // You can only cast `dyn Send + 'long` to `dyn Send + 'short`.
                                     self.constraints.outlives_constraints.push(
                                         OutlivesConstraint {
-                                            sup: src_lt.as_var(),
-                                            sub: dst_lt.as_var(),
+                                            sup: src_lt,
+                                            sub: dst_lt,
                                             locations: location.to_locations(),
                                             span: location.to_locations().span(self.body),
                                             category: ConstraintCategory::Cast {
