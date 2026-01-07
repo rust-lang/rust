@@ -154,7 +154,7 @@ where
     //
     // We therefore instantiate the existential variable in the canonical response with the
     // inference variable of the input right away, which is more performant.
-    let mut opt_values = IndexVec::from_elem_n(None, response.variables.len());
+    let mut opt_values = IndexVec::from_elem_n(None, response.var_kinds.len());
     for (original_value, result_value) in iter::zip(original_values, var_values.var_values.iter()) {
         match result_value.kind() {
             ty::GenericArgKind::Type(t) => {
@@ -164,7 +164,7 @@ where
                 // more involved. They are also a lot rarer than region variables.
                 if let ty::Bound(index_kind, b) = t.kind()
                     && !matches!(
-                        response.variables.get(b.var().as_usize()).unwrap(),
+                        response.var_kinds.get(b.var().as_usize()).unwrap(),
                         CanonicalVarKind::Ty { .. }
                     )
                 {
@@ -186,7 +186,7 @@ where
             }
         }
     }
-    CanonicalVarValues::instantiate(delegate.cx(), response.variables, |var_values, kind| {
+    CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |var_values, kind| {
         if kind.universe() != ty::UniverseIndex::ROOT {
             // A variable from inside a binder of the query. While ideally these shouldn't
             // exist at all (see the FIXME at the start of this method), we have to deal with
@@ -342,14 +342,14 @@ where
 pub fn response_no_constraints_raw<I: Interner>(
     cx: I,
     max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVarKinds,
+    var_kinds: I::CanonicalVarKinds,
     certainty: Certainty,
 ) -> CanonicalResponse<I> {
     ty::Canonical {
         max_universe,
-        variables,
+        var_kinds,
         value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
+            var_values: ty::CanonicalVarValues::make_identity(cx, var_kinds),
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),

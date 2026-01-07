@@ -106,8 +106,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         };
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, variables) = canonicalizer.finalize();
-        Canonical { max_universe, variables, value }
+        let (max_universe, var_kinds) = canonicalizer.finalize();
+        Canonical { max_universe, var_kinds, value }
     }
 
     fn canonicalize_param_env(
@@ -235,8 +235,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, variables) = rest_canonicalizer.finalize();
-        Canonical { max_universe, variables, value }
+        let (max_universe, var_kinds) = rest_canonicalizer.finalize();
+        Canonical { max_universe, var_kinds, value }
     }
 
     fn get_or_insert_bound_var(
