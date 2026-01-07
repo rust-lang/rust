@@ -417,7 +417,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // We don't canonicalize `ReStatic` in the `param_env` as we use it
             // when checking whether a `ParamEnv` candidate is global.
             ty::ReStatic => match self.canonicalize_mode {
-                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
                     CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
                 }
                 CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
@@ -545,7 +545,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         match self.canonicalize_mode {
             CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
             | CanonicalizeMode::Response { max_input_universe: _ } => {}
-            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
+            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
                 panic!("erasing 'static in env")
             }
         }
