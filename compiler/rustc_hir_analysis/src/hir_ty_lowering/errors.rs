@@ -28,31 +28,29 @@ use tracing::debug;
 
 use super::InherentAssocCandidate;
 use crate::errors::{
-    self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
+    self, AssocItemConstraintsNotAllowedHere, ManualImplementation, ParenthesizedFnTraitExpansion,
+    TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
-    /// the type parameter's name as a placeholder.
-    pub(crate) fn report_missing_type_params(
+    pub(crate) fn report_missing_generic_params(
         &self,
-        missing_type_params: Vec<Symbol>,
+        missing_generic_params: Vec<(Symbol, ty::GenericParamDefKind)>,
         def_id: DefId,
         span: Span,
         empty_generic_args: bool,
     ) {
-        if missing_type_params.is_empty() {
+        if missing_generic_params.is_empty() {
             return;
         }
 
-        self.dcx().emit_err(MissingTypeParams {
+        self.dcx().emit_err(errors::MissingGenericParams {
             span,
             def_span: self.tcx().def_span(def_id),
             span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
-            missing_type_params,
+            missing_generic_params,
             empty_generic_args,
         });
     }

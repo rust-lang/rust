@@ -330,6 +330,31 @@ hir_analysis_manual_implementation =
 hir_analysis_method_should_return_future = method should be `async` or return a future, but it is synchronous
     .note = this method is `async` so it expects a future to be returned
 
+hir_analysis_missing_generic_params =
+    the {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be explicitly specified
+    .label = {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be specified for this
+    .suggestion = explicitly specify the {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    }
+    .no_suggestion_label = missing {$parameterCount ->
+        [one] reference
+        *[other] references
+    } to {$parameters}
+    .note = because the parameter {$parameterCount ->
+        [one] default references
+        *[other] defaults reference
+    } `Self`, the {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } must be specified on the trait object type
+
 hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
     .label = missing one of `{$missing_items_msg}` in implementation
     .note = required because of this annotation
@@ -345,34 +370,6 @@ hir_analysis_missing_trait_item_unstable = not all trait items implemented, miss
     .note = default implementation of `{$missing_item_name}` is unstable
     .some_note = use of unstable library feature `{$feature}`: {$reason}
     .none_note = use of unstable library feature `{$feature}`
-
-hir_analysis_missing_type_params =
-    the type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } {$parameters} must be explicitly specified
-    .label = type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } {$parameters} must be specified for this
-    .suggestion = set the type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } to the desired {$parameterCount ->
-        [one] type
-        *[other] types
-    }
-    .no_suggestion_label = missing {$parameterCount ->
-        [one] reference
-        *[other] references
-    } to {$parameters}
-    .note = because the parameter {$parameterCount ->
-        [one] default references
-        *[other] defaults reference
-    } `Self`, the {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } must be specified on the object type
 
 hir_analysis_no_variant_named = no variant named `{$ident}` found for enum `{$ty}`
 

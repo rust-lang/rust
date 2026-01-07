@@ -352,9 +352,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 let span = *spans.first().unwrap();
 
-                // Verify that `dummy_self` did not leak inside default type parameters. This
+                // Verify that `dummy_self` did not leak inside generic parameter defaults. This
                 // could not be done at path creation, since we need to see through trait aliases.
-                let mut missing_type_params = vec![];
+                let mut missing_generic_params = Vec::new();
                 let generics = tcx.generics_of(trait_ref.def_id);
                 let args: Vec<_> = trait_ref
                     .args
@@ -365,8 +365,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .map(|(index, arg)| {
                         if arg.walk().any(|arg| arg == dummy_self.into()) {
                             let param = &generics.own_params[index];
-                            missing_type_params.push(param.name);
-                            Ty::new_misc_error(tcx).into()
+                            missing_generic_params.push((param.name, param.kind.clone()));
+                            param.to_error(tcx)
                         } else {
                             arg
                         }
@@ -377,8 +377,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
-                self.report_missing_type_params(
-                    missing_type_params,
+                self.report_missing_generic_params(
+                    missing_generic_params,
                     trait_ref.def_id,
                     span,
                     empty_generic_args,
