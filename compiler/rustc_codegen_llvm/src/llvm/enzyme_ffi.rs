@@ -153,7 +153,7 @@ pub(crate) mod Enzyme_AD {
     fn load_ptr_by_symbol_mut_void(
         lib: &libloading::Library,
         bytes: &[u8],
-    ) -> Result<*mut c_void, Box<dyn std::error::Error>> {
+    ) -> Result<*mut c_void, libloading::Error> {
         unsafe {
             let s: libloading::Symbol<'_, *mut c_void> = lib.get(bytes)?;
             // libloading = 0.9.0: try_as_raw_ptr always succeeds and returns Some
@@ -192,15 +192,27 @@ pub(crate) mod Enzyme_AD {
 
     static ENZYME_INSTANCE: OnceLock<Mutex<EnzymeWrapper>> = OnceLock::new();
 
+    #[derive(Debug)]
+    pub(crate) enum EnzymeLibraryError {
+        NotFound { err: String },
+        LoadFailed { err: String },
+    }
+
+    impl From<libloading::Error> for EnzymeLibraryError {
+        fn from(err: libloading::Error) -> Self {
+            Self::LoadFailed { err: format!("{err:?}") }
+        }
+    }
+
     impl EnzymeWrapper {
         /// Initialize EnzymeWrapper with the given sysroot if not already initialized.
         /// Safe to call multiple times - subsequent calls are no-ops due to OnceLock.
         pub(crate) fn get_or_init(
             sysroot: &rustc_session::config::Sysroot,
-        ) -> Result<MutexGuard<'static, Self>, Box<dyn std::error::Error>> {
+        ) -> Result<MutexGuard<'static, Self>, EnzymeLibraryError> {
             let mtx: &'static Mutex<EnzymeWrapper> = ENZYME_INSTANCE.get_or_try_init(|| {
                 let w = Self::call_dynamic(sysroot)?;
-                Ok::<_, Box<dyn std::error::Error>>(Mutex::new(w))
+                Ok::<_, EnzymeLibraryError>(Mutex::new(w))
             })?;
 
             Ok(mtx.lock().unwrap())
@@ -351,7 +363,7 @@ pub(crate) mod Enzyme_AD {
         #[allow(non_snake_case)]
         fn call_dynamic(
             sysroot: &rustc_session::config::Sysroot,
-        ) -> Result<Self, Box<dyn std::error::Error>> {
+        ) -> Result<Self, EnzymeLibraryError> {
             let enzyme_path = Self::get_enzyme_path(sysroot)?;
             let lib = unsafe { libloading::Library::new(enzyme_path)? };
 
@@ -416,7 +428,7 @@ pub(crate) mod Enzyme_AD {
             })
         }
 
-        fn get_enzyme_path(sysroot: &Sysroot) -> Result<String, String> {
+        fn get_enzyme_path(sysroot: &Sysroot) -> Result<String, EnzymeLibraryError> {
             let llvm_version_major = unsafe { LLVMRustVersionMajor() };
 
             let path_buf = sysroot
@@ -434,15 +446,19 @@ pub(crate) mod Enzyme_AD {
                         .map(|p| p.join("lib").display().to_string())
                         .collect::<Vec<String>>()
                         .join("\n* ");
-                    format!(
-                        "failed to find a `libEnzyme-{llvm_version_major}` folder \
+                    EnzymeLibraryError::NotFound {
+                        err: format!(
+                            "failed to find a `libEnzyme-{llvm_version_major}` folder \
                     in the sysroot candidates:\n* {candidates}"
-                    )
+                        ),
+                    }
                 })?;
 
             Ok(path_buf
                 .to_str()
-                .ok_or_else(|| format!("invalid UTF-8 in path: {}", path_buf.display()))?
+                .ok_or_else(|| EnzymeLibraryError::LoadFailed {
+                    err: format!("invalid UTF-8 in path: {}", path_buf.display()),
+                })?
                 .to_string())
         }
     }
