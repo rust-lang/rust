@@ -59,10 +59,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    let mut orig_values = Default::default();
-    let canonical = Canonicalizer::canonicalize_input(
+    let (orig_values, canonical) = Canonicalizer::canonicalize_input(
         delegate,
-        &mut orig_values,
         QueryInput {
             goal,
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),

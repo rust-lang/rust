@@ -64,7 +64,7 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
     canonicalize_mode: CanonicalizeMode,
 
     // Mutable fields.
-    variables: &'a mut Vec<I::GenericArg>,
+    variables: Vec<I::GenericArg>,
     var_kinds: Vec<CanonicalVarKind<I>>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
     /// Maps each `sub_unification_table_root_var` to the index of the first
@@ -86,12 +86,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         max_input_universe: ty::UniverseIndex,
         value: T,
     ) -> ty::Canonical<I, T> {
-        let mut variables = Vec::new();
         let mut canonicalizer = Canonicalizer {
             delegate,
             canonicalize_mode: CanonicalizeMode::Response { max_input_universe },
 
-            variables: &mut variables,
+            variables: Vec::new(),
             variable_lookup_table: Default::default(),
             sub_root_lookup_table: Default::default(),
             var_kinds: Vec::new(),
@@ -106,17 +105,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         };
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, var_kinds) = canonicalizer.finalize();
+        let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
         Canonical { max_universe, var_kinds, value }
     }
 
     fn canonicalize_param_env(
         delegate: &'a D,
-        variables: &'a mut Vec<I::GenericArg>,
         param_env: I::ParamEnv,
-    ) -> (I::ParamEnv, HashMap<I::GenericArg, usize>, Vec<CanonicalVarKind<I>>) {
+    ) -> (I::ParamEnv, Vec<I::GenericArg>, Vec<CanonicalVarKind<I>>, HashMap<I::GenericArg, usize>)
+    {
         if !param_env.has_type_flags(NEEDS_CANONICAL) {
-            return (param_env, Default::default(), Vec::new());
+            return (param_env, Vec::new(), Vec::new(), Default::default());
         }
 
         // Check whether we can use the global cache for this param_env. As we only use
@@ -130,12 +129,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             delegate.cx().canonical_param_env_cache_get_or_insert(
                 param_env,
                 || {
-                    let mut variables = Vec::new();
                     let mut env_canonicalizer = Canonicalizer {
                         delegate,
                         canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
-                        variables: &mut variables,
+                        variables: Vec::new(),
                         variable_lookup_table: Default::default(),
                         sub_root_lookup_table: Default::default(),
                         var_kinds: Vec::new(),
@@ -148,18 +146,16 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         param_env,
                         variable_lookup_table: env_canonicalizer.variable_lookup_table,
                         var_kinds: env_canonicalizer.var_kinds,
-                        variables,
+                        variables: env_canonicalizer.variables,
                     }
                 },
                 |&CanonicalParamEnvCacheEntry {
                      param_env,
-                     variables: ref cache_variables,
+                     ref variables,
                      ref variable_lookup_table,
                      ref var_kinds,
                  }| {
-                    debug_assert!(variables.is_empty());
-                    variables.extend(cache_variables.iter().copied());
-                    (param_env, variable_lookup_table.clone(), var_kinds.clone())
+                    (param_env, variables.clone(), var_kinds.clone(), variable_lookup_table.clone())
                 },
             )
         } else {
@@ -167,7 +163,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 delegate,
                 canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
-                variables,
+                variables: Vec::new(),
                 variable_lookup_table: Default::default(),
                 sub_root_lookup_table: Default::default(),
                 var_kinds: Vec::new(),
@@ -176,7 +172,12 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             };
             let param_env = param_env.fold_with(&mut env_canonicalizer);
             debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
-            (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
+            (
+                param_env,
+                env_canonicalizer.variables,
+                env_canonicalizer.var_kinds,
+                env_canonicalizer.variable_lookup_table,
+            )
         }
     }
 
@@ -190,12 +191,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     /// variable in the future by changing the way we detect global where-bounds.
     pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
-        variables: &'a mut Vec<I::GenericArg>,
         input: QueryInput<I, P>,
-    ) -> ty::Canonical<I, QueryInput<I, P>> {
+    ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
         // First canonicalize the `param_env` while keeping `'static`
-        let (param_env, variable_lookup_table, var_kinds) =
-            Canonicalizer::canonicalize_param_env(delegate, variables, input.goal.param_env);
+        let (param_env, variables, var_kinds, variable_lookup_table) =
+            Canonicalizer::canonicalize_param_env(delegate, input.goal.param_env);
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
@@ -235,8 +235,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, var_kinds) = rest_canonicalizer.finalize();
-        Canonical { max_universe, var_kinds, value }
+        let (max_universe, variables, var_kinds) = rest_canonicalizer.finalize();
+        (variables, Canonical { max_universe, var_kinds, value })
     }
 
     fn get_or_insert_bound_var(
@@ -277,7 +277,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVarKinds) {
+    fn finalize(self) -> (ty::UniverseIndex, Vec<I::GenericArg>, I::CanonicalVarKinds) {
         let mut var_kinds = self.var_kinds;
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
@@ -310,7 +310,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             }
         };
         let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
-        (max_universe, var_kinds)
+        (max_universe, self.variables, var_kinds)
     }
 
     fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
