@@ -8,15 +8,20 @@ use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_middle::mir::{ProjectionElem, UserTypeProjection, UserTypeProjections};
 use rustc_middle::ty::{AdtDef, UserTypeAnnotationIndex};
 use rustc_span::Symbol;
 
+/// A single `thir::Pat` node should almost never have more than 0-2 user types.
+/// We can store up to 4 inline in the same size as an ordinary `Vec`.
+pub(crate) type UserTypeIndices = SmallVec<[UserTypeAnnotationIndex; 4]>;
+
 /// One of a list of "operations" that can be used to lazily build projections
 /// of user-specified types.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) enum ProjectedUserTypesOp {
-    PushUserType { base: UserTypeAnnotationIndex },
+    PushUserTypes { base_types: UserTypeIndices },
 
     Index,
     Subslice { from: u64, to: u64 },
@@ -32,9 +37,10 @@ pub(crate) enum ProjectedUserTypesNode<'a> {
 }
 
 impl<'a> ProjectedUserTypesNode<'a> {
-    pub(crate) fn push_user_type(&'a self, base: UserTypeAnnotationIndex) -> Self {
-        // Pushing a base user type always causes the chain to become non-empty.
-        Self::Chain { parent: self, op: ProjectedUserTypesOp::PushUserType { base } }
+    pub(crate) fn push_user_types(&'a self, base_types: UserTypeIndices) -> Self {
+        assert!(!base_types.is_empty());
+        // Pushing one or more base user types always causes the chain to become non-empty.
+        Self::Chain { parent: self, op: ProjectedUserTypesOp::PushUserTypes { base_types } }
     }
 
     /// Push another projection op onto the chain, but only if it is already non-empty.
@@ -94,16 +100,19 @@ impl<'a> ProjectedUserTypesNode<'a> {
             return None;
         }
 
-        let ops_reversed = self.iter_ops_reversed().cloned().collect::<Vec<_>>();
+        let ops_reversed = self.iter_ops_reversed().collect::<Vec<_>>();
         // The "first" op should always be `PushUserType`.
         // Other projections are only added if there is at least one user type.
-        assert_matches!(ops_reversed.last(), Some(ProjectedUserTypesOp::PushUserType { .. }));
+        assert_matches!(ops_reversed.last(), Some(ProjectedUserTypesOp::PushUserTypes { .. }));
 
         let mut projections = vec![];
         for op in ops_reversed.into_iter().rev() {
-            match op {
-                ProjectedUserTypesOp::PushUserType { base } => {
-                    projections.push(UserTypeProjection { base, projs: vec![] })
+            match *op {
+                ProjectedUserTypesOp::PushUserTypes { ref base_types } => {
+                    assert!(!base_types.is_empty());
+                    for &base in base_types {
+                        projections.push(UserTypeProjection { base, projs: vec![] })
+                    }
                 }
 
                 ProjectedUserTypesOp::Index => {

@@ -879,6 +879,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &ProjectedUserTypesNode<'_>,
         ),
     ) {
+        // Ascriptions correspond to user-written types like `let A::<'a>(_): A<'static> = ...;`.
+        //
+        // Caution: Pushing user types here is load-bearing even for
+        // patterns containing no bindings, to ensure that the type ends
+        // up represented in MIR _somewhere_.
+        let user_tys = match pattern.kind {
+            PatKind::AscribeUserType { ref ascription, .. } => {
+                let base_user_tys = std::iter::once(ascription)
+                    .map(|thir::Ascription { annotation, variance: _ }| {
+                        // Note that the variance doesn't apply here, as we are tracking the effect
+                        // of user types on any bindings contained with subpattern.
+                        self.canonical_user_type_annotations.push(annotation.clone())
+                    })
+                    .collect();
+                &user_tys.push_user_types(base_user_tys)
+            }
+            _ => user_tys,
+        };
+
         // Avoid having to write the full method name at each recursive call.
         let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
             this.visit_primary_bindings_special(subpat, user_tys, f)
@@ -924,25 +943,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
 
-            PatKind::AscribeUserType {
-                ref subpattern,
-                ascription: thir::Ascription { ref annotation, variance: _ },
-            } => {
-                // This corresponds to something like
-                //
-                // ```
-                // let A::<'a>(_): A<'static> = ...;
-                // ```
-                //
-                // Note that the variance doesn't apply here, as we are tracking the effect
-                // of `user_ty` on any bindings contained with subpattern.
-
-                // Caution: Pushing this user type here is load-bearing even for
-                // patterns containing no bindings, to ensure that the type ends
-                // up represented in MIR _somewhere_.
-                let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
-                let subpattern_user_tys = user_tys.push_user_type(base_user_ty);
-                visit_subpat(self, subpattern, &subpattern_user_tys, f)
+            PatKind::AscribeUserType { ref subpattern, ascription: _ } => {
+                // The ascription was already handled above, so just recurse to the subpattern.
+                visit_subpat(self, subpattern, user_tys, f)
             }
 
             PatKind::ExpandedConstant { ref subpattern, .. } => {
