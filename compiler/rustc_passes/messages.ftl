@@ -511,6 +511,10 @@ passes_trait_impl_const_stable =
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
 
+passes_unconstructable_pub_struct =
+    pub struct `{$name}` is unconstructable externally and never constructed locally
+    .help = this struct may be unused locally and also externally, consider removing it
+
 passes_unexportable_adt_with_private_fields = ADT types with private fields are not exportable
     .note = `{$field_name}` is private
 

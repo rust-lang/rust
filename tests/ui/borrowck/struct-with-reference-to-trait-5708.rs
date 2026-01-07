@@ -1,5 +1,7 @@
 // https://github.com/rust-lang/rust/issues/5708
 //@ run-pass
+#![allow(unconstructable_pub_struct)]
+
 #![allow(unused_variables)]
 /*
 # ICE when returning struct with reference to trait

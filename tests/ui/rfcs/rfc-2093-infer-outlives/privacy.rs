@@ -5,6 +5,8 @@
 //
 //@ run-pass
 
+#![allow(unconstructable_pub_struct)]
+
 #![allow(dead_code)]
 
 pub struct Foo<'a> {

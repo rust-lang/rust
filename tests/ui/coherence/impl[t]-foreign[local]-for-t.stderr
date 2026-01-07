@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/impl[t]-foreign[local]-for-t.rs:10:6
+  --> $DIR/impl[t]-foreign[local]-for-t.rs:12:6
    |
 LL | impl<T> Remote1<Local> for T {
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)

@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 pub struct A(());
 pub struct B(isize);
 pub struct C(pub isize, isize);

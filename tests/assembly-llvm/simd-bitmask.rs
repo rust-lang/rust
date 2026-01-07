@@ -16,6 +16,7 @@
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
+#![allow(unconstructable_pub_struct)]
 
 extern crate minicore;
 use minicore::*;

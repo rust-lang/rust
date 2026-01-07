@@ -1,5 +1,5 @@
 error: missing `struct` for struct definition
-  --> $DIR/pub-ident-struct-4.rs:3:1
+  --> $DIR/pub-ident-struct-4.rs:5:1
    |
 LL | pub T(#[allow(dead_code)] String);
    | ^^^^^

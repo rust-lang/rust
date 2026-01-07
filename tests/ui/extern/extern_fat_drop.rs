@@ -1,6 +1,8 @@
 //@ run-pass
 //@ aux-build:fat_drop.rs
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate fat_drop;
 
 fn main() {

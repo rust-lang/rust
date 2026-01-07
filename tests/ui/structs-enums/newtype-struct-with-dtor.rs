@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(unconstructable_pub_struct)]
+
 #![allow(unused_unsafe)]
 #![allow(unused_variables)]
 

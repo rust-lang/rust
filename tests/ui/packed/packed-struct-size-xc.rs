@@ -2,6 +2,8 @@
 //@ aux-build:packed.rs
 
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate packed;
 
 use std::mem;

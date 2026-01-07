@@ -1,5 +1,7 @@
 //@ aux-build:generics_of_parent.rs
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
+
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

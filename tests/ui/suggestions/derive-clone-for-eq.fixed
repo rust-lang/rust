@@ -1,6 +1,8 @@
 //@ run-rustfix
 // https://github.com/rust-lang/rust/issues/79076
 
+#![allow(unconstructable_pub_struct)]
+
 #[derive(Clone, Eq)] //~ ERROR [E0277]
 pub struct Struct<T: std::clone::Clone>(T);
 
