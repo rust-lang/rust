@@ -1651,67 +1651,51 @@ impl String {
             return;
         }
 
-        struct PanicGuard<'a> {
-            s: &'a mut String,
+        struct PanicGuard {
+            s: ptr::NonNull<String>,
             read: usize,
             write: usize,
         }
 
-        impl<'a> Drop for PanicGuard<'a> {
+        impl Drop for PanicGuard {
             fn drop(&mut self) {
-                debug_assert!(self.write <= self.s.len());
-                // SAFETY: On panic, we restore the string length to the number of bytes written so far.
-                unsafe { self.s.vec.set_len(self.write) }
+                // SAFETY: This is guaranteed to be the only mutable reference to `s`.
+                let str = unsafe { &mut *self.s.as_ptr() };
+                debug_assert!(self.write <= str.len());
+                // SAFETY: Restore the string length to the number of bytes written so far.
+                unsafe { str.vec.set_len(self.write) }
             }
         }
 
-        let mut read = 0;
-        let mut ch_len: usize;
         // Faster read-path
-        loop {
-            let ch = unsafe {
-                // SAFETY: `read` is positive-or-zero and less that len so the `get_unchecked`
-                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
-                // a unicode code point so the `Chars` always return one character.
-                self.get_unchecked(read..len).chars().next().unwrap_unchecked()
-            };
-            ch_len = ch.len_utf8();
-
+        let string_ptr = ptr::NonNull::from(&mut *self);
+        let data_ptr = self.vec.as_mut_ptr();
+        let mut chars = self.char_indices();
+        let (read, write) = loop {
+            let Some((write, ch)) = chars.next() else { return };
             if hint::unlikely(!f(ch)) {
-                break;
+                break (chars.offset(), write);
             }
-
-            read += ch_len;
-            if read == len {
-                // SAFETY: all characters were kept, so the length remains unchanged.
-                return;
-            }
-        }
+        };
 
         // Critical section starts here, at least one character is going to be removed.
-        let mut guard = PanicGuard { s: self, read: read + ch_len, write: read };
-
+        let mut g = PanicGuard { s: string_ptr, read, write };
         // Slower write-path
-        while guard.read < len {
-            // SAFETY: same as above
-            let ch =
-                unsafe { guard.s.get_unchecked(guard.read..len).chars().next().unwrap_unchecked() };
-            ch_len = ch.len_utf8();
-
+        while let Some((read, ch)) = chars.next() {
+            let ch_len = chars.offset() - read;
             if f(ch) {
-                // SAFETY: `guard.read` is in bound because `guard.write` <= `guard.read` - `ch.len_utf8()`,
-                // so taking a slice with `ch.len_utf8()` len is safe.
-                ch.encode_utf8(unsafe {
-                    crate::slice::from_raw_parts_mut(guard.s.as_mut_ptr().add(guard.write), ch_len)
-                });
-                guard.write += ch_len;
+                // SAFETY: `g.read` is in bound because `g.write` <= `g.read` - `ch_len`,
+                // so taking a slice with `ch_len` is safe.
+                unsafe {
+                    ptr::copy(data_ptr.add(g.read), data_ptr.add(g.write), ch_len);
+                }
+                g.write += ch_len;
             }
-
-            guard.read += ch_len;
+            g.read += ch_len;
         }
 
-        // SAFETY: All characters have been processed, so we can set the final length.
-        drop(guard);
+        // All characters have been processed, set the final length by dropping the guard.
+        drop(g);
     }
 
     /// Inserts a character into this `String` at byte position `idx`.
