@@ -2444,6 +2444,9 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
+        "set the threshold for objects to be stored in a \"large data\" section \
+         (only effective with -Ccode-model=medium, default: 65536)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
     link_directives: bool = (true, parse_bool, [TRACKED],
