@@ -40,15 +40,61 @@ use salsa::Update;
 
 use crate::RootDatabase;
 
+/// A query for searching symbols in the workspace or dependencies.
+///
+/// This struct configures how symbol search is performed, including the search text,
+/// matching strategy, and filtering options. It is used by [`world_symbols`] to find
+/// symbols across the codebase.
+///
+/// # Example
+/// ```ignore
+/// let mut query = Query::new("MyStruct".to_string());
+/// query.only_types();  // Only search for type definitions
+/// query.libs();        // Include library dependencies
+/// query.exact();       // Use exact matching instead of fuzzy
+/// ```
 #[derive(Debug, Clone)]
 pub struct Query {
+    /// The original search query string as provided by the user.
+    /// Used for the final matching check via [`SearchMode::check`].
     query: String,
+    /// Lowercase version of [`Self::query`], pre-computed for efficiency.
+    /// Used to build FST automata for case-insensitive index lookups.
     lowercased: String,
+    /// The search strategy to use when matching symbols.
+    /// - [`SearchMode::Exact`]: Symbol name must exactly match the query.
+    /// - [`SearchMode::Fuzzy`]: Symbol name must contain all query characters in order (subsequence match).
+    /// - [`SearchMode::Prefix`]: Symbol name must start with the query string.
+    ///
+    /// Defaults to [`SearchMode::Fuzzy`].
     mode: SearchMode,
+    /// Controls filtering of trait-associated items (methods, constants, types).
+    /// - [`AssocSearchMode::Include`]: Include both associated and non-associated items.
+    /// - [`AssocSearchMode::Exclude`]: Exclude trait-associated items from results.
+    /// - [`AssocSearchMode::AssocItemsOnly`]: Only return trait-associated items.
+    ///
+    /// Defaults to [`AssocSearchMode::Include`].
     assoc_mode: AssocSearchMode,
+    /// Whether the final symbol name comparison should be case-sensitive.
+    /// When `false`, matching is case-insensitive (e.g., "foo" matches "Foo").
+    ///
+    /// Defaults to `false`.
     case_sensitive: bool,
+    /// When `true`, only return type definitions: structs, enums, unions,
+    /// type aliases, built-in types, and traits. Functions, constants, statics,
+    /// and modules are excluded.
+    ///
+    /// Defaults to `false`.
     only_types: bool,
+    /// When `true`, search library dependency roots instead of local workspace crates.
+    /// This enables finding symbols in external dependencies including the standard library.
+    ///
+    /// Defaults to `false` (search local workspace only).
     libs: bool,
+    /// When `true`, exclude re-exported/imported symbols from results,
+    /// showing only the original definitions.
+    ///
+    /// Defaults to `false`.
     exclude_imports: bool,
 }
 
