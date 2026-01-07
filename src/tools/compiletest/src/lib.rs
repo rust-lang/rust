@@ -85,7 +85,7 @@ fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc-html \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
         )
@@ -1094,8 +1094,8 @@ fn make_test_name_and_filterable_path(
 /// of some other tests's name.
 ///
 /// For example, suppose the test suite contains these two test files:
-/// - `tests/rustdoc/primitive.rs`
-/// - `tests/rustdoc/primitive/no_std.rs`
+/// - `tests/rustdoc-html/primitive.rs`
+/// - `tests/rustdoc-html/primitive/no_std.rs`
 ///
 /// The test runner might put the output from those tests in these directories:
 /// - `$build/test/rustdoc/primitive/`
