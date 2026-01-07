@@ -15,6 +15,8 @@ use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
 use crate::process::StdioPipes;
 use crate::sys::cvt;
+#[cfg(target_os = "freebsd")]
+use crate::sys::pal::freebsd::pidfd::PidFd;
 #[cfg(target_os = "linux")]
 use crate::sys::pal::linux::pidfd::PidFd;
 use crate::{fmt, mem, sys};
@@ -91,7 +93,7 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
-        let pid = unsafe { self.do_fork()? };
+        let (pid, pidfd) = unsafe { self.do_fork() }?;
 
         if pid == 0 {
             crate::panic::always_abort();
@@ -126,9 +128,6 @@ impl Command {
 
         #[cfg(target_os = "linux")]
         let pidfd = if self.get_create_pidfd() { self.recv_pidfd(&input) } else { -1 };
-
-        #[cfg(not(target_os = "linux"))]
-        let pidfd = -1;
 
         // Safety: We obtained the pidfd (on Linux) using SOCK_SEQPACKET, so it's valid.
         let mut p = unsafe { Process::new(pid, pidfd) };
@@ -176,16 +175,36 @@ impl Command {
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
 
+    /// Forks the process, optionally creating a process descriptor.
+    ///
+    /// Returns (child pid, child process descriptor) in the parent.
+    /// Returns (0, -1) in the child.
+    #[cfg(target_os = "freebsd")]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        if self.get_create_pidfd() {
+            let mut pidfd = -1;
+            let pid = cvt(libc::pdfork(&mut pidfd, libc::PD_CLOEXEC | libc::PD_DAEMON))?;
+            Ok((pid, pidfd))
+        } else {
+            Ok((cvt(libc::fork())?, -1))
+        }
+    }
+
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
     }
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(any(target_os = "watchos", target_os = "tvos", target_os = "nto")))]
-    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
-        cvt(libc::fork())
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "watchos",
+        target_os = "tvos",
+        target_os = "nto"
+    )))]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        Ok((cvt(libc::fork())?, -1))
     }
 
     // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
@@ -193,7 +212,7 @@ impl Command {
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(target_os = "nto")]
-    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         use crate::sys::io::errno;
 
         let mut delay = MIN_FORKSPAWN_SLEEP;
@@ -216,7 +235,7 @@ impl Command {
                 delay *= 2;
                 continue;
             } else {
-                return cvt(r);
+                return Ok((cvt(r), -1));
             }
         }
     }
@@ -468,6 +487,12 @@ impl Command {
         }
 
         cfg_select! {
+            target_os = "freebsd" => {
+                if self.get_create_pidfd() {
+                    // FreeBSD does not support posix_spawn with procdesc(4), as of 15.0-RELEASE
+                    return Ok(None);
+                }
+            }
             target_os = "linux" => {
                 use crate::sys::weak::weak;
 
@@ -950,20 +975,20 @@ impl Command {
 pub struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,
-    // On Linux, stores the pidfd created for this child.
+    // On FreeBSD and Linux, stores the pidfd created for this child.
     // This is None if the user did not request pidfd creation,
     // or if the pidfd could not be created for some reason
     // (e.g. the `pidfd_open` syscall was not available).
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "freebsd", target_os = "linux"))]
     pidfd: Option<PidFd>,
 }
 
 impl Process {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "freebsd", target_os = "linux"))]
     /// # Safety
     ///
-    /// `pidfd` must either be -1 (representing no file descriptor) or a valid, exclusively owned file
-    /// descriptor (See [I/O Safety]).
+    /// `pidfd` must either be -1 (representing no file descriptor) or a valid, exclusively owned
+    /// file descriptor (See [I/O Safety]).
     ///
     /// [I/O Safety]: crate::io#io-safety
     unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
@@ -974,7 +999,7 @@ impl Process {
         Process { pid, status: None, pidfd }
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "freebsd", target_os = "linux")))]
     unsafe fn new(pid: pid_t, _pidfd: pid_t) -> Self {
         Process { pid, status: None }
     }
@@ -1060,7 +1085,7 @@ impl ExitStatus {
         ExitStatus(status)
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "freebsd", target_os = "linux"))]
     pub fn from_waitid_siginfo(siginfo: libc::siginfo_t) -> ExitStatus {
         let status = unsafe { siginfo.si_status() };
 
@@ -1262,16 +1287,22 @@ impl ExitStatusError {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "freebsd", target_os = "linux"))]
 mod linux_child_ext {
     use crate::io::ErrorKind;
+    #[cfg(target_os = "freebsd")]
+    use crate::os::freebsd::process as os;
+    #[cfg(target_os = "linux")]
     use crate::os::linux::process as os;
     use crate::sys::FromInner;
+    #[cfg(target_os = "freebsd")]
+    use crate::sys::pal::freebsd::pidfd as imp;
+    #[cfg(target_os = "linux")]
     use crate::sys::pal::linux::pidfd as imp;
     use crate::{io, mem};
 
     #[unstable(feature = "linux_pidfd", issue = "82971")]
-    impl crate::os::linux::process::ChildExt for crate::process::Child {
+    impl os::ChildExt for crate::process::Child {
         fn pidfd(&self) -> io::Result<&os::PidFd> {
             self.handle
                 .pidfd
