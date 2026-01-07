@@ -182,6 +182,8 @@ builtin_macros_expected_other = expected operand, {$is_inline_asm ->
 
 builtin_macros_export_macro_rules = cannot export macro_rules! macros from a `proc-macro` crate type currently
 
+builtin_macros_format_add_missing_colon = add a colon before the format specifier
+
 builtin_macros_format_duplicate_arg = duplicate argument named `{$ident}`
     .label1 = previously here
     .label2 = duplicate argument
