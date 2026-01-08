@@ -96,13 +96,10 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // is the maximum value among visibilities of declarations corresponding to that def id.
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
-            if !decl.is_ambiguity_recursive() {
-                if let Some(node_id) = import.id() {
-                    r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
-                }
-            } else if decl.ambiguity.get().is_some()
-                && eff_vis.is_public_at_level(Level::Reexported)
-            {
+            if let Some(node_id) = import.id() {
+                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+            }
+            if decl.ambiguity.get().is_some() && eff_vis.is_public_at_level(Level::Reexported) {
                 exported_ambiguities.insert(*decl);
             }
         }
@@ -123,31 +120,13 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // Set the given effective visibility level to `Level::Direct` and
             // sets the rest of the `use` chain to `Level::Reexported` until
             // we hit the actual exported item.
-            //
-            // If the binding is ambiguous, put the root ambiguity binding and all reexports
-            // leading to it into the table. They are used by the `ambiguous_glob_reexports`
-            // lint. For all bindings added to the table this way `is_ambiguity` returns true.
-            let is_ambiguity =
-                |decl: Decl<'ra>, warn: bool| decl.ambiguity.get().is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
-            let mut warn_ambiguity = decl.warn_ambiguity.get();
             while let DeclKind::Import { source_decl, .. } = decl.kind {
                 self.update_import(decl, parent_id);
-
-                if is_ambiguity(decl, warn_ambiguity) {
-                    // Stop at the root ambiguity, further bindings in the chain should not
-                    // be reexported because the root ambiguity blocks any access to them.
-                    // (Those further bindings are most likely not ambiguities themselves.)
-                    break;
-                }
-
                 parent_id = ParentId::Import(decl);
                 decl = source_decl;
-                warn_ambiguity |= source_decl.warn_ambiguity.get();
             }
-            if !is_ambiguity(decl, warn_ambiguity)
-                && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
-            {
+            if let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local()) {
                 self.update_def(def_id, decl.vis().expect_local(), parent_id);
             }
         }
