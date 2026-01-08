@@ -635,10 +635,9 @@ pub struct Config {
     pub channel: String,
 
     /// Whether adding git commit information such as the commit hash has been enabled for building.
-    ///
-    /// FIXME: `compiletest` cannot trust `bootstrap` for this information, because `bootstrap` can
-    /// have bugs and had bugs on that logic. We need to figure out how to obtain this e.g. directly
-    /// from CI or via git locally.
+    /// Note that this information directly comes from an env var `RUSTC_TEST_GIT_HASH` set by
+    /// CI (or in the local environment), since we must assume bootstrap might report incorrect
+    /// git hash availability due to bugs, and thus we need to bypass bootstrap.
     pub git_hash: bool,
 
     /// The default Rust edition.

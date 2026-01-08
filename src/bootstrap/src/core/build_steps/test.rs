@@ -2443,10 +2443,6 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         cmd.arg("--channel").arg(&builder.config.channel);
 
-        if !builder.config.omit_git_hash {
-            cmd.arg("--git-hash");
-        }
-
         let git_config = builder.config.git_config();
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
         cmd.arg("--git-merge-commit-email").arg(git_config.git_merge_commit_email);

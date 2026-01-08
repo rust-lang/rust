@@ -50,6 +50,9 @@ use crate::executor::CollectedTest;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 fn parse_config(args: Vec<String>) -> Config {
+    // FIXME(jieyouxu): this says "parse_config", but in reality also in some cases read from
+    // env vars!
+
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -180,11 +183,6 @@ fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag(
-            "",
-            "git-hash",
-            "run tests which rely on commit version being compiled into the binaries",
-        )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
         .reqopt(
@@ -363,6 +361,19 @@ fn parse_config(args: Vec<String>) -> Config {
     let build_test_suite_root = opt_path(matches, "build-test-suite-root");
     assert!(build_test_suite_root.starts_with(&build_root));
 
+    // NOTE: we cannot trust bootstrap for git hash availability, therefore we use an env var to
+    // communicate directly between compiletest and CI/local environment, bypassing bootstrap.
+    let git_hash = if build_helper::ci::CiEnv::is_ci() {
+        // In CI environment, we expect that the env var must be set to prevent it from being forgotten.
+        let _ = env::var_os("RUSTC_TEST_GIT_HASH")
+            .expect("`RUSTC_TEST_GIT_HASH` must be set under CI environments");
+        true
+    } else {
+        // But locally, we don't want to do so -- only run the test that requires git hash
+        // availability if the user explicitly sets the env var.
+        env::var_os("RUSTC_TEST_GIT_HASH").is_some()
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -448,8 +459,9 @@ fn parse_config(args: Vec<String>) -> Config {
         has_enzyme,
         has_offload,
         channel: matches.opt_str("channel").unwrap(),
-        git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition").as_deref().map(parse_edition),
+
+        git_hash,
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),

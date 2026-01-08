@@ -123,6 +123,12 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
         (key.clone(), value)
     }));
 
+    // Special env var to unconditionally enable the
+    // `tests/run-make/version-verbose-commit-hash` test under CI environments. This is
+    // specifically to bypass bootstrap to guard against bugs in bootstrap's git hash
+    // availability logic.
+    custom_env.insert("RUSTC_TEST_GIT_HASH".to_string(), "1".to_string());
+
     init_submodule_if_needed("src/llvm-project/")?;
 
     let mut cmd = Command::new(Path::new(DOCKER_DIRECTORY).join("run.sh"));
