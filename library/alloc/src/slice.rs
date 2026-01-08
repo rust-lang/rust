@@ -697,6 +697,7 @@ impl [u8] {
 /// }
 /// ```
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
+#[doc(hidden)]
 pub trait Concat<Item: ?Sized> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
@@ -709,6 +710,7 @@ pub trait Concat<Item: ?Sized> {
 
 /// Helper trait for [`[T]::join`](slice::join)
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
+#[doc(hidden)]
 pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
