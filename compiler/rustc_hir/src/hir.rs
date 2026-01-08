@@ -518,6 +518,7 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Unambig),
+    Literal(LitKind),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -1396,6 +1397,14 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn deprecation_note(&self) -> Option<Symbol> {
+        match &self {
+            Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
             _ => None,
         }
     }
