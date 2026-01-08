@@ -668,11 +668,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             if arg_layout.is_zst() {
                 continue;
             }
-            if let BackendRepr::ScalarPair(_, _) = arg_layout.backend_repr {
-                llargument_tys.push(arg_layout.scalar_pair_element_llvm_type(self, 0, true));
-                llargument_tys.push(arg_layout.scalar_pair_element_llvm_type(self, 1, true));
-                continue;
-            }
             llargument_tys.push(arg_layout.immediate_llvm_type(self));
         }
 
