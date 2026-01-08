@@ -1179,8 +1179,24 @@ impl GlobalState {
                 kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
             } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
+                let format_with_id = |user_facing_command: String| {
+                    if self.flycheck.len() == 1 {
+                        user_facing_command
+                    } else {
+                        format!("{user_facing_command} (#{})", id + 1)
+                    }
+                };
+
+                self.flycheck_formatted_commands
+                    .resize_with(self.flycheck.len().max(id + 1), || {
+                        format_with_id(self.config.flycheck(None).to_string())
+                    });
+
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => (Progress::Begin, None),
+                    flycheck::Progress::DidStart { user_facing_command } => {
+                        self.flycheck_formatted_commands[id] = format_with_id(user_facing_command);
+                        (Progress::Begin, None)
+                    }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
@@ -1200,13 +1216,8 @@ impl GlobalState {
                     }
                 };
 
-                // When we're running multiple flychecks, we have to include a disambiguator in
-                // the title, or the editor complains. Note that this is a user-facing string.
-                let title = if self.flycheck.len() == 1 {
-                    format!("{}", self.config.flycheck(None))
-                } else {
-                    format!("{} (#{})", self.config.flycheck(None), id + 1)
-                };
+                // Clone because we &mut self for report_progress
+                let title = self.flycheck_formatted_commands[id].clone();
                 self.report_progress(
                     &title,
                     state,

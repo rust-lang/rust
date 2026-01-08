@@ -204,23 +204,40 @@ interface Runnable {
     args: string[];
     /// The current working directory of the runnable.
     cwd: string;
-    /// Used to decide what code lens to offer.
+    /// Maps a runnable to a piece of rust-analyzer functionality.
     ///
-    /// `testOne`: This runnable will be used when the user clicks the 'Run Test'
-    /// CodeLens above a test.
+    /// - `testOne`: This runnable will be used when the user clicks the 'Run Test'
+    ///   CodeLens above a test.
+    /// - `run`: This runnable will be used when the user clicks the 'Run' CodeLens
+    ///    above a main function or triggers a run command.
+    /// - `flycheck`: This is run to provide check-on-save diagnostics when the user
+    ///    saves a file. It must emit rustc JSON diagnostics that rust-analyzer can
+    ///    parse. If this runnable is not specified, we may try to use `cargo check -p`.
+    ///    This is only run for a single crate that the user saved a file in. The
+    ///    {label} syntax is replaced with `BuildInfo::label`.
+    ///    Alternatively, you may use `{saved_file}` and figure out which crate
+    ///    to produce diagnostics for based on that.
     ///
     /// The args for testOne can contain two template strings:
     /// `{label}` and `{test_id}`. `{label}` will be replaced
-    /// with the `Build::label` and `{test_id}` will be replaced
+    /// with the `BuildInfo::label` and `{test_id}` will be replaced
     /// with the test name.
-    kind: 'testOne' | string;
+    kind: 'testOne' | 'run' | 'flycheck' | string;
 }
 ```
 
 This format is provisional and subject to change. Specifically, the
 `roots` setup will be different eventually.
 
-There are three ways to feed `rust-project.json` to rust-analyzer:
+### Providing a JSON project to rust-analyzer
+
+There are four ways to feed `rust-project.json` to rust-analyzer:
+
+-   Use
+    [`"rust-analyzer.workspace.discoverConfig": … }`](./configuration.md#workspace.discoverConfig)
+    to specify a workspace discovery command to generate project descriptions
+    on-the-fly. Please note that the command output is message-oriented and must
+    follow [the discovery protocol](./configuration.md#workspace-discovery-protocol).
 
 -   Place `rust-project.json` file at the root of the project, and
     rust-analyzer will discover it.
@@ -240,19 +257,86 @@ location or (for inline JSON) relative to `rootUri`.
 You can set the `RA_LOG` environment variable to `rust_analyzer=info` to
 inspect how rust-analyzer handles config and project loading.
 
-Note that calls to `cargo check` are disabled when using
-`rust-project.json` by default, so compilation errors and warnings will
-no longer be sent to your LSP client. To enable these compilation errors
-you will need to specify explicitly what command rust-analyzer should
-run to perform the checks using the
-`rust-analyzer.check.overrideCommand` configuration. As an example, the
-following configuration explicitly sets `cargo check` as the `check`
-command.
+### Flycheck support
 
-    { "rust-analyzer.check.overrideCommand": ["cargo", "check", "--message-format=json"] }
+Rust-analyzer has functionality to run an actual build of a crate when the user saves a file, to
+fill in diagnostics it does not implement natively. This is known as "flycheck".
 
-`check.overrideCommand` requires the command specified to output json
-error messages for rust-analyzer to consume. The `--message-format=json`
-flag does this for `cargo check` so whichever command you use must also
-output errors in this format. See the [Configuration](#_configuration)
-section for more information.
+**Flycheck is disabled when using `rust-project.json` unless explicitly configured**, so compilation
+errors and warnings will no longer be sent to your LSP client by default. To enable these
+compilation errors you will need to specify explicitly what command rust-analyzer should run to
+perform the checks. There are two ways to do this:
+
+- `rust-project.json` may contain a `runnables` field. The `flycheck` runnable may be used to
+  configure a check command. See above for documentation.
+
+- Using the [`rust-analyzer.check.overrideCommand`](./configuration.md#check.overrideCommand)
+  configuration. This will also override anything in `rust-project.json`. As an example, the
+  following configuration explicitly sets `cargo check` as the `check` command.
+
+  ```json
+  { "rust-analyzer.check.overrideCommand": ["cargo", "check", "--message-format=json"] }
+  ```
+
+  Note also that this works with cargo projects.
+
+Either option requires the command specified to output JSON error messages for rust-analyzer to
+consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use
+must also output errors in this format.
+
+Either option also supports two syntaxes within each argument:
+
+- `{label}` will be replaced with the `BuildInfo::label` of the crate
+  containing a saved file, if `BuildInfo` is provided. In the case of `check.overrideCommand` being
+  used in a Cargo project, this will be the cargo package ID, which can be used with `cargo check -p`.
+- `{saved_file}` will be replaced with an absolute path to the saved file. This can be queried against a
+  build system to find targets that include the file.
+
+For example:
+
+```json
+{ "rust-analyzer.check.overrideCommand": ["custom_crate_checker", "{label}"] }
+```
+
+If you do use `{label}` or `{saved_file}`, the command will not be run unless the relevant value can
+be substituted.
+
+
+#### Flycheck considerations
+
+##### Diagnostic output on error
+
+A flycheck command using a complex build orchestrator like `"bazel", "build", "{label}"`, even with
+a tweak to return JSON messages, is often insufficient. Such a command will typically succeed if
+there are warnings, but if there are errors, it might "fail to compile" the diagnostics and not
+produce any output. You must build a package in such a way that the build succeeds even if `rustc`
+exits with an error, and prints the JSON build messages in every case.
+
+##### Diagnostics for upstream crates
+
+`cargo check -p` re-prints any errors and warnings in crates higher up in the dependency graph
+than the one requested. We do clear all diagnostics when flychecking, so if you manage to
+replicate this behaviour, diagnostics for crates other than the one being checked will show up in
+the editor. If you do not, then users may be confused that diagnostics are "stuck" or disappear
+entirely when there is a build error in an upstream crate.
+
+##### Compiler options
+
+`cargo check` invokes rustc differently from `cargo build`. It turns off codegen (with `rustc
+--emit=metadata`), which results in lower latency to get to diagnostics. If your build system can
+configure this, it is recommended.
+
+If your build tool can configure rustc for incremental compiles, this is also recommended.
+
+##### Locking and pre-emption
+
+In any good build system, including Cargo, build commands sometimes block each other. Running a
+flycheck will (by default) frequently block you from running other build commands. Generally this is
+undesirable. Users will have to (unintuitively) press save again in the editor to cancel a
+flycheck, so that some other command may proceed.
+
+If your build system has the ability to isolate any rust-analyzer-driven flychecks and prevent lock
+contention, for example a separate build output directory and/or daemon instance, this is
+recommended. Alternatively, consider using a feature if available that can set the priority of
+various build invocations and automatically cancel lower-priority ones when needed. Flychecks should
+be set to a lower priority than general direct build invocations.
