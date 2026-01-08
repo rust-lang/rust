@@ -80,8 +80,6 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
         }
     }
 
-    println!("{eiis:#?}");
-
     // now we have all eiis! For each of them, choose one we want to actually generate.
     for (foreign_item, FoundEii { decl, decl_crate, impls }) in eiis {
         let mut default_impls = Vec::new();
