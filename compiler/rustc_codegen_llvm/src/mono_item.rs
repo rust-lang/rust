@@ -10,7 +10,6 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
-use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
 
@@ -92,17 +91,19 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 }
 
 impl CodegenCx<'_, '_> {
-    fn add_aliases(&self, aliasee: &llvm::Value, aliases: &[(Symbol, Linkage, Visibility)]) {
+    fn add_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
         let ty = self.get_type_of_global(aliasee);
 
         for (alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+
             tracing::debug!("ALIAS: {alias:?} {linkage:?} {visibility:?}");
             let lldecl = llvm::add_alias(
                 self.llmod,
                 ty,
                 AddressSpace::ZERO,
                 aliasee,
-                &CString::new(alias.as_str()).unwrap(),
+                &CString::new(symbol_name.name).unwrap(),
             );
 
             llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
