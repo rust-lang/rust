@@ -1,4 +1,4 @@
-use super::*;
+use super::{Feature, cache, imply_features};
 
 #[test]
 fn simple_direct() {
