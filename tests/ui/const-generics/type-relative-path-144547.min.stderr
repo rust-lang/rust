@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/type-relative-path-144547.rs:39:35
+   |
+LL |     type SupportedArray<T> = [T; <Self::InfoType as LevelInfo>::SUPPORTED_SLOTS];
+   |                                   ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

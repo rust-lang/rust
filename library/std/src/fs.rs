@@ -152,6 +152,43 @@ pub enum TryLockError {
     WouldBlock,
 }
 
+/// An object providing access to a directory on the filesystem.
+///
+/// Directories are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.
+///
+/// # Platform-specific behavior
+///
+/// On supported systems (including Windows and some UNIX-based OSes), this function acquires a
+/// handle/file descriptor for the directory. This allows functions like [`Dir::open_file`] to
+/// avoid [TOCTOU] errors when the directory itself is being moved.
+///
+/// On other systems, it stores an absolute path (see [`canonicalize()`]). In the latter case, no
+/// [TOCTOU] guarantees are made.
+///
+/// # Examples
+///
+/// Opens a directory and then a file inside it.
+///
+/// ```no_run
+/// #![feature(dirfd)]
+/// use std::{fs::Dir, io};
+///
+/// fn main() -> std::io::Result<()> {
+///     let dir = Dir::open("foo")?;
+///     let mut file = dir.open_file("bar.txt")?;
+///     let contents = io::read_to_string(file)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
+/// ```
+///
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
+#[unstable(feature = "dirfd", issue = "120426")]
+pub struct Dir {
+    inner: fs_imp::Dir,
+}
+
 /// Metadata information about a file.
 ///
 /// This structure is returned from the [`metadata`] or
@@ -1551,6 +1588,87 @@ impl Seek for Arc<File> {
     }
     fn stream_position(&mut self) -> io::Result<u64> {
         (&**self).stream_position()
+    }
+}
+
+impl Dir {
+    /// Attempts to open a directory at `path` in read-only mode.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::open(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a file in read-only mode relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_file<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        self.inner
+            .open_file(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|f| File { inner: f })
+    }
+}
+
+impl AsInner<fs_imp::Dir> for Dir {
+    #[inline]
+    fn as_inner(&self) -> &fs_imp::Dir {
+        &self.inner
+    }
+}
+impl FromInner<fs_imp::Dir> for Dir {
+    fn from_inner(f: fs_imp::Dir) -> Dir {
+        Dir { inner: f }
+    }
+}
+impl IntoInner<fs_imp::Dir> for Dir {
+    fn into_inner(self) -> fs_imp::Dir {
+        self.inner
+    }
+}
+
+#[unstable(feature = "dirfd", issue = "120426")]
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 

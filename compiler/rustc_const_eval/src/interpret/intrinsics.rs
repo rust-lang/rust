@@ -861,7 +861,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             } else {
                 // unsigned
-                if matches!(mir_op, BinOp::Add) {
+                if mir_op == BinOp::Add {
                     // max unsigned
                     Scalar::from_uint(size.unsigned_int_max(), size)
                 } else {

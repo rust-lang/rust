@@ -87,7 +87,7 @@ pub unsafe fn _mm256_cvtneebf16_ps(a: *const __m256bh) -> __m256 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneeph2ps))]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn _mm_cvtneeph_ps(a: *const __m128h) -> __m128 {
     transmute(cvtneeph2ps_128(a))
 }
@@ -99,7 +99,7 @@ pub unsafe fn _mm_cvtneeph_ps(a: *const __m128h) -> __m128 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneeph2ps))]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn _mm256_cvtneeph_ps(a: *const __m256h) -> __m256 {
     transmute(cvtneeph2ps_256(a))
 }
@@ -135,7 +135,7 @@ pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneoph2ps))]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn _mm_cvtneoph_ps(a: *const __m128h) -> __m128 {
     transmute(cvtneoph2ps_128(a))
 }
@@ -147,7 +147,7 @@ pub unsafe fn _mm_cvtneoph_ps(a: *const __m128h) -> __m128 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneoph2ps))]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
     transmute(cvtneoph2ps_256(a))
 }

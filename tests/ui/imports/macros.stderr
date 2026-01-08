@@ -4,18 +4,19 @@ error[E0659]: `m` is ambiguous
 LL |     m! {
    |     ^ ambiguous name
    |
-   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:17:13
    |
 LL |         use crate::foo::m;
    |             ^^^^^^^^^^^^^
+   = help: use `self::m` to refer to this macro unambiguously
 note: `m` could also refer to the macro imported here
   --> $DIR/macros.rs:15:9
    |
 LL |     use two_macros::*;
    |         ^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `m` to disambiguate
+   = help: use `self::m` to refer to this macro unambiguously
 
 error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:29:9

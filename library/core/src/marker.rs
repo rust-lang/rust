@@ -163,7 +163,7 @@ pub trait Sized: MetaSized {
 }
 
 /// Types with a size that can be determined from pointer metadata.
-#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[unstable(feature = "sized_hierarchy", issue = "144404")]
 #[lang = "meta_sized"]
 #[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known",
@@ -181,7 +181,7 @@ pub trait MetaSized: PointeeSized {
 }
 
 /// Types that may or may not have a size.
-#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[unstable(feature = "sized_hierarchy", issue = "144404")]
 #[lang = "pointee_sized"]
 #[diagnostic::on_unimplemented(
     message = "values of type `{Self}` may or may not have a size",

@@ -454,7 +454,6 @@ fn main() -> anyhow::Result<()> {
             "clippy",
             "miri",
             "rustfmt",
-            "gcc",
             "generate-copyright",
             "bootstrap",
         ] {

@@ -2155,3 +2155,184 @@ fn test_extend_front_specialization_copy_slice() {
     // check it really wrapped
     assert_eq!(v.as_slices(), ([5].as_slice(), [4, 3, 2].as_slice()));
 }
+
+#[test]
+fn test_extend_front_specialization_deque_drain() {
+    // trigger 8 code paths: all combinations of prepend and extend_front, wrap and no wrap (src deque), wrap and no wrap (dst deque)
+
+    /// Get deque containing `[1, 2, 3, 4]`, possibly wrapping in the middle (between the 2 and 3).
+    fn test_deque(wrap: bool) -> VecDeque<i32> {
+        if wrap {
+            let mut v = VecDeque::with_capacity(4);
+            v.extend([3, 4]);
+            v.prepend([1, 2]);
+            assert_eq!(v.as_slices(), ([1, 2].as_slice(), [3, 4].as_slice()));
+            v
+        } else {
+            VecDeque::from([1, 2, 3, 4])
+        }
+    }
+
+    // prepend, v2.head == 0
+
+    let mut v1 = VecDeque::with_capacity(7);
+
+    let mut v2 = test_deque(false);
+    v1.prepend(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    assert_eq!(v1, [1, 2, 3, 4]);
+    v1.pop_back();
+
+    let mut v2 = test_deque(false);
+    // this should wrap around the physical buffer
+    v1.prepend(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    // check it really wrapped
+    assert_eq!(v1.as_slices(), ([1].as_slice(), [2, 3, 4, 1, 2, 3].as_slice()));
+
+    // extend_front, v2.head == 0
+
+    let mut v1 = VecDeque::with_capacity(7);
+
+    let mut v2 = test_deque(false);
+    v1.extend_front(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    assert_eq!(v1, [4, 3, 2, 1]);
+    v1.pop_back();
+
+    let mut v2 = test_deque(false);
+    // this should wrap around the physical buffer
+    v1.extend_front(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    // check it really wrapped
+    assert_eq!(v1.as_slices(), ([4].as_slice(), [3, 2, 1, 4, 3, 2].as_slice()));
+
+    // prepend, v2.head != 0
+
+    let mut v1 = VecDeque::with_capacity(7);
+
+    let mut v2 = test_deque(true);
+    v1.prepend(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    assert_eq!(v1, [1, 2, 3, 4]);
+    v1.pop_back();
+
+    let mut v2 = test_deque(true);
+    // this should wrap around the physical buffer
+    v1.prepend(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    // check it really wrapped
+    assert_eq!(v1.as_slices(), ([1].as_slice(), [2, 3, 4, 1, 2, 3].as_slice()));
+
+    // extend_front, v2.head != 0
+
+    let mut v1 = VecDeque::with_capacity(7);
+
+    let mut v2 = test_deque(true);
+    v1.extend_front(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    assert_eq!(v1, [4, 3, 2, 1]);
+    v1.pop_back();
+
+    let mut v2 = test_deque(true);
+    // this should wrap around the physical buffer
+    v1.extend_front(v2.drain(..));
+    // drain removes all elements but keeps the buffer
+    assert_eq!(v2, []);
+    assert!(v2.capacity() >= 4);
+
+    // check it really wrapped
+    assert_eq!(v1.as_slices(), ([4].as_slice(), [3, 2, 1, 4, 3, 2].as_slice()));
+}
+
+#[test]
+fn test_splice() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(2..4, a);
+    assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
+    v.splice(1..3, Some(20));
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+}
+
+#[test]
+fn test_splice_inclusive_range() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    let t1: Vec<_> = v.splice(2..=3, a).collect();
+    assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
+    assert_eq!(t1, &[3, 4]);
+    let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+    assert_eq!(t2, &[2, 10]);
+}
+
+#[test]
+fn test_splice_inclusive_range2() {
+    let mut v = VecDeque::from(vec![1, 2, 10, 11, 12, 5]);
+    let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+    assert_eq!(t2, &[2, 10]);
+}
+
+#[test]
+#[should_panic]
+fn test_splice_out_of_bounds() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(5..6, a);
+}
+
+#[test]
+#[should_panic]
+fn test_splice_inclusive_out_of_bounds() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(5..=5, a);
+}
+
+#[test]
+fn test_splice_items_zero_sized() {
+    let mut vec = VecDeque::from(vec![(), (), ()]);
+    let vec2 = VecDeque::from(vec![]);
+    let t: Vec<_> = vec.splice(1..2, vec2.iter().cloned()).collect();
+    assert_eq!(vec, &[(), ()]);
+    assert_eq!(t, &[()]);
+}
+
+#[test]
+fn test_splice_unbounded() {
+    let mut vec = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let t: Vec<_> = vec.splice(.., None).collect();
+    assert_eq!(vec, &[]);
+    assert_eq!(t, &[1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_splice_forget() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    std::mem::forget(v.splice(2..4, a));
+    assert_eq!(v, &[1, 2]);
+}

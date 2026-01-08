@@ -15,6 +15,15 @@ dox() {
 
   cargo clean --target "${1}"
 
+  if [ "${1}" == "amdgcn-amd-amdhsa" ]; then
+    if [ "$CI" != "" ]; then
+      rustup component add rust-src
+    fi
+    export CARGO_UNSTABLE_BUILD_STD=core
+    # amdgpu needs a target-cpu, any is fine
+    export RUSTFLAGS="${RUSTFLAGS} -Ctarget-cpu=gfx900"
+  fi
+
   cargo build --verbose --target "${1}" --manifest-path crates/core_arch/Cargo.toml
   cargo doc --verbose --target "${1}" --manifest-path crates/core_arch/Cargo.toml
 }
@@ -33,6 +42,7 @@ if [ -z "$1" ]; then
   #dox mips64-unknown-linux-gnuabi64
   dox wasm32-unknown-unknown
   dox nvptx64-nvidia-cuda
+  dox amdgcn-amd-amdhsa
 else
   dox "${1}"
 fi

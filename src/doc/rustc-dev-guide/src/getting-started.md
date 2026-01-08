@@ -179,7 +179,7 @@ The following tasks are doable without much background knowledge but are incredi
   to read a part of the code and write doc comments for it.
   This will help you to learn some part of the compiler while also producing a useful artifact!
 - [Triaging issues][triage]: categorizing, replicating, and minimizing issues is very helpful to the Rust maintainers.
-- [Working groups][wg]: there are a bunch of working groups on a wide variety
+- [Working areas][wa]: there are a bunch of working areas on a wide variety
   of rust-related things.
 - Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
 - Participate in the [RFC process](https://github.com/rust-lang/rfcs).
@@ -191,7 +191,7 @@ The following tasks are doable without much background knowledge but are incredi
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
 [wd]: ./contributing.md#writing-documentation
-[wg]: https://rust-lang.github.io/compiler-team/working-groups/
+[wa]: https://forge.rust-lang.org/compiler/working-areas.html
 [triage]: ./contributing.md#issue-triage
 
 ## Cloning and Building

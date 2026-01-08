@@ -282,7 +282,7 @@ error: type `u8` cannot be used with this register class
 LL |         asm!("", in("v0") b);
    |                           ^
    |
-   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+   = note: register class `vreg` supports these types: i32, f16, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
 error: type `u8` cannot be used with this register class
   --> $DIR/bad-reg.rs:95:28
@@ -290,7 +290,7 @@ error: type `u8` cannot be used with this register class
 LL |         asm!("", out("v0") b);
    |                            ^
    |
-   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+   = note: register class `vreg` supports these types: i32, f16, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
 error: type `u8` cannot be used with this register class
   --> $DIR/bad-reg.rs:108:35
@@ -298,7 +298,7 @@ error: type `u8` cannot be used with this register class
 LL |         asm!("/* {} */", in(vreg) b);
    |                                   ^
    |
-   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+   = note: register class `vreg` supports these types: i32, f16, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
 error: type `i32` cannot be used with this register class
   --> $DIR/bad-reg.rs:120:27

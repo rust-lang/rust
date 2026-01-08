@@ -464,6 +464,7 @@ pub struct CannotFindCrate {
     pub profiler_runtime: Symbol,
     pub locator_triple: TargetTuple,
     pub is_ui_testing: bool,
+    pub is_tier_3: bool,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
@@ -483,11 +484,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
                 diag.note(fluent::metadata_target_no_std_support);
             }
 
+            let has_precompiled_std = !self.is_tier_3;
+
             if self.missing_core {
                 if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
                     // Note: Emits the nicer suggestion only for the dev channel.
                     diag.help(fluent::metadata_consider_adding_std);
-                } else {
+                } else if has_precompiled_std {
                     // NOTE: this suggests using rustup, even though the user may not have it installed.
                     // That's because they could choose to install it; or this may give them a hint which
                     // target they need to install from their distro.
@@ -502,7 +505,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
             if !self.missing_core && self.span.is_dummy() {
                 diag.note(fluent::metadata_std_required);
             }
-            if self.is_nightly_build {
+            // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
+            // it's the recommended way to use the target, the user should switch to nightly.
+            if self.is_nightly_build || !has_precompiled_std {
                 diag.help(fluent::metadata_consider_building_std);
             }
         } else if self.crate_name == self.profiler_runtime {

@@ -1312,8 +1312,9 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Return the set of (transitive) callees that may result in a recursive call to `key`.
-    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
+    /// Return the set of (transitive) callees that may result in a recursive call to `key`,
+    /// if we were able to walk all callees.
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
         fatal_cycle
         arena_cache
         desc { |tcx|
@@ -1406,12 +1407,6 @@ rustc_queries! {
     /// Converts a type-level constant value into a MIR constant value.
     query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue {
         desc { "converting type-level constant value to MIR constant value"}
-    }
-
-    /// Destructures array, ADT or tuple constants into the constants
-    /// of their fields.
-    query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
-        desc { "destructuring type level constant"}
     }
 
     // FIXME get rid of this with valtrees
@@ -2339,12 +2334,21 @@ rustc_queries! {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
+
     // Crates that are loaded non-speculatively (not for diagnostics or doc links).
     // FIXME: This is currently only used for collecting lang items, but should be used instead of
     // `crates` in most other cases too.
     query used_crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
+    }
+
+    /// All crates that share the same name as crate `c`.
+    ///
+    /// This normally occurs when multiple versions of the same dependency are present in the
+    /// dependency tree.
+    query duplicate_crate_names(c: CrateNum) -> &'tcx [CrateNum] {
+        desc { "fetching `CrateNum`s with same name as `{c:?}`" }
     }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.

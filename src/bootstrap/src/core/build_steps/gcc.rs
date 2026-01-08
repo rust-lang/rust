@@ -325,6 +325,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
         .arg("--enable-checking=release")
         .arg("--disable-bootstrap")
         .arg("--disable-multilib")
+        .arg("--with-bugurl=https://github.com/rust-lang/gcc/")
         .arg(format!("--prefix={}", install_dir.display()));
 
     let cc = builder.build.cc(host).display().to_string();
@@ -346,6 +347,9 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
             .map_or_else(|| cxx.clone(), |ccache| format!("{ccache} {cxx}"));
         configure_cmd.env("CXX", cxx);
     }
+    // Disable debuginfo to reduce size of libgccjit.so 10x
+    configure_cmd.env("CXXFLAGS", "-O2 -g0");
+    configure_cmd.env("CFLAGS", "-O2 -g0");
     configure_cmd.run(builder);
 
     command("make")

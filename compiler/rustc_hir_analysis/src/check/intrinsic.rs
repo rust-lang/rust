@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, sym};
 
@@ -315,7 +315,17 @@ pub(crate) fn check_intrinsic_type(
             let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
         }
-        sym::offload => (3, 0, vec![param(0), param(1)], param(2)),
+        sym::offload => (
+            3,
+            0,
+            vec![
+                param(0),
+                Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
+                Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
+                param(1),
+            ],
+            param(2),
+        ),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

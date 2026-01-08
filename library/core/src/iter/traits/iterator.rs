@@ -236,6 +236,10 @@ pub trait Iterator {
     /// doing so, it keeps track of the current element. After [`None`] is
     /// returned, `last()` will then return the last element it saw.
     ///
+    /// # Panics
+    ///
+    /// This function might panic if the iterator is infinite.
+    ///
     /// # Examples
     ///
     /// ```

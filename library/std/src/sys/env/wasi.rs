@@ -4,7 +4,7 @@ pub use super::common::Env;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::io;
 use crate::os::wasi::prelude::*;
-use crate::sys::common::small_c_string::run_with_cstr;
+use crate::sys::helpers::run_with_cstr;
 use crate::sys::pal::os::{cvt, libc};
 
 cfg_select! {

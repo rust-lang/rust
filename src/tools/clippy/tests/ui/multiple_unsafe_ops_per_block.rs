@@ -312,4 +312,137 @@ fn check_closures() {
     }
 }
 
+fn issue16116() {
+    unsafe fn foo() -> u32 {
+        0
+    }
+
+    // Do not lint even though `format!` expansion
+    // contains unsafe calls.
+    unsafe {
+        let _ = format!("{}", foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        let _ = format!("{}", foo());
+        let _ = format!("{}", foo());
+    }
+
+    // Do not lint: only one `assert!()` argument is unsafe
+    unsafe {
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+    }
+
+    // Each argument of a macro call may count as an unsafe operation.
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(foo(), 0, "{}", foo()); // One unsafe operation
+    }
+
+    macro_rules! twice {
+        ($e:expr) => {{
+            $e;
+            $e;
+        }};
+    }
+
+    // Do not lint, a repeated argument used twice by a macro counts
+    // as at most one unsafe operation.
+    unsafe {
+        twice!(foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        twice!(foo());
+        twice!(foo());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+        assert_eq!(foo(), 0, "{}", 1 + 2);
+    }
+
+    macro_rules! unsafe_twice {
+        ($e:expr) => {
+            unsafe {
+                $e;
+                $e;
+            }
+        };
+    };
+
+    // A macro whose expansion contains unsafe blocks will not
+    // check inside the blocks.
+    unsafe {
+        unsafe_twice!(foo());
+    }
+
+    macro_rules! double_non_arg_unsafe {
+        () => {{
+            _ = str::from_utf8_unchecked(&[]);
+            _ = str::from_utf8_unchecked(&[]);
+        }};
+    }
+
+    // Do not lint: each unsafe expression contained in the
+    // macro expansion will count towards the macro call.
+    unsafe {
+        double_non_arg_unsafe!();
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        double_non_arg_unsafe!();
+        double_non_arg_unsafe!();
+    }
+
+    // Do not lint: the inner macro call counts as one unsafe op.
+    unsafe {
+        assert_eq!(double_non_arg_unsafe!(), ());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!(double_non_arg_unsafe!(), ());
+        assert_eq!(double_non_arg_unsafe!(), ());
+    }
+
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        assert_eq!((double_non_arg_unsafe!(), double_non_arg_unsafe!()), ((), ()));
+    }
+
+    macro_rules! unsafe_with_arg {
+        ($e:expr) => {{
+            _ = str::from_utf8_unchecked(&[]);
+            $e;
+        }};
+    }
+
+    // A confusing situation: the macro call counts towards two unsafe calls,
+    // one coming from inside the macro itself, and one coming from its argument.
+    // The error message may seem a bit strange as both the macro call and its
+    // argument will be marked as counting as unsafe ops, but a short investigation
+    // in those rare situations should sort it out easily.
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        unsafe_with_arg!(foo());
+    }
+
+    macro_rules! ignore {
+        ($e: expr) => {};
+    }
+
+    // Another surprising case is when the macro argument is not
+    // used in the expansion, but in this case we won't see the
+    // unsafe operation at all.
+    unsafe {
+        ignore!(foo());
+        ignore!(foo());
+    }
+}
+
 fn main() {}

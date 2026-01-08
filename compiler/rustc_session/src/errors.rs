@@ -83,6 +83,13 @@ pub(crate) struct CliFeatureDiagnosticHelp {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_must_be_name_of_associated_function)]
+pub struct MustBeNameOfAssociatedFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_not_circumvent_feature)]
 pub(crate) struct NotCircumventFeature;
 

@@ -466,7 +466,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-script",
     "unicode-security",
     "unicode-width",
-    "unicode-xid",
     "utf8parse",
     "valuable",
     "version_check",

@@ -1,0 +1,81 @@
+error[E0428]: the name `NonGeneric` is defined multiple times
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:10:1
+   |
+LL | struct NonGeneric {}
+   | ----------------- previous definition of the type `NonGeneric` here
+...
+LL | struct NonGeneric<'a, const N: usize> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NonGeneric` redefined here
+   |
+   = note: `NonGeneric` must be defined only once in the type namespace of this module
+
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:5:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^ expected 0 lifetime arguments
+...
+LL | struct NonGeneric<'a, const N: usize> {}
+   |                   -- help: remove the lifetime argument
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:3:8
+   |
+LL | struct NonGeneric {}
+   |        ^^^^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:5:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^ expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:3:8
+   |
+LL | struct NonGeneric {}
+   |        ^^^^^^^^^^
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:10:19
+   |
+LL | struct NonGeneric<'a, const N: usize> {}
+   |                   ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:5:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^ expected 0 lifetime arguments
+...
+LL | struct NonGeneric<'a, const N: usize> {}
+   |                   -- help: remove the lifetime argument
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:3:8
+   |
+LL | struct NonGeneric {}
+   |        ^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:5:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^ expected 0 generic arguments
+...
+LL | struct NonGeneric<'a, const N: usize> {}
+   |                             - help: remove the unnecessary generic argument
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:3:8
+   |
+LL | struct NonGeneric {}
+   |        ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0392, E0428.
+For more information about an error, try `rustc --explain E0107`.

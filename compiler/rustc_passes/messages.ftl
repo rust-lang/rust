@@ -236,6 +236,14 @@ passes_feature_previously_declared =
 passes_feature_stable_twice =
     feature `{$feature}` is declared stable since {$since}, but was previously declared stable since {$prev_since}
 
+passes_function_not_found_in_trait = function not found in this trait
+
+passes_function_not_have_default_implementation = function doesn't have a default implementation
+    .note = required by this annotation
+
+passes_functions_names_duplicated = functions names are duplicated
+    .note = all `#[rustc_must_implement_one_of]` arguments must be unique
+
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
@@ -370,6 +378,12 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
+passes_must_implement_not_function = not a function
+
+passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
+
+passes_must_implement_not_function_span_note = required by this annotation
+
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
@@ -483,10 +497,6 @@ passes_sanitize_attribute_not_allowed =
     .not_fn_impl_mod = not a function, impl block, or module
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
-
-passes_should_be_applied_to_trait =
-    attribute should be applied to a trait
-    .label = not a trait
 
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...

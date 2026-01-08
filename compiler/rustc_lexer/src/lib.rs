@@ -34,8 +34,25 @@ use LiteralKind::*;
 use TokenKind::*;
 use cursor::EOF_CHAR;
 pub use cursor::{Cursor, FrontmatterAllowed};
+pub use unicode_ident::UNICODE_VERSION;
 use unicode_properties::UnicodeEmoji;
-pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
+
+// Make sure that the Unicode version of the dependencies is the same.
+const _: () = {
+    let properties = unicode_properties::UNICODE_VERSION;
+    let ident = unicode_ident::UNICODE_VERSION;
+
+    if properties.0 != ident.0 as u64
+        || properties.1 != ident.1 as u64
+        || properties.2 != ident.2 as u64
+    {
+        panic!(
+            "unicode-properties and unicode-ident must use the same Unicode version, \
+            `unicode_properties::UNICODE_VERSION` and `unicode_ident::UNICODE_VERSION` are \
+            different."
+        );
+    }
+};
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -370,14 +387,14 @@ pub fn is_horizontal_whitespace(c: char) -> bool {
 /// a formal definition of valid identifier name.
 pub fn is_id_start(c: char) -> bool {
     // This is XID_Start OR '_' (which formally is not a XID_Start).
-    c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
+    c == '_' || unicode_ident::is_xid_start(c)
 }
 
 /// True if `c` is valid as a non-first character of an identifier.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
 /// a formal definition of valid identifier name.
 pub fn is_id_continue(c: char) -> bool {
-    unicode_xid::UnicodeXID::is_xid_continue(c)
+    unicode_ident::is_xid_continue(c)
 }
 
 /// The passed string is lexically an identifier.

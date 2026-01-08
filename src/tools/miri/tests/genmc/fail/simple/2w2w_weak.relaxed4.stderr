@@ -4,6 +4,8 @@ error: abnormal termination: the program aborted execution
    |
 LL |             std::process::abort();
    |             ^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+   |
+   = note: this is on thread `main`
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
