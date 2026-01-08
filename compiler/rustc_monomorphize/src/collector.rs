@@ -267,7 +267,8 @@ pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
     pub used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
-    // Maps every mono item to the mono items that use it.
+    // Maps each mono item with users to the mono items that use it.
+    // Be careful: subsets `used_map`, so unused items are vacant.
     user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 }
 

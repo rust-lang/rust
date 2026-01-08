@@ -124,6 +124,7 @@ use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
+use crate::graph_checks::target_specific_checks;
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -1135,6 +1136,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     };
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
+    // Perform checks that need to operate on the entire mono item graph
+    target_specific_checks(tcx, &items, &usage_map);
 
     // If there was an error during collection (e.g. from one of the constants we evaluated),
     // then we stop here. This way codegen does not have to worry about failing constants.
