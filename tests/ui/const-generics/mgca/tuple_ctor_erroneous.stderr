@@ -13,31 +13,31 @@ error: tuple constructor has 2 arguments but 1 were provided
   --> $DIR/tuple_ctor_erroneous.rs:23:23
    |
 LL |     accepts_point::<{ Point(N) }>();
-   |                       ^^^^^
+   |                       ^^^^^^^^
 
 error: tuple constructor has 2 arguments but 3 were provided
   --> $DIR/tuple_ctor_erroneous.rs:26:23
    |
 LL |     accepts_point::<{ Point(N, N, N) }>();
-   |                       ^^^^^
+   |                       ^^^^^^^^^^^^^^
 
 error: tuple constructor with invalid base path
   --> $DIR/tuple_ctor_erroneous.rs:29:23
    |
 LL |     accepts_point::<{ UnresolvedIdent(N, N) }>();
-   |                       ^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: tuple constructor with invalid base path
   --> $DIR/tuple_ctor_erroneous.rs:33:23
    |
 LL |     accepts_point::<{ non_ctor(N, N) }>();
-   |                       ^^^^^^^^
+   |                       ^^^^^^^^^^^^^^
 
 error: tuple constructor with invalid base path
   --> $DIR/tuple_ctor_erroneous.rs:36:23
    |
 LL |     accepts_point::<{ CONST_ITEM(N, N) }>();
-   |                       ^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^
 
 error: the constant `Point` is not of type `Point`
   --> $DIR/tuple_ctor_erroneous.rs:39:23
