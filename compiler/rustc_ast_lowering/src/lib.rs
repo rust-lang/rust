@@ -2530,7 +2530,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     elems: lowered_elems,
                 });
 
-                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Array(array_expr) }
+                ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Array(array_expr),
+                    span,
+                }
             }
             ExprKind::Underscore => ConstArg {
                 hir_id: self.lower_node_id(expr.id),

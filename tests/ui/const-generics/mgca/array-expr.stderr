@@ -1,0 +1,14 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array-expr.rs:17:29
+   |
+LL |     takes_array::<{ [N, N2, 1 + 1] }>(); // not implemented
+   |                             ^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array-expr.rs:20:19
+   |
+LL |     takes_array::<{ [N; 3] }>(); // not implemented
+   |                   ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
