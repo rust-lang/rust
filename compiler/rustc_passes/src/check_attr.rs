@@ -227,6 +227,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => {
                     self.check_should_panic(attrs, *span, target);
                 },
+                Attribute::Parsed(AttributeKind::Ignore { span, .. }) => {
+                    self.check_ignore(attrs, *span, target);
+                }
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -238,7 +241,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::Ignore { .. }
                     | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
@@ -487,11 +489,28 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_mix_no_mangle_export(hir_id, attrs);
     }
 
+    fn check_ignore(&self, attrs: &[Attribute], attr_span: Span, target: Target) {
+        // The error message only makes sense if it's actually being applied on a function
+        if matches!(target, Target::Fn) {
+            if !find_attr!(attrs, AttributeKind::TestTrace) {
+                self.dcx().emit_warn(errors::MustBeAppliedToTest {
+                    attr_span,
+                    attr_name: sym::ignore,
+                    warning: true,
+                });
+            }
+        }
+    }
+
     fn check_should_panic(&self, attrs: &[Attribute], attr_span: Span, target: Target) {
         // The error message only makes sense if it's actually being applied on a function
         if matches!(target, Target::Fn) {
             if !find_attr!(attrs, AttributeKind::TestTrace) {
-                self.dcx().emit_warn(errors::MustBeAppliedToTest { attr_span, warning: true });
+                self.dcx().emit_warn(errors::MustBeAppliedToTest {
+                    attr_span,
+                    attr_name: sym::should_panic,
+                    warning: true,
+                });
             }
         }
     }

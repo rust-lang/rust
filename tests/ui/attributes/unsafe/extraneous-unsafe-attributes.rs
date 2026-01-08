@@ -9,7 +9,10 @@ fn b() {}
 #[unsafe(test)] //~ ERROR: is not an unsafe attribute
 fn aa() {}
 
-#[unsafe(ignore = "test")] //~ ERROR: is not an unsafe attribute
+#[unsafe(ignore = "test")]
+//~^ ERROR: is not an unsafe attribute
+//~| WARN`#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+//~| WARN this was previously accepted by the compiler
 fn bb() {}
 
 #[unsafe(should_panic(expected = "test"))]

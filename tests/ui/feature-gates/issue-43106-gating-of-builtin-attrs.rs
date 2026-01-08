@@ -418,7 +418,10 @@ mod ignore {
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
-    #[ignore] fn f() { }
+    #[ignore]
+    //~^ WARN`#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+    //~| WARN this was previously accepted by the compiler
+    fn f() { }
 
     #[ignore] struct S;
     //~^ WARN attribute cannot be used on
