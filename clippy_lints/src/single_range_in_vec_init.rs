@@ -98,7 +98,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             && snippet.starts_with(suggested_type.starts_with())
             && snippet.ends_with(suggested_type.ends_with())
         {
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = Applicability::MaybeIncorrect;
             let (start_snippet, _) = snippet_with_context(cx, start.expr.span, span.ctxt(), "..", &mut applicability);
             let (end_snippet, _) = snippet_with_context(cx, end.expr.span, span.ctxt(), "..", &mut applicability);
 
