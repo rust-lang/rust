@@ -1,6 +1,6 @@
 use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{
     eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context, is_no_std_crate,
@@ -128,16 +128,16 @@ fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>, ctxt: Synta
 
 // Adds type suffixes and parenthesis to method receivers if necessary
 fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
-    let mut suggestion = Sugg::hir(cx, expr, "..");
+    let mut suggestion = Sugg::hir(cx, expr, "_");
 
-    if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
+    if let ExprKind::Unary(UnOp::Neg, inner_expr) = expr.kind {
         expr = inner_expr;
     }
 
     if let ty::Float(float_ty) = cx.typeck_results().expr_ty(expr).kind()
         // if the expression is a float literal and it is unsuffixed then
         // add a suffix so the suggestion is valid and unambiguous
-        && let ExprKind::Lit(lit) = &expr.kind
+        && let ExprKind::Lit(lit) = expr.kind
         && let ast::LitKind::Float(sym, ast::LitFloatType::Unsuffixed) = lit.node
     {
         let op = format!(
@@ -166,7 +166,7 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, ar
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{method}()", Sugg::hir(cx, receiver, "..").maybe_paren()),
+            format!("{}.{method}()", Sugg::hir(cx, receiver, "_").maybe_paren()),
             Applicability::MachineApplicable,
         );
     }
@@ -251,25 +251,25 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
 
     // Check argument
     if let Some(value) = ConstEvalCtxt::new(cx).eval(&args[0]) {
+        let recv = Sugg::hir(cx, receiver, "_").maybe_paren();
         let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 SUBOPTIMAL_FLOPS,
                 "square-root of a number can be computed more efficiently and accurately",
-                format!("{}.sqrt()", Sugg::hir(cx, receiver, "..").maybe_paren()),
+                format!("{recv}.sqrt()"),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
                 IMPRECISE_FLOPS,
                 "cube-root of a number can be computed more accurately",
-                format!("{}.cbrt()", Sugg::hir(cx, receiver, "..").maybe_paren()),
+                format!("{recv}.cbrt()"),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
                 SUBOPTIMAL_FLOPS,
                 "exponentiation with integer powers can be computed more efficiently",
                 format!(
-                    "{}.powi({})",
-                    Sugg::hir(cx, receiver, "..").maybe_paren(),
+                    "{recv}.powi({})",
                     numeric_literal::format(&exponent.to_string(), None, false)
                 ),
             )
@@ -311,31 +311,36 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
             rhs,
         ) = parent.kind
         {
-            let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
-
-            // Negate expr if original code has subtraction and expr is on the right side
-            let maybe_neg_sugg = |expr, hir_id| {
-                let sugg = Sugg::hir(cx, expr, "..");
-                if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
-                    -sugg
-                } else {
-                    sugg
-                }
-            };
-
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 SUBOPTIMAL_FLOPS,
                 parent.span,
                 "multiply and add expressions can be calculated more efficiently and accurately",
-                "consider using",
-                format!(
-                    "{}.mul_add({}, {})",
-                    Sugg::hir(cx, receiver, "..").maybe_paren(),
-                    maybe_neg_sugg(receiver, expr.hir_id),
-                    maybe_neg_sugg(other_addend, other_addend.hir_id),
-                ),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
+
+                    // Negate expr if original code has subtraction and expr is on the right side
+                    let maybe_neg_sugg = |expr, hir_id| {
+                        let sugg = Sugg::hir(cx, expr, "_");
+                        if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
+                            -sugg
+                        } else {
+                            sugg
+                        }
+                    };
+
+                    diag.span_suggestion(
+                        parent.span,
+                        "consider using",
+                        format!(
+                            "{}.mul_add({}, {})",
+                            Sugg::hir(cx, receiver, "_").maybe_paren(),
+                            maybe_neg_sugg(receiver, expr.hir_id),
+                            maybe_neg_sugg(other_addend, other_addend.hir_id),
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         }
     }
@@ -370,14 +375,14 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         {
             return Some(format!(
                 "{}.hypot({})",
-                Sugg::hir(cx, lmul_lhs, "..").maybe_paren(),
-                Sugg::hir(cx, rmul_lhs, "..")
+                Sugg::hir(cx, lmul_lhs, "_").maybe_paren(),
+                Sugg::hir(cx, rmul_lhs, "_")
             ));
         }
 
         // check if expression of the form x.powi(2) + y.powi(2)
-        if let ExprKind::MethodCall(PathSegment { ident: lmethod, .. }, largs_0, [largs_1, ..], _) = &add_lhs.kind
-            && let ExprKind::MethodCall(PathSegment { ident: rmethod, .. }, rargs_0, [rargs_1, ..], _) = &add_rhs.kind
+        if let ExprKind::MethodCall(PathSegment { ident: lmethod, .. }, largs_0, [largs_1, ..], _) = add_lhs.kind
+            && let ExprKind::MethodCall(PathSegment { ident: rmethod, .. }, rargs_0, [rargs_1, ..], _) = add_rhs.kind
             && lmethod.name == sym::powi
             && rmethod.name == sym::powi
             && let ecx = ConstEvalCtxt::new(cx)
@@ -388,8 +393,8 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         {
             return Some(format!(
                 "{}.hypot({})",
-                Sugg::hir(cx, largs_0, "..").maybe_paren(),
-                Sugg::hir(cx, rargs_0, "..")
+                Sugg::hir(cx, largs_0, "_").maybe_paren(),
+                Sugg::hir(cx, rargs_0, "_")
             ));
         }
     }
@@ -421,7 +426,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         lhs,
         rhs,
     ) = expr.kind
-        && let ExprKind::MethodCall(path, self_arg, [], _) = &lhs.kind
+        && let ExprKind::MethodCall(path, self_arg, [], _) = lhs.kind
         && path.ident.name == sym::exp
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && let Some(value) = ConstEvalCtxt::new(cx).eval(rhs)
@@ -434,7 +439,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "(e.pow(x) - 1) can be computed more accurately",
             "consider using",
-            format!("{}.exp_m1()", Sugg::hir(cx, self_arg, "..").maybe_paren()),
+            format!("{}.exp_m1()", Sugg::hir(cx, self_arg, "_").maybe_paren()),
             Applicability::MachineApplicable,
         );
     }
@@ -447,7 +452,7 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
         },
         lhs,
         rhs,
-    ) = &expr.kind
+    ) = expr.kind
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && cx.typeck_results().expr_ty(rhs).is_floating_point()
     {
@@ -476,18 +481,18 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }
 
         let maybe_neg_sugg = |expr| {
-            let sugg = Sugg::hir(cx, expr, "..");
+            let sugg = Sugg::hir(cx, expr, "_");
             if let BinOpKind::Sub = op { -sugg } else { sugg }
         };
 
         let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs)
             && cx.typeck_results().expr_ty(rhs).is_floating_point()
         {
-            (inner_lhs, Sugg::hir(cx, inner_rhs, ".."), maybe_neg_sugg(rhs))
+            (inner_lhs, Sugg::hir(cx, inner_rhs, "_"), maybe_neg_sugg(rhs))
         } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
             && cx.typeck_results().expr_ty(lhs).is_floating_point()
         {
-            (inner_lhs, maybe_neg_sugg(inner_rhs), Sugg::hir(cx, lhs, ".."))
+            (inner_lhs, maybe_neg_sugg(inner_rhs), Sugg::hir(cx, lhs, "_"))
         } else {
             return;
         };
@@ -558,12 +563,12 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
 /// If the two expressions are not negations of each other, then it
 /// returns None.
 fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
-    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = &expr1.kind
+    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = expr1.kind
         && eq_expr_value(cx, expr1_negated, expr2)
     {
         return Some((false, expr2));
     }
-    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = &expr2.kind
+    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = expr2.kind
         && eq_expr_value(cx, expr1, expr2_negated)
     {
         return Some((true, expr1));
@@ -581,28 +586,19 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let else_body_expr = peel_blocks(r#else)
         && let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr)
     {
-        let positive_abs_sugg = (
-            "manual implementation of `abs` method",
-            format!("{}.abs()", Sugg::hir(cx, body, "..").maybe_paren()),
-        );
-        let negative_abs_sugg = (
-            "manual implementation of negation of `abs` method",
-            format!("-{}.abs()", Sugg::hir(cx, body, "..").maybe_paren()),
-        );
-        let sugg = if is_testing_positive(cx, cond, body) {
-            if if_expr_positive {
-                positive_abs_sugg
-            } else {
-                negative_abs_sugg
-            }
+        let sugg_positive_abs = if is_testing_positive(cx, cond, body) {
+            if_expr_positive
         } else if is_testing_negative(cx, cond, body) {
-            if if_expr_positive {
-                negative_abs_sugg
-            } else {
-                positive_abs_sugg
-            }
+            !if_expr_positive
         } else {
             return;
+        };
+        let body = Sugg::hir(cx, body, "_").maybe_paren();
+        let sugg = if sugg_positive_abs {
+            ("manual implementation of `abs` method", format!("{body}.abs()"))
+        } else {
+            #[rustfmt::skip]
+            ("manual implementation of negation of `abs` method", format!("-{body}.abs()"))
         };
         span_lint_and_sugg(
             cx,
@@ -637,10 +633,10 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
         },
         lhs,
         rhs,
-    ) = &expr.kind
+    ) = expr.kind
         && are_same_base_logs(cx, lhs, rhs)
-        && let ExprKind::MethodCall(_, largs_self, ..) = &lhs.kind
-        && let ExprKind::MethodCall(_, rargs_self, ..) = &rhs.kind
+        && let ExprKind::MethodCall(_, largs_self, ..) = lhs.kind
+        && let ExprKind::MethodCall(_, rargs_self, ..) = rhs.kind
     {
         span_lint_and_sugg(
             cx,
@@ -650,8 +646,8 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             "consider using",
             format!(
                 "{}.log({})",
-                Sugg::hir(cx, largs_self, "..").maybe_paren(),
-                Sugg::hir(cx, rargs_self, ".."),
+                Sugg::hir(cx, largs_self, "_").maybe_paren(),
+                Sugg::hir(cx, rargs_self, "_"),
             ),
             Applicability::MachineApplicable,
         );
@@ -665,14 +661,14 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         },
         div_lhs,
         div_rhs,
-    ) = &expr.kind
+    ) = expr.kind
         && let ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Mul, ..
             },
             mul_lhs,
             mul_rhs,
-        ) = &div_lhs.kind
+        ) = div_lhs.kind
         && let ecx = ConstEvalCtxt::new(cx)
         && let Some(rvalue) = ecx.eval(div_rhs)
         && let Some(lvalue) = ecx.eval(mul_rhs)
@@ -681,48 +677,52 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue)
             && (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
         {
-            let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_paren());
-            if let ExprKind::Lit(literal) = mul_lhs.kind
-                && let ast::LitKind::Float(ref value, float_type) = literal.node
-                && float_type == ast::LitFloatType::Unsuffixed
-            {
-                if value.as_str().ends_with('.') {
-                    proposal = format!("{}0_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
-                } else {
-                    proposal = format!("{}_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
-                }
-            }
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 SUBOPTIMAL_FLOPS,
                 expr.span,
                 "conversion to degrees can be done more accurately",
-                "consider using",
-                proposal,
-                Applicability::MachineApplicable,
+                |diag| {
+                    let recv = Sugg::hir(cx, mul_lhs, "num");
+                    let proposal = if let ExprKind::Lit(literal) = mul_lhs.kind
+                        && let ast::LitKind::Float(ref value, float_type) = literal.node
+                        && float_type == ast::LitFloatType::Unsuffixed
+                    {
+                        if value.as_str().ends_with('.') {
+                            format!("{recv}0_f64.to_degrees()")
+                        } else {
+                            format!("{recv}_f64.to_degrees()")
+                        }
+                    } else {
+                        format!("{}.to_degrees()", recv.maybe_paren())
+                    };
+                    diag.span_suggestion(expr.span, "consider using", proposal, Applicability::MachineApplicable);
+                },
             );
         } else if (F32(180_f32) == rvalue || F64(180_f64) == rvalue)
             && (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
         {
-            let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_paren());
-            if let ExprKind::Lit(literal) = mul_lhs.kind
-                && let ast::LitKind::Float(ref value, float_type) = literal.node
-                && float_type == ast::LitFloatType::Unsuffixed
-            {
-                if value.as_str().ends_with('.') {
-                    proposal = format!("{}0_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
-                } else {
-                    proposal = format!("{}_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
-                }
-            }
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 SUBOPTIMAL_FLOPS,
                 expr.span,
                 "conversion to radians can be done more accurately",
-                "consider using",
-                proposal,
-                Applicability::MachineApplicable,
+                |diag| {
+                    let recv = Sugg::hir(cx, mul_lhs, "num");
+                    let proposal = if let ExprKind::Lit(literal) = mul_lhs.kind
+                        && let ast::LitKind::Float(ref value, float_type) = literal.node
+                        && float_type == ast::LitFloatType::Unsuffixed
+                    {
+                        if value.as_str().ends_with('.') {
+                            format!("{recv}0_f64.to_radians()")
+                        } else {
+                            format!("{recv}_f64.to_radians()")
+                        }
+                    } else {
+                        format!("{}.to_radians()", recv.maybe_paren())
+                    };
+                    diag.span_suggestion(expr.span, "consider using", proposal, Applicability::MachineApplicable);
+                },
             );
         }
     }
@@ -735,7 +735,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             return;
         }
 
-        if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
+        if let ExprKind::MethodCall(path, receiver, args, _) = expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() && !is_no_std_crate(cx) && cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
