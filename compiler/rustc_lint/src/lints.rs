@@ -3312,3 +3312,8 @@ pub(crate) struct DocTestUnknown {
 #[derive(LintDiagnostic)]
 #[diag(lint_doc_test_literal)]
 pub(crate) struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_eq_internal_method)]
+#[note]
+pub(crate) struct EqInternalMethodImplemented;
