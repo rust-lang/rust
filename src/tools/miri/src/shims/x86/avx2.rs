@@ -1,8 +1,5 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::mir;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use super::{
     ShiftOp, horizontal_bin_op, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw,
@@ -15,7 +12,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_avx2_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -29,8 +25,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Horizontally add / subtract with saturation adjacent 16-bit
             // integer values in `left` and `right`.
             "phadd.sw" | "phsub.sw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "phadd.sw" => mir::BinOp::Add,
@@ -49,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "gather.d.pd.256" | "gather.q.pd" | "gather.q.pd.256" | "gather.d.ps"
             | "gather.d.ps.256" | "gather.q.ps" | "gather.q.ps.256" => {
                 let [src, slice, offsets, mask, scale] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_unadjusted(link_name, args)?;
 
                 assert_eq!(dest.layout, src.layout);
 
@@ -103,8 +98,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm256_maddubs_epi16 function.
             "pmadd.ub.sw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pmaddbw(this, left, right, dest)?;
             }
@@ -115,8 +109,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // offsets specified in `imm`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mpsadbw_epu8
             "mpsadbw" => {
-                let [left, right, imm] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 mpsadbw(this, left, right, imm, dest)?;
             }
@@ -127,8 +120,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 1 and then taking the bits `1..=16`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhrs_epi16
             "pmul.hr.sw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pmulhrsw(this, left, right, dest)?;
             }
@@ -136,8 +128,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 16-bit integer vectors to a single 8-bit integer
             // vector with signed saturation.
             "packsswb" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 packsswb(this, left, right, dest)?;
             }
@@ -145,8 +136,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 32-bit integer vectors to a single 16-bit integer
             // vector with signed saturation.
             "packssdw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 packssdw(this, left, right, dest)?;
             }
@@ -154,8 +144,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 16-bit signed integer vectors to a single 8-bit
             // unsigned integer vector with saturation.
             "packuswb" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 packuswb(this, left, right, dest)?;
             }
@@ -163,22 +152,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Concatenates two 32-bit signed integer vectors and converts
             // the result to a 16-bit unsigned integer vector with saturation.
             "packusdw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 packusdw(this, left, right, dest)?;
             }
             // Used to implement _mm256_permutevar8x32_epi32 and _mm256_permutevar8x32_ps.
             "permd" | "permps" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 permute(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sad_epu8 function.
             "psad.bw" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 psadbw(this, left, right, dest)?
             }
@@ -186,8 +172,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Shuffles bytes from `left` using `right` as pattern.
             // Each 128-bit block is shuffled independently.
             "pshuf.b" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pshufb(this, left, right, dest)?;
             }
@@ -197,8 +182,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is written to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b" | "psign.w" | "psign.d" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 psign(this, left, right, dest)?;
             }
@@ -212,8 +196,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is copied to remaining bits.
             "psll.w" | "psrl.w" | "psra.w" | "psll.d" | "psrl.d" | "psra.d" | "psll.q"
             | "psrl.q" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "psll.w" | "psll.d" | "psll.q" => ShiftOp::Left,
@@ -229,8 +212,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
             // intermediate 32-bit integers, and pack the results in `dest`.
             "pmadd.wd" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pmaddwd(this, left, right, dest)?;
             }
