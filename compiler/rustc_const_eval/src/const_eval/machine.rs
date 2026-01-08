@@ -23,8 +23,8 @@ use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
-    compile_time_machine, err_inval, err_unsup_format, interp_ok, throw_exhaust, throw_inval,
-    throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -589,81 +589,6 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             sym::type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
-            }
-            sym::va_copy => {
-                // pub const unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
-
-                // `src` is `&VaList`, so grab the underlying `VaList` type/layout.
-                let src_va_list_ty = match args[1].layout.ty.kind() {
-                    ty::Ref(_, ty, _) => *ty,
-                    _ => bug!(
-                        "va_copy: expected second argument to be `&VaList`, got {:?}",
-                        args[1].layout.ty
-                    ),
-                };
-                let va_list_layout = ecx.layout_of(src_va_list_ty)?;
-
-                // Get the pointers to the actual VaList storage.
-                let dest_ptr = ecx.read_pointer(&args[0])?; // *mut VaList
-                let src_ptr = ecx.read_pointer(&args[1])?; // &VaList
-
-                // Turn them into places and copy the bytes.
-                let src_mplace = ecx.ptr_to_mplace(src_ptr, va_list_layout);
-                let dest_mplace = ecx.ptr_to_mplace(dest_ptr, va_list_layout);
-
-                ecx.copy_op(&src_mplace, &dest_mplace)?;
-            }
-
-            sym::va_arg => {
-                let ptr_size = ecx.tcx.data_layout.pointer_size();
-
-                // The only argument is a `&mut VaList`.
-                let ap_ref = ecx.read_pointer(&args[0])?;
-
-                // The first bytes of the `VaList` value store a pointer. The `AllocId` of this
-                // pointer is a key into a global map of variable argument lists. The offset is
-                // used as the index of the argument to read.
-                let va_list_ptr = {
-                    let alloc = ecx
-                        .get_ptr_alloc(ap_ref, ptr_size)?
-                        .expect("va_list storage should not be a ZST");
-                    let scalar = alloc.read_pointer(Size::ZERO)?;
-                    scalar.to_pointer(ecx)?
-                };
-
-                let (prov, offset) = va_list_ptr.into_raw_parts();
-                let alloc_id = prov.unwrap().alloc_id();
-                let index = offset.bytes_usize();
-
-                // Update the offset in this `VaList` value so that a subsequent call to `va_arg`
-                // reads the next argument.
-                let new_va_list_ptr = va_list_ptr.wrapping_offset(Size::from_bytes(1), ecx);
-                let addr = Scalar::from_maybe_pointer(new_va_list_ptr, ecx);
-                let mut alloc = ecx
-                    .get_ptr_alloc_mut(ap_ref, ptr_size)?
-                    .expect("va_list storage should not be a ZST");
-                alloc.write_ptr_sized(Size::ZERO, addr)?;
-
-                let arguments = ecx.memory.va_list_map.get(&alloc_id).ok_or_else(|| {
-                    err_unsup_format!("va_arg on unknown va_list allocation {:?}", alloc_id)
-                })?;
-
-                let Some(src_mplace) = arguments.get(index).cloned() else {
-                    throw_ub!(VaArgOutOfBounds)
-                };
-
-                // NOTE: In C some type conversions are allowed (e.g. casting between signed and
-                // unsigned integers). For now we require c-variadic arguments to be read with the
-                // exact type they were passed as.
-                if src_mplace.layout.ty != dest.layout.ty {
-                    throw_unsup_format!(
-                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
-                        dest.layout.ty,
-                        src_mplace.layout.ty
-                    );
-                }
-
-                ecx.copy_op(&src_mplace, dest)?;
             }
 
             _ => {
