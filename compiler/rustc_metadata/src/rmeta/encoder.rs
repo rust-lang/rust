@@ -1,12 +1,14 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
@@ -67,6 +69,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+
+    metadata_hasher: StableHasher,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -81,8 +85,9 @@ macro_rules! empty_proc_macro {
 }
 
 macro_rules! encoder_methods {
-    ($($name:ident($ty:ty);)*) => {
+    ($(($name:ident, $hash:ident, $ty:ty);)*) => {
         $(fn $name(&mut self, value: $ty) {
+            self.metadata_hasher.$hash(value);
             self.opaque.$name(value)
         })*
     }
@@ -90,20 +95,20 @@ macro_rules! encoder_methods {
 
 impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     encoder_methods! {
-        emit_usize(usize);
-        emit_u128(u128);
-        emit_u64(u64);
-        emit_u32(u32);
-        emit_u16(u16);
-        emit_u8(u8);
+        (emit_usize, write_usize, usize);
+        (emit_u128, write_u128, u128);
+        (emit_u64, write_u64, u64);
+        (emit_u32, write_u32, u32);
+        (emit_u16, write_u16, u16);
+        (emit_u8, write_u8, u8);
 
-        emit_isize(isize);
-        emit_i128(i128);
-        emit_i64(i64);
-        emit_i32(i32);
-        emit_i16(i16);
+        (emit_isize, write_isize, isize);
+        (emit_i128, write_i128, i128);
+        (emit_i64, write_i64, i64);
+        (emit_i32, write_i32, i32);
+        (emit_i16, write_i16, i16);
 
-        emit_raw_bytes(&[u8]);
+        (emit_raw_bytes, write, &[u8]);
     }
 }
 
@@ -149,6 +154,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.hash(&mut self.metadata_hasher);
         def_id.krate.encode(self);
         def_id.index.encode(self);
     }
@@ -2528,6 +2534,7 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),
+        metadata_hasher: StableHasher::new(),
     };
 
     // Encode the rustc version string in a predictable location.
