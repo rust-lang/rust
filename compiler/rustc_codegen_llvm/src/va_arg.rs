@@ -1,12 +1,13 @@
-use rustc_abi::{Align, BackendRepr, Endian, HasDataLayout, Primitive, Size, TyAndLayout};
+use rustc_abi::{Align, BackendRepr, Endian, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, LayoutTypeCodegenMethods,
 };
+use rustc_middle::bug;
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_target::spec::{Abi, Arch, Env};
 
 use crate::builder::Builder;
@@ -82,6 +83,7 @@ enum PassMode {
 enum SlotSize {
     Bytes8 = 8,
     Bytes4 = 4,
+    Bytes1 = 1,
 }
 
 enum AllowHigherAlign {
@@ -728,7 +730,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
 fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     reg_addr: &'ll Value,
-    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+    layout: TyAndLayout<'tcx>,
     src_align: Align,
 ) -> &'ll Value {
     if layout.layout.align.abi > src_align {
@@ -751,7 +753,7 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
 fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     va_list_addr: &'ll Value,
-    layout: TyAndLayout<'tcx, Ty<'tcx>>,
+    layout: TyAndLayout<'tcx>,
 ) -> &'ll Value {
     let dl = bx.cx.data_layout();
     let ptr_align_abi = dl.data_layout().pointer_align().abi;
@@ -1003,15 +1005,17 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     return bx.load(layout.llvm_type(bx), value_ptr, layout.align.abi);
 }
 
+/// Determine the va_arg implementation to use. The LLVM va_arg instruction
+/// is lacking in some instances, so we should only use it as a fallback.
 pub(super) fn emit_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
 ) -> &'ll Value {
-    // Determine the va_arg implementation to use. The LLVM va_arg instruction
-    // is lacking in some instances, so we should only use it as a fallback.
-    let target = &bx.cx.tcx.sess.target;
+    let layout = bx.cx.layout_of(target_ty);
+    let target_ty_size = layout.layout.size().bytes();
 
+    let target = &bx.cx.tcx.sess.target;
     match target.arch {
         Arch::X86 => emit_ptr_va_arg(
             bx,
@@ -1069,23 +1073,79 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::No,
         ),
+        Arch::LoongArch32 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            if target_ty_size > 2 * 4 { PassMode::Indirect } else { PassMode::Direct },
+            SlotSize::Bytes4,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
+        Arch::LoongArch64 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            if target_ty_size > 2 * 8 { PassMode::Indirect } else { PassMode::Direct },
+            SlotSize::Bytes8,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
+        Arch::AmdGpu => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes4,
+            AllowHigherAlign::No,
+            ForceRightAdjust::No,
+        ),
+        Arch::Nvptx64 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes1,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
+        Arch::Wasm32 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            if layout.is_aggregate() || layout.is_zst() || layout.is_1zst() {
+                PassMode::Indirect
+            } else {
+                PassMode::Direct
+            },
+            SlotSize::Bytes4,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
+        Arch::Wasm64 => bug!("c-variadic functions are not fully implemented for wasm64"),
+        Arch::CSky => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes4,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
         // Windows x86_64
-        Arch::X86_64 if target.is_like_windows => {
-            let target_ty_size = bx.cx.size_of(target_ty).bytes();
-            emit_ptr_va_arg(
-                bx,
-                addr,
-                target_ty,
-                if target_ty_size > 8 || !target_ty_size.is_power_of_two() {
-                    PassMode::Indirect
-                } else {
-                    PassMode::Direct
-                },
-                SlotSize::Bytes8,
-                AllowHigherAlign::No,
-                ForceRightAdjust::No,
-            )
-        }
+        Arch::X86_64 if target.is_like_windows => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            if target_ty_size > 8 || !target_ty_size.is_power_of_two() {
+                PassMode::Indirect
+            } else {
+                PassMode::Direct
+            },
+            SlotSize::Bytes8,
+            AllowHigherAlign::No,
+            ForceRightAdjust::No,
+        ),
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
