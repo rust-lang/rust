@@ -5,7 +5,7 @@
 
 trait Trait {
     #[type_const]
-    const ASSOC: usize;
+    const ASSOC: u32;
 }
 
 fn takes_tuple<const A: (u32, u32)>() {}
