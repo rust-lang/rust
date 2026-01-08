@@ -6,7 +6,7 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-pub use crate::sys::fs::common::Dir;
+pub use crate::sys::fs::common::{Dir, remove_dir_all};
 use crate::sys::pal::{helpers, unsupported};
 use crate::sys::time::SystemTime;
 
@@ -479,10 +479,6 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     } else {
         Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
     }
-}
-
-pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
-    unsupported()
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
