@@ -1401,6 +1401,14 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
+    fn deprecation_note(&self) -> Option<Symbol> {
+        match &self {
+            Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
+            _ => None,
+        }
+    }
+
     fn is_automatically_derived_attr(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)))
     }

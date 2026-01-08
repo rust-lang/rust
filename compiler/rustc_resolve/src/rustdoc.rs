@@ -410,8 +410,17 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
 pub(crate) fn attrs_to_preprocessed_links<A: AttributeExt + Clone>(attrs: &[A]) -> Vec<Box<str>> {
-    let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
-    let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
+    let (doc_fragments, other_attrs) =
+        attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
+    let mut doc =
+        prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap_or_default();
+
+    for attr in other_attrs {
+        if let Some(note) = attr.deprecation_note() {
+            doc += note.as_str();
+            doc += "\n";
+        }
+    }
 
     parse_links(&doc)
 }
