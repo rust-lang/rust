@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{par_for_each_in, par_join};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
@@ -26,6 +27,7 @@ use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
@@ -39,8 +41,14 @@ use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
-pub(super) struct EncodeContext<'a, 'tcx> {
+// Struct to enable split borrows.
+struct ContextEncoder<'a> {
     opaque: opaque::FileEncoder,
+    stable_hasher: StableHasher,
+    hcx: StableHashingContext<'a>,
+}
+
+pub(super) struct EncodeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
@@ -67,6 +75,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+
+    encoder: ContextEncoder<'a>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -80,10 +90,45 @@ macro_rules! empty_proc_macro {
     };
 }
 
+macro_rules! context_encoder_methods {
+    ($($name:ident($ty:ty);)*) => {
+        $(fn $name(&mut self, value: $ty) {
+            value.hash_stable(&mut self.hcx, &mut self.stable_hasher);
+            self.opaque.$name(value)
+        })*
+    }
+}
+
+impl<'a> Encoder for ContextEncoder<'a> {
+    context_encoder_methods! {
+        emit_usize(usize);
+        emit_u128(u128);
+        emit_u64(u64);
+        emit_u32(u32);
+        emit_u16(u16);
+        emit_u8(u8);
+
+        emit_isize(isize);
+        emit_i128(i128);
+        emit_i64(i64);
+        emit_i32(i32);
+        emit_i16(i16);
+
+        emit_raw_bytes(&[u8]);
+    }
+}
+
+impl<'a> ContextEncoder<'a> {
+    #[inline]
+    fn position(&self) -> usize {
+        self.opaque.position()
+    }
+}
+
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
         $(fn $name(&mut self, value: $ty) {
-            self.opaque.$name(value)
+            self.encoder.$name(value)
         })*
     }
 }
@@ -149,6 +194,11 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
+        HashStable::<StableHashingContext<'_>>::hash_stable(
+            &def_id,
+            &mut self.encoder.hcx,
+            &mut self.encoder.stable_hasher,
+        );
         def_id.krate.encode(self);
         def_id.index.encode(self);
     }
@@ -177,25 +227,25 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
                 let last_location = *o.get();
                 // This cannot underflow. Metadata is written with increasing position(), so any
                 // previously saved offset must be smaller than the current position.
-                let offset = self.opaque.position() - last_location;
+                let offset = self.encoder.position() - last_location;
                 if offset < last_location {
                     let needed = bytes_needed(offset);
                     SpanTag::indirect(true, needed as u8).encode(self);
-                    self.opaque.write_with(|dest| {
+                    self.encoder.opaque.write_with(|dest| {
                         *dest = offset.to_le_bytes();
                         needed
                     });
                 } else {
                     let needed = bytes_needed(last_location);
                     SpanTag::indirect(false, needed as u8).encode(self);
-                    self.opaque.write_with(|dest| {
+                    self.encoder.opaque.write_with(|dest| {
                         *dest = last_location.to_le_bytes();
                         needed
                     });
                 }
             }
             Entry::Vacant(v) => {
-                let position = self.opaque.position();
+                let position = self.encoder.position();
                 v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
                 span.data().encode(self);
@@ -372,7 +422,7 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {
-        self.opaque.position()
+        self.encoder.position()
     }
 
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
@@ -489,21 +539,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     ) {
         // if symbol/byte symbol is predefined, emit tag and symbol index
         if Symbol::is_predefined(index) {
-            self.opaque.emit_u8(SYMBOL_PREDEFINED);
-            self.opaque.emit_u32(index);
+            self.encoder.emit_u8(SYMBOL_PREDEFINED);
+            self.encoder.emit_u32(index);
         } else {
             // otherwise write it as string or as offset to it
             match self.symbol_index_table.entry(index) {
                 Entry::Vacant(o) => {
-                    self.opaque.emit_u8(SYMBOL_STR);
-                    let pos = self.opaque.position();
+                    self.encoder.emit_u8(SYMBOL_STR);
+                    let pos = self.encoder.position();
                     o.insert(pos);
                     emit_str_or_byte_str(self);
                 }
                 Entry::Occupied(o) => {
                     let x = *o.get();
-                    self.emit_u8(SYMBOL_OFFSET);
-                    self.emit_usize(x);
+                    self.encoder.emit_u8(SYMBOL_OFFSET);
+                    self.encoder.emit_usize(x);
                 }
             }
         }
@@ -598,7 +648,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             adapted.set_some(on_disk_index, self.lazy(adapted_source_file));
         }
 
-        adapted.encode(&mut self.opaque)
+        adapted.encode(&mut self.encoder.opaque)
     }
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
@@ -682,7 +732,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
+        let tables = stat!("tables", || self.tables.encode(&mut self.encoder.opaque));
 
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers());
@@ -783,19 +833,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if tcx.sess.opts.unstable_opts.meta_stats {
             use std::fmt::Write;
 
-            self.opaque.flush();
+            let opaque = &mut self.encoder.opaque;
+            opaque.flush();
 
             // Rewind and re-read all the metadata to count the zero bytes we wrote.
-            let pos_before_rewind = self.opaque.file().stream_position().unwrap();
+            let pos_before_rewind = opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
-            self.opaque.file().rewind().unwrap();
-            let file = std::io::BufReader::new(self.opaque.file());
+            opaque.file().rewind().unwrap();
+            let file = std::io::BufReader::new(opaque.file());
             for e in file.bytes() {
                 if e.unwrap() == 0 {
                     zero_bytes += 1;
                 }
             }
-            assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
+            assert_eq!(opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             stats.sort_by_key(|&(_, usize)| usize);
             stats.reverse(); // bigger items first
@@ -1967,9 +2018,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         );
 
         (
-            syntax_contexts.encode(&mut self.opaque),
-            expn_data_table.encode(&mut self.opaque),
-            expn_hash_table.encode(&mut self.opaque),
+            syntax_contexts.encode(&mut self.encoder.opaque),
+            expn_data_table.encode(&mut self.encoder.opaque),
+            expn_hash_table.encode(&mut self.encoder.opaque),
         )
     }
 
@@ -2482,12 +2533,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 let root = ecx.encode_crate_root();
 
                 // Flush buffer to ensure backing file has the correct size.
-                ecx.opaque.flush();
+                ecx.encoder.opaque.flush();
                 // Record metadata size for self-profiling
                 tcx.prof.artifact_size(
                     "crate_metadata",
                     "crate_metadata",
-                    ecx.opaque.file().metadata().unwrap().len(),
+                    ecx.encoder.opaque.file().metadata().unwrap().len(),
                 );
 
                 root.position.get()
@@ -2502,53 +2553,55 @@ fn with_encode_metadata_header(
     path: &Path,
     f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
 ) {
-    let mut encoder = opaque::FileEncoder::new(path)
-        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
-    encoder.emit_raw_bytes(METADATA_HEADER);
+    tcx.with_stable_hashing_context(|hcx| {
+        let mut encoder = opaque::FileEncoder::new(path)
+            .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
+        encoder.emit_raw_bytes(METADATA_HEADER);
 
-    // Will be filled with the root position after encoding everything.
-    encoder.emit_raw_bytes(&0u64.to_le_bytes());
+        // Will be filled with the root position after encoding everything.
+        encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
-    let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
-    let required_source_files = Some(FxIndexSet::default());
-    drop(source_map_files);
+        let source_map_files = tcx.sess.source_map().files();
+        let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
+        let required_source_files = Some(FxIndexSet::default());
+        drop(source_map_files);
 
-    let hygiene_ctxt = HygieneEncodeContext::default();
+        let hygiene_ctxt = HygieneEncodeContext::default();
 
-    let mut ecx = EncodeContext {
-        opaque: encoder,
-        tcx,
-        feat: tcx.features(),
-        tables: Default::default(),
-        lazy_state: LazyState::NoNode,
-        span_shorthands: Default::default(),
-        type_shorthands: Default::default(),
-        predicate_shorthands: Default::default(),
-        source_file_cache,
-        interpret_allocs: Default::default(),
-        required_source_files,
-        is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
-        hygiene_ctxt: &hygiene_ctxt,
-        symbol_index_table: Default::default(),
-    };
+        let mut ecx = EncodeContext {
+            tcx,
+            feat: tcx.features(),
+            tables: Default::default(),
+            lazy_state: LazyState::NoNode,
+            span_shorthands: Default::default(),
+            type_shorthands: Default::default(),
+            predicate_shorthands: Default::default(),
+            source_file_cache,
+            interpret_allocs: Default::default(),
+            required_source_files,
+            is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
+            hygiene_ctxt: &hygiene_ctxt,
+            symbol_index_table: Default::default(),
+            encoder: ContextEncoder { opaque: encoder, stable_hasher: StableHasher::new(), hcx },
+        };
 
-    // Encode the rustc version string in a predictable location.
-    rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
+        // Encode the rustc version string in a predictable location.
+        rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    let root_position = f(&mut ecx);
+        let root_position = f(&mut ecx);
 
-    // Make sure we report any errors from writing to the file.
-    // If we forget this, compilation can succeed with an incomplete rmeta file,
-    // causing an ICE when the rmeta file is read by another compilation.
-    if let Err((path, err)) = ecx.opaque.finish() {
-        tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
-    }
+        // Make sure we report any errors from writing to the file.
+        // If we forget this, compilation can succeed with an incomplete rmeta file,
+        // causing an ICE when the rmeta file is read by another compilation.
+        if let Err((path, err)) = ecx.encoder.opaque.finish() {
+            tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
+        }
 
-    let file = ecx.opaque.file();
-    if let Err(err) = encode_root_position(file, root_position) {
-        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
-    }
+        let file = ecx.encoder.opaque.file();
+        if let Err(err) = encode_root_position(file, root_position) {
+            tcx.dcx().emit_fatal(FailWriteFile { path: ecx.encoder.opaque.path(), err });
+        }
+    })
 }
 
 fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
