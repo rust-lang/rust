@@ -1180,6 +1180,8 @@ impl GlobalState {
             } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
                 let format_with_id = |user_facing_command: String| {
+                    // When we're running multiple flychecks, we have to include a disambiguator in
+                    // the title, or the editor complains. Note that this is a user-facing string.
                     if self.flycheck.len() == 1 {
                         user_facing_command
                     } else {
