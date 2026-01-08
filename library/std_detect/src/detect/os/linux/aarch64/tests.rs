@@ -1,5 +1,5 @@
+use super::AtHwcap;
 use super::auxvec::auxv_from_file;
-use super::*;
 // The baseline hwcaps used in the (artificial) auxv test files.
 fn baseline_hwcaps() -> AtHwcap {
     AtHwcap {

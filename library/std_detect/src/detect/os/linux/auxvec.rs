@@ -147,12 +147,8 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
 pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
-    let file = super::read_file(file)?;
-    auxv_from_file_bytes(&file)
-}
+    let bytes = super::read_file(file)?;
 
-/// Read auxiliary vector from a slice of bytes.
-pub(super) fn auxv_from_file_bytes(bytes: &[u8]) -> Result<AuxVec, alloc::string::String> {
     // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
     //
     // The auxiliary vector contains at most 34 (key,value) fields: from
