@@ -79,13 +79,12 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         if self.tcx.features().rustc_attrs() {
-            let items = self.tcx.associated_item_def_ids(impl_def_id);
-
             if !self.tcx.has_attr(ty_def_id, sym::rustc_has_incoherent_inherent_impls) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
             }
 
+            let items = self.tcx.associated_item_def_ids(impl_def_id);
             for &impl_item in items {
                 if !find_attr!(
                     self.tcx.get_all_attrs(impl_item),
