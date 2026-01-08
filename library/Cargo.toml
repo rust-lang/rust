@@ -62,9 +62,10 @@ inherits = "release"
 codegen-units = 1
 debug = 1 # "limited"
 rustflags = [
-    # Unconditionally embedding bitcode is necessary for when users enable LTO.
-    # Until Cargo can rebuild the standard library with the user profile's `lto`
-    # setting, Cargo will force this to be `no`
+    # `profile.lto=off` implies `-Cembed-bitcode=no`, but unconditionally embedding
+    # bitcode is necessary for when users enable LTO.
+    # Required until Cargo can re-build the standard library based on the value
+    # of `profile.lto` in the user's profile.
     "-Cembed-bitcode=yes",
     # Enable frame pointers
     "-Zunstable-options",
