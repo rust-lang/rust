@@ -485,7 +485,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
 
                     // When the frame is dropped, this ID is used to deallocate the variable arguments list.
-                    self.frame_mut().va_list = Some(alloc_id);
+                    self.frame_mut().va_list = varargs.clone();
 
                     // A global map that is used to implement `va_arg`.
                     self.memory.va_list_map.insert(alloc_id, varargs);
