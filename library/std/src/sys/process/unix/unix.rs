@@ -93,6 +93,7 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
+        #[cfg_attr(not(target_os = "freebsd"), allow(unused))]
         let (pid, pidfd) = unsafe { self.do_fork() }?;
 
         if pid == 0 {
