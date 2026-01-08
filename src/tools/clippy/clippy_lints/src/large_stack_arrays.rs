@@ -126,7 +126,7 @@ fn might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
         let ExprKind::Repeat(_, len_ct) = expr.kind else {
             return false;
         };
-        !expr.span.contains(len_ct.span())
+        !expr.span.contains(len_ct.span)
     }
 
     expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(expr)
