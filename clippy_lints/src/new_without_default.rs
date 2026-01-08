@@ -4,7 +4,8 @@ use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicabi
 use clippy_utils::sugg::DiagExt;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::HirIdSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Attribute, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
@@ -122,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 let attrs_sugg = {
                     let mut sugg = String::new();
                     for attr in cx.tcx.hir_attrs(assoc_item_hir_id) {
-                        if !attr.has_name(sym::cfg_trace) {
+                        let Attribute::Parsed(AttributeKind::CfgTrace(attrs)) = attr else {
                             // This might be some other attribute that the `impl Default` ought to inherit.
                             // But it could also be one of the many attributes that:
                             // - can't be put on an impl block -- like `#[inline]`
@@ -132,10 +133,12 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // reduce the applicability
                             app = Applicability::MaybeIncorrect;
                             continue;
-                        }
+                        };
 
-                        sugg.push_str(&snippet_with_applicability(cx.sess(), attr.span(), "_", &mut app));
-                        sugg.push('\n');
+                        for (_, attr_span) in attrs {
+                            sugg.push_str(&snippet_with_applicability(cx.sess(), *attr_span, "_", &mut app));
+                            sugg.push('\n');
+                        }
                     }
                     sugg
                 };

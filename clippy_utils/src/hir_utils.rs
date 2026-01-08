@@ -672,10 +672,18 @@ impl HirEqInterExpr<'_, '_, '_> {
                         .zip(*inits_b)
                         .all(|(init_a, init_b)| self.eq_const_arg(init_a.expr, init_b.expr))
             },
+            (ConstArgKind::TupleCall(path_a, args_a), ConstArgKind::TupleCall(path_b, args_b)) => {
+                self.eq_qpath(path_a, path_b)
+                    && args_a
+                        .iter()
+                        .zip(*args_b)
+                        .all(|(arg_a, arg_b)| self.eq_const_arg(arg_a, arg_b))
+            },
             // Use explicit match for now since ConstArg is undergoing flux.
             (
                 ConstArgKind::Path(..)
                 | ConstArgKind::Anon(..)
+                | ConstArgKind::TupleCall(..)
                 | ConstArgKind::Infer(..)
                 | ConstArgKind::Struct(..)
                 | ConstArgKind::Error(..),
@@ -705,9 +713,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                     negated: right_neg,
                 },
             ) => left_neg == right_neg && left.node == right.node,
-            (PatExprKind::ConstBlock(left), PatExprKind::ConstBlock(right)) => self.eq_body(left.body, right.body),
             (PatExprKind::Path(left), PatExprKind::Path(right)) => self.eq_qpath(left, right),
-            (PatExprKind::Lit { .. } | PatExprKind::ConstBlock(..) | PatExprKind::Path(..), _) => false,
+            (PatExprKind::Lit { .. } | PatExprKind::Path(..), _) => false,
         }
     }
 
@@ -1312,7 +1319,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 lit.node.hash(&mut self.s);
                 negated.hash(&mut self.s);
             },
-            PatExprKind::ConstBlock(c) => self.hash_body(c.body),
             PatExprKind::Path(qpath) => self.hash_qpath(qpath),
         }
     }
@@ -1546,6 +1552,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_qpath(path);
                 for init in *inits {
                     self.hash_const_arg(init.expr);
+                }
+            },
+            ConstArgKind::TupleCall(path, args) => {
+                self.hash_qpath(path);
+                for arg in *args {
+                    self.hash_const_arg(arg);
                 }
             },
             ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
