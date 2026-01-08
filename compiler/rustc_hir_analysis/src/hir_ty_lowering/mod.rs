@@ -22,6 +22,7 @@ pub mod generics;
 use std::assert_matches::assert_matches;
 use std::slice;
 
+use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2391,6 +2392,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
             hir::ConstArgKind::Infer(()) => self.ct_infer(None, const_arg.span),
             hir::ConstArgKind::Error(e) => ty::Const::new_error(tcx, e),
+            hir::ConstArgKind::Literal(kind) if let FeedConstTy::WithTy(anon_const_type) = feed => {
+                self.lower_const_arg_literal(&kind, anon_const_type, const_arg.span)
+            }
+            hir::ConstArgKind::Literal(..) => {
+                let e = self.dcx().span_err(const_arg.span, "literal of unknown type");
+                ty::Const::new_error(tcx, e)
+            }
         }
     }
 
@@ -2771,6 +2779,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 },
             ),
         }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn lower_const_arg_literal(&self, kind: &LitKind, ty: Ty<'tcx>, span: Span) -> Const<'tcx> {
+        let tcx = self.tcx();
+        let input = LitToConstInput { lit: *kind, ty, neg: false };
+        tcx.at(span).lit_to_const(input)
     }
 
     #[instrument(skip(self), level = "debug")]
