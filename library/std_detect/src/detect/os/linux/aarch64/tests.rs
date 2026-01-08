@@ -1,6 +1,5 @@
 use super::*;
 
-#[cfg(feature = "std_detect_file_io")]
 mod auxv_from_file {
     use super::auxvec::auxv_from_file;
     use super::*;
