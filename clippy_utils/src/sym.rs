@@ -248,6 +248,7 @@ generate! {
     next_back,
     next_if,
     next_if_eq,
+    next_multiple_of,
     next_tuple,
     nth,
     ok,

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::{AttrArgs, AttrKind, AttrStyle, Attribute, AttrItemKind};
+use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, AttrStyle, Attribute};
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 
