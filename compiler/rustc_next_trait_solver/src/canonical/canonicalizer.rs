@@ -151,11 +151,16 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 },
                 |&CanonicalParamEnvCacheEntry {
                      param_env,
-                     ref variables,
+                     variables: ref cache_variables,
                      ref variable_lookup_table,
                      ref var_kinds,
                  }| {
-                    (param_env, variables.clone(), var_kinds.clone(), variable_lookup_table.clone())
+                    // FIXME(nnethercote): for reasons I don't understand, this `new`+`extend`
+                    // combination is faster than `variables.clone()`, because it somehow avoids
+                    // some allocations.
+                    let mut variables = Vec::new();
+                    variables.extend(cache_variables.iter().copied());
+                    (param_env, variables, var_kinds.clone(), variable_lookup_table.clone())
                 },
             )
         } else {
