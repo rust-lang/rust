@@ -49,6 +49,39 @@ $ rustup component add llvm-tools --toolchain nightly
 $ rustup component add llvm-bitcode-linker --toolchain nightly
 ```
 
+## Target specific restrictions
+
+The PTX instruction set architecture has special requirements regarding what is
+and isn't allowed. In order to avoid producing invalid PTX or generating undefined
+behavior by LLVM, some Rust language features are disallowed when compiling for this target.
+
+### Static initializers must be acyclic
+
+A static's initializer must not form a cycle with itself or another static's
+initializer. Therefore, the compiler will reject not only the self-referencing static `A`,
+but all of the following statics.
+
+```Rust
+struct Foo(&'static Foo);
+
+static A: Foo = Foo(&A); //~ ERROR static initializer forms a cycle involving `A`
+
+static B0: Foo = Foo(&B1); //~ ERROR static initializer forms a cycle involving `B0`
+static B1: Foo = Foo(&B0);
+
+static C0: Foo = Foo(&C1); //~ ERROR static initializer forms a cycle involving `C0`
+static C1: Foo = Foo(&C2);
+static C2: Foo = Foo(&C0);
+```
+
+Initializers that are acyclic are allowed:
+
+```Rust
+struct Bar(&'static u32);
+
+static BAR: Bar = Bar(&INT); // is allowed
+static INT: u32 = 42u32; // also allowed
+```
 
 <!-- FIXME: fill this out
 
