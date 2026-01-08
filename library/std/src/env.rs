@@ -712,28 +712,15 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Security
 ///
-/// The output of this function should not be trusted for anything
-/// that might have security implications. Basically, if users can run
-/// the executable, they can change the output arbitrarily.
+/// The output of this function must be treated with care to avoid security
+/// vulnerabilities, particularly in processes that run with privileges higher
+/// than the user (such as setuid programs).
 ///
-/// As an example, you can easily introduce a race condition. It goes
-/// like this:
+/// On some Unix platforms, the result is derived from `argv[0]` and `$PATH`,
+/// which can be set arbitrarily by the user who invokes the program.
 ///
-/// 1. You get the path to the current executable using `current_exe()`, and
-///    store it in a variable.
-/// 2. Time passes. A malicious actor removes the current executable, and
-///    replaces it with a malicious one.
-/// 3. You then use the stored path to re-execute the current
-///    executable.
-///
-/// You expected to safely execute the current executable, but you're
-/// instead executing something completely different. The code you
-/// just executed run with your privileges.
-///
-/// This sort of behavior has been known to [lead to privilege escalation] when
-/// used incorrectly.
-///
-/// [lead to privilege escalation]: https://securityvulns.com/Wdocument183.html
+/// Also, an attacker who can write to the executable or the directory containing it can cause
+/// execution of the original path to run a different program.
 ///
 /// # Examples
 ///
