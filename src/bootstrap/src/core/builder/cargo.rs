@@ -602,7 +602,7 @@ impl Builder<'_> {
             build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
         }
 
-        let profile_var = |name: &str| cargo_profile_var(name, &self.config);
+        let profile_var = |name: &str| cargo_profile_var(name, &self.config, mode);
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
@@ -1437,7 +1437,7 @@ impl Builder<'_> {
             } else {
                 match (mode, self.config.rust_optimize.is_release()) {
                     // Some std configuration exists in its own profile
-                    (Mode::Std, true) => Some("dist"),
+                    (Mode::Std, _) => Some("dist"),
                     (_, true) => Some("release"),
                     (_, false) => Some("dev"),
                 }
@@ -1460,7 +1460,12 @@ impl Builder<'_> {
     }
 }
 
-pub fn cargo_profile_var(name: &str, config: &Config) -> String {
-    let profile = if config.rust_optimize.is_release() { "RELEASE" } else { "DEV" };
+pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
+    let profile = match (mode, config.rust_optimize.is_release()) {
+        // Some std configuration exists in its own profile
+        (Mode::Std, _) => "DIST",
+        (_, true) => "RELEASE",
+        (_, false) => "DEV",
+    };
     format!("CARGO_PROFILE_{profile}_{name}")
 }

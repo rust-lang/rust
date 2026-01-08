@@ -900,7 +900,7 @@ impl Build {
     /// release/debug)
     fn cargo_dir(&self, mode: Mode) -> &'static str {
         match (mode, self.config.rust_optimize.is_release()) {
-            (Mode::Std, true) => "dist",
+            (Mode::Std, _) => "dist",
             (_, true) => "release",
             (_, false) => "debug",
         }
