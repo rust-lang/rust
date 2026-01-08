@@ -1213,7 +1213,7 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     continue;
                 }
             }
-            EiiImplResolution::Known(decl, name) => (decl.eii_extern_target, *name),
+            EiiImplResolution::Known(decl) => (decl.eii_extern_target, decl.name.name),
             EiiImplResolution::Error(_eg) => continue,
         };
 

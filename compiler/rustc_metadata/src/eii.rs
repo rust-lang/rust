@@ -40,7 +40,7 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
                     };
                     decl
                 }
-                EiiImplResolution::Known(decl, _) => decl,
+                EiiImplResolution::Known(decl) => decl,
                 EiiImplResolution::Error(_eg) => continue,
             };
 

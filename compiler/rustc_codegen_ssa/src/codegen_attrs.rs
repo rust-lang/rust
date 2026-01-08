@@ -301,7 +301,7 @@ fn process_builtin_attrs(
                                 };
                                 extern_item
                             }
-                            EiiImplResolution::Known(decl, _) => decl.eii_extern_target,
+                            EiiImplResolution::Known(decl) => decl.eii_extern_target,
                             EiiImplResolution::Error(_eg) => continue,
                         };
 

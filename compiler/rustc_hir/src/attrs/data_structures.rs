@@ -27,7 +27,7 @@ pub enum EiiImplResolution {
     Macro(DefId),
     /// Sometimes though, we already know statically and can skip some name resolution.
     /// Stored together with the eii's name for diagnostics.
-    Known(EiiDecl, Symbol),
+    Known(EiiDecl),
     /// For when resolution failed, but we want to continue compilation
     Error(ErrorGuaranteed),
 }
@@ -46,7 +46,7 @@ pub struct EiiDecl {
     pub eii_extern_target: DefId,
     /// whether or not it is unsafe to implement this EII
     pub impl_unsafe: bool,
-    pub span: Span,
+    pub name: Ident,
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]

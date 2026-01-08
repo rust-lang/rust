@@ -137,12 +137,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_eii_extern_target(
         &mut self,
         id: NodeId,
-        EiiExternTarget { extern_item_path, impl_unsafe, span }: &EiiExternTarget,
+        eii_name: Ident,
+        EiiExternTarget { extern_item_path, impl_unsafe }: &EiiExternTarget,
     ) -> Option<EiiDecl> {
         self.lower_path_simple_eii(id, extern_item_path).map(|did| EiiDecl {
             eii_extern_target: did,
             impl_unsafe: *impl_unsafe,
-            span: self.lower_span(*span),
+            name: eii_name,
         })
     }
 
@@ -159,13 +160,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }: &EiiImpl,
     ) -> hir::attrs::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
-            && let Some(decl) = self.lower_eii_extern_target(*node_id, target)
-        {
-            EiiImplResolution::Known(
-                decl,
+            && let Some(decl) = self.lower_eii_extern_target(
+                *node_id,
                 // the expect is ok here since we always generate this path in the eii macro.
-                eii_macro_path.segments.last().expect("at least one segment").ident.name,
-            )
+                eii_macro_path.segments.last().expect("at least one segment").ident,
+                target,
+            ) {
+            EiiImplResolution::Known(decl)
         } else if let Some(macro_did) = self.lower_path_simple_eii(*node_id, eii_macro_path) {
             EiiImplResolution::Macro(macro_did)
         } else {
@@ -195,8 +196,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
             }
-            ItemKind::MacroDef(_, MacroDef { eii_extern_target: Some(target), .. }) => self
-                .lower_eii_extern_target(id, target)
+            ItemKind::MacroDef(name, MacroDef { eii_extern_target: Some(target), .. }) => self
+                .lower_eii_extern_target(id, *name, target)
                 .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(decl))])
                 .unwrap_or_default(),
 

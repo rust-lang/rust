@@ -761,7 +761,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     for i in impls {
                         let name = match i.resolution {
                             EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Known(_, name) => name,
+                            EiiImplResolution::Known(decl) => decl.name.name,
                             EiiImplResolution::Error(_eg) => continue,
                         };
                         self.dcx().emit_err(errors::EiiWithTrackCaller {

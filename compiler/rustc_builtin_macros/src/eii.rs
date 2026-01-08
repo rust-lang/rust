@@ -103,8 +103,6 @@ fn eii_(
 
     // span of the declaring item without attributes
     let item_span = func.sig.span;
-    // span of the eii attribute and the item below it, i.e. the full declaration
-    let decl_span = eii_attr_span.to(item_span);
     let foreign_item_name = func.ident;
 
     let mut return_items = Vec::new();
@@ -134,7 +132,6 @@ fn eii_(
         macro_name,
         foreign_item_name,
         impl_unsafe,
-        decl_span,
     )));
 
     return_items.into_iter().map(wrap_item).collect()
@@ -213,7 +210,6 @@ fn generate_default_impl(
         known_eii_macro_resolution: Some(ast::EiiExternTarget {
             extern_item_path: ast::Path::from_ident(foreign_item_name),
             impl_unsafe,
-            span: item_span,
         }),
     });
 
@@ -359,7 +355,6 @@ fn generate_attribute_macro_to_implement(
     macro_name: Ident,
     foreign_item_name: Ident,
     impl_unsafe: bool,
-    decl_span: Span,
 ) -> ast::Item {
     let mut macro_attrs = ThinVec::new();
 
@@ -401,7 +396,6 @@ fn generate_attribute_macro_to_implement(
                 eii_extern_target: Some(ast::EiiExternTarget {
                     extern_item_path: ast::Path::from_ident(foreign_item_name),
                     impl_unsafe,
-                    span: decl_span,
                 }),
             },
         ),
@@ -458,7 +452,7 @@ pub(crate) fn eii_extern_target(
         false
     };
 
-    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe, span });
+    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
     vec![item]

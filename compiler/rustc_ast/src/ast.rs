@@ -2117,10 +2117,9 @@ pub struct MacroDef {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
 pub struct EiiExternTarget {
-    /// path to the extern item we're targetting
+    /// path to the extern item we're targeting
     pub extern_item_path: Path,
     pub impl_unsafe: bool,
-    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
