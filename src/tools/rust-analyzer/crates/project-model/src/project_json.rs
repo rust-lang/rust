@@ -383,6 +383,8 @@ pub struct ProjectJsonData {
     crates: Vec<CrateData>,
     #[serde(default)]
     runnables: Vec<RunnableData>,
+    //
+    // New fields should be Option or #[serde(default)]. This applies to most of this datastructure.
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
