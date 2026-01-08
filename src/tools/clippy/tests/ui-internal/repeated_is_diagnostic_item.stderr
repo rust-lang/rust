@@ -1,0 +1,82 @@
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:18:13
+   |
+LL |     let _ = ty.is_diag_item(cx, sym::Option) || ty.is_diag_item(cx, sym::Result);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+   = note: `-D clippy::repeated-is-diagnostic-item` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeated_is_diagnostic_item)]`
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL -     let _ = ty.is_diag_item(cx, sym::Option) || ty.is_diag_item(cx, sym::Result);
+LL +     let _ = matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result));
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:20:13
+   |
+LL |     let _ = !ty.is_diag_item(cx, sym::Option) && !ty.is_diag_item(cx, sym::Result);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL -     let _ = !ty.is_diag_item(cx, sym::Option) && !ty.is_diag_item(cx, sym::Result);
+LL +     let _ = !matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result));
+   |
+
+error: repeated calls to `AdtDef::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:22:13
+   |
+LL |     let _ = adt_def.is_diag_item(cx, sym::Option) || adt_def.is_diag_item(cx, sym::Result);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `AdtDef::opt_diag_name`, and reuse the results
+   |
+LL -     let _ = adt_def.is_diag_item(cx, sym::Option) || adt_def.is_diag_item(cx, sym::Result);
+LL +     let _ = matches!(adt_def.opt_diag_name(cx), Some(sym::Option | sym::Result));
+   |
+
+error: repeated calls to `AdtDef::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:24:13
+   |
+LL |     let _ = !adt_def.is_diag_item(cx, sym::Option) && !adt_def.is_diag_item(cx, sym::Result);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `AdtDef::opt_diag_name`, and reuse the results
+   |
+LL -     let _ = !adt_def.is_diag_item(cx, sym::Option) && !adt_def.is_diag_item(cx, sym::Result);
+LL +     let _ = !matches!(adt_def.opt_diag_name(cx), Some(sym::Option | sym::Result));
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:26:13
+   |
+LL |     let _ = cx.tcx.is_diagnostic_item(sym::Option, did) || cx.tcx.is_diagnostic_item(sym::Result, did);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL -     let _ = cx.tcx.is_diagnostic_item(sym::Option, did) || cx.tcx.is_diagnostic_item(sym::Result, did);
+LL +     let _ = matches!(cx.tcx.get_diagnostic_name(did), Some(sym::Option | sym::Result));
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item.rs:28:13
+   |
+LL |     let _ = !cx.tcx.is_diagnostic_item(sym::Option, did) && !cx.tcx.is_diagnostic_item(sym::Result, did);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL -     let _ = !cx.tcx.is_diagnostic_item(sym::Option, did) && !cx.tcx.is_diagnostic_item(sym::Result, did);
+LL +     let _ = !matches!(cx.tcx.get_diagnostic_name(did), Some(sym::Option | sym::Result));
+   |
+
+error: aborting due to 6 previous errors
+

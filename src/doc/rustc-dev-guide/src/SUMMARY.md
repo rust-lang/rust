@@ -100,7 +100,7 @@
 - [Parallel compilation](./parallel-rustc.md)
 - [Rustdoc internals](./rustdoc-internals.md)
     - [Search](./rustdoc-internals/search.md)
-	- [The `rustdoc` test suite](./rustdoc-internals/rustdoc-test-suite.md)
+	- [The `rustdoc-html` test suite](./rustdoc-internals/rustdoc-html-test-suite.md)
 	- [The `rustdoc-gui` test suite](./rustdoc-internals/rustdoc-gui-test-suite.md)
 	- [The `rustdoc-json` test suite](./rustdoc-internals/rustdoc-json-test-suite.md)
 - [GPU offload internals](./offload/internals.md)

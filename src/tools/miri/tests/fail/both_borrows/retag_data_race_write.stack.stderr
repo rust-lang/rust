@@ -14,13 +14,17 @@ LL |         let _r = &mut *p;
    = help: therefore from the perspective of data races, a retag has the same implications as a read or write
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside `thread_2` at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
-note: inside closure
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: thread_2
+               at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+           1: main::{closure#1}
+               at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
    |
 LL |     let t2 = std::thread::spawn(move || thread_2(p));
-   |                                         ^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

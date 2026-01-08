@@ -422,7 +422,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Trait(.., trait_item_refs) => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
-                        if matches!(self.tcx.def_kind(trait_item.owner_id), DefKind::AssocTy) {
+                        if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
                             self.check_def_id(trait_item.owner_id.to_def_id());
                         }
                     }
@@ -778,6 +778,15 @@ fn maybe_record_as_seed<'tcx>(
                 match tcx.def_kind(parent) {
                     DefKind::Impl { of_trait: false } | DefKind::Trait => {}
                     DefKind::Impl { of_trait: true } => {
+                        if let Some(trait_item_def_id) =
+                            tcx.associated_item(owner_id.def_id).trait_item_def_id()
+                            && let Some(trait_item_local_def_id) = trait_item_def_id.as_local()
+                            && let Some(comes_from_allow) =
+                                has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
+                        {
+                            worklist.push((owner_id.def_id, comes_from_allow));
+                        }
+
                         // We only care about associated items of traits,
                         // because they cannot be visited directly,
                         // so we later mark them as live if their corresponding traits
@@ -791,6 +800,14 @@ fn maybe_record_as_seed<'tcx>(
         }
         DefKind::Impl { of_trait: true } => {
             if allow_dead_code.is_none() {
+                if let Some(trait_def_id) =
+                    tcx.impl_trait_ref(owner_id.def_id).skip_binder().def_id.as_local()
+                    && let Some(comes_from_allow) =
+                        has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
+                {
+                    worklist.push((owner_id.def_id, comes_from_allow));
+                }
+
                 unsolved_items.push(owner_id.def_id);
             }
         }
@@ -1179,7 +1196,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         // we have diagnosed them in the trait if they are unused,
         // for unused assoc items in unused trait,
         // we have diagnosed the unused trait.
-        if matches!(def_kind, DefKind::Impl { of_trait: false })
+        if def_kind == (DefKind::Impl { of_trait: false })
             || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
         {
             for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {

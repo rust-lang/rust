@@ -223,25 +223,20 @@ impl<'tcx> ImplicitHasherType<'tcx> {
                     _ => None,
                 })
                 .collect();
-            let params_len = params.len();
 
             let ty = lower_ty(cx.tcx, hir_ty);
 
-            if ty.is_diag_item(cx, sym::HashMap) && params_len == 2 {
-                Some(ImplicitHasherType::HashMap(
+            match (ty.opt_diag_name(cx), &params[..]) {
+                (Some(sym::HashMap), [k, v]) => Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
-                    snippet(cx, params[0].span, "K"),
-                    snippet(cx, params[1].span, "V"),
-                ))
-            } else if ty.is_diag_item(cx, sym::HashSet) && params_len == 1 {
-                Some(ImplicitHasherType::HashSet(
-                    hir_ty.span,
-                    ty,
-                    snippet(cx, params[0].span, "T"),
-                ))
-            } else {
-                None
+                    snippet(cx, k.span, "K"),
+                    snippet(cx, v.span, "V"),
+                )),
+                (Some(sym::HashSet), [t]) => {
+                    Some(ImplicitHasherType::HashSet(hir_ty.span, ty, snippet(cx, t.span, "T")))
+                },
+                _ => None,
             }
         } else {
             None

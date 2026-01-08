@@ -90,15 +90,6 @@ pub(crate) struct NonExhaustiveWithDefaultFieldValues {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_trait)]
-pub(crate) struct AttrShouldBeAppliedToTrait {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_location)]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]
@@ -1322,4 +1313,50 @@ pub(crate) struct DuplicateEiiImpls {
 
     #[help]
     pub help: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_function_not_have_default_implementation)]
+pub(crate) struct FunctionNotHaveDefaultImplementation {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_must_implement_not_function)]
+pub(crate) struct MustImplementNotFunction {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub span_note: MustImplementNotFunctionSpanNote,
+    #[subdiagnostic]
+    pub note: MustImplementNotFunctionNote,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_must_implement_not_function_span_note)]
+pub(crate) struct MustImplementNotFunctionSpanNote {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_must_implement_not_function_note)]
+pub(crate) struct MustImplementNotFunctionNote {}
+
+#[derive(Diagnostic)]
+#[diag(passes_function_not_found_in_trait)]
+pub(crate) struct FunctionNotFoundInTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_functions_names_duplicated)]
+#[note]
+pub(crate) struct FunctionNamesDuplicated {
+    #[primary_span]
+    pub spans: Vec<Span>,
 }

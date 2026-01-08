@@ -7,15 +7,15 @@ LL |             self.lock.inner.unlock();
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `<std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop` at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::sync::MutexGuard<'_, u64>> - shim(Some(std::sync::MutexGuard<'_, u64>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::sync::MutexGuard<'_, u64>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside `miri_start`
-  --> tests/genmc/fail/shims/mutex_double_unlock.rs:LL:CC
-   |
-LL |     drop(guard);
-   |     ^^^^^^^^^^^
+   = note: stack backtrace:
+           0: <std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop
+               at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           3: miri_start
+               at tests/genmc/fail/shims/mutex_double_unlock.rs:LL:CC
 
 note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
 

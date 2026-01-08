@@ -399,7 +399,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Lit(lit) => {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
             }
-            ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::IncludedBytes(byte_sym) => hir::PatExprKind::Lit {
                 lit: respan(span, LitKind::ByteStr(*byte_sym, StrStyle::Cooked)),
                 negated: false,
@@ -419,10 +418,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: true }
             }
             _ => {
+                let is_const_block = matches!(expr.kind, ExprKind::ConstBlock(_));
                 let pattern_from_macro = expr.is_approximately_pattern();
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span,
                     pattern_from_macro_note: pattern_from_macro,
+                    const_block_in_pattern_help: is_const_block,
                 });
                 err(guar)
             }
@@ -443,16 +444,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let pat_hir_id = self.lower_node_id(pattern.id);
         let node = match &pattern.kind {
             TyPatKind::Range(e1, e2, Spanned { node: end, span }) => hir::TyPatKind::Range(
-                e1.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)).unwrap_or_else(|| {
-                    self.lower_ty_pat_range_end(
-                        hir::LangItem::RangeMin,
-                        span.shrink_to_lo(),
-                        base_type,
-                    )
-                }),
+                e1.as_deref()
+                    .map(|e| self.lower_anon_const_to_const_arg_and_alloc(e))
+                    .unwrap_or_else(|| {
+                        self.lower_ty_pat_range_end(
+                            hir::LangItem::RangeMin,
+                            span.shrink_to_lo(),
+                            base_type,
+                        )
+                    }),
                 e2.as_deref()
                     .map(|e| match end {
-                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg(e),
+                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg_and_alloc(e),
                         RangeEnd::Excluded => self.lower_excluded_range_end(e),
                     })
                     .unwrap_or_else(|| {
@@ -510,6 +513,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::ConstArg {
             hir_id: self.next_id(),
             kind: hir::ConstArgKind::Anon(self.arena.alloc(anon_const)),
+            span,
         })
     }
 
@@ -554,6 +558,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
         });
         let hir_id = self.next_id();
-        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id })
+        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id, span })
     }
 }

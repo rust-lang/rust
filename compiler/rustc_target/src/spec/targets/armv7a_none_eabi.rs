@@ -32,6 +32,7 @@ pub(crate) fn target() -> Target {
         panic_strategy: PanicStrategy::Abort,
         emit_debug_gdb_scripts: false,
         c_enum_min_bits: Some(8),
+        has_thumb_interworking: true,
         ..Default::default()
     };
     Target {

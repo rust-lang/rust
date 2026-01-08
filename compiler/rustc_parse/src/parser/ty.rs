@@ -658,9 +658,7 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = if self.token.is_keyword(kw::Const)
-                && self.look_ahead(1, |t| *t == token::OpenBrace)
-            {
+            let mut length = if self.eat_keyword(exp!(Const)) {
                 // While we could just disambiguate `Direct` from `AnonConst` by
                 // treating all const block exprs as `AnonConst`, that would
                 // complicate the DefCollector and likely all other visitors.
@@ -1551,9 +1549,7 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
-            if matches!(is_raw, IdentIsRaw::No)
-                && ident.without_first_quote().is_reserved_lifetime()
-            {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved_lifetime() {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
             }
 

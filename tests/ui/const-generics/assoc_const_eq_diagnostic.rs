@@ -1,5 +1,6 @@
 //@ edition:2015
-#![feature(associated_const_equality)]
+#![feature(min_generic_const_args)]
+#![allow(incomplete_features)]
 
 pub enum Mode {
     Cool,

@@ -1,0 +1,31 @@
+error[E0741]: `&'static [*mut u8; 3]` can't be used as a const parameter type
+  --> $DIR/mismatch-raw-ptr-in-adt.rs:5:28
+   |
+LL | struct ConstBytes<const T: &'static [*mut u8; 3]>;
+   |                            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `*mut u8` must implement `ConstParamTy_`, but it does not
+   = note: `[*mut u8; 3]` must implement `ConstParamTy_`, but it does not
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch-raw-ptr-in-adt.rs:9:46
+   |
+LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
+   |                                              ^^^^^^ expected `&[*mut u8; 3]`, found `&[u8; 3]`
+   |
+   = note: expected reference `&'static [*mut u8; 3]`
+              found reference `&'static [u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch-raw-ptr-in-adt.rs:9:23
+   |
+LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
+   |                       ^^^^^^ expected `&[*mut u8; 3]`, found `&[u8; 3]`
+   |
+   = note: expected reference `&'static [*mut u8; 3]`
+              found reference `&'static [u8; 3]`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0741.
+For more information about an error, try `rustc --explain E0308`.

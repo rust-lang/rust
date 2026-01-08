@@ -1,4 +1,5 @@
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_session::errors;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
@@ -11,6 +12,52 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
+}
+
+pub(crate) struct RustcMustImplementOneOfParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
+    const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let mut fn_names = ThinVec::new();
+
+        let inputs: Vec<_> = list.mixed().collect();
+
+        if inputs.len() < 2 {
+            cx.expected_list_with_num_args_or_more(2, list.span);
+            return None;
+        }
+
+        let mut errored = false;
+        for argument in inputs {
+            let Some(meta) = argument.meta_item() else {
+                cx.expected_identifier(argument.span());
+                return None;
+            };
+
+            let Some(ident) = meta.ident() else {
+                cx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span: meta.span() });
+                errored = true;
+                continue;
+            };
+
+            fn_names.push(ident);
+        }
+        if errored {
+            return None;
+        }
+
+        Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })
+    }
 }
 
 pub(crate) struct RustcNeverReturnsNullPointerParser;

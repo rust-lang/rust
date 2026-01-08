@@ -57,7 +57,7 @@ fn load_x86_features() -> Flags {
     //   (in that order)
     let mut vendor_id = [0u8; 12];
     let max_basic_leaf;
-    unsafe {
+    {
         let CpuidResult { eax, ebx, ecx, edx } = __cpuid(0);
         max_basic_leaf = eax;
         vendor_id[0..4].copy_from_slice(&ebx.to_ne_bytes());
@@ -72,7 +72,7 @@ fn load_x86_features() -> Flags {
 
     // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
     // Contains information about most x86 features.
-    let CpuidResult { ecx, edx, .. } = unsafe { __cpuid(0x0000_0001_u32) };
+    let CpuidResult { ecx, edx, .. } = __cpuid(0x0000_0001_u32);
     let proc_info_ecx = Flags::from_bits(ecx);
     let proc_info_edx = Flags::from_bits(edx);
 
@@ -82,23 +82,23 @@ fn load_x86_features() -> Flags {
     let mut extended_features_edx = Flags::empty();
     let mut extended_features_eax_leaf_1 = Flags::empty();
     if max_basic_leaf >= 7 {
-        let CpuidResult { ebx, edx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+        let CpuidResult { ebx, edx, .. } = __cpuid(0x0000_0007_u32);
         extended_features_ebx = Flags::from_bits(ebx);
         extended_features_edx = Flags::from_bits(edx);
 
-        let CpuidResult { eax, .. } = unsafe { __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32) };
+        let CpuidResult { eax, .. } = __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32);
         extended_features_eax_leaf_1 = Flags::from_bits(eax)
     }
 
     // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
     // - EAX returns the max leaf value for extended information, that is,
     //   `cpuid` calls in range [0x8000_0000; u32::MAX]:
-    let extended_max_basic_leaf = unsafe { __cpuid(0x8000_0000_u32) }.eax;
+    let extended_max_basic_leaf = __cpuid(0x8000_0000_u32).eax;
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature Bits"
     let mut extended_proc_info_ecx = Flags::empty();
     if extended_max_basic_leaf >= 1 {
-        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
+        let CpuidResult { ecx, .. } = __cpuid(0x8000_0001_u32);
         extended_proc_info_ecx = Flags::from_bits(ecx);
     }
 

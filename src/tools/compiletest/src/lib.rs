@@ -85,7 +85,7 @@ fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc-html \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
         )
@@ -104,6 +104,7 @@ fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
+        .optflag("", "has-offload", "run tests that require offload")
         .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
         .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
@@ -299,6 +300,7 @@ fn parse_config(args: Vec<String>) -> Config {
     let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_enzyme = matches.opt_present("has-enzyme");
+    let has_offload = matches.opt_present("has-offload");
     let filters = if mode == TestMode::RunMake {
         matches
             .free
@@ -444,6 +446,7 @@ fn parse_config(args: Vec<String>) -> Config {
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_enzyme,
+        has_offload,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition").as_deref().map(parse_edition),
@@ -1091,8 +1094,8 @@ fn make_test_name_and_filterable_path(
 /// of some other tests's name.
 ///
 /// For example, suppose the test suite contains these two test files:
-/// - `tests/rustdoc/primitive.rs`
-/// - `tests/rustdoc/primitive/no_std.rs`
+/// - `tests/rustdoc-html/primitive.rs`
+/// - `tests/rustdoc-html/primitive/no_std.rs`
 ///
 /// The test runner might put the output from those tests in these directories:
 /// - `$build/test/rustdoc/primitive/`

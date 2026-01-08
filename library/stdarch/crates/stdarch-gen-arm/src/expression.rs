@@ -108,6 +108,8 @@ impl ToTokens for FnCall {
 pub enum Expression {
     /// (Re)Defines a variable
     Let(LetVariant),
+    /// Defines a const
+    Const(WildString, TypeKind, Box<Expression>),
     /// Performs a variable assignment operation
     Assign(String, Box<Expression>),
     /// Performs a macro call
@@ -169,6 +171,7 @@ impl Expression {
                 | LetVariant::WithType(_, _, ex)
                 | LetVariant::MutWithType(_, _, ex),
             ) => ex.pre_build(ctx),
+            Self::Const(_, _, ex) => ex.pre_build(ctx),
             Self::CastAs(ex, _) => ex.pre_build(ctx),
             Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.pre_build(ctx)?;
@@ -245,6 +248,15 @@ impl Expression {
                 );
                 ex.build(intrinsic, ctx)
             }
+            Self::Const(var_name, ty, ex) => {
+                var_name.build_acle(ctx.local)?;
+                ctx.local.variables.insert(
+                    var_name.to_string(),
+                    (ty.to_owned(), VariableType::Internal),
+                );
+                ex.build(intrinsic, ctx)
+            }
+
             Self::CastAs(ex, _) => ex.build(intrinsic, ctx),
             Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.build(intrinsic, ctx)?;
@@ -303,6 +315,7 @@ impl Expression {
                 | LetVariant::WithType(_, _, exp)
                 | LetVariant::MutWithType(_, _, exp),
             ) => exp.requires_unsafe_wrapper(ctx_fn),
+            Self::Const(_, _, exp) => exp.requires_unsafe_wrapper(ctx_fn),
             Self::Array(exps) => exps.iter().any(|exp| exp.requires_unsafe_wrapper(ctx_fn)),
             Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.requires_unsafe_wrapper(ctx_fn) || rhs.requires_unsafe_wrapper(ctx_fn)
@@ -461,6 +474,10 @@ impl ToTokens for Expression {
             Self::Let(LetVariant::MutWithType(var_name, ty, exp)) => {
                 let var_ident = format_ident!("{}", var_name.to_string());
                 tokens.append_all(quote! { let mut #var_ident: #ty = #exp })
+            }
+            Self::Const(var_name, ty, exp) => {
+                let var_ident = format_ident!("{}", var_name.to_string());
+                tokens.append_all(quote! { const #var_ident: #ty = #exp })
             }
             Self::Assign(var_name, exp) => {
                 /* If we are dereferencing a variable to assign a value \

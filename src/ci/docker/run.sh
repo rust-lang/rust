@@ -312,16 +312,6 @@ else
   command=(/checkout/src/ci/run.sh)
 fi
 
-if isCI; then
-  # Get some needed information for $BASE_COMMIT
-  #
-  # This command gets the last merge commit which we'll use as base to list
-  # deleted files since then.
-  BASE_COMMIT="$(git log --author=bors@rust-lang.org -n 2 --pretty=format:%H | tail -n 1)"
-else
-  BASE_COMMIT=""
-fi
-
 SUMMARY_FILE=github-summary.md
 touch $objdir/${SUMMARY_FILE}
 
@@ -359,7 +349,6 @@ docker \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$image}" \
   --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
-  --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \
   --env OBJDIR_ON_HOST="$objdir" \

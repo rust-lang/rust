@@ -163,10 +163,10 @@ target | std | notes
 `armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.5
 `armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.5, hardfloat
 [`armv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * | Bare Armv7-A
-[`armv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * |  | Bare Armv7-A, hardfloat
+[`armv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * | Bare Armv7-A, hardfloat
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
-[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
+[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Bare Armv8-R, hardfloat
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
@@ -260,7 +260,7 @@ target | std | host | notes
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
-[`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | ARM64 Managarm
+[`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | ARM64 Managarm
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
@@ -282,11 +282,11 @@ target | std | host | notes
 [`amdgcn-amd-amdhsa`](platform-support/amdgcn-amd-amdhsa.md) | * |  | `-Ctarget-cpu=gfx...` to specify [the AMD GPU] to compile for
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Arm Apple WatchOS 64-bit with 32-bit pointers
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
-[`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
-[`arm64e-apple-tvos`](platform-support/arm64e-apple-tvos.md)  | ✓ | | ARM64e Apple tvOS
+[`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ |  | ARM64e Apple iOS
+[`arm64e-apple-tvos`](platform-support/arm64e-apple-tvos.md)  | ✓ |  | ARM64e Apple tvOS
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | Arm BE8 the default Arm big-endian architecture since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
-[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
-[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
+[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian
+[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian, hardfloat
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare Armv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
@@ -314,9 +314,9 @@ target | std | host | notes
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
-[`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ | | Hexagon Linux with musl 1.2.5
-[`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * | | Bare Hexagon (v60+, HVX)
-[`hexagon-unknown-qurt`](platform-support/hexagon-unknown-qurt.md)| * | | Hexagon QuRT
+[`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ |  | Hexagon Linux with musl 1.2.5
+[`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * |  | Bare Hexagon (v60+, HVX)
+[`hexagon-unknown-qurt`](platform-support/hexagon-unknown-qurt.md)| * |  | Hexagon QuRT
 [`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS (Penryn) [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
 [`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
@@ -329,12 +329,12 @@ target | std | host | notes
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
-[`i686-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
-[`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
+[`i686-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |  | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
+[`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |  | 32-bit Windows 7 support [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 [`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | [^x86_32-floats-return-ABI]
-[`loongarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |   | LoongArch64 OpenHarmony
-[`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * |   | LoongArch32 Bare-metal (ILP32D ABI)
-[`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |   | LoongArch32 Bare-metal (ILP32S ABI)
+[`loongarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | LoongArch64 OpenHarmony
+[`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32D ABI)
+[`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
@@ -359,8 +359,8 @@ target | std | host | notes
 [`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
 [`mipsisa64r6el-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ✓ | ✓ | 64-bit MIPS Release 6 Little Endian
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
-[`powerpc-unknown-freebsd`](platform-support/freebsd.md) | ? |   | PowerPC FreeBSD
-[`powerpc-unknown-helenos`](platform-support/helenos.md) | ✓ |   | PowerPC HelenOS
+[`powerpc-unknown-freebsd`](platform-support/freebsd.md) | ? |  | PowerPC FreeBSD
+[`powerpc-unknown-helenos`](platform-support/helenos.md) | ✓ |  | PowerPC HelenOS
 [`powerpc-unknown-linux-gnuspe`](platform-support/powerpc-unknown-linux-gnuspe.md) | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  | PowerPC Linux with musl 1.2.5
 [`powerpc-unknown-linux-muslspe`](platform-support/powerpc-unknown-linux-muslspe.md) | ? |  | PowerPC SPE Linux with musl 1.2.5
@@ -378,8 +378,8 @@ target | std | host | notes
 [`riscv32e-unknown-none-elf`](platform-support/riscv32e-unknown-none-elf.md) | * |  | Bare RISC-V (RV32E ISA)
 [`riscv32em-unknown-none-elf`](platform-support/riscv32e-unknown-none-elf.md) | * |  | Bare RISC-V (RV32EM ISA)
 [`riscv32emc-unknown-none-elf`](platform-support/riscv32e-unknown-none-elf.md) | * |  | Bare RISC-V (RV32EMC ISA)
-`riscv32gc-unknown-linux-gnu` | ✓ |   | RISC-V Linux (kernel 5.4, glibc 2.33)
-`riscv32gc-unknown-linux-musl` | ? |   | RISC-V Linux (kernel 5.4, musl 1.2.5)
+`riscv32gc-unknown-linux-gnu` | ✓ |  | RISC-V Linux (kernel 5.4, glibc 2.33)
+`riscv32gc-unknown-linux-musl` | ? |  | RISC-V Linux (kernel 5.4, musl 1.2.5)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
@@ -389,12 +389,12 @@ target | std | host | notes
 [`riscv32imafc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
-[`riscv64-linux-android`](platform-support/android.md) | ? |   | RISC-V 64-bit Android
+[`riscv64-linux-android`](platform-support/android.md) | ? |  | RISC-V 64-bit Android
 [`riscv64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
-`riscv64gc-unknown-freebsd` | ? |   | RISC-V FreeBSD
-`riscv64gc-unknown-fuchsia` | ? |   | RISC-V Fuchsia
-[`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
-[`riscv64gc-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | RISC-V Managarm
+`riscv64gc-unknown-freebsd` | ? |  | RISC-V FreeBSD
+`riscv64gc-unknown-fuchsia` | ? |  | RISC-V Fuchsia
+[`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |  | RISC-V Hermit
+[`riscv64gc-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | RISC-V Managarm
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
@@ -423,15 +423,15 @@ target | std | host | notes
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
-[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
+[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
-[`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |   |  | x86_64 LynxOS-178
+[`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |  |  | x86_64 LynxOS-178
 [`x86_64-pc-cygwin`](platform-support/x86_64-pc-cygwin.md) | ✓ |  | 64-bit x86 Cygwin |
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
 [`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
 [`x86_64-pc-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 8.0 RTOS |
-[`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl 1.2.5
+[`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |  | 64-bit Unikraft with musl 1.2.5
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
@@ -439,13 +439,13 @@ target | std | host | notes
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
 `x86_64-unknown-l4re-uclibc` | ? |  |
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
-[`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | x86_64 Managarm
+[`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | x86_64 Managarm
 [`x86_64-unknown-motor`](platform-support/motor.md) | ✓ |  | x86_64 Motor OS
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
 [`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
-[`x86_64-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |   | 64-bit Windows 7 support
+[`x86_64-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |  | 64-bit Windows 7 support
 [`x86_64-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ | ✓ | 64-bit Windows 7 support
 [`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)

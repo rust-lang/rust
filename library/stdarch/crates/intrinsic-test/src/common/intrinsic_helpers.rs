@@ -42,7 +42,7 @@ impl FromStr for TypeKind {
             "uint" | "unsigned" | "UI8" | "UI16" | "UI32" | "UI64" => Ok(Self::Int(Sign::Unsigned)),
             "void" => Ok(Self::Void),
             "MASK" => Ok(Self::Mask),
-            "M64" | "M128" | "M256" | "M512" => Ok(Self::Vector),
+            "M128" | "M256" | "M512" => Ok(Self::Vector),
             _ => Err(format!("Impossible to parse argument kind {s}")),
         }
     }
@@ -368,19 +368,8 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// Generates a std::cout for the intrinsics results that will match the
     /// rust debug output format for the return type. The generated line assumes
     /// there is an int i in scope which is the current pass number.
-    ///
-    /// The `intrinsic-test` crate compares the output of C and Rust intrinsics. Currently, It uses
-    /// a string representation of the output value to compare. In C, f16 values are currently printed
-    /// as hexadecimal integers. Since https://github.com/rust-lang/rust/pull/127013, rust does print
-    /// them as decimal floating point values. To keep the intrinsics tests working, for now, format
-    /// vectors containing f16 values like C prints them.
     fn print_result_rust(&self) -> String {
-        let return_value = match self.kind() {
-            TypeKind::Float if self.inner_size() == 16 => "debug_f16(__return_value)",
-            _ => "format_args!(\"{__return_value:.150?}\")",
-        };
-
-        String::from(return_value)
+        String::from("format_args!(\"{__return_value:.150?}\")")
     }
 
     /// To enable architecture-specific logic

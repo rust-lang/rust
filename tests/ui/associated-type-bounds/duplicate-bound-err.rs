@@ -1,7 +1,6 @@
 //@ edition: 2024
 
 #![feature(
-    associated_const_equality,
     min_generic_const_args,
     type_alias_impl_trait,
     return_type_notation

@@ -7,13 +7,11 @@ LL |         unsafe { *wild = 4 };
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: there are no exposed tags which may perform this access here
-   = note: BACKTRACE:
-   = note: inside closure at tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
-note: inside `main`
-  --> tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
-   |
-LL |     protect(ref1);
-   |     ^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: main::{closure#0}
+               at tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

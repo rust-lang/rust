@@ -3,7 +3,7 @@
 use core::ffi::c_void;
 use core::{cmp, mem, ptr};
 
-use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
@@ -83,7 +83,7 @@ impl Handle {
             // pipe semantics, which yields this error when *reading* from
             // a pipe after the other end has closed; we interpret that as
             // EOF on the pipe.
-            Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
+            Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(0),
 
             Err(e) => Err(e),
         }
@@ -126,7 +126,7 @@ impl Handle {
             // pipe semantics, which yields this error when *reading* from
             // a pipe after the other end has closed; we interpret that as
             // EOF on the pipe.
-            Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(()),
 
             Err(e) => Err(e),
         }

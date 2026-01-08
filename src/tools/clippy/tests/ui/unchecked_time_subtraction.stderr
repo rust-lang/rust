@@ -49,5 +49,29 @@ error: unchecked subtraction of a `Duration`
 LL |     let _ = 2 * dur1 - dur2;
    |             ^^^^^^^^^^^^^^^ help: try: `(2 * dur1).checked_sub(dur2).unwrap()`
 
-error: aborting due to 8 previous errors
+error: unchecked subtraction of a `Duration`
+  --> tests/ui/unchecked_time_subtraction.rs:42:5
+   |
+LL |     Duration::ZERO.sub(Duration::MAX);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::ZERO.checked_sub(Duration::MAX).unwrap()`
+
+error: unchecked subtraction of a `Duration`
+  --> tests/ui/unchecked_time_subtraction.rs:45:13
+   |
+LL |     let _ = Duration::ZERO - Duration::MAX;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::ZERO.checked_sub(Duration::MAX).unwrap()`
+
+error: unchecked subtraction of a `Duration`
+  --> tests/ui/unchecked_time_subtraction.rs:58:5
+   |
+LL |     duration!(0).sub(duration!(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `duration!(0).checked_sub(duration!(1)).unwrap()`
+
+error: unchecked subtraction of a `Duration`
+  --> tests/ui/unchecked_time_subtraction.rs:60:13
+   |
+LL |     let _ = duration!(0) - duration!(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `duration!(0).checked_sub(duration!(1)).unwrap()`
+
+error: aborting due to 12 previous errors
 

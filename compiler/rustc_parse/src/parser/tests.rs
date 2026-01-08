@@ -2666,7 +2666,6 @@ fn look_ahead_non_outermost_stream() {
     });
 }
 
-// FIXME(nnethercote) All the output is currently wrong.
 #[test]
 fn debug_lookahead() {
     create_default_session_globals_then(|| {

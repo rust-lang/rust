@@ -630,7 +630,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let modes = [
         "pretty",
         "debuginfo",
-        "rustdoc",
+        "rustdoc-html",
         "rustdoc-json",
         "codegen-units",
         "incremental",

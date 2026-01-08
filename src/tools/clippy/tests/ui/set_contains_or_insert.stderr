@@ -127,5 +127,14 @@ LL |
 LL |         borrow_set.insert(value);
    |                    ^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:182:11
+   |
+LL |     if !s.contains(&v) {
+   |           ^^^^^^^^^^^^
+...
+LL |         s.insert(v);
+   |           ^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

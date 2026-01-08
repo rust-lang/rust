@@ -1,4 +1,5 @@
 //@only-target: darwin
+//@compile-flags: -Zmiri-fixed-schedule
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;

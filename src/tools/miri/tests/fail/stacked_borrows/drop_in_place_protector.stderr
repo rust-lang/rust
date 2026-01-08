@@ -16,15 +16,15 @@ help: <TAG> is this argument
    |
 LL |         core::ptr::drop_in_place(x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `<HasDrop as std::ops::Drop>::drop` at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<HasDrop> - shim(Some(HasDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<(HasDrop, u8)> - shim(Some((HasDrop, u8)))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main`
-  --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
-   |
-LL |         core::ptr::drop_in_place(x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: <HasDrop as std::ops::Drop>::drop
+               at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+           1: std::ptr::drop_in_place - shim(Some(HasDrop))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::ptr::drop_in_place - shim(Some((HasDrop, u8)))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           3: main
+               at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
    = note: this error originates in the macro `core::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -1458,39 +1458,6 @@ extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
   }
 }
 
-extern "C" LLVMValueRef LLVMRustGetInsertPoint(LLVMBuilderRef B) {
-  llvm::IRBuilderBase &IRB = *unwrap(B);
-
-  llvm::IRBuilderBase::InsertPoint ip = IRB.saveIP();
-  llvm::BasicBlock *BB = ip.getBlock();
-
-  if (!BB)
-    return nullptr;
-
-  auto it = ip.getPoint();
-
-  if (it == BB->end())
-    return nullptr;
-
-  llvm::Instruction *I = &*it;
-  return wrap(I);
-}
-
-extern "C" void LLVMRustRestoreInsertPoint(LLVMBuilderRef B,
-                                           LLVMValueRef Instr) {
-  llvm::IRBuilderBase &IRB = *unwrap(B);
-
-  if (!Instr) {
-    llvm::BasicBlock *BB = IRB.GetInsertBlock();
-    if (BB)
-      IRB.SetInsertPoint(BB);
-    return;
-  }
-
-  llvm::Instruction *I = unwrap<llvm::Instruction>(Instr);
-  IRB.SetInsertPoint(I);
-}
-
 extern "C" LLVMValueRef
 LLVMRustGetFunctionCall(LLVMValueRef Fn, const char *Name, size_t NameLen) {
   auto targetName = StringRef(Name, NameLen);
@@ -1572,16 +1539,8 @@ extern "C" uint64_t LLVMRustModuleCost(LLVMModuleRef M) {
   return std::distance(std::begin(f), std::end(f));
 }
 
-extern "C" void LLVMRustModuleInstructionStats(LLVMModuleRef M,
-                                               RustStringRef Str) {
-  auto OS = RawRustStringOstream(Str);
-  auto JOS = llvm::json::OStream(OS);
-  auto Module = unwrap(M);
-
-  JOS.object([&] {
-    JOS.attribute("module", Module->getName());
-    JOS.attribute("total", Module->getInstructionCount());
-  });
+extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
+  return unwrap(M)->getInstructionCount();
 }
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.

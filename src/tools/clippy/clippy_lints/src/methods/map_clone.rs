@@ -25,7 +25,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_parent_id: De
     }
     // We check if it's an `Option` or a `Result`.
     if let Some(ty) = method_parent_id.opt_impl_ty(cx) {
-        if !ty.is_diag_item(cx, sym::Option) && !ty.is_diag_item(cx, sym::Result) {
+        if !matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
             return false;
         }
     } else {

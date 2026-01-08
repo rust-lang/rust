@@ -42,6 +42,7 @@ pub(crate) mod deprecation;
 pub(crate) mod doc;
 pub(crate) mod dummy;
 pub(crate) mod inline;
+pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
