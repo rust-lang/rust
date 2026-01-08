@@ -583,26 +583,16 @@ fn main() {
     fn macro_expand_derive() {
         check(
             r#"
-//- proc_macros: identity
-//- minicore: clone, derive
+//- proc_macros: identity, derive_identity
+//- minicore: derive
 
 #[proc_macros::identity]
-#[derive(C$0lone)]
+#[derive(proc_macros::DeriveIde$0ntity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Clone
-                impl <>core::clone::Clone for Foo< >where {
-                    fn clone(&self) -> Self {
-                        match self {
-                            Foo{}
-                             => Foo{}
-                            ,
-
-                            }
-                    }
-
-                    }"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
     }
 
@@ -610,15 +600,17 @@ struct Foo {}
     fn macro_expand_derive2() {
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Cop$0y)]
-#[derive(Clone)]
+#[derive(proc_macros::$0DeriveIdentity)]
+#[derive(proc_macros::DeriveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Copy
-                impl <>core::marker::Copy for Foo< >where{}"#]],
+                proc_macros::DeriveIdentity
+                #[derive(proc_macros::DeriveIdentity)]
+                struct Foo{}"#]],
         );
     }
 
@@ -626,35 +618,27 @@ struct Foo {}
     fn macro_expand_derive_multi() {
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Cop$0y, Clone)]
+#[derive(proc_macros::DeriveIdent$0ity, proc_macros::DeriveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Copy
-                impl <>core::marker::Copy for Foo< >where{}"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Copy, Cl$0one)]
+#[derive(proc_macros::DeriveIdentity, proc_macros::De$0riveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Clone
-                impl <>core::clone::Clone for Foo< >where {
-                    fn clone(&self) -> Self {
-                        match self {
-                            Foo{}
-                             => Foo{}
-                            ,
-
-                            }
-                    }
-
-                    }"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
     }
 

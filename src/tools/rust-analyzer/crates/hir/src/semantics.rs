@@ -13,7 +13,7 @@ use std::{
 use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, MacroId, StructId, TraitId, VariantId,
+    BuiltinDeriveImplId, DefWithBodyId, HasModule, MacroId, StructId, TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
@@ -622,7 +622,20 @@ impl<'db> SemanticsImpl<'db> {
             Some(
                 calls
                     .into_iter()
-                    .map(|call| macro_call_to_macro_id(ctx, call?).map(|id| Macro { id }))
+                    .map(|call| {
+                        let call = call?;
+                        match call {
+                            Either::Left(call) => {
+                                macro_call_to_macro_id(ctx, call).map(|id| Macro { id })
+                            }
+                            Either::Right(call) => {
+                                let call = call.loc(self.db);
+                                let krate = call.krate(self.db);
+                                let lang_items = hir_def::lang_item::lang_items(self.db, krate);
+                                call.trait_.derive_macro(lang_items).map(|id| Macro { id })
+                            }
+                        }
+                    })
                     .collect(),
             )
         })
@@ -633,7 +646,7 @@ impl<'db> SemanticsImpl<'db> {
             .derive_macro_calls(attr)?
             .into_iter()
             .flat_map(|call| {
-                let file_id = call?;
+                let file_id = call?.left()?;
                 let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
@@ -643,7 +656,10 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
-    fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<Option<MacroCallId>>> {
+    fn derive_macro_calls(
+        &self,
+        attr: &ast::Attr,
+    ) -> Option<Vec<Option<Either<MacroCallId, BuiltinDeriveImplId>>>> {
         let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
         let file_id = self.find_file(adt.syntax()).file_id;
         let adt = InFile::new(file_id, &adt);
@@ -690,8 +706,9 @@ impl<'db> SemanticsImpl<'db> {
             .derive_helpers_in_scope(InFile::new(sa.file_id, id))?
             .iter()
             .filter(|&(name, _, _)| *name == attr_name)
-            .map(|&(_, macro_, call)| (macro_.into(), call))
+            .filter_map(|&(_, macro_, call)| Some((macro_.into(), call.left()?)))
             .collect();
+        // FIXME: We filter our builtin derive "fake" expansions, is this correct? Should we still expose them somehow?
         res.is_empty().not().then_some(res)
     }
 
@@ -1338,6 +1355,7 @@ impl<'db> SemanticsImpl<'db> {
                                 // FIXME: We need to call `f` for all of them as well though!
                                 process_expansion_for_token(ctx, &mut stack, derive_attr);
                                 for derive in derives.into_iter().flatten() {
+                                    let Either::Left(derive) = derive else { continue };
                                     process_expansion_for_token(ctx, &mut stack, derive);
                                 }
                             }
@@ -1467,11 +1485,12 @@ impl<'db> SemanticsImpl<'db> {
                                 for (.., derive) in
                                     helpers.iter().filter(|(helper, ..)| *helper == attr_name)
                                 {
+                                    let Either::Left(derive) = *derive else { continue };
                                     // as there may be multiple derives registering the same helper
                                     // name, we gotta make sure to call this for all of them!
                                     // FIXME: We need to call `f` for all of them as well though!
                                     res = res
-                                        .or(process_expansion_for_token(ctx, &mut stack, *derive));
+                                        .or(process_expansion_for_token(ctx, &mut stack, derive));
                                 }
                                 res
                             })
