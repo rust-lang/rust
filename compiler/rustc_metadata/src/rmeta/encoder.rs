@@ -1657,9 +1657,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
 
-        self.lazy_array(externally_implementable_items.iter().map(|(decl_did, (decl, impls))| {
-            (*decl_did, (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()))
-        }))
+        self.lazy_array(externally_implementable_items.iter().map(
+            |(foreign_item, (decl, impls))| {
+                (
+                    *foreign_item,
+                    (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()),
+                )
+            },
+        ))
     }
 
     #[instrument(level = "trace", skip(self))]

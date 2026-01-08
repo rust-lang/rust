@@ -116,6 +116,7 @@ fn eii_(
             macro_name,
             eii_attr_span,
             item_span,
+            foreign_item_name,
         )))
     }
 
@@ -192,6 +193,7 @@ fn generate_default_impl(
     macro_name: Ident,
     eii_attr_span: Span,
     item_span: Span,
+    foreign_item_name: Ident,
 ) -> ast::Item {
     // FIXME: re-add some original attrs
     let attrs = ThinVec::new();
@@ -208,6 +210,11 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
+        known_eii_macro_resolution: Some(ast::EiiExternTarget {
+            extern_item_path: ast::Path::from_ident(foreign_item_name),
+            impl_unsafe,
+            span: item_span,
+        }),
     });
 
     ast::Item {
@@ -508,6 +515,7 @@ pub(crate) fn eii_shared_macro(
         impl_safety: meta_item.unsafety,
         span,
         is_default,
+        known_eii_macro_resolution: None,
     });
 
     vec![item]
