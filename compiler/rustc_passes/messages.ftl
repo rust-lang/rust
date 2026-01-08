@@ -35,7 +35,6 @@ passes_attr_crate_level =
     .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
 passes_attr_must_be_applied_to_test_or_bench = `#[{$attr_name}]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-    .warn = {-passes_previously_accepted}
 
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function

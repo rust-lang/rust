@@ -1,10 +1,8 @@
-warning: `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-  --> $DIR/should-panic.rs:4:1
+error: `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+  --> $DIR/should-panic.rs:3:1
    |
 LL | #[should_panic]
    | ^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 

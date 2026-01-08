@@ -1,9 +1,7 @@
-//@ check-pass
 #![feature(test)]
 
 #[ignore]
-//~^ WARN `#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-//~| WARN this was previously accepted
+//~^ ERROR `#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
 pub fn foo() {}
 
 

@@ -1,9 +1,7 @@
-//@ check-pass
 #![feature(test)]
 
 #[should_panic]
-//~^ WARN `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-//~| WARN this was previously accepted
+//~^ ERROR `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
 pub fn foo() {}
 
 

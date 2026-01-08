@@ -1,5 +1,5 @@
 warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:502:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:492:17
    |
 LL |     mod inner { #![macro_escape] }
    |                 ^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     mod inner { #![macro_escape] }
    = help: try an outer attribute: `#[macro_use]`
 
 warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:499:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:489:1
    |
 LL | #[macro_escape]
    | ^^^^^^^^^^^^^^^
@@ -187,7 +187,7 @@ LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:474:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:464:1
    |
 LL | #[reexport_test_harness_main = "2900"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -203,7 +203,7 @@ LL | #![reexport_test_harness_main = "2900"]
    |  +
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:716:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:706:1
    |
 LL |   #[link(name = "x")]
    |   ^^^^^^^^^^^^^^^^^^^
@@ -219,7 +219,7 @@ LL | | }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:842:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:832:1
    |
 LL | #[crate_type = "0800"]
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -230,7 +230,7 @@ LL | #![crate_type = "0800"]
    |  +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:866:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:856:1
    |
 LL | #[feature(x0600)]
    | ^^^^^^^^^^^^^^^^^
@@ -241,7 +241,7 @@ LL | #![feature(x0600)]
    |  +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:891:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:881:1
    |
 LL | #[no_main]
    | ^^^^^^^^^^
@@ -252,7 +252,7 @@ LL | #![no_main]
    |  +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:915:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:905:1
    |
 LL | #[no_builtins]
    | ^^^^^^^^^^^^^^
@@ -278,30 +278,14 @@ LL | #![feature(rust1)]
    |
    = note: `#[warn(stable_features)]` on by default
 
-warning: `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:385:5
-   |
-LL |     #[should_panic]
-   |     ^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:421:5
-   |
-LL |     #[ignore]
-   |     ^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:478:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:468:17
    |
 LL |     mod inner { #![reexport_test_harness_main="2900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:481:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:471:5
    |
 LL |     #[reexport_test_harness_main = "2900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -312,7 +296,7 @@ LL |     #![reexport_test_harness_main = "2900"] fn f() { }
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:485:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:5
    |
 LL |     #[reexport_test_harness_main = "2900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -323,7 +307,7 @@ LL |     #![reexport_test_harness_main = "2900"] struct S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:489:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:479:5
    |
 LL |     #[reexport_test_harness_main = "2900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -334,7 +318,7 @@ LL |     #![reexport_test_harness_main = "2900"] type T = S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:493:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:483:5
    |
 LL |     #[reexport_test_harness_main = "2900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -345,7 +329,7 @@ LL |     #![reexport_test_harness_main = "2900"] impl S { }
    |      +
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:722:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:712:17
    |
 LL |     mod inner { #![link(name = "x")] }
    |     ------------^^^^^^^^^^^^^^^^^^^^-- not an `extern` block
@@ -353,7 +337,7 @@ LL |     mod inner { #![link(name = "x")] }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:727:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:717:5
    |
 LL |     #[link(name = "x")] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^ ---------- not an `extern` block
@@ -361,7 +345,7 @@ LL |     #[link(name = "x")] fn f() { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:732:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:722:5
    |
 LL |     #[link(name = "x")] struct S;
    |     ^^^^^^^^^^^^^^^^^^^ --------- not an `extern` block
@@ -369,7 +353,7 @@ LL |     #[link(name = "x")] struct S;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:737:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:727:5
    |
 LL |     #[link(name = "x")] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^ ----------- not an `extern` block
@@ -377,7 +361,7 @@ LL |     #[link(name = "x")] type T = S;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:742:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:732:5
    |
 LL |     #[link(name = "x")] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^ ---------- not an `extern` block
@@ -385,7 +369,7 @@ LL |     #[link(name = "x")] impl S { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:747:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:737:5
    |
 LL |     #[link(name = "x")] extern "Rust" {}
    |     ^^^^^^^^^^^^^^^^^^^
@@ -393,13 +377,13 @@ LL |     #[link(name = "x")] extern "Rust" {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:846:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:836:17
    |
 LL |     mod inner { #![crate_type="0800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:849:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:839:5
    |
 LL |     #[crate_type = "0800"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -410,7 +394,7 @@ LL |     #![crate_type = "0800"] fn f() { }
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:853:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:843:5
    |
 LL |     #[crate_type = "0800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -421,7 +405,7 @@ LL |     #![crate_type = "0800"] struct S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:857:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:847:5
    |
 LL |     #[crate_type = "0800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -432,7 +416,7 @@ LL |     #![crate_type = "0800"] type T = S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:861:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:851:5
    |
 LL |     #[crate_type = "0800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -443,13 +427,13 @@ LL |     #![crate_type = "0800"] impl S { }
    |      +
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:870:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:860:17
    |
 LL |     mod inner { #![feature(x0600)] }
    |                 ^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:873:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:863:5
    |
 LL |     #[feature(x0600)] fn f() { }
    |     ^^^^^^^^^^^^^^^^^
@@ -460,7 +444,7 @@ LL |     #![feature(x0600)] fn f() { }
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:877:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:867:5
    |
 LL |     #[feature(x0600)] struct S;
    |     ^^^^^^^^^^^^^^^^^
@@ -471,7 +455,7 @@ LL |     #![feature(x0600)] struct S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:881:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:871:5
    |
 LL |     #[feature(x0600)] type T = S;
    |     ^^^^^^^^^^^^^^^^^
@@ -482,7 +466,7 @@ LL |     #![feature(x0600)] type T = S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:885:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:875:5
    |
 LL |     #[feature(x0600)] impl S { }
    |     ^^^^^^^^^^^^^^^^^
@@ -493,13 +477,13 @@ LL |     #![feature(x0600)] impl S { }
    |      +
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:895:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:885:17
    |
 LL |     mod inner { #![no_main] }
    |                 ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:898:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:888:5
    |
 LL |     #[no_main] fn f() { }
    |     ^^^^^^^^^^
@@ -510,7 +494,7 @@ LL |     #![no_main] fn f() { }
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:902:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:892:5
    |
 LL |     #[no_main] struct S;
    |     ^^^^^^^^^^
@@ -521,7 +505,7 @@ LL |     #![no_main] struct S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:906:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:896:5
    |
 LL |     #[no_main] type T = S;
    |     ^^^^^^^^^^
@@ -532,7 +516,7 @@ LL |     #![no_main] type T = S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:910:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:900:5
    |
 LL |     #[no_main] impl S { }
    |     ^^^^^^^^^^
@@ -543,13 +527,13 @@ LL |     #![no_main] impl S { }
    |      +
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:919:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:909:17
    |
 LL |     mod inner { #![no_builtins] }
    |                 ^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:922:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:912:5
    |
 LL |     #[no_builtins] fn f() { }
    |     ^^^^^^^^^^^^^^
@@ -560,7 +544,7 @@ LL |     #![no_builtins] fn f() { }
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:926:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:916:5
    |
 LL |     #[no_builtins] struct S;
    |     ^^^^^^^^^^^^^^
@@ -571,7 +555,7 @@ LL |     #![no_builtins] struct S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:930:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:920:5
    |
 LL |     #[no_builtins] type T = S;
    |     ^^^^^^^^^^^^^^
@@ -582,7 +566,7 @@ LL |     #![no_builtins] type T = S;
    |      +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:934:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:924:5
    |
 LL |     #[no_builtins] impl S { }
    |     ^^^^^^^^^^^^^^
@@ -863,7 +847,7 @@ LL |     mod inner { #![should_panic] }
    = help: `#[should_panic]` can only be applied to functions
 
 warning: `#[should_panic]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:390:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:385:5
    |
 LL |     #[should_panic] struct S;
    |     ^^^^^^^^^^^^^^^
@@ -872,7 +856,7 @@ LL |     #[should_panic] struct S;
    = help: `#[should_panic]` can only be applied to functions
 
 warning: `#[should_panic]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:396:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:391:5
    |
 LL |     #[should_panic] type T = S;
    |     ^^^^^^^^^^^^^^^
@@ -881,7 +865,7 @@ LL |     #[should_panic] type T = S;
    = help: `#[should_panic]` can only be applied to functions
 
 warning: `#[should_panic]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:402:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:397:5
    |
 LL |     #[should_panic] impl S { }
    |     ^^^^^^^^^^^^^^^
@@ -890,7 +874,7 @@ LL |     #[should_panic] impl S { }
    = help: `#[should_panic]` can only be applied to functions
 
 warning: `#[ignore]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:409:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:404:1
    |
 LL | #[ignore]
    | ^^^^^^^^^
@@ -899,7 +883,7 @@ LL | #[ignore]
    = help: `#[ignore]` can only be applied to functions
 
 warning: `#[ignore]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:415:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:410:17
    |
 LL |     mod inner { #![ignore] }
    |                 ^^^^^^^^^^
@@ -908,7 +892,7 @@ LL |     mod inner { #![ignore] }
    = help: `#[ignore]` can only be applied to functions
 
 warning: `#[ignore]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:426:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:416:5
    |
 LL |     #[ignore] struct S;
    |     ^^^^^^^^^
@@ -917,7 +901,7 @@ LL |     #[ignore] struct S;
    = help: `#[ignore]` can only be applied to functions
 
 warning: `#[ignore]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:432:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:422:5
    |
 LL |     #[ignore] type T = S;
    |     ^^^^^^^^^
@@ -926,7 +910,7 @@ LL |     #[ignore] type T = S;
    = help: `#[ignore]` can only be applied to functions
 
 warning: `#[ignore]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:438:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:428:5
    |
 LL |     #[ignore] impl S { }
    |     ^^^^^^^^^
@@ -935,7 +919,7 @@ LL |     #[ignore] impl S { }
    = help: `#[ignore]` can only be applied to functions
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:449:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:439:5
    |
 LL |     #[no_implicit_prelude] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -944,7 +928,7 @@ LL |     #[no_implicit_prelude] fn f() { }
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:455:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:445:5
    |
 LL |     #[no_implicit_prelude] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -953,7 +937,7 @@ LL |     #[no_implicit_prelude] struct S;
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:461:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:451:5
    |
 LL |     #[no_implicit_prelude] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -962,7 +946,7 @@ LL |     #[no_implicit_prelude] type T = S;
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:467:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:457:5
    |
 LL |     #[no_implicit_prelude] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -971,7 +955,7 @@ LL |     #[no_implicit_prelude] impl S { }
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[macro_escape]` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:506:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:496:5
    |
 LL |     #[macro_escape] fn f() { }
    |     ^^^^^^^^^^^^^^^
@@ -980,7 +964,7 @@ LL |     #[macro_escape] fn f() { }
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:512:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:502:5
    |
 LL |     #[macro_escape] struct S;
    |     ^^^^^^^^^^^^^^^
@@ -989,7 +973,7 @@ LL |     #[macro_escape] struct S;
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:518:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:508:5
    |
 LL |     #[macro_escape] type T = S;
    |     ^^^^^^^^^^^^^^^
@@ -998,7 +982,7 @@ LL |     #[macro_escape] type T = S;
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:524:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:514:5
    |
 LL |     #[macro_escape] impl S { }
    |     ^^^^^^^^^^^^^^^
@@ -1007,13 +991,13 @@ LL |     #[macro_escape] impl S { }
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:531:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:521:1
    |
 LL | #[no_std]
    | ^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:533:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:523:1
    |
 LL | / mod no_std {
 LL | |
@@ -1023,61 +1007,61 @@ LL | | }
    | |_^
 
 warning: the `#![no_std]` attribute can only be used at the crate root
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:535:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:525:17
    |
 LL |     mod inner { #![no_std] }
    |                 ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:538:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:528:5
    |
 LL |     #[no_std] fn f() { }
    |     ^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:538:15
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:528:15
    |
 LL |     #[no_std] fn f() { }
    |               ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:542:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:532:5
    |
 LL |     #[no_std] struct S;
    |     ^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this struct
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:542:15
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:532:15
    |
 LL |     #[no_std] struct S;
    |               ^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:546:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:536:5
    |
 LL |     #[no_std] type T = S;
    |     ^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this type alias
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:546:15
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:536:15
    |
 LL |     #[no_std] type T = S;
    |               ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:550:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:540:5
    |
 LL |     #[no_std] impl S { }
    |     ^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this implementation block
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:550:15
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:540:15
    |
 LL |     #[no_std] impl S { }
    |               ^^^^^^^^^^
 
 warning: `#[cold]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:572:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:562:1
    |
 LL | #[cold]
    | ^^^^^^^
@@ -1086,7 +1070,7 @@ LL | #[cold]
    = help: `#[cold]` can only be applied to functions
 
 warning: `#[cold]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:579:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:569:17
    |
 LL |     mod inner { #![cold] }
    |                 ^^^^^^^^
@@ -1095,7 +1079,7 @@ LL |     mod inner { #![cold] }
    = help: `#[cold]` can only be applied to functions
 
 warning: `#[cold]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:587:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:577:5
    |
 LL |     #[cold] struct S;
    |     ^^^^^^^
@@ -1104,7 +1088,7 @@ LL |     #[cold] struct S;
    = help: `#[cold]` can only be applied to functions
 
 warning: `#[cold]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:593:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:583:5
    |
 LL |     #[cold] type T = S;
    |     ^^^^^^^
@@ -1113,7 +1097,7 @@ LL |     #[cold] type T = S;
    = help: `#[cold]` can only be applied to functions
 
 warning: `#[cold]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:599:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:589:5
    |
 LL |     #[cold] impl S { }
    |     ^^^^^^^
@@ -1122,7 +1106,7 @@ LL |     #[cold] impl S { }
    = help: `#[cold]` can only be applied to functions
 
 warning: `#[link_name]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:606:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:596:1
    |
 LL | #[link_name = "1900"]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -1131,7 +1115,7 @@ LL | #[link_name = "1900"]
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:612:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:602:5
    |
 LL |     #[link_name = "1900"]
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -1140,7 +1124,7 @@ LL |     #[link_name = "1900"]
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:619:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:609:17
    |
 LL |     mod inner { #![link_name="1900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^
@@ -1149,7 +1133,7 @@ LL |     mod inner { #![link_name="1900"] }
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:625:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:615:5
    |
 LL |     #[link_name = "1900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -1158,7 +1142,7 @@ LL |     #[link_name = "1900"] fn f() { }
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:631:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:621:5
    |
 LL |     #[link_name = "1900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -1167,7 +1151,7 @@ LL |     #[link_name = "1900"] struct S;
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:637:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:627:5
    |
 LL |     #[link_name = "1900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -1176,7 +1160,7 @@ LL |     #[link_name = "1900"] type T = S;
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:643:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:633:5
    |
 LL |     #[link_name = "1900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -1185,7 +1169,7 @@ LL |     #[link_name = "1900"] impl S { }
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_section]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:650:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:640:1
    |
 LL | #[link_section = "1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1194,7 +1178,7 @@ LL | #[link_section = "1800"]
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:656:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:646:17
    |
 LL |     mod inner { #![link_section="1800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1203,7 +1187,7 @@ LL |     mod inner { #![link_section="1800"] }
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:664:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:654:5
    |
 LL |     #[link_section = "1800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1212,7 +1196,7 @@ LL |     #[link_section = "1800"] struct S;
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:670:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:660:5
    |
 LL |     #[link_section = "1800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1221,7 +1205,7 @@ LL |     #[link_section = "1800"] type T = S;
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:676:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:666:5
    |
 LL |     #[link_section = "1800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1230,7 +1214,7 @@ LL |     #[link_section = "1800"] impl S { }
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on traits
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:682:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:672:5
    |
 LL |     #[link_section = "1800"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1239,7 +1223,7 @@ LL |     #[link_section = "1800"]
    = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on required trait methods
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:688:9
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:678:9
    |
 LL |         #[link_section = "1800"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1248,7 +1232,7 @@ LL |         #[link_section = "1800"]
    = help: `#[link_section]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
 warning: `#[must_use]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:767:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:757:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
@@ -1257,7 +1241,7 @@ LL | #[must_use]
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:772:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:762:17
    |
 LL |     mod inner { #![must_use] }
    |                 ^^^^^^^^^^^^
@@ -1266,7 +1250,7 @@ LL |     mod inner { #![must_use] }
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:781:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:771:5
    |
 LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
@@ -1275,7 +1259,7 @@ LL |     #[must_use] type T = S;
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:786:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:776:5
    |
 LL |     #[must_use] impl S { }
    |     ^^^^^^^^^^^
@@ -1284,13 +1268,13 @@ LL |     #[must_use] impl S { }
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:792:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:782:1
    |
 LL | #[windows_subsystem = "windows"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:794:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:784:1
    |
 LL | / mod windows_subsystem {
 LL | |
@@ -1300,67 +1284,67 @@ LL | | }
    | |_^
 
 warning: the `#![windows_subsystem]` attribute can only be used at the crate root
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:796:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:786:17
    |
 LL |     mod inner { #![windows_subsystem="windows"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:799:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:789:5
    |
 LL |     #[windows_subsystem = "windows"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:799:38
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:789:38
    |
 LL |     #[windows_subsystem = "windows"] fn f() { }
    |                                      ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:803:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:793:5
    |
 LL |     #[windows_subsystem = "windows"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this struct
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:803:38
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:793:38
    |
 LL |     #[windows_subsystem = "windows"] struct S;
    |                                      ^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:807:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:797:5
    |
 LL |     #[windows_subsystem = "windows"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this type alias
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:807:38
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:797:38
    |
 LL |     #[windows_subsystem = "windows"] type T = S;
    |                                      ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:811:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:801:5
    |
 LL |     #[windows_subsystem = "windows"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this implementation block
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:811:38
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:801:38
    |
 LL |     #[windows_subsystem = "windows"] impl S { }
    |                                      ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:818:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:808:1
    |
 LL | #[crate_name = "0900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:820:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:810:1
    |
 LL | / mod crate_name {
 LL | |
@@ -1370,67 +1354,67 @@ LL | | }
    | |_^
 
 warning: the `#![crate_name]` attribute can only be used at the crate root
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:812:17
    |
 LL |     mod inner { #![crate_name="0900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:825:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:815:5
    |
 LL |     #[crate_name = "0900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:825:28
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:815:28
    |
 LL |     #[crate_name = "0900"] fn f() { }
    |                            ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:829:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:819:5
    |
 LL |     #[crate_name = "0900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this struct
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:829:28
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:819:28
    |
 LL |     #[crate_name = "0900"] struct S;
    |                            ^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:833:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:823:5
    |
 LL |     #[crate_name = "0900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this type alias
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:833:28
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:823:28
    |
 LL |     #[crate_name = "0900"] type T = S;
    |                            ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:837:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:827:5
    |
 LL |     #[crate_name = "0900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this implementation block
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:837:28
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:827:28
    |
 LL |     #[crate_name = "0900"] impl S { }
    |                            ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:939:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:929:1
    |
 LL | #[recursion_limit="0200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:941:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:931:1
    |
 LL | / mod recursion_limit {
 LL | |
@@ -1440,67 +1424,67 @@ LL | | }
    | |_^
 
 warning: the `#![recursion_limit]` attribute can only be used at the crate root
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:943:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:17
    |
 LL |     mod inner { #![recursion_limit="0200"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:946:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:936:5
    |
 LL |     #[recursion_limit="0200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:946:31
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:936:31
    |
 LL |     #[recursion_limit="0200"] fn f() { }
    |                               ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:950:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:940:5
    |
 LL |     #[recursion_limit="0200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this struct
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:950:31
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:940:31
    |
 LL |     #[recursion_limit="0200"] struct S;
    |                               ^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:954:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:944:5
    |
 LL |     #[recursion_limit="0200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this type alias
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:954:31
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:944:31
    |
 LL |     #[recursion_limit="0200"] type T = S;
    |                               ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:958:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:948:5
    |
 LL |     #[recursion_limit="0200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this implementation block
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:958:31
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:948:31
    |
 LL |     #[recursion_limit="0200"] impl S { }
    |                               ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:963:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:953:1
    |
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:965:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:955:1
    |
 LL | / mod type_length_limit {
 LL | |
@@ -1510,55 +1494,55 @@ LL | | }
    | |_^
 
 warning: the `#![type_length_limit]` attribute can only be used at the crate root
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:967:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:957:17
    |
 LL |     mod inner { #![type_length_limit="0100"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:970:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:960:5
    |
 LL |     #[type_length_limit="0100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:970:33
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:960:33
    |
 LL |     #[type_length_limit="0100"] fn f() { }
    |                                 ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:974:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:964:5
    |
 LL |     #[type_length_limit="0100"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this struct
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:974:33
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:964:33
    |
 LL |     #[type_length_limit="0100"] struct S;
    |                                 ^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:978:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:968:5
    |
 LL |     #[type_length_limit="0100"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this type alias
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:978:33
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:968:33
    |
 LL |     #[type_length_limit="0100"] type T = S;
    |                                 ^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:982:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:972:5
    |
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: This attribute does not have an `!`, which means it is applied to this implementation block
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:982:33
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:972:33
    |
 LL |     #[type_length_limit="0100"] impl S { }
    |                                 ^^^^^^^^^^
@@ -1626,5 +1610,5 @@ LL | #![must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
-warning: 177 warnings emitted
+warning: 175 warnings emitted
 

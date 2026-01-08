@@ -382,11 +382,6 @@ mod should_panic {
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
-    #[should_panic]
-    //~^ WARN `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-    //~| WARN this was previously accepted
-    fn f() { }
-
     #[should_panic] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
@@ -417,11 +412,6 @@ mod ignore {
 //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
-
-    #[ignore]
-    //~^ WARN`#[ignore]` should only be applied to functions annotated with `#[test]` or `#[bench]`
-    //~| WARN this was previously accepted by the compiler
-    fn f() { }
 
     #[ignore] struct S;
     //~^ WARN attribute cannot be used on

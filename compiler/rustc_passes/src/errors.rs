@@ -1322,7 +1322,5 @@ pub(crate) struct FunctionNamesDuplicated {
 pub(crate) struct MustBeAppliedToTest {
     #[primary_span]
     pub attr_span: Span,
-    #[warning]
-    pub warning: bool,
     pub attr_name: Symbol,
 }

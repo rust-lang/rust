@@ -493,11 +493,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // The error message only makes sense if it's actually being applied on a function
         if matches!(target, Target::Fn) {
             if !find_attr!(attrs, AttributeKind::TestTrace) {
-                self.dcx().emit_warn(errors::MustBeAppliedToTest {
-                    attr_span,
-                    attr_name: sym::ignore,
-                    warning: true,
-                });
+                self.dcx()
+                    .emit_err(errors::MustBeAppliedToTest { attr_span, attr_name: sym::ignore });
             }
         }
     }
@@ -506,10 +503,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // The error message only makes sense if it's actually being applied on a function
         if matches!(target, Target::Fn) {
             if !find_attr!(attrs, AttributeKind::TestTrace) {
-                self.dcx().emit_warn(errors::MustBeAppliedToTest {
+                self.dcx().emit_err(errors::MustBeAppliedToTest {
                     attr_span,
                     attr_name: sym::should_panic,
-                    warning: true,
                 });
             }
         }
