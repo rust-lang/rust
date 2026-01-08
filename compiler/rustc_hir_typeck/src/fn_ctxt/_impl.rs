@@ -525,7 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy<'_, 'tcx>,
+        feed: FeedConstTy<'tcx>,
     ) -> ty::Const<'tcx> {
         let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
@@ -1228,7 +1228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::Param(param.def_id, preceding_args),
+                            FeedConstTy::with_type_of(self.fcx.tcx, param.def_id, preceding_args),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {

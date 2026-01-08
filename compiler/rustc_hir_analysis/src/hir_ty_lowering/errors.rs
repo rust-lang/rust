@@ -381,7 +381,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let span = match term {
                 hir::Term::Ty(ty) => ty.span,
-                hir::Term::Const(ct) => ct.span(),
+                hir::Term::Const(ct) => ct.span,
             };
             (span, Some(ident.span), assoc_item.as_tag(), assoc_tag)
         } else {
@@ -1466,7 +1466,7 @@ pub fn prohibit_assoc_item_constraint(
                     hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(c) },
                     GenericParamDefKind::Const { .. },
                 ) => {
-                    suggest_direct_use(&mut err, c.span());
+                    suggest_direct_use(&mut err, c.span);
                 }
                 (hir::AssocItemConstraintKind::Bound { bounds }, _) => {
                     // Suggest `impl<T: Bound> Trait<T> for Foo` when finding

@@ -11,25 +11,25 @@ error: struct expression with missing field initialiser for `alignment`
   --> $DIR/non_scalar_alignment_value.rs:15:32
    |
 LL |                     alignment: Assume {},
-   |                                ^^^^^^
+   |                                ^^^^^^^^^
 
 error: struct expression with missing field initialiser for `lifetimes`
   --> $DIR/non_scalar_alignment_value.rs:15:32
    |
 LL |                     alignment: Assume {},
-   |                                ^^^^^^
+   |                                ^^^^^^^^^
 
 error: struct expression with missing field initialiser for `safety`
   --> $DIR/non_scalar_alignment_value.rs:15:32
    |
 LL |                     alignment: Assume {},
-   |                                ^^^^^^
+   |                                ^^^^^^^^^
 
 error: struct expression with missing field initialiser for `validity`
   --> $DIR/non_scalar_alignment_value.rs:15:32
    |
 LL |                     alignment: Assume {},
-   |                                ^^^^^^
+   |                                ^^^^^^^^^
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

@@ -1,8 +1,8 @@
 error: unconstrained generic constant
-  --> $DIR/doesnt_unify_evaluatable.rs:9:11
+  --> $DIR/doesnt_unify_evaluatable.rs:9:13
    |
 LL |     bar::<{ T::ASSOC }>();
-   |           ^^^^^^^^^^^^
+   |             ^^^^^^^^
    |
 help: try adding a `where` bound
    |

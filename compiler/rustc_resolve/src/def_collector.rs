@@ -419,7 +419,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
             // Avoid overwriting `const_arg_context` as we may want to treat const blocks
             // as being anon consts if we are inside a const argument.
-            ExprKind::Struct(_) | ExprKind::Call(..) => return visit::walk_expr(self, expr),
+            ExprKind::Struct(_) | ExprKind::Call(..) | ExprKind::Tup(..) => {
+                return visit::walk_expr(self, expr);
+            }
             // FIXME(mgca): we may want to handle block labels in some manner
             ExprKind::Block(block, _) if let [stmt] = block.stmts.as_slice() => match stmt.kind {
                 // FIXME(mgca): this probably means that mac calls that expand

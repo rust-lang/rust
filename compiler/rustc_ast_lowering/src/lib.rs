@@ -2285,8 +2285,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
         match c.value.peel_parens().kind {
             ExprKind::Underscore => {
-                let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span), ());
-                self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
+                let ct_kind = hir::ConstArgKind::Infer(());
+                self.arena.alloc(hir::ConstArg {
+                    hir_id: self.lower_node_id(c.id),
+                    kind: ct_kind,
+                    span: self.lower_span(c.value.span),
+                })
             }
             _ => self.lower_anon_const_to_const_arg_and_alloc(c),
         }
@@ -2356,7 +2360,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::ConstArgKind::Anon(ct)
         };
 
-        self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
+        self.arena.alloc(hir::ConstArg {
+            hir_id: self.next_id(),
+            kind: ct_kind,
+            span: self.lower_span(span),
+        })
     }
 
     fn lower_const_item_rhs(
@@ -2373,9 +2381,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let const_arg = ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::Error(
-                        DUMMY_SP,
                         self.dcx().span_delayed_bug(DUMMY_SP, "no block"),
                     ),
+                    span: DUMMY_SP,
                 };
                 hir::ConstItemRhs::TypeConst(self.arena.alloc(const_arg))
             }
@@ -2388,13 +2396,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_expr_to_const_arg_direct(&mut self, expr: &Expr) -> hir::ConstArg<'hir> {
+        let span = self.lower_span(expr.span);
+
         let overly_complex_const = |this: &mut Self| {
             let e = this.dcx().struct_span_err(
                 expr.span,
                 "complex const arguments must be placed inside of a `const` block",
             );
 
-            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(expr.span, e.emit()) }
+            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e.emit()), span }
         };
 
         match &expr.kind {
@@ -2425,7 +2435,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::TupleCall(qpath, lowered_args),
+                    span,
                 }
+            }
+            ExprKind::Tup(exprs) => {
+                let exprs = self.arena.alloc_from_iter(exprs.iter().map(|expr| {
+                    let expr = if let ExprKind::ConstBlock(anon_const) = &expr.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        let def_kind = self.tcx.def_kind(def_id);
+                        assert_eq!(DefKind::AnonConst, def_kind);
+
+                        self.lower_anon_const_to_const_arg(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(&expr)
+                    };
+
+                    &*self.arena.alloc(expr)
+                }));
+
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Tup(exprs), span }
             }
             ExprKind::Path(qself, path) => {
                 let qpath = self.lower_qpath(
@@ -2439,7 +2467,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     None,
                 );
 
-                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath) }
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath), span }
             }
             ExprKind::Struct(se) => {
                 let path = self.lower_qpath(
@@ -2480,11 +2508,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     })
                 }));
 
-                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Struct(path, fields) }
+                ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Struct(path, fields),
+                    span,
+                }
             }
             ExprKind::Underscore => ConstArg {
                 hir_id: self.lower_node_id(expr.id),
-                kind: hir::ConstArgKind::Infer(expr.span, ()),
+                kind: hir::ConstArgKind::Infer(()),
+                span,
             },
             ExprKind::Block(block, _) => {
                 if let [stmt] = block.stmts.as_slice()
@@ -2495,6 +2528,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             | ExprKind::Path(..)
                             | ExprKind::Struct(..)
                             | ExprKind::Call(..)
+                            | ExprKind::Tup(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
@@ -2528,7 +2562,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             return match anon.mgca_disambiguation {
                 MgcaDisambiguation::AnonConst => {
                     let lowered_anon = self.lower_anon_const_to_anon_const(anon);
-                    ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Anon(lowered_anon) }
+                    ConstArg {
+                        hir_id: self.next_id(),
+                        kind: hir::ConstArgKind::Anon(lowered_anon),
+                        span: lowered_anon.span,
+                    }
                 }
                 MgcaDisambiguation::Direct => self.lower_expr_to_const_arg_direct(&anon.value),
             };
@@ -2565,11 +2603,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             return ConstArg {
                 hir_id: self.lower_node_id(anon.id),
                 kind: hir::ConstArgKind::Path(qpath),
+                span: self.lower_span(expr.span),
             };
         }
 
         let lowered_anon = self.lower_anon_const_to_anon_const(anon);
-        ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Anon(lowered_anon) }
+        ConstArg {
+            hir_id: self.next_id(),
+            kind: hir::ConstArgKind::Anon(lowered_anon),
+            span: self.lower_span(expr.span),
+        }
     }
 
     /// See [`hir::ConstArg`] for when to use this function vs
