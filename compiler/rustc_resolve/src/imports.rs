@@ -295,6 +295,24 @@ fn pub_use_of_private_extern_crate_hack(import: Import<'_>, decl: Decl<'_>) -> O
     }
 }
 
+/// Removes identical import layers from two declarations.
+fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra>) {
+    if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
+        && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
+        && import1 == import2
+        && d1.ambiguity == d2.ambiguity
+    {
+        assert!(d1.ambiguity.is_none());
+        assert_eq!(d1.warn_ambiguity, d2.warn_ambiguity);
+        assert_eq!(d1.expansion, d2.expansion);
+        assert_eq!(d1.span, d2.span);
+        assert_eq!(d1.vis, d2.vis);
+        remove_same_import(d1_next, d2_next)
+    } else {
+        (d1, d2)
+    }
+}
+
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Given an import and the declaration that it points to,
     /// create the corresponding import declaration.
@@ -325,6 +343,61 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
+    /// If `glob_decl` attempts to overwrite `old_glob_decl` in a module,
+    /// decide which one to keep.
+    fn select_glob_decl(
+        &self,
+        glob_decl: Decl<'ra>,
+        old_glob_decl: Decl<'ra>,
+        warn_ambiguity: bool,
+    ) -> Decl<'ra> {
+        assert!(glob_decl.is_glob_import());
+        assert!(old_glob_decl.is_glob_import());
+        assert_ne!(glob_decl, old_glob_decl);
+        // `best_decl` with a given key in a module may be overwritten in a
+        // number of cases (all of them can be seen below in the `match` in `try_define_local`),
+        // all these overwrites will be re-fetched by glob imports importing
+        // from that module without generating new ambiguities.
+        // - A glob decl is overwritten by a non-glob decl arriving later.
+        // - A glob decl is overwritten by an ambiguous glob decl.
+        //   FIXME: avoid this by putting `DeclData::ambiguity` under a
+        //   cell and updating it in place.
+        // - A glob decl is overwritten by the same decl with `warn_ambiguity == true`.
+        //   FIXME: avoid this by putting `DeclData::warn_ambiguity` under a
+        //   cell and updating it in place.
+        // - A glob decl is overwritten by a glob decl with larger visibility.
+        //   FIXME: avoid this by putting `DeclData::vis` under a cell
+        //   and updating it in place.
+        // - A glob decl is overwritten by a glob decl re-fetching an
+        //   overwritten decl from other module (the recursive case).
+        // Here we are detecting all such re-fetches and overwrite old decls
+        // with the re-fetched decls.
+        // This is probably incorrect in corner cases, and the outdated decls still get
+        // propagated to other places and get stuck there, but that's what we have at the moment.
+        let (deep_decl, old_deep_decl) = remove_same_import(glob_decl, old_glob_decl);
+        if deep_decl != glob_decl {
+            // Some import layers have been removed, need to overwrite.
+            assert_ne!(old_deep_decl, old_glob_decl);
+            assert_ne!(old_deep_decl, deep_decl);
+            assert!(old_deep_decl.is_glob_import());
+            if glob_decl.is_ambiguity_recursive() {
+                self.new_decl_with_warn_ambiguity(glob_decl)
+            } else {
+                glob_decl
+            }
+        } else if glob_decl.res() != old_glob_decl.res() {
+            self.new_decl_with_ambiguity(old_glob_decl, glob_decl, warn_ambiguity)
+        } else if !old_glob_decl.vis.is_at_least(glob_decl.vis, self.tcx) {
+            // We are glob-importing the same item but with greater visibility.
+            glob_decl
+        } else if glob_decl.is_ambiguity_recursive() {
+            // Overwriting with an ambiguous glob import.
+            self.new_decl_with_warn_ambiguity(glob_decl)
+        } else {
+            old_glob_decl
+        }
+    }
+
     /// Attempt to put the declaration with the given name and namespace into the module,
     /// and return existing declaration if there is a collision.
     pub(crate) fn try_plant_decl_into_local_module(
@@ -347,52 +420,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_decl) = resolution.best_decl() {
+                assert_ne!(decl, old_decl);
                 if res == Res::Err && old_decl.res() != Res::Err {
                     // Do not override real declarations with `Res::Err`s from error recovery.
                     return Ok(());
                 }
                 match (old_decl.is_glob_import(), decl.is_glob_import()) {
                     (true, true) => {
-                        let (glob_decl, old_glob_decl) = (decl, old_decl);
-                        // FIXME: remove `!decl.is_ambiguity_recursive()` after delete the warning ambiguity.
-                        if !decl.is_ambiguity_recursive()
-                            && let DeclKind::Import { import: old_import, .. } = old_glob_decl.kind
-                            && let DeclKind::Import { import, .. } = glob_decl.kind
-                            && old_import == import
-                        {
-                            // When imported from the same glob-import statement, we should replace
-                            // `old_glob_decl` with `glob_decl`, regardless of whether
-                            // they have the same resolution or not.
-                            resolution.glob_decl = Some(glob_decl);
-                        } else if res != old_glob_decl.res() {
-                            resolution.glob_decl = Some(this.new_decl_with_ambiguity(
-                                old_glob_decl,
-                                glob_decl,
-                                warn_ambiguity,
-                            ));
-                        } else if !old_decl.vis.is_at_least(decl.vis, this.tcx) {
-                            // We are glob-importing the same item but with greater visibility.
-                            resolution.glob_decl = Some(glob_decl);
-                        } else if decl.is_ambiguity_recursive() {
-                            resolution.glob_decl =
-                                Some(this.new_decl_with_warn_ambiguity(glob_decl));
-                        }
+                        resolution.glob_decl =
+                            Some(this.select_glob_decl(decl, old_decl, warn_ambiguity));
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_decl, non_glob_decl) =
                             if old_glob { (old_decl, decl) } else { (decl, old_decl) };
                         resolution.non_glob_decl = Some(non_glob_decl);
-                        if let Some(old_glob_decl) = resolution.glob_decl {
-                            assert!(old_glob_decl.is_glob_import());
-                            if glob_decl.res() != old_glob_decl.res() {
-                                resolution.glob_decl = Some(this.new_decl_with_ambiguity(
-                                    old_glob_decl,
-                                    glob_decl,
-                                    false,
-                                ));
-                            } else if !old_glob_decl.vis.is_at_least(decl.vis, this.tcx) {
-                                resolution.glob_decl = Some(glob_decl);
-                            }
+                        if let Some(old_glob_decl) = resolution.glob_decl
+                            && old_glob_decl != glob_decl
+                        {
+                            resolution.glob_decl =
+                                Some(this.select_glob_decl(glob_decl, old_glob_decl, false));
                         } else {
                             resolution.glob_decl = Some(glob_decl);
                         }
