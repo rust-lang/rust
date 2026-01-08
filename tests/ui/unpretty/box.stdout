@@ -9,7 +9,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(11)
-                lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).11))
+                hir_id: HirId(DefId(0:3 ~ box[efb9]::main).11)
                 value:
                     Expr {
                         ty: ()
@@ -43,7 +43,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(3)
-                                                            lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).3))
+                                                            hir_id: HirId(DefId(0:3 ~ box[efb9]::main).3)
                                                             value:
                                                                 Expr {
                                                                     ty: std::boxed::Box<i32, std::alloc::Global>
@@ -58,7 +58,7 @@ body:
                                                                                 kind: 
                                                                                     Scope {
                                                                                         region_scope: Node(8)
-                                                                                        lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).8))
+                                                                                        hir_id: HirId(DefId(0:3 ~ box[efb9]::main).8)
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: i32
@@ -76,7 +76,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(0:3 ~ box[efb9]::main).9))
+                                            hir_id: HirId(DefId(0:3 ~ box[efb9]::main).9)
                                             span: $DIR/box.rs:7:5: 7:35 (#0)
                                         }
                                     }

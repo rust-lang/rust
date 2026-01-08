@@ -47,9 +47,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     use ExprKind::*;
     let Expr { kind, ty: _, temp_scope_id: _, span: _ } = expr;
     match *kind {
-        Scope { value, region_scope: _, lint_level: _ } => {
-            visitor.visit_expr(&visitor.thir()[value])
-        }
+        Scope { value, region_scope: _, hir_id: _ } => visitor.visit_expr(&visitor.thir()[value]),
         Box { value } => visitor.visit_expr(&visitor.thir()[value]),
         If { cond, then, else_opt, if_then_scope: _ } => {
             visitor.visit_expr(&visitor.thir()[cond]);
@@ -205,7 +203,7 @@ pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             remainder_scope: _,
             init_scope: _,
             pattern,
-            lint_level: _,
+            hir_id: _,
             else_block,
             span: _,
         } => {
@@ -238,7 +236,7 @@ pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     arm: &'thir Arm<'tcx>,
 ) {
-    let Arm { guard, pattern, body, lint_level: _, span: _, scope: _ } = arm;
+    let Arm { guard, pattern, body, hir_id: _, span: _, scope: _ } = arm;
     if let Some(expr) = guard {
         visitor.visit_expr(&visitor.thir()[*expr])
     }

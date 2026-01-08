@@ -9,7 +9,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(52)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).52))
+                hir_id: HirId(DefId(offset_of::concrete).52)
                 value:
                     Expr {
                         ty: ()
@@ -51,7 +51,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(3)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).3))
+                                                            hir_id: HirId(DefId(offset_of::concrete).3)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -67,7 +67,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).10))
+                                            hir_id: HirId(DefId(offset_of::concrete).10)
                                             span: $DIR/offset_of.rs:37:5: 1440:57 (#0)
                                         }
                                     }
@@ -100,7 +100,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(13)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).13))
+                                                            hir_id: HirId(DefId(offset_of::concrete).13)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -116,7 +116,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).20))
+                                            hir_id: HirId(DefId(offset_of::concrete).20)
                                             span: $DIR/offset_of.rs:38:5: 1440:57 (#0)
                                         }
                                     }
@@ -149,7 +149,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(23)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).23))
+                                                            hir_id: HirId(DefId(offset_of::concrete).23)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -165,7 +165,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).30))
+                                            hir_id: HirId(DefId(offset_of::concrete).30)
                                             span: $DIR/offset_of.rs:39:5: 1440:57 (#0)
                                         }
                                     }
@@ -198,7 +198,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(33)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).33))
+                                                            hir_id: HirId(DefId(offset_of::concrete).33)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -214,7 +214,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).40))
+                                            hir_id: HirId(DefId(offset_of::concrete).40)
                                             span: $DIR/offset_of.rs:40:5: 1440:57 (#0)
                                         }
                                     }
@@ -247,7 +247,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(43)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).43))
+                                                            hir_id: HirId(DefId(offset_of::concrete).43)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -263,7 +263,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).50))
+                                            hir_id: HirId(DefId(offset_of::concrete).50)
                                             span: $DIR/offset_of.rs:41:5: 1440:57 (#0)
                                         }
                                     }
@@ -286,7 +286,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(5)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).5))
+                hir_id: HirId(DefId(offset_of::concrete).5)
                 value:
                     Expr {
                         ty: usize
@@ -307,7 +307,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(7)
-                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).7))
+                                                hir_id: HirId(DefId(offset_of::concrete).7)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -369,7 +369,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(15)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).15))
+                hir_id: HirId(DefId(offset_of::concrete).15)
                 value:
                     Expr {
                         ty: usize
@@ -390,7 +390,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(17)
-                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).17))
+                                                hir_id: HirId(DefId(offset_of::concrete).17)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -452,7 +452,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(25)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).25))
+                hir_id: HirId(DefId(offset_of::concrete).25)
                 value:
                     Expr {
                         ty: usize
@@ -473,7 +473,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(27)
-                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).27))
+                                                hir_id: HirId(DefId(offset_of::concrete).27)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -535,7 +535,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(35)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).35))
+                hir_id: HirId(DefId(offset_of::concrete).35)
                 value:
                     Expr {
                         ty: usize
@@ -556,7 +556,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(37)
-                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).37))
+                                                hir_id: HirId(DefId(offset_of::concrete).37)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -670,7 +670,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(45)
-                lint_level: Explicit(HirId(DefId(offset_of::concrete).45))
+                hir_id: HirId(DefId(offset_of::concrete).45)
                 value:
                     Expr {
                         ty: usize
@@ -691,7 +691,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(47)
-                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).47))
+                                                hir_id: HirId(DefId(offset_of::concrete).47)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -805,7 +805,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(50)
-                lint_level: Explicit(HirId(DefId(offset_of::generic).50))
+                hir_id: HirId(DefId(offset_of::generic).50)
                 value:
                     Expr {
                         ty: ()
@@ -847,7 +847,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(3)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).3))
+                                                            hir_id: HirId(DefId(offset_of::generic).3)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -863,7 +863,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::generic).12))
+                                            hir_id: HirId(DefId(offset_of::generic).12)
                                             span: $DIR/offset_of.rs:45:5: 1440:57 (#0)
                                         }
                                     }
@@ -896,7 +896,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(15)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).15))
+                                                            hir_id: HirId(DefId(offset_of::generic).15)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -912,7 +912,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::generic).24))
+                                            hir_id: HirId(DefId(offset_of::generic).24)
                                             span: $DIR/offset_of.rs:46:5: 1440:57 (#0)
                                         }
                                     }
@@ -945,7 +945,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(27)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).27))
+                                                            hir_id: HirId(DefId(offset_of::generic).27)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -961,7 +961,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::generic).36))
+                                            hir_id: HirId(DefId(offset_of::generic).36)
                                             span: $DIR/offset_of.rs:47:5: 1440:57 (#0)
                                         }
                                     }
@@ -994,7 +994,7 @@ body:
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(39)
-                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).39))
+                                                            hir_id: HirId(DefId(offset_of::generic).39)
                                                             value:
                                                                 Expr {
                                                                     ty: usize
@@ -1010,7 +1010,7 @@ body:
                                                 }
                                             )
                                             else_block: None
-                                            lint_level: Explicit(HirId(DefId(offset_of::generic).48))
+                                            hir_id: HirId(DefId(offset_of::generic).48)
                                             span: $DIR/offset_of.rs:48:5: 1440:57 (#0)
                                         }
                                     }
@@ -1033,7 +1033,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(5)
-                lint_level: Explicit(HirId(DefId(offset_of::generic).5))
+                hir_id: HirId(DefId(offset_of::generic).5)
                 value:
                     Expr {
                         ty: usize
@@ -1054,7 +1054,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(7)
-                                                lint_level: Explicit(HirId(DefId(offset_of::generic).7))
+                                                hir_id: HirId(DefId(offset_of::generic).7)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -1116,7 +1116,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(17)
-                lint_level: Explicit(HirId(DefId(offset_of::generic).17))
+                hir_id: HirId(DefId(offset_of::generic).17)
                 value:
                     Expr {
                         ty: usize
@@ -1137,7 +1137,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(19)
-                                                lint_level: Explicit(HirId(DefId(offset_of::generic).19))
+                                                hir_id: HirId(DefId(offset_of::generic).19)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -1199,7 +1199,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(29)
-                lint_level: Explicit(HirId(DefId(offset_of::generic).29))
+                hir_id: HirId(DefId(offset_of::generic).29)
                 value:
                     Expr {
                         ty: usize
@@ -1220,7 +1220,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(31)
-                                                lint_level: Explicit(HirId(DefId(offset_of::generic).31))
+                                                hir_id: HirId(DefId(offset_of::generic).31)
                                                 value:
                                                     Expr {
                                                         ty: usize
@@ -1282,7 +1282,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(41)
-                lint_level: Explicit(HirId(DefId(offset_of::generic).41))
+                hir_id: HirId(DefId(offset_of::generic).41)
                 value:
                     Expr {
                         ty: usize
@@ -1303,7 +1303,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(43)
-                                                lint_level: Explicit(HirId(DefId(offset_of::generic).43))
+                                                hir_id: HirId(DefId(offset_of::generic).43)
                                                 value:
                                                     Expr {
                                                         ty: usize

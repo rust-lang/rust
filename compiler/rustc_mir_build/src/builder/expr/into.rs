@@ -45,10 +45,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let block_and = match expr.kind {
-            ExprKind::Scope { region_scope, lint_level, value } => {
+            ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
                 ensure_sufficient_stack(|| {
-                    this.in_scope(region_scope, lint_level, |this| {
+                    this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
                         this.expr_into_dest(destination, block, value)
                     })
                 })

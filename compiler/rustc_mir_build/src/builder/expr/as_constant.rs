@@ -23,7 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = this.tcx;
         let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
         match kind {
-            ExprKind::Scope { region_scope: _, lint_level: _, value } => {
+            ExprKind::Scope { region_scope: _, hir_id: _, value } => {
                 this.as_constant(&this.thir[*value])
             }
             _ => as_constant_inner(

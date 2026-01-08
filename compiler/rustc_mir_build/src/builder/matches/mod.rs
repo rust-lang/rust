@@ -182,9 +182,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
             }
-            ExprKind::Scope { region_scope, lint_level, value } => {
+            ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
-                this.in_scope(region_scope, lint_level, |this| {
+                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
                     this.then_else_break_inner(block, value, args)
                 })
             }
@@ -434,7 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let guard_scope = arm
                     .guard
                     .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
-                self.in_scope(arm_scope, arm.lint_level, |this| {
+                self.in_scope(arm_scope, LintLevel::Explicit(arm.hir_id), |this| {
                     this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
                         // `if let` guard temps needing deduplicating will be in the guard scope.
                         let old_dedup_scope =

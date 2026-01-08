@@ -25,8 +25,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         match expr.kind {
-            ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+            ExprKind::Scope { region_scope, hir_id, value } => {
+                this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
                     this.stmt_expr(block, value, statement_scope)
                 })
             }
@@ -106,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Become { value } => {
                 let v = &this.thir[value];
-                let ExprKind::Scope { value, lint_level, region_scope } = v.kind else {
+                let ExprKind::Scope { value, hir_id, region_scope } = v.kind else {
                     span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
                 };
 
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
                 };
 
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+                this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
                     let fun = unpack!(block = this.as_local_operand(block, fun));
                     let args: Box<[_]> = args
                         .into_iter()

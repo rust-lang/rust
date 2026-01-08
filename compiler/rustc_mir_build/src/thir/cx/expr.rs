@@ -77,7 +77,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: self.thir.exprs.push(expr),
-                lint_level: LintLevel::Explicit(hir_expr.hir_id),
+                hir_id: hir_expr.hir_id,
             },
         };
 
@@ -1192,7 +1192,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             pattern: self.pattern_from_hir(&arm.pat),
             guard: arm.guard.as_ref().map(|g| self.mirror_expr(g)),
             body: self.mirror_expr(arm.body),
-            lint_level: LintLevel::Explicit(arm.hir_id),
+            hir_id: arm.hir_id,
             scope: region::Scope { local_id: arm.hir_id.local_id, data: region::ScopeData::Node },
             span: arm.span,
         };

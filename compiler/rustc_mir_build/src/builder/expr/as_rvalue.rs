@@ -56,9 +56,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match expr.kind {
             ExprKind::ThreadLocalRef(did) => block.and(Rvalue::ThreadLocalRef(did)),
-            ExprKind::Scope { region_scope, lint_level, value } => {
+            ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
+                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                    this.as_rvalue(block, scope, value)
+                })
             }
             ExprKind::Repeat { value, count } => {
                 if Some(0) == count.try_to_target_usize(this.tcx) {
@@ -657,7 +659,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source: eid,
                     is_from_as_cast: _,
                 }
-                | &ExprKind::Scope { region_scope: _, lint_level: _, value: eid } => {
+                | &ExprKind::Scope { region_scope: _, hir_id: _, value: eid } => {
                     kind = &self.thir[eid].kind
                 }
                 _ => return matches!(Category::of(&kind), Some(Category::Constant)),

@@ -142,7 +142,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 pattern,
                 initializer,
                 else_block,
-                lint_level,
+                hir_id,
                 span,
             } => {
                 print_indented!(self, "kind: Let {", depth_lvl + 1);
@@ -173,7 +173,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                     print_indented!(self, "else_block: None", depth_lvl + 2);
                 }
 
-                print_indented!(self, format!("lint_level: {:?}", lint_level), depth_lvl + 2);
+                print_indented!(self, format!("hir_id: {:?}", hir_id), depth_lvl + 2);
                 print_indented!(self, format!("span: {:?}", span), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
@@ -197,10 +197,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         use rustc_middle::thir::ExprKind::*;
 
         match expr_kind {
-            Scope { region_scope, value, lint_level } => {
+            Scope { region_scope, value, hir_id } => {
                 print_indented!(self, "Scope {", depth_lvl);
                 print_indented!(self, format!("region_scope: {:?}", region_scope), depth_lvl + 1);
-                print_indented!(self, format!("lint_level: {:?}", lint_level), depth_lvl + 1);
+                print_indented!(self, format!("hir_id: {:?}", hir_id), depth_lvl + 1);
                 print_indented!(self, "value:", depth_lvl + 1);
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
@@ -642,7 +642,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "Arm {", depth_lvl);
 
         let arm = &self.thir.arms[arm_id];
-        let Arm { pattern, guard, body, lint_level, scope, span } = arm;
+        let Arm { pattern, guard, body, hir_id, scope, span } = arm;
 
         print_indented!(self, "pattern: ", depth_lvl + 1);
         self.print_pat(pattern, depth_lvl + 2);
@@ -656,7 +656,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
         print_indented!(self, "body: ", depth_lvl + 1);
         self.print_expr(*body, depth_lvl + 2);
-        print_indented!(self, format!("lint_level: {:?}", lint_level), depth_lvl + 1);
+        print_indented!(self, format!("hir_id: {:?}", hir_id), depth_lvl + 1);
         print_indented!(self, format!("scope: {:?}", scope), depth_lvl + 1);
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
         print_indented!(self, "}", depth_lvl);

@@ -32,7 +32,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(28)
-                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).28))
+                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).28)
                 value:
                     Expr {
                         ty: bool
@@ -53,7 +53,7 @@ body:
                                         kind: 
                                             Scope {
                                                 region_scope: Node(4)
-                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).4))
+                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).4)
                                                 value:
                                                     Expr {
                                                         ty: bool
@@ -76,7 +76,7 @@ body:
                                                                                         kind: 
                                                                                             Scope {
                                                                                                 region_scope: Node(7)
-                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).7))
+                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).7)
                                                                                                 value:
                                                                                                     Expr {
                                                                                                         ty: bool
@@ -101,7 +101,7 @@ body:
                                                                                                 kind: 
                                                                                                     Scope {
                                                                                                         region_scope: Node(12)
-                                                                                                        lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).12))
+                                                                                                        hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).12)
                                                                                                         value:
                                                                                                             Expr {
                                                                                                                 ty: bool
@@ -135,7 +135,7 @@ body:
                                                                                                         kind: 
                                                                                                             Scope {
                                                                                                                 region_scope: Node(17)
-                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).17))
+                                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).17)
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
@@ -166,7 +166,7 @@ body:
                                                                                                                                                                     kind: 
                                                                                                                                                                         Scope {
                                                                                                                                                                             region_scope: Node(19)
-                                                                                                                                                                            lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).19))
+                                                                                                                                                                            hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).19)
                                                                                                                                                                             value:
                                                                                                                                                                                 Expr {
                                                                                                                                                                                     ty: !
@@ -183,7 +183,7 @@ body:
                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                         Scope {
                                                                                                                                                                                                             region_scope: Node(20)
-                                                                                                                                                                                                            lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).20))
+                                                                                                                                                                                                            hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).20)
                                                                                                                                                                                                             value:
                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                     ty: bool
@@ -209,7 +209,7 @@ body:
                                                                                                                     }
                                                                                                             }
                                                                                                     }
-                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).16))
+                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).16)
                                                                                                 scope: Node(16)
                                                                                                 span: $DIR/thir-tree-loop-match.rs:12:17: 15:18 (#0)
                                                                                             }
@@ -233,7 +233,7 @@ body:
                                                                                                         kind: 
                                                                                                             Scope {
                                                                                                                 region_scope: Node(25)
-                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).25))
+                                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).25)
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
@@ -256,7 +256,7 @@ body:
                                                                                                                                                         kind: 
                                                                                                                                                             Scope {
                                                                                                                                                                 region_scope: Node(26)
-                                                                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).26))
+                                                                                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).26)
                                                                                                                                                                 value:
                                                                                                                                                                     Expr {
                                                                                                                                                                         ty: bool
@@ -275,7 +275,7 @@ body:
                                                                                                                     }
                                                                                                             }
                                                                                                     }
-                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).24))
+                                                                                                hir_id: HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).24)
                                                                                                 scope: Node(24)
                                                                                                 span: $DIR/thir-tree-loop-match.rs:16:17: 16:38 (#0)
                                                                                             }
@@ -304,7 +304,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(2)
-                lint_level: Explicit(HirId(DefId(0:4 ~ thir_tree_loop_match[3c53]::main).2))
+                hir_id: HirId(DefId(0:4 ~ thir_tree_loop_match[3c53]::main).2)
                 value:
                     Expr {
                         ty: ()
