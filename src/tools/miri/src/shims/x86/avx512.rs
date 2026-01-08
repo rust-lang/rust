@@ -3,7 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{permute, pmaddbw, psadbw, pshufb};
+use super::{permute, pmaddbw, pmaddwd, psadbw, pshufb};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -87,6 +87,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 psadbw(this, left, right, dest)?
+            }
+            // Used to implement the _mm512_madd_epi16 function.
+            "pmaddw.d.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                pmaddwd(this, left, right, dest)?;
             }
             // Used to implement the _mm512_maddubs_epi16 function.
             "pmaddubs.w.512" => {
