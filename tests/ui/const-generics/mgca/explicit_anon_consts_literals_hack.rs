@@ -1,8 +1,4 @@
-// We allow for literals to implicitly be anon consts still regardless
-// of whether a const block is placed around them or not
-//
-// However, we don't allow so for const arguments in field init positions.
-// This is just harder to implement so we did not do so.
+//@ check-pass
 
 #![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
@@ -27,7 +23,7 @@ fn struct_expr() {
     fn takes_n<const N: ADT>() {}
 
     takes_n::<{ ADT { field: 1 } }>();
-    //~^ ERROR: complex const arguments must be placed inside of a `const` block
+
     takes_n::<{ ADT { field: const { 1 } } }>();
 }
 
