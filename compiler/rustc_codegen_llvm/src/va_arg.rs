@@ -131,7 +131,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     );
     if indirect {
         let tmp_ret = bx.load(llty, addr, addr_align);
-        bx.load(bx.cx.layout_of(target_ty).llvm_type(bx.cx), tmp_ret, align.abi)
+        bx.load(layout.llvm_type(bx.cx), tmp_ret, align.abi)
     } else {
         bx.load(llty, addr, addr_align)
     }
@@ -1140,13 +1140,10 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
-        Arch::Hexagon => {
-            if target.env == Env::Musl {
-                emit_hexagon_va_arg_musl(bx, addr, target_ty)
-            } else {
-                emit_hexagon_va_arg_bare_metal(bx, addr, target_ty)
-            }
-        }
+        Arch::Hexagon => match target.env {
+            Env::Musl => emit_hexagon_va_arg_musl(bx, addr, target_ty),
+            _ => emit_hexagon_va_arg_bare_metal(bx, addr, target_ty),
+        },
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
