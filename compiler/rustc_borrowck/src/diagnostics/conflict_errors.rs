@@ -83,6 +83,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             location, desired_action, moved_place, used_place, span, mpi
         );
 
+        let original_use_span = span;  // Save original use span for struct field reordering suggestion
         let use_spans =
             self.move_spans(moved_place, location).or_else(|| self.borrow_spans(span, location));
         let span = use_spans.args_or_use();
@@ -200,6 +201,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                 let mut has_suggest_reborrow = false;
                 if !seen_spans.contains(&move_span) {
+                    // Try to suggest struct field reordering before suggesting cloning
+                    self.suggest_struct_field_reordering(&mut err, move_span, original_use_span);
+                    
                     self.suggest_ref_or_clone(
                         mpi,
                         &mut err,
@@ -1525,6 +1529,110 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 None,
             );
         }
+    }
+
+    /// Suggests reordering struct fields when a field is moved and then another field
+    /// tries to borrow from the moved value.
+    fn suggest_struct_field_reordering(
+        &self,
+        err: &mut Diag<'_>,
+        move_span: Span,
+        use_span: Span,
+    ) -> bool {
+        let tcx = self.infcx.tcx;
+        
+        // Get the HIR body to analyze expressions
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return false };
+        
+        // Find the struct expression containing both the move and use
+        struct StructFinder<'tcx> {
+            move_span: Span,
+            use_span: Span,
+            struct_expr: Option<&'tcx hir::Expr<'tcx>>,
+            move_field_idx: Option<usize>,
+            use_field_idx: Option<usize>,
+        }
+        
+        impl<'tcx> hir::intravisit::Visitor<'tcx> for StructFinder<'tcx> {
+            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+                if let hir::ExprKind::Struct(_, fields, None) = &ex.kind {
+                    // Check if this struct contains both our move and use spans
+                    let mut move_idx = None;
+                    let mut use_idx = None;
+                    
+                    for (idx, field) in fields.iter().enumerate() {
+                        if field.expr.span.contains(self.move_span) {
+                            move_idx = Some(idx);
+                        }
+                        if field.expr.span.contains(self.use_span) {
+                            use_idx = Some(idx);
+                        }
+                    }
+                    
+                    // If we found both fields in this struct, check if reordering would help
+                    if let (Some(mi), Some(ui)) = (move_idx, use_idx) {
+                        // The use field comes after the move field - reordering would help
+                        if mi < ui {
+                            self.struct_expr = Some(ex);
+                            self.move_field_idx = Some(mi);
+                            self.use_field_idx = Some(ui);
+                        }
+                    }
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        
+        let mut finder = StructFinder {
+            move_span,
+            use_span,
+            struct_expr: None,
+            move_field_idx: None,
+            use_field_idx: None,
+        };
+        
+        finder.visit_expr(body.value);
+        
+        // If we found a struct where reordering would help, suggest it
+        if let (Some(struct_expr), Some(move_idx), Some(use_idx)) = 
+            (finder.struct_expr, finder.move_field_idx, finder.use_field_idx)
+        {
+            if let hir::ExprKind::Struct(_, fields, None) = &struct_expr.kind {
+                let move_field = &fields[move_idx];
+                let use_field = &fields[use_idx];
+                
+                // Get field names and build the suggestion
+                let move_field_name = move_field.ident.name;
+                let use_field_name = use_field.ident.name;
+                
+                // Build snippets for the reordered fields
+                let source_map = tcx.sess.source_map();
+                let Ok(move_field_text) = source_map.span_to_snippet(move_field.span) else {
+                    return false;
+                };
+                let Ok(use_field_text) = source_map.span_to_snippet(use_field.span) else {
+                    return false;
+                };
+                
+                // Suggest initializing the use field before the move field
+                // This creates a suggestion that shows the use_field moving to where move_field was,
+                // and move_field moving to where use_field was
+                let sugg = vec![
+                    (move_field.span, use_field_text),
+                    (use_field.span, move_field_text),
+                ];
+                
+                err.multipart_suggestion_verbose(
+                    format!("consider initializing `{use_field_name}` before `{move_field_name}`"),
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+                
+                return true;
+            }
+        }
+        
+        false
     }
 
     pub(crate) fn report_move_out_while_borrowed(
