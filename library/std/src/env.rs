@@ -716,6 +716,11 @@ pub fn temp_dir() -> PathBuf {
 /// If the executable is renamed while it is running, platforms may return the
 /// path at the time it was loaded instead of the new path.
 ///
+/// On Linux, if the executable is deleted while it is running, this function
+/// may return the path with the string `" (deleted)"` appended.
+///
+/// Note that the platform-specific behavior [may change in the future][changes].
+///
 /// # Errors
 ///
 /// Acquiring the path of the current executable is a platform-specific operation
@@ -751,6 +756,8 @@ pub fn temp_dir() -> PathBuf {
 ///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```
+///
+/// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_exe() -> io::Result<PathBuf> {
     paths_imp::current_exe()
