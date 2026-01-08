@@ -553,6 +553,7 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::LocalFilePathResult { name })
             }
+            // Not incremental: requires full file text.
             SubRequest::SourceText { file_id, ast_id, start, end } => {
                 let range = resolve_sub_span(
                     db,
@@ -567,6 +568,7 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::SourceTextResult { text })
             }
+            // Not incremental: requires building line index.
             SubRequest::LineColumn { file_id, ast_id, offset } => {
                 let range =
                     resolve_sub_span(db, file_id, ast_id, TextRange::empty(TextSize::from(offset)));
@@ -591,6 +593,7 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::FilePathResult { name })
             }
+            // Not incremental: requires global span resolution.
             SubRequest::ByteRange { file_id, ast_id, start, end } => {
                 let range = resolve_sub_span(
                     db,
