@@ -1,8 +1,0 @@
-error: generic parameters may not be used in const operations
-  --> $DIR/explicit_anon_consts-4.rs:8:46
-   |
-LL | const ITEM3<const N: usize>: usize = const { N };
-   |                                              ^
-
-error: aborting due to 1 previous error
-

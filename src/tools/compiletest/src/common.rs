@@ -18,7 +18,7 @@ string_enum! {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocJson => "rustdoc-json",
         CodegenUnits => "codegen-units",
         Incremental => "incremental",
@@ -69,7 +69,7 @@ string_enum! {
         Pretty => "pretty",
         RunMake => "run-make",
         RunMakeCargo => "run-make-cargo",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
         RustdocJsStd=> "rustdoc-js-std",
@@ -624,6 +624,9 @@ pub struct Config {
 
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
+
+    /// Whether to run `offload` autodiff tests.
+    pub has_offload: bool,
 
     /// The current Rust channel info.
     ///

@@ -1,35 +1,52 @@
 // This file contains code to be re-used by other tests.
+
+define-function: (
+    "open-settings-menu",
+    [],
+    block {
+        // Open the settings menu.
+        click: "rustdoc-toolbar .settings-menu"
+        // Wait for the popover to appear...
+        wait-for-css: ("#settings", {"display": "block"})
+    }
+)
+
+define-function: (
+    "close-settings-menu",
+    [],
+    block {
+        click: "rustdoc-toolbar .settings-menu"
+        wait-for-css-false: ("#settings", {"display": "block"})
+    }
+)
+
 define-function: (
     "switch-theme",
     [theme],
     block {
         // Set the theme.
-        // Open the settings menu.
-        click: "rustdoc-toolbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for: "#settings"
+        call-function: ("open-settings-menu", {})
         // Change the setting.
         click: "#theme-"+ |theme|
-        // Close the popover.
-        click: "rustdoc-toolbar .settings-menu"
+        call-function: ("close-settings-menu", {})
         // Ensure that the local storage was correctly updated.
         assert-local-storage: {"rustdoc-theme": |theme|}
     },
 )
 
+// FIXME: To be removed once `browser-ui-test` has conditions.
 define-function: (
     "switch-theme-mobile",
     [theme],
     block {
-        // Set the theme.
         // Open the settings menu.
         click: "rustdoc-topbar .settings-menu"
         // Wait for the popover to appear...
-        wait-for: "#settings"
+        wait-for-css: ("#settings", {"display": "block"})
         // Change the setting.
         click: "#theme-"+ |theme|
-        // Close the popover.
         click: "rustdoc-topbar .settings-menu"
+        wait-for-css-false: ("#settings", {"display": "block"})
         // Ensure that the local storage was correctly updated.
         assert-local-storage: {"rustdoc-theme": |theme|}
     },
@@ -54,5 +71,17 @@ define-function: (
         wait-for: "#search-tabs"
         // then wait for it to finish
         wait-for-false: "#search-tabs .count.loading"
+    }
+)
+
+define-function: (
+    "switch-line-numbers-setting",
+    [expected_status],
+    block {
+        call-function: ("open-settings-menu", {})
+        // We change the line numbers setting.
+        click: "#line-numbers"
+        call-function: ("close-settings-menu", {})
+        assert-local-storage: {"rustdoc-line-numbers": |expected_status|}
     }
 )

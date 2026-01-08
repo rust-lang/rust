@@ -401,7 +401,7 @@ types! {
 }
 
 types! {
-    #![unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+    #![stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 
     /// 128-bit wide set of 8 `f16` types, x86-specific
     ///
@@ -520,14 +520,14 @@ macro_rules! as_transmute {
     ($from:ty => $as_from:ident, $($as_to:ident -> $to:ident),* $(,)?) => {
         impl $from {$(
             #[inline]
-            pub(crate) fn $as_to(self) -> crate::core_arch::simd::$to {
+            pub(crate) const fn $as_to(self) -> crate::core_arch::simd::$to {
                 unsafe { transmute(self) }
             }
         )*}
         $(
             impl crate::core_arch::simd::$to {
                 #[inline]
-                pub(crate) fn $as_from(self) -> $from {
+                pub(crate) const fn $as_from(self) -> $from {
                     unsafe { transmute(self) }
                 }
             }
@@ -768,7 +768,7 @@ mod avxneconvert;
 pub use self::avxneconvert::*;
 
 mod avx512fp16;
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub use self::avx512fp16::*;
 
 mod kl;

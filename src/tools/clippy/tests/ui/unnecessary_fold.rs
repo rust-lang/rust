@@ -6,20 +6,34 @@ fn is_any(acc: bool, x: usize) -> bool {
 
 /// Calls which should trigger the `UNNECESSARY_FOLD` lint
 fn unnecessary_fold() {
+    use std::ops::{Add, Mul};
+
     // Can be replaced by .any
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
     //~^ unnecessary_fold
+
     // Can be replaced by .any (checking suggestion)
     let _ = (0..3).fold(false, |acc, x| is_any(acc, x));
     //~^ redundant_closure
+
     // Can be replaced by .all
     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
     //~^ unnecessary_fold
+
     // Can be replaced by .sum
     let _: i32 = (0..3).fold(0, |acc, x| acc + x);
     //~^ unnecessary_fold
+    let _: i32 = (0..3).fold(0, Add::add);
+    //~^ unnecessary_fold
+    let _: i32 = (0..3).fold(0, i32::add);
+    //~^ unnecessary_fold
+
     // Can be replaced by .product
     let _: i32 = (0..3).fold(1, |acc, x| acc * x);
+    //~^ unnecessary_fold
+    let _: i32 = (0..3).fold(1, Mul::mul);
+    //~^ unnecessary_fold
+    let _: i32 = (0..3).fold(1, i32::mul);
     //~^ unnecessary_fold
 }
 
@@ -36,6 +50,43 @@ fn unnecessary_fold_should_ignore() {
     let _ = (0..3).fold(1, |acc, x| acc + x);
     let _ = (0..3).fold(0, |acc, x| acc * x);
     let _ = (0..3).fold(0, |acc, x| 1 + acc + x);
+
+    struct Adder;
+    impl Adder {
+        fn add(lhs: i32, rhs: i32) -> i32 {
+            unimplemented!()
+        }
+        fn mul(lhs: i32, rhs: i32) -> i32 {
+            unimplemented!()
+        }
+    }
+    // `add`/`mul` are inherent methods
+    let _: i32 = (0..3).fold(0, Adder::add);
+    let _: i32 = (0..3).fold(1, Adder::mul);
+
+    trait FakeAdd<Rhs = Self> {
+        type Output;
+        fn add(self, other: Rhs) -> Self::Output;
+    }
+    impl FakeAdd for i32 {
+        type Output = Self;
+        fn add(self, other: i32) -> Self::Output {
+            self + other
+        }
+    }
+    trait FakeMul<Rhs = Self> {
+        type Output;
+        fn mul(self, other: Rhs) -> Self::Output;
+    }
+    impl FakeMul for i32 {
+        type Output = Self;
+        fn mul(self, other: i32) -> Self::Output {
+            self * other
+        }
+    }
+    // `add`/`mul` come from an unrelated trait
+    let _: i32 = (0..3).fold(0, FakeAdd::add);
+    let _: i32 = (0..3).fold(1, FakeMul::mul);
 
     // We only match against an accumulator on the left
     // hand side. We could lint for .sum and .product when
@@ -63,6 +114,7 @@ fn unnecessary_fold_over_multiple_lines() {
 fn issue10000() {
     use std::collections::HashMap;
     use std::hash::BuildHasher;
+    use std::ops::{Add, Mul};
 
     fn anything<T>(_: T) {}
     fn num(_: i32) {}
@@ -74,23 +126,56 @@ fn issue10000() {
         // more cases:
         let _ = map.values().fold(0, |x, y| x + y);
         //~^ unnecessary_fold
+        let _ = map.values().fold(0, Add::add);
+        //~^ unnecessary_fold
         let _ = map.values().fold(1, |x, y| x * y);
+        //~^ unnecessary_fold
+        let _ = map.values().fold(1, Mul::mul);
         //~^ unnecessary_fold
         let _: i32 = map.values().fold(0, |x, y| x + y);
         //~^ unnecessary_fold
+        let _: i32 = map.values().fold(0, Add::add);
+        //~^ unnecessary_fold
         let _: i32 = map.values().fold(1, |x, y| x * y);
+        //~^ unnecessary_fold
+        let _: i32 = map.values().fold(1, Mul::mul);
         //~^ unnecessary_fold
         anything(map.values().fold(0, |x, y| x + y));
         //~^ unnecessary_fold
+        anything(map.values().fold(0, Add::add));
+        //~^ unnecessary_fold
         anything(map.values().fold(1, |x, y| x * y));
+        //~^ unnecessary_fold
+        anything(map.values().fold(1, Mul::mul));
         //~^ unnecessary_fold
         num(map.values().fold(0, |x, y| x + y));
         //~^ unnecessary_fold
+        num(map.values().fold(0, Add::add));
+        //~^ unnecessary_fold
         num(map.values().fold(1, |x, y| x * y));
+        //~^ unnecessary_fold
+        num(map.values().fold(1, Mul::mul));
         //~^ unnecessary_fold
     }
 
     smoketest_map(HashMap::new());
+
+    fn add_turbofish_not_necessary() -> i32 {
+        (0..3).fold(0, |acc, x| acc + x)
+        //~^ unnecessary_fold
+    }
+    fn mul_turbofish_not_necessary() -> i32 {
+        (0..3).fold(1, |acc, x| acc * x)
+        //~^ unnecessary_fold
+    }
+    fn add_turbofish_necessary() -> impl Add {
+        (0..3).fold(0, |acc, x| acc + x)
+        //~^ unnecessary_fold
+    }
+    fn mul_turbofish_necessary() -> impl Mul {
+        (0..3).fold(1, |acc, x| acc * x)
+        //~^ unnecessary_fold
+    }
 }
 
 fn main() {}

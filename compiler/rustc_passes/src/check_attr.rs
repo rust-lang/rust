@@ -14,6 +14,7 @@ use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
@@ -47,7 +48,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -219,16 +220,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
                      self.check_eii_impl(impls, target)
                 },
+                Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
+                    self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
+                },
                 Attribute::Parsed(
                     AttributeKind::EiiExternTarget { .. }
                     | AttributeKind::EiiExternItem
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::Ignore { .. }
+                    | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
                     | AttributeKind::AutomaticallyDerived(..)
@@ -297,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..)
                     | AttributeKind::WindowsSubsystem(..)
+                    | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
                 ) => { /* do nothing  */ }
@@ -316,7 +323,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::rustc_must_implement_one_of, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
@@ -334,10 +340,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
-                            | sym::cfg_trace
-                            | sym::cfg_attr_trace
                             // need to be fixed
-                            | sym::instruction_set // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
@@ -388,7 +391,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             attr.path
                                 .segments
                                 .first()
-                                .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                                .and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
                         {
                             match attr.style {
                                 ast::AttrStyle::Outer => {
@@ -425,7 +428,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             if let Attribute::Unparsed(unparsed_attr) = attr
                 && let Some(BuiltinAttribute { duplicates, .. }) =
-                    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                    attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
             {
                 check_duplicates(
                     self.tcx,
@@ -443,6 +446,63 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn check_rustc_must_implement_one_of(
+        &self,
+        attr_span: Span,
+        list: &ThinVec<Ident>,
+        hir_id: HirId,
+        target: Target,
+    ) {
+        // Ignoring invalid targets because TyCtxt::associated_items emits bug if the target isn't valid
+        // the parser has already produced an error for the target being invalid
+        if !matches!(target, Target::Trait) {
+            return;
+        }
+
+        let def_id = hir_id.owner.def_id;
+
+        let items = self.tcx.associated_items(def_id);
+        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
+        // functions in the trait with default implementations
+        for ident in list {
+            let item = items
+                .filter_by_name_unhygienic(ident.name)
+                .find(|item| item.ident(self.tcx) == *ident);
+
+            match item {
+                Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
+                    if !item.defaultness(self.tcx).has_value() {
+                        self.tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
+                            span: self.tcx.def_span(item.def_id),
+                            note_span: attr_span,
+                        });
+                    }
+                }
+                Some(item) => {
+                    self.dcx().emit_err(errors::MustImplementNotFunction {
+                        span: self.tcx.def_span(item.def_id),
+                        span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
+                        note: errors::MustImplementNotFunctionNote {},
+                    });
+                }
+                None => {
+                    self.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                }
+            }
+        }
+        // Check for duplicates
+
+        let mut set: UnordMap<Symbol, Span> = Default::default();
+
+        for ident in &*list {
+            if let Some(dup) = set.insert(ident.name, ident.span) {
+                self.tcx
+                    .dcx()
+                    .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
+            }
+        }
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
@@ -523,7 +583,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        if matches!(target, Target::Impl { of_trait: true }) {
+        if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const => {}
@@ -1221,16 +1281,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if the attribute is applied to a trait.
-    fn check_must_be_applied_to_trait(&self, attr_span: Span, defn_span: Span, target: Target) {
-        match target {
-            Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait { attr_span, defn_span });
-            }
-        }
-    }
-
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
@@ -1503,10 +1553,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
         match target {
             Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if matches!(
-                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id)),
-                    DefKind::Impl { of_trait: true }
-                ) =>
+                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                    == DefKind::Impl { of_trait: true } =>
             {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
@@ -1902,12 +1950,10 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg_trace, sym::cfg_attr_trace];
         let spans = self
             .tcx
             .hir_attrs(where_predicate.hir_id)
             .iter()
-            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
             // FIXME: We shouldn't need to special-case `doc`!
             .filter(|attr| {
                 matches!(

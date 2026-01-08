@@ -1705,7 +1705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
-            let span = ct.span();
+            let span = ct.span;
             self.dcx().try_steal_modify_and_emit_err(
                 span,
                 StashKey::UnderscoreForArrayLengths,
@@ -1746,7 +1746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_span = count.span();
+        let count_span = count.span;
         let count = self.try_structurally_resolve_const(
             count_span,
             self.normalize(count_span, self.lower_const_arg(count, FeedConstTy::No)),

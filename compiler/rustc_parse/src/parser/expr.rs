@@ -1521,7 +1521,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo, false)
+                this.parse_const_block(lo)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -1622,15 +1622,13 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = if self.token.is_keyword(kw::Const)
-                    && self.look_ahead(1, |t| *t == token::OpenBrace)
-                {
+                let count = if self.eat_keyword(exp!(Const)) {
                     // While we could just disambiguate `Direct` from `AnonConst` by
                     // treating all const block exprs as `AnonConst`, that would
                     // complicate the DefCollector and likely all other visitors.
                     // So we strip the const blockiness and just store it as a block
                     // in the AST with the extra disambiguator on the AnonConst
-                    self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?
+                    self.parse_mgca_const_block(false)?
                 } else {
                     self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
                 };
@@ -3100,7 +3098,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 

@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::token::{self, MetaVarKind};
 use rustc_ast::tokenstream::ParserRange;
-use rustc_ast::{Attribute, attr};
+use rustc_ast::{AttrItemKind, Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
 use rustc_span::{BytePos, Span};
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
                 this.expect(exp!(CloseParen))?;
             }
             Ok((
-                ast::AttrItem { unsafety, path, args, tokens: None },
+                ast::AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

@@ -139,5 +139,11 @@ error: this method chain can be written more clearly with `if .. else ..`
 LL |     let _ = *true.then_some(&42).unwrap_or(&17) as u8;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { &42 } else { &17 }`
 
-error: aborting due to 23 previous errors
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:93:5
+   |
+LL |     true.then(|| format!("this is a test")).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { format!("this is a test") } else { Default::default() }`
+
+error: aborting due to 24 previous errors
 

@@ -1,5 +1,5 @@
 #![allow(clippy::eq_op, clippy::nonminimal_bool)]
-#![warn(clippy::collapsible_if)]
+#![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]
 fn main() {

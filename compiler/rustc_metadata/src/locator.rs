@@ -1224,6 +1224,7 @@ impl CrateError {
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
                         is_ui_testing: sess.opts.unstable_opts.ui_testing,
+                        is_tier_3: sess.target.metadata.tier == Some(3),
                     };
                     // The diagnostic for missing core is very good, but it is followed by a lot of
                     // other diagnostics that do not add information.
@@ -1249,6 +1250,7 @@ impl CrateError {
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),
                     is_ui_testing: sess.opts.unstable_opts.ui_testing,
+                    is_tier_3: sess.target.metadata.tier == Some(3),
                 };
                 // The diagnostic for missing core is very good, but it is followed by a lot of
                 // other diagnostics that do not add information.

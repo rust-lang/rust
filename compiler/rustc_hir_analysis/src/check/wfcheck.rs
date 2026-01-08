@@ -327,7 +327,7 @@ pub(crate) fn check_trait_item<'tcx>(
 
     let mut res = Ok(());
 
-    if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
+    if tcx.def_kind(def_id) == DefKind::AssocFn {
         for &assoc_ty_def_id in
             tcx.associated_types_for_impl_traits_in_associated_fn(def_id.to_def_id())
         {

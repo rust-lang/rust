@@ -24,6 +24,14 @@ EXPORT int64_t pass_struct(const PassMe pass_me) {
   return pass_me.value + pass_me.other_value;
 }
 
+/* Test: test_return_struct */
+EXPORT PassMe return_struct(int32_t value, int64_t other_value) {
+  struct PassMe ret;
+  ret.value = value;
+  ret.other_value = other_value;
+  return ret;
+}
+
 /* Test: test_pass_struct_complex */
 
 typedef struct Part1 {

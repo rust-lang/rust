@@ -1,0 +1,21 @@
+error: rustc_dump_predicates
+  --> $DIR/byte-string-u8-validation.rs:8:1
+   |
+LL | struct ConstBytes<const T: &'static [*mut u8; 3]>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Binder { value: ConstArgHasType(T/#0, &'static [*mut u8; 3_usize]), bound_vars: [] }
+   = note: Binder { value: TraitPredicate(<ConstBytes<{const error}> as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-u8-validation.rs:13:16
+   |
+LL |     ConstBytes<b"AAA">: Sized;
+   |                ^^^^^^ expected `&[*mut u8; 3]`, found `&[u8; 3]`
+   |
+   = note: expected reference `&'static [*mut u8; 3]`
+              found reference `&'static [u8; 3]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -447,7 +447,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         // We handle the ambig portions of `ConstArg` in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::Param(param.def_id, preceding_args),
+                            FeedConstTy::with_type_of(self.cfcx.tcx, param.def_id, preceding_args),
                         )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {

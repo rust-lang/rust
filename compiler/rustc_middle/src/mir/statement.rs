@@ -25,7 +25,7 @@ impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self, drop_debuginfo: bool) {
-        if matches!(self.kind, StatementKind::Nop) {
+        if self.kind == StatementKind::Nop {
             return;
         }
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);

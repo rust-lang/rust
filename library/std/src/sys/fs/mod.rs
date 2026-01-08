@@ -17,7 +17,7 @@ cfg_select! {
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
-        use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
+        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {
         mod windows;
@@ -59,7 +59,7 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
 }
 
 pub use imp::{
-    DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
+    Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
     ReadDir,
 };
 

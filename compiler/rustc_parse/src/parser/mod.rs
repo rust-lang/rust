@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -1303,9 +1303,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mgca_const_block(&mut self, gate_syntax: bool) -> PResult<'a, AnonConst> {
-        self.expect_keyword(exp!(Const))?;
-        let kw_span = self.token.span;
-        let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
+        let kw_span = self.prev_token.span;
+        let value = self.parse_expr_block(None, kw_span, BlockCheckMode::Default)?;
         if gate_syntax {
             self.psess.gated_spans.gate(sym::min_generic_const_args, kw_span.to(value.span));
         }
@@ -1317,7 +1316,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
+    fn parse_const_block(&mut self, span: Span) -> PResult<'a, Box<Expr>> {
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
@@ -1326,18 +1325,7 @@ impl<'a> Parser<'a> {
             mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
-        let kind = if pat {
-            let guar = self
-                .dcx()
-                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
-                .with_help(
-                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
-                )
-                .emit();
-            ExprKind::Err(guar)
-        } else {
-            ExprKind::ConstBlock(anon_const)
-        };
+        let kind = ExprKind::ConstBlock(anon_const);
         Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 

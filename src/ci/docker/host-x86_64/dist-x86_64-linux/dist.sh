@@ -9,8 +9,8 @@ python3 ../x.py build --set rust.debug=true opt-dist
     --include-default-paths \
     build-manifest bootstrap
 
-# Use GCC for building GCC, as it seems to behave badly when built with Clang
+# Use GCC for building GCC components, as it seems to behave badly when built with Clang
 # Only build GCC on full builds, not try builds
 if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
-    CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist gcc
+    CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist gcc-dev
 fi

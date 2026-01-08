@@ -262,6 +262,11 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "power8-crypto" => Some(LLVMFeature::new("crypto")),
             s => Some(LLVMFeature::new(s)),
         },
+        Arch::RiscV32 | Arch::RiscV64 => match s {
+            // Filter out Rust-specific *virtual* target feature
+            "zkne_or_zknd" => None,
+            s => Some(LLVMFeature::new(s)),
+        },
         Arch::Sparc | Arch::Sparc64 => match s {
             "leoncasa" => Some(LLVMFeature::new("hasleoncasa")),
             s => Some(LLVMFeature::new(s)),

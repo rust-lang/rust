@@ -1,44 +1,52 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{peel_blocks, strip_pat_refs};
+use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::{Span, sym};
+use rustc_middle::ty::{self, Ty};
+use rustc_span::{Span, Symbol, sym};
 
 use super::UNNECESSARY_FOLD;
 
 /// Do we need to suggest turbofish when suggesting a replacement method?
 /// Changing `fold` to `sum` needs it sometimes when the return type can't be
 /// inferred. This checks for some common cases where it can be safely omitted
-fn needs_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let parent = cx.tcx.parent_hir_node(expr.hir_id);
-
-    // some common cases where turbofish isn't needed:
-    // - assigned to a local variable with a type annotation
-    if let hir::Node::LetStmt(local) = parent
-        && local.ty.is_some()
+fn needs_turbofish<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
+    let use_cx = expr_use_ctxt(cx, expr);
+    if use_cx.same_ctxt
+        && let use_node = use_cx.use_node(cx)
+        && let Some(ty) = use_node.defined_ty(cx)
     {
-        return false;
-    }
+        // some common cases where turbofish isn't needed:
+        match (use_node, ty) {
+            // - assigned to a local variable with a type annotation
+            (ExprUseNode::LetStmt(_), _) => return false,
 
-    // - part of a function call argument, can be inferred from the function signature (provided that
-    //   the parameter is not a generic type parameter)
-    if let hir::Node::Expr(parent_expr) = parent
-        && let hir::ExprKind::Call(recv, args) = parent_expr.kind
-        && let hir::ExprKind::Path(ref qpath) = recv.kind
-        && let Some(fn_def_id) = cx.qpath_res(qpath, recv.hir_id).opt_def_id()
-        && let fn_sig = cx.tcx.fn_sig(fn_def_id).skip_binder().skip_binder()
-        && let Some(arg_pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
-        && let Some(ty) = fn_sig.inputs().get(arg_pos)
-        && !matches!(ty.kind(), ty::Param(_))
-    {
-        return false;
+            // - part of a function call argument, can be inferred from the function signature (provided that the
+            //   parameter is not a generic type parameter)
+            (ExprUseNode::FnArg(..), DefinedTy::Mir { ty: arg_ty, .. })
+                if !matches!(arg_ty.skip_binder().kind(), ty::Param(_)) =>
+            {
+                return false;
+            },
+
+            // - the final expression in the body of a function with a simple return type
+            (ExprUseNode::Return(_), DefinedTy::Mir { ty: fn_return_ty, .. })
+                if !fn_return_ty
+                    .skip_binder()
+                    .walk()
+                    .any(|generic| generic.as_type().is_some_and(Ty::is_impl_trait)) =>
+            {
+                return false;
+            },
+            _ => {},
+        }
     }
 
     // if it's neither of those, stay on the safe side and suggest turbofish,
@@ -60,7 +68,7 @@ fn check_fold_with_op(
     fold_span: Span,
     op: hir::BinOpKind,
     replacement: Replacement,
-) {
+) -> bool {
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
         && let closure_body = cx.tcx.hir_body(body)
@@ -93,7 +101,7 @@ fn check_fold_with_op(
                 r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
             )
         } else {
-            format!("{method}{turbofish}()", method = replacement.method_name,)
+            format!("{method}{turbofish}()", method = replacement.method_name)
         };
 
         span_lint_and_sugg(
@@ -105,12 +113,47 @@ fn check_fold_with_op(
             sugg,
             applicability,
         );
+        return true;
+    }
+    false
+}
+
+fn check_fold_with_method(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    acc: &hir::Expr<'_>,
+    fold_span: Span,
+    method: Symbol,
+    replacement: Replacement,
+) {
+    // Extract the name of the function passed to `fold`
+    if let Res::Def(DefKind::AssocFn, fn_did) = acc.res_if_named(cx, method)
+        // Check if the function belongs to the operator
+        && cx.tcx.is_diagnostic_item(method, fn_did)
+    {
+        let applicability = Applicability::MachineApplicable;
+
+        let turbofish = if replacement.has_generic_return {
+            format!("::<{}>", cx.typeck_results().expr_ty(expr))
+        } else {
+            String::new()
+        };
+
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_FOLD,
+            fold_span.with_hi(expr.span.hi()),
+            "this `.fold` can be written more succinctly using another method",
+            "try",
+            format!("{method}{turbofish}()", method = replacement.method_name),
+            applicability,
+        );
     }
 }
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'tcx>,
     init: &hir::Expr<'_>,
     acc: &hir::Expr<'_>,
     fold_span: Span,
@@ -124,60 +167,40 @@ pub(super) fn check(
     if let hir::ExprKind::Lit(lit) = init.kind {
         match lit.node {
             ast::LitKind::Bool(false) => {
-                check_fold_with_op(
-                    cx,
-                    expr,
-                    acc,
-                    fold_span,
-                    hir::BinOpKind::Or,
-                    Replacement {
-                        method_name: "any",
-                        has_args: true,
-                        has_generic_return: false,
-                    },
-                );
+                let replacement = Replacement {
+                    method_name: "any",
+                    has_args: true,
+                    has_generic_return: false,
+                };
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, replacement);
             },
             ast::LitKind::Bool(true) => {
-                check_fold_with_op(
-                    cx,
-                    expr,
-                    acc,
-                    fold_span,
-                    hir::BinOpKind::And,
-                    Replacement {
-                        method_name: "all",
-                        has_args: true,
-                        has_generic_return: false,
-                    },
-                );
+                let replacement = Replacement {
+                    method_name: "all",
+                    has_args: true,
+                    has_generic_return: false,
+                };
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, replacement);
             },
             ast::LitKind::Int(Pu128(0), _) => {
-                check_fold_with_op(
-                    cx,
-                    expr,
-                    acc,
-                    fold_span,
-                    hir::BinOpKind::Add,
-                    Replacement {
-                        method_name: "sum",
-                        has_args: false,
-                        has_generic_return: needs_turbofish(cx, expr),
-                    },
-                );
+                let replacement = Replacement {
+                    method_name: "sum",
+                    has_args: false,
+                    has_generic_return: needs_turbofish(cx, expr),
+                };
+                if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, replacement) {
+                    check_fold_with_method(cx, expr, acc, fold_span, sym::add, replacement);
+                }
             },
             ast::LitKind::Int(Pu128(1), _) => {
-                check_fold_with_op(
-                    cx,
-                    expr,
-                    acc,
-                    fold_span,
-                    hir::BinOpKind::Mul,
-                    Replacement {
-                        method_name: "product",
-                        has_args: false,
-                        has_generic_return: needs_turbofish(cx, expr),
-                    },
-                );
+                let replacement = Replacement {
+                    method_name: "product",
+                    has_args: false,
+                    has_generic_return: needs_turbofish(cx, expr),
+                };
+                if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, replacement) {
+                    check_fold_with_method(cx, expr, acc, fold_span, sym::mul, replacement);
+                }
             },
             _ => (),
         }

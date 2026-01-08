@@ -38,3 +38,23 @@ fn issue15010() {
     debug_assert!(f != std::ptr::null_mut());
     //~^ cmp_null
 }
+
+fn issue16281() {
+    use std::ptr;
+
+    struct Container {
+        value: *const i32,
+    }
+    let x = Container { value: ptr::null() };
+
+    macro_rules! dot_value {
+        ($obj:expr) => {
+            $obj.value
+        };
+    }
+
+    if dot_value!(x) == ptr::null() {
+        //~^ cmp_null
+        todo!()
+    }
+}

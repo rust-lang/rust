@@ -200,61 +200,67 @@ LL |     f(&mut std::array::from_fn(|i| i * i) as *mut [usize; 9]);
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<[usize; 9]>(&mut std::array::from_fn(|i| i * i))`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:109:7
+  --> tests/ui/ref_as_ptr.rs:90:13
+   |
+LL |     let _ = &x as *const _;
+   |             ^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&x)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:92:13
+   |
+LL |     let _ = &x.0 as *const _;
+   |             ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&x.0)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:96:13
+   |
+LL |     let _ = &*x as *const _;
+   |             ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&*x)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:119:7
    |
 LL |     f(val as *const i32);
    |       ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<i32>(val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:111:7
+  --> tests/ui/ref_as_ptr.rs:121:7
    |
 LL |     f(mut_val as *mut i32);
    |       ^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<i32>(mut_val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:116:7
+  --> tests/ui/ref_as_ptr.rs:126:7
    |
 LL |     f(val as *const _);
    |       ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:118:7
+  --> tests/ui/ref_as_ptr.rs:128:7
    |
 LL |     f(val as *const [u8]);
    |       ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<[u8]>(val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:123:7
+  --> tests/ui/ref_as_ptr.rs:133:7
    |
 LL |     f(val as *mut _);
    |       ^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:125:7
+  --> tests/ui/ref_as_ptr.rs:135:7
    |
 LL |     f(val as *mut str);
    |       ^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<str>(val)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:133:9
+  --> tests/ui/ref_as_ptr.rs:143:9
    |
 LL |         self.0 as *const _ as *const _
    |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
 
 error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:138:9
-   |
-LL |         self.0 as *const _ as *const _
-   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
-
-error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:147:9
-   |
-LL |         self.0 as *const _ as *const _
-   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
-
-error: reference as raw pointer
-  --> tests/ui/ref_as_ptr.rs:152:9
+  --> tests/ui/ref_as_ptr.rs:148:9
    |
 LL |         self.0 as *const _ as *const _
    |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
@@ -262,8 +268,20 @@ LL |         self.0 as *const _ as *const _
 error: reference as raw pointer
   --> tests/ui/ref_as_ptr.rs:157:9
    |
+LL |         self.0 as *const _ as *const _
+   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:162:9
+   |
+LL |         self.0 as *const _ as *const _
+   |         ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(self.0)`
+
+error: reference as raw pointer
+  --> tests/ui/ref_as_ptr.rs:167:9
+   |
 LL |         self.0 as *mut _ as *mut _
    |         ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut(self.0)`
 
-error: aborting due to 44 previous errors
+error: aborting due to 47 previous errors
 

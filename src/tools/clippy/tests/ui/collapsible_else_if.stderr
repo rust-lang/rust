@@ -142,7 +142,25 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:100:10
+  --> tests/ui/collapsible_else_if.rs:93:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if let Some(42) = Some(42) {
+LL | |             println!("42");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("42");
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:128:10
    |
 LL |       }else{
    |  __________^
@@ -151,7 +169,7 @@ LL | |     }
    | |_____^ help: collapse nested if block: `if false {}`
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:157:12
+  --> tests/ui/collapsible_else_if.rs:167:12
    |
 LL |       } else {
    |  ____________^
@@ -159,5 +177,5 @@ LL | |         (if y == "world" { println!("world") } else { println!("!") })
 LL | |     }
    | |_____^ help: collapse nested if block: `if y == "world" { println!("world") } else { println!("!") }`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

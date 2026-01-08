@@ -997,7 +997,7 @@ rustdoc-topbar {
 .example-wrap [data-nosnippet] {
 	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
-.example-wrap pre > code {
+.example-wrap:not(.hide-lines) pre > code {
 	padding-left: calc(
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin));

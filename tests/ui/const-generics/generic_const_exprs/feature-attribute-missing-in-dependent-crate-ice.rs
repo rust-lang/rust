@@ -11,7 +11,7 @@ struct Wrapper<const F: usize>(i64);
 
 impl<const F: usize> aux::FromSlice for Wrapper<F> {
     fn validate_slice(_: &[[u8; Self::SIZE]]) -> Result<(), aux::Error> {
-        //~^ ERROR generic `Self` types are currently not permitted in anonymous constants
+        //~^ ERROR generic `Self`
         Ok(())
     }
 }

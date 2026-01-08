@@ -155,14 +155,14 @@ mod rustc {
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)
                     .unwrap_or_else(|| panic!("There were no fields named `{name}`."));
-                fields[field_idx].to_leaf() == ScalarInt::TRUE
+                fields[field_idx].try_to_leaf().map(|leaf| leaf == ScalarInt::TRUE)
             };
 
             Some(Self {
-                alignment: get_field(sym::alignment),
-                lifetimes: get_field(sym::lifetimes),
-                safety: get_field(sym::safety),
-                validity: get_field(sym::validity),
+                alignment: get_field(sym::alignment)?,
+                lifetimes: get_field(sym::lifetimes)?,
+                safety: get_field(sym::safety)?,
+                validity: get_field(sym::validity)?,
             })
         }
     }

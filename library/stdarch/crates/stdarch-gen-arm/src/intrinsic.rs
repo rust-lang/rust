@@ -1730,7 +1730,8 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
             "{fn_name} needs to be private, or to have documentation."
         );
         assert!(
-            !safety.has_doc_comments(),
+            !safety.has_doc_comments()
+                || matches!(intrinsic.visibility, FunctionVisibility::Private),
             "{fn_name} needs a documentation section for its safety comments."
         );
     }

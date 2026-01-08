@@ -882,7 +882,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             //
             // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
             // to use type unification.
-            // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
+            // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+            // regress.
             let Some(impl_did) = impl_item_id.as_def_id() else { continue };
             let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
             let reject_cx = DeepRejectCtxt::relate_infer_infer(self.cx.tcx());

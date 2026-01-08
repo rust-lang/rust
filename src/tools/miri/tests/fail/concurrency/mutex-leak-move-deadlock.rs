@@ -3,8 +3,9 @@
 //@normalize-stderr-test: "LL \| .*" -> "LL | $$CODE"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
 //@normalize-stderr-test: "\n *= note:.*" -> ""
+//@normalize-stderr-test: "\n *\d+:.*\n *at .*" -> ""
 // On macOS we use chekced pthread mutexes which changes the error
-//@normalize-stderr-test: "this thread got stuck here" -> "thread `main` got stuck here"
+//@normalize-stderr-test: "a thread got stuck here" -> "thread `main` got stuck here"
 //@normalize-stderr-test: "a thread deadlocked" -> "the evaluated program deadlocked"
 use std::mem;
 use std::sync::Mutex;

@@ -880,7 +880,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::Rustdoc,
+                test::RustdocHtml,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::CodegenCranelift,
@@ -986,9 +986,10 @@ impl<'a> Builder<'a> {
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
+                dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::GccDev
             ),
             Kind::Install => describe!(
                 install::Docs,

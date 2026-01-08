@@ -970,7 +970,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_dpwssd_epi32() {
+    fn test_mm512_dpwssd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -980,7 +980,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_mask_dpwssd_epi32() {
+    fn test_mm512_mask_dpwssd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -992,7 +992,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_maskz_dpwssd_epi32() {
+    fn test_mm512_maskz_dpwssd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -1004,7 +1004,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm256_dpwssd_avx_epi32() {
+    fn test_mm256_dpwssd_avx_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1014,7 +1014,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_dpwssd_epi32() {
+    fn test_mm256_dpwssd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1024,7 +1024,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_mask_dpwssd_epi32() {
+    fn test_mm256_mask_dpwssd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1036,7 +1036,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_maskz_dpwssd_epi32() {
+    fn test_mm256_maskz_dpwssd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1048,7 +1048,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm_dpwssd_avx_epi32() {
+    fn test_mm_dpwssd_avx_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1058,7 +1058,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_dpwssd_epi32() {
+    fn test_mm_dpwssd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1068,7 +1068,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_mask_dpwssd_epi32() {
+    fn test_mm_mask_dpwssd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1080,7 +1080,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_maskz_dpwssd_epi32() {
+    fn test_mm_maskz_dpwssd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1092,7 +1092,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_dpwssds_epi32() {
+    fn test_mm512_dpwssds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -1102,7 +1102,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_mask_dpwssds_epi32() {
+    fn test_mm512_mask_dpwssds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -1114,7 +1114,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_maskz_dpwssds_epi32() {
+    fn test_mm512_maskz_dpwssds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 16 | 1 << 0);
@@ -1126,7 +1126,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm256_dpwssds_avx_epi32() {
+    fn test_mm256_dpwssds_avx_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1136,7 +1136,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_dpwssds_epi32() {
+    fn test_mm256_dpwssds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1146,7 +1146,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_mask_dpwssds_epi32() {
+    fn test_mm256_mask_dpwssds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1158,7 +1158,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_maskz_dpwssds_epi32() {
+    fn test_mm256_maskz_dpwssds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1170,7 +1170,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm_dpwssds_avx_epi32() {
+    fn test_mm_dpwssds_avx_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1180,7 +1180,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_dpwssds_epi32() {
+    fn test_mm_dpwssds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1190,7 +1190,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_mask_dpwssds_epi32() {
+    fn test_mm_mask_dpwssds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1202,7 +1202,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_maskz_dpwssds_epi32() {
+    fn test_mm_maskz_dpwssds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1214,7 +1214,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_dpbusd_epi32() {
+    fn test_mm512_dpbusd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1224,7 +1224,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_mask_dpbusd_epi32() {
+    fn test_mm512_mask_dpbusd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1236,7 +1236,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_maskz_dpbusd_epi32() {
+    fn test_mm512_maskz_dpbusd_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1248,7 +1248,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm256_dpbusd_avx_epi32() {
+    fn test_mm256_dpbusd_avx_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1258,7 +1258,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_dpbusd_epi32() {
+    fn test_mm256_dpbusd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1268,7 +1268,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_mask_dpbusd_epi32() {
+    fn test_mm256_mask_dpbusd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1280,7 +1280,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_maskz_dpbusd_epi32() {
+    fn test_mm256_maskz_dpbusd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1292,7 +1292,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm_dpbusd_avx_epi32() {
+    fn test_mm_dpbusd_avx_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1302,7 +1302,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_dpbusd_epi32() {
+    fn test_mm_dpbusd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1312,7 +1312,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_mask_dpbusd_epi32() {
+    fn test_mm_mask_dpbusd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1324,7 +1324,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_maskz_dpbusd_epi32() {
+    fn test_mm_maskz_dpbusd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1336,7 +1336,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_dpbusds_epi32() {
+    fn test_mm512_dpbusds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1346,7 +1346,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_mask_dpbusds_epi32() {
+    fn test_mm512_mask_dpbusds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1358,7 +1358,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni")]
-    unsafe fn test_mm512_maskz_dpbusds_epi32() {
+    fn test_mm512_maskz_dpbusds_epi32() {
         let src = _mm512_set1_epi32(1);
         let a = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm512_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1370,7 +1370,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm256_dpbusds_avx_epi32() {
+    fn test_mm256_dpbusds_avx_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1380,7 +1380,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_dpbusds_epi32() {
+    fn test_mm256_dpbusds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1390,7 +1390,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_mask_dpbusds_epi32() {
+    fn test_mm256_mask_dpbusds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1402,7 +1402,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm256_maskz_dpbusds_epi32() {
+    fn test_mm256_maskz_dpbusds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1414,7 +1414,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnni")]
-    unsafe fn test_mm_dpbusds_avx_epi32() {
+    fn test_mm_dpbusds_avx_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1424,7 +1424,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_dpbusds_epi32() {
+    fn test_mm_dpbusds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1434,7 +1434,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_mask_dpbusds_epi32() {
+    fn test_mm_mask_dpbusds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1446,7 +1446,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vnni,avx512vl")]
-    unsafe fn test_mm_maskz_dpbusds_epi32() {
+    fn test_mm_maskz_dpbusds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1458,7 +1458,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbssd_epi32() {
+    fn test_mm_dpbssd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1468,7 +1468,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbssd_epi32() {
+    fn test_mm256_dpbssd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1478,7 +1478,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbssds_epi32() {
+    fn test_mm_dpbssds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1488,7 +1488,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbssds_epi32() {
+    fn test_mm256_dpbssds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1498,7 +1498,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbsud_epi32() {
+    fn test_mm_dpbsud_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1508,7 +1508,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbsud_epi32() {
+    fn test_mm256_dpbsud_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1518,7 +1518,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbsuds_epi32() {
+    fn test_mm_dpbsuds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1528,7 +1528,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbsuds_epi32() {
+    fn test_mm256_dpbsuds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1538,7 +1538,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbuud_epi32() {
+    fn test_mm_dpbuud_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1548,7 +1548,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbuud_epi32() {
+    fn test_mm256_dpbuud_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1558,7 +1558,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm_dpbuuds_epi32() {
+    fn test_mm_dpbuuds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1568,7 +1568,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint8")]
-    unsafe fn test_mm256_dpbuuds_epi32() {
+    fn test_mm256_dpbuuds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 24 | 1 << 16 | 1 << 8 | 1 << 0);
@@ -1578,7 +1578,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwsud_epi32() {
+    fn test_mm_dpwsud_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1588,7 +1588,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwsud_epi32() {
+    fn test_mm256_dpwsud_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1598,7 +1598,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwsuds_epi32() {
+    fn test_mm_dpwsuds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1608,7 +1608,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwsuds_epi32() {
+    fn test_mm256_dpwsuds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1618,7 +1618,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwusd_epi32() {
+    fn test_mm_dpwusd_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1628,7 +1628,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwusd_epi32() {
+    fn test_mm256_dpwusd_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1638,7 +1638,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwusds_epi32() {
+    fn test_mm_dpwusds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1648,7 +1648,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwusds_epi32() {
+    fn test_mm256_dpwusds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1658,7 +1658,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwuud_epi32() {
+    fn test_mm_dpwuud_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1668,7 +1668,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwuud_epi32() {
+    fn test_mm256_dpwuud_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
@@ -1678,7 +1678,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm_dpwuuds_epi32() {
+    fn test_mm_dpwuuds_epi32() {
         let src = _mm_set1_epi32(1);
         let a = _mm_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm_set1_epi32(1 << 16 | 1 << 0);
@@ -1688,7 +1688,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxvnniint16")]
-    unsafe fn test_mm256_dpwuuds_epi32() {
+    fn test_mm256_dpwuuds_epi32() {
         let src = _mm256_set1_epi32(1);
         let a = _mm256_set1_epi32(1 << 16 | 1 << 0);
         let b = _mm256_set1_epi32(1 << 16 | 1 << 0);
