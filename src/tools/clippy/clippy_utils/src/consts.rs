@@ -1141,6 +1141,7 @@ pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx
         ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
+            | ConstArgKind::Tup(..)
             | ConstArgKind::TupleCall(..)
             | ConstArgKind::Path(_)
             | ConstArgKind::Error(..)
