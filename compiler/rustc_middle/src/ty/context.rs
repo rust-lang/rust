@@ -1891,6 +1891,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
+    /// Check if the given `def_id` is a const with the `#[type_const]` attribute.
+    pub fn is_type_const(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+            && find_attr!(self.get_all_attrs(def_id), AttributeKind::TypeConst(_))
+    }
+
     /// Returns the movability of the coroutine of `def_id`, or panics
     /// if given a `def_id` that is not a coroutine.
     pub fn coroutine_movability(self, def_id: DefId) -> hir::Movability {
