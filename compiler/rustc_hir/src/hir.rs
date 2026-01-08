@@ -518,6 +518,7 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Unambig),
+    Literal(LitKind),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
