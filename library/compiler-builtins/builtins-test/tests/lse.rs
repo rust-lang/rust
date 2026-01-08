@@ -1,6 +1,6 @@
 #![feature(decl_macro)] // so we can use pub(super)
 #![feature(macro_metavar_expr_concat)]
-#![cfg(all(target_arch = "aarch64", target_os = "linux"))]
+#![cfg(all(target_arch = "aarch64"))]
 
 /// Translate a byte size to a Rust type.
 macro int_ty {
