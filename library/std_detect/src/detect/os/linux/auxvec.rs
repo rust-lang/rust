@@ -20,8 +20,8 @@ pub(crate) const AT_HWCAP2: usize = 26;
 /// If an entry cannot be read all the bits in the bitfield are set to zero.
 /// This should be interpreted as all the features being disabled.
 #[derive(Debug, Copy, Clone)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct AuxVec {
+#[derive(PartialEq)]
+pub struct AuxVec {
     pub hwcap: usize,
     #[cfg(any(
         target_arch = "aarch64",
@@ -68,7 +68,7 @@ pub(crate) struct AuxVec {
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
 /// [`getauxval`]: https://man7.org/linux/man-pages/man3/getauxval.3.html
-pub(crate) fn auxv() -> Result<AuxVec, ()> {
+pub fn auxv() -> Result<AuxVec, ()> {
     // Try to call a getauxval function.
     if let Ok(hwcap) = getauxval(AT_HWCAP) {
         // Targets with only AT_HWCAP:
@@ -146,7 +146,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
-pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
+pub fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
     let bytes = super::read_file(file)?;
 
     // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
@@ -212,6 +212,3 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, alloc::string::String> {
     let _ = buf;
     Err(alloc::string::String::from("hwcap not found"))
 }
-
-#[cfg(test)]
-mod tests;
