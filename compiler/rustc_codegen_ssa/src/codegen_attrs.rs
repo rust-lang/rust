@@ -13,10 +13,10 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self as ty, Instance, TyCtxt};
+use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 
 use crate::errors;
@@ -291,8 +291,6 @@ fn process_builtin_attrs(
                         )
                         .expect("eii should have declaration macro with extern target attribute");
 
-                        let symbol_name = tcx.symbol_name(Instance::mono(tcx, extern_item));
-
                         // this is to prevent a bug where a single crate defines both the default and explicit implementation
                         // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
                         // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
@@ -310,7 +308,7 @@ fn process_builtin_attrs(
                         }
 
                         codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                            Symbol::intern(symbol_name.name),
+                            extern_item,
                             if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
                             Visibility::Default,
                         ));
