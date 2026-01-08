@@ -312,7 +312,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir, AmbigArg>) {
         self.insert(
-            const_arg.as_unambig_ct().span(),
+            const_arg.as_unambig_ct().span,
             const_arg.hir_id,
             Node::ConstArg(const_arg.as_unambig_ct()),
         );
