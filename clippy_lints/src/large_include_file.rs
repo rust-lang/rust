@@ -1,4 +1,3 @@
-use rustc_ast::AttrItemKind;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
