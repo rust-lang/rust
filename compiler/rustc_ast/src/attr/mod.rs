@@ -235,6 +235,34 @@ impl AttributeExt for Attribute {
         }
     }
 
+    fn deprecation_note(&self) -> Option<Symbol> {
+        match &self.kind {
+            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
+                let meta = &normal.item;
+
+                // #[deprecated = "..."]
+                if let Some(s) = meta.value_str() {
+                    return Some(s);
+                }
+
+                // #[deprecated(note = "...")]
+                if let Some(list) = meta.meta_item_list() {
+                    for nested in list {
+                        if let Some(mi) = nested.meta_item()
+                            && mi.path == sym::note
+                            && let Some(s) = mi.value_str()
+                        {
+                            return Some(s);
+                        }
+                    }
+                }
+
+                None
+            }
+            _ => None,
+        }
+    }
+
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
@@ -277,6 +305,7 @@ impl Attribute {
 
     pub fn may_have_doc_links(&self) -> bool {
         self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
+            || self.deprecation_note().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
 
     /// Extracts the MetaItem from inside this Attribute.
@@ -872,6 +901,11 @@ pub trait AttributeExt: Debug {
     /// * `#[doc = "doc"]` returns `Some("doc")`.
     /// * `#[doc(...)]` returns `None`.
     fn doc_str(&self) -> Option<Symbol>;
+
+    /// Returns the deprecation note if this is deprecation attribute.
+    /// * `#[deprecated = "note"]` returns `Some("note")`.
+    /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
+    fn deprecation_note(&self) -> Option<Symbol>;
 
     fn is_proc_macro_attr(&self) -> bool {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
