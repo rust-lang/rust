@@ -1,5 +1,12 @@
-use super::AtHwcap;
-use super::auxvec::auxv_from_file;
+#![cfg(all(
+    any(target_os = "linux", target_os = "android"),
+    target_arch = "aarch64",
+    target_endian = "little"
+))]
+#![allow(internal_features)]
+#![feature(stdarch_internal)]
+
+use std_detect::detect::__test_os::{AtHwcap, auxv_from_file};
 // The baseline hwcaps used in the (artificial) auxv test files.
 fn baseline_hwcaps() -> AtHwcap {
     AtHwcap {

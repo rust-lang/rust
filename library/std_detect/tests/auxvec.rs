@@ -1,4 +1,8 @@
-use super::{auxv, auxv_from_file};
+#![cfg(all(any(target_os = "linux", target_os = "android")))]
+#![allow(internal_features)]
+#![feature(cfg_select, stdarch_internal)]
+
+use std_detect::detect::__test_os::{auxv, auxv_from_file};
 
 // FIXME: on mips/mips64 getauxval returns 0, and /proc/self/auxv
 // does not always contain the AT_HWCAP key under qemu.
