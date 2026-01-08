@@ -92,7 +92,7 @@ LL | #[rustc_scalable_vector(4)]
    |
    = help: `#[rustc_scalable_vector]` can only be applied to structs
 
-error: `#[rustc_scalable_vector]` attribute cannot be used on function params
+error: `#[rustc_scalable_vector]` attribute cannot be used on type parameters
   --> $DIR/invalid.rs:50:10
    |
 LL | enum Bar<#[rustc_scalable_vector(4)] T> {

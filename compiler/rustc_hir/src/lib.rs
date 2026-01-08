@@ -32,7 +32,7 @@ pub mod lints;
 pub mod pat_util;
 mod stability;
 mod stable_hash_impls;
-mod target;
+pub mod target;
 pub mod weak_lang_items;
 
 #[cfg(test)]
