@@ -456,6 +456,7 @@ fn main() -> anyhow::Result<()> {
             "rustfmt",
             "generate-copyright",
             "bootstrap",
+            "rustc_codegen_gcc",
         ] {
             build_args.extend(["--skip".to_string(), target.to_string()]);
         }
