@@ -745,6 +745,19 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         interp_ok(None)
     }
 
+    fn call_llvm_intrinsic(
+        ecx: &mut InterpCx<'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: &PlaceTy<'tcx, Self::Provenance>,
+        _target: Option<mir::BasicBlock>,
+        _unwind: mir::UnwindAction,
+    ) -> InterpResult<'tcx> {
+        let intrinsic_name = ecx.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
+
+        throw_unsup_format!("LLVM intrinsic `{intrinsic_name}` is not supported at compile-time");
+    }
+
     fn assert_panic(
         ecx: &mut InterpCx<'tcx, Self>,
         msg: &AssertMessage<'tcx>,

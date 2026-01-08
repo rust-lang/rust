@@ -652,6 +652,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     interp_ok(())
                 }
             }
+            ty::InstanceKind::LlvmIntrinsic(_) => {
+                // FIXME: Should `InPlace` arguments be reset to uninit?
+                M::call_llvm_intrinsic(
+                    self,
+                    instance,
+                    &Self::copy_fn_args(args),
+                    destination,
+                    target,
+                    unwind,
+                )
+            }
             ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
             | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })

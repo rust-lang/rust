@@ -730,7 +730,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             }
         }
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
             return Err("implementation limitation -- cannot inline intrinsic");
         }

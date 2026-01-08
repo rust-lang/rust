@@ -1,5 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
@@ -91,6 +92,12 @@ fn resolve_instance_raw<'tcx>(
         } else if tcx.is_async_drop_in_place_coroutine(def_id) {
             let ty = args.type_at(0);
             ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(def_id, ty))
+        } else if tcx.def_kind(def_id) == DefKind::Fn
+            && let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name
+            && name.as_str().starts_with("llvm.")
+        {
+            debug!(" => LLVM intrinsic");
+            ty::InstanceKind::LlvmIntrinsic(def_id)
         } else {
             debug!(" => free item");
             ty::InstanceKind::Item(def_id)

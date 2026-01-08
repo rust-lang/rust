@@ -970,6 +970,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
         let kind = match self.def {
             ty::InstanceKind::Item(..) => crate::mir::mono::InstanceKind::Item,
             ty::InstanceKind::Intrinsic(..) => crate::mir::mono::InstanceKind::Intrinsic,
+            ty::InstanceKind::LlvmIntrinsic(..) => crate::mir::mono::InstanceKind::LlvmIntrinsic,
             ty::InstanceKind::Virtual(_def_id, idx) => {
                 crate::mir::mono::InstanceKind::Virtual { idx }
             }
