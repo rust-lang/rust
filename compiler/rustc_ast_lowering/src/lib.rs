@@ -2536,6 +2536,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 overly_complex_const(self)
             }
+            ExprKind::Lit(literal) => {
+                let span = expr.span;
+                let literal = self.lower_lit(literal, span);
+
+                ConstArg {
+                    hir_id: self.lower_node_id(expr.id),
+                    kind: hir::ConstArgKind::Literal(literal.node),
+                    span,
+                }
+            }
             _ => overly_complex_const(self),
         }
     }

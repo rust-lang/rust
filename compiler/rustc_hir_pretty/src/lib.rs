@@ -21,7 +21,7 @@ use rustc_hir::{
     GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
     PreciseCapturingArg, RangeEnd, Term, TyPatKind,
 };
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -1157,6 +1157,10 @@ impl<'a> State<'a> {
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
             ConstArgKind::Error(_) => self.word("/*ERROR*/"),
             ConstArgKind::Infer(..) => self.word("_"),
+            ConstArgKind::Literal(node) => {
+                let span = const_arg.span;
+                self.print_literal(&Spanned { span, node: *node })
+            }
         }
     }
 
