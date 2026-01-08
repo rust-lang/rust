@@ -3250,7 +3250,7 @@ impl Target {
                 && !matches!(self.abi, Abi::SoftFloat)
             {
                 return Err(format!(
-                    "Enabling both, `packed-stack` and `backchain` attributes is incompatible with the hard-float ABI. Enable soft-float ABI to use these attributes."
+                    "Enabling both `packed-stack` and `backchain` attributes is incompatible with the hard-float ABI. Enable soft-float ABI to use these attributes."
                 ));
             }
         }

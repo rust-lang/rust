@@ -489,8 +489,9 @@ If not specified, overflow checks are enabled if
 
 ## packed-stack
 
-This flag enables packed StackFrames on s390x.
-If backchain is also enabled, switch to the soft-float ABI.
+This flag enables packed StackFrames on s390x. Enabling both `packed-stack` and
+`backchain` attributes is incompatible with the default hard-float ABI.
+Enable soft-float ABI to use these attributes.
 
 ## panic
 
