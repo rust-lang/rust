@@ -2389,9 +2389,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::ConstArgKind::TupleCall(qpath, args) => {
                 self.lower_const_arg_tuple_call(hir_id, qpath, args, const_arg.span)
             }
-            hir::ConstArgKind::Array(_array_expr) => {
-                span_bug!(const_arg.span(), "lowering `{:?}` is not yet implemented", const_arg)
-            }
+            hir::ConstArgKind::Array(array_expr) => self.lower_const_arg_array(array_expr, feed),
             hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
             hir::ConstArgKind::Infer(()) => self.ct_infer(None, const_arg.span),
             hir::ConstArgKind::Error(e) => ty::Const::new_error(tcx, e),
@@ -2403,6 +2401,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_error(tcx, e)
             }
         }
+    }
+
+    fn lower_const_arg_array(
+        &self,
+        array_expr: &'tcx hir::ConstArgArrayExpr<'tcx>,
+        feed: FeedConstTy<'tcx>,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        let FeedConstTy::WithTy(ty) = feed else {
+            return Const::new_error_with_message(tcx, array_expr.span, "unsupported const array");
+        };
+
+        let ty::Array(elem_ty, _) = ty.kind() else {
+            return Const::new_error_with_message(
+                tcx,
+                array_expr.span,
+                "const array must have an array type",
+            );
+        };
+
+        let elems = array_expr
+            .elems
+            .iter()
+            .map(|elem| self.lower_const_arg(elem, FeedConstTy::WithTy(*elem_ty)))
+            .collect::<Vec<_>>();
+
+        let valtree = ty::ValTree::from_branches(tcx, elems);
+
+        ty::Const::new_value(tcx, valtree, ty)
     }
 
     fn lower_const_arg_tuple_call(

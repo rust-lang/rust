@@ -329,6 +329,7 @@ pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind 
         hir::ConstArgKind::Tup(..) => {
             // FIXME(mgca): proper printing :3
             ConstantKind::Path { path: "/* TUPLE EXPR */".to_string().into() }
+        }
         hir::ConstArgKind::Array(..) => {
             ConstantKind::Path { path: "/* ARRAY EXPR */".to_string().into() }
         }
