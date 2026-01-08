@@ -368,6 +368,9 @@ pub enum RunnableKind {
     /// Template for checking a target, emitting rustc JSON diagnostics.
     /// May include {label} which will get the label from the `build` section of a crate.
     Flycheck,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    Unknown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -478,6 +481,11 @@ pub enum RunnableKindData {
     Check,
     Run,
     TestOne,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    #[allow(unused)]
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -546,6 +554,7 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::Run => RunnableKind::Run,
             RunnableKindData::TestOne => RunnableKind::TestOne,
             RunnableKindData::Flycheck => RunnableKind::Flycheck,
+            RunnableKindData::Unknown => RunnableKind::Unknown,
         }
     }
 }

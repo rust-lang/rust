@@ -26,6 +26,12 @@
             "program": "$ROOT$custom-flychecker.sh",
             "args": ["{label}"],
             "cwd": "$ROOT$"
+        },
+        {
+            "kind": "we-ignore-unknown-runnable-kinds-for-forwards-compatibility",
+            "program": "abc",
+            "args": ["{label}"],
+            "cwd": "$ROOT$"
         }
     ]
 }
