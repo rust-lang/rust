@@ -1444,6 +1444,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         | hir::ConstArgKind::TupleCall(..)
                         | hir::ConstArgKind::Tup(..)
                         | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Literal(..)
                         | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
