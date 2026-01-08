@@ -19,13 +19,11 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
    |
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `inner` at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
-   |
-LL |         inner(ptr, &*ptr);
-   |         ^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: inner
+               at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

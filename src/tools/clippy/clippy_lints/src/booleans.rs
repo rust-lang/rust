@@ -433,7 +433,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
         },
         ExprKind::MethodCall(path, receiver, args, _) => {
             let type_of_receiver = cx.typeck_results().expr_ty(receiver);
-            if !type_of_receiver.is_diag_item(cx, sym::Option) && !type_of_receiver.is_diag_item(cx, sym::Result) {
+            if !matches!(type_of_receiver.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
                 return None;
             }
             METHODS_WITH_NEGATION

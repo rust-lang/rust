@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(associated_const_equality, min_generic_const_args)]
+#![feature(min_generic_const_args)]
 #![allow(unused, incomplete_features)]
 
 pub trait Foo {

@@ -4,7 +4,7 @@
 // However, we don't allow so for const arguments in field init positions.
 // This is just harder to implement so we did not do so.
 
-#![feature(min_generic_const_args, adt_const_params, associated_const_equality)]
+#![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
 trait Trait {

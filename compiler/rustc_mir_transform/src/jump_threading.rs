@@ -62,7 +62,9 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ScalarInt, TyCtxt};
-use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, TrackElem, ValueIndex};
+use rustc_mir_dataflow::value_analysis::{
+    Map, PlaceCollectionMode, PlaceIndex, TrackElem, ValueIndex,
+};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
@@ -71,7 +73,6 @@ use crate::cost_checker::CostChecker;
 pub(super) struct JumpThreading;
 
 const MAX_COST: u8 = 100;
-const MAX_PLACES: usize = 100;
 
 impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -95,7 +96,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             typing_env,
             ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             body,
-            map: Map::new(tcx, body, Some(MAX_PLACES)),
+            map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
             maybe_loop_headers: loops::maybe_loop_headers(body),
             entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
         };
@@ -273,6 +274,19 @@ impl ConditionSet {
 }
 
 impl<'a, 'tcx> TOFinder<'a, 'tcx> {
+    fn place(&mut self, place: Place<'tcx>, tail: Option<TrackElem>) -> Option<PlaceIndex> {
+        self.map.register_place(self.tcx, self.body, place, tail)
+    }
+
+    fn value(&mut self, place: PlaceIndex) -> Option<ValueIndex> {
+        self.map.register_value(self.tcx, self.typing_env, place)
+    }
+
+    fn place_value(&mut self, place: Place<'tcx>, tail: Option<TrackElem>) -> Option<ValueIndex> {
+        let place = self.place(place, tail)?;
+        self.value(place)
+    }
+
     /// Construct the condition set for `bb` from the terminator, without executing its effect.
     #[instrument(level = "trace", skip(self))]
     fn populate_from_outgoing_edges(&mut self, bb: BasicBlock) -> ConditionSet {
@@ -397,7 +411,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self, state))]
     fn process_immediate(&mut self, lhs: PlaceIndex, rhs: ImmTy<'tcx>, state: &mut ConditionSet) {
-        if let Some(lhs) = self.map.value(lhs)
+        if let Some(lhs) = self.value(lhs)
             && let Immediate::Scalar(Scalar::Int(int)) = *rhs
         {
             state.fulfill_matches(lhs, int)
@@ -412,10 +426,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         constant: OpTy<'tcx>,
         state: &mut ConditionSet,
     ) {
-        let values_inside = self.map.values_inside(lhs);
-        if !state.active.iter().any(|&(_, cond)| values_inside.contains(&cond.place)) {
-            return;
-        }
         self.map.for_each_projection_value(
             lhs,
             constant,
@@ -450,9 +460,13 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     #[instrument(level = "trace", skip(self, state))]
     fn process_copy(&mut self, lhs: PlaceIndex, rhs: PlaceIndex, state: &mut ConditionSet) {
         let mut renames = FxHashMap::default();
-        self.map.for_each_value_pair(rhs, lhs, &mut |rhs, lhs| {
-            renames.insert(lhs, rhs);
-        });
+        self.map.register_copy_tree(
+            lhs, // tree to copy
+            rhs, // tree to build
+            &mut |lhs, rhs| {
+                renames.insert(lhs, rhs);
+            },
+        );
         state.for_each_mut(|c| {
             if let Some(rhs) = renames.get(&c.place) {
                 c.place = *rhs
@@ -474,7 +488,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             }
             // Transfer the conditions on the copied rhs.
             Operand::Move(rhs) | Operand::Copy(rhs) => {
-                let Some(rhs) = self.map.find(rhs.as_ref()) else { return };
+                let Some(rhs) = self.place(*rhs, None) else { return };
                 self.process_copy(lhs, rhs, state)
             }
             Operand::RuntimeChecks(_) => {}
@@ -488,12 +502,12 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut ConditionSet,
     ) {
-        let Some(lhs) = self.map.find(lhs_place.as_ref()) else { return };
+        let Some(lhs) = self.place(*lhs_place, None) else { return };
         match rvalue {
             Rvalue::Use(operand) => self.process_operand(lhs, operand, state),
             // Transfer the conditions on the copy rhs.
             Rvalue::Discriminant(rhs) => {
-                let Some(rhs) = self.map.find_discr(rhs.as_ref()) else { return };
+                let Some(rhs) = self.place(*rhs, Some(TrackElem::Discriminant)) else { return };
                 self.process_copy(lhs, rhs, state)
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
@@ -503,33 +517,37 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Do not support unions.
                     AggregateKind::Adt(.., Some(_)) => return,
                     AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
-                        if let Some(discr_target) = self.map.apply(lhs, TrackElem::Discriminant)
-                            && let Some(discr_value) = self
-                                .ecx
-                                .discriminant_for_variant(agg_ty, *variant_index)
-                                .discard_err()
+                        let discr_ty = agg_ty.discriminant_ty(self.tcx);
+                        let discr_target =
+                            self.map.register_place_index(discr_ty, lhs, TrackElem::Discriminant);
+                        if let Some(discr_value) =
+                            self.ecx.discriminant_for_variant(agg_ty, *variant_index).discard_err()
                         {
                             self.process_immediate(discr_target, discr_value, state);
                         }
-                        if let Some(idx) = self.map.apply(lhs, TrackElem::Variant(*variant_index)) {
-                            idx
-                        } else {
-                            return;
-                        }
+                        self.map.register_place_index(
+                            agg_ty,
+                            lhs,
+                            TrackElem::Variant(*variant_index),
+                        )
                     }
                     _ => lhs,
                 };
                 for (field_index, operand) in operands.iter_enumerated() {
-                    if let Some(field) = self.map.apply(lhs, TrackElem::Field(field_index)) {
-                        self.process_operand(field, operand, state);
-                    }
+                    let operand_ty = operand.ty(self.body, self.tcx);
+                    let field = self.map.register_place_index(
+                        operand_ty,
+                        lhs,
+                        TrackElem::Field(field_index),
+                    );
+                    self.process_operand(field, operand, state);
                 }
             }
             // Transfer the conditions on the copy rhs, after inverting the value of the condition.
             Rvalue::UnaryOp(UnOp::Not, Operand::Move(operand) | Operand::Copy(operand)) => {
                 let layout = self.ecx.layout_of(operand.ty(self.body, self.tcx).ty).unwrap();
-                let Some(lhs) = self.map.value(lhs) else { return };
-                let Some(operand) = self.map.find_value(operand.as_ref()) else { return };
+                let Some(lhs) = self.value(lhs) else { return };
+                let Some(operand) = self.place_value(*operand, None) else { return };
                 state.retain_mut(|mut c| {
                     if c.place == lhs {
                         let value = self
@@ -563,8 +581,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Avoid handling them, though this could be extended in the future.
                     return;
                 }
-                let Some(lhs) = self.map.value(lhs) else { return };
-                let Some(operand) = self.map.find_value(operand.as_ref()) else { return };
+                let Some(lhs) = self.value(lhs) else { return };
+                let Some(operand) = self.place_value(*operand, None) else { return };
                 let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.typing_env)
                 else {
                     return;
@@ -593,7 +611,9 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             // If we expect `discriminant(place) ?= A`,
             // we have an opportunity if `variant_index ?= A`.
             StatementKind::SetDiscriminant { box place, variant_index } => {
-                let Some(discr_target) = self.map.find_discr(place.as_ref()) else { return };
+                let Some(discr_target) = self.place(*place, Some(TrackElem::Discriminant)) else {
+                    return;
+                };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
                 // `SetDiscriminant` guarantees that the discriminant is now `variant_index`.
                 // Even if the discriminant write does nothing due to niches, it is UB to set the
@@ -609,7 +629,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
-                let Some(place) = self.map.find_value(place.as_ref()) else { return };
+                let Some(place) = self.place_value(*place, None) else { return };
                 state.fulfill_matches(place, ScalarInt::TRUE);
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
@@ -666,7 +686,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         state: &mut ConditionSet,
     ) {
         let Some(discr) = discr.place() else { return };
-        let Some(discr_idx) = self.map.find_value(discr.as_ref()) else { return };
+        let Some(discr_idx) = self.place_value(discr, None) else { return };
 
         let discr_ty = discr.ty(self.body, self.tcx).ty;
         let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else { return };

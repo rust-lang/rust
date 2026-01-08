@@ -101,6 +101,8 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    /// Cache instances of intrinsics
+    pub intrinsic_instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
@@ -208,6 +210,10 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch == Arch::Nvptx64 {
             // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
             target_data_layout = target_data_layout.replace("-i256:256", "");
+        }
+        if sess.target.arch == Arch::PowerPC64 {
+            // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
+            target_data_layout = target_data_layout.replace("-f64:32:64", "");
         }
     }
 
@@ -627,6 +633,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 tls_model,
                 codegen_unit,
                 instances: Default::default(),
+                intrinsic_instances: Default::default(),
                 vtables: Default::default(),
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),

@@ -2443,8 +2443,6 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
-    pub(crate) fn LLVMRustGetInsertPoint<'a>(B: &Builder<'a>) -> &'a Value;
-    pub(crate) fn LLVMRustRestoreInsertPoint<'a>(B: &Builder<'a>, IP: &'a Value);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
     pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);
@@ -2454,7 +2452,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub(crate) fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub(crate) fn LLVMRustModuleCost(M: &Module) -> u64;
-    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
 
     pub(crate) fn LLVMRustThinLTOBufferCreate(
         M: &Module,

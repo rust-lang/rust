@@ -49,7 +49,7 @@ assert-property: ("rustdoc-topbar", {"clientHeight": "45"})
 // so the target is not obscured by the topbar.
 click: ".sidebar-menu-toggle"
 click: ".sidebar-elems section .block li > a"
-assert-position: ("#method\.must_use", {"y": 46})
+assert-position: ("#method\.must_use", {"y": 45})
 
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
 click: ".sidebar-menu-toggle"

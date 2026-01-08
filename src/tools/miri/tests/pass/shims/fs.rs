@@ -37,7 +37,7 @@ fn main() {
         test_canonicalize();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+        #[cfg(not(any(target_os = "solaris", target_os = "android")))]
         test_flock();
     }
 }
@@ -399,8 +399,8 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// This function does seem to exist on Illumos but std does not expose it there.
-#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+// The standard library does not support this operation on Solaris, Android
+#[cfg(not(any(target_os = "solaris", target_os = "android")))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);

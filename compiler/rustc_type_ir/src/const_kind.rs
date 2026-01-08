@@ -103,7 +103,7 @@ rustc_index::newtype_index! {
 pub enum InferConst {
     /// Infer the value of the const.
     Var(ConstVid),
-    /// A fresh const variable. See `infer::freshen` for more details.
+    /// A fresh const variable. See `TypeFreshener` for more details.
     Fresh(u32),
 }
 

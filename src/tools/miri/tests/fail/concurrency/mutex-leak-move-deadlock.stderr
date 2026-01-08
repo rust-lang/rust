@@ -2,13 +2,8 @@ error: the evaluated program deadlocked
   --> RUSTLIB/std/$FILE:LL:CC
    |
 LL | $CODE
-   | ^ thread `main` got stuck here
+   | ^ thread got stuck here
    |
-note: inside `main`
-  --> tests/fail/concurrency/mutex-leak-move-deadlock.rs:LL:CC
-   |
-LL | $CODE
-   | ^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

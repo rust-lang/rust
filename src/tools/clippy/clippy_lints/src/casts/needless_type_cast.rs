@@ -1,6 +1,8 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::{Descend, for_each_expr, for_each_expr_without_closures};
 use core::ops::ControlFlow;
+use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -14,6 +16,7 @@ use super::NEEDLESS_TYPE_CAST;
 struct BindingInfo<'a> {
     source_ty: Ty<'a>,
     ty_span: Span,
+    init: Option<&'a Expr<'a>>,
 }
 
 struct UsageInfo<'a> {
@@ -73,6 +76,7 @@ fn collect_binding_from_let<'a>(
                 BindingInfo {
                     source_ty: ty,
                     ty_span: ty_hir.span,
+                    init: Some(let_expr.init),
                 },
             );
         }
@@ -103,6 +107,7 @@ fn collect_binding_from_local<'a>(
                 BindingInfo {
                     source_ty: ty,
                     ty_span: ty_hir.span,
+                    init: let_stmt.init,
                 },
             );
         }
@@ -182,12 +187,7 @@ fn is_generic_res(cx: &LateContext<'_>, res: Res) -> bool {
             .iter()
             .any(|p| p.kind.is_ty_or_const())
     };
-    match res {
-        Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => has_type_params(def_id),
-        // Ctor → Variant → ADT: constructor's parent is variant, variant's parent is the ADT
-        Res::Def(DefKind::Ctor(..), def_id) => has_type_params(cx.tcx.parent(cx.tcx.parent(def_id))),
-        _ => false,
-    }
+    cx.tcx.res_generics_def_id(res).is_some_and(has_type_params)
 }
 
 fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) -> bool {
@@ -234,6 +234,18 @@ fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) ->
     }
 }
 
+fn can_coerce_to_target_type(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Lit(lit) => matches!(
+            lit.node,
+            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
+        ),
+        ExprKind::Unary(rustc_hir::UnOp::Neg, inner) => can_coerce_to_target_type(inner),
+        ExprKind::Binary(_, lhs, rhs) => can_coerce_to_target_type(lhs) && can_coerce_to_target_type(rhs),
+        _ => false,
+    }
+}
+
 fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId, binding_info: &BindingInfo<'a>) {
     let mut usages = Vec::new();
 
@@ -274,7 +286,19 @@ fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId
         return;
     };
 
-    span_lint_and_sugg(
+    // Don't lint if there's exactly one use and the initializer cannot be coerced to the
+    // target type (i.e., would require an explicit cast). In such cases, the fix would add
+    // a cast to the initializer rather than eliminating one - the cast isn't truly "needless."
+    // See: https://github.com/rust-lang/rust-clippy/issues/16240
+    if usages.len() == 1
+        && binding_info
+            .init
+            .is_some_and(|init| !can_coerce_to_target_type(init) && !init.span.from_expansion())
+    {
+        return;
+    }
+
+    span_lint_and_then(
         cx,
         NEEDLESS_TYPE_CAST,
         binding_info.ty_span,
@@ -282,8 +306,28 @@ fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId
             "this binding is defined as `{}` but is always cast to `{}`",
             binding_info.source_ty, first_target
         ),
-        "consider defining it as",
-        first_target.to_string(),
-        Applicability::MaybeIncorrect,
+        |diag| {
+            if let Some(init) = binding_info
+                .init
+                .filter(|i| !can_coerce_to_target_type(i) && !i.span.from_expansion())
+            {
+                let sugg = Sugg::hir(cx, init, "..").as_ty(first_target);
+                diag.multipart_suggestion(
+                    format!("consider defining it as `{first_target}` and casting the initializer"),
+                    vec![
+                        (binding_info.ty_span, first_target.to_string()),
+                        (init.span, sugg.to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                diag.span_suggestion(
+                    binding_info.ty_span,
+                    "consider defining it as",
+                    first_target.to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        },
     );
 }

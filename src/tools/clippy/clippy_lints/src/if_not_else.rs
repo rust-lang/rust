@@ -1,7 +1,7 @@
 use clippy_utils::consts::is_zero_integer_const;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_else_clause;
-use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet};
+use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet_with_context};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -78,6 +78,7 @@ impl LateLintPass<'_> for IfNotElse {
             // }
             // ```
             if !e.span.from_expansion() && !is_else_clause(cx.tcx, e) {
+                let mut applicability = Applicability::MachineApplicable;
                 match cond.kind {
                     ExprKind::Unary(UnOp::Not, _) | ExprKind::Binary(_, _, _) => span_lint_and_sugg(
                         cx,
@@ -85,8 +86,16 @@ impl LateLintPass<'_> for IfNotElse {
                         e.span,
                         msg,
                         "try",
-                        make_sugg(cx, &cond.kind, cond_inner.span, els.span, "..", Some(e.span)),
-                        Applicability::MachineApplicable,
+                        make_sugg(
+                            cx,
+                            e.span,
+                            &cond.kind,
+                            cond_inner.span,
+                            els.span,
+                            "..",
+                            &mut applicability,
+                        ),
+                        applicability,
                     ),
                     _ => span_lint_and_help(cx, IF_NOT_ELSE, e.span, msg, None, help),
                 }
@@ -97,28 +106,26 @@ impl LateLintPass<'_> for IfNotElse {
 
 fn make_sugg<'a>(
     sess: &impl HasSession,
+    expr_span: Span,
     cond_kind: &'a ExprKind<'a>,
     cond_inner: Span,
     els_span: Span,
     default: &'a str,
-    indent_relative_to: Option<Span>,
+    applicability: &mut Applicability,
 ) -> String {
-    let cond_inner_snip = snippet(sess, cond_inner, default);
-    let els_snip = snippet(sess, els_span, default);
-    let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
+    let (cond_inner_snip, _) = snippet_with_context(sess, cond_inner, expr_span.ctxt(), default, applicability);
+    let (els_snip, _) = snippet_with_context(sess, els_span, expr_span.ctxt(), default, applicability);
+    let indent = indent_of(sess, expr_span);
 
     let suggestion = match cond_kind {
         ExprKind::Unary(UnOp::Not, cond_rest) => {
-            format!(
-                "if {} {} else {}",
-                snippet(sess, cond_rest.span, default),
-                els_snip,
-                cond_inner_snip
-            )
+            let (cond_rest_snip, _) =
+                snippet_with_context(sess, cond_rest.span, expr_span.ctxt(), default, applicability);
+            format!("if {cond_rest_snip} {els_snip} else {cond_inner_snip}")
         },
         ExprKind::Binary(_, lhs, rhs) => {
-            let lhs_snip = snippet(sess, lhs.span, default);
-            let rhs_snip = snippet(sess, rhs.span, default);
+            let (lhs_snip, _) = snippet_with_context(sess, lhs.span, expr_span.ctxt(), default, applicability);
+            let (rhs_snip, _) = snippet_with_context(sess, rhs.span, expr_span.ctxt(), default, applicability);
 
             format!("if {lhs_snip} == {rhs_snip} {els_snip} else {cond_inner_snip}")
         },

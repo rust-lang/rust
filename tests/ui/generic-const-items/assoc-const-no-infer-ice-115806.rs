@@ -1,6 +1,6 @@
 // ICE: assertion failed: !value.has_infer()
 // issue: rust-lang/rust#115806
-#![feature(associated_const_equality, min_generic_const_args, unsized_const_params)]
+#![feature(min_generic_const_args, unsized_const_params)]
 #![allow(incomplete_features)]
 
 pub struct NoPin;

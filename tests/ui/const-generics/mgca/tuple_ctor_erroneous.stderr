@@ -1,0 +1,68 @@
+error[E0425]: cannot find function, tuple struct or tuple variant `UnresolvedIdent` in this scope
+  --> $DIR/tuple_ctor_erroneous.rs:29:23
+   |
+LL |     accepts_point::<{ UnresolvedIdent(N, N) }>();
+   |                       ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn test_errors<const N: usize, const UnresolvedIdent: /* Type */>() {
+   |                              +++++++++++++++++++++++++++++++++++
+
+error: tuple constructor has 2 arguments but 1 were provided
+  --> $DIR/tuple_ctor_erroneous.rs:23:23
+   |
+LL |     accepts_point::<{ Point(N) }>();
+   |                       ^^^^^^^^
+
+error: tuple constructor has 2 arguments but 3 were provided
+  --> $DIR/tuple_ctor_erroneous.rs:26:23
+   |
+LL |     accepts_point::<{ Point(N, N, N) }>();
+   |                       ^^^^^^^^^^^^^^
+
+error: tuple constructor with invalid base path
+  --> $DIR/tuple_ctor_erroneous.rs:29:23
+   |
+LL |     accepts_point::<{ UnresolvedIdent(N, N) }>();
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+
+error: tuple constructor with invalid base path
+  --> $DIR/tuple_ctor_erroneous.rs:33:23
+   |
+LL |     accepts_point::<{ non_ctor(N, N) }>();
+   |                       ^^^^^^^^^^^^^^
+
+error: tuple constructor with invalid base path
+  --> $DIR/tuple_ctor_erroneous.rs:36:23
+   |
+LL |     accepts_point::<{ CONST_ITEM(N, N) }>();
+   |                       ^^^^^^^^^^^^^^^^
+
+error: the constant `Point` is not of type `Point`
+  --> $DIR/tuple_ctor_erroneous.rs:39:23
+   |
+LL |     accepts_point::<{ Point }>();
+   |                       ^^^^^ expected `Point`, found struct constructor
+   |
+note: required by a const generic parameter in `accepts_point`
+  --> $DIR/tuple_ctor_erroneous.rs:17:18
+   |
+LL | fn accepts_point<const P: Point>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `accepts_point`
+
+error: the constant `MyEnum::<u32>::Variant` is not of type `MyEnum<u32>`
+  --> $DIR/tuple_ctor_erroneous.rs:42:22
+   |
+LL |     accepts_enum::<{ MyEnum::Variant::<u32> }>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ expected `MyEnum<u32>`, found enum constructor
+   |
+note: required by a const generic parameter in `accepts_enum`
+  --> $DIR/tuple_ctor_erroneous.rs:18:17
+   |
+LL | fn accepts_enum<const E: MyEnum<u32>>() {}
+   |                 ^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `accepts_enum`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

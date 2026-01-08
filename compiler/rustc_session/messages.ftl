@@ -81,6 +81,8 @@ session_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number liter
 
 session_linker_plugin_lto_windows_not_supported = linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets
 
+session_must_be_name_of_associated_function = must be a name of an associated function
+
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
 
 session_not_supported = not supported

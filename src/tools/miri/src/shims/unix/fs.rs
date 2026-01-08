@@ -527,15 +527,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_solarish_stat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn stat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
@@ -558,15 +556,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_solarish_lstat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn lstat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!(
                 "`macos_fbsd_solaris_lstat` should not be called on {}",
                 this.tcx.sess.target.os
@@ -595,7 +591,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux | Os::Android
         ) {
             panic!("`fstat` should not be called on {}", this.tcx.sess.target.os);
         }
@@ -906,9 +902,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::Linux | Os::Solaris | Os::Illumos | Os::FreeBsd)
-        {
-            panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
+        ) {
+            panic!("`readdir64` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;

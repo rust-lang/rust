@@ -1,7 +1,8 @@
-use super::cli::FailureReason;
+use itertools::Itertools;
 use rayon::prelude::*;
-use std::process::Command;
+use std::{collections::HashMap, process::Command};
 
+pub const INTRINSIC_DELIMITER: &str = "############";
 fn runner_command(runner: &str) -> Command {
     let mut it = runner.split_whitespace();
     let mut cmd = Command::new(it.next().unwrap());
@@ -10,86 +11,119 @@ fn runner_command(runner: &str) -> Command {
     cmd
 }
 
-pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: &str) -> bool {
-    let intrinsics = intrinsic_name_list
-        .par_iter()
-        .filter_map(|intrinsic_name| {
-            let c = runner_command(runner)
+pub fn compare_outputs(
+    intrinsic_name_list: &Vec<String>,
+    runner: &str,
+    target: &str,
+    profile: &str,
+) -> bool {
+    let profile_dir = match profile {
+        "dev" => "debug",
+        _ => "release",
+    };
+
+    let (c, rust) = rayon::join(
+        || {
+            runner_command(runner)
                 .arg("./intrinsic-test-programs")
-                .arg(intrinsic_name)
                 .current_dir("c_programs")
-                .output();
-
-            let rust = runner_command(runner)
-                .arg(format!("./target/{target}/release/intrinsic-test-programs"))
-                .arg(intrinsic_name)
+                .output()
+        },
+        || {
+            runner_command(runner)
+                .arg(format!(
+                    "./target/{target}/{profile_dir}/intrinsic-test-programs"
+                ))
                 .current_dir("rust_programs")
-                .output();
+                .output()
+        },
+    );
+    let (c, rust) = match (c, rust) {
+        (Ok(c), Ok(rust)) => (c, rust),
+        failure => panic!("Failed to run: {failure:#?}"),
+    };
 
-            let (c, rust) = match (c, rust) {
-                (Ok(c), Ok(rust)) => (c, rust),
-                a => panic!("{a:#?}"),
-            };
+    if !c.status.success() {
+        error!(
+            "Failed to run C program.\nstdout: {stdout}\nstderr: {stderr}",
+            stdout = std::str::from_utf8(&c.stdout).unwrap_or(""),
+            stderr = std::str::from_utf8(&c.stderr).unwrap_or(""),
+        );
+    }
 
-            if !c.status.success() {
-                error!(
-                    "Failed to run C program for intrinsic `{intrinsic_name}`\nstdout: {stdout}\nstderr: {stderr}",
-                    stdout = std::str::from_utf8(&c.stdout).unwrap_or(""),
-                    stderr = std::str::from_utf8(&c.stderr).unwrap_or(""),
-                );
-                return Some(FailureReason::RunC(intrinsic_name.clone()));
-            }
+    if !rust.status.success() {
+        error!(
+            "Failed to run Rust program.\nstdout: {stdout}\nstderr: {stderr}",
+            stdout = std::str::from_utf8(&rust.stdout).unwrap_or(""),
+            stderr = std::str::from_utf8(&rust.stderr).unwrap_or(""),
+        );
+    }
 
-            if !rust.status.success() {
-                error!(
-                    "Failed to run Rust program for intrinsic `{intrinsic_name}`\nstdout: {stdout}\nstderr: {stderr}",
-                    stdout = std::str::from_utf8(&rust.stdout).unwrap_or(""),
-                    stderr = std::str::from_utf8(&rust.stderr).unwrap_or(""),
-                );
-                return Some(FailureReason::RunRust(intrinsic_name.clone()));
-            }
+    info!("Completed running C++ and Rust test binaries");
+    let c = std::str::from_utf8(&c.stdout)
+        .unwrap()
+        .to_lowercase()
+        .replace("-nan", "nan");
+    let rust = std::str::from_utf8(&rust.stdout)
+        .unwrap()
+        .to_lowercase()
+        .replace("-nan", "nan");
 
-            info!("Comparing intrinsic: {intrinsic_name}");
+    let c_output_map = c
+        .split(INTRINSIC_DELIMITER)
+        .filter_map(|output| output.trim().split_once("\n"))
+        .collect::<HashMap<&str, &str>>();
+    let rust_output_map = rust
+        .split(INTRINSIC_DELIMITER)
+        .filter_map(|output| output.trim().split_once("\n"))
+        .collect::<HashMap<&str, &str>>();
 
-            let c = std::str::from_utf8(&c.stdout)
-                .unwrap()
-                .to_lowercase()
-                .replace("-nan", "nan");
-            let rust = std::str::from_utf8(&rust.stdout)
-                .unwrap()
-                .to_lowercase()
-                .replace("-nan", "nan");
+    let intrinsics = c_output_map
+        .keys()
+        .chain(rust_output_map.keys())
+        .unique()
+        .collect_vec();
 
-            if c == rust {
+    info!("Comparing outputs");
+    let intrinsics_diff_count = intrinsics
+        .par_iter()
+        .filter_map(|&&intrinsic| {
+            let c_output = c_output_map.get(intrinsic).unwrap();
+            let rust_output = rust_output_map.get(intrinsic).unwrap();
+            if rust_output.eq(c_output) {
                 None
             } else {
-                Some(FailureReason::Difference(intrinsic_name.clone(), c, rust))
+                let diff = diff::lines(c_output, rust_output);
+                let diffs = diff
+                    .into_iter()
+                    .filter_map(|diff| match diff {
+                        diff::Result::Left(_) | diff::Result::Right(_) => Some(diff),
+                        diff::Result::Both(_, _) => None,
+                    })
+                    .collect_vec();
+                if diffs.len() > 0 {
+                    Some((intrinsic, diffs))
+                } else {
+                    None
+                }
             }
         })
-        .collect::<Vec<_>>();
-
-    intrinsics.iter().for_each(|reason| match reason {
-        FailureReason::Difference(intrinsic, c, rust) => {
+        .inspect(|(intrinsic, diffs)| {
             println!("Difference for intrinsic: {intrinsic}");
-            let diff = diff::lines(c, rust);
-            diff.iter().for_each(|diff| match diff {
+            diffs.into_iter().for_each(|diff| match diff {
                 diff::Result::Left(c) => println!("C: {c}"),
                 diff::Result::Right(rust) => println!("Rust: {rust}"),
-                diff::Result::Both(_, _) => (),
+                _ => (),
             });
             println!("****************************************************************");
-        }
-        FailureReason::RunC(intrinsic) => {
-            println!("Failed to run C program for intrinsic {intrinsic}")
-        }
-        FailureReason::RunRust(intrinsic) => {
-            println!("Failed to run rust program for intrinsic {intrinsic}")
-        }
-    });
+        })
+        .count();
+
     println!(
         "{} differences found (tested {} intrinsics)",
-        intrinsics.len(),
+        intrinsics_diff_count,
         intrinsic_name_list.len()
     );
-    intrinsics.is_empty()
+
+    intrinsics_diff_count == 0
 }

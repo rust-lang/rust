@@ -115,18 +115,6 @@ fn typeck_with_inspect<'tcx>(
         return tcx.typeck(typeck_root_def_id);
     }
 
-    // We can't handle bodies containing generic parameters even though
-    // these generic parameters aren't part of its `generics_of` right now.
-    //
-    // See the FIXME on `check_anon_const_invalid_param_uses`.
-    if tcx.features().min_generic_const_args()
-        && let DefKind::AnonConst = tcx.def_kind(def_id)
-        && let ty::AnonConstKind::MCG = tcx.anon_const_kind(def_id)
-        && let Err(e) = tcx.check_anon_const_invalid_param_uses(def_id)
-    {
-        e.raise_fatal();
-    }
-
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
     let span = tcx.def_span(def_id);

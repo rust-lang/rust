@@ -9,7 +9,7 @@ trait BindsParam<T> {
     type ArrayTy;
 }
 impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
-    type ArrayTy = [u8; Self::MAX]; //~ ERROR generic `Self` types
+    type ArrayTy = [u8; Self::MAX]; //~ ERROR generic `Self`
 }
 
 fn main() {}

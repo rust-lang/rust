@@ -112,10 +112,14 @@ fn should_lint<'tcx>(
         if let ExprKind::MethodCall(path, recv, ..) = &expr.kind {
             let recv_ty = typeck_results.expr_ty(recv).peel_refs();
 
-            if path.ident.name == sym::debug_struct && recv_ty.is_diag_item(cx, sym::Formatter) {
-                has_debug_struct = true;
-            } else if path.ident.name == sym::finish_non_exhaustive && recv_ty.is_diag_item(cx, sym::DebugStruct) {
-                has_finish_non_exhaustive = true;
+            match (path.ident.name, recv_ty.opt_diag_name(cx)) {
+                (sym::debug_struct, Some(sym::Formatter)) => {
+                    has_debug_struct = true;
+                },
+                (sym::finish_non_exhaustive, Some(sym::DebugStruct)) => {
+                    has_finish_non_exhaustive = true;
+                },
+                _ => {},
             }
         }
         ControlFlow::<!, _>::Continue(())

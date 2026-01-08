@@ -861,7 +861,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                 TermKind::Ty(ty) => {
                                     ty.walk().any(|arg| arg == dummy_self_ty.into())
                                 }
-                                // FIXME(associated_const_equality): We should walk the const instead of not doing anything
+                                // FIXME(mgca): We should walk the const instead of not doing anything
                                 TermKind::Const(_) => false,
                             };
 

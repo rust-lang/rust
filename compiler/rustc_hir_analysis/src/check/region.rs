@@ -701,31 +701,25 @@ fn resolve_local<'tcx>(
 /// Note: ET is intended to match "rvalues or places based on rvalues".
 fn record_subexpr_extended_temp_scopes(
     scope_tree: &mut ScopeTree,
-    mut expr: &hir::Expr<'_>,
+    expr: &hir::Expr<'_>,
     lifetime: Option<Scope>,
 ) {
-    debug!(?expr, ?lifetime);
+    // Note: give all the expressions matching `ET` with the
+    // extended temporary lifetime, not just the innermost rvalue,
+    // because in MIR building if we must compile e.g., `*rvalue()`
+    // into a temporary, we request the temporary scope of the
+    // outer expression.
 
-    loop {
-        // Note: give all the expressions matching `ET` with the
-        // extended temporary lifetime, not just the innermost rvalue,
-        // because in MIR building if we must compile e.g., `*rvalue()`
-        // into a temporary, we request the temporary scope of the
-        // outer expression.
+    scope_tree.record_extended_temp_scope(expr.hir_id.local_id, lifetime);
 
-        scope_tree.record_extended_temp_scope(expr.hir_id.local_id, lifetime);
-
-        match expr.kind {
-            hir::ExprKind::AddrOf(_, _, subexpr)
-            | hir::ExprKind::Unary(hir::UnOp::Deref, subexpr)
-            | hir::ExprKind::Field(subexpr, _)
-            | hir::ExprKind::Index(subexpr, _, _) => {
-                expr = subexpr;
-            }
-            _ => {
-                return;
-            }
+    match expr.kind {
+        hir::ExprKind::AddrOf(_, _, subexpr)
+        | hir::ExprKind::Unary(hir::UnOp::Deref, subexpr)
+        | hir::ExprKind::Field(subexpr, _)
+        | hir::ExprKind::Index(subexpr, _, _) => {
+            record_subexpr_extended_temp_scopes(scope_tree, subexpr, lifetime);
         }
+        _ => {}
     }
 }
 

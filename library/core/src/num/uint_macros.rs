@@ -492,27 +492,8 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn gather_bits(self, mut mask: Self) -> Self {
-            let mut bit_position = 1;
-            let mut result = 0;
-
-            // Iterate through the mask bits, unsetting the lowest bit after
-            // each iteration. We fill the bits in the result starting from the
-            // least significant bit.
-            while mask != 0 {
-                // Find the next lowest set bit in the mask
-                let next_mask_bit = mask.isolate_lowest_one();
-
-                // Retrieve the masked bit and if present, set it in the result
-                let src_bit = (self & next_mask_bit) != 0;
-                result |= if src_bit { bit_position } else { 0 };
-
-                // Unset lowest set bit in the mask, prepare next position to set
-                mask ^= next_mask_bit;
-                bit_position <<= 1;
-            }
-
-            result
+        pub const fn gather_bits(self, mask: Self) -> Self {
+            crate::num::int_bits::$ActualT::gather_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Returns an integer with the least significant bits of `self`
@@ -528,25 +509,8 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn scatter_bits(mut self, mut mask: Self) -> Self {
-            let mut result = 0;
-
-            // Iterate through the mask bits, unsetting the lowest bit after
-            // each iteration and right-shifting `self` by one to get the next
-            // bit into the least significant bit position.
-            while mask != 0 {
-                // Find the next bit position to potentially set
-                let next_mask_bit = mask.isolate_lowest_one();
-
-                // If bit is set, deposit it at the masked bit position
-                result |= if (self & 1) != 0 { next_mask_bit } else { 0 };
-
-                // Unset lowest set bit in the mask, shift in next `self` bit
-                mask ^= next_mask_bit;
-                self >>= 1;
-            }
-
-            result
+        pub const fn scatter_bits(self, mask: Self) -> Self {
+            crate::num::int_bits::$ActualT::scatter_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
@@ -1880,8 +1844,24 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        ///
+        #[doc = concat!("let start : ", stringify!($SelfT), " = 13;")]
+        /// let mut running = start;
+        /// for i in 0..160 {
+        ///     // The unbounded shift left by i is the same as `<< 1` i times
+        ///     assert_eq!(running, start.unbounded_shl(i));
+        ///     // Which is not always the case for a wrapping shift
+        #[doc = concat!("    assert_eq!(running == start.wrapping_shl(i), i < ", stringify!($BITS), ");")]
+        ///
+        ///     running <<= 1;
+        /// }
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
@@ -2049,8 +2029,24 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(0), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(1), 0b101);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(2), 0b10);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        ///
+        #[doc = concat!("let start = ", stringify!($SelfT), "::rotate_right(13, 4);")]
+        /// let mut running = start;
+        /// for i in 0..160 {
+        ///     // The unbounded shift right by i is the same as `>> 1` i times
+        ///     assert_eq!(running, start.unbounded_shr(i));
+        ///     // Which is not always the case for a wrapping shift
+        #[doc = concat!("    assert_eq!(running == start.wrapping_shr(i), i < ", stringify!($BITS), ");")]
+        ///
+        ///     running >>= 1;
+        /// }
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]

@@ -925,9 +925,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty
             }
-            rustc_hir::PatExprKind::ConstBlock(c) => {
-                self.check_expr_const_block(c, Expectation::NoExpectation)
-            }
             rustc_hir::PatExprKind::Path(qpath) => {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
@@ -997,20 +994,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && self.try_structurally_resolve_type(span, expected).is_str()
         {
             pat_ty = self.tcx.types.str_;
-        }
-
-        if self.tcx.features().string_deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
-        {
-            let tcx = self.tcx;
-            let expected = self.resolve_vars_if_possible(expected);
-            pat_ty = match expected.kind() {
-                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => expected,
-                ty::Str => Ty::new_static_str(tcx),
-                _ => pat_ty,
-            };
         }
 
         // Somewhat surprising: in this case, the subtyping relation goes the

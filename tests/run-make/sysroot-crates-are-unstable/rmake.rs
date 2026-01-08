@@ -44,8 +44,8 @@ fn check_crate_is_unstable(cr: &Crate) {
 }
 
 fn get_unstable_sysroot_crates() -> Vec<Crate> {
-    let sysroot = PathBuf::from(rustc().print("sysroot").run().stdout_utf8().trim());
-    let sysroot_libs_dir = sysroot.join("lib").join("rustlib").join(target()).join("lib");
+    let sysroot_libs_dir =
+        PathBuf::from(rustc().print("target-libdir").target(target()).run().stdout_utf8().trim());
     println!("Sysroot libs dir: {sysroot_libs_dir:?}");
 
     // Generate a list of all library crates in the sysroot.

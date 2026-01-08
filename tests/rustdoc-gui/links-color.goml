@@ -41,7 +41,7 @@ define-function: (
         move-cursor-to: "dd a[href='long_code_block_link/index.html']"
         assert-css: (
             "dd a[href='long_code_block_link/index.html']",
-            {"text-decoration": "underline solid " + |mod|},
+            {"text-decoration": "underline"},
         )
     },
 )

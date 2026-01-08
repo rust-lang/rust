@@ -22,7 +22,6 @@ use std::ops::Bound;
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
 };
@@ -916,84 +915,15 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     } else {
         ty::trait_def::TraitSpecializationKind::None
     };
-    let must_implement_one_of = attrs
-        .iter()
-        .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
-        // Check that there are at least 2 arguments of `#[rustc_must_implement_one_of]`
-        // and that they are all identifiers
-        .and_then(|attr| match attr.meta_item_list() {
-            Some(items) if items.len() < 2 => {
-                tcx.dcx().emit_err(errors::MustImplementOneOfAttribute { span: attr.span() });
 
-                None
-            }
-            Some(items) => items
-                .into_iter()
-                .map(|item| item.ident().ok_or(item.span()))
-                .collect::<Result<Box<[_]>, _>>()
-                .map_err(|span| {
-                    tcx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span });
-                })
-                .ok()
-                .zip(Some(attr.span())),
-            // Error is reported by `rustc_attr!`
-            None => None,
-        })
-        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
-        // functions in the trait with default implementations
-        .and_then(|(list, attr_span)| {
-            let errors = list.iter().filter_map(|ident| {
-                let item = tcx
-                    .associated_items(def_id)
-                    .filter_by_name_unhygienic(ident.name)
-                    .find(|item| item.ident(tcx) == *ident);
-
-                match item {
-                    Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
-                        if !item.defaultness(tcx).has_value() {
-                            tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
-                                span: tcx.def_span(item.def_id),
-                                note_span: attr_span,
-                            });
-
-                            return Some(());
-                        }
-
-                        return None;
-                    }
-                    Some(item) => {
-                        tcx.dcx().emit_err(errors::MustImplementNotFunction {
-                            span: tcx.def_span(item.def_id),
-                            span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
-                            note: errors::MustImplementNotFunctionNote {},
-                        });
-                    }
-                    None => {
-                        tcx.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
-                    }
-                }
-
-                Some(())
-            });
-
-            (errors.count() == 0).then_some(list)
-        })
-        // Check for duplicates
-        .and_then(|list| {
-            let mut set: UnordMap<Symbol, Span> = Default::default();
-            let mut no_dups = true;
-
-            for ident in &*list {
-                if let Some(dup) = set.insert(ident.name, ident.span) {
-                    tcx.dcx()
-                        .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
-
-                    no_dups = false;
-                }
-            }
-
-            no_dups.then_some(list)
-        });
+    let must_implement_one_of = find_attr!(
+        attrs,
+        AttributeKind::RustcMustImplementOneOf { fn_names, .. } =>
+            fn_names
+                .iter()
+                .cloned()
+                .collect::<Box<[_]>>()
+    );
 
     let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
     let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
@@ -1549,23 +1479,27 @@ fn rendered_precise_capturing_args<'tcx>(
 
 fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    local_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let hir::Node::GenericParam(hir::GenericParam {
         kind: hir::GenericParamKind::Const { default: Some(default_ct), .. },
         ..
-    }) = tcx.hir_node_by_def_id(def_id)
+    }) = tcx.hir_node_by_def_id(local_def_id)
     else {
         span_bug!(
-            tcx.def_span(def_id),
+            tcx.def_span(local_def_id),
             "`const_param_default` expected a generic parameter with a constant"
         )
     };
-    let icx = ItemCtxt::new(tcx, def_id);
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+
+    let icx = ItemCtxt::new(tcx, local_def_id);
+
+    let def_id = local_def_id.to_def_id();
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
+
     let ct = icx
         .lowerer()
-        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(default_ct, FeedConstTy::with_type_of(tcx, def_id, identity_args));
     ty::EarlyBinder::bind(ct)
 }
 
@@ -1623,7 +1557,7 @@ fn const_of_item<'tcx>(
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let ct = icx
         .lowerer()
-        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(ct_arg, FeedConstTy::with_type_of(tcx, def_id.to_def_id(), identity_args));
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {

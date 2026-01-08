@@ -40,17 +40,35 @@ pub unsafe fn read_all(
     return read_so_far as libc::ssize_t;
 }
 
+/// Try to fill the given slice by reading from `fd`. Error if that many bytes could not be read.
+#[track_caller]
+pub fn read_all_into_slice(fd: libc::c_int, buf: &mut [u8]) -> Result<(), libc::ssize_t> {
+    let res = unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    if res >= 0 {
+        assert_eq!(res as usize, buf.len());
+        Ok(())
+    } else {
+        Err(res)
+    }
+}
+
 /// Read exactly `N` bytes from `fd`. Error if that many bytes could not be read.
 #[track_caller]
 pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> Result<[u8; N], libc::ssize_t> {
     let mut buf = [0; N];
-    let res = unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) };
-    if res >= 0 {
-        assert_eq!(res as usize, buf.len());
-        Ok(buf)
-    } else {
-        Err(res)
-    }
+    read_all_into_slice(fd, &mut buf)?;
+    Ok(buf)
+}
+
+/// Do a single read from `fd` and return the part of the buffer that was written into,
+/// and the rest.
+#[track_caller]
+pub fn read_into_slice(
+    fd: libc::c_int,
+    buf: &mut [u8],
+) -> Result<(&mut [u8], &mut [u8]), libc::ssize_t> {
+    let res = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    if res >= 0 { Ok(buf.split_at_mut(res as usize)) } else { Err(res) }
 }
 
 pub unsafe fn write_all(

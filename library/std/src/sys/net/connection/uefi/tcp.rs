@@ -2,7 +2,7 @@ use super::tcp4;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::SocketAddr;
 use crate::ptr::NonNull;
-use crate::sys::{helpers, unsupported};
+use crate::sys::pal::{helpers, unsupported};
 use crate::time::Duration;
 
 pub(crate) enum Tcp {
@@ -18,7 +18,24 @@ impl Tcp {
                 temp.connect(timeout)?;
                 Ok(Tcp::V4(temp))
             }
-            SocketAddr::V6(_) => todo!(),
+            SocketAddr::V6(_) => unsupported(),
+        }
+    }
+
+    pub(crate) fn bind(addr: &SocketAddr) -> io::Result<Self> {
+        match addr {
+            SocketAddr::V4(x) => {
+                let temp = tcp4::Tcp4::new()?;
+                temp.configure(false, None, Some(x))?;
+                Ok(Tcp::V4(temp))
+            }
+            SocketAddr::V6(_) => unsupported(),
+        }
+    }
+
+    pub(crate) fn accept(&self) -> io::Result<Self> {
+        match self {
+            Self::V4(client) => client.accept().map(Tcp::V4),
         }
     }
 

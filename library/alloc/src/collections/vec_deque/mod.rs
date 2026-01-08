@@ -62,6 +62,13 @@ use self::spec_from_iter::SpecFromIter;
 
 mod spec_from_iter;
 
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deque_extend_front", issue = "146975")]
+pub use self::splice::Splice;
+
+#[cfg(not(no_global_oom_handling))]
+mod splice;
+
 #[cfg(test)]
 mod tests;
 
@@ -1836,6 +1843,64 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // the drain is complete and the Drain destructor is run.
 
         unsafe { Drain::new(self, drain_start, drain_len) }
+    }
+
+    /// Creates a splicing iterator that replaces the specified range in the deque with the given
+    /// `replace_with` iterator and yields the removed items. `replace_with` does not need to be the
+    /// same length as `range`.
+    ///
+    /// `range` is removed even if the `Splice` iterator is not consumed before it is dropped.
+    ///
+    /// It is unspecified how many elements are removed from the deque if the `Splice` value is
+    /// leaked.
+    ///
+    /// The input iterator `replace_with` is only consumed when the `Splice` value is dropped.
+    ///
+    /// This is optimal if:
+    ///
+    /// * The tail (elements in the deque after `range`) is empty,
+    /// * or `replace_with` yields fewer or equal elements than `range`'s length
+    /// * or the lower bound of its `size_hint()` is exact.
+    ///
+    /// Otherwise, a temporary vector is allocated and the tail is moved twice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and past the length of the deque.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(deque_extend_front)]
+    /// # use std::collections::VecDeque;
+    ///
+    /// let mut v = VecDeque::from(vec![1, 2, 3, 4]);
+    /// let new = [7, 8, 9];
+    /// let u: Vec<_> = v.splice(1..3, new).collect();
+    /// assert_eq!(v, [1, 7, 8, 9, 4]);
+    /// assert_eq!(u, [2, 3]);
+    /// ```
+    ///
+    /// Using `splice` to insert new items into a vector efficiently at a specific position
+    /// indicated by an empty range:
+    ///
+    /// ```
+    /// # #![feature(deque_extend_front)]
+    /// # use std::collections::VecDeque;
+    ///
+    /// let mut v = VecDeque::from(vec![1, 5]);
+    /// let new = [2, 3, 4];
+    /// v.splice(1..1, new);
+    /// assert_eq!(v, [1, 2, 3, 4, 5]);
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
+    where
+        R: RangeBounds<usize>,
+        I: IntoIterator<Item = T>,
+    {
+        Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
 
     /// Clears the deque, removing all values.

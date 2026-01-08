@@ -6,13 +6,11 @@ LL |             *ptr1 = *ptr2;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `self_copy` at tests/fail/overlapping_assignment.rs:LL:CC
-note: inside `main`
-  --> tests/fail/overlapping_assignment.rs:LL:CC
-   |
-LL |     self_copy(ptr, ptr);
-   |     ^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: self_copy
+               at tests/fail/overlapping_assignment.rs:LL:CC
+           1: main
+               at tests/fail/overlapping_assignment.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -792,7 +792,6 @@ pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>)
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
         PatExprKind::Lit { lit, negated } => visitor.visit_lit(*hir_id, *lit, *negated),
-        PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, *span),
     }
 }
@@ -1069,8 +1068,8 @@ pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
     match const_arg.try_as_ambig_ct() {
         Some(ambig_ct) => visitor.visit_const_arg(ambig_ct),
         None => {
-            let ConstArg { hir_id, kind: _ } = const_arg;
-            visitor.visit_infer(*hir_id, const_arg.span(), InferKind::Const(const_arg))
+            let ConstArg { hir_id, kind: _, span } = const_arg;
+            visitor.visit_infer(*hir_id, *span, InferKind::Const(const_arg))
         }
     }
 }
@@ -1079,9 +1078,13 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v, AmbigArg>,
 ) -> V::Result {
-    let ConstArg { hir_id, kind } = const_arg;
+    let ConstArg { hir_id, kind, span: _ } = const_arg;
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
+        ConstArgKind::Tup(exprs) => {
+            walk_list!(visitor, visit_const_arg, *exprs);
+            V::Result::output()
+        }
         ConstArgKind::Struct(qpath, field_exprs) => {
             try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
 
@@ -1091,9 +1094,16 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
 
             V::Result::output()
         }
+        ConstArgKind::TupleCall(qpath, args) => {
+            try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
+            for arg in *args {
+                try_visit!(visitor.visit_const_arg_unambig(*arg));
+            }
+            V::Result::output()
+        }
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
-        ConstArgKind::Error(_, _) => V::Result::output(), // errors and spans are not important
+        ConstArgKind::Error(_) => V::Result::output(), // errors and spans are not important
     }
 }
 
