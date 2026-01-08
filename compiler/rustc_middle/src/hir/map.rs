@@ -1003,7 +1003,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.hir_body(constant.body).value.span,
-            Node::ConstArg(const_arg) => const_arg.span(),
+            Node::ConstArg(const_arg) => const_arg.span,
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
             Node::ConstArgExprField(field) => field.span,

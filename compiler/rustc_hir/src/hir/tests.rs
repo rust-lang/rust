@@ -24,12 +24,16 @@ define_tests! {
     cast_ptr TyKind Ptr { 0: MutTy { ty: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }, mutbl: Mutability::Not }}
     cast_array TyKind Array {
         0: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never },
-        1: &ConstArg { hir_id: HirId::INVALID, kind: ConstArgKind::Anon(&AnonConst {
+        1: &ConstArg {
             hir_id: HirId::INVALID,
-            def_id: LocalDefId { local_def_index: DefIndex::ZERO },
-            body: BodyId { hir_id: HirId::INVALID },
+            kind: ConstArgKind::Anon(&AnonConst {
+                hir_id: HirId::INVALID,
+                def_id: LocalDefId { local_def_index: DefIndex::ZERO },
+                body: BodyId { hir_id: HirId::INVALID },
+                span: DUMMY_SP,
+            }),
             span: DUMMY_SP,
-        })}
+        },
     }
 
     cast_anon ConstArgKind Anon {
