@@ -273,6 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             let string_expression = &expressions[0].0;
 
             let snippet_app = snippet_with_applicability(cx, string_expression.span, "..", &mut applicability);
+            let (right_snip, _) = snippet_with_context(cx, right.span, e.span.ctxt(), "..", &mut applicability);
 
             span_lint_and_sugg(
                 cx,
@@ -280,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                 e.span,
                 "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                 "try",
-                format!("Some(&{snippet_app}[{}])", snippet(cx, right.span, "..")),
+                format!("Some(&{snippet_app}[{right_snip}])"),
                 applicability,
             );
         }
