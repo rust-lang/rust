@@ -646,32 +646,34 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     ) -> Self::Value {
         let tcx = self.tcx();
 
-        // FIXME remove usage of fn_abi
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-        assert!(!fn_abi.ret.is_indirect());
-        assert!(!fn_abi.c_variadic);
-
-        let llreturn_ty = match &fn_abi.ret.mode {
-            PassMode::Ignore => self.type_void(),
-            PassMode::Direct(_) | PassMode::Pair(..) => fn_abi.ret.layout.immediate_llvm_type(self),
-            PassMode::Cast { .. } | PassMode::Indirect { .. } => {
-                unreachable!()
+        let fn_ty = instance.ty(tcx, self.typing_env());
+        let fn_sig = match *fn_ty.kind() {
+            ty::FnDef(def_id, args) => {
+                tcx.instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args))
             }
+            _ => unreachable!(),
+        };
+        assert!(!fn_sig.c_variadic);
+
+        let ret_layout = self.layout_of(fn_sig.output());
+        let llreturn_ty = if ret_layout.is_zst() {
+            self.type_void()
+        } else {
+            ret_layout.immediate_llvm_type(self)
         };
 
-        let mut llargument_tys = Vec::with_capacity(fn_abi.args.len());
-        for arg in &fn_abi.args {
-            match &arg.mode {
-                PassMode::Ignore => {}
-                PassMode::Direct(_) => llargument_tys.push(arg.layout.immediate_llvm_type(self)),
-                PassMode::Pair(..) => {
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(self, 0, true));
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(self, 1, true));
-                }
-                PassMode::Indirect { .. } | PassMode::Cast { .. } => {
-                    unreachable!()
-                }
-            };
+        let mut llargument_tys = Vec::with_capacity(fn_sig.inputs().len());
+        for &arg in fn_sig.inputs() {
+            let arg_layout = self.layout_of(arg);
+            if arg_layout.is_zst() {
+                continue;
+            }
+            if let BackendRepr::ScalarPair(_, _) = arg_layout.backend_repr {
+                llargument_tys.push(arg_layout.scalar_pair_element_llvm_type(self, 0, true));
+                llargument_tys.push(arg_layout.scalar_pair_element_llvm_type(self, 1, true));
+                continue;
+            }
+            llargument_tys.push(arg_layout.immediate_llvm_type(self));
         }
 
         let fn_ty = self.type_func(&llargument_tys, llreturn_ty);
