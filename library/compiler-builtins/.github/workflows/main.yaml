@@ -203,7 +203,7 @@ jobs:
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
-        rustup set profile minimal
+        rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
@@ -247,16 +247,7 @@ jobs:
     - uses: taiki-e/install-action@cargo-binstall
 
     - name: Set up dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for gungraun
-        rustup update "$BENCHMARK_RUSTC" --no-self-update
-        rustup default "$BENCHMARK_RUSTC"
-        # Install the version of gungraun-runner that is specified in Cargo.toml
-        gungraun_version="$(cargo metadata --format-version=1 --features icount |
-           jq -r '.packages[] | select(.name == "gungraun").version')"
-        cargo binstall -y gungraun-runner --version "$gungraun_version"
-        sudo apt-get install valgrind
+      run: ./ci/install-bench-deps.sh
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -276,13 +267,7 @@ jobs:
         path: ${{ env.BASELINE_NAME }}.tar.xz
 
     - name: Run wall time benchmarks
-      run: |
-        # Always use the same seed for benchmarks. Ideally we should switch to a
-        # non-random generator.
-        export LIBM_SEED=benchesbenchesbenchesbencheswoo!
-        cargo bench --package libm-test \
-          --no-default-features \
-          --features short-benchmarks,build-musl,libm/force-soft-floats
+      run: ./ci/bench-runtime.sh
 
     - name: Print test logs if available
       if: always()
