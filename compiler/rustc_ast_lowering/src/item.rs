@@ -751,6 +751,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     });
 
+                for param in &fdec.inputs {
+                    self.lower_attrs_with_extra(
+                        hir_id,
+                        param.attrs(),
+                        param.span,
+                        Target::Param,
+                        attrs,
+                    );
+                }
+
                 // Unmarked safety in unsafe block defaults to unsafe.
                 let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
 
