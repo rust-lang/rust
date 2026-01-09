@@ -26,7 +26,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Loc, RemapPathScopeComponents};
+use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -418,7 +418,7 @@ impl Item {
             {
                 Some(Deprecation {
                     since: DeprecatedSince::Unspecified,
-                    note: Some(note),
+                    note: Some(Ident { name: note, span: DUMMY_SP }),
                     suggestion: None,
                 })
             } else {
@@ -455,7 +455,7 @@ impl Item {
             .attrs
             .other_attrs
             .iter()
-            .filter_map(|attr| attr.deprecation_note().map(|_| attr.span()));
+            .filter_map(|attr| attr.deprecation_note().map(|note| note.span));
 
         span_of_fragments(&self.attrs.doc_strings)
             .into_iter()

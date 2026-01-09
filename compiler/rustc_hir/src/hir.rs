@@ -1402,7 +1402,7 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn deprecation_note(&self) -> Option<Symbol> {
+    fn deprecation_note(&self) -> Option<Ident> {
         match &self {
             Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
             _ => None,
