@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -80,17 +80,15 @@ impl IntPlusOne {
         }
     }
 
-    fn check_binop(cx: &EarlyContext<'_>, le_or_ge: LeOrGe, lhs: &Expr, rhs: &Expr) -> Option<String> {
+    fn check_binop<'tcx>(le_or_ge: LeOrGe, lhs: &'tcx Expr, rhs: &'tcx Expr) -> Option<(&'tcx Expr, &'tcx Expr)> {
         match (le_or_ge, &lhs.kind, &rhs.kind) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (LeOrGe::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
                 match lhskind.node {
                     // `-1 + x`
-                    BinOpKind::Add if Self::is_neg_one(lhslhs) => {
-                        Self::generate_recommendation(cx, le_or_ge, lhsrhs, rhs)
-                    },
+                    BinOpKind::Add if Self::is_neg_one(lhslhs) => Some((lhsrhs, rhs)),
                     // `x - 1`
-                    BinOpKind::Sub if Self::is_one(lhsrhs) => Self::generate_recommendation(cx, le_or_ge, lhslhs, rhs),
+                    BinOpKind::Sub if Self::is_one(lhsrhs) => Some((lhslhs, rhs)),
                     _ => None,
                 }
             },
@@ -98,9 +96,9 @@ impl IntPlusOne {
             (LeOrGe::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
                 // `y + 1` and `1 + y`
                 if Self::is_one(rhslhs) {
-                    Self::generate_recommendation(cx, le_or_ge, lhs, rhsrhs)
+                    Some((lhs, rhsrhs))
                 } else if Self::is_one(rhsrhs) {
-                    Self::generate_recommendation(cx, le_or_ge, lhs, rhslhs)
+                    Some((lhs, rhslhs))
                 } else {
                     None
                 }
@@ -109,9 +107,9 @@ impl IntPlusOne {
             (LeOrGe::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
                 // `1 + x` and `x + 1`
                 if Self::is_one(lhslhs) {
-                    Self::generate_recommendation(cx, le_or_ge, lhsrhs, rhs)
+                    Some((lhsrhs, rhs))
                 } else if Self::is_one(lhsrhs) {
-                    Self::generate_recommendation(cx, le_or_ge, lhslhs, rhs)
+                    Some((lhslhs, rhs))
                 } else {
                     None
                 }
@@ -120,11 +118,9 @@ impl IntPlusOne {
             (LeOrGe::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
                 match rhskind.node {
                     // `-1 + y`
-                    BinOpKind::Add if Self::is_neg_one(rhslhs) => {
-                        Self::generate_recommendation(cx, le_or_ge, lhs, rhsrhs)
-                    },
+                    BinOpKind::Add if Self::is_neg_one(rhslhs) => Some((lhs, rhsrhs)),
                     // `y - 1`
-                    BinOpKind::Sub if Self::is_one(rhsrhs) => Self::generate_recommendation(cx, le_or_ge, lhs, rhslhs),
+                    BinOpKind::Sub if Self::is_one(rhsrhs) => Some((lhs, rhslhs)),
                     _ => None,
                 }
             },
@@ -132,33 +128,24 @@ impl IntPlusOne {
         }
     }
 
-    fn generate_recommendation(
-        cx: &EarlyContext<'_>,
-        le_or_ge: LeOrGe,
-        node: &Expr,
-        other_side: &Expr,
-    ) -> Option<String> {
-        let binop_string = match le_or_ge {
-            LeOrGe::Ge => ">",
-            LeOrGe::Le => "<",
-        };
-        if let Some(snippet) = node.span.get_source_text(cx)
-            && let Some(other_side_snippet) = other_side.span.get_source_text(cx)
-        {
-            return Some(format!("{snippet} {binop_string} {other_side_snippet}"));
-        }
-        None
-    }
-
-    fn emit_warning(cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
-        span_lint_and_sugg(
+    fn emit_warning(cx: &EarlyContext<'_>, expr: &Expr, new_lhs: &Expr, le_or_ge: LeOrGe, new_rhs: &Expr) {
+        span_lint_and_then(
             cx,
             INT_PLUS_ONE,
-            block.span,
+            expr.span,
             "unnecessary `>= y + 1` or `x - 1 >=`",
-            "change it to",
-            recommendation,
-            Applicability::MachineApplicable, // snippet
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let ctxt = expr.span.ctxt();
+                let new_lhs = sugg::Sugg::ast(cx, new_lhs, "_", ctxt, &mut app);
+                let new_rhs = sugg::Sugg::ast(cx, new_rhs, "_", ctxt, &mut app);
+                let new_binop = match le_or_ge {
+                    LeOrGe::Ge => BinOpKind::Gt,
+                    LeOrGe::Le => BinOpKind::Lt,
+                };
+                let rec = sugg::make_binop(new_binop, &new_lhs, &new_rhs);
+                diag.span_suggestion(expr.span, "change it to", rec, app);
+            },
         );
     }
 }
@@ -167,9 +154,9 @@ impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Binary(binop, lhs, rhs) = &expr.kind
             && let Ok(le_or_ge) = LeOrGe::try_from(binop.node)
-            && let Some(rec) = Self::check_binop(cx, le_or_ge, lhs, rhs)
+            && let Some((new_lhs, new_rhs)) = Self::check_binop(le_or_ge, lhs, rhs)
         {
-            Self::emit_warning(cx, expr, rec);
+            Self::emit_warning(cx, expr, new_lhs, le_or_ge, new_rhs);
         }
     }
 }
