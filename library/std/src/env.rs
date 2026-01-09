@@ -704,8 +704,8 @@ pub fn temp_dir() -> PathBuf {
 /// If the executable is renamed while it is running, platforms may return the
 /// path at the time it was loaded instead of the new path.
 ///
-/// If the executable is deleted while it is running, Linux and other platforms
-/// may return the path with the string `" deleted()"` appended.
+/// If the executable has been deleted, Linux may return the path with the string `" deleted()"`
+/// appended.
 ///
 /// # Errors
 ///
