@@ -1200,9 +1200,11 @@ nav.sub {
 	display: initial;
 }
 .anchor {
+	--anchor-link-shift: 0.5em;
 	display: none;
 	position: absolute;
-	left: -0.5em;
+	left: calc(var(--anchor-link-shift) * -1);
+	padding-right: var(--anchor-link-shift);
 	background: none !important;
 }
 .anchor.field {
