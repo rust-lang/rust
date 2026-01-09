@@ -46,7 +46,7 @@ const _: () = {
         edition: Edition,
         parent: SyntaxContext,
         opaque: SyntaxContext,
-        opaque_and_semitransparent: SyntaxContext,
+        opaque_and_semiopaque: SyntaxContext,
     }
 
     impl PartialEq for SyntaxContextData {
@@ -214,7 +214,7 @@ const _: () = {
             edition: T2,
             parent: T3,
             opaque: impl FnOnce(SyntaxContext) -> SyntaxContext,
-            opaque_and_semitransparent: impl FnOnce(SyntaxContext) -> SyntaxContext,
+            opaque_and_semiopaque: impl FnOnce(SyntaxContext) -> SyntaxContext,
         ) -> Self
         where
             Db: ?Sized + salsa::Database,
@@ -241,7 +241,7 @@ const _: () = {
                     edition: zalsa_::interned::Lookup::into_owned(data.2),
                     parent: zalsa_::interned::Lookup::into_owned(data.3),
                     opaque: opaque(zalsa_::FromId::from_id(id)),
-                    opaque_and_semitransparent: opaque_and_semitransparent(
+                    opaque_and_semiopaque: opaque_and_semiopaque(
                         zalsa_::FromId::from_id(id),
                     ),
                 },
@@ -301,7 +301,7 @@ const _: () = {
             }
         }
 
-        /// This context, but with all transparent and semi-transparent expansions filtered away.
+        /// This context, but with all transparent and semi-opaque expansions filtered away.
         pub fn opaque<Db>(self, db: &'db Db) -> SyntaxContext
         where
             Db: ?Sized + zalsa_::Database,
@@ -317,7 +317,7 @@ const _: () = {
         }
 
         /// This context, but with all transparent expansions filtered away.
-        pub fn opaque_and_semitransparent<Db>(self, db: &'db Db) -> SyntaxContext
+        pub fn opaque_and_semiopaque<Db>(self, db: &'db Db) -> SyntaxContext
         where
             Db: ?Sized + zalsa_::Database,
         {
@@ -325,7 +325,7 @@ const _: () = {
                 Some(id) => {
                     let zalsa = db.zalsa();
                     let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
-                    fields.opaque_and_semitransparent
+                    fields.opaque_and_semiopaque
                 }
                 None => self,
             }
@@ -405,7 +405,7 @@ impl<'db> SyntaxContext {
 
     #[inline]
     pub fn normalize_to_macro_rules(self, db: &'db dyn salsa::Database) -> SyntaxContext {
-        self.opaque_and_semitransparent(db)
+        self.opaque_and_semiopaque(db)
     }
 
     pub fn is_opaque(self, db: &'db dyn salsa::Database) -> bool {
@@ -476,13 +476,13 @@ pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
     Transparent,
-    /// Identifier produced by a semi-transparent expansion may be resolved
+    /// Identifier produced by a semi-opaque expansion may be resolved
     /// either at call-site or at definition-site.
     /// If it's a local variable, label or `$crate` then it's resolved at def-site.
     /// Otherwise it's resolved at call-site.
     /// `macro_rules` macros behave like this, built-in macros currently behave like this too,
     /// but that's an implementation detail.
-    SemiTransparent,
+    SemiOpaque,
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
