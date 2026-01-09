@@ -210,7 +210,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn report_conflict(
         &mut self,
-        parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
         new_binding: Decl<'ra>,
@@ -218,13 +217,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
-            return self.report_conflict(parent, ident, ns, old_binding, new_binding);
+            return self.report_conflict(ident, ns, old_binding, new_binding);
         }
 
-        let container = match parent.kind {
+        let container = match old_binding.parent_module.unwrap().kind {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
+            ModuleKind::Def(kind, def_id, _) => kind.descr(def_id),
             ModuleKind::Block => "block",
         };
 
@@ -2034,15 +2033,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
 
-            if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
-                if module == self.graph_root {
-                    help_msgs.push(format!(
-                        "use `crate::{ident}` to refer to this {thing} unambiguously"
-                    ));
-                } else if module != self.empty_module && module.is_normal() {
-                    help_msgs.push(format!(
-                        "use `self::{ident}` to refer to this {thing} unambiguously"
-                    ));
+            if kind != AmbiguityKind::GlobVsGlob {
+                if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
+                    if module == self.graph_root {
+                        help_msgs.push(format!(
+                            "use `crate::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    } else if module.is_normal() {
+                        help_msgs.push(format!(
+                            "use `self::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    }
                 }
             }
 
