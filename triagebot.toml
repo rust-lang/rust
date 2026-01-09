@@ -1113,7 +1113,7 @@ cc = [
     "@obi1kenobi",
 ]
 
-[mentions."src/tools/cargo"]
+[mentions."src/tools/cargo/"]
 cc = ["@ehuss"]
 
 [mentions."src/tools/clippy"]
