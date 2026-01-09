@@ -135,6 +135,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::drop_forget_ref::FORGET_NON_DROP_INFO,
     crate::drop_forget_ref::MEM_FORGET_INFO,
     crate::duplicate_mod::DUPLICATE_MOD_INFO,
+    crate::duration_suboptimal_units::DURATION_SUBOPTIMAL_UNITS_INFO,
     crate::else_if_without_else::ELSE_IF_WITHOUT_ELSE_INFO,
     crate::empty_drop::EMPTY_DROP_INFO,
     crate::empty_enums::EMPTY_ENUMS_INFO,
