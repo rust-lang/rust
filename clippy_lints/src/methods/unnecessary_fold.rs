@@ -1,10 +1,10 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_hir::def::{DefKind, Res};
@@ -59,6 +59,34 @@ struct Replacement {
     method_name: &'static str,
     has_args: bool,
     has_generic_return: bool,
+    is_short_circuiting: bool,
+}
+
+impl Replacement {
+    fn default_applicability(&self) -> Applicability {
+        if self.is_short_circuiting {
+            Applicability::MaybeIncorrect
+        } else {
+            Applicability::MachineApplicable
+        }
+    }
+
+    fn maybe_add_note(&self, diag: &mut Diag<'_, ()>) {
+        if self.is_short_circuiting {
+            diag.note(format!(
+                "the `{}` method is short circuiting and may change the program semantics if the iterator has side effects",
+                self.method_name
+            ));
+        }
+    }
+
+    fn maybe_turbofish(&self, ty: Ty<'_>) -> String {
+        if self.has_generic_return {
+            format!("::<{ty}>")
+        } else {
+            String::new()
+        }
+    }
 }
 
 fn check_fold_with_op(
@@ -86,32 +114,30 @@ fn check_fold_with_op(
         && left_expr.res_local_id() == Some(first_arg_id)
         && (replacement.has_args || right_expr.res_local_id() == Some(second_arg_id))
     {
-        let mut applicability = Applicability::MachineApplicable;
-
-        let turbofish = if replacement.has_generic_return {
-            format!("::<{}>", cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs())
-        } else {
-            String::new()
-        };
-
-        let sugg = if replacement.has_args {
-            format!(
-                "{method}{turbofish}(|{second_arg_ident}| {r})",
-                method = replacement.method_name,
-                r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
-            )
-        } else {
-            format!("{method}{turbofish}()", method = replacement.method_name)
-        };
-
-        span_lint_and_sugg(
+        let span = fold_span.with_hi(expr.span.hi());
+        span_lint_and_then(
             cx,
             UNNECESSARY_FOLD,
-            fold_span.with_hi(expr.span.hi()),
+            span,
             "this `.fold` can be written more succinctly using another method",
-            "try",
-            sugg,
-            applicability,
+            |diag| {
+                let mut applicability = replacement.default_applicability();
+                let turbofish =
+                    replacement.maybe_turbofish(cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs());
+                let (r_snippet, _) =
+                    snippet_with_context(cx, right_expr.span, expr.span.ctxt(), "EXPR", &mut applicability);
+                let sugg = if replacement.has_args {
+                    format!(
+                        "{method}{turbofish}(|{second_arg_ident}| {r_snippet})",
+                        method = replacement.method_name,
+                    )
+                } else {
+                    format!("{method}{turbofish}()", method = replacement.method_name)
+                };
+
+                diag.span_suggestion(span, "try", sugg, applicability);
+                replacement.maybe_add_note(diag);
+            },
         );
         return true;
     }
@@ -131,22 +157,25 @@ fn check_fold_with_method(
         // Check if the function belongs to the operator
         && cx.tcx.is_diagnostic_item(method, fn_did)
     {
-        let applicability = Applicability::MachineApplicable;
-
-        let turbofish = if replacement.has_generic_return {
-            format!("::<{}>", cx.typeck_results().expr_ty(expr))
-        } else {
-            String::new()
-        };
-
-        span_lint_and_sugg(
+        let span = fold_span.with_hi(expr.span.hi());
+        span_lint_and_then(
             cx,
             UNNECESSARY_FOLD,
-            fold_span.with_hi(expr.span.hi()),
+            span,
             "this `.fold` can be written more succinctly using another method",
-            "try",
-            format!("{method}{turbofish}()", method = replacement.method_name),
-            applicability,
+            |diag| {
+                diag.span_suggestion(
+                    span,
+                    "try",
+                    format!(
+                        "{method}{turbofish}()",
+                        method = replacement.method_name,
+                        turbofish = replacement.maybe_turbofish(cx.typeck_results().expr_ty(expr))
+                    ),
+                    replacement.default_applicability(),
+                );
+                replacement.maybe_add_note(diag);
+            },
         );
     }
 }
@@ -171,6 +200,7 @@ pub(super) fn check<'tcx>(
                     method_name: "any",
                     has_args: true,
                     has_generic_return: false,
+                    is_short_circuiting: true,
                 };
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, replacement);
             },
@@ -179,6 +209,7 @@ pub(super) fn check<'tcx>(
                     method_name: "all",
                     has_args: true,
                     has_generic_return: false,
+                    is_short_circuiting: true,
                 };
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, replacement);
             },
@@ -187,6 +218,7 @@ pub(super) fn check<'tcx>(
                     method_name: "sum",
                     has_args: false,
                     has_generic_return: needs_turbofish(cx, expr),
+                    is_short_circuiting: false,
                 };
                 if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, replacement) {
                     check_fold_with_method(cx, expr, acc, fold_span, sym::add, replacement);
@@ -197,6 +229,7 @@ pub(super) fn check<'tcx>(
                     method_name: "product",
                     has_args: false,
                     has_generic_return: needs_turbofish(cx, expr),
+                    is_short_circuiting: false,
                 };
                 if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, replacement) {
                     check_fold_with_method(cx, expr, acc, fold_span, sym::mul, replacement);
