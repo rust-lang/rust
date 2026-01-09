@@ -1720,6 +1720,8 @@ supported_targets! {
 
     ("amdgcn-amd-amdhsa", amdgcn_amd_amdhsa),
 
+    ("spirv-unknown-vulkan1.3", spirv_unknown_vulkan1_3),
+
     ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
     ("xtensa-esp32-espidf", xtensa_esp32_espidf),
     ("xtensa-esp32s2-none-elf", xtensa_esp32s2_none_elf),
@@ -1995,6 +1997,7 @@ crate::target_spec_enum! {
         VexOs = "vexos",
         VisionOs = "visionos",
         Vita = "vita",
+        Vulkan = "vulkan",
         VxWorks = "vxworks",
         Wasi = "wasi",
         WatchOs = "watchos",
