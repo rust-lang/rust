@@ -1147,7 +1147,7 @@ impl char {
     /// As an iterator:
     ///
     /// ```
-    /// for c in 'ß'.to_uppercase() {
+    /// for c in 'ﬃ'.to_uppercase() {
     ///     print!("{c}");
     /// }
     /// println!();
@@ -1156,13 +1156,13 @@ impl char {
     /// Using `println!` directly:
     ///
     /// ```
-    /// println!("{}", 'ß'.to_uppercase());
+    /// println!("{}", 'ﬃ'.to_uppercase());
     /// ```
     ///
     /// Both are equivalent to:
     ///
     /// ```
-    /// println!("SS");
+    /// println!("FFI");
     /// ```
     ///
     /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
@@ -1171,7 +1171,7 @@ impl char {
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
     ///
     /// // Sometimes the result is more than one character:
-    /// assert_eq!('ß'.to_uppercase().to_string(), "SS");
+    /// assert_eq!('ﬃ'.to_uppercase().to_string(), "FFI");
     ///
     /// // Characters that do not have both uppercase and lowercase
     /// // convert into themselves.
