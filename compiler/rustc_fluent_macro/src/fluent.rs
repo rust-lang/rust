@@ -98,22 +98,17 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             return failed(&crate_name);
         }
     };
-    let mut bad = false;
     for esc in ["\\n", "\\\"", "\\'"] {
         for _ in resource_contents.matches(esc) {
-            bad = true;
             Diagnostic::spanned(resource_span, Level::Error, format!("invalid escape `{esc}` in Fluent resource"))
                 .note("Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)")
                 .emit();
         }
     }
-    if bad {
-        return failed(&crate_name);
-    }
 
     let resource = match FluentResource::try_new(resource_contents) {
         Ok(resource) => resource,
-        Err((this, errs)) => {
+        Err((resource, errs)) => {
             Diagnostic::spanned(resource_span, Level::Error, "could not parse Fluent resource")
                 .help("see additional errors emitted")
                 .emit();
@@ -124,7 +119,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 err.replace_range(0..1, &err.chars().next().unwrap().to_lowercase().to_string());
 
                 let message = annotate_snippets::Level::Error.title(&err).snippet(
-                    Snippet::source(this.source())
+                    Snippet::source(resource.source())
                         // Using an absolute path is fine here as compilation will not continue.
                         .origin(absolute_ftl_path.to_str().unwrap())
                         .fold(true)
@@ -134,7 +129,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 eprintln!("{}\n", renderer.render(message));
             }
 
-            return failed(&crate_name);
+            // Try to recover from the parse error to avoid cascading errors.
+            resource
         }
     };
 
