@@ -188,7 +188,7 @@ pub(crate) struct GlobalState {
     /// been called.
     pub(crate) deferred_task_queue: DeferredTaskQueue,
 
-    /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
+    /// HACK: Workaround for <https://github.com/rust-lang/rust-analyzer/issues/19709>
     /// This is marked true if we failed to load a crate root file at crate graph creation,
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
     pub(crate) incomplete_crate_graph: bool,
