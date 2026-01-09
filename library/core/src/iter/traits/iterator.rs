@@ -2862,6 +2862,17 @@ pub trait Iterator {
     /// assert_eq!(a.into_iter().find(|&x| x == 5), None);
     /// ```
     ///
+    /// Iterating over references:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// // `iter()` yields references i.e. `&i32` and `find()` takes a
+    /// // reference to each element.
+    /// assert_eq!(a.iter().find(|&&x| x == 2), Some(&2));
+    /// assert_eq!(a.iter().find(|&&x| x == 5), None);
+    /// ```
+    ///
     /// Stopping at the first `true`:
     ///
     /// ```
