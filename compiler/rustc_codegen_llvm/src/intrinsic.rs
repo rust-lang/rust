@@ -560,6 +560,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
 
+            sym::amdgpu_dispatch_ptr => {
+                let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
+                // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
+                self.pointercast(val, self.type_ptr())
+            }
+
             _ if name.as_str().starts_with("simd_") => {
                 // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
                 // This gives them the expected layout of a regular #[repr(simd)] vector.
