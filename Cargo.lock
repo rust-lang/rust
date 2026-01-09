@@ -3809,6 +3809,7 @@ dependencies = [
 name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
+ "anstyle",
  "ctrlc",
  "jiff",
  "libc",
@@ -3834,6 +3835,7 @@ dependencies = [
  "rustc_index",
  "rustc_infer",
  "rustc_interface",
+ "rustc_lexer",
  "rustc_lint",
  "rustc_log",
  "rustc_macros",
