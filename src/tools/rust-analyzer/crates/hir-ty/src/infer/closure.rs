@@ -466,7 +466,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     /// Given an `FnOnce::Output` or `AsyncFn::Output` projection, extract the args
-    /// and return type to infer a [`ty::PolyFnSig`] for the closure.
+    /// and return type to infer a `PolyFnSig` for the closure.
     fn extract_sig_from_projection(
         &self,
         projection: PolyProjectionPredicate<'db>,
