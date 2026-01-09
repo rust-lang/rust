@@ -120,6 +120,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
 
   if [ "$DEPLOY_ALT" != "" ] && isLinux; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level=2"
+  else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
   fi
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
