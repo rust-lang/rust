@@ -5,7 +5,7 @@ macro transparent() {
     struct Transparent;
     let transparent = 0;
 }
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 macro semiopaque() {
     struct SemiOpaque;
     let semiopaque = 0;
