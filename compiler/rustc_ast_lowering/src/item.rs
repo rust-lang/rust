@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl};
+use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{
@@ -134,6 +134,56 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_eii_extern_target(
+        &mut self,
+        id: NodeId,
+        eii_name: Ident,
+        EiiExternTarget { extern_item_path, impl_unsafe }: &EiiExternTarget,
+    ) -> Option<EiiDecl> {
+        self.lower_path_simple_eii(id, extern_item_path).map(|did| EiiDecl {
+            eii_extern_target: did,
+            impl_unsafe: *impl_unsafe,
+            name: eii_name,
+        })
+    }
+
+    fn lower_eii_impl(
+        &mut self,
+        EiiImpl {
+            node_id,
+            eii_macro_path,
+            impl_safety,
+            span,
+            inner_span,
+            is_default,
+            known_eii_macro_resolution,
+        }: &EiiImpl,
+    ) -> hir::attrs::EiiImpl {
+        let resolution = if let Some(target) = known_eii_macro_resolution
+            && let Some(decl) = self.lower_eii_extern_target(
+                *node_id,
+                // the expect is ok here since we always generate this path in the eii macro.
+                eii_macro_path.segments.last().expect("at least one segment").ident,
+                target,
+            ) {
+            EiiImplResolution::Known(decl)
+        } else if let Some(macro_did) = self.lower_path_simple_eii(*node_id, eii_macro_path) {
+            EiiImplResolution::Macro(macro_did)
+        } else {
+            EiiImplResolution::Error(
+                self.dcx().span_delayed_bug(*span, "eii never resolved without errors given"),
+            )
+        };
+
+        hir::attrs::EiiImpl {
+            span: self.lower_span(*span),
+            inner_span: self.lower_span(*inner_span),
+            impl_marked_unsafe: self.lower_safety(*impl_safety, hir::Safety::Safe).is_unsafe(),
+            is_default: *is_default,
+            resolution,
+        }
+    }
+
     fn generate_extra_attrs_for_item_kind(
         &mut self,
         id: NodeId,
@@ -143,49 +193,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Fn(box Fn { eii_impls, .. }) if eii_impls.is_empty() => Vec::new(),
             ItemKind::Fn(box Fn { eii_impls, .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
-                    eii_impls
-                        .iter()
-                        .flat_map(
-                            |EiiImpl {
-                                 node_id,
-                                 eii_macro_path,
-                                 impl_safety,
-                                 span,
-                                 inner_span,
-                                 is_default,
-                             }| {
-                                self.lower_path_simple_eii(*node_id, eii_macro_path).map(|did| {
-                                    hir::attrs::EiiImpl {
-                                        eii_macro: did,
-                                        span: self.lower_span(*span),
-                                        inner_span: self.lower_span(*inner_span),
-                                        impl_marked_unsafe: self
-                                            .lower_safety(*impl_safety, hir::Safety::Safe)
-                                            .is_unsafe(),
-                                        is_default: *is_default,
-                                    }
-                                })
-                            },
-                        )
-                        .collect(),
+                    eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
             }
-            ItemKind::MacroDef(
-                _,
-                MacroDef {
-                    eii_extern_target: Some(EiiExternTarget { extern_item_path, impl_unsafe, span }),
-                    ..
-                },
-            ) => self
-                .lower_path_simple_eii(id, extern_item_path)
-                .map(|did| {
-                    vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(EiiDecl {
-                        eii_extern_target: did,
-                        impl_unsafe: *impl_unsafe,
-                        span: self.lower_span(*span),
-                    }))]
-                })
+            ItemKind::MacroDef(name, MacroDef { eii_extern_target: Some(target), .. }) => self
+                .lower_eii_extern_target(id, *name, target)
+                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(decl))])
                 .unwrap_or_default(),
+
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
             | ItemKind::Static(..)

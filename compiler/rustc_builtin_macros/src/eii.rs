@@ -103,19 +103,19 @@ fn eii_(
 
     // span of the declaring item without attributes
     let item_span = func.sig.span;
-    // span of the eii attribute and the item below it, i.e. the full declaration
-    let decl_span = eii_attr_span.to(item_span);
     let foreign_item_name = func.ident;
 
     let mut return_items = Vec::new();
 
     if func.body.is_some() {
         return_items.push(Box::new(generate_default_impl(
+            ecx,
             &func,
             impl_unsafe,
             macro_name,
             eii_attr_span,
             item_span,
+            foreign_item_name,
         )))
     }
 
@@ -133,7 +133,6 @@ fn eii_(
         macro_name,
         foreign_item_name,
         impl_unsafe,
-        decl_span,
     )));
 
     return_items.into_iter().map(wrap_item).collect()
@@ -187,11 +186,13 @@ fn filter_attrs_for_multiple_eii_attr(
 }
 
 fn generate_default_impl(
+    ecx: &mut ExtCtxt<'_>,
     func: &ast::Fn,
     impl_unsafe: bool,
     macro_name: Ident,
     eii_attr_span: Span,
     item_span: Span,
+    foreign_item_name: Ident,
 ) -> ast::Item {
     // FIXME: re-add some original attrs
     let attrs = ThinVec::new();
@@ -208,6 +209,21 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
+        known_eii_macro_resolution: Some(ast::EiiExternTarget {
+            extern_item_path: ast::Path {
+                span: foreign_item_name.span,
+                segments: thin_vec![
+                    ast::PathSegment {
+                        ident: Ident::from_str_and_span("super", foreign_item_name.span,),
+                        id: DUMMY_NODE_ID,
+                        args: None
+                    },
+                    ast::PathSegment { ident: foreign_item_name, id: DUMMY_NODE_ID, args: None },
+                ],
+                tokens: None,
+            },
+            impl_unsafe,
+        }),
     });
 
     ast::Item {
@@ -236,18 +252,66 @@ fn generate_default_impl(
                         stmts: thin_vec![ast::Stmt {
                             id: DUMMY_NODE_ID,
                             kind: ast::StmtKind::Item(Box::new(ast::Item {
-                                attrs,
+                                attrs: ThinVec::new(),
                                 id: DUMMY_NODE_ID,
                                 span: item_span,
                                 vis: ast::Visibility {
-                                    span: eii_attr_span,
+                                    span: item_span,
                                     kind: ast::VisibilityKind::Inherited,
                                     tokens: None
                                 },
-                                kind: ItemKind::Fn(Box::new(default_func)),
+                                kind: ItemKind::Mod(
+                                    ast::Safety::Default,
+                                    Ident::from_str_and_span("dflt", item_span),
+                                    ast::ModKind::Loaded(
+                                        thin_vec![
+                                            Box::new(ast::Item {
+                                                attrs: thin_vec![ecx.attr_nested_word(
+                                                    sym::allow,
+                                                    sym::unused_imports,
+                                                    item_span
+                                                ),],
+                                                id: DUMMY_NODE_ID,
+                                                span: item_span,
+                                                vis: ast::Visibility {
+                                                    span: eii_attr_span,
+                                                    kind: ast::VisibilityKind::Inherited,
+                                                    tokens: None
+                                                },
+                                                kind: ItemKind::Use(ast::UseTree {
+                                                    prefix: ast::Path::from_ident(
+                                                        Ident::from_str_and_span(
+                                                            "super", item_span,
+                                                        )
+                                                    ),
+                                                    kind: ast::UseTreeKind::Glob,
+                                                    span: item_span,
+                                                }),
+                                                tokens: None,
+                                            }),
+                                            Box::new(ast::Item {
+                                                attrs,
+                                                id: DUMMY_NODE_ID,
+                                                span: item_span,
+                                                vis: ast::Visibility {
+                                                    span: eii_attr_span,
+                                                    kind: ast::VisibilityKind::Inherited,
+                                                    tokens: None
+                                                },
+                                                kind: ItemKind::Fn(Box::new(default_func)),
+                                                tokens: None,
+                                            }),
+                                        ],
+                                        ast::Inline::Yes,
+                                        ast::ModSpans {
+                                            inner_span: item_span,
+                                            inject_use_span: item_span,
+                                        }
+                                    )
+                                ),
                                 tokens: None,
                             })),
-                            span: eii_attr_span
+                            span: eii_attr_span,
                         }],
                         id: DUMMY_NODE_ID,
                         rules: ast::BlockCheckMode::Default,
@@ -352,7 +416,6 @@ fn generate_attribute_macro_to_implement(
     macro_name: Ident,
     foreign_item_name: Ident,
     impl_unsafe: bool,
-    decl_span: Span,
 ) -> ast::Item {
     let mut macro_attrs = ThinVec::new();
 
@@ -394,7 +457,6 @@ fn generate_attribute_macro_to_implement(
                 eii_extern_target: Some(ast::EiiExternTarget {
                     extern_item_path: ast::Path::from_ident(foreign_item_name),
                     impl_unsafe,
-                    span: decl_span,
                 }),
             },
         ),
@@ -451,7 +513,7 @@ pub(crate) fn eii_extern_target(
         false
     };
 
-    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe, span });
+    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
     vec![item]
@@ -508,6 +570,7 @@ pub(crate) fn eii_shared_macro(
         impl_safety: meta_item.unsafety,
         span,
         is_default,
+        known_eii_macro_resolution: None,
     });
 
     vec![item]
