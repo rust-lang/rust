@@ -2506,7 +2506,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let ty::Tuple(tys) = ty.kind() else {
-            let e = tcx.dcx().span_err(span, format!("expected {}, found const tuple", ty));
+            let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
             return Const::new_error(tcx, e);
         };
 
