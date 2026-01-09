@@ -141,8 +141,6 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
                 macro report_unstable_modifier($feature: ident) {
                     if !features.$feature() {
-                        // FIXME: make this translatable
-                        #[expect(rustc::untranslatable_diagnostic)]
                         feature_err(
                             sess,
                             sym::$feature,

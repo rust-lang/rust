@@ -590,8 +590,6 @@ pub trait LintContext {
         // and stored between compilation sessions. To not manually do these steps, we simply create
         // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
         // normal expected lint diagnostic.
-        #[allow(rustc::diagnostic_outside_of_impl)]
-        #[allow(rustc::untranslatable_diagnostic)]
         self.sess()
             .dcx()
             .struct_expect(

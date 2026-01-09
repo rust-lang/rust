@@ -724,7 +724,6 @@ impl<O> OptionDesc<O> {
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn build_options<O: Default>(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,

@@ -1,6 +1,3 @@
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use core::ops::ControlFlow;
 
 use either::Either;

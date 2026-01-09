@@ -8,8 +8,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]

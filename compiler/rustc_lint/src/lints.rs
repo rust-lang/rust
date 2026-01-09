@@ -1,6 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
 use rustc_errors::codes::*;
@@ -2869,7 +2868,6 @@ pub(crate) struct AmbiguousGlobReexports {
     pub duplicate_reexport: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -2882,7 +2880,6 @@ pub(crate) struct HiddenGlobReexports {
     pub private_item: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 

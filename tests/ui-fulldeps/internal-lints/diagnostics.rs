@@ -4,8 +4,6 @@
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 extern crate rustc_errors;
 extern crate rustc_fluent_macro;
@@ -106,7 +104,6 @@ pub fn make_diagnostics<'a>(dcx: DiagCtxtHandle<'a>) {
 // `diagnostic_outside_of_impl`.
 #[rustc_lint_diagnostics]
 pub fn skipped_because_of_annotation<'a>(dcx: DiagCtxtHandle<'a>) {
-    #[allow(rustc::untranslatable_diagnostic)]
     let _diag = dcx.struct_err("untranslatable diagnostic"); // okay!
 }
 
