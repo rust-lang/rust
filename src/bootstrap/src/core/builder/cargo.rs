@@ -683,11 +683,13 @@ impl Builder<'_> {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
 
-        rustflags.arg(match use_new_symbol_mangling {
-            Some(true) => "-Csymbol-mangling-version=v0",
-            Some(false) => "-Csymbol-mangling-version=legacy",
-            None => "",
-        });
+        if let Some(usm) = use_new_symbol_mangling {
+            rustflags.arg(if usm {
+                "-Csymbol-mangling-version=v0"
+            } else {
+                "-Csymbol-mangling-version=legacy"
+            });
+        }
 
         // Always enable move/copy annotations for profiler visibility (non-stage0 only).
         // Note that -Zannotate-moves is only effective with debugging info enabled.
