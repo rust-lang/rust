@@ -212,7 +212,7 @@ impl fmt::Display for PanicHookInfo<'_> {
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(libstd_sys_internals, const_format_args, panic_internals, rt)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro panic_2015 {
     () => ({
         $crate::rt::begin_panic("explicit panic")
