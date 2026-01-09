@@ -27,6 +27,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -471,6 +472,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",

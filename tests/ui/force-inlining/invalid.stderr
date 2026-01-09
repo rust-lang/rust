@@ -1,9 +1,3 @@
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/invalid.rs:131:11
-   |
-LL | fn barqux(#[rustc_force_inline] _x: u32) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^
-
 error[E0805]: malformed `rustc_force_inline` attribute input
   --> $DIR/invalid.rs:15:1
    |
@@ -265,7 +259,7 @@ LL | fn barqux(#[rustc_force_inline] _x: u32) {}
    = help: `#[rustc_force_inline]` can only be applied to functions
 
 error: `#[rustc_force_inline]` attribute cannot be used on closures
-  --> $DIR/invalid.rs:148:14
+  --> $DIR/invalid.rs:147:14
    |
 LL |     let _x = #[rustc_force_inline] || { };
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -273,7 +267,7 @@ LL |     let _x = #[rustc_force_inline] || { };
    = help: `#[rustc_force_inline]` can be applied to functions and inherent methods
 
 error: `#[rustc_force_inline]` attribute cannot be used on expressions
-  --> $DIR/invalid.rs:150:14
+  --> $DIR/invalid.rs:149:14
    |
 LL |     let _y = #[rustc_force_inline] 3 + 4;
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -281,7 +275,7 @@ LL |     let _y = #[rustc_force_inline] 3 + 4;
    = help: `#[rustc_force_inline]` can only be applied to functions
 
 error: `#[rustc_force_inline]` attribute cannot be used on statements
-  --> $DIR/invalid.rs:152:5
+  --> $DIR/invalid.rs:151:5
    |
 LL |     #[rustc_force_inline]
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -289,7 +283,7 @@ LL |     #[rustc_force_inline]
    = help: `#[rustc_force_inline]` can only be applied to functions
 
 error: `#[rustc_force_inline]` attribute cannot be used on match arms
-  --> $DIR/invalid.rs:157:9
+  --> $DIR/invalid.rs:156:9
    |
 LL |         #[rustc_force_inline]
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -297,7 +291,7 @@ LL |         #[rustc_force_inline]
    = help: `#[rustc_force_inline]` can only be applied to functions
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:135:1
+  --> $DIR/invalid.rs:134:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -306,7 +300,7 @@ LL | async fn async_foo() {}
    | -------------------- `async`, `gen` or `async gen` function
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:139:1
+  --> $DIR/invalid.rs:138:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +309,7 @@ LL | gen fn gen_foo() {}
    | ---------------- `async`, `gen` or `async gen` function
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:143:1
+  --> $DIR/invalid.rs:142:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -323,7 +317,7 @@ LL |
 LL | async gen fn async_gen_foo() {}
    | ---------------------------- `async`, `gen` or `async gen` function
 
-error: aborting due to 36 previous errors
+error: aborting due to 35 previous errors
 
 Some errors have detailed explanations: E0539, E0805.
 For more information about an error, try `rustc --explain E0539`.

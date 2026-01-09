@@ -7,7 +7,7 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
+use super::prelude::*;
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};

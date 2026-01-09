@@ -13,6 +13,7 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
