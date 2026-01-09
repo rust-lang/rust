@@ -86,8 +86,8 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn is_transmutable(
         &self,
-        dst: <Self::Interner as Interner>::Ty,
         src: <Self::Interner as Interner>::Ty,
+        dst: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,
     ) -> Result<Certainty, NoSolution>;
 }
