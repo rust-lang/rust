@@ -124,6 +124,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
+
+    pub(crate) fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
+        struct_in_context(self.llcx(), elts, packed)
+    }
 }
 
 impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
