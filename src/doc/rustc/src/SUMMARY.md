@@ -82,6 +82,7 @@
     - [avr-none](platform-support/avr-none.md)
     - [\*-espidf](platform-support/esp-idf.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
+    - [\*-unknown-l4re](platform-support/l4re.md)
     - [\*-unknown-trusty](platform-support/trusty.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
