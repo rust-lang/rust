@@ -35,11 +35,11 @@ declare_clippy_lint! {
 declare_lint_pass!(IntPlusOne => [INT_PLUS_ONE]);
 
 // cases:
-// BinOpKind::Ge
+// LeOrGe::Ge
 // x >= y + 1
 // x - 1 >= y
 //
-// BinOpKind::Le
+// LeOrGe::Le
 // x + 1 <= y
 // x <= y - 1
 
@@ -47,6 +47,23 @@ declare_lint_pass!(IntPlusOne => [INT_PLUS_ONE]);
 enum Side {
     Lhs,
     Rhs,
+}
+
+#[derive(Copy, Clone)]
+enum LeOrGe {
+    Le,
+    Ge,
+}
+
+impl TryFrom<BinOpKind> for LeOrGe {
+    type Error = ();
+    fn try_from(value: BinOpKind) -> Result<Self, Self::Error> {
+        match value {
+            BinOpKind::Le => Ok(Self::Le),
+            BinOpKind::Ge => Ok(Self::Ge),
+            _ => Err(()),
+        }
+    }
 }
 
 impl IntPlusOne {
@@ -69,54 +86,54 @@ impl IntPlusOne {
         }
     }
 
-    fn check_binop(cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
-        match (binop, &lhs.kind, &rhs.kind) {
+    fn check_binop(cx: &EarlyContext<'_>, le_or_ge: LeOrGe, lhs: &Expr, rhs: &Expr) -> Option<String> {
+        match (le_or_ge, &lhs.kind, &rhs.kind) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
-            (BinOpKind::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
+            (LeOrGe::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
                 match lhskind.node {
                     // `-1 + x`
                     BinOpKind::Add if Self::is_neg_one(lhslhs) => {
-                        Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
+                        Self::generate_recommendation(cx, le_or_ge, lhsrhs, rhs, Side::Lhs)
                     },
                     // `x - 1`
                     BinOpKind::Sub if Self::is_one(lhsrhs) => {
-                        Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
+                        Self::generate_recommendation(cx, le_or_ge, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
                 }
             },
             // case where `... >= y + 1` or `... >= 1 + y`
-            (BinOpKind::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
+            (LeOrGe::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
                 // `y + 1` and `1 + y`
                 if Self::is_one(rhslhs) {
-                    Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
+                    Self::generate_recommendation(cx, le_or_ge, rhsrhs, lhs, Side::Rhs)
                 } else if Self::is_one(rhsrhs) {
-                    Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
+                    Self::generate_recommendation(cx, le_or_ge, rhslhs, lhs, Side::Rhs)
                 } else {
                     None
                 }
             },
             // case where `x + 1 <= ...` or `1 + x <= ...`
-            (BinOpKind::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
+            (LeOrGe::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
                 // `1 + x` and `x + 1`
                 if Self::is_one(lhslhs) {
-                    Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
+                    Self::generate_recommendation(cx, le_or_ge, lhsrhs, rhs, Side::Lhs)
                 } else if Self::is_one(lhsrhs) {
-                    Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
+                    Self::generate_recommendation(cx, le_or_ge, lhslhs, rhs, Side::Lhs)
                 } else {
                     None
                 }
             },
             // case where `... <= y - 1` or `... <= -1 + y`
-            (BinOpKind::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
+            (LeOrGe::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
                 match rhskind.node {
                     // `-1 + y`
                     BinOpKind::Add if Self::is_neg_one(rhslhs) => {
-                        Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
+                        Self::generate_recommendation(cx, le_or_ge, rhsrhs, lhs, Side::Rhs)
                     },
                     // `y - 1`
                     BinOpKind::Sub if Self::is_one(rhsrhs) => {
-                        Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
+                        Self::generate_recommendation(cx, le_or_ge, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,
                 }
@@ -127,15 +144,14 @@ impl IntPlusOne {
 
     fn generate_recommendation(
         cx: &EarlyContext<'_>,
-        binop: BinOpKind,
+        le_or_ge: LeOrGe,
         node: &Expr,
         other_side: &Expr,
         side: Side,
     ) -> Option<String> {
-        let binop_string = match binop {
-            BinOpKind::Ge => ">",
-            BinOpKind::Le => "<",
-            _ => return None,
+        let binop_string = match le_or_ge {
+            LeOrGe::Ge => ">",
+            LeOrGe::Le => "<",
         };
         if let Some(snippet) = node.span.get_source_text(cx)
             && let Some(other_side_snippet) = other_side.span.get_source_text(cx)
@@ -164,8 +180,9 @@ impl IntPlusOne {
 
 impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let ExprKind::Binary(kind, lhs, rhs) = &expr.kind
-            && let Some(rec) = Self::check_binop(cx, kind.node, lhs, rhs)
+        if let ExprKind::Binary(binop, lhs, rhs) = &expr.kind
+            && let Ok(le_or_ge) = LeOrGe::try_from(binop.node)
+            && let Some(rec) = Self::check_binop(cx, le_or_ge, lhs, rhs)
         {
             Self::emit_warning(cx, expr, rec);
         }
