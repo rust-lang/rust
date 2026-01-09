@@ -722,9 +722,6 @@ pub fn temp_dir() -> PathBuf {
 /// On Linux, an attacker who can create hardlinks to the executable may be
 /// able to cause this function to return an attacker-controlled path.
 ///
-/// Also, an attacker who can write to the executable or the directory containing it can cause
-/// execution of the original path to run a different program.
-///
 /// # Examples
 ///
 /// ```
