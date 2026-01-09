@@ -111,7 +111,7 @@ impl CodegenCx<'_, '_> {
         }
     }
 
-    /// Whether a definition or declaration can be assumed to be local to a group of
+    /// A definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     /// Marks the local as DSO if so.
     pub(crate) fn assume_dso_local(&self, llval: &llvm::Value, is_declaration: bool) -> bool {
@@ -153,7 +153,7 @@ impl CodegenCx<'_, '_> {
             return false;
         }
 
-        // With pie relocation model calls of functions defined in the translation
+        // With pie relocation model, calls of functions defined in the translation
         // unit can use copy relocations.
         if self.tcx.sess.relocation_model() == RelocModel::Pie && !is_declaration {
             return true;
