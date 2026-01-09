@@ -714,10 +714,13 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// The output of this function must be treated with care to avoid security
 /// vulnerabilities, particularly in processes that run with privileges higher
-/// than the user (such as setuid programs).
+/// than the user, such as setuid or setgit programs.
 ///
 /// On some Unix platforms, the result is derived from `argv[0]` and `$PATH`,
 /// which can be set arbitrarily by the user who invokes the program.
+///
+/// On Linux, an attacker who can create hardlinks to the executable may be
+/// able to cause this function to return an attacker-controlled path.
 ///
 /// Also, an attacker who can write to the executable or the directory containing it can cause
 /// execution of the original path to run a different program.
