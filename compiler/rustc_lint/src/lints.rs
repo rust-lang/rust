@@ -944,14 +944,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 pub(crate) struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_diag_out_of_impl)]
-pub(crate) struct DiagOutOfImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_untranslatable_diag)]
-pub(crate) struct UntranslatableDiag;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
 pub(crate) struct BadOptAccessDiag<'a> {
     pub msg: &'a str,
