@@ -2502,11 +2502,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let FeedConstTy::WithTy(ty) = feed else {
-            return Const::new_error_with_message(tcx, span, "unsupported const tuple");
+            return Const::new_error_with_message(tcx, span, "const tuple lack type information");
         };
 
         let ty::Tuple(tys) = ty.kind() else {
-            return Const::new_error_with_message(tcx, span, "const tuple must have a tuple type");
+            let e = tcx.dcx().span_err(span, format!("expected {}, found const tuple", ty));
+            return Const::new_error(tcx, e);
         };
 
         let exprs = exprs
