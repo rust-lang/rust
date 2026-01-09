@@ -80,32 +80,12 @@ will then add a corresponding file for your new target containing a
 
 Look for existing targets to use as examples.
 
-After adding your target to the `rustc_target` crate you may want to add
-`core`, `std`, ... with support for your new target. In that case you will
-probably need access to some `target_*` cfg. Unfortunately when building with
-stage0 (a precompiled compiler), you'll get an error that the target cfg is
-unexpected because stage0 doesn't know about the new target specification and
-we pass `--check-cfg` in order to tell it to check.
-
-To fix the errors you will need to manually add the unexpected value to the
-different `Cargo.toml` in `library/{std,alloc,core}/Cargo.toml`. Here is an
-example for adding `NEW_TARGET_ARCH` as `target_arch`:
-
-*`library/std/Cargo.toml`*:
-```diff
-  [lints.rust.unexpected_cfgs]
-  level = "warn"
-  check-cfg = [
-      'cfg(bootstrap)',
--      'cfg(target_arch, values("xtensa"))',
-+      # #[cfg(bootstrap)] NEW_TARGET_ARCH
-+      'cfg(target_arch, values("xtensa", "NEW_TARGET_ARCH"))',
-```
-
-To use this target in bootstrap, we need to explicitly add the target triple to the `STAGE0_MISSING_TARGETS`
-list in `src/bootstrap/src/core/sanity.rs`. This is necessary because the default compiler bootstrap uses does
-not recognize the new target we just added. Therefore, it should be added to `STAGE0_MISSING_TARGETS` so that the
-bootstrap is aware that this target is not yet supported by the stage0 compiler.
+To use this target in bootstrap, we need to explicitly add the target triple to
+the `STAGE0_MISSING_TARGETS` list in `src/bootstrap/src/core/sanity.rs`. This
+is necessary because the default bootstrap compiler (typically a beta compiler)
+does not recognize the new target we just added. Therefore, it should be added to 
+`STAGE0_MISSING_TARGETS` so that the bootstrap is aware that this target is not
+yet supported by the stage0 compiler.
 
 ```diff
 const STAGE0_MISSING_TARGETS: &[&str] = &[
