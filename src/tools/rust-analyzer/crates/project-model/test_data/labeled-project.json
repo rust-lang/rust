@@ -1,0 +1,31 @@
+{
+    "sysroot_src": null,
+    "crates": [
+        {
+            "display_name": "hello_world",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2018",
+            "deps": [],
+            "is_workspace_member": true,
+            "build": {
+                "label": "//:hello_world",
+                "build_file": "$ROOT$BUILD",
+                "target_kind": "bin"
+            }
+        }
+    ],
+    "runnables": [
+        {
+            "kind": "run",
+            "program": "bazel",
+            "args": ["run", "{label}"],
+            "cwd": "$ROOT$"
+        },
+        {
+            "kind": "flycheck",
+            "program": "$ROOT$custom-flychecker.sh",
+            "args": ["{label}"],
+            "cwd": "$ROOT$"
+        }
+    ]
+}
