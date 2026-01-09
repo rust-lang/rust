@@ -1,4 +1,4 @@
-//! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
+//! Processes out `#[cfg]` and `#[cfg_attr]` attributes from the input for the derive macro
 use std::{cell::OnceCell, ops::ControlFlow};
 
 use ::tt::TextRange;

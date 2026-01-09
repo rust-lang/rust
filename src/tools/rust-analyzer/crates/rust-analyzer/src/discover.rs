@@ -42,7 +42,7 @@ impl DiscoverCommand {
         Self { sender, command }
     }
 
-    /// Spawn the command inside [Discover] and report progress, if any.
+    /// Spawn the command inside `DiscoverCommand` and report progress, if any.
     pub(crate) fn spawn(
         &self,
         discover_arg: DiscoverArgument,
@@ -73,7 +73,7 @@ impl DiscoverCommand {
     }
 }
 
-/// A handle to a spawned [Discover].
+/// A handle to a spawned `DiscoverCommand`.
 #[derive(Debug)]
 pub(crate) struct DiscoverHandle {
     pub(crate) handle: CommandHandle<DiscoverProjectMessage>,

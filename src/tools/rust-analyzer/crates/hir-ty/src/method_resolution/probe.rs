@@ -1740,7 +1740,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// We want to only accept trait methods if they were hold even if the
     /// opaque types were rigid. To handle this, we both check that for trait
     /// candidates the goal were to hold even when treating opaques as rigid,
-    /// see [OpaqueTypesJank](rustc_trait_selection::solve::OpaqueTypesJank).
+    /// see `rustc_trait_selection::solve::OpaqueTypesJank`.
     ///
     /// We also check that all opaque types encountered as self types in the
     /// autoderef chain don't get constrained when applying the candidate.

@@ -216,7 +216,7 @@ struct DefMapCrateData {
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
     unstable_features: FxHashSet<Symbol>,
-    /// #[rustc_coherence_is_core]
+    /// `#[rustc_coherence_is_core]`
     rustc_coherence_is_core: bool,
     no_core: bool,
     no_std: bool,
