@@ -1986,8 +1986,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs, param.span(), Target::Param);
-        hir::GenericParam {
+        let param_attrs = &param.attrs;
+        let param_span = param.span();
+        let param = hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),
             name,
@@ -1996,7 +1997,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             kind,
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
-        }
+        };
+        self.lower_attrs(hir_id, param_attrs, param_span, Target::from_generic_param(&param));
+        param
     }
 
     fn lower_generic_param_kind(

@@ -1,12 +1,14 @@
-// Checks that the setting "Directly go to item in search if there is only one result " is working as expected.
+// Checks that the setting "Directly go to item in search if there is only one result " is working
+// as expected.
+
+include: "utils.goml"
 
 define-function: (
     "check-setting",
     [storage_value, setting_attribute_value],
     block {
         assert-local-storage: {"rustdoc-go-to-only-result": |storage_value|}
-        click: "rustdoc-toolbar .settings-menu"
-        wait-for: "#settings"
+        call-function: ("open-settings-menu", {})
         assert-property: ("#go-to-only-result", {"checked": |setting_attribute_value|})
     }
 )
@@ -25,8 +27,7 @@ wait-for: "#search"
 assert-document-property: ({"URL": "/lib2/index.html"}, CONTAINS)
 
 // Now we change its value.
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
+call-function: ("open-settings-menu", {})
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "true"}
 

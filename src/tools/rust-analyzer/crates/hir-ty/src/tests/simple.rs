@@ -3708,7 +3708,7 @@ fn main() {
 }
 
 #[test]
-fn macro_semitransparent_hygiene() {
+fn macro_semiopaque_hygiene() {
     check_types(
         r#"
 macro_rules! m {

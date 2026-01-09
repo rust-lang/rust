@@ -100,7 +100,8 @@ impl DeclarativeMacroExpander {
                     {
                         match &*value {
                             "transparent" => ControlFlow::Break(Transparency::Transparent),
-                            "semitransparent" => ControlFlow::Break(Transparency::SemiTransparent),
+                            // "semitransparent" is for old rustc versions.
+                            "semiopaque" | "semitransparent" => ControlFlow::Break(Transparency::SemiOpaque),
                             "opaque" => ControlFlow::Break(Transparency::Opaque),
                             _ => ControlFlow::Continue(()),
                         }
@@ -140,7 +141,7 @@ impl DeclarativeMacroExpander {
                     )),
                 },
                 transparency(ast::AnyHasAttrs::from(macro_rules))
-                    .unwrap_or(Transparency::SemiTransparent),
+                    .unwrap_or(Transparency::SemiOpaque),
             ),
             ast::Macro::MacroDef(macro_def) => (
                 match macro_def.body() {
