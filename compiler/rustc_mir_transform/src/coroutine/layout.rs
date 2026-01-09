@@ -39,6 +39,7 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{
     Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
 };
+use rustc_session::config::PackCoroutineLayout;
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -441,8 +442,14 @@ pub(super) fn compute_layout<'tcx>(
         tys[saved_local].debuginfo_name.get_or_insert(var.name);
     }
 
-    let layout =
-        CoroutineLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
+    let layout = CoroutineLayout {
+        field_tys: tys,
+        variant_fields,
+        variant_source_info,
+        storage_conflicts,
+        relocated_upvars: IndexVec::new(),
+        pack: PackCoroutineLayout::No,
+    };
     debug!(?remap);
     debug!(?layout);
     debug!(?storage_liveness);

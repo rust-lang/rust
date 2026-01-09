@@ -4,6 +4,7 @@ use std::ops::Deref;
 use std::range::RangeInclusive;
 use std::{cmp, iter};
 
+pub use coroutine::PackCoroutineLayout;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitMatrix;
@@ -248,17 +249,21 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     >(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
-        prefix_layouts: IndexVec<FieldIdx, F>,
+        relocated_upvars: &IndexSlice<LocalIdx, Option<LocalIdx>>,
+        upvar_layouts: IndexVec<FieldIdx, F>,
         variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
         storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+        pack: PackCoroutineLayout,
         tag_to_layout: impl Fn(Scalar) -> F,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         coroutine::layout(
             self,
             local_layouts,
-            prefix_layouts,
+            relocated_upvars,
+            upvar_layouts,
             variant_fields,
             storage_conflicts,
+            pack,
             tag_to_layout,
         )
     }
