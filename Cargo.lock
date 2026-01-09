@@ -4288,7 +4288,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_proc_macro",
- "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
