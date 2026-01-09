@@ -7,7 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::builder::scope::DropKind;
+use crate::builder::scope::{DropKind, LintLevel};
 use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

@@ -16,6 +16,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 

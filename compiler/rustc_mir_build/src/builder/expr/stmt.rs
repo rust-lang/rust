@@ -5,7 +5,7 @@ use rustc_middle::thir::*;
 use rustc_span::source_map::Spanned;
 use tracing::debug;
 
-use crate::builder::scope::BreakableTarget;
+use crate::builder::scope::{BreakableTarget, LintLevel};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

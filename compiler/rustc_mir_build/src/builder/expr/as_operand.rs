@@ -6,6 +6,7 @@ use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::Category;
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

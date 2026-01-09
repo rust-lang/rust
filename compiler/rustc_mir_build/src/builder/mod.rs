@@ -38,14 +38,14 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
+use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::expr::as_place::PlaceBuilder;
-use crate::builder::scope::DropKind;
+use crate::builder::scope::{DropKind, LintLevel};
 use crate::errors;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(

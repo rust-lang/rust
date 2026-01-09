@@ -116,12 +116,6 @@ pub struct Param<'tcx> {
     pub hir_id: Option<HirId>,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
-pub enum LintLevel {
-    Inherited,
-    Explicit(HirId),
-}
-
 #[derive(Clone, Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`

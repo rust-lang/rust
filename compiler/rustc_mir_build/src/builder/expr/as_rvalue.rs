@@ -18,6 +18,7 @@ use tracing::debug;
 
 use crate::builder::expr::as_place::PlaceBase;
 use crate::builder::expr::category::{Category, RvalueFunc};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

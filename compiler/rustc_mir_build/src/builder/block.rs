@@ -7,6 +7,7 @@ use tracing::debug;
 
 use crate::builder::ForGuard::OutsideGuard;
 use crate::builder::matches::{DeclareLetBindings, ScheduleDrops};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
