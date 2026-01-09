@@ -3483,7 +3483,14 @@ pub fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
     src.duplicate()
 }
 
-/// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
+/// Destroy the variable argument list `ap` after initialization with `va_start` (part of the
+/// desugaring of `...`) or `va_copy`.
+///
+/// Code generation backends should not provide a custom implementation for this intrinsic. This
+/// intrinsic *does not* map to the LLVM `va_end` intrinsic.
+///
+/// This function is a no-op on all current targets, but used as a hook for const evaluation to
+/// detect UB when a variable argument list is used incorrectly.
 ///
 /// # Safety
 ///
@@ -3491,4 +3498,6 @@ pub fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
 ///
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn va_end(ap: &mut VaList<'_>);
+pub unsafe fn va_end(ap: &mut VaList<'_>) {
+    /* deliberately does nothing */
+}

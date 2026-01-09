@@ -5,7 +5,7 @@
 #[cfg(not(target_arch = "xtensa"))]
 use crate::ffi::c_void;
 use crate::fmt;
-use crate::intrinsics::{va_arg, va_copy};
+use crate::intrinsics::{va_arg, va_copy, va_end};
 use crate::marker::PhantomCovariantLifetime;
 
 // There are currently three flavors of how a C `va_list` is implemented for
@@ -216,15 +216,10 @@ impl Clone for VaList<'_> {
     }
 }
 
-impl Drop for VaList<'_> {
+impl<'f> Drop for VaList<'f> {
     fn drop(&mut self) {
-        // For all current LLVM targets `va_end` is a no-op.
-        //
-        // We implement `Drop` here because some future target might need to actually run
-        // destructors (e.g. to deallocate).
-        //
-        // Rust requires that not calling `va_end` on a `va_list` does not cause undefined
-        // behaviour: it is safe to leak values.
+        // SAFETY: this variable argument list is being dropped, so won't be read from again.
+        unsafe { va_end(self) }
     }
 }
 
