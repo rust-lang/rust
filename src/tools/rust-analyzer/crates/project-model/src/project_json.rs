@@ -365,6 +365,21 @@ pub enum RunnableKind {
     /// May include {test_id} which will get the test clicked on by the user.
     TestOne,
 
+    /// Run tests matching a pattern (in RA, usually a path::to::module::of::tests)
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_pattern} which will get the test module clicked on by the user.
+    TestMod,
+
+    /// Run a single doctest
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_id} which will get the doctest clicked on by the user.
+    DocTestOne,
+
+    /// Run a single benchmark
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {bench_id} which will get the benchmark clicked on by the user.
+    BenchOne,
+
     /// Template for checking a target, emitting rustc JSON diagnostics.
     /// May include {label} which will get the label from the `build` section of a crate.
     Flycheck,
@@ -481,6 +496,9 @@ pub enum RunnableKindData {
     Check,
     Run,
     TestOne,
+    TestMod,
+    DocTestOne,
+    BenchOne,
 
     /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
     #[allow(unused)]
@@ -553,6 +571,9 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::Check => RunnableKind::Check,
             RunnableKindData::Run => RunnableKind::Run,
             RunnableKindData::TestOne => RunnableKind::TestOne,
+            RunnableKindData::TestMod => RunnableKind::TestMod,
+            RunnableKindData::DocTestOne => RunnableKind::DocTestOne,
+            RunnableKindData::BenchOne => RunnableKind::BenchOne,
             RunnableKindData::Flycheck => RunnableKind::Flycheck,
             RunnableKindData::Unknown => RunnableKind::Unknown,
         }

@@ -103,9 +103,20 @@ impl ProjectJsonTargetSpec {
                     arg.replace("{label}", &this.label).replace("{test_id}", &test_id.to_string())
                 })
             }
-            RunnableKind::TestMod { .. } => None,
-            RunnableKind::Bench { .. } => None,
-            RunnableKind::DocTest { .. } => None,
+            RunnableKind::TestMod { path } => self
+                .find_replace_runnable(project_json::RunnableKind::TestMod, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{test_pattern}", path)
+                }),
+            RunnableKind::Bench { test_id } => {
+                self.find_replace_runnable(project_json::RunnableKind::BenchOne, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{bench_id}", &test_id.to_string())
+                })
+            }
+            RunnableKind::DocTest { test_id } => {
+                self.find_replace_runnable(project_json::RunnableKind::DocTestOne, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{test_id}", &test_id.to_string())
+                })
+            }
         }
     }
 }
