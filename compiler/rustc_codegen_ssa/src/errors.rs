@@ -714,6 +714,10 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_bpf_staticlib_not_supported)]
+pub(crate) struct BpfStaticlibNotSupported;
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]
 #[help]
 pub(crate) struct MultipleMainFunctions {
