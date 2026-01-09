@@ -4,6 +4,7 @@ error: this `.fold` can be written more succinctly using another method
 LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
    |
+   = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
 
@@ -21,6 +22,8 @@ error: this `.fold` can be written more succinctly using another method
    |
 LL |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `all(|x| x > 2)`
+   |
+   = note: the `all` method is short circuiting and may change the program semantics if the iterator has side effects
 
 error: this `.fold` can be written more succinctly using another method
   --> tests/ui/unnecessary_fold.rs:24:25
@@ -63,12 +66,16 @@ error: this `.fold` can be written more succinctly using another method
    |
 LL |     let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+   |
+   = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
 
 error: this `.fold` can be written more succinctly using another method
   --> tests/ui/unnecessary_fold.rs:110:10
    |
 LL |         .fold(false, |acc, x| acc || x > 2);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+   |
+   = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
 
 error: this `.fold` can be written more succinctly using another method
   --> tests/ui/unnecessary_fold.rs:123:33
@@ -196,5 +203,13 @@ error: this `.fold` can be written more succinctly using another method
 LL |         (0..3).fold(1, |acc, x| acc * x)
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `product::<i32>()`
 
-error: aborting due to 32 previous errors
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:188:20
+   |
+LL |     let _ = (0..3).fold(false, |acc: bool, x| acc || test_expr!(x));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| test_expr!(x))`
+   |
+   = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
+
+error: aborting due to 33 previous errors
 

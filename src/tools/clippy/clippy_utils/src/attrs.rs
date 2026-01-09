@@ -23,7 +23,9 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
         if let [clippy, segment2] = &*attr.path()
             && *clippy == sym::clippy
         {
-            let path_span = attr.path_span().expect("Clippy attributes are unparsed and have a span");
+            let path_span = attr
+                .path_span()
+                .expect("Clippy attributes are unparsed and have a span");
             let new_name = match *segment2 {
                 sym::cyclomatic_complexity => Some("cognitive_complexity"),
                 sym::author
@@ -48,7 +50,7 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
                         .with_span_suggestion(
                             path_span,
                             "consider using",
-                            format!("clippy::{}", new_name),
+                            format!("clippy::{new_name}"),
                             Applicability::MachineApplicable,
                         )
                         .emit();

@@ -141,5 +141,16 @@ LL | |             Err(_) => None,
 LL | |         }
    | |_________^ help: replace with: `result_with_ref_mut(x).as_mut().ok()`
 
-error: aborting due to 12 previous errors
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:188:13
+   |
+LL |       let _ = match test_expr!(42) {
+   |  _____________^
+LL | |
+LL | |         Ok(v) => Some(v),
+LL | |         Err(_) => None,
+LL | |     };
+   | |_____^ help: replace with: `test_expr!(42).ok()`
+
+error: aborting due to 13 previous errors
 
