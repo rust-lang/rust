@@ -691,7 +691,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             }
             (ConstArgKind::Literal(kind_l), ConstArgKind::Literal(kind_r)) => {
                 kind_l == kind_r
-            },
+            }
+            (ConstArgKind::Array(l_arr), ConstArgKind::Array(r_arr)) => {
+                l_arr.elems.len() == r_arr.elems.len()
+                && l_arr.elems.iter().zip(r_arr.elems.iter())
+                    .all(|(l_elem, r_elem)| self.eq_const_arg(l_elem, r_elem))
+            }
             // Use explicit match for now since ConstArg is undergoing flux.
             (
                 ConstArgKind::Path(..)
@@ -701,6 +706,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ConstArgKind::Infer(..)
                 | ConstArgKind::Struct(..)
                 | ConstArgKind::Literal(..)
+                | ConstArgKind::Array(..)
                 | ConstArgKind::Error(..),
                 _,
             ) => false,
@@ -1578,6 +1584,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ConstArgKind::Tup(args) => {
                 for arg in *args {
                     self.hash_const_arg(arg);
+                }
+            }
+            ConstArgKind::Array(array_expr) => {
+                for elem in array_expr.elems {
+                    self.hash_const_arg(elem);
                 }
             },
             ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
