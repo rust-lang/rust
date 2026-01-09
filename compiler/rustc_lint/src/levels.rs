@@ -968,7 +968,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// this lint context.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub(crate) fn opt_span_lint(
         &self,
