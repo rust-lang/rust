@@ -943,7 +943,7 @@ impl Loops {
             explicit_counter_loop::check(cx, pat, arg, body, expr, label);
         }
         self.check_for_loop_arg(cx, pat, arg);
-        for_kv_map::check(cx, pat, arg, body);
+        for_kv_map::check(cx, pat, arg, body, span);
         mut_range_bound::check(cx, arg, body);
         single_element_loop::check(cx, pat, arg, body, expr);
         same_item_push::check(cx, pat, arg, body, expr, self.msrv);

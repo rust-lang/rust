@@ -1,15 +1,16 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::fulfill_or_allowed;
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_span::{Span, sym};
+use rustc_span::sym;
 
 use super::DERIVE_ORD_XOR_PARTIAL_ORD;
 
 /// Implementation of the `DERIVE_ORD_XOR_PARTIAL_ORD` lint.
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    span: Span,
+    item: &hir::Item<'_>,
     trait_ref: &hir::TraitRef<'_>,
     ty: Ty<'tcx>,
     adt_hir_id: HirId,
@@ -19,6 +20,8 @@ pub(super) fn check<'tcx>(
         && let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait()
         && let Some(def_id) = &trait_ref.trait_def_id()
         && *def_id == ord_trait_def_id
+        && let item_hir_id = cx.tcx.local_def_id_to_hir_id(item.owner_id)
+        && !fulfill_or_allowed(cx, DERIVE_ORD_XOR_PARTIAL_ORD, [adt_hir_id])
     {
         // Look for the PartialOrd implementations for `ty`
         cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
@@ -39,7 +42,7 @@ pub(super) fn check<'tcx>(
                     "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
                 };
 
-                span_lint_hir_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, adt_hir_id, span, mess, |diag| {
+                span_lint_hir_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, item_hir_id, item.span, mess, |diag| {
                     if let Some(local_def_id) = impl_id.as_local() {
                         let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
                         diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");

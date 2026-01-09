@@ -675,7 +675,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                         .iter()
                         .zip(*inits_b)
                         .all(|(init_a, init_b)| self.eq_const_arg(init_a.expr, init_b.expr))
-            }
+            },
             (ConstArgKind::TupleCall(path_a, args_a), ConstArgKind::TupleCall(path_b, args_b)) => {
                 self.eq_qpath(path_a, path_b)
                     && args_a
@@ -688,7 +688,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     .iter()
                     .zip(*args_b)
                     .all(|(arg_a, arg_b)| self.eq_const_arg(arg_a, arg_b))
-            }
+            },
             (ConstArgKind::Literal(kind_l), ConstArgKind::Literal(kind_r)) => {
                 kind_l == kind_r
             },

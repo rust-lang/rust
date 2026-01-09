@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
@@ -94,51 +94,37 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
                 return;
             }
 
-            let arg_snip = snippet(cx, arg_span, "..");
-            let expr_snip;
-            let eq_impl;
-            if with_deref.is_implemented() && !arg_ty.peel_refs().is_str() {
-                expr_snip = format!("*{arg_snip}");
-                eq_impl = with_deref;
+            let mut applicability = Applicability::MachineApplicable;
+            let (arg_snip, _) = snippet_with_context(cx, arg_span, expr.span.ctxt(), "..", &mut applicability);
+            let (expr_snip, eq_impl) = if with_deref.is_implemented() && !arg_ty.peel_refs().is_str() {
+                (format!("*{arg_snip}"), with_deref)
             } else {
-                expr_snip = arg_snip.to_string();
-                eq_impl = without_deref;
-            }
+                (arg_snip.to_string(), without_deref)
+            };
 
-            let span;
-            let hint;
-            if (eq_impl.ty_eq_other && left) || (eq_impl.other_eq_ty && !left) {
-                span = expr.span;
-                hint = expr_snip;
+            let (span, hint) = if (eq_impl.ty_eq_other && left) || (eq_impl.other_eq_ty && !left) {
+                (expr.span, expr_snip)
             } else {
-                span = expr.span.to(other.span);
+                let span = expr.span.to(other.span);
 
                 let cmp_span = if other.span < expr.span {
                     other.span.between(expr.span)
                 } else {
                     expr.span.between(other.span)
                 };
-                if eq_impl.ty_eq_other {
-                    hint = format!(
-                        "{expr_snip}{}{}",
-                        snippet(cx, cmp_span, ".."),
-                        snippet(cx, other.span, "..")
-                    );
-                } else {
-                    hint = format!(
-                        "{}{}{expr_snip}",
-                        snippet(cx, other.span, ".."),
-                        snippet(cx, cmp_span, "..")
-                    );
-                }
-            }
 
-            diag.span_suggestion(
-                span,
-                "try",
-                hint,
-                Applicability::MachineApplicable, // snippet
-            );
+                let (cmp_snippet, _) = snippet_with_context(cx, cmp_span, expr.span.ctxt(), "..", &mut applicability);
+                let (other_snippet, _) =
+                    snippet_with_context(cx, other.span, expr.span.ctxt(), "..", &mut applicability);
+
+                if eq_impl.ty_eq_other {
+                    (span, format!("{expr_snip}{cmp_snippet}{other_snippet}"))
+                } else {
+                    (span, format!("{other_snippet}{cmp_snippet}{expr_snip}"))
+                }
+            };
+
+            diag.span_suggestion(span, "try", hint, applicability);
         },
     );
 }

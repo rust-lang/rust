@@ -19,5 +19,17 @@ error: manually reimplementing `ilog2`
 LL |     63 - b.leading_zeros();
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `b.ilog2()`
 
-error: aborting due to 3 previous errors
+error: manually reimplementing `ilog2`
+  --> tests/ui/manual_ilog2.rs:45:15
+   |
+LL |     let log = 31 - access!(x).leading_zeros();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `access!(x).ilog2()`
+
+error: manually reimplementing `ilog2`
+  --> tests/ui/manual_ilog2.rs:47:15
+   |
+LL |     let log = access!(x).ilog(2);
+   |               ^^^^^^^^^^^^^^^^^^ help: try: `access!(x).ilog2()`
+
+error: aborting due to 5 previous errors
 

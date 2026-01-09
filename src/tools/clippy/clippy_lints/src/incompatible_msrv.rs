@@ -3,14 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test, sym};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{ExpnKind, Span};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::find_attr;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -270,6 +269,9 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
 /// attribute.
 fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx.hir_parent_id_iter(hir_id).any(|id| {
-        find_attr!(cx.tcx.hir_attrs(id), AttributeKind::CfgTrace(..) | AttributeKind::CfgAttrTrace)
+        find_attr!(
+            cx.tcx.hir_attrs(id),
+            AttributeKind::CfgTrace(..) | AttributeKind::CfgAttrTrace
+        )
     })
 }
