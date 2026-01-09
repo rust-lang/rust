@@ -63,6 +63,12 @@ impl<'ll> OffloadGlobals<'ll> {
 // which we copy from clang, is to just have those two calls once, in the global ctor/dtor section
 // of the final binary.
 pub(crate) fn register_offload<'ll>(cx: &CodegenCx<'ll, '_>) {
+    // First we check quickly whether we already have done our setup, in which case we return early.
+    // Shouldn't be needed for correctness.
+    if cx.get_function("__tgt_register_lib").is_some() {
+        return;
+    }
+
     let reg_lib_decl = cx.type_func(&[cx.type_ptr()], cx.type_void());
     let register_lib = declare_offload_fn(&cx, "__tgt_register_lib", reg_lib_decl);
     let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
