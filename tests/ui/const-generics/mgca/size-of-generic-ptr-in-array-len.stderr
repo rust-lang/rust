@@ -1,0 +1,8 @@
+error: tuple constructor with invalid base path
+  --> $DIR/size-of-generic-ptr-in-array-len.rs:6:9
+   |
+LL |     [0; size_of::<*mut T>()];
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

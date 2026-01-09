@@ -1,0 +1,32 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/const-eval-with-invalid-args.rs:17:15
+   |
+LL |     arr: [u8; N.arr],
+   |               ^^^^^
+
+error: `A` is forbidden as the type of a const generic parameter
+  --> $DIR/const-eval-with-invalid-args.rs:15:19
+   |
+LL | struct B<const N: A> {
+   |                   ^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: the constant `C` is not of type `A`
+  --> $DIR/const-eval-with-invalid-args.rs:23:17
+   |
+LL |     let b = B::<C> {arr: [1]};
+   |                 ^ expected `A`, found `u32`
+   |
+note: required by a const generic parameter in `B`
+  --> $DIR/const-eval-with-invalid-args.rs:15:10
+   |
+LL | struct B<const N: A> {
+   |          ^^^^^^^^^^ required by this const generic parameter in `B`
+
+error: aborting due to 3 previous errors
+

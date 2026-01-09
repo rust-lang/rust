@@ -1,0 +1,23 @@
+error: free function without a body
+  --> $DIR/recursive-self-referencing-const-param.rs:6:1
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                                                       |
+   |                                                                       help: provide a definition for the function: `{ <body> }`
+
+error[E0573]: expected type, found function `identity`
+  --> $DIR/recursive-self-referencing-const-param.rs:6:22
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/recursive-self-referencing-const-param.rs:6:57
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   |                                                         ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.
