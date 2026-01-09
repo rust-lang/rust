@@ -364,7 +364,7 @@ impl File {
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        unsupported()
+        self.0.position()
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
@@ -745,6 +745,14 @@ mod uefi_fs {
             };
 
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
+        pub(crate) fn position(&self) -> io::Result<u64> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut pos = 0;
+
+            let r = unsafe { ((*file_ptr).get_position)(file_ptr, &mut pos) };
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(pos) }
         }
 
         pub(crate) fn delete(self) -> io::Result<()> {
