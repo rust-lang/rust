@@ -15,6 +15,7 @@ on:
       - try
       - try-perf
       - automation/bors/try
+      - automation/bors/auto
   pull_request:
     branches:
       - "**"
@@ -56,7 +57,7 @@ jobs:
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
-        if: ${{ github.ref == 'refs/heads/auto' }}
+        if: ${{ github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto' }}
         run: |
           cd src/ci/citool
           CARGO_INCREMENTAL=0 cargo test
@@ -79,7 +80,7 @@ jobs:
     # access the environment.
     #
     # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}
@@ -313,7 +314,7 @@ jobs:
     needs: [ calculate_matrix, job ]
     # !cancelled() executes the job regardless of whether the previous jobs passed or failed
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
     steps:
       - name: checkout the source code
         uses: actions/checkout@v5
