@@ -1,6 +1,8 @@
-//@revisions: stack tree
-//@compile-flags: -Zmiri-strict-provenance
-//@[tree]compile-flags: -Zmiri-tree-borrows
+//@ revisions: stack tree stackrelocate treerelocate
+//@ compile-flags: -Zmiri-strict-provenance -Zpack-coroutine-layout=no
+//@ [tree] compile-flags: -Zmiri-tree-borrows
+//@ [stackrelocate] compile-flags: -Zpack-coroutine-layout=captures-only
+//@ [treerelocate] compile-flags: -Zmiri-tree-borrows -Zpack-coroutine-layout=captures-only
 
 // WARNING: If you would ever want to modify this test,
 // please consider modifying rustc's async drop test at

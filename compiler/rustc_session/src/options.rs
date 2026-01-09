@@ -809,6 +809,7 @@ mod desc {
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
+    pub(crate) const parse_pack_coroutine_layout: &str = "either `no` or `captures-only`";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
@@ -1973,6 +1974,18 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_pack_coroutine_layout(
+        slot: &mut PackCoroutineLayout,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("no") => PackCoroutineLayout::No,
+            Some("captures-only") => PackCoroutineLayout::CapturesOnly,
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
         match v {
             Some("always" | "yes") => {
@@ -2534,6 +2547,8 @@ options! {
         "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
+    pack_coroutine_layout: PackCoroutineLayout = (PackCoroutineLayout::default(), parse_pack_coroutine_layout, [TRACKED],
+        "set strategy to pack coroutine state layout (default: no)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
         "change rlib format to store native libraries as archives"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],

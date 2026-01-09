@@ -126,7 +126,7 @@ declare_passes! {
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
     mod copy_prop : CopyProp;
-    mod coroutine : StateTransform;
+    mod coroutine : RelocateUpvars, StateTransform;
     mod coverage : InstrumentCoverage;
     mod ctfe_limit : CtfeLimit;
     mod dataflow_const_prop : DataflowConstProp;

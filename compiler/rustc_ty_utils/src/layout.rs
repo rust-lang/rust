@@ -6,6 +6,8 @@ use rustc_abi::{
     LayoutCalculatorError, LayoutData, Niche, ReprOptions, ScalableElt, Scalar, Size, StructKind,
     TagEncoding, VariantIdx, Variants, WrappingRange,
 };
+use rustc_data_structures::smallvec::{SmallVec, smallvec};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
@@ -20,6 +22,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
 };
+use rustc_session::config::PackCoroutineLayout;
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
@@ -175,6 +178,7 @@ fn extract_const_value<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(cx), ret)]
 fn layout_of_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
@@ -515,8 +519,9 @@ fn layout_of_uncached<'tcx>(
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
             let info = tcx.coroutine_layout(def_id, args)?;
+            debug!("info = {info:#?}");
 
-            let local_layouts = info
+            let local_layouts: IndexVec<_, _> = info
                 .field_tys
                 .iter()
                 .map(|local| {
@@ -524,22 +529,27 @@ fn layout_of_uncached<'tcx>(
                     let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
-                .try_collect::<IndexVec<_, _>>()?;
+                .try_collect()?;
 
-            let prefix_layouts = args
+            let pack = match info.pack {
+                PackCoroutineLayout::No => rustc_abi::PackCoroutineLayout::Classic,
+                PackCoroutineLayout::CapturesOnly => rustc_abi::PackCoroutineLayout::CapturesOnly,
+            };
+            let upvar_layouts = args
                 .as_coroutine()
                 .upvar_tys()
                 .iter()
                 .map(|ty| cx.layout_of(ty))
-                .try_collect::<IndexVec<_, _>>()?;
-
+                .collect::<Result<_, _>>()?;
             let layout = cx
                 .calc
                 .coroutine(
                     &local_layouts,
-                    prefix_layouts,
+                    &info.relocated_upvars,
+                    upvar_layouts,
                     &info.variant_fields,
                     &info.storage_conflicts,
+                    pack,
                     |tag| TyAndLayout {
                         ty: tag.primitive().to_ty(tcx),
                         layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
@@ -918,26 +928,35 @@ fn variant_info_for_coroutine<'tcx>(
     let coroutine = cx.tcx().coroutine_layout(def_id, args).unwrap();
     let upvar_names = cx.tcx().closure_saved_names_of_captured_variables(def_id);
 
+    let upvar_relocated = !matches!(coroutine.pack, PackCoroutineLayout::No);
     let mut upvars_size = Size::ZERO;
-    let upvar_fields: Vec<_> = args
-        .as_coroutine()
-        .upvar_tys()
-        .iter()
-        .zip_eq(upvar_names)
-        .enumerate()
-        .map(|(field_idx, (_, name))| {
-            let field_layout = layout.field(cx, field_idx);
-            let offset = layout.fields.offset(field_idx);
-            upvars_size = upvars_size.max(offset + field_layout.size);
-            FieldInfo {
-                kind: FieldKind::Upvar,
-                name: *name,
-                offset: offset.bytes(),
-                size: field_layout.size.bytes(),
-                align: field_layout.align.bytes(),
-                type_name: None,
-            }
-        })
+    let upvar_fields: SmallVec<[_; 1]> = if upvar_relocated {
+        smallvec![]
+    } else {
+        args.as_coroutine()
+            .upvar_tys()
+            .iter()
+            .zip_eq(upvar_names)
+            .enumerate()
+            .map(|(field_idx, (_, name))| {
+                let field_layout = layout.field(cx, field_idx);
+                let offset = layout.fields.offset(field_idx);
+                upvars_size = upvars_size.max(offset + field_layout.size);
+                FieldInfo {
+                    kind: FieldKind::Upvar,
+                    name: *name,
+                    offset: offset.bytes(),
+                    size: field_layout.size.bytes(),
+                    align: field_layout.align.bytes(),
+                    type_name: None,
+                }
+            })
+            .collect()
+    };
+    // Regardless of packing style, the captures are symbolically located in UNRESUMED variant.
+    let capture_field_indices: UnordMap<_, _> = coroutine.variant_fields[VariantIdx::ZERO]
+        .iter_enumerated()
+        .map(|(field, &saved_local)| (saved_local, field))
         .collect();
 
     let mut variant_infos: Vec<_> = coroutine
@@ -946,20 +965,29 @@ fn variant_info_for_coroutine<'tcx>(
         .map(|(variant_idx, variant_def)| {
             let variant_layout = layout.for_variant(cx, variant_idx);
             let mut variant_size = Size::ZERO;
+            let is_unresumed = variant_idx.as_usize() == 0;
             let fields = variant_def
                 .iter()
                 .enumerate()
-                .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_names[*local];
+                .map(|(field_idx, &local)| {
+                    let field_name = coroutine.field_names[local];
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
+                    let is_upvar = is_unresumed || coroutine.relocated_upvars[local].is_some();
                     FieldInfo {
-                        kind: FieldKind::CoroutineLocal,
-                        name: field_name.unwrap_or_else(|| {
-                            Symbol::intern(&format!(".coroutine_field{}", local.as_usize()))
-                        }),
+                        kind: if is_upvar { FieldKind::Upvar } else { FieldKind::CoroutineLocal },
+                        name: if upvar_relocated
+                            && is_upvar
+                            && let Some(&field_idx) = capture_field_indices.get(&local)
+                        {
+                            upvar_names[field_idx]
+                        } else {
+                            field_name.unwrap_or_else(|| {
+                                Symbol::intern(&format!(".coroutine_field{}", local.as_usize()))
+                            })
+                        },
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.bytes(),
@@ -969,7 +997,11 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
+                .chain(
+                    if upvar_relocated || is_unresumed { &[] } else { &*upvar_fields }
+                        .iter()
+                        .cloned(),
+                )
                 .collect();
 
             // If the variant has no state-specific fields, then it's the size of the upvars.

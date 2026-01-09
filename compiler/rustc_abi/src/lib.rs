@@ -65,7 +65,9 @@ pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
 #[cfg(feature = "nightly")]
-pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
+pub use layout::{
+    FIRST_VARIANT, FieldIdx, Layout, PackCoroutineLayout, TyAbiInterface, TyAndLayout, VariantIdx,
+};
 pub use layout::{LayoutCalculator, LayoutCalculatorError};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

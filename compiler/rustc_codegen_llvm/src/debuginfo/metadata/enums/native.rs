@@ -186,9 +186,6 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                 )
             };
 
-            let common_upvar_names =
-                cx.tcx.closure_saved_names_of_captured_variables(coroutine_def_id);
-
             // Build variant struct types
             let variant_struct_type_di_nodes: SmallVec<_> = variants
                 .indices()
@@ -216,7 +213,6 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                                 coroutine_type_and_layout,
                                 coroutine_type_di_node,
                                 coroutine_layout,
-                                common_upvar_names,
                             ),
                         source_info,
                     }

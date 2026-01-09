@@ -3424,6 +3424,7 @@ dependencies = [
  "bitflags",
  "rand 0.9.2",
  "rand_xoshiro",
+ "rustc-hash 2.1.1",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_hashes",
