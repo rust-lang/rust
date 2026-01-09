@@ -22,6 +22,7 @@ The following external projects are managed using some form of a `subtree`:
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 * [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
+* [rustc_codegen_gcc](https://github.com/rust-lang/rustc_codegen_gcc)
 * [rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide)
 * [compiler-builtins](https://github.com/rust-lang/compiler-builtins)
 * [stdarch](https://github.com/rust-lang/stdarch)
@@ -40,6 +41,7 @@ implement a new tool feature or test, that should happen in one collective rustc
     * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
     * `rustfmt`
     * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
+    * `rustc_codegen_gcc` ([sync guide](https://github.com/rust-lang/rustc_codegen_gcc/blob/master/doc/subtree.md))
 * Using the [josh](#synchronizing-a-josh-subtree) tool
     * `miri`
     * `rust-analyzer`
