@@ -568,6 +568,7 @@ symbols! {
         automatically_derived,
         available_externally,
         avr,
+        avr_target_feature,
         avx,
         avx10_target_feature,
         avx512_target_feature,
