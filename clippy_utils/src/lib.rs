@@ -11,8 +11,6 @@
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 #![warn(
     trivial_casts,
