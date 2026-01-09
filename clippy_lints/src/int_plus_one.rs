@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::SpanRangeExt;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind};
-use rustc_ast::token;
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
@@ -50,25 +50,36 @@ enum Side {
 }
 
 impl IntPlusOne {
-    #[expect(clippy::cast_sign_loss)]
-    fn check_lit(token_lit: token::Lit, target_value: i128) -> bool {
-        if let Ok(LitKind::Int(value, ..)) = LitKind::from_token_lit(token_lit) {
-            return value == (target_value as u128);
+    fn is_one(expr: &Expr) -> bool {
+        if let ExprKind::Lit(token_lit) = expr.kind
+            && let Ok(LitKind::Int(Pu128(1), ..)) = LitKind::from_token_lit(token_lit)
+        {
+            return true;
         }
         false
+    }
+
+    fn is_neg_one(expr: &Expr) -> bool {
+        if let ExprKind::Unary(UnOp::Neg, expr) = &expr.kind
+            && Self::is_one(expr)
+        {
+            true
+        } else {
+            false
+        }
     }
 
     fn check_binop(cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
         match (binop, &lhs.kind, &rhs.kind) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
-                match (lhskind.node, &lhslhs.kind, &lhsrhs.kind) {
+                match lhskind.node {
                     // `-1 + x`
-                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
+                    BinOpKind::Add if Self::is_neg_one(lhslhs) => {
                         Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
                     },
                     // `x - 1`
-                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
+                    BinOpKind::Sub if Self::is_one(lhsrhs) => {
                         Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
@@ -76,39 +87,35 @@ impl IntPlusOne {
             },
             // case where `... >= y + 1` or `... >= 1 + y`
             (BinOpKind::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
-                match (&rhslhs.kind, &rhsrhs.kind) {
-                    // `y + 1` and `1 + y`
-                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
-                        Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
-                    },
-                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
-                        Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
-                    },
-                    _ => None,
+                // `y + 1` and `1 + y`
+                if Self::is_one(rhslhs) {
+                    Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
+                } else if Self::is_one(rhsrhs) {
+                    Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
+                } else {
+                    None
                 }
             },
             // case where `x + 1 <= ...` or `1 + x <= ...`
             (BinOpKind::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
-                match (&lhslhs.kind, &lhsrhs.kind) {
-                    // `1 + x` and `x + 1`
-                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
-                        Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
-                    },
-                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
-                        Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
-                    },
-                    _ => None,
+                // `1 + x` and `x + 1`
+                if Self::is_one(lhslhs) {
+                    Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
+                } else if Self::is_one(lhsrhs) {
+                    Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
+                } else {
+                    None
                 }
             },
             // case where `... <= y - 1` or `... <= -1 + y`
             (BinOpKind::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
-                match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
+                match rhskind.node {
                     // `-1 + y`
-                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
+                    BinOpKind::Add if Self::is_neg_one(rhslhs) => {
                         Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
                     },
                     // `y - 1`
-                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
+                    BinOpKind::Sub if Self::is_one(rhsrhs) => {
                         Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,
