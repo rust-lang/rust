@@ -310,5 +310,29 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
         Allow(Target::Crate),
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Const,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Const,
+            has_default: true,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            has_default: true,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Type,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Type,
+            has_default: true,
+        }),
     ]
 };
