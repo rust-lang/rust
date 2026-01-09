@@ -1,4 +1,4 @@
-error: expected u32, found const tuple
+error: expected `u32`, found const tuple
   --> $DIR/tuple_expr_arg_mismatch_type.rs:5:28
    |
 LL |     takes_nested_tuple::<{ () }>
