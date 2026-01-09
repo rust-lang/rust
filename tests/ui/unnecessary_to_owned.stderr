@@ -550,5 +550,11 @@ error: unnecessary use of `to_vec`
 LL |     s.remove(&(&["b"]).to_vec());
    |              ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
 
-error: aborting due to 82 previous errors
+error: unnecessary use of `to_string`
+  --> tests/ui/unnecessary_to_owned.rs:690:10
+   |
+LL |     take(format!("ouch{dot}").to_string());
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `&format!("ouch{dot}")`
+
+error: aborting due to 83 previous errors
 

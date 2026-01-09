@@ -1140,9 +1140,13 @@ pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
         ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
-            ConstArgKind::Struct(..) | ConstArgKind::TupleCall(..) | ConstArgKind::Tup(..) | ConstArgKind::Path(_) | ConstArgKind::Error(..) | ConstArgKind::Infer(..) | ConstArgKind::Literal(..) => {
-                None
-            },
+            ConstArgKind::Struct(..)
+            | ConstArgKind::Tup(..)
+            | ConstArgKind::Literal(..)
+            | ConstArgKind::TupleCall(..)
+            | ConstArgKind::Path(_)
+            | ConstArgKind::Error(..)
+            | ConstArgKind::Infer(..) => None,
         },
     }
 }

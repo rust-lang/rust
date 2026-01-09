@@ -301,7 +301,7 @@ impl<'tcx> MaybeQPath<'tcx> for &'tcx PatExpr<'_> {
     fn opt_qpath(self) -> Option<QPathId<'tcx>> {
         match &self.kind {
             PatExprKind::Path(qpath) => Some((qpath, self.hir_id)),
-            _ => None,
+            PatExprKind::Lit { .. } => None,
         }
     }
 }
@@ -419,7 +419,7 @@ impl<'a> MaybeResPath<'a> for &PatExpr<'a> {
     fn opt_res_path(self) -> OptResPath<'a> {
         match &self.kind {
             PatExprKind::Path(qpath) => qpath.opt_res_path(),
-            _ => (None, None),
+            PatExprKind::Lit { .. } => (None, None),
         }
     }
 }

@@ -139,5 +139,23 @@ error: manually reimplementing `div_ceil`
 LL |     let _ = (y - 8) / -7;
    |             ^^^^^^^^^^^^ help: consider using `.div_ceil()`: `y.div_ceil(-7)`
 
-error: aborting due to 23 previous errors
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:100:13
+   |
+LL |     let _ = x.next_multiple_of(8) / 8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:102:13
+   |
+LL |     let _ = i32::next_multiple_of(x, 8) / 8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:106:13
+   |
+LL |     let _ = y.next_multiple_of(8) / 8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `y.div_ceil(8)`
+
+error: aborting due to 26 previous errors
 
