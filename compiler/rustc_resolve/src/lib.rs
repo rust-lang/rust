@@ -98,7 +98,7 @@ pub use macros::registered_tools_ast;
 
 use crate::ref_mut::{CmCell, CmRefCell};
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {

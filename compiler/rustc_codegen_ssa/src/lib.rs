@@ -57,7 +57,7 @@ pub mod size_of_val;
 pub mod target_features;
 pub mod traits;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between

@@ -67,7 +67,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
 use crate::gather_locals::GatherLocalsVisitor;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {

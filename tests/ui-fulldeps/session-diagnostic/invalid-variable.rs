@@ -1,5 +1,6 @@
 //@ run-fail
 //@ compile-flags: --test
+//@ rustc-env: CARGO_MANIFEST_DIR=$ROOT/tests/ui-fulldeps/session-diagnostic
 // test that messages referencing non-existent fields cause test failures
 
 #![feature(rustc_private)]

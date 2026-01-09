@@ -103,7 +103,7 @@ use rustc_trait_selection::traits;
 pub use crate::collect::suggest_impl_trait;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi, span: Span) {
     if !decl.c_variadic {

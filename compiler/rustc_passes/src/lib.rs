@@ -30,7 +30,7 @@ pub mod stability;
 mod upvars;
 mod weak_lang_items;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);

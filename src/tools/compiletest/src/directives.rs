@@ -661,6 +661,7 @@ impl Config {
         // Trim whitespace from the name, so that `//@ exec-env: FOO=BAR`
         // sees the name as `FOO` and not ` FOO`.
         let name = name.trim();
+        let value = value.replace("$ROOT", std::env::current_dir().unwrap().to_str().unwrap());
         (name.to_owned(), value.to_owned())
     }
 

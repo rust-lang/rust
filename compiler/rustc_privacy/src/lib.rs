@@ -38,7 +38,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Generic infrastructure used to implement specific visitors below.

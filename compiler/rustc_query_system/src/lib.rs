@@ -15,4 +15,4 @@ mod values;
 pub use error::{HandleCycleError, QueryOverflow, QueryOverflowNote};
 pub use values::Value;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }

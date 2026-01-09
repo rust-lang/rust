@@ -22,4 +22,4 @@ pub fn provide(providers: &mut Providers) {
         |tcx| tcx.sess.time("serialize_dep_graph", || persist::save_dep_graph(tcx));
 }
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }

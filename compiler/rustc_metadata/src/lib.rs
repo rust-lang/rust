@@ -35,4 +35,4 @@ pub use native_libs::{
 };
 pub use rmeta::{EncodedMetadata, METADATA_HEADER, encode_metadata, rendered_const};
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }

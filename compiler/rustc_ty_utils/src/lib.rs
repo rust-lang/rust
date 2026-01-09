@@ -31,7 +31,7 @@ pub mod sig_types;
 mod structural_match;
 mod ty;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     abi::provide(providers);

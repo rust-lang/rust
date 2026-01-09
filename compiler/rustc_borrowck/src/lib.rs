@@ -98,7 +98,7 @@ mod used_muts;
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);

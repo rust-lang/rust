@@ -27,7 +27,7 @@ use rustc_middle::util::Providers;
 
 pub use self::errors::ReportErrorExt;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);

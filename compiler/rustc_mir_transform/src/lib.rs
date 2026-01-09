@@ -203,7 +203,7 @@ declare_passes! {
     mod validate : Validator;
 }
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use annotate_snippets::{Renderer, Snippet};
 use fluent_bundle::{FluentBundle, FluentError, FluentResource};
@@ -12,30 +12,11 @@ use fluent_syntax::parser::ParserError;
 use proc_macro::tracked::path;
 #[cfg(bootstrap)]
 use proc_macro::tracked_path::path;
-use proc_macro::{Diagnostic, Level, Span};
+use proc_macro::{Diagnostic, Level};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Ident, LitStr, parse_macro_input};
 use unic_langid::langid;
-
-/// Helper function for returning an absolute path for macro-invocation relative file paths.
-///
-/// If the input is already absolute, then the input is returned. If the input is not absolute,
-/// then it is appended to the directory containing the source file with this macro invocation.
-fn invocation_relative_path_to_absolute(span: Span, path: &str) -> PathBuf {
-    let path = Path::new(path);
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        // `/a/b/c/foo/bar.rs` contains the current macro invocation
-        let mut source_file_path = span.local_file().unwrap();
-        // `/a/b/c/foo/`
-        source_file_path.pop();
-        // `/a/b/c/foo/../locales/en-US/example.ftl`
-        source_file_path.push(path);
-        source_file_path
-    }
-}
 
 /// Final tokens.
 fn finish(body: TokenStream, resource: TokenStream) -> proc_macro::TokenStream {
@@ -99,12 +80,13 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     let resource_str = parse_macro_input!(input as LitStr);
     let resource_span = resource_str.span().unwrap();
     let relative_ftl_path = resource_str.value();
-    let absolute_ftl_path = invocation_relative_path_to_absolute(resource_span, &relative_ftl_path);
+    let absolute_ftl_path =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join(&relative_ftl_path);
 
     let crate_name = Ident::new(&crate_name, resource_str.span());
 
     path(absolute_ftl_path.to_str().unwrap());
-    let resource_contents = match read_to_string(absolute_ftl_path) {
+    let resource_contents = match read_to_string(&absolute_ftl_path) {
         Ok(resource_contents) => resource_contents,
         Err(e) => {
             Diagnostic::spanned(
@@ -143,7 +125,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
                 let message = annotate_snippets::Level::Error.title(&err).snippet(
                     Snippet::source(this.source())
-                        .origin(&relative_ftl_path)
+                        // Using an absolute path is fine here as compilation will not continue.
+                        .origin(absolute_ftl_path.to_str().unwrap())
                         .fold(true)
                         .annotation(annotate_snippets::Level::Error.span(pos.start..pos.end - 1)),
                 );
@@ -289,7 +272,10 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
         }
     }
 
-    finish(constants, quote! { include_str!(#relative_ftl_path) })
+    finish(
+        constants,
+        quote! { include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", #relative_ftl_path)) },
+    )
 }
 
 fn variable_references<'a>(msg: &Message<&'a str>) -> Vec<&'a str> {

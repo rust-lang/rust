@@ -29,4 +29,4 @@ pub mod module;
 #[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }

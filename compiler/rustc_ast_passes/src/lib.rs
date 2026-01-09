@@ -12,4 +12,4 @@ pub mod ast_validation;
 mod errors;
 pub mod feature_gate;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }

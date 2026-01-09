@@ -105,7 +105,7 @@ use tempfile::TempDir;
 use crate::back::lto::ModuleBuffer;
 use crate::gcc_util::{target_cpu, to_gcc_features};
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 

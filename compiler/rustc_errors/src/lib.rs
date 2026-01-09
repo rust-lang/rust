@@ -99,7 +99,7 @@ pub mod translation;
 
 pub type PResult<'a, T> = Result<T, Diag<'a>>;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]

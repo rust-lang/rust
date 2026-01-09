@@ -1,4 +1,5 @@
 //@ normalize-stderr: "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
+//@ rustc-env: CARGO_MANIFEST_DIR=$ROOT/tests/ui-fulldeps/fluent-messages
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]

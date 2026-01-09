@@ -73,7 +73,7 @@ mod typetree;
 mod va_arg;
 mod value;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "messages.ftl" }
 
 pub(crate) use macros::TryFromU32;
 
