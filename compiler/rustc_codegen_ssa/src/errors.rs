@@ -661,7 +661,7 @@ pub(crate) struct RlibArchiveBuildFailure {
 }
 
 #[derive(Diagnostic)]
-// Public for rustc_codegen_llvm::back::archive
+// Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub enum ExtractBundledLibsError<'a> {
     #[diag(codegen_ssa_extract_bundled_libs_open_file)]
     OpenFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
@@ -700,16 +700,14 @@ pub(crate) struct UnsupportedLinkSelfContained;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_archive_build_failure)]
-// Public for rustc_codegen_llvm::back::archive
-pub struct ArchiveBuildFailure {
+pub(crate) struct ArchiveBuildFailure {
     pub path: PathBuf,
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_archive_kind)]
-// Public for rustc_codegen_llvm::back::archive
-pub struct UnknownArchiveKind<'a> {
+pub(crate) struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
 }
 
