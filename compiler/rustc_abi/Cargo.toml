@@ -8,6 +8,7 @@ edition = "2024"
 bitflags = "2.4.1"
 rand = { version = "0.9.0", default-features = false, optional = true }
 rand_xoshiro = { version = "0.7.0", optional = true }
+rustc-hash = "2.0.0"
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_error_messages = { path = "../rustc_error_messages", optional = true }
 rustc_hashes = { path = "../rustc_hashes" }

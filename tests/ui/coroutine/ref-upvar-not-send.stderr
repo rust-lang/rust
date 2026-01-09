@@ -1,20 +1,21 @@
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:15:5
+  --> $DIR/ref-upvar-not-send.rs:19:5
    |
-LL | /     assert_send(#[coroutine] move || {
+LL | /     assert_send(
 LL | |
 LL | |
-LL | |         yield;
-LL | |         let _x = x;
-LL | |     });
-   | |______^ coroutine is not `Send`
+LL | |         #[coroutine]
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ coroutine is not `Send`
    |
    = help: the trait `Sync` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/ref-upvar-not-send.rs:19:18
+  --> $DIR/ref-upvar-not-send.rs:13:9
    |
-LL |         let _x = x;
-   |                  ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
+LL |     let x: &*mut () = &std::ptr::null_mut();
+   |         ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
 note: required by a bound in `assert_send`
   --> $DIR/ref-upvar-not-send.rs:6:19
    |
@@ -22,22 +23,23 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:23:5
+  --> $DIR/ref-upvar-not-send.rs:28:5
    |
-LL | /     assert_send(#[coroutine] move || {
+LL | /     assert_send(
 LL | |
 LL | |
-LL | |         yield;
-LL | |         let _y = y;
-LL | |     });
-   | |______^ coroutine is not `Send`
+LL | |         #[coroutine]
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:32:9: 32:16}`, the trait `Send` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
-  --> $DIR/ref-upvar-not-send.rs:27:18
+  --> $DIR/ref-upvar-not-send.rs:16:9
    |
-LL |         let _y = y;
-   |                  ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`
+LL |     let y: &mut *mut () = &mut std::ptr::null_mut();
+   |         ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`
 note: required by a bound in `assert_send`
   --> $DIR/ref-upvar-not-send.rs:6:19
    |

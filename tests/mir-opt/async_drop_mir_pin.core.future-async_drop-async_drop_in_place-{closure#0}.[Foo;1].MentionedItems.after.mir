@@ -3,6 +3,7 @@
 fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<[Foo; 1]>()}, _2: std::future::ResumeTy) -> ()
 yields ()
  {
+    debug _0 => _24;
     let mut _0: ();
     let mut _3: *mut [Foo; 1];
     let mut _4: *mut [Foo; 1];
@@ -25,17 +26,26 @@ yields ()
     let mut _21: std::pin::Pin<&mut Foo>;
     let mut _22: &mut Foo;
     let mut _23: *mut Foo;
+    let mut _24: *mut [Foo; 1];
+    let mut _25: *mut [Foo; 1];
 
     bb0: {
-        _3 = move (_1.0: *mut [Foo; 1]);
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = move (_1.0: *mut [Foo; 1]);
+        _24 = move _25;
+        StorageDead(_25);
+        _3 = move _24;
         goto -> bb17;
     }
 
     bb1: {
+        StorageDead(_24);
         return;
     }
 
     bb2 (cleanup): {
+        StorageDead(_24);
         resume;
     }
 

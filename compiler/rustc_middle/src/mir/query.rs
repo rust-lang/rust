@@ -7,6 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_session::config::PackCoroutineLayout;
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
@@ -53,6 +54,29 @@ pub struct CoroutineLayout<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    /// This map `A -> B` allows later MIR passes, error reporters
+    /// and layout calculator to relate saved locals `A` sourced from upvars
+    /// and locals `B` that upvars are moved into.
+    ///
+    /// For instance, an upvar `_1.0` is assigned saved local `_s12`,
+    /// see notation of [`CoroutineSavedLocal`], in the UNRESUMED state and
+    /// further moved into the internal saved local `_s13`.
+    /// This map, therefore, establishes the mapping from `_s12` to `_s13`,
+    /// so that their memory layout within the coroutine should be overlapped.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub relocated_upvars: IndexVec<CoroutineSavedLocal, Option<CoroutineSavedLocal>>,
+
+    /// Coroutine layout packing
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub pack: PackCoroutineLayout,
+}
+
+impl<'tcx> CoroutineLayout<'tcx> {
+    /// The initial state of a coroutine
+    pub const UNRESUMED: VariantIdx = VariantIdx::ZERO;
 }
 
 impl Debug for CoroutineLayout<'_> {
@@ -78,6 +102,7 @@ impl Debug for CoroutineLayout<'_> {
                 map.finish()
             })
             .field("storage_conflicts", &self.storage_conflicts)
+            .field("relocated_upvars", &self.relocated_upvars.debug_map_view())
             .finish()
     }
 }

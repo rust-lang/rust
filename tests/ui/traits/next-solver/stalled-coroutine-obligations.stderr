@@ -24,10 +24,10 @@ help: within `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`,
 LL | struct False;
    | ^^^^^^^^^^^^
 note: captured value does not implement `Valid`
-  --> $DIR/stalled-coroutine-obligations.rs:33:26
+  --> $DIR/stalled-coroutine-obligations.rs:32:9
    |
-LL |     let foo: T = async { a };
-   |                          ^ has type `False` which does not implement `Valid`
+LL |     let a = False;
+   |         ^ has type `False` which does not implement `Valid`
 
 error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
   --> $DIR/stalled-coroutine-obligations.rs:39:5
