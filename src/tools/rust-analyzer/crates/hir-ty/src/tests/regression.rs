@@ -891,13 +891,14 @@ use core::ops::Deref;
 
 struct BufWriter {}
 
-struct Mutex<T> {}
-struct MutexGuard<'a, T> {}
+struct Mutex<T>(T);
+struct MutexGuard<'a, T>(&'a T);
 impl<T> Mutex<T> {
     fn lock(&self) -> MutexGuard<'_, T> {}
 }
 impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
     type Target = T;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 fn flush(&self) {
     let w: &Mutex<BufWriter>;
@@ -905,14 +906,18 @@ fn flush(&self) {
 }
 "#,
         expect![[r#"
-            123..127 'self': &'? Mutex<T>
-            150..152 '{}': MutexGuard<'?, T>
-            234..238 'self': &'? {unknown}
-            240..290 '{     ...()); }': ()
-            250..251 'w': &'? Mutex<BufWriter>
-            276..287 '*(w.lock())': BufWriter
-            278..279 'w': &'? Mutex<BufWriter>
-            278..286 'w.lock()': MutexGuard<'?, BufWriter>
+            129..133 'self': &'? Mutex<T>
+            156..158 '{}': MutexGuard<'?, T>
+            242..246 'self': &'? MutexGuard<'a, T>
+            265..276 '{ loop {} }': &'? T
+            267..274 'loop {}': !
+            272..274 '{}': ()
+            289..293 'self': &'? {unknown}
+            295..345 '{     ...()); }': ()
+            305..306 'w': &'? Mutex<BufWriter>
+            331..342 '*(w.lock())': BufWriter
+            333..334 'w': &'? Mutex<BufWriter>
+            333..341 'w.lock()': MutexGuard<'?, BufWriter>
         "#]],
     );
 }
@@ -2561,5 +2566,35 @@ fn main() {
      // ^ ()
 }
         "#,
+    );
+}
+
+#[test]
+fn regression_21429() {
+    check_no_mismatches(
+        r#"
+trait DatabaseLike {
+    type ForeignKey: ForeignKeyLike<DB = Self>;
+}
+
+trait ForeignKeyLike {
+    type DB: DatabaseLike;
+
+    fn host_columns(&self, database: &Self::DB);
+}
+
+trait ColumnLike {
+    type DB: DatabaseLike;
+
+    fn foo() -> &&<<Self as ColumnLike>::DB as DatabaseLike>::ForeignKey {
+        loop {}
+    }
+
+    fn foreign_keys(&self, database: &Self::DB) {
+        let fk = Self::foo();
+        fk.host_columns(database);
+    }
+}
+    "#,
     );
 }
