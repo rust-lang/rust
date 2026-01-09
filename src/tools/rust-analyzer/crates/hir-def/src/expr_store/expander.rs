@@ -61,7 +61,7 @@ impl Expander {
     pub(super) fn hygiene_for_range(&self, db: &dyn DefDatabase, range: TextRange) -> HygieneId {
         match self.span_map.as_ref() {
             hir_expand::span_map::SpanMapRef::ExpansionSpanMap(span_map) => {
-                HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semitransparent(db))
+                HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semiopaque(db))
             }
             hir_expand::span_map::SpanMapRef::RealSpanMap(_) => HygieneId::ROOT,
         }
