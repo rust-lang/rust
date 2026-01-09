@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
+use rustc_abi::PackCoroutineLayout;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -1857,6 +1858,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.packed_stack {
         if sess.target.arch != Arch::S390x {
             sess.dcx().emit_err(diagnostics::UnsupportedPackedStack);
+        }
+    }
+
+    match sess.opts.unstable_opts.pack_coroutine_layout {
+        PackCoroutineLayout::Classic => {}
+        PackCoroutineLayout::CapturesOnly => {
+            sess.dcx().emit_warn(diagnostics::PackCoroutineLayoutNotImplemented);
         }
     }
 

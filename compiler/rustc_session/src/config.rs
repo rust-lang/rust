@@ -3459,7 +3459,7 @@ pub(crate) mod dep_tracking {
     use std::num::NonZero;
     use std::path::PathBuf;
 
-    use rustc_abi::Align;
+    use rustc_abi::{Align, PackCoroutineLayout};
     use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHash, StableHasher};
@@ -3564,6 +3564,7 @@ pub(crate) mod dep_tracking {
         OptLevel,
         OutFileName,
         OutputType,
+        PackCoroutineLayout,
         PanicStrategy,
         PatchableFunctionEntry,
         PointerAuthOption,
