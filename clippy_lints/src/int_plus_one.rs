@@ -100,7 +100,7 @@ impl IntPlusOne {
                     _ => None,
                 }
             },
-            // case where `... >= y - 1` or `... >= -1 + y`
+            // case where `... <= y - 1` or `... <= -1 + y`
             (BinOpKind::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
                 match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
                     // `-1 + y`
@@ -156,11 +156,11 @@ impl IntPlusOne {
 }
 
 impl EarlyLintPass for IntPlusOne {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = item.kind
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if let ExprKind::Binary(kind, lhs, rhs) = &expr.kind
             && let Some(rec) = Self::check_binop(cx, kind.node, lhs, rhs)
         {
-            Self::emit_warning(cx, item, rec);
+            Self::emit_warning(cx, expr, rec);
         }
     }
 }
