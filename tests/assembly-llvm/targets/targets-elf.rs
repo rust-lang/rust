@@ -43,6 +43,9 @@
 //@ revisions: aarch64_unknown_illumos
 //@ [aarch64_unknown_illumos] compile-flags: --target aarch64-unknown-illumos
 //@ [aarch64_unknown_illumos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_l4re_uclibc
+//@ [aarch64_unknown_l4re_uclibc] compile-flags: --target aarch64-unknown-l4re-uclibc
+//@ [aarch64_unknown_l4re_uclibc] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_linux_gnu
 //@ [aarch64_unknown_linux_gnu] compile-flags: --target aarch64-unknown-linux-gnu
 //@ [aarch64_unknown_linux_gnu] needs-llvm-components: aarch64
