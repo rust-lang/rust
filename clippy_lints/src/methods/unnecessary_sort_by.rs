@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::std_or_core;
 use clippy_utils::sugg::Sugg;
@@ -9,40 +9,35 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgKind;
 use rustc_span::sym;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{Ident, Symbol};
 use std::iter;
 
 use super::UNNECESSARY_SORT_BY;
 
-enum LintTrigger {
-    Sort(SortDetection),
-    SortByKey(SortByKeyDetection),
+enum LintTrigger<'tcx> {
+    Sort,
+    SortByKey(SortByKeyDetection<'tcx>),
 }
 
-struct SortDetection {
-    vec_name: String,
-}
-
-struct SortByKeyDetection {
-    vec_name: String,
-    closure_arg: String,
-    closure_body: String,
+struct SortByKeyDetection<'tcx> {
+    closure_arg: Symbol,
+    closure_body: &'tcx Expr<'tcx>,
     reverse: bool,
 }
 
 /// Detect if the two expressions are mirrored (identical, except one
 /// contains a and the other replaces it with b)
-fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident: &Ident) -> bool {
-    match (&a_expr.kind, &b_expr.kind) {
+fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: Ident, b_expr: &Expr<'_>, b_ident: Ident) -> bool {
+    match (a_expr.kind, b_expr.kind) {
         // Two arrays with mirrored contents
         (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => {
-            iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
+            iter::zip(left_exprs, right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
         },
         // The two exprs are function calls.
         // Check to see that the function itself and its arguments are mirrored
         (ExprKind::Call(left_expr, left_args), ExprKind::Call(right_expr, right_args)) => {
             mirrored_exprs(left_expr, a_ident, right_expr, b_ident)
-                && iter::zip(*left_args, *right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
+                && iter::zip(left_args, right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
         },
         // The two exprs are method calls.
         // Check to see that the function is the same and the arguments and receivers are mirrored
@@ -51,12 +46,12 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
             ExprKind::MethodCall(right_segment, right_receiver, right_args, _),
         ) => {
             left_segment.ident == right_segment.ident
-                && iter::zip(*left_args, *right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
+                && iter::zip(left_args, right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
                 && mirrored_exprs(left_receiver, a_ident, right_receiver, b_ident)
         },
         // Two tuples with mirrored contents
         (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => {
-            iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
+            iter::zip(left_exprs, right_exprs).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
         },
         // Two binary ops, which are the same operation and which have mirrored arguments
         (ExprKind::Binary(left_op, left_left, left_right), ExprKind::Binary(right_op, right_left, right_right)) => {
@@ -81,27 +76,27 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
         (
             ExprKind::Path(QPath::Resolved(
                 _,
-                Path {
+                &Path {
                     segments: left_segments,
                     ..
                 },
             )),
             ExprKind::Path(QPath::Resolved(
                 _,
-                Path {
+                &Path {
                     segments: right_segments,
                     ..
                 },
             )),
         ) => {
-            (iter::zip(*left_segments, *right_segments).all(|(left, right)| left.ident == right.ident)
+            (iter::zip(left_segments, right_segments).all(|(left, right)| left.ident == right.ident)
                 && left_segments
                     .iter()
-                    .all(|seg| &seg.ident != a_ident && &seg.ident != b_ident))
+                    .all(|seg| seg.ident != a_ident && seg.ident != b_ident))
                 || (left_segments.len() == 1
-                    && &left_segments[0].ident == a_ident
+                    && left_segments[0].ident == a_ident
                     && right_segments.len() == 1
-                    && &right_segments[0].ident == b_ident)
+                    && right_segments[0].ident == b_ident)
         },
         // Matching expressions, but one or both is borrowed
         (
@@ -114,7 +109,7 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
     }
 }
 
-fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
+fn detect_lint<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger<'tcx>> {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().is_slice()
@@ -123,7 +118,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         && let &[
             Param {
                 pat:
-                    Pat {
+                    &Pat {
                         kind: PatKind::Binding(_, _, left_ident, _),
                         ..
                     },
@@ -131,36 +126,25 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             },
             Param {
                 pat:
-                    Pat {
+                    &Pat {
                         kind: PatKind::Binding(_, _, right_ident, _),
                         ..
                     },
                 ..
             },
-        ] = &closure_body.params
+        ] = closure_body.params
         && let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind
         && method_path.ident.name == sym::cmp
-        && cx
-            .ty_based_def(closure_body.value)
-            .opt_parent(cx)
-            .is_diag_item(cx, sym::Ord)
+        && let Some(ord_trait) = cx.tcx.get_diagnostic_item(sym::Ord)
+        && cx.ty_based_def(closure_body.value).opt_parent(cx).opt_def_id() == Some(ord_trait)
     {
         let (closure_body, closure_arg, reverse) = if mirrored_exprs(left_expr, left_ident, right_expr, right_ident) {
-            (
-                Sugg::hir(cx, left_expr, "..").to_string(),
-                left_ident.name.to_string(),
-                false,
-            )
+            (left_expr, left_ident.name, false)
         } else if mirrored_exprs(left_expr, right_ident, right_expr, left_ident) {
-            (
-                Sugg::hir(cx, left_expr, "..").to_string(),
-                right_ident.name.to_string(),
-                true,
-            )
+            (left_expr, right_ident.name, true)
         } else {
             return None;
         };
-        let vec_name = Sugg::hir(cx, recv, "..").to_string();
 
         if let ExprKind::Path(QPath::Resolved(
             _,
@@ -168,19 +152,15 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
                 segments: [PathSegment { ident: left_name, .. }],
                 ..
             },
-        )) = &left_expr.kind
-            && left_name == left_ident
-            && cx
-                .tcx
-                .get_diagnostic_item(sym::Ord)
-                .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[]))
+        )) = left_expr.kind
+            && *left_name == left_ident
+            && implements_trait(cx, cx.typeck_results().expr_ty(left_expr), ord_trait, &[])
         {
-            return Some(LintTrigger::Sort(SortDetection { vec_name }));
+            return Some(LintTrigger::Sort);
         }
 
         if !expr_borrows(cx, left_expr) {
             return Some(LintTrigger::SortByKey(SortByKeyDetection {
-                vec_name,
                 closure_arg,
                 closure_body,
                 reverse,
@@ -203,49 +183,58 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     is_unstable: bool,
 ) {
-    match detect_lint(cx, expr, recv, arg) {
+    match detect_lint(cx, expr, arg) {
         Some(LintTrigger::SortByKey(trigger)) => {
             let method = if is_unstable {
                 "sort_unstable_by_key"
             } else {
                 "sort_by_key"
             };
-            span_lint_and_sugg(
+            let Some(std_or_core) = std_or_core(cx) else {
+                // To make it this far the crate has to reference diagnostic items defined in core. Either this is
+                // the `core` crate, there's an `extern crate core` somewhere, or another crate is defining the
+                // diagnostic items. It's fine to not lint in all those cases even if we might be able to.
+                return;
+            };
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
                 format!("consider using `{method}`"),
-                "try",
-                format!(
-                    "{}.{}(|{}| {})",
-                    trigger.vec_name,
-                    method,
-                    trigger.closure_arg,
-                    if let Some(std_or_core) = std_or_core(cx)
-                        && trigger.reverse
-                    {
-                        format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
+                |diag| {
+                    let mut app = if trigger.reverse {
+                        Applicability::MaybeIncorrect
                     } else {
-                        trigger.closure_body
-                    },
-                ),
-                if trigger.reverse {
-                    Applicability::MaybeIncorrect
-                } else {
-                    Applicability::MachineApplicable
+                        Applicability::MachineApplicable
+                    };
+                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
+                    let closure_body = Sugg::hir_with_applicability(cx, trigger.closure_body, "_", &mut app);
+                    let closure_body = if trigger.reverse {
+                        format!("{std_or_core}::cmp::Reverse({closure_body})")
+                    } else {
+                        closure_body.to_string()
+                    };
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!("{recv}.{method}(|{}| {})", trigger.closure_arg, closure_body),
+                        app,
+                    );
                 },
             );
         },
-        Some(LintTrigger::Sort(trigger)) => {
+        Some(LintTrigger::Sort) => {
             let method = if is_unstable { "sort_unstable" } else { "sort" };
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
                 format!("consider using `{method}`"),
-                "try",
-                format!("{}.{}()", trigger.vec_name, method),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
+                    diag.span_suggestion(expr.span, "try", format!("{recv}.{method}()"), app);
+                },
             );
         },
         None => {},
