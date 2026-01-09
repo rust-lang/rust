@@ -41,11 +41,6 @@ cfg_select! {
         #[path = "hermit.rs"]
         mod imp;
     }
-    target_os = "l4re" => {
-        // L4Re is unix family but does not yet support unwinding.
-        #[path = "dummy.rs"]
-        mod imp;
-    }
     any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",

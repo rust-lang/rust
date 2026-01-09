@@ -1,5 +1,3 @@
-codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not implemented yet for L4Bender
-
 codegen_ssa_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}

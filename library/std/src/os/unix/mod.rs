@@ -90,6 +90,7 @@ mod platform {
 pub mod ffi;
 pub mod fs;
 pub mod io;
+#[cfg(not(target_os = "l4re"))]
 pub mod net;
 pub mod process;
 pub mod raw;

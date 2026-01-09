@@ -114,10 +114,6 @@ pub(crate) struct Ld64UnimplementedModifier;
 pub(crate) struct LinkerUnsupportedModifier;
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_L4Bender_exporting_symbols_unimplemented)]
-pub(crate) struct L4BenderExportingSymbolsUnimplemented;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_no_natvis_directory)]
 pub(crate) struct NoNatvisDirectory {
     pub error: Error,

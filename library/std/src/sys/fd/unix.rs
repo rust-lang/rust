@@ -394,13 +394,15 @@ impl FileDesc {
         #[cfg(not(any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
-            target_os = "hurd"
+            target_os = "hurd",
+            target_os = "l4re"
         )))]
         use libc::pwrite as pwrite64;
         #[cfg(any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
-            target_os = "hurd"
+            target_os = "hurd",
+            target_os = "l4re"
         ))]
         use libc::pwrite64;
 
