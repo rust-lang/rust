@@ -36,6 +36,10 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
+const INVISIBLE_CHARACTERS: [char; 8] = [
+    '\u{200b}', '\u{200c}', '\u{2060}', '\u{2061}', '\u{2062}', '\u{00ad}', '\u{034f}', '\u{061c}',
+];
+
 #[derive(Clone, Debug)]
 pub(crate) struct UnmatchedDelim {
     pub found_delim: Option<Delimiter>,
@@ -456,6 +460,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         escaped: escaped_char(c),
                         sugg,
                         null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
+                        invisible: if INVISIBLE_CHARACTERS.contains(&c) { Some(errors::InvisibleCharacter) } else { None },
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })
