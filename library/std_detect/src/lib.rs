@@ -27,8 +27,7 @@
 extern crate std;
 
 // rust-lang/rust#83888: removing `extern crate` gives an error that `vec_spare>
-#[cfg_attr(feature = "std_detect_file_io", allow(unused_extern_crates))]
-#[cfg(feature = "std_detect_file_io")]
+#[allow(unused_extern_crates)]
 extern crate alloc;
 
 #[doc(hidden)]

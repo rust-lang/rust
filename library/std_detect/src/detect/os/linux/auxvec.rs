@@ -44,20 +44,16 @@ pub(crate) struct AuxVec {
 ///
 /// There is no perfect way of reading the auxiliary vector.
 ///
-/// - If the `std_detect_dlsym_getauxval` cargo feature is enabled, this will use
-///   `getauxval` if its linked to the binary, and otherwise proceed to a fallback implementation.
-///   When `std_detect_dlsym_getauxval` is disabled, this will assume that `getauxval` is
-///   linked to the binary - if that is not the case the behavior is undefined.
-/// - Otherwise, if the `std_detect_file_io` cargo feature is enabled, it will
+/// - If [`getauxval`] is linked to the binary we use it, and otherwise it will
 ///   try to read `/proc/self/auxv`.
 /// - If that fails, this function returns an error.
 ///
 /// Note that run-time feature detection is not invoked for features that can
 /// be detected at compile-time.
 ///
-///  Note: The `std_detect_dlsym_getauxval` cargo feature is ignored on
-/// `*-linux-{gnu,musl,ohos}*` and `*-android*` targets because we can safely assume `getauxval`
-/// is linked to the binary.
+///  Note: We always directly use `getauxval` on `*-linux-{gnu,musl,ohos}*` and
+/// `*-android*` targets rather than `dlsym` it because we can safely assume
+/// `getauxval` is linked to the binary.
 /// - `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
 ///   have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html).
 /// - `*-linux-musl*` targets ([at least since Rust 1.15](https://github.com/rust-lang/rust/blob/1.15.0/src/ci/docker/x86_64-musl/build-musl.sh#L15))
@@ -71,6 +67,7 @@ pub(crate) struct AuxVec {
 ///
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
+/// [`getauxval`]: https://man7.org/linux/man-pages/man3/getauxval.3.html
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
     // Try to call a getauxval function.
     if let Ok(hwcap) = getauxval(AT_HWCAP) {
@@ -115,16 +112,9 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
         let _ = hwcap;
     }
 
-    #[cfg(feature = "std_detect_file_io")]
-    {
-        // If calling getauxval fails, try to read the auxiliary vector from
-        // its file:
-        auxv_from_file("/proc/self/auxv").map_err(|_| ())
-    }
-    #[cfg(not(feature = "std_detect_file_io"))]
-    {
-        Err(())
-    }
+    // If calling getauxval fails, try to read the auxiliary vector from
+    // its file:
+    auxv_from_file("/proc/self/auxv").map_err(|_| ())
 }
 
 /// Tries to read the `key` from the auxiliary vector by calling the
@@ -132,14 +122,16 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 fn getauxval(key: usize) -> Result<usize, ()> {
     type F = unsafe extern "C" fn(libc::c_ulong) -> libc::c_ulong;
     cfg_select! {
-        all(
-            feature = "std_detect_dlsym_getauxval",
-            not(all(
+        any(
+            all(
                 target_os = "linux",
                 any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
-            )),
-            not(target_os = "android"),
+            ),
+            target_os = "android",
         ) => {
+            let ffi_getauxval: F = libc::getauxval;
+        }
+        _ => {
             let ffi_getauxval: F = unsafe {
                 let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
                 if ptr.is_null() {
@@ -148,23 +140,18 @@ fn getauxval(key: usize) -> Result<usize, ()> {
                 core::mem::transmute(ptr)
             };
         }
-        _ => {
-            let ffi_getauxval: F = libc::getauxval;
-        }
     }
     Ok(unsafe { ffi_getauxval(key as libc::c_ulong) as usize })
 }
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
-#[cfg(feature = "std_detect_file_io")]
 pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
     let file = super::read_file(file)?;
     auxv_from_file_bytes(&file)
 }
 
 /// Read auxiliary vector from a slice of bytes.
-#[cfg(feature = "std_detect_file_io")]
 pub(super) fn auxv_from_file_bytes(bytes: &[u8]) -> Result<AuxVec, alloc::string::String> {
     // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
     //
@@ -181,7 +168,6 @@ pub(super) fn auxv_from_file_bytes(bytes: &[u8]) -> Result<AuxVec, alloc::string
 
 /// Tries to interpret the `buffer` as an auxiliary vector. If that fails, this
 /// function returns `Err`.
-#[cfg(feature = "std_detect_file_io")]
 fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, alloc::string::String> {
     // Targets with only AT_HWCAP:
     #[cfg(any(
