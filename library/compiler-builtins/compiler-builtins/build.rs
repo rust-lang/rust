@@ -39,6 +39,7 @@ fn main() {
         || (target.triple.contains("sgx") && target.triple.contains("fortanix"))
         || target.triple.contains("-none")
         || target.triple.contains("nvptx")
+        || target.triple.contains("spirv")
         || target.triple.contains("uefi")
         || target.triple.contains("xous")
     {
@@ -67,7 +68,7 @@ fn main() {
         // Don't use a C compiler for these targets:
         //
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        if !target.arch.contains("nvptx") {
+        if !target.arch.contains("nvptx") && !target.arch.contains("spirv") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }

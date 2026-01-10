@@ -219,6 +219,7 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
     !(target.contains("emscripten")
         || target.contains("wasm32")
         || target.contains("nvptx")
+        || target.contains("spirv")
         || target.contains("fortanix")
         || target.contains("fuchsia")
         || target.contains("bpf")

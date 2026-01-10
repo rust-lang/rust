@@ -1,4 +1,4 @@
-//@ add-minicore
+//   @ add-minicore
 //@ assembly-output: emit-asm
 //@ revisions: spirv_unknown_vulkan1_3
 //@ [spirv_unknown_vulkan1_3] compile-flags: --target spirv-unknown-vulkan1.3
@@ -6,16 +6,24 @@
 
 // Sanity-check that each target can produce assembly code.
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, never_type)]
 #![no_std]
-#![no_core]
+// #![no_core]
 #![crate_type = "lib"]
 
-extern crate minicore;
-use minicore::*;
-
-pub fn test() -> u8 {
-    42
+pub enum A {
+    Foo(u8),
+    Bar(u32),
 }
 
-// CHECK: OpCapability
+// extern crate minicore;
+// use minicore::*;
+#[unsafe(no_mangle)]
+pub fn test(x: &mut A) -> u8 {
+    match x {
+        A::Foo(x) => *x,
+        A::Bar(b) => *b as u8 + 2,
+    }
+}
+
+// CHECK: what
