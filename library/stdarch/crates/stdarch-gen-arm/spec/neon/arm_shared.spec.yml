@@ -8785,7 +8785,6 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
-      - *neon-fp16
       - *neon-not-arm-stable-fp16
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
@@ -8849,7 +8848,6 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
-      - *neon-fp16
       - *neon-not-arm-stable-fp16
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
