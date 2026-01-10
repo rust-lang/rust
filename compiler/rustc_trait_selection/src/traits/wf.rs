@@ -1051,7 +1051,53 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             | ty::ConstKind::Placeholder(..) => {
                 // These variants are trivially WF, so nothing to do here.
             }
-            ty::ConstKind::Value(..) => {
+            ty::ConstKind::Value(val) => {
+                // FIXME(mgca): no need to feature-gate once valtree lifetimes are not erased
+                if tcx.features().min_generic_const_args() {
+                    match val.ty.kind() {
+                        ty::Adt(adt_def, args) => {
+                            let adt_val = val.destructure_adt_const();
+                            let variant_def = adt_def.variant(adt_val.variant);
+                            let cause = self.cause(ObligationCauseCode::WellFormed(None));
+                            self.out.extend(variant_def.fields.iter().zip(adt_val.fields).map(
+                                |(field_def, &field_val)| {
+                                    let field_ty =
+                                        tcx.type_of(field_def.did).instantiate(tcx, args);
+                                    let predicate = ty::PredicateKind::Clause(
+                                        ty::ClauseKind::ConstArgHasType(field_val, field_ty),
+                                    );
+                                    traits::Obligation::with_depth(
+                                        tcx,
+                                        cause.clone(),
+                                        self.recursion_depth,
+                                        self.param_env,
+                                        predicate,
+                                    )
+                                },
+                            ));
+                        }
+                        ty::Tuple(field_tys) => {
+                            let field_vals = val.to_branch();
+                            let cause = self.cause(ObligationCauseCode::WellFormed(None));
+                            self.out.extend(field_tys.iter().zip(field_vals).map(
+                                |(field_ty, &field_val)| {
+                                    let predicate = ty::PredicateKind::Clause(
+                                        ty::ClauseKind::ConstArgHasType(field_val, field_ty),
+                                    );
+                                    traits::Obligation::with_depth(
+                                        tcx,
+                                        cause.clone(),
+                                        self.recursion_depth,
+                                        self.param_env,
+                                        predicate,
+                                    )
+                                },
+                            ));
+                        }
+                        _ => {}
+                    }
+                }
+
                 // FIXME: Enforce that values are structurally-matchable.
             }
         }

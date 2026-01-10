@@ -191,8 +191,7 @@ impl<'tcx> Value<'tcx> {
         }
     }
 
-    /// Destructures array, ADT or tuple constants into the constants
-    /// of their fields.
+    /// Destructures ADT constants into the constants of their fields.
     pub fn destructure_adt_const(&self) -> ty::DestructuredAdtConst<'tcx> {
         let fields = self.to_branch();
 
