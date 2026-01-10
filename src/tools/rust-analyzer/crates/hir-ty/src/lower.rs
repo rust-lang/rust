@@ -27,8 +27,8 @@ use hir_def::{
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs, ValueNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
-        ConstRef, LifetimeRefId, PathId, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound,
-        TypeRef, TypeRefId,
+        ConstRef, FnType, LifetimeRefId, PathId, TraitBoundModifier, TraitRef as HirTraitRef,
+        TypeBound, TypeRef, TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -98,7 +98,7 @@ impl ImplTraitLoweringState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LifetimeElisionKind<'db> {
     /// Create a new anonymous lifetime parameter and reference it.
     ///
@@ -437,26 +437,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 Ty::new_ref(interner, lifetime, inner_ty, lower_mutability(ref_.mutability))
             }
             TypeRef::Placeholder => Ty::new_error(interner, ErrorGuaranteed),
-            TypeRef::Fn(fn_) => {
-                let substs = self.with_shifted_in(
-                    DebruijnIndex::from_u32(1),
-                    |ctx: &mut TyLoweringContext<'_, '_>| {
-                        Tys::new_from_iter(
-                            interner,
-                            fn_.params.iter().map(|&(_, tr)| ctx.lower_ty(tr)),
-                        )
-                    },
-                );
-                Ty::new_fn_ptr(
-                    interner,
-                    Binder::dummy(FnSig {
-                        abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-                        safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
-                        c_variadic: fn_.is_varargs,
-                        inputs_and_output: substs,
-                    }),
-                )
-            }
+            TypeRef::Fn(fn_) => self.lower_fn_ptr(fn_),
             TypeRef::DynTrait(bounds) => self.lower_dyn_trait(bounds),
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode.mode {
@@ -515,6 +496,30 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             TypeRef::Error => Ty::new_error(self.interner, ErrorGuaranteed),
         };
         (ty, res)
+    }
+
+    fn lower_fn_ptr(&mut self, fn_: &FnType) -> Ty<'db> {
+        let interner = self.interner;
+        let (params, ret_ty) = fn_.split_params_and_ret();
+        let old_lifetime_elision = self.lifetime_elision;
+        let mut args = Vec::with_capacity(fn_.params.len());
+        self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx: &mut TyLoweringContext<'_, '_>| {
+            ctx.lifetime_elision =
+                LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
+            args.extend(params.iter().map(|&(_, tr)| ctx.lower_ty(tr)));
+            ctx.lifetime_elision = LifetimeElisionKind::for_fn_ret(interner);
+            args.push(ctx.lower_ty(ret_ty));
+        });
+        self.lifetime_elision = old_lifetime_elision;
+        Ty::new_fn_ptr(
+            interner,
+            Binder::dummy(FnSig {
+                abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
+                safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
+                c_variadic: fn_.is_varargs,
+                inputs_and_output: Tys::new_from_slice(&args),
+            }),
+        )
     }
 
     /// This is only for `generic_predicates_for_param`, where we can't just

@@ -599,7 +599,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         explicit_self_ty: Option<Ty<'db>>,
         lowering_assoc_type_generics: bool,
     ) -> GenericArgs<'db> {
-        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision;
 
         if let Some(args) = self.current_or_prev_segment.args_and_bindings
             && args.parenthesized != GenericArgsParentheses::No
@@ -640,7 +640,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            self.ctx.lifetime_elision.clone(),
+            self.ctx.lifetime_elision,
         );
         self.ctx.lifetime_elision = old_lifetime_elision;
         result
@@ -884,7 +884,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 assoc_type: binding_idx as u32,
                             },
                             false,
-                            this.ctx.lifetime_elision.clone(),
+                            this.ctx.lifetime_elision,
                         )
                     });
                 let args = GenericArgs::new_from_iter(
@@ -902,7 +902,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                             // `Fn()`-style generics are elided like functions. This is `Output` (we lower to it in hir-def).
                             LifetimeElisionKind::for_fn_ret(self.ctx.interner)
                         } else {
-                            self.ctx.lifetime_elision.clone()
+                            self.ctx.lifetime_elision
                         };
                     self.with_lifetime_elision(lifetime_elision, |this| {
                         match (&this.ctx.store[type_ref], this.ctx.impl_trait_mode.mode) {
