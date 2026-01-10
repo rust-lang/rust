@@ -598,3 +598,69 @@ fn from_neg_zero() {
     assert_eq!(Duration::from_secs_f32(-0.0), Duration::ZERO);
     assert_eq!(Duration::from_secs_f64(-0.0), Duration::ZERO);
 }
+
+#[test]
+fn precise_duration_fp_mul() {
+    let d1 = Duration::from_nanos_u128(1 << 90);
+    let d2 = Duration::from_nanos_u128(2 << 90);
+    let d3 = Duration::from_nanos_u128(3 << 90);
+
+    assert_eq!(d1.mul_f32(1.0), d1);
+    assert_eq!(d1.mul_f32(2.0), d2);
+    assert_eq!(d1.mul_f32(3.0), d3);
+    assert_eq!(d2.mul_f32(1.5), d3);
+
+    let _ = Duration::MAX.mul_f32(1.0);
+}
+
+#[test]
+fn precise_duration_fp_div() {
+    let d1 = Duration::from_nanos_u128(1 << 90);
+    let d2 = Duration::from_nanos_u128(2 << 90);
+    let d3 = Duration::from_nanos_u128(3 << 90);
+
+    assert_eq!(d1.div_f32(1.0), d1);
+    assert_eq!(d2.div_f32(2.0), d1);
+    assert_eq!(d3.div_f32(3.0), d1);
+    assert_eq!(d3.div_f32(1.5), d2);
+
+    let _ = Duration::MAX.div_f32(1.0);
+}
+
+const TOO_LARGE_FACTOR: f64 = Duration::MAX.as_nanos() as f64;
+const TOO_LARGE_DIVISOR: f64 = TOO_LARGE_FACTOR * 2.0;
+const SMALLEST_DIVISOR: f64 = TOO_LARGE_FACTOR.recip();
+const SMALLEST_FACTOR: f64 = TOO_LARGE_DIVISOR.recip();
+
+#[test]
+fn precise_duration_fp_boundaries() {
+    const DURATION_BITS: u32 = Duration::MAX.as_nanos().ilog2() + 1;
+    const PRECISION: u32 = DURATION_BITS - f64::MANTISSA_DIGITS;
+
+    assert_eq!(Duration::MAX.mul_f64(SMALLEST_FACTOR), Duration::NANOSECOND);
+    assert_eq!(Duration::MAX.mul_f64(SMALLEST_FACTOR.next_down()), Duration::ZERO);
+    assert_eq!(Duration::MAX.div_f64(TOO_LARGE_DIVISOR), Duration::ZERO);
+    assert_eq!(Duration::MAX.div_f64(TOO_LARGE_DIVISOR.next_down()), Duration::NANOSECOND);
+
+    //the following assertions pair with the two subsequent (`should_panic`) tests
+    assert!(
+        Duration::MAX - Duration::NANOSECOND.mul_f64(TOO_LARGE_FACTOR.next_down())
+            < Duration::from_nanos(1 << PRECISION)
+    );
+    assert!(
+        Duration::MAX - Duration::NANOSECOND.div_f64(SMALLEST_DIVISOR)
+            < Duration::from_nanos(1 << PRECISION)
+    );
+}
+
+#[test]
+#[should_panic(expected = "overflow")]
+fn precise_duration_fp_mul_overflow() {
+    let _ = Duration::NANOSECOND.mul_f64(TOO_LARGE_FACTOR);
+}
+
+#[test]
+#[should_panic(expected = "overflow")]
+fn precise_duration_fp_div_overflow() {
+    let _ = Duration::NANOSECOND.div_f64(SMALLEST_DIVISOR.next_down());
+}
