@@ -1,4 +1,6 @@
-//@ compile-flags: -Copt-level=1
+//@ revisions: OPT1 OPT3
+//@ [OPT1]compile-flags: -Copt-level=1
+//@ [OPT3]compile-flags: -Copt-level=3
 //@ only-64bit
 
 #![crate_type = "lib"]
@@ -18,8 +20,9 @@ pub enum Enum0 {
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0(i8{{.+}}%0)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[IS_B:.+]] = icmp eq i8 %0, 2
-// CHECK-NEXT: %[[TRUNC:.+]] = and i8 %0, 1
-// CHECK-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %[[TRUNC]]
+// OPT1-NEXT: %[[TRUNC:.+]] = and i8 %0, 1
+// OPT1-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %[[TRUNC]]
+// OPT3-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %0
 // CHECK-NEXT: ret i8 %[[R]]
 #[no_mangle]
 pub fn match0(e: Enum0) -> u8 {
@@ -37,14 +40,25 @@ pub enum Enum1 {
     C,
 }
 
+// Because of the niche, B & C are stored as 2 & 3, which are different from its
+// discriminants (1 & 2). A MIR optimization adjusted the `switchInt` to match on
+// `Discriminant(e) + 1` so that what we emit ends up being pass-through for all
+// the tagged variants.  Thus the only thing needing a fixup is  the A variant case,
+// which conveniently here happens to be just a `umax`.
+
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1(i8{{.+}}%0)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
-// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
-// CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 1
-// CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 0
-// CHECK-NEXT: switch i64 %[[DISCR]]
+// OPT1-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
+// OPT1-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
+// OPT1-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
+// OPT1-NEXT: %[[NICHE_PSEUDOTAG:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 2
+// OPT1-NEXT: %[[PSEUDOTAG:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_PSEUDOTAG]], i64 1
+// OPT3-NEXT: %[[PSEUDOTAG:.+]] = tail call i8 @llvm.umax.i8(i8 %0, i8 1)
+// CHECK-NEXT: switch {{i8|i64}} %[[PSEUDOTAG]]
+// CHECK-NEXT:   {{i8|i64}} 1,
+// CHECK-NEXT:   {{i8|i64}} 2,
+// CHECK-NEXT:   {{i8|i64}} 3,
+// CHECK-NEXT: ]
 #[no_mangle]
 pub fn match1(e: Enum1) -> u8 {
     use Enum1::*;
@@ -101,11 +115,17 @@ pub enum Enum2 {
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, -?[0-9]+\))?}} i8 @match2(i8{{.+}}%0)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add i8 %0, 2
-// CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
+// CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext{{( nneg)?}} i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 4
-// CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 1
-// CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 0
-// CHECK-NEXT: switch i64 %[[DISCR]]
+// CHECK-NEXT: %[[NICHE_PSEUDOTAG:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 254
+// CHECK-NEXT: %[[PSEUDOTAG:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_PSEUDOTAG]], i64 253
+// CHECK-NEXT: switch i64 %[[PSEUDOTAG]]
+// CHECK-NEXT:   i64 253,
+// CHECK-NEXT:   i64 254,
+// CHECK-NEXT:   i64 255,
+// CHECK-NEXT:   i64 256,
+// CHECK-NEXT:   i64 257,
+// CHECK-NEXT: ]
 #[no_mangle]
 pub fn match2(e: Enum2) -> u8 {
     use Enum2::*;
@@ -452,15 +472,17 @@ pub enum HugeVariantIndex {
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %0, 3
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
+// OPT1-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
+// OPT1-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
-// CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 257
-// CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 258
-// CHECK-NEXT: switch i64 %[[DISCR]],
-// CHECK-NEXT:   i64 257,
-// CHECK-NEXT:   i64 258,
-// CHECK-NEXT:   i64 259,
+// OPT1-NEXT: %[[NICHE_PSEUDOTAG:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 2
+// OPT1-NEXT: %[[PSEUDOTAG:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_PSEUDOTAG]], i64 3
+// OPT3-NEXT: %[[PSEUDOTAG:.+]] = select i1 %[[IS_NICHE]], i8 %0, i8 3
+// CHECK-NEXT: switch {{i8|i64}} %[[PSEUDOTAG]],
+// CHECK-NEXT:   {{i8|i64}} 2,
+// CHECK-NEXT:   {{i8|i64}} 3,
+// CHECK-NEXT:   {{i8|i64}} 4,
+// CHECK-NEXT: ]
 #[no_mangle]
 pub fn match5(e: HugeVariantIndex) -> u8 {
     use HugeVariantIndex::*;
