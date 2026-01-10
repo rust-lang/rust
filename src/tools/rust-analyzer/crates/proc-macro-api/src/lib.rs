@@ -18,7 +18,7 @@ extern crate rustc_driver as _;
 
 pub mod bidirectional_protocol;
 pub mod legacy_protocol;
-mod process;
+pub mod process;
 pub mod transport;
 
 use paths::{AbsPath, AbsPathBuf};
@@ -42,6 +42,25 @@ pub mod version {
 
     /// Current API version of the proc-macro protocol.
     pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
+}
+
+#[derive(Copy, Clone)]
+pub enum ProtocolFormat {
+    JsonLegacy,
+    PostcardLegacy,
+    BidirectionalPostcardPrototype,
+}
+
+impl fmt::Display for ProtocolFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProtocolFormat::JsonLegacy => write!(f, "json-legacy"),
+            ProtocolFormat::PostcardLegacy => write!(f, "postcard-legacy"),
+            ProtocolFormat::BidirectionalPostcardPrototype => {
+                write!(f, "bidirectional-postcard-prototype")
+            }
+        }
+    }
 }
 
 /// Represents different kinds of procedural macros that can be expanded by the external server.
@@ -132,7 +151,25 @@ impl ProcMacroClient {
         > + Clone,
         version: Option<&Version>,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(process_path, env, version)?;
+        let process = ProcMacroServerProcess::spawn(process_path, env, version)?;
+        Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
+    }
+
+    /// Invokes `spawn` and returns a client connected to the resulting read and write handles.
+    ///
+    /// The `process_path` is used for `Self::server_path`. This function is mainly used for testing.
+    pub fn with_io_channels(
+        process_path: &AbsPath,
+        spawn: impl Fn(
+            Option<ProtocolFormat>,
+        ) -> io::Result<(
+            Box<dyn process::ProcessExit>,
+            Box<dyn io::Write + Send + Sync>,
+            Box<dyn io::BufRead + Send + Sync>,
+        )>,
+        version: Option<&Version>,
+    ) -> io::Result<ProcMacroClient> {
+        let process = ProcMacroServerProcess::run(spawn, version, || "<unknown>".to_owned())?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
