@@ -974,12 +974,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
+                    let name =
+                        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiForeignItem) {
+                            "externally implementable items"
+                        } else {
+                            "foreign items"
+                        };
+
                     let span = tcx.def_span(def_id);
                     struct_span_code_err!(
                         tcx.dcx(),
                         span,
                         E0044,
-                        "foreign items may not have {kinds} parameters",
+                        "{name} may not have {kinds} parameters",
                     )
                     .with_span_label(span, format!("can't have {kinds} parameters"))
                     .with_help(

@@ -24,7 +24,7 @@ use super::potentially_plural_count;
 use crate::check::compare_impl_item::{
     CheckNumberOfEarlyBoundRegionsError, check_number_of_early_bound_regions,
 };
-use crate::errors::{EiiWithGenerics, LifetimesOrBoundsMismatchOnEii};
+use crate::errors::LifetimesOrBoundsMismatchOnEii;
 
 /// Checks whether the signature of some `external_impl`, matches
 /// the signature of `declaration`, which it is supposed to be compatible
@@ -154,29 +154,8 @@ fn check_is_structurally_compatible<'tcx>(
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    check_no_generics(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
     check_number_of_arguments(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
     check_early_region_bounds(tcx, external_impl, declaration, eii_attr_span)?;
-    Ok(())
-}
-
-/// externally implementable items can't have generics
-fn check_no_generics<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    external_impl: LocalDefId,
-    _declaration: DefId,
-    eii_name: Symbol,
-    eii_attr_span: Span,
-) -> Result<(), ErrorGuaranteed> {
-    let generics = tcx.generics_of(external_impl);
-    if generics.own_requires_monomorphization() {
-        tcx.dcx().emit_err(EiiWithGenerics {
-            span: tcx.def_span(external_impl),
-            attr: eii_attr_span,
-            eii_name,
-        });
-    }
-
     Ok(())
 }
 

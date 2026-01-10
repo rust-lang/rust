@@ -165,10 +165,6 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
 
-hir_analysis_eii_with_generics =
-    #[{$eii_name}] cannot have generic parameters other than lifetimes
-    .label = required by this attribute
-
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
 
