@@ -414,8 +414,9 @@ fn match_loop_inner<'t>(
                     }
 
                     // Check if we need a separator.
-                    if item.sep.is_some() && !item.sep_matched {
-                        let sep = item.sep.as_ref().unwrap();
+                    if let Some(sep) = &item.sep
+                        && !item.sep_matched
+                    {
                         let mut fork = src.clone();
                         if expect_separator(&mut fork, sep) {
                             // HACK: here we use `meta_result` to pass `TtIter` back to caller because

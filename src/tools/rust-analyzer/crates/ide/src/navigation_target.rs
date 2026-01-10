@@ -19,7 +19,7 @@ use ide_db::{
 };
 use stdx::never;
 use syntax::{
-    AstNode, SyntaxNode, TextRange,
+    AstNode, AstPtr, SyntaxNode, TextRange,
     ast::{self, HasName},
 };
 
@@ -253,7 +253,7 @@ impl<'db> TryToNav for FileSymbol<'db> {
                 db,
                 self.loc.hir_file_id,
                 self.loc.ptr.text_range(),
-                Some(self.loc.name_ptr.text_range()),
+                self.loc.name_ptr.map(AstPtr::text_range),
             )
             .map(|(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget {

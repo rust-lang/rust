@@ -129,58 +129,19 @@ impl Query {
     /// - `anchor_to_crate`: Whether the first segment must be a crate name
     fn parse_path_query(query: &str) -> (Vec<String>, String, bool) {
         // Check for leading :: (absolute path / crate search)
-        let anchor_to_crate = query.starts_with("::");
-        let query = if anchor_to_crate { &query[2..] } else { query };
-
-        // Handle sole "::" - return all crates
-        if query.is_empty() && anchor_to_crate {
-            return (vec![], String::new(), true);
-        }
-
-        // Check for trailing :: (module browsing - returns all items in module)
-        let return_all_in_module = query.ends_with("::");
-        let query = if return_all_in_module { query.trim_end_matches("::") } else { query };
-
-        if !query.contains("::") {
-            // No path separator - single segment
-            if anchor_to_crate && !return_all_in_module {
-                // "::foo" - fuzzy search crate names only
-                return (vec![], query.to_string(), true);
-            }
-            if return_all_in_module {
-                // "foo::" - browse all items in module "foo"
-                // path_filter = ["foo"], query = "", anchor_to_crate = false/true
-                return (vec![query.to_string()], String::new(), anchor_to_crate);
-            }
-            // Plain "foo" - normal fuzzy search
-            return (vec![], query.to_string(), false);
-        }
-
-        // Filter out empty segments (e.g., "foo::::bar" -> "foo::bar")
-        let segments: Vec<&str> = query.split("::").filter(|s| !s.is_empty()).collect();
-
-        if segments.is_empty() {
-            return (vec![], String::new(), anchor_to_crate);
-        }
-
-        let path: Vec<String> =
-            segments[..segments.len() - 1].iter().map(|s| s.to_string()).collect();
-        let item = if return_all_in_module {
-            // All segments go to path, item is empty
-            let mut path = path;
-            path.push(segments.last().unwrap().to_string());
-            return (path, String::new(), anchor_to_crate);
-        } else {
-            segments.last().unwrap_or(&"").to_string()
+        let (query, anchor_to_crate) = match query.strip_prefix("::") {
+            Some(q) => (q, true),
+            None => (query, false),
         };
 
-        (path, item, anchor_to_crate)
-    }
+        let Some((prefix, query)) = query.rsplit_once("::") else {
+            return (vec![], query.to_owned(), anchor_to_crate);
+        };
 
-    /// Returns true if this query should return all items in a module
-    /// (i.e., the original query ended with `::`)
-    fn is_module_browsing(&self) -> bool {
-        self.query.is_empty() && !self.path_filter.is_empty()
+        let prefix: Vec<_> =
+            prefix.split("::").filter(|s| !s.is_empty()).map(ToOwned::to_owned).collect();
+
+        (prefix, query.to_owned(), anchor_to_crate)
     }
 
     /// Returns true if this query is searching for crates
@@ -245,11 +206,14 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_
 // That is, `#` switches from "types" to all symbols, `*` switches from the current
 // workspace to dependencies.
 //
-// Note that filtering does not currently work in VSCode due to the editor never
-// sending the special symbols to the language server. Instead, you can configure
-// the filtering via the `rust-analyzer.workspace.symbol.search.scope` and
-// `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
-// with `__` are hidden from the search results unless configured otherwise.
+// This also supports general Rust path syntax with the usual rules.
+//
+// Note that paths do not currently work in VSCode due to the editor never
+// sending the special symbols to the language server. Some other editors might not support the # or
+// * search either, instead, you can configure the filtering via the
+// `rust-analyzer.workspace.symbol.search.scope` and `rust-analyzer.workspace.symbol.search.kind`
+// settings. Symbols prefixed with `__` are hidden from the search results unless configured
+// otherwise.
 //
 // | Editor  | Shortcut |
 // |---------|-----------|
@@ -257,12 +221,11 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
-    // Handle special case: "::" alone or "::foo" for crate search
     if query.is_crate_search() {
         return search_crates(db, &query);
     }
 
-    // If we have a path filter, resolve it to target modules first
+    // If we have a path filter, resolve it to target modules
     let indices: Vec<_> = if !query.path_filter.is_empty() {
         let target_modules = resolve_path_to_modules(
             db,
@@ -272,13 +235,11 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
         );
 
         if target_modules.is_empty() {
-            return vec![]; // Path doesn't resolve to any module
+            return vec![];
         }
 
-        // Get symbol indices only for the resolved modules
         target_modules.iter().map(|&module| SymbolIndex::module_symbols(db, module)).collect()
     } else if query.libs {
-        // Original behavior for non-path queries searching libs
         LibraryRoots::get(db)
             .roots(db)
             .par_iter()
@@ -289,7 +250,6 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
             .map(|&root| SymbolIndex::library_symbols(db, root))
             .collect()
     } else {
-        // Original behavior for non-path queries searching local crates
         let mut crates = Vec::new();
 
         for &root in LocalRoots::get(db).roots(db).iter() {
@@ -303,23 +263,11 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
 
     let mut res = vec![];
 
-    // For module browsing (empty query, non-empty path_filter), return all symbols
-    if query.is_module_browsing() {
-        for index in &indices {
-            for symbol in index.symbols.iter() {
-                // Apply existing filters (only_types, assoc_mode, exclude_imports, etc.)
-                if query.matches_symbol_filters(symbol) {
-                    res.push(symbol.clone());
-                }
-            }
-        }
-    } else {
-        // Normal search: use FST to match item name
-        query.search::<()>(&indices, |f| {
-            res.push(f.clone());
-            ControlFlow::Continue(())
-        });
-    }
+    // Normal search: use FST to match item name
+    query.search::<()>(&indices, |f| {
+        res.push(f.clone());
+        ControlFlow::Continue(())
+    });
 
     res
 }
@@ -341,9 +289,15 @@ fn search_crates<'db>(db: &'db RootDatabase, query: &Query) -> Vec<FileSymbol<'d
         };
 
         if matches {
-            // Create a FileSymbol for the crate's root module
-            if let Some(symbol) = hir::symbols::FileSymbol::for_crate_root(db, krate) {
-                res.push(symbol);
+            // Get the crate root module's symbol index and find the root module symbol
+            let root_module = krate.root_module(db);
+            let index = SymbolIndex::module_symbols(db, root_module);
+            // Find the module symbol itself (representing the crate)
+            for symbol in index.symbols.iter() {
+                if matches!(symbol.def, hir::ModuleDef::Module(m) if m == root_module) {
+                    res.push(symbol.clone());
+                    break;
+                }
             }
         }
     }
@@ -398,10 +352,10 @@ fn resolve_path_to_modules(
             for &krate in db.source_root_crates(root).iter() {
                 let root_module = Crate::from(krate).root_module(db);
                 for child in root_module.children(db) {
-                    if let Some(name) = child.name(db) {
-                        if names_match(name.as_str(), first_segment) {
-                            candidate_modules.push(child);
-                        }
+                    if let Some(name) = child.name(db)
+                        && names_match(name.as_str(), first_segment)
+                    {
+                        candidate_modules.push(child);
                     }
                 }
             }
@@ -684,41 +638,6 @@ impl Query {
             (true, AssocSearchMode::Exclude) | (false, AssocSearchMode::AssocItemsOnly)
         )
     }
-
-    /// Check if a symbol passes all filters except name matching.
-    /// Used for module browsing where we want all items in a module.
-    fn matches_symbol_filters(&self, symbol: &FileSymbol<'_>) -> bool {
-        // Check only_types filter
-        if self.only_types
-            && !matches!(
-                symbol.def,
-                hir::ModuleDef::Adt(..)
-                    | hir::ModuleDef::TypeAlias(..)
-                    | hir::ModuleDef::BuiltinType(..)
-                    | hir::ModuleDef::Trait(..)
-            )
-        {
-            return false;
-        }
-
-        // Check assoc_mode filter
-        if !self.matches_assoc_mode(symbol.is_assoc) {
-            return false;
-        }
-
-        // Check exclude_imports filter
-        if self.exclude_imports && symbol.is_import {
-            return false;
-        }
-
-        // Check underscore prefix
-        let ignore_underscore_prefixed = !self.query.starts_with("__");
-        if ignore_underscore_prefixed && symbol.name.as_str().starts_with("__") {
-            return false;
-        }
-
-        true
-    }
 }
 
 #[cfg(test)]
@@ -937,34 +856,6 @@ pub struct Foo;
         assert_eq!(path, vec!["foo"]);
         assert_eq!(item, "bar");
         assert!(!anchor);
-    }
-
-    #[test]
-    fn test_query_modes() {
-        // Test is_module_browsing
-        let query = Query::new("foo::".to_owned());
-        assert!(query.is_module_browsing());
-        assert!(!query.is_crate_search());
-
-        // Test is_crate_search with sole ::
-        let query = Query::new("::".to_owned());
-        assert!(!query.is_module_browsing());
-        assert!(query.is_crate_search());
-
-        // Test is_crate_search with ::foo
-        let query = Query::new("::foo".to_owned());
-        assert!(!query.is_module_browsing());
-        assert!(query.is_crate_search());
-
-        // Normal query should be neither
-        let query = Query::new("foo".to_owned());
-        assert!(!query.is_module_browsing());
-        assert!(!query.is_crate_search());
-
-        // Path query should be neither
-        let query = Query::new("foo::bar".to_owned());
-        assert!(!query.is_module_browsing());
-        assert!(!query.is_crate_search());
     }
 
     #[test]
