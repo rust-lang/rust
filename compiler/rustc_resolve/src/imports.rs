@@ -300,13 +300,13 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
     if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
         && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
         && import1 == import2
-        && d1.warn_ambiguity.get() == d2.warn_ambiguity.get()
     {
         assert_eq!(d1.ambiguity.get(), d2.ambiguity.get());
-        assert!(!d1.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
-        assert_eq!(d1.vis(), d2.vis());
+        // Visibility of the new import declaration may be different,
+        // because it already incorporates the visibility of the source binding.
+        // `warn_ambiguity` of a re-fetched glob can also change in both directions.
         remove_same_import(d1_next, d2_next)
     } else {
         (d1, d2)
