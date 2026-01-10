@@ -13,14 +13,13 @@ use span::Span;
 use stdx::JodChild;
 
 use crate::{
-    Codec, ProcMacro, ProcMacroKind, ServerError,
+    Codec, ProcMacro, ProcMacroKind, ProtocolFormat, ServerError,
     bidirectional_protocol::{self, SubCallback, msg::BidirectionalMessage, reject_subrequests},
     legacy_protocol::{self, SpanMode},
     version,
 };
 
 /// Represents a process handling proc-macro communication.
-#[derive(Debug)]
 pub(crate) struct ProcMacroServerProcess {
     /// The state of the proc-macro server process, the protocol is currently strictly sequential
     /// hence the lock on the state.
@@ -31,6 +30,16 @@ pub(crate) struct ProcMacroServerProcess {
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
 }
 
+impl std::fmt::Debug for ProcMacroServerProcess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProcMacroServerProcess")
+            .field("version", &self.version)
+            .field("protocol", &self.protocol)
+            .field("exited", &self.exited)
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum Protocol {
     LegacyJson { mode: SpanMode },
@@ -38,22 +47,83 @@ pub(crate) enum Protocol {
     BidirectionalPostcardPrototype { mode: SpanMode },
 }
 
+pub trait ProcessExit: Send + Sync {
+    fn exit_err(&mut self) -> Option<ServerError>;
+}
+
+impl ProcessExit for Process {
+    fn exit_err(&mut self) -> Option<ServerError> {
+        match self.child.try_wait() {
+            Ok(None) | Err(_) => None,
+            Ok(Some(status)) => {
+                let mut msg = String::new();
+                if !status.success()
+                    && let Some(stderr) = self.child.stderr.as_mut()
+                {
+                    _ = stderr.read_to_string(&mut msg);
+                }
+                Some(ServerError {
+                    message: format!(
+                        "proc-macro server exited with {status}{}{msg}",
+                        if msg.is_empty() { "" } else { ": " }
+                    ),
+                    io: None,
+                })
+            }
+        }
+    }
+}
+
 /// Maintains the state of the proc-macro server process.
-#[derive(Debug)]
 struct ProcessSrvState {
-    process: Process,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
+    process: Box<dyn ProcessExit>,
+    stdin: Box<dyn Write + Send + Sync>,
+    stdout: Box<dyn BufRead + Send + Sync>,
 }
 
 impl ProcMacroServerProcess {
     /// Starts the proc-macro server and performs a version check
-    pub(crate) fn run<'a>(
+    pub(crate) fn spawn<'a>(
         process_path: &AbsPath,
         env: impl IntoIterator<
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
         version: Option<&Version>,
+    ) -> io::Result<ProcMacroServerProcess> {
+        Self::run(
+            |format| {
+                let mut process = Process::run(
+                    process_path,
+                    env.clone(),
+                    format.map(|format| format.to_string()).as_deref(),
+                )?;
+                let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
+
+                Ok((Box::new(process), Box::new(stdin), Box::new(stdout)))
+            },
+            version,
+            || {
+                #[expect(clippy::disallowed_methods)]
+                Command::new(process_path)
+                    .arg("--version")
+                    .output()
+                    .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+                    .unwrap_or_else(|_| "unknown version".to_owned())
+            },
+        )
+    }
+
+    /// Invokes `spawn` and performs a version check.
+    pub(crate) fn run(
+        spawn: impl Fn(
+            Option<ProtocolFormat>,
+        ) -> io::Result<(
+            Box<dyn ProcessExit>,
+            Box<dyn Write + Send + Sync>,
+            Box<dyn BufRead + Send + Sync>,
+        )>,
+        version: Option<&Version>,
+        binary_server_version: impl Fn() -> String,
     ) -> io::Result<ProcMacroServerProcess> {
         const VERSION: Version = Version::new(1, 93, 0);
         // we do `>` for nightly as this started working in the middle of the 1.93 nightly release, so we dont want to break on half of the nightlies
@@ -65,27 +135,33 @@ impl ProcMacroServerProcess {
             && has_working_format_flag
         {
             &[
-                (
-                    Some("bidirectional-postcard-prototype"),
-                    Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id },
-                ),
-                (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
-                (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
+                Some(ProtocolFormat::BidirectionalPostcardPrototype),
+                Some(ProtocolFormat::PostcardLegacy),
+                Some(ProtocolFormat::JsonLegacy),
             ]
         } else {
-            &[(None, Protocol::LegacyJson { mode: SpanMode::Id })]
+            &[None]
         };
 
         let mut err = None;
-        for &(format, ref protocol) in formats {
+        for &format in formats {
             let create_srv = || {
-                let mut process = Process::run(process_path, env.clone(), format)?;
-                let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
+                let (process, stdin, stdout) = spawn(format)?;
 
                 io::Result::Ok(ProcMacroServerProcess {
                     state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
                     version: 0,
-                    protocol: protocol.clone(),
+                    protocol: match format {
+                        Some(ProtocolFormat::BidirectionalPostcardPrototype) => {
+                            Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id }
+                        }
+                        Some(ProtocolFormat::PostcardLegacy) => {
+                            Protocol::LegacyPostcard { mode: SpanMode::Id }
+                        }
+                        Some(ProtocolFormat::JsonLegacy) | None => {
+                            Protocol::LegacyJson { mode: SpanMode::Id }
+                        }
+                    },
                     exited: OnceLock::new(),
                 })
             };
@@ -93,12 +169,7 @@ impl ProcMacroServerProcess {
             tracing::info!("sending proc-macro server version check");
             match srv.version_check(Some(&mut reject_subrequests)) {
                 Ok(v) if v > version::CURRENT_API_VERSION => {
-                    #[allow(clippy::disallowed_methods)]
-                    let process_version = Command::new(process_path)
-                        .arg("--version")
-                        .output()
-                        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-                        .unwrap_or_else(|_| "unknown version".to_owned());
+                    let process_version = binary_server_version();
                     err = Some(io::Error::other(format!(
                         "Your installed proc-macro server is too new for your rust-analyzer. API version: {}, server version: {process_version}. \
                         This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain.",
@@ -275,22 +346,9 @@ impl ProcMacroServerProcess {
 
         f(&mut state.stdin, &mut state.stdout, &mut buf).map_err(|e| {
             if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
-                match state.process.child.try_wait() {
-                    Ok(None) | Err(_) => e,
-                    Ok(Some(status)) => {
-                        let mut msg = String::new();
-                        if !status.success()
-                            && let Some(stderr) = state.process.child.stderr.as_mut()
-                        {
-                            _ = stderr.read_to_string(&mut msg);
-                        }
-                        let server_error = ServerError {
-                            message: format!(
-                                "proc-macro server exited with {status}{}{msg}",
-                                if msg.is_empty() { "" } else { ": " }
-                            ),
-                            io: None,
-                        };
+                match state.process.exit_err() {
+                    None => e,
+                    Some(server_error) => {
                         self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
                     }
                 }
