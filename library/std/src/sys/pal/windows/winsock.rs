@@ -78,3 +78,65 @@ where
 {
     cvt(f())
 }
+
+#[cfg(target_vendor = "win7")]
+pub unsafe fn hostname_fallback(name: c::PWSTR, namelen: i32) -> i32 {
+    // The buffer needs to have space for at least the null byte.
+    if namelen < 1 {
+        // SAFETY: SetLastError is always safe to call.
+        unsafe {
+            c::WSASetLastError(c::WSAEFAULT);
+        }
+
+        return c::SOCKET_ERROR;
+    }
+
+    // The documentation of gethostname says that a buffer size of 256 is
+    // always enough.
+    let mut buffer = [const { mem::MaybeUninit::<u8>::uninit() }; 256];
+
+    // SAFETY: these parameters specify a valid, writable region of memory.
+    unsafe {
+        if c::gethostname(buffer.as_mut_ptr().cast(), buffer.len() as i32) == c::SOCKET_ERROR {
+            return c::SOCKET_ERROR;
+        }
+    }
+
+    // Subtract one to leave space for the null terminator, as MultiByteToWideChar doesn't terminate the output buffer
+    // if the number of output characters is equal to the buffer length.
+    // SAFETY: The buffer is at least namelen characters large, thus namelen - 1 characters are always writable.
+    let len = unsafe {
+        c::MultiByteToWideChar(
+            c::CP_ACP,
+            c::MB_ERR_INVALID_CHARS,
+            buffer.as_mut_ptr().cast(),
+            -1,
+            name,
+            namelen - 1,
+        )
+    };
+
+    if len == 0 {
+        // GetHostNameW reports WSAEFAULT if the buffer is too small, and WSAENETDOWN on internal errors.
+        // SAFETY: GetLastError and SetLastError are always safe to call.
+        unsafe {
+            if c::WSAGetLastError() == c::ERROR_INSUFFICIENT_BUFFER as _ {
+                c::WSASetLastError(c::WSAEFAULT);
+            } else {
+                c::WSASetLastError(c::WSAENETDOWN);
+            }
+        }
+        return c::SOCKET_ERROR;
+    }
+
+    // Ensure the output is always null terminated.
+    // If MultiByteToWideChar has already written a null terminator, that null terminator will be included in len
+    // and this will add a second one, but writing a zero is cheap enough to omit the length comparison.
+    // SAFETY: len is always less than namelen as MultiByteToWideChar only writes namelen - 1 characters.
+    unsafe {
+        name.add(len as _).write(0);
+    }
+
+    // Success
+    0
+}
