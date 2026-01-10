@@ -135,7 +135,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
             let terminator = bb.terminator_mut();
             terminator.kind =
-                TerminatorKind::SwitchInt { discr: Operand::Move(opt.to_switch_on), targets };
+                TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {

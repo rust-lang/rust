@@ -14,7 +14,7 @@
 -         _2 = Eq(copy _1, const 'x');
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
 +         nop;
-+         switchInt(move _1) -> [120: bb1, otherwise: bb2];
++         switchInt(copy _1) -> [120: bb1, otherwise: bb2];
       }
   
       bb1: {

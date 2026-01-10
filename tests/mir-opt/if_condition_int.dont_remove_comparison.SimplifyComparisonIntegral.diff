@@ -21,7 +21,7 @@
           _2 = Eq(copy _1, const 17_i8);
           StorageDead(_3);
 -         switchInt(copy _2) -> [0: bb2, otherwise: bb1];
-+         switchInt(move _1) -> [17: bb1, otherwise: bb2];
++         switchInt(copy _1) -> [17: bb1, otherwise: bb2];
       }
   
       bb1: {

@@ -10,8 +10,7 @@ use core::intrinsics::mir::*;
 // EMIT_MIR if_condition_int.opt_u32.SimplifyComparisonIntegral.diff
 fn opt_u32(x: u32) -> u32 {
     // CHECK-LABEL: fn opt_u32(
-    // FIXME: This should be copy.
-    // CHECK: switchInt(move _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_u32;
     // CHECK: [[BB2]]:
@@ -34,7 +33,7 @@ fn dont_opt_bool(x: bool) -> u32 {
 // EMIT_MIR if_condition_int.opt_char.SimplifyComparisonIntegral.diff
 fn opt_char(x: char) -> u32 {
     // CHECK-LABEL: fn opt_char(
-    // CHECK: switchInt(move _1) -> [120: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [120: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_u32;
     // CHECK: [[BB2]]:
@@ -45,7 +44,7 @@ fn opt_char(x: char) -> u32 {
 // EMIT_MIR if_condition_int.opt_i8.SimplifyComparisonIntegral.diff
 fn opt_i8(x: i8) -> u32 {
     // CHECK-LABEL: fn opt_i8(
-    // CHECK: switchInt(move _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_u32;
     // CHECK: [[BB2]]:
@@ -56,7 +55,7 @@ fn opt_i8(x: i8) -> u32 {
 // EMIT_MIR if_condition_int.opt_negative.SimplifyComparisonIntegral.diff
 fn opt_negative(x: i32) -> u32 {
     // CHECK-LABEL: fn opt_negative(
-    // CHECK: switchInt(move _1) -> [4294967254: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [4294967254: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_u32;
     // CHECK: [[BB2]]:
@@ -67,11 +66,11 @@ fn opt_negative(x: i32) -> u32 {
 // EMIT_MIR if_condition_int.opt_multiple_ifs.SimplifyComparisonIntegral.diff
 fn opt_multiple_ifs(x: u32) -> u32 {
     // CHECK-LABEL: fn opt_multiple_ifs(
-    // CHECK: switchInt(move _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [42: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: _0 = const 0_u32;
     // CHECK: [[BB2]]:
-    // CHECK: switchInt(move _1) -> [21: [[BB4:bb.*]], otherwise: [[BB3:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [21: [[BB4:bb.*]], otherwise: [[BB3:bb.*]]];
     // CHECK: [[BB3]]:
     // CHECK: _0 = const 1_u32;
     // CHECK: [[BB4]]:
@@ -90,7 +89,7 @@ fn opt_multiple_ifs(x: u32) -> u32 {
 fn dont_remove_comparison(a: i8) -> i32 {
     // CHECK-LABEL: fn dont_remove_comparison(
     // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
-    // CHECK: switchInt(move _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: [[cast_1:_.*]] = copy [[b]] as i32 (IntToInt);
     // CHECK: _0 = Add(const 100_i32, move [[cast_1]]);

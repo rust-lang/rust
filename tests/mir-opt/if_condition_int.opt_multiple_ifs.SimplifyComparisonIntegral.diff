@@ -16,7 +16,7 @@
 -         _2 = Eq(copy _1, const 42_u32);
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
 +         nop;
-+         switchInt(move _1) -> [42: bb1, otherwise: bb2];
++         switchInt(copy _1) -> [42: bb1, otherwise: bb2];
       }
   
       bb1: {
@@ -33,7 +33,7 @@
 -         _4 = Ne(copy _1, const 21_u32);
 -         switchInt(move _4) -> [0: bb4, otherwise: bb3];
 +         nop;
-+         switchInt(move _1) -> [21: bb4, otherwise: bb3];
++         switchInt(copy _1) -> [21: bb4, otherwise: bb3];
       }
   
       bb3: {
