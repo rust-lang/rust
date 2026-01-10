@@ -10,7 +10,7 @@ use crate::{cmp, ptr};
 /// This is currently the default hashing function used by standard library
 /// (e.g., `collections::HashMap` uses it by default).
 ///
-/// See: <https://131002.net/siphash>
+/// See: <https://github.com/veorq/SipHash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
 #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
@@ -21,7 +21,7 @@ pub struct SipHasher13 {
 
 /// An implementation of SipHash 2-4.
 ///
-/// See: <https://131002.net/siphash/>
+/// See: <https://github.com/veorq/SipHash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
 #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
@@ -31,7 +31,7 @@ struct SipHasher24 {
 
 /// An implementation of SipHash 2-4.
 ///
-/// See: <https://131002.net/siphash/>
+/// See: <https://github.com/veorq/SipHash>
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
