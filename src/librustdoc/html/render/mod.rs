@@ -52,11 +52,12 @@ use indexmap::IndexMap;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::{
+    self as hir, ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince, find_attr,
+};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
@@ -2975,9 +2976,15 @@ fn repr_attribute<'tcx>(
     };
 
     if repr.transparent() {
-        // The transparent repr is public iff the non-1-ZST field is public and visible or
-        // – in case all fields are 1-ZST fields — at least one field is public and visible.
+        // The transparent repr is public if:
+        // - The non-1-ZST field is public and visible
+        // - At least one field is public and visible, if *all* fields are 1-ZSTs
+        // - The `#[rustc_pub_transparent]` attribute is applied
         let is_public = 'is_public: {
+            // `#[rustc_pub_transparent]`
+            if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::PubTransparent(_)) {
+                break 'is_public true;
+            }
             // `#[repr(transparent)]` can only be applied to structs and single-variant enums.
             let var = adt.variant(rustc_abi::FIRST_VARIANT); // the first and only variant
 
