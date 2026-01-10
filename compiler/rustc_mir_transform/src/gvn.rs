@@ -1805,25 +1805,7 @@ fn op_to_prop_const<'tcx>(
     // Everything failed: create a new allocation to hold the data.
     let alloc_id =
         ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).discard_err()?;
-    let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
-
-    // Check that we do not leak a pointer.
-    // Those pointers may lose part of their identity in codegen.
-    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
-    if ecx
-        .tcx
-        .global_alloc(alloc_id)
-        .unwrap_memory()
-        .inner()
-        .provenance()
-        .provenances()
-        .next()
-        .is_none()
-    {
-        return Some(value);
-    }
-
-    None
+    Some(ConstValue::Indirect { alloc_id, offset: Size::ZERO })
 }
 
 impl<'tcx> VnState<'_, '_, 'tcx> {
@@ -1877,7 +1859,9 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
         // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
-        assert!(!may_have_provenance(self.tcx, value, op.layout.size));
+        if may_have_provenance(self.tcx, value, op.layout.size) {
+            return None;
+        }
 
         Some(Const::Val(value, op.layout.ty))
     }
