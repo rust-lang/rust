@@ -135,6 +135,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
     match attr {
         Meta::NamedKeyValue { name: Some(name), value, .. } => match name.text() {
             "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
+            "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
             "lang" => attr_flags.insert(AttrFlags::LANG_ITEM),
             "path" => attr_flags.insert(AttrFlags::HAS_PATH),
             "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
