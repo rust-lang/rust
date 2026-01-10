@@ -45,7 +45,11 @@ fn main() -> std::io::Result<()> {
     }
     let &format =
         matches.get_one::<ProtocolFormat>("format").expect("format value should always be present");
-    run(format)
+
+    let mut stdin = std::io::BufReader::new(std::io::stdin());
+    let mut stdout = std::io::stdout();
+
+    run(&mut stdin, &mut stdout, format)
 }
 
 #[derive(Copy, Clone)]
@@ -88,7 +92,11 @@ impl ValueEnum for ProtocolFormat {
 }
 
 #[cfg(not(feature = "sysroot-abi"))]
-fn run(_: ProtocolFormat) -> std::io::Result<()> {
+fn run(
+    _: &mut std::io::BufReader<std::io::Stdin>,
+    _: &mut std::io::Stdout,
+    _: ProtocolFormat,
+) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,
         "proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function"

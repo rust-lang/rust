@@ -6,7 +6,7 @@ use proc_macro_api::{
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version::CURRENT_API_VERSION,
 };
-use std::io;
+use std::io::{self, BufRead, Write};
 
 use legacy::Message;
 
@@ -32,15 +32,24 @@ impl legacy::SpanTransformer for SpanTrans {
     }
 }
 
-pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
+pub(crate) fn run(
+    stdin: &mut (dyn BufRead + Send + Sync),
+    stdout: &mut (dyn Write + Send + Sync),
+    format: ProtocolFormat,
+) -> io::Result<()> {
     match format {
-        ProtocolFormat::JsonLegacy => run_::<JsonProtocol>(),
-        ProtocolFormat::PostcardLegacy => run_::<PostcardProtocol>(),
-        ProtocolFormat::BidirectionalPostcardPrototype => run_new::<PostcardProtocol>(),
+        ProtocolFormat::JsonLegacy => run_old::<JsonProtocol>(stdin, stdout),
+        ProtocolFormat::PostcardLegacy => run_old::<PostcardProtocol>(stdin, stdout),
+        ProtocolFormat::BidirectionalPostcardPrototype => {
+            run_new::<PostcardProtocol>(stdin, stdout)
+        }
     }
 }
 
-fn run_new<C: Codec>() -> io::Result<()> {
+fn run_new<C: Codec>(
+    stdin: &mut (dyn BufRead + Send + Sync),
+    stdout: &mut (dyn Write + Send + Sync),
+) -> io::Result<()> {
     fn macro_kind_to_api(kind: proc_macro_srv::ProcMacroKind) -> proc_macro_api::ProcMacroKind {
         match kind {
             proc_macro_srv::ProcMacroKind::CustomDerive => {
@@ -52,8 +61,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
     }
 
     let mut buf = C::Buf::default();
-    let mut stdin = io::stdin();
-    let mut stdout = io::stdout();
 
     let env_snapshot = EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env_snapshot);
@@ -61,8 +68,7 @@ fn run_new<C: Codec>() -> io::Result<()> {
     let mut span_mode = legacy::SpanMode::Id;
 
     'outer: loop {
-        let req_opt =
-            bidirectional::BidirectionalMessage::read::<_, C>(&mut stdin.lock(), &mut buf)?;
+        let req_opt = bidirectional::BidirectionalMessage::read::<C>(stdin, &mut buf)?;
         let Some(req) = req_opt else {
             break 'outer;
         };
@@ -77,22 +83,22 @@ fn run_new<C: Codec>() -> io::Result<()> {
                             .collect()
                     });
 
-                    send_response::<C>(&stdout, bidirectional::Response::ListMacros(res))?;
+                    send_response::<C>(stdout, bidirectional::Response::ListMacros(res))?;
                 }
 
                 bidirectional::Request::ApiVersionCheck {} => {
                     send_response::<C>(
-                        &stdout,
+                        stdout,
                         bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
                     )?;
                 }
 
                 bidirectional::Request::SetConfig(config) => {
                     span_mode = config.span_mode;
-                    send_response::<C>(&stdout, bidirectional::Response::SetConfig(config))?;
+                    send_response::<C>(stdout, bidirectional::Response::SetConfig(config))?;
                 }
                 bidirectional::Request::ExpandMacro(task) => {
-                    handle_expand::<C>(&srv, &mut stdin, &mut stdout, &mut buf, span_mode, *task)?;
+                    handle_expand::<C>(&srv, stdin, stdout, &mut buf, span_mode, *task)?;
                 }
             },
             _ => continue,
@@ -104,8 +110,8 @@ fn run_new<C: Codec>() -> io::Result<()> {
 
 fn handle_expand<C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
-    stdin: &io::Stdin,
-    stdout: &io::Stdout,
+    stdin: &mut (dyn BufRead + Send + Sync),
+    stdout: &mut (dyn Write + Send + Sync),
     buf: &mut C::Buf,
     span_mode: legacy::SpanMode,
     task: bidirectional::ExpandMacro,
@@ -118,7 +124,7 @@ fn handle_expand<C: Codec>(
 
 fn handle_expand_id<C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
-    stdout: &io::Stdout,
+    stdout: &mut dyn Write,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     let bidirectional::ExpandMacro { lib, env, current_dir, data } = task;
@@ -157,12 +163,12 @@ fn handle_expand_id<C: Codec>(
         })
         .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
-    send_response::<C>(&stdout, bidirectional::Response::ExpandMacro(res))
+    send_response::<C>(stdout, bidirectional::Response::ExpandMacro(res))
 }
 
 struct ProcMacroClientHandle<'a, C: Codec> {
-    stdin: &'a io::Stdin,
-    stdout: &'a io::Stdout,
+    stdin: &'a mut (dyn BufRead + Send + Sync),
+    stdout: &'a mut (dyn Write + Send + Sync),
     buf: &'a mut C::Buf,
 }
 
@@ -173,11 +179,11 @@ impl<'a, C: Codec> ProcMacroClientHandle<'a, C> {
     ) -> Option<bidirectional::BidirectionalMessage> {
         let msg = bidirectional::BidirectionalMessage::SubRequest(req);
 
-        if msg.write::<_, C>(&mut self.stdout.lock()).is_err() {
+        if msg.write::<C>(&mut *self.stdout).is_err() {
             return None;
         }
 
-        match bidirectional::BidirectionalMessage::read::<_, C>(&mut self.stdin.lock(), self.buf) {
+        match bidirectional::BidirectionalMessage::read::<C>(&mut *self.stdin, self.buf) {
             Ok(Some(msg)) => Some(msg),
             _ => None,
         }
@@ -238,8 +244,8 @@ impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandl
 
 fn handle_expand_ra<C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
-    stdin: &io::Stdin,
-    stdout: &io::Stdout,
+    stdin: &mut (dyn BufRead + Send + Sync),
+    stdout: &mut (dyn Write + Send + Sync),
     buf: &mut C::Buf,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
@@ -301,10 +307,13 @@ fn handle_expand_ra<C: Codec>(
         .map(|(tree, span_data_table)| bidirectional::ExpandMacroExtended { tree, span_data_table })
         .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
-    send_response::<C>(&stdout, bidirectional::Response::ExpandMacroExtended(res))
+    send_response::<C>(stdout, bidirectional::Response::ExpandMacroExtended(res))
 }
 
-fn run_<C: Codec>() -> io::Result<()> {
+fn run_old<C: Codec>(
+    stdin: &mut (dyn BufRead + Send + Sync),
+    stdout: &mut (dyn Write + Send + Sync),
+) -> io::Result<()> {
     fn macro_kind_to_api(kind: proc_macro_srv::ProcMacroKind) -> proc_macro_api::ProcMacroKind {
         match kind {
             proc_macro_srv::ProcMacroKind::CustomDerive => {
@@ -316,8 +325,8 @@ fn run_<C: Codec>() -> io::Result<()> {
     }
 
     let mut buf = C::Buf::default();
-    let mut read_request = || legacy::Request::read::<_, C>(&mut io::stdin().lock(), &mut buf);
-    let write_response = |msg: legacy::Response| msg.write::<_, C>(&mut io::stdout().lock());
+    let mut read_request = || legacy::Request::read::<C>(stdin, &mut buf);
+    let mut write_response = |msg: legacy::Response| msg.write::<C>(stdout);
 
     let env = EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env);
@@ -446,7 +455,10 @@ fn run_<C: Codec>() -> io::Result<()> {
     Ok(())
 }
 
-fn send_response<C: Codec>(stdout: &io::Stdout, resp: bidirectional::Response) -> io::Result<()> {
+fn send_response<C: Codec>(
+    stdout: &mut dyn Write,
+    resp: bidirectional::Response,
+) -> io::Result<()> {
     let resp = bidirectional::BidirectionalMessage::Response(resp);
-    resp.write::<_, C>(&mut stdout.lock())
+    resp.write::<C>(stdout)
 }
