@@ -57,6 +57,7 @@ macro_rules! shim_sig_arg {
             "u128" => $this.tcx.types.u128,
             "usize" => $this.tcx.types.usize,
             "()" => $this.tcx.types.unit,
+            "bool" => $this.tcx.types.bool,
             "*const _" => $this.machine.layouts.const_raw_ptr.ty,
             "*mut _" => $this.machine.layouts.mut_raw_ptr.ty,
             ty if let Some(win_ty) = ty.strip_prefix("winapi::") =>
