@@ -40,24 +40,78 @@ use salsa::Update;
 
 use crate::RootDatabase;
 
+/// A query for searching symbols in the workspace or dependencies.
+///
+/// This struct configures how symbol search is performed, including the search text,
+/// matching strategy, and filtering options. It is used by [`world_symbols`] to find
+/// symbols across the codebase.
+///
+/// # Example
+/// ```ignore
+/// let mut query = Query::new("MyStruct".to_string());
+/// query.only_types();  // Only search for type definitions
+/// query.libs();        // Include library dependencies
+/// query.exact();       // Use exact matching instead of fuzzy
+/// ```
 #[derive(Debug, Clone)]
 pub struct Query {
+    /// The item name to search for (last segment of the path, or full query if no path).
+    /// When empty with a non-empty `path_filter`, returns all items in that module.
     query: String,
+    /// Lowercase version of [`Self::query`], pre-computed for efficiency.
+    /// Used to build FST automata for case-insensitive index lookups.
     lowercased: String,
+    /// Path segments to filter by (all segments except the last).
+    /// Empty if no `::` in the original query.
+    path_filter: Vec<String>,
+    /// If true, the first path segment must be a crate name (query started with `::`).
+    anchor_to_crate: bool,
+    /// The search strategy to use when matching symbols.
+    /// - [`SearchMode::Exact`]: Symbol name must exactly match the query.
+    /// - [`SearchMode::Fuzzy`]: Symbol name must contain all query characters in order (subsequence match).
+    /// - [`SearchMode::Prefix`]: Symbol name must start with the query string.
+    ///
+    /// Defaults to [`SearchMode::Fuzzy`].
     mode: SearchMode,
+    /// Controls filtering of trait-associated items (methods, constants, types).
+    /// - [`AssocSearchMode::Include`]: Include both associated and non-associated items.
+    /// - [`AssocSearchMode::Exclude`]: Exclude trait-associated items from results.
+    /// - [`AssocSearchMode::AssocItemsOnly`]: Only return trait-associated items.
+    ///
+    /// Defaults to [`AssocSearchMode::Include`].
     assoc_mode: AssocSearchMode,
+    /// Whether the final symbol name comparison should be case-sensitive.
+    /// When `false`, matching is case-insensitive (e.g., "foo" matches "Foo").
+    ///
+    /// Defaults to `false`.
     case_sensitive: bool,
+    /// When `true`, only return type definitions: structs, enums, unions,
+    /// type aliases, built-in types, and traits. Functions, constants, statics,
+    /// and modules are excluded.
+    ///
+    /// Defaults to `false`.
     only_types: bool,
+    /// When `true`, search library dependency roots instead of local workspace crates.
+    /// This enables finding symbols in external dependencies including the standard library.
+    ///
+    /// Defaults to `false` (search local workspace only).
     libs: bool,
+    /// When `true`, exclude re-exported/imported symbols from results,
+    /// showing only the original definitions.
+    ///
+    /// Defaults to `false`.
     exclude_imports: bool,
 }
 
 impl Query {
     pub fn new(query: String) -> Query {
-        let lowercased = query.to_lowercase();
+        let (path_filter, item_query, anchor_to_crate) = Self::parse_path_query(&query);
+        let lowercased = item_query.to_lowercase();
         Query {
-            query,
+            query: item_query,
             lowercased,
+            path_filter,
+            anchor_to_crate,
             only_types: false,
             libs: false,
             mode: SearchMode::Fuzzy,
@@ -65,6 +119,35 @@ impl Query {
             case_sensitive: false,
             exclude_imports: false,
         }
+    }
+
+    /// Parse a query string that may contain path segments.
+    ///
+    /// Returns (path_filter, item_query, anchor_to_crate) where:
+    /// - `path_filter`: Path segments to match (all but the last segment)
+    /// - `item_query`: The item name to search for (last segment)
+    /// - `anchor_to_crate`: Whether the first segment must be a crate name
+    fn parse_path_query(query: &str) -> (Vec<String>, String, bool) {
+        // Check for leading :: (absolute path / crate search)
+        let (query, anchor_to_crate) = match query.strip_prefix("::") {
+            Some(q) => (q, true),
+            None => (query, false),
+        };
+
+        let Some((prefix, query)) = query.rsplit_once("::") else {
+            return (vec![], query.to_owned(), anchor_to_crate);
+        };
+
+        let prefix: Vec<_> =
+            prefix.split("::").filter(|s| !s.is_empty()).map(ToOwned::to_owned).collect();
+
+        (prefix, query.to_owned(), anchor_to_crate)
+    }
+
+    /// Returns true if this query is searching for crates
+    /// (i.e., the query was "::" alone or "::foo" for fuzzy crate search)
+    fn is_crate_search(&self) -> bool {
+        self.anchor_to_crate && self.path_filter.is_empty()
     }
 
     pub fn only_types(&mut self) {
@@ -123,11 +206,14 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_
 // That is, `#` switches from "types" to all symbols, `*` switches from the current
 // workspace to dependencies.
 //
-// Note that filtering does not currently work in VSCode due to the editor never
-// sending the special symbols to the language server. Instead, you can configure
-// the filtering via the `rust-analyzer.workspace.symbol.search.scope` and
-// `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
-// with `__` are hidden from the search results unless configured otherwise.
+// This also supports general Rust path syntax with the usual rules.
+//
+// Note that paths do not currently work in VSCode due to the editor never
+// sending the special symbols to the language server. Some other editors might not support the # or
+// * search either, instead, you can configure the filtering via the
+// `rust-analyzer.workspace.symbol.search.scope` and `rust-analyzer.workspace.symbol.search.kind`
+// settings. Symbols prefixed with `__` are hidden from the search results unless configured
+// otherwise.
 //
 // | Editor  | Shortcut |
 // |---------|-----------|
@@ -135,7 +221,25 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
-    let indices: Vec<_> = if query.libs {
+    if query.is_crate_search() {
+        return search_crates(db, &query);
+    }
+
+    // If we have a path filter, resolve it to target modules
+    let indices: Vec<_> = if !query.path_filter.is_empty() {
+        let target_modules = resolve_path_to_modules(
+            db,
+            &query.path_filter,
+            query.anchor_to_crate,
+            query.case_sensitive,
+        );
+
+        if target_modules.is_empty() {
+            return vec![];
+        }
+
+        target_modules.iter().map(|&module| SymbolIndex::module_symbols(db, module)).collect()
+    } else if query.libs {
         LibraryRoots::get(db)
             .roots(db)
             .par_iter()
@@ -158,11 +262,123 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
     };
 
     let mut res = vec![];
+
+    // Normal search: use FST to match item name
     query.search::<()>(&indices, |f| {
         res.push(f.clone());
         ControlFlow::Continue(())
     });
+
     res
+}
+
+/// Search for crates by name (handles "::" and "::foo" queries)
+fn search_crates<'db>(db: &'db RootDatabase, query: &Query) -> Vec<FileSymbol<'db>> {
+    let mut res = vec![];
+
+    for krate in Crate::all(db) {
+        let Some(display_name) = krate.display_name(db) else { continue };
+        let crate_name = display_name.crate_name().as_str();
+
+        // If query is empty (sole "::"), return all crates
+        // Otherwise, fuzzy match the crate name
+        let matches = if query.query.is_empty() {
+            true
+        } else {
+            query.mode.check(&query.query, query.case_sensitive, crate_name)
+        };
+
+        if matches {
+            // Get the crate root module's symbol index and find the root module symbol
+            let root_module = krate.root_module(db);
+            let index = SymbolIndex::module_symbols(db, root_module);
+            // Find the module symbol itself (representing the crate)
+            for symbol in index.symbols.iter() {
+                if matches!(symbol.def, hir::ModuleDef::Module(m) if m == root_module) {
+                    res.push(symbol.clone());
+                    break;
+                }
+            }
+        }
+    }
+
+    res
+}
+
+/// Resolve a path filter to the target module(s) it points to.
+/// Returns the modules whose symbol indices should be searched.
+///
+/// The path_filter contains segments like ["std", "vec"] for a query like "std::vec::Vec".
+/// We resolve this by:
+/// 1. Finding crates matching the first segment
+/// 2. Walking down the module tree following subsequent segments
+fn resolve_path_to_modules(
+    db: &dyn HirDatabase,
+    path_filter: &[String],
+    anchor_to_crate: bool,
+    case_sensitive: bool,
+) -> Vec<Module> {
+    let [first_segment, rest_segments @ ..] = path_filter else {
+        return vec![];
+    };
+
+    // Helper for name comparison
+    let names_match = |actual: &str, expected: &str| -> bool {
+        if case_sensitive { actual == expected } else { actual.eq_ignore_ascii_case(expected) }
+    };
+
+    // Find crates matching the first segment
+    let matching_crates: Vec<Crate> = Crate::all(db)
+        .into_iter()
+        .filter(|krate| {
+            krate
+                .display_name(db)
+                .is_some_and(|name| names_match(name.crate_name().as_str(), first_segment))
+        })
+        .collect();
+
+    // If anchor_to_crate is true, first segment MUST be a crate name
+    // If anchor_to_crate is false, first segment could be a crate OR a module in local crates
+    let mut candidate_modules: Vec<Module> = vec![];
+
+    // Add crate root modules for matching crates
+    for krate in matching_crates {
+        candidate_modules.push(krate.root_module(db));
+    }
+
+    // If not anchored to crate, also search for modules matching first segment in local crates
+    if !anchor_to_crate {
+        for &root in LocalRoots::get(db).roots(db).iter() {
+            for &krate in db.source_root_crates(root).iter() {
+                let root_module = Crate::from(krate).root_module(db);
+                for child in root_module.children(db) {
+                    if let Some(name) = child.name(db)
+                        && names_match(name.as_str(), first_segment)
+                    {
+                        candidate_modules.push(child);
+                    }
+                }
+            }
+        }
+    }
+
+    // Walk down the module tree for remaining path segments
+    for segment in rest_segments {
+        candidate_modules = candidate_modules
+            .into_iter()
+            .flat_map(|module| {
+                module.children(db).filter(|child| {
+                    child.name(db).is_some_and(|name| names_match(name.as_str(), segment))
+                })
+            })
+            .collect();
+
+        if candidate_modules.is_empty() {
+            break;
+        }
+    }
+
+    candidate_modules
 }
 
 #[derive(Default)]
@@ -336,12 +552,14 @@ impl<'db> SymbolIndex<'db> {
 }
 
 impl Query {
+    /// Search symbols in the given indices.
     pub(crate) fn search<'db, T>(
-        self,
+        &self,
         indices: &[&'db SymbolIndex<'db>],
         cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
+
         let mut op = fst::map::OpBuilder::new();
         match self.mode {
             SearchMode::Exact => {
@@ -575,5 +793,368 @@ pub struct Foo;
         query.exclude_imports();
         let symbols = world_symbols(&db, query);
         expect_file!["./test_data/test_symbols_exclude_imports.txt"].assert_debug_eq(&symbols);
+    }
+
+    #[test]
+    fn test_parse_path_query() {
+        // Plain query - no path
+        let (path, item, anchor) = Query::parse_path_query("Item");
+        assert_eq!(path, Vec::<String>::new());
+        assert_eq!(item, "Item");
+        assert!(!anchor);
+
+        // Path with item
+        let (path, item, anchor) = Query::parse_path_query("foo::Item");
+        assert_eq!(path, vec!["foo"]);
+        assert_eq!(item, "Item");
+        assert!(!anchor);
+
+        // Multi-segment path
+        let (path, item, anchor) = Query::parse_path_query("foo::bar::Item");
+        assert_eq!(path, vec!["foo", "bar"]);
+        assert_eq!(item, "Item");
+        assert!(!anchor);
+
+        // Leading :: (anchor to crate)
+        let (path, item, anchor) = Query::parse_path_query("::std::vec::Vec");
+        assert_eq!(path, vec!["std", "vec"]);
+        assert_eq!(item, "Vec");
+        assert!(anchor);
+
+        // Just "::" - return all crates
+        let (path, item, anchor) = Query::parse_path_query("::");
+        assert_eq!(path, Vec::<String>::new());
+        assert_eq!(item, "");
+        assert!(anchor);
+
+        // "::foo" - fuzzy search crate names
+        let (path, item, anchor) = Query::parse_path_query("::foo");
+        assert_eq!(path, Vec::<String>::new());
+        assert_eq!(item, "foo");
+        assert!(anchor);
+
+        // Trailing :: (module browsing)
+        let (path, item, anchor) = Query::parse_path_query("foo::");
+        assert_eq!(path, vec!["foo"]);
+        assert_eq!(item, "");
+        assert!(!anchor);
+
+        // Full path with trailing ::
+        let (path, item, anchor) = Query::parse_path_query("foo::bar::");
+        assert_eq!(path, vec!["foo", "bar"]);
+        assert_eq!(item, "");
+        assert!(!anchor);
+
+        // Absolute path with trailing ::
+        let (path, item, anchor) = Query::parse_path_query("::std::vec::");
+        assert_eq!(path, vec!["std", "vec"]);
+        assert_eq!(item, "");
+        assert!(anchor);
+
+        // Empty segments should be filtered
+        let (path, item, anchor) = Query::parse_path_query("foo::::bar");
+        assert_eq!(path, vec!["foo"]);
+        assert_eq!(item, "bar");
+        assert!(!anchor);
+    }
+
+    #[test]
+    fn test_path_search() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod inner;
+pub struct RootStruct;
+
+//- /inner.rs
+pub struct InnerStruct;
+pub mod nested {
+    pub struct NestedStruct;
+}
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Search for item in specific module
+        let query = Query::new("inner::InnerStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"InnerStruct"), "Expected InnerStruct in {:?}", names);
+
+        // Search for item in nested module
+        let query = Query::new("inner::nested::NestedStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"NestedStruct"), "Expected NestedStruct in {:?}", names);
+
+        // Search with crate prefix
+        let query = Query::new("main::inner::InnerStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"InnerStruct"), "Expected InnerStruct in {:?}", names);
+
+        // Wrong path should return empty
+        let query = Query::new("wrong::InnerStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        assert!(symbols.is_empty(), "Expected empty results for wrong path");
+    }
+
+    #[test]
+    fn test_module_browsing() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod mymod;
+
+//- /mymod.rs
+pub struct MyStruct;
+pub fn my_func() {}
+pub const MY_CONST: u32 = 1;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Browse all items in module
+        let query = Query::new("main::mymod::".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        assert!(names.contains(&"MyStruct"), "Expected MyStruct in {:?}", names);
+        assert!(names.contains(&"my_func"), "Expected my_func in {:?}", names);
+        assert!(names.contains(&"MY_CONST"), "Expected MY_CONST in {:?}", names);
+    }
+
+    #[test]
+    fn test_fuzzy_item_with_path() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod mymod;
+
+//- /mymod.rs
+pub struct MyLongStructName;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Fuzzy match on item name with exact path
+        let query = Query::new("main::mymod::MyLong".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"MyLongStructName"),
+            "Expected fuzzy match for MyLongStructName in {:?}",
+            names
+        );
+    }
+
+    #[test]
+    fn test_case_insensitive_path() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod MyMod;
+
+//- /MyMod.rs
+pub struct MyStruct;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Case insensitive path matching (default)
+        let query = Query::new("main::mymod::MyStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"MyStruct"), "Expected case-insensitive match in {:?}", names);
+    }
+
+    #[test]
+    fn test_absolute_path_search() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:mycrate
+mod inner;
+pub struct CrateRoot;
+
+//- /inner.rs
+pub struct InnerItem;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Absolute path with leading ::
+        let query = Query::new("::mycrate::inner::InnerItem".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"InnerItem"),
+            "Expected InnerItem with absolute path in {:?}",
+            names
+        );
+
+        // Absolute path should NOT match if crate name is wrong
+        let query = Query::new("::wrongcrate::inner::InnerItem".to_owned());
+        let symbols = world_symbols(&db, query);
+        assert!(symbols.is_empty(), "Expected empty results for wrong crate name");
+    }
+
+    #[test]
+    fn test_wrong_path_returns_empty() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod existing;
+
+//- /existing.rs
+pub struct MyStruct;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Non-existent module path
+        let query = Query::new("nonexistent::MyStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        assert!(symbols.is_empty(), "Expected empty results for non-existent path");
+
+        // Correct item, wrong module
+        let query = Query::new("wrongmod::MyStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        assert!(symbols.is_empty(), "Expected empty results for wrong module");
+    }
+
+    #[test]
+    fn test_root_module_items() {
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:mylib
+pub struct RootItem;
+pub fn root_fn() {}
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Items at crate root - path is just the crate name
+        let query = Query::new("mylib::RootItem".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"RootItem"), "Expected RootItem at crate root in {:?}", names);
+
+        // Browse crate root
+        let query = Query::new("mylib::".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"RootItem"),
+            "Expected RootItem when browsing crate root in {:?}",
+            names
+        );
+        assert!(
+            names.contains(&"root_fn"),
+            "Expected root_fn when browsing crate root in {:?}",
+            names
+        );
+    }
+
+    #[test]
+    fn test_crate_search_all() {
+        // Test that sole "::" returns all crates
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:alpha
+pub struct AlphaStruct;
+
+//- /beta.rs crate:beta
+pub struct BetaStruct;
+
+//- /gamma.rs crate:gamma
+pub struct GammaStruct;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Sole "::" should return all crates (as module symbols)
+        let query = Query::new("::".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        assert!(names.contains(&"alpha"), "Expected alpha crate in {:?}", names);
+        assert!(names.contains(&"beta"), "Expected beta crate in {:?}", names);
+        assert!(names.contains(&"gamma"), "Expected gamma crate in {:?}", names);
+        assert_eq!(symbols.len(), 3, "Expected exactly 3 crates, got {:?}", names);
+    }
+
+    #[test]
+    fn test_crate_search_fuzzy() {
+        // Test that "::foo" fuzzy-matches crate names
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:my_awesome_lib
+pub struct AwesomeStruct;
+
+//- /other.rs crate:another_lib
+pub struct OtherStruct;
+
+//- /foo.rs crate:foobar
+pub struct FooStruct;
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // "::foo" should fuzzy-match crate names containing "foo"
+        let query = Query::new("::foo".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        assert!(names.contains(&"foobar"), "Expected foobar crate in {:?}", names);
+        assert_eq!(symbols.len(), 1, "Expected only foobar crate, got {:?}", names);
+
+        // "::awesome" should match my_awesome_lib
+        let query = Query::new("::awesome".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        assert!(names.contains(&"my_awesome_lib"), "Expected my_awesome_lib crate in {:?}", names);
+        assert_eq!(symbols.len(), 1, "Expected only my_awesome_lib crate, got {:?}", names);
+
+        // "::lib" should match multiple crates
+        let query = Query::new("::lib".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        assert!(names.contains(&"my_awesome_lib"), "Expected my_awesome_lib in {:?}", names);
+        assert!(names.contains(&"another_lib"), "Expected another_lib in {:?}", names);
+        assert_eq!(symbols.len(), 2, "Expected 2 crates matching 'lib', got {:?}", names);
+
+        // "::nonexistent" should return empty
+        let query = Query::new("::nonexistent".to_owned());
+        let symbols = world_symbols(&db, query);
+        assert!(symbols.is_empty(), "Expected empty results for non-matching crate pattern");
     }
 }

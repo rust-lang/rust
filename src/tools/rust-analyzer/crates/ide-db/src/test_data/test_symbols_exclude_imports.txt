@@ -20,11 +20,13 @@
                 kind: STRUCT,
                 range: 0..15,
             },
-            name_ptr: AstPtr(
-                SyntaxNodePtr {
-                    kind: NAME,
-                    range: 11..14,
-                },
+            name_ptr: Some(
+                AstPtr(
+                    SyntaxNodePtr {
+                        kind: NAME,
+                        range: 11..14,
+                    },
+                ),
             ),
         },
         container_name: None,

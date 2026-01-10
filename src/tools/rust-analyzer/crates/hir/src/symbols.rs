@@ -9,6 +9,7 @@ use hir_def::{
     ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
+    nameres::crate_def_map,
     per_ns::Item,
     src::{HasChildSource, HasSource},
     visibility::{Visibility, VisibilityExplicitness},
@@ -40,14 +41,14 @@ pub struct FileSymbol<'db> {
     _marker: PhantomData<&'db ()>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DeclarationLocation {
     /// The file id for both the `ptr` and `name_ptr`.
     pub hir_file_id: HirFileId,
     /// This points to the whole syntax node of the declaration.
     pub ptr: SyntaxNodePtr,
     /// This points to the [`syntax::ast::Name`] identifier of the declaration.
-    pub name_ptr: AstPtr<Either<syntax::ast::Name, syntax::ast::NameRef>>,
+    pub name_ptr: Option<AstPtr<Either<syntax::ast::Name, syntax::ast::NameRef>>>,
 }
 
 impl DeclarationLocation {
@@ -99,12 +100,62 @@ impl<'a> SymbolCollector<'a> {
         let _p = tracing::info_span!("SymbolCollector::collect", ?module).entered();
         tracing::info!(?module, "SymbolCollector::collect");
 
+        // If this is a crate root module, add a symbol for the crate itself
+        if module.is_crate_root(self.db) {
+            self.push_crate_root(module);
+        }
+
         // The initial work is the root module we're collecting, additional work will
         // be populated as we traverse the module's definitions.
         self.work.push(SymbolCollectorWork { module_id: module.into(), parent: None });
 
         while let Some(work) = self.work.pop() {
             self.do_work(work);
+        }
+    }
+
+    /// Push a symbol for a crate's root module.
+    /// This allows crate roots to appear in the symbol index for queries like `::` or `::foo`.
+    fn push_crate_root(&mut self, module: Module) {
+        let krate = module.krate(self.db);
+        let Some(display_name) = krate.display_name(self.db) else { return };
+        let crate_name = display_name.crate_name();
+        let canonical_name = display_name.canonical_name();
+
+        let def_map = crate_def_map(self.db, krate.into());
+        let module_data = &def_map[def_map.crate_root(self.db)];
+
+        let definition = module_data.origin.definition_source(self.db);
+        let hir_file_id = definition.file_id;
+        let syntax_node = definition.value.node();
+        let ptr = SyntaxNodePtr::new(&syntax_node);
+
+        let loc = DeclarationLocation { hir_file_id, ptr, name_ptr: None };
+
+        self.symbols.insert(FileSymbol {
+            name: crate_name.symbol().clone(),
+            def: ModuleDef::Module(module),
+            loc,
+            container_name: None,
+            is_alias: false,
+            is_assoc: false,
+            is_import: false,
+            do_not_complete: Complete::Yes,
+            _marker: PhantomData,
+        });
+
+        if canonical_name != crate_name.symbol() {
+            self.symbols.insert(FileSymbol {
+                name: canonical_name.clone(),
+                def: ModuleDef::Module(module),
+                loc,
+                container_name: None,
+                is_alias: false,
+                is_assoc: false,
+                is_import: false,
+                do_not_complete: Complete::Yes,
+                _marker: PhantomData,
+            });
         }
     }
 
@@ -209,7 +260,7 @@ impl<'a> SymbolCollector<'a> {
             let dec_loc = DeclarationLocation {
                 hir_file_id: source.file_id,
                 ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
-                name_ptr: AstPtr::new(&name_syntax),
+                name_ptr: Some(AstPtr::new(&name_syntax)),
             };
             this.symbols.insert(FileSymbol {
                 name: name.symbol().clone(),
@@ -244,7 +295,7 @@ impl<'a> SymbolCollector<'a> {
                 let dec_loc = DeclarationLocation {
                     hir_file_id: source.file_id,
                     ptr: SyntaxNodePtr::new(source.value.syntax()),
-                    name_ptr: AstPtr::new(&name_syntax),
+                    name_ptr: Some(AstPtr::new(&name_syntax)),
                 };
                 this.symbols.insert(FileSymbol {
                     name: name.symbol().clone(),
@@ -409,10 +460,10 @@ impl<'a> SymbolCollector<'a> {
         let source = loc.source(self.db);
         let Some(name_node) = source.value.name() else { return Complete::Yes };
         let def = ModuleDef::from(id.into());
-        let dec_loc = DeclarationLocation {
+        let loc = DeclarationLocation {
             hir_file_id: source.file_id,
             ptr: SyntaxNodePtr::new(source.value.syntax()),
-            name_ptr: AstPtr::new(&name_node).wrap_left(),
+            name_ptr: Some(AstPtr::new(&name_node).wrap_left()),
         };
 
         let mut do_not_complete = Complete::Yes;
@@ -427,7 +478,7 @@ impl<'a> SymbolCollector<'a> {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,
-                    loc: dec_loc.clone(),
+                    loc,
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc,
@@ -442,7 +493,7 @@ impl<'a> SymbolCollector<'a> {
             name: name.symbol().clone(),
             def,
             container_name: self.current_container_name.clone(),
-            loc: dec_loc,
+            loc,
             is_alias: false,
             is_assoc,
             is_import: false,
@@ -459,10 +510,10 @@ impl<'a> SymbolCollector<'a> {
         let Some(declaration) = module_data.origin.declaration() else { return };
         let module = declaration.to_node(self.db);
         let Some(name_node) = module.name() else { return };
-        let dec_loc = DeclarationLocation {
+        let loc = DeclarationLocation {
             hir_file_id: declaration.file_id,
             ptr: SyntaxNodePtr::new(module.syntax()),
-            name_ptr: AstPtr::new(&name_node).wrap_left(),
+            name_ptr: Some(AstPtr::new(&name_node).wrap_left()),
         };
 
         let def = ModuleDef::Module(module_id.into());
@@ -475,7 +526,7 @@ impl<'a> SymbolCollector<'a> {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,
-                    loc: dec_loc.clone(),
+                    loc,
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc: false,
@@ -490,7 +541,7 @@ impl<'a> SymbolCollector<'a> {
             name: name.symbol().clone(),
             def: ModuleDef::Module(module_id.into()),
             container_name: self.current_container_name.clone(),
-            loc: dec_loc,
+            loc,
             is_alias: false,
             is_assoc: false,
             is_import: false,
