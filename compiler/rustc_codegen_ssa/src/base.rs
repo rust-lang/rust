@@ -877,9 +877,9 @@ pub fn codegen_crate<
 /// Returns whether a call from the current crate to the [`Instance`] would produce a call
 /// from `compiler_builtins` to a symbol the linker must resolve.
 ///
-/// Such calls from `compiler_bultins` are effectively impossible for the linker to handle. Some
+/// Such calls from `compiler_builtins` are effectively impossible for the linker to handle. Some
 /// linkers will optimize such that dead calls to unresolved symbols are not an error, but this is
-/// not guaranteed. So we used this function in codegen backends to ensure we do not generate any
+/// not guaranteed. So we use this function in codegen backends to ensure we do not generate any
 /// unlinkable calls.
 ///
 /// Note that calls to LLVM intrinsics are uniquely okay because they won't make it to the linker.
