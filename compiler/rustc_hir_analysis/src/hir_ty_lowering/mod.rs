@@ -1269,10 +1269,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
-                let bound_span = tcx
-                    .associated_items(bound_id)
-                    .find_by_ident_and_kind(tcx, assoc_ident, assoc_tag, bound_id)
-                    .and_then(|item| tcx.hir_span_if_local(item.def_id));
+                let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
+                    tcx,
+                    assoc_ident,
+                    assoc_tag,
+                    bound_id,
+                );
+                let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {
                     err.span_label(
@@ -1285,7 +1288,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        self.lower_const_arg(ct, FeedConstTy::No).into()
+                                        let assoc_item =
+                                            assoc_item.expect("assoc_item should be present");
+                                        let projection_term = bound.map_bound(|trait_ref| {
+                                            let item_segment = hir::PathSegment {
+                                                ident: constraint.ident,
+                                                hir_id: constraint.hir_id,
+                                                res: Res::Err,
+                                                args: Some(constraint.gen_args),
+                                                infer_args: false,
+                                            };
+
+                                            let alias_args = self.lower_generic_args_of_assoc_item(
+                                                constraint.ident.span,
+                                                assoc_item.def_id,
+                                                &item_segment,
+                                                trait_ref.args,
+                                            );
+                                            ty::AliasTerm::new_from_args(
+                                                tcx,
+                                                assoc_item.def_id,
+                                                alias_args,
+                                            )
+                                        });
+
+                                        let ty = projection_term.map_bound(|alias| {
+                                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
+                                        });
+                                        let ty = bounds::check_assoc_const_binding_type(
+                                            self,
+                                            constraint.ident,
+                                            ty,
+                                            constraint.hir_id,
+                                        );
+
+                                        self.lower_const_arg(ct, FeedConstTy::WithTy(ty)).into()
                                     }
                                 };
                                 if term.references_error() {
@@ -2993,7 +3030,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
             hir::TyKind::Array(ty, length) => {
-                let length = self.lower_const_arg(length, FeedConstTy::No);
+                let length = self.lower_const_arg(length, FeedConstTy::WithTy(tcx.types.usize));
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
             hir::TyKind::Infer(()) => {
@@ -3033,8 +3070,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // Keep this list of types in sync with the list of types that
                     // the `RangePattern` trait is implemented for.
                     ty::Int(_) | ty::Uint(_) | ty::Char => {
-                        let start = self.lower_const_arg(start, FeedConstTy::No);
-                        let end = self.lower_const_arg(end, FeedConstTy::No);
+                        let start = self.lower_const_arg(start, FeedConstTy::WithTy(ty));
+                        let end = self.lower_const_arg(end, FeedConstTy::WithTy(ty));
                         Ok(ty::PatternKind::Range { start, end })
                     }
                     _ => Err(self

@@ -469,11 +469,23 @@ fn clean_middle_term<'tcx>(
     }
 }
 
-fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+fn clean_hir_term<'tcx>(
+    assoc_item: Option<DefId>,
+    term: &hir::Term<'tcx>,
+    span: rustc_span::Span,
+    cx: &mut DocContext<'tcx>,
+) -> Term {
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => {
-            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, FeedConstTy::No);
+            let ty = if let Some(assoc_item) = assoc_item {
+                // FIXME(generic_const_items): this should instantiate with the alias item's args
+                cx.tcx.type_of(assoc_item).instantiate_identity()
+            } else {
+                Ty::new_error_with_message(cx.tcx, span, "cannot find the associated constant")
+            };
+
+            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, FeedConstTy::WithTy(ty));
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct), cx))
         }
     }
@@ -650,7 +662,14 @@ fn clean_generic_param<'tcx>(
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
-                    Box::new(lower_const_arg_for_rustdoc(cx.tcx, ct, FeedConstTy::No).to_string())
+                    Box::new(
+                        lower_const_arg_for_rustdoc(
+                            cx.tcx,
+                            ct,
+                            FeedConstTy::WithTy(lower_ty(cx.tcx, ty)),
+                        )
+                        .to_string(),
+                    )
                 }),
             },
         ),
@@ -1531,7 +1550,7 @@ fn first_non_private_clean_path<'tcx>(
         && path_last.args.is_some()
     {
         assert!(new_path_last.args.is_empty());
-        new_path_last.args = clean_generic_args(path_last_args, cx);
+        new_path_last.args = clean_generic_args(None, path_last_args, cx);
     }
     new_clean_path
 }
@@ -1812,7 +1831,11 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             let length = match const_arg.kind {
                 hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
-                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
+                    let ct = lower_const_arg_for_rustdoc(
+                        cx.tcx,
+                        const_arg,
+                        FeedConstTy::WithTy(cx.tcx.types.usize),
+                    );
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                     let ct = cx.tcx.normalize_erasing_regions(typing_env, ct);
                     print_const(cx, ct)
@@ -1823,7 +1846,11 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 | hir::ConstArgKind::Tup(..)
                 | hir::ConstArgKind::Array(..)
                 | hir::ConstArgKind::Literal(..) => {
-                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
+                    let ct = lower_const_arg_for_rustdoc(
+                        cx.tcx,
+                        const_arg,
+                        FeedConstTy::WithTy(cx.tcx.types.usize),
+                    );
                     print_const(cx, ct)
                 }
             };
@@ -2516,6 +2543,7 @@ fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
 }
 
 fn clean_generic_args<'tcx>(
+    trait_did: Option<DefId>,
     generic_args: &hir::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
@@ -2539,7 +2567,13 @@ fn clean_generic_args<'tcx>(
             let constraints = generic_args
                 .constraints
                 .iter()
-                .map(|c| clean_assoc_item_constraint(c, cx))
+                .map(|c| {
+                    clean_assoc_item_constraint(
+                        trait_did.expect("only trait ref has constraints"),
+                        c,
+                        cx,
+                    )
+                })
                 .collect::<ThinVec<_>>();
             GenericArgs::AngleBracketed { args, constraints }
         }
@@ -2562,7 +2596,9 @@ fn clean_path_segment<'tcx>(
     path: &hir::PathSegment<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    PathSegment { name: path.ident.name, args: clean_generic_args(path.args(), cx) }
+    let trait_did =
+        if let hir::def::Res::Def(DefKind::Trait, did) = path.res { Some(did) } else { None };
+    PathSegment { name: path.ident.name, args: clean_generic_args(trait_did, path.args(), cx) }
 }
 
 fn clean_bare_fn_ty<'tcx>(
@@ -3126,17 +3162,29 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
 }
 
 fn clean_assoc_item_constraint<'tcx>(
+    trait_did: DefId,
     constraint: &hir::AssocItemConstraint<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> AssocItemConstraint {
     AssocItemConstraint {
         assoc: PathSegment {
             name: constraint.ident.name,
-            args: clean_generic_args(constraint.gen_args, cx),
+            args: clean_generic_args(None, constraint.gen_args, cx),
         },
         kind: match constraint.kind {
             hir::AssocItemConstraintKind::Equality { ref term } => {
-                AssocItemConstraintKind::Equality { term: clean_hir_term(term, cx) }
+                let assoc_tag = match term {
+                    hir::Term::Ty(_) => ty::AssocTag::Type,
+                    hir::Term::Const(_) => ty::AssocTag::Const,
+                };
+                let assoc_item = cx
+                    .tcx
+                    .associated_items(trait_did)
+                    .find_by_ident_and_kind(cx.tcx, constraint.ident, assoc_tag, trait_did)
+                    .map(|item| item.def_id);
+                AssocItemConstraintKind::Equality {
+                    term: clean_hir_term(assoc_item, term, constraint.span, cx),
+                }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
                 bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, cx)).collect(),

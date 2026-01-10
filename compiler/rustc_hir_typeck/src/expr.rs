@@ -1749,7 +1749,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count_span = count.span;
         let count = self.try_structurally_resolve_const(
             count_span,
-            self.normalize(count_span, self.lower_const_arg(count, FeedConstTy::No)),
+            self.normalize(
+                count_span,
+                self.lower_const_arg(count, FeedConstTy::WithTy(tcx.types.usize)),
+            ),
         );
 
         if let Some(count) = count.try_to_target_usize(tcx) {
