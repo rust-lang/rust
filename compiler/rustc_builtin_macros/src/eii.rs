@@ -295,9 +295,9 @@ fn generate_foreign_item(
     let mut foreign_item_attrs = ThinVec::new();
     foreign_item_attrs.extend_from_slice(attrs_from_decl);
 
-    // Add the rustc_eii_extern_item on the foreign item. Usually, foreign items are mangled.
+    // Add the rustc_eii_foreign_item on the foreign item. Usually, foreign items are mangled.
     // This attribute makes sure that we later know that this foreign item's symbol should not be.
-    foreign_item_attrs.push(ecx.attr_word(sym::rustc_eii_extern_item, eii_attr_span));
+    foreign_item_attrs.push(ecx.attr_word(sym::rustc_eii_foreign_item, eii_attr_span));
 
     let abi = match func.sig.header.ext {
         // extern "X" fn  =>  extern "X" {}

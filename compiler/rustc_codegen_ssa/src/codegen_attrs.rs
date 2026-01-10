@@ -282,7 +282,7 @@ fn process_builtin_attrs(
                 AttributeKind::ObjcSelector { methname, .. } => {
                     codegen_fn_attrs.objc_selector = Some(*methname);
                 }
-                AttributeKind::EiiExternItem => {
+                AttributeKind::EiiForeignItem => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
                 }
                 AttributeKind::EiiImpls(impls) => {

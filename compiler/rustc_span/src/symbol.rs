@@ -1951,7 +1951,7 @@ symbols! {
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
-        rustc_eii_extern_item,
+        rustc_eii_foreign_item,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_force_inline,

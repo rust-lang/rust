@@ -48,7 +48,7 @@ impl AttributeKind {
             DocComment { .. } => Yes,
             Dummy => No,
             EiiDeclaration(_) => Yes,
-            EiiExternItem => No,
+            EiiForeignItem => No,
             EiiImpls(..) => No,
             ExportName { .. } => Yes,
             ExportStable => No,

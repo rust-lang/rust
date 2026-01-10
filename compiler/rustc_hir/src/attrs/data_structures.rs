@@ -747,7 +747,7 @@ pub enum AttributeKind {
     EiiDeclaration(EiiDecl),
 
     /// Implementation detail of `#[eii]`
-    EiiExternItem,
+    EiiForeignItem,
 
     /// Implementation detail of `#[eii]`
     EiiImpls(ThinVec<EiiImpl>),
