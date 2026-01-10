@@ -105,6 +105,10 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
         cfg.compiler(cc);
     }
 
+    if target.contains("spirv") {
+        return;
+    }
+
     let compiler = cfg.get_compiler();
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
