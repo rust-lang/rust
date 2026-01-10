@@ -227,6 +227,18 @@ compat_fn_with_fallback! {
     }
 }
 
+#[cfg(target_vendor = "win7")]
+compat_fn_with_fallback! {
+    pub static WS2_32: &CStr = c"ws2_32";
+
+    #[cfg(target_vendor = "win7")]
+    pub fn GetHostNameW(name: PWSTR, namelen: i32) -> i32 {
+        unsafe {
+            crate::sys::winsock::hostname_fallback(name, namelen)
+        }
+    }
+}
+
 cfg_select! {
     target_vendor = "uwp" => {
         windows_targets::link_raw_dylib!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : FILE_ACCESS_RIGHTS, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : FILE_FLAGS_AND_ATTRIBUTES, shareaccess : FILE_SHARE_MODE, createdisposition : NTCREATEFILE_CREATE_DISPOSITION, createoptions : NTCREATEFILE_CREATE_OPTIONS, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
