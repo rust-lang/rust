@@ -320,8 +320,8 @@ impl File {
         self.0.set_file_info(file_info)
     }
 
-    pub fn read(&self, _buf: &mut [u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -364,7 +364,7 @@ impl File {
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        unsupported()
+        self.0.position()
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
@@ -666,6 +666,19 @@ mod uefi_fs {
             Ok(p)
         }
 
+        pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut buf_size = buf.len();
+
+            let r = unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, buf.as_mut_ptr().cast()) };
+
+            if buf_size == 0 && r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                Ok(buf_size)
+            }
+        }
+
         pub(crate) fn read_dir_entry(&self) -> io::Result<Option<UefiBox<file::Info>>> {
             let file_ptr = self.protocol.as_ptr();
             let mut buf_size = 0;
@@ -732,6 +745,14 @@ mod uefi_fs {
             };
 
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
+        pub(crate) fn position(&self) -> io::Result<u64> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut pos = 0;
+
+            let r = unsafe { ((*file_ptr).get_position)(file_ptr, &mut pos) };
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(pos) }
         }
 
         pub(crate) fn delete(self) -> io::Result<()> {

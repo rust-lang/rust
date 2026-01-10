@@ -2296,7 +2296,7 @@ fn open_to_and_set_permissions(
     _reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
-    let writer = OpenOptions::new().open(to)?;
+    let writer = OpenOptions::new().write(true).create(true).truncate(true).open(to)?;
     let writer_metadata = writer.metadata()?;
     Ok((writer, writer_metadata))
 }

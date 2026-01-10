@@ -2,10 +2,21 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use toml::Value;
 
 use crate::diagnostics::TidyCtx;
+
+static SUBMODULES: LazyLock<Vec<&'static Path>> = LazyLock::new(|| {
+    // WORKSPACES doesn't list all submodules but it's contains the main at least
+    crate::deps::WORKSPACES
+        .iter()
+        .map(|ws| ws.submodules.iter())
+        .flatten()
+        .map(|p| Path::new(p))
+        .collect()
+});
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("triagebot");
@@ -39,8 +50,13 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             if !full_path.exists() {
                 // The full-path doesn't exists, maybe it's a glob, let's add it to the glob set builder
                 // to be checked against all the file and directories in the repository.
-                builder.add(globset::Glob::new(&format!("{clean_path}*")).unwrap());
+                let trimmed_path = clean_path.trim_end_matches('/');
+                builder.add(globset::Glob::new(&format!("{trimmed_path}{{,/*}}")).unwrap());
                 glob_entries.push(clean_path.to_string());
+            } else if is_in_submodule(Path::new(clean_path)) {
+                check.error(format!(
+                    "triagebot.toml [mentions.*] '{clean_path}' cannot match inside a submodule"
+                ));
             }
         }
 
@@ -49,8 +65,18 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         let mut found = HashSet::new();
         let mut matches = Vec::new();
 
+        let cloned_path = path.to_path_buf();
+
         // Walk the entire repository and match any entry against the remaining paths
-        for entry in ignore::WalkBuilder::new(path).build().flatten() {
+        for entry in ignore::WalkBuilder::new(&path)
+            .filter_entry(move |entry| {
+                // Ignore entries inside submodules as triagebot cannot detect them
+                let entry_path = entry.path().strip_prefix(&cloned_path).unwrap();
+                is_not_in_submodule(entry_path)
+            })
+            .build()
+            .flatten()
+        {
             // Strip the prefix as mentions entries are always relative to the repo
             let entry_path = entry.path().strip_prefix(path).unwrap();
 
@@ -125,4 +151,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             }
         }
     }
+}
+
+fn is_not_in_submodule(path: &Path) -> bool {
+    SUBMODULES.contains(&path) || !SUBMODULES.iter().any(|p| path.starts_with(*p))
+}
+
+fn is_in_submodule(path: &Path) -> bool {
+    !SUBMODULES.contains(&path) && SUBMODULES.iter().any(|p| path.starts_with(*p))
 }

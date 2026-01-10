@@ -1,5 +1,5 @@
 //@ aux-build:codegen3.rs
-// Tests whether name resulution respects privacy properly.
+// Tests whether name resolution respects privacy properly.
 #![feature(extern_item_impls)]
 
 extern crate codegen3 as codegen;

@@ -21,8 +21,8 @@ use rustc_feature::{
     BuiltinAttribute,
 };
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, InlineAttr, MirDialect, MirPhase,
-    ReprAttr, SanitizerSet,
+    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
+    MirDialect, MirPhase, ReprAttr, SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -506,7 +506,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
-        for EiiImpl { span, inner_span, eii_macro, impl_marked_unsafe, is_default: _ } in impls {
+        for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
             match target {
                 Target::Fn => {}
                 _ => {
@@ -514,7 +514,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+            if let EiiImplResolution::Macro(eii_macro) = resolution
+                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
@@ -758,9 +759,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpls(impls) => impls) {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                     for i in impls {
+                        let name = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
+                            EiiImplResolution::Known(decl) => decl.name.name,
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
                         self.dcx().emit_err(errors::EiiWithTrackCaller {
                             attr_span,
-                            name: self.tcx.item_name(i.eii_macro),
+                            name,
                             sig_span: sig.span,
                         });
                     }

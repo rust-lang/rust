@@ -11,7 +11,7 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
@@ -20,8 +20,21 @@ use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum EiiImplResolution {
+    /// Usually, finding the extern item that an EII implementation implements means finding
+    /// the defid of the associated attribute macro, and looking at *its* attributes to find
+    /// what foreign item its associated with.
+    Macro(DefId),
+    /// Sometimes though, we already know statically and can skip some name resolution.
+    /// Stored together with the eii's name for diagnostics.
+    Known(EiiDecl),
+    /// For when resolution failed, but we want to continue compilation
+    Error(ErrorGuaranteed),
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct EiiImpl {
-    pub eii_macro: DefId,
+    pub resolution: EiiImplResolution,
     pub impl_marked_unsafe: bool,
     pub span: Span,
     pub inner_span: Span,
@@ -33,7 +46,7 @@ pub struct EiiDecl {
     pub eii_extern_target: DefId,
     /// whether or not it is unsafe to implement this EII
     pub impl_unsafe: bool,
-    pub span: Span,
+    pub name: Ident,
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]

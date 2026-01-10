@@ -3244,6 +3244,219 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
+    /// Partially sorts the slice in ascending order **without** preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable(0..0);
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable(2..2);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable(2..3);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable(1..4);
+    /// assert_eq!(&v[1..4], [-3, 1, 2]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable(..);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [`sort_unstable`]: slice::sort_unstable
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable<R>(&mut self, range: R)
+    where
+        T: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, T::lt);
+    }
+
+    /// Partially sorts the slice in ascending order with a comparison function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the `compare` does not implement a total order, or if
+    /// the `compare` itself panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by(0..0, |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by(2..2, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by(2..3, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by(1..4, |a, b| b.cmp(a));
+    /// assert_eq!(&v[1..4], [2, 1, -3]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by(.., |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by`]: slice::sort_unstable_by
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by<F, R>(&mut self, range: R, mut compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| compare(a, b) == Less);
+    }
+
+    /// Partially sorts the slice in ascending order with a key extraction function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by_key`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4i32, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by_key(0..0, |k| k.abs());
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by_key(2..2, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by_key(2..3, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by_key(1..4, |k| k.abs());
+    /// assert_eq!(&v[1..4], [2, -3, 4]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by_key(.., |k| k.abs());
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by_key`]: slice::sort_unstable_by_key
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by_key<K, F, R>(&mut self, range: R, mut f: F)
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| f(a).lt(&f(b)));
+    }
+
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
     /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
     /// it.
