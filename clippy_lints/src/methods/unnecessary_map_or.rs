@@ -97,12 +97,12 @@ pub(super) fn check<'a>(
         // being converted to `Some(5) == Some(5).then(|| 1)` isn't
         // the same thing
 
+        let mut app = Applicability::MachineApplicable;
         let inner_non_binding = Sugg::NonParen(Cow::Owned(format!(
             "{wrap}({})",
-            Sugg::hir(cx, non_binding_location, "")
+            Sugg::hir_with_applicability(cx, non_binding_location, "", &mut app)
         )));
 
-        let mut app = Applicability::MachineApplicable;
         let binop = make_binop(
             op.node,
             &Sugg::hir_with_applicability(cx, recv, "..", &mut app),
