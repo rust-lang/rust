@@ -1003,6 +1003,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."library/core/src/mem/type_info.rs"]
+message = """
+The reflection data structures are tied exactly to the implementation
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs
+"""
+cc = ["@oli-obk"]
+
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
