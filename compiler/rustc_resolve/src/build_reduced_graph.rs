@@ -89,10 +89,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         let decl = self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
-            ambiguity,
+            ambiguity: CmCell::new(ambiguity),
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: true,
-            vis,
+            warn_ambiguity: CmCell::new(true),
+            vis: CmCell::new(vis),
             span,
             expansion,
         });
@@ -1158,18 +1158,18 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.potentially_unused_imports.push(import);
             module.for_each_child_mut(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
-                    let import = if this.r.is_accessible_from(binding.vis, this.parent_scope.module)
-                    {
-                        import
-                    } else {
-                        // FIXME: This branch is used for reporting the `private_macro_use` lint
-                        // and should eventually be removed.
-                        if this.r.macro_use_prelude.contains_key(&ident.name) {
-                            // Do not override already existing entries with compatibility entries.
-                            return;
-                        }
-                        macro_use_import(this, span, true)
-                    };
+                    let import =
+                        if this.r.is_accessible_from(binding.vis(), this.parent_scope.module) {
+                            import
+                        } else {
+                            // FIXME: This branch is used for reporting the `private_macro_use` lint
+                            // and should eventually be removed.
+                            if this.r.macro_use_prelude.contains_key(&ident.name) {
+                                // Do not override already existing entries with compatibility entries.
+                                return;
+                            }
+                            macro_use_import(this, span, true)
+                        };
                     let import_decl = this.r.new_import_decl(binding, import);
                     this.add_macro_use_decl(ident.name, import_decl, span, allow_shadowing);
                 }
