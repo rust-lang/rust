@@ -61,10 +61,8 @@
 //! The evaluated form is inserted in `evaluated` as an `OpTy` or `None` if evaluation failed.
 //!
 //! The difficulty is non-deterministic evaluation of MIR constants. Some `Const` can have
-//! different runtime values each time they are evaluated. This used to be the case with
-//! `ConstValue::Slice` which have a new pointer each time they are evaluated, and is still the
-//! case with valtrees that generate a new allocation each time they are used. This is checked by
-//! `is_deterministic`.
+//! different runtime values each time they are evaluated. This happens with valtrees that
+//! generate a new allocation each time they are used. This is checked by `is_deterministic`.
 //!
 //! Meanwhile, we want to be able to read indirect constants. For instance:
 //! ```
@@ -81,7 +79,7 @@
 //! may be non-deterministic. When that happens, we assign a disambiguator to ensure that we do not
 //! merge the constants. See `duplicate_slice` test in `gvn.rs`.
 //!
-//! Conversely, some constants cannot cross crate boundaries, which could happen because of
+//! Conversely, some constants cannot cross function boundaries, which could happen because of
 //! inlining. For instance, constants that contain a fn pointer (`AllocId` pointing to a
 //! `GlobalAlloc::Function`) point to a different symbol in each codegen unit. To avoid this,
 //! when writing constants in MIR, we do not write `Const`s that contain `AllocId`s. This is
