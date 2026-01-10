@@ -83,7 +83,8 @@
 //! inlining. For instance, constants that contain a fn pointer (`AllocId` pointing to a
 //! `GlobalAlloc::Function`) point to a different symbol in each codegen unit. To avoid this,
 //! when writing constants in MIR, we do not write `Const`s that contain `AllocId`s. This is
-//! checked by `may_have_provenance`.
+//! checked by `may_have_provenance`. See https://github.com/rust-lang/rust/issues/128775 for more
+//! information.
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -1765,7 +1766,7 @@ fn op_to_prop_const<'tcx>(
         if !scalar.try_to_scalar_int().is_ok() {
             // Check that we do not leak a pointer.
             // Those pointers may lose part of their identity in codegen.
-            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
             return None;
         }
         return Some(ConstValue::Scalar(scalar));
@@ -1777,7 +1778,7 @@ fn op_to_prop_const<'tcx>(
         let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
-        // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
+        // Due to https://github.com/rust-lang/rust/issues/128775, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
         let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
         if alloc_ref.has_provenance() {
@@ -1808,7 +1809,7 @@ fn op_to_prop_const<'tcx>(
 
     // Check that we do not leak a pointer.
     // Those pointers may lose part of their identity in codegen.
-    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
     if ecx
         .tcx
         .global_alloc(alloc_id)
@@ -1875,7 +1876,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
-        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
         assert!(!may_have_provenance(self.tcx, value, op.layout.size));
 
         Some(Const::Val(value, op.layout.ty))
