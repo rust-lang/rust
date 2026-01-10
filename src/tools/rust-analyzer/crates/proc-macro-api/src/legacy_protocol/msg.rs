@@ -155,13 +155,13 @@ impl ExpnGlobals {
 }
 
 pub trait Message: serde::Serialize + DeserializeOwned {
-    fn read<R: BufRead, C: Codec>(inp: &mut R, buf: &mut C::Buf) -> io::Result<Option<Self>> {
+    fn read<C: Codec>(inp: &mut dyn BufRead, buf: &mut C::Buf) -> io::Result<Option<Self>> {
         Ok(match C::read(inp, buf)? {
             None => None,
             Some(buf) => Some(C::decode(buf)?),
         })
     }
-    fn write<W: Write, C: Codec>(self, out: &mut W) -> io::Result<()> {
+    fn write<C: Codec>(self, out: &mut dyn Write) -> io::Result<()> {
         let value = C::encode(&self)?;
         C::write(out, &value)
     }

@@ -162,11 +162,11 @@ fn send_request<P: Codec>(
     req: Request,
     buf: &mut P::Buf,
 ) -> Result<Option<Response>, ServerError> {
-    req.write::<_, P>(&mut writer).map_err(|err| ServerError {
+    req.write::<P>(&mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
-    let res = Response::read::<_, P>(&mut reader, buf).map_err(|err| ServerError {
+    let res = Response::read::<P>(&mut reader, buf).map_err(|err| ServerError {
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;
