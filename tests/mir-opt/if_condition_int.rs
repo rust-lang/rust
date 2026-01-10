@@ -2,6 +2,11 @@
 // GVN simplifies FileCheck.
 //@ compile-flags: -Zmir-enable-passes=+GVN
 
+#![feature(custom_mir, core_intrinsics)]
+
+extern crate core;
+use core::intrinsics::mir::*;
+
 // EMIT_MIR if_condition_int.opt_u32.SimplifyComparisonIntegral.diff
 fn opt_u32(x: u32) -> u32 {
     // CHECK-LABEL: fn opt_u32(
@@ -112,6 +117,81 @@ fn dont_opt_floats(a: f32) -> i32 {
     if a == -42.0 { 0 } else { 1 }
 }
 
+// EMIT_MIR if_condition_int.on_non_ssa_switch.SimplifyComparisonIntegral.diff
+#[custom_mir(dialect = "runtime")]
+pub fn on_non_ssa_switch(mut v: u64) -> i32 {
+    mir! {
+        let a: bool;
+        {
+            a = v == 42;
+            a = false;
+            match a {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = 0;
+            Return()
+        }
+        bb2 = {
+            RET = 1;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR if_condition_int.on_non_ssa_cmp.SimplifyComparisonIntegral.diff
+#[custom_mir(dialect = "runtime")]
+pub fn on_non_ssa_cmp(mut v: u64) -> i32 {
+    mir! {
+        let a: bool;
+        {
+            a = v == 42;
+            v = 43;
+            match a {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = 0;
+            Return()
+        }
+        bb2 = {
+            RET = 1;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR if_condition_int.on_non_ssa_place.SimplifyComparisonIntegral.diff
+#[custom_mir(dialect = "runtime")]
+pub fn on_non_ssa_place(mut v: [u64; 10], mut i: usize) -> i32 {
+    mir! {
+        let a: bool;
+        {
+            a = v[i] == 42;
+            i = 10;
+            match a {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = 0;
+            Return()
+        }
+        bb2 = {
+            RET = 1;
+            Return()
+        }
+    }
+}
+
 fn main() {
     opt_u32(0);
     opt_char('0');
@@ -121,4 +201,5 @@ fn main() {
     opt_multiple_ifs(0);
     dont_remove_comparison(11);
     dont_opt_floats(1.0);
+    on_non_ssa_switch(42);
 }

@@ -1,0 +1,25 @@
+- // MIR for `on_non_ssa_cmp` before SimplifyComparisonIntegral
++ // MIR for `on_non_ssa_cmp` after SimplifyComparisonIntegral
+  
+  fn on_non_ssa_cmp(_1: u64) -> i32 {
+      let mut _0: i32;
+      let mut _2: bool;
+  
+      bb0: {
+          _2 = Eq(copy _1, const 42_u64);
+          _1 = const 43_u64;
+-         switchInt(copy _2) -> [1: bb1, otherwise: bb2];
++         switchInt(move _1) -> [42: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _0 = const 0_i32;
+          return;
+      }
+  
+      bb2: {
+          _0 = const 1_i32;
+          return;
+      }
+  }
+  
