@@ -31,6 +31,7 @@ impl AttributeKind {
             CfiEncoding { .. } => Yes,
             Coinductive(..) => No,
             Cold(..) => No,
+            CollapseDebugInfo(..) => Yes,
             Confusables { .. } => Yes,
             ConstContinue(..) => No,
             ConstStability { .. } => Yes,

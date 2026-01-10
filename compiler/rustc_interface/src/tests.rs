@@ -8,14 +8,14 @@ use rustc_abi::Align;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, registry};
-use rustc_hir::attrs::NativeLibKind;
+use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_session::config::{
-    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CollapseMacroDebuginfo, CoverageLevel,
-    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
-    Externs, FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
-    InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans,
-    NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
-    Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CoverageLevel, CoverageOptions,
+    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
+    FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
+    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig,
+    Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
+    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
     SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
     rustc_optgroups,
 };

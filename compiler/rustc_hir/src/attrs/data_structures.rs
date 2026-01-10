@@ -568,6 +568,26 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
     }
 }
 
+/// How to perform collapse macros debug info
+/// if-ext - if macro from different crate (related to callsite code)
+/// | cmd \ attr    | no  | (unspecified) | external | yes |
+/// | no            | no  | no            | no       | no  |
+/// | (unspecified) | no  | no            | if-ext   | yes |
+/// | external      | no  | if-ext        | if-ext   | yes |
+/// | yes           | yes | yes           | yes      | yes |
+#[derive(Copy, Clone, Debug, Hash, PartialEq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum CollapseMacroDebuginfo {
+    /// Don't collapse debuginfo for the macro
+    No = 0,
+    /// Unspecified value
+    Unspecified = 1,
+    /// Collapse debuginfo if the macro comes from a different crate
+    External = 2,
+    /// Collapse debuginfo for the macro
+    Yes = 3,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -663,6 +683,9 @@ pub enum AttributeKind {
 
     /// Represents `#[cold]`.
     Cold(Span),
+
+    /// Represents `#[collapse_debuginfo]`.
+    CollapseDebugInfo(CollapseMacroDebuginfo),
 
     /// Represents `#[rustc_confusables]`.
     Confusables {

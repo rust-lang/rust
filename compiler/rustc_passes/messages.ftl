@@ -55,10 +55,6 @@ passes_change_fields_to_be_of_unit_type =
      *[other] fields
     }
 
-passes_collapse_debuginfo =
-    `collapse_debuginfo` attribute should be applied to macro definitions
-    .label = not a macro definition
-
 passes_const_continue_attr =
     `#[const_continue]` should be applied to a break expression
     .label = not a break expression
