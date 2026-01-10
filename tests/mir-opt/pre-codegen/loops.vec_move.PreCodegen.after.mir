@@ -3,334 +3,72 @@
 fn vec_move(_1: Vec<impl Sized>) -> () {
     debug v => _1;
     let mut _0: ();
-    let mut _22: std::vec::IntoIter<impl Sized>;
-    let mut _23: std::vec::IntoIter<impl Sized>;
-    let mut _24: &mut std::vec::IntoIter<impl Sized>;
-    let mut _25: std::option::Option<impl Sized>;
-    let mut _26: isize;
-    let _28: ();
+    let mut _2: std::vec::IntoIter<impl Sized>;
+    let mut _3: std::vec::IntoIter<impl Sized>;
+    let mut _4: &mut std::vec::IntoIter<impl Sized>;
+    let mut _5: std::option::Option<impl Sized>;
+    let mut _6: isize;
+    let _8: ();
     scope 1 {
-        debug iter => _23;
-        let _27: impl Sized;
+        debug iter => _3;
+        let _7: impl Sized;
         scope 2 {
-            debug x => _27;
-        }
-    }
-    scope 3 (inlined <Vec<impl Sized> as IntoIterator>::into_iter) {
-        debug self => _1;
-        let _3: std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let mut _4: *const std::alloc::Global;
-        let mut _9: usize;
-        let mut _11: *mut impl Sized;
-        let mut _12: *const impl Sized;
-        let mut _13: usize;
-        let _29: &std::vec::Vec<impl Sized>;
-        let mut _30: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let mut _31: &alloc::raw_vec::RawVec<impl Sized>;
-        let mut _32: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let _33: &std::vec::Vec<impl Sized>;
-        let mut _34: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let _35: &std::vec::Vec<impl Sized>;
-        let mut _36: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let mut _37: &alloc::raw_vec::RawVec<impl Sized>;
-        let mut _38: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        scope 4 {
-            debug me => _3;
-            scope 5 {
-                debug alloc => const ManuallyDrop::<std::alloc::Global> {{ value: MaybeDangling::<std::alloc::Global>(std::alloc::Global) }};
-                let _7: std::ptr::NonNull<impl Sized>;
-                scope 6 {
-                    debug buf => _7;
-                    let _8: *mut impl Sized;
-                    scope 7 {
-                        debug begin => _8;
-                        scope 8 {
-                            debug end => _12;
-                            let _20: usize;
-                            scope 9 {
-                                debug cap => _20;
-                            }
-                            scope 45 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                                debug self => _38;
-                                scope 46 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
-                                }
-                            }
-                            scope 47 (inlined alloc::raw_vec::RawVec::<impl Sized>::capacity) {
-                                debug self => _37;
-                                let mut _39: &alloc::raw_vec::RawVecInner;
-                                scope 48 (inlined std::mem::size_of::<impl Sized>) {
-                                }
-                                scope 49 (inlined alloc::raw_vec::RawVecInner::capacity) {
-                                    debug self => _39;
-                                    debug elem_size => const <impl Sized as std::mem::SizedTypeProperties>::SIZE;
-                                    let mut _21: core::num::niche_types::UsizeNoHighBit;
-                                    scope 50 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
-                                        debug self => _21;
-                                    }
-                                }
-                            }
-                        }
-                        scope 29 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                            debug self => _34;
-                            scope 30 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
-                            }
-                        }
-                        scope 31 (inlined Vec::<impl Sized>::len) {
-                            debug self => _33;
-                            let mut _14: bool;
-                            scope 32 {
-                            }
-                        }
-                        scope 33 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
-                            debug self => _8;
-                            debug count => _13;
-                            let mut _15: *mut u8;
-                            let mut _19: *mut u8;
-                            scope 34 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
-                                debug self => _8;
-                            }
-                            scope 35 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
-                                debug self => _15;
-                                debug count => _13;
-                                let mut _16: isize;
-                                scope 36 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
-                                    debug self => _15;
-                                    debug count => _16;
-                                    let mut _17: *const u8;
-                                    let mut _18: *const u8;
-                                }
-                            }
-                            scope 37 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
-                                debug self => _19;
-                                debug meta => _6;
-                                scope 38 (inlined std::ptr::metadata::<impl Sized>) {
-                                    debug ptr => _6;
-                                }
-                                scope 39 (inlined std::ptr::from_raw_parts_mut::<impl Sized, ()>) {
-                                }
-                            }
-                        }
-                        scope 40 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                            debug self => _36;
-                            scope 41 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
-                            }
-                        }
-                        scope 42 (inlined Vec::<impl Sized>::len) {
-                            debug self => _35;
-                            let mut _10: bool;
-                            scope 43 {
-                            }
-                        }
-                        scope 44 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut impl Sized>::add) {
-                            debug self => _8;
-                            debug count => _9;
-                        }
-                    }
-                    scope 28 (inlined NonNull::<impl Sized>::as_ptr) {
-                        debug self => _7;
-                    }
-                }
-                scope 20 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                    debug self => _32;
-                    scope 21 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
-                    }
-                }
-                scope 22 (inlined alloc::raw_vec::RawVec::<impl Sized>::non_null) {
-                    debug self => _31;
-                    scope 23 (inlined alloc::raw_vec::RawVecInner::non_null::<impl Sized>) {
-                        let mut _5: std::ptr::NonNull<u8>;
-                        scope 24 (inlined Unique::<u8>::cast::<impl Sized>) {
-                            scope 25 (inlined NonNull::<u8>::cast::<impl Sized>) {
-                                let mut _6: *const impl Sized;
-                                scope 26 (inlined NonNull::<u8>::as_ptr) {
-                                }
-                            }
-                        }
-                        scope 27 (inlined Unique::<impl Sized>::as_non_null_ptr) {
-                        }
-                    }
-                }
-            }
-            scope 12 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                debug self => _30;
-                scope 13 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
-                }
-            }
-            scope 14 (inlined Vec::<impl Sized>::allocator) {
-                debug self => _29;
-                scope 15 (inlined alloc::raw_vec::RawVec::<impl Sized>::allocator) {
-                    scope 16 (inlined alloc::raw_vec::RawVecInner::allocator) {
-                    }
-                }
-            }
-            scope 17 (inlined #[track_caller] std::ptr::read::<std::alloc::Global>) {
-                debug src => _4;
-            }
-            scope 18 (inlined ManuallyDrop::<std::alloc::Global>::new) {
-                debug value => const std::alloc::Global;
-                scope 19 (inlined MaybeDangling::<std::alloc::Global>::new) {
-                }
-            }
-        }
-        scope 10 (inlined ManuallyDrop::<Vec<impl Sized>>::new) {
-            debug value => _1;
-            let mut _2: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>;
-            scope 11 (inlined MaybeDangling::<Vec<impl Sized>>::new) {
-            }
+            debug x => _7;
         }
     }
 
     bb0: {
-        StorageLive(_22);
-        StorageLive(_7);
-        StorageLive(_8);
-        StorageLive(_12);
-        StorageLive(_20);
-        StorageLive(_6);
-        StorageLive(_5);
-        StorageLive(_18);
-        StorageLive(_3);
         StorageLive(_2);
-        _2 = MaybeDangling::<Vec<impl Sized>>(copy _1);
-        _3 = ManuallyDrop::<Vec<impl Sized>> { value: move _2 };
-        StorageDead(_2);
-        StorageLive(_4);
-        // DBG: _30 = &_3;
-        // DBG: _29 = &((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>);
-        _4 = &raw const (((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).2: std::alloc::Global);
-        StorageDead(_4);
-        // DBG: _32 = &_3;
-        // DBG: _31 = &(((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        _5 = copy ((((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
-        _6 = copy _5 as *const impl Sized (Transmute);
-        _7 = NonNull::<impl Sized> { pointer: copy _6 };
-        _8 = copy _5 as *mut impl Sized (Transmute);
-        switchInt(const <impl Sized as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
+        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> [return: bb1, unwind continue];
     }
 
     bb1: {
-        StorageLive(_11);
-        StorageLive(_9);
-        // DBG: _36 = &_3;
-        // DBG: _35 = &((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>);
-        _9 = copy (((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).1: usize);
-        StorageLive(_10);
-        _10 = Le(copy _9, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
-        assume(move _10);
-        StorageDead(_10);
-        _11 = Offset(copy _8, copy _9);
-        _12 = copy _11 as *const impl Sized (PtrToPtr);
-        StorageDead(_9);
-        StorageDead(_11);
-        goto -> bb4;
+        StorageLive(_3);
+        _3 = move _2;
+        goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_13);
-        // DBG: _34 = &_3;
-        // DBG: _33 = &((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>);
-        _13 = copy (((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).1: usize);
-        StorageLive(_14);
-        _14 = Le(copy _13, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
-        assume(move _14);
-        StorageDead(_14);
-        StorageLive(_19);
-        StorageLive(_15);
-        _15 = copy _5 as *mut u8 (Transmute);
-        StorageLive(_16);
-        _16 = copy _13 as isize (IntToInt);
-        StorageLive(_17);
-        _17 = copy _5 as *const u8 (Transmute);
-        _18 = arith_offset::<u8>(move _17, move _16) -> [return: bb3, unwind unreachable];
+        StorageLive(_5);
+        _4 = &mut _3;
+        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
-        StorageDead(_17);
-        _19 = copy _18 as *mut u8 (PtrToPtr);
-        StorageDead(_16);
-        StorageDead(_15);
-        StorageDead(_19);
-        StorageDead(_13);
-        _12 = copy _18 as *const impl Sized (PtrToPtr);
-        goto -> bb4;
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
     }
 
     bb4: {
-        // DBG: _38 = &_3;
-        // DBG: _37 = &(((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        // DBG: _39 = &((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
-        switchInt(const <impl Sized as std::mem::SizedTypeProperties>::SIZE) -> [0: bb5, otherwise: bb6];
+        StorageDead(_5);
+        drop(_3) -> [return: bb5, unwind continue];
     }
 
     bb5: {
-        _20 = const usize::MAX;
-        goto -> bb7;
-    }
-
-    bb6: {
-        StorageLive(_21);
-        _21 = copy (((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).1: core::num::niche_types::UsizeNoHighBit);
-        _20 = copy _21 as usize (Transmute);
-        StorageDead(_21);
-        goto -> bb7;
-    }
-
-    bb7: {
-        _22 = std::vec::IntoIter::<impl Sized> { buf: copy _7, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _20, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: MaybeDangling::<std::alloc::Global>(std::alloc::Global) }}, ptr: copy _7, end: copy _12 };
         StorageDead(_3);
-        StorageDead(_18);
-        StorageDead(_5);
-        StorageDead(_6);
-        StorageDead(_20);
-        StorageDead(_12);
-        StorageDead(_8);
-        StorageDead(_7);
-        StorageLive(_23);
-        _23 = move _22;
-        goto -> bb8;
-    }
-
-    bb8: {
-        StorageLive(_25);
-        _24 = &mut _23;
-        _25 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _24) -> [return: bb9, unwind: bb15];
-    }
-
-    bb9: {
-        _26 = discriminant(_25);
-        switchInt(move _26) -> [0: bb10, 1: bb12, otherwise: bb14];
-    }
-
-    bb10: {
-        StorageDead(_25);
-        drop(_23) -> [return: bb11, unwind continue];
-    }
-
-    bb11: {
-        StorageDead(_23);
-        StorageDead(_22);
+        StorageDead(_2);
         return;
     }
 
-    bb12: {
-        _27 = move ((_25 as Some).0: impl Sized);
-        _28 = opaque::<impl Sized>(move _27) -> [return: bb13, unwind: bb15];
+    bb6: {
+        _7 = move ((_5 as Some).0: impl Sized);
+        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
     }
 
-    bb13: {
-        StorageDead(_25);
-        goto -> bb8;
+    bb7: {
+        StorageDead(_5);
+        goto -> bb2;
     }
 
-    bb14: {
+    bb8: {
         unreachable;
     }
 
-    bb15 (cleanup): {
-        drop(_23) -> [return: bb16, unwind terminate(cleanup)];
+    bb9 (cleanup): {
+        drop(_3) -> [return: bb10, unwind terminate(cleanup)];
     }
 
-    bb16 (cleanup): {
+    bb10 (cleanup): {
         resume;
     }
 }

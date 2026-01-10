@@ -1,4 +1,3 @@
-// skip-filecheck
 #![crate_type = "lib"]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/150904>.
@@ -6,6 +5,11 @@
 // EMIT_MIR cmp_switch.run_my_check.PreCodegen.after.mir
 #[inline(never)]
 fn run_my_check(v0: u64, v1: u64) -> i32 {
+    // CHECK-LABEL: fn run_my_check
+    // CHECK: [[cmp:_.*]] = Eq(copy _1, const 42_u64);
+    // CHECK: [[eq:_.*]] = Eq(copy _2, const 0_u64);
+    // CHECK: [[cmp]] = BitAnd(copy _3, move _4);
+    // CHECK: switchInt(move [[cmp]])
     if do_check(v0, v1) { 1 } else { 0 }
 }
 
