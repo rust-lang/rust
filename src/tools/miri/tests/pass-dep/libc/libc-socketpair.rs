@@ -62,14 +62,11 @@ fn test_socketpair() {
     errno_check(unsafe { libc::close(fds[0]) });
     // Reading the other end should return that data, then EOF.
     let mut buf: [u8; 5] = [0; 5];
-    read_all_into_slice(fds[1], &mut buf[0..3]).unwrap();
-    assert_eq!(&buf[0..3], data);
-    let res = read_into_slice(fds[1], &mut buf[3..5]).unwrap().0.len();
-    assert_eq!(res, 0); // 0-sized read: EOF.
+    let (res, _) = read_until_eof_into_slice(fds[1], &mut buf).unwrap();
+    assert_eq!(res, data);
     // Writing the other end should emit EPIPE.
-    let res = write_all_from_slice(fds[1], &mut buf);
-    assert_eq!(res, Err(-1));
-    assert_eq!(std::io::Error::last_os_error().raw_os_error(), Some(libc::EPIPE));
+    let err = write_all_from_slice(fds[1], &mut buf).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EPIPE));
 }
 
 fn test_socketpair_threaded() {
