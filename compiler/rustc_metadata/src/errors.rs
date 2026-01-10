@@ -576,6 +576,7 @@ pub struct IncompatibleTargetModifiersLMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub extern_value: String,
+    pub value_len: usize,
 }
 
 #[derive(Diagnostic)]
@@ -592,6 +593,7 @@ pub struct IncompatibleTargetModifiersRMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub local_value: String,
+    pub value_len: usize,
 }
 
 #[derive(Diagnostic)]
