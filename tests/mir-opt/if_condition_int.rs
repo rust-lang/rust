@@ -120,6 +120,14 @@ fn dont_opt_floats(a: f32) -> i32 {
 // EMIT_MIR if_condition_int.on_non_ssa_switch.SimplifyComparisonIntegral.diff
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_switch(mut v: u64) -> i32 {
+    // CHECK-LABEL: fn on_non_ssa_switch(
+    // CHECK: [[cmp:_.*]] = Eq(copy _1, const 42_u64);
+    // CHECK: [[cmp]] = const false;
+    // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: [[BB1]]:
+    // CHECK: _0 = const 0_i32;
+    // CHECK: [[BB2]]:
+    // CHECK: _0 = const 1_i32;
     mir! {
         let a: bool;
         {
@@ -145,6 +153,14 @@ pub fn on_non_ssa_switch(mut v: u64) -> i32 {
 // EMIT_MIR if_condition_int.on_non_ssa_cmp.SimplifyComparisonIntegral.diff
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_cmp(mut v: u64) -> i32 {
+    // CHECK-LABEL: fn on_non_ssa_cmp(
+    // CHECK: [[cmp:_.*]] = Eq(copy _1, const 42_u64);
+    // CHECK: _1 = const 43_u64;
+    // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: [[BB1]]:
+    // CHECK: _0 = const 0_i32;
+    // CHECK: [[BB2]]:
+    // CHECK: _0 = const 1_i32;
     mir! {
         let a: bool;
         {
@@ -170,6 +186,14 @@ pub fn on_non_ssa_cmp(mut v: u64) -> i32 {
 // EMIT_MIR if_condition_int.on_non_ssa_place.SimplifyComparisonIntegral.diff
 #[custom_mir(dialect = "runtime")]
 pub fn on_non_ssa_place(mut v: [u64; 10], mut i: usize) -> i32 {
+    // CHECK-LABEL: fn on_non_ssa_place(
+    // CHECK: [[cmp:_.*]] = Eq(copy _1[_2], const 42_u64);
+    // CHECK: _2 = const 10_usize;
+    // CHECK: switchInt(copy [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: [[BB1]]:
+    // CHECK: _0 = const 0_i32;
+    // CHECK: [[BB2]]:
+    // CHECK: _0 = const 1_i32;
     mir! {
         let a: bool;
         {

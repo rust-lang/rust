@@ -8,8 +8,7 @@
       bb0: {
           _2 = Eq(copy _1, const 42_u64);
           _1 = const 43_u64;
--         switchInt(copy _2) -> [1: bb1, otherwise: bb2];
-+         switchInt(move _1) -> [42: bb1, otherwise: bb2];
+          switchInt(copy _2) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
