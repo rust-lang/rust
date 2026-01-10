@@ -63,7 +63,7 @@ impl TryFrom<BinOpKind> for LeOrGe {
 impl IntPlusOne {
     fn is_one(expr: &Expr) -> bool {
         if let ExprKind::Lit(token_lit) = expr.kind
-            && let Ok(LitKind::Int(Pu128(1), ..)) = LitKind::from_token_lit(token_lit)
+            && matches!(LitKind::from_token_lit(token_lit), Ok(LitKind::Int(Pu128(1), ..)))
         {
             return true;
         }
@@ -71,60 +71,57 @@ impl IntPlusOne {
     }
 
     fn is_neg_one(expr: &Expr) -> bool {
-        if let ExprKind::Unary(UnOp::Neg, expr) = &expr.kind
-            && Self::is_one(expr)
-        {
-            true
+        if let ExprKind::Unary(UnOp::Neg, expr) = &expr.kind {
+            Self::is_one(expr)
         } else {
             false
         }
     }
 
+    /// Checks whether `expr` is `x + 1` or `1 + x`, and if so, returns `x`
+    fn as_x_plus_one(expr: &Expr) -> Option<&Expr> {
+        if let ExprKind::Binary(op, lhs, rhs) = &expr.kind
+            && op.node == BinOpKind::Add
+        {
+            if Self::is_one(rhs) {
+                // x + 1
+                return Some(lhs);
+            } else if Self::is_one(lhs) {
+                // 1 + x
+                return Some(rhs);
+            }
+        }
+        None
+    }
+
+    /// Checks whether `expr` is `x - 1` or `-1 + x`, and if so, returns `x`
+    fn as_x_minus_one(expr: &Expr) -> Option<&Expr> {
+        if let ExprKind::Binary(op, lhs, rhs) = &expr.kind {
+            if op.node == BinOpKind::Sub && Self::is_one(rhs) {
+                // x - 1
+                return Some(lhs);
+            } else if op.node == BinOpKind::Add && Self::is_neg_one(lhs) {
+                // -1 + x
+                return Some(rhs);
+            }
+        }
+        None
+    }
+
     fn check_binop<'tcx>(le_or_ge: LeOrGe, lhs: &'tcx Expr, rhs: &'tcx Expr) -> Option<(&'tcx Expr, &'tcx Expr)> {
-        match (le_or_ge, &lhs.kind, &rhs.kind) {
-            // case where `x - 1 >= ...` or `-1 + x >= ...`
-            (LeOrGe::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
-                match lhskind.node {
-                    // `-1 + x`
-                    BinOpKind::Add if Self::is_neg_one(lhslhs) => Some((lhsrhs, rhs)),
-                    // `x - 1`
-                    BinOpKind::Sub if Self::is_one(lhsrhs) => Some((lhslhs, rhs)),
-                    _ => None,
-                }
+        match le_or_ge {
+            LeOrGe::Ge => {
+                // case where `x - 1 >= ...` or `-1 + x >= ...`
+                (Self::as_x_minus_one(lhs).map(|new_lhs| (new_lhs, rhs)))
+                    // case where `... >= y + 1` or `... >= 1 + y`
+                    .or_else(|| Self::as_x_plus_one(rhs).map(|new_rhs| (lhs, new_rhs)))
             },
-            // case where `... >= y + 1` or `... >= 1 + y`
-            (LeOrGe::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
-                // `y + 1` and `1 + y`
-                if Self::is_one(rhslhs) {
-                    Some((lhs, rhsrhs))
-                } else if Self::is_one(rhsrhs) {
-                    Some((lhs, rhslhs))
-                } else {
-                    None
-                }
+            LeOrGe::Le => {
+                // case where `x + 1 <= ...` or `1 + x <= ...`
+                (Self::as_x_plus_one(lhs).map(|new_lhs| (new_lhs, rhs)))
+                    // case where `... <= y - 1` or `... <= -1 + y`
+                    .or_else(|| Self::as_x_minus_one(rhs).map(|new_rhs| (lhs, new_rhs)))
             },
-            // case where `x + 1 <= ...` or `1 + x <= ...`
-            (LeOrGe::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
-                // `1 + x` and `x + 1`
-                if Self::is_one(lhslhs) {
-                    Some((lhsrhs, rhs))
-                } else if Self::is_one(lhsrhs) {
-                    Some((lhslhs, rhs))
-                } else {
-                    None
-                }
-            },
-            // case where `... <= y - 1` or `... <= -1 + y`
-            (LeOrGe::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
-                match rhskind.node {
-                    // `-1 + y`
-                    BinOpKind::Add if Self::is_neg_one(rhslhs) => Some((lhs, rhsrhs)),
-                    // `y - 1`
-                    BinOpKind::Sub if Self::is_one(rhsrhs) => Some((lhs, rhslhs)),
-                    _ => None,
-                }
-            },
-            _ => None,
         }
     }
 
