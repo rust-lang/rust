@@ -1143,6 +1143,7 @@ impl char {
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
+    /// `'ﬃ'` (U+FB03) is a single Unicode code point (a ligature) that maps to "FFI" in uppercase.
     ///
     /// As an iterator:
     ///
