@@ -1,0 +1,25 @@
+// MIR for `run_my_check` after PreCodegen
+
+fn run_my_check(_1: u64, _2: u64) -> i32 {
+    debug v0 => _1;
+    debug v1 => _2;
+    let mut _0: i32;
+    scope 1 (inlined do_check) {
+        scope 2 {
+        }
+    }
+
+    bb0: {
+        switchInt(move _1) -> [42: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const 1_i32;
+        return;
+    }
+
+    bb2: {
+        _0 = const 0_i32;
+        return;
+    }
+}
