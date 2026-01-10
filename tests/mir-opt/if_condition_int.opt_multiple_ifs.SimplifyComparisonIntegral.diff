@@ -13,10 +13,10 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
--         _2 = Eq(move _3, const 42_u32);
+-         _2 = Eq(copy _1, const 42_u32);
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
 +         nop;
-+         switchInt(move _3) -> [42: bb1, otherwise: bb2];
++         switchInt(move _1) -> [42: bb1, otherwise: bb2];
       }
   
       bb1: {
@@ -30,10 +30,10 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = copy _1;
--         _4 = Ne(move _5, const 21_u32);
+-         _4 = Ne(copy _1, const 21_u32);
 -         switchInt(move _4) -> [0: bb4, otherwise: bb3];
 +         nop;
-+         switchInt(move _5) -> [21: bb4, otherwise: bb3];
++         switchInt(move _1) -> [21: bb4, otherwise: bb3];
       }
   
       bb3: {
