@@ -1441,6 +1441,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         // Skip encoding defs for these as they should not have had a `DefId` created
                         hir::ConstArgKind::Error(..)
                         | hir::ConstArgKind::Struct(..)
+                        | hir::ConstArgKind::Array(..)
                         | hir::ConstArgKind::TupleCall(..)
                         | hir::ConstArgKind::Tup(..)
                         | hir::ConstArgKind::Path(..)

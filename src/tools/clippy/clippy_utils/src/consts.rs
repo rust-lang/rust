@@ -1144,6 +1144,7 @@ pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx
             | ConstArgKind::Tup(..)
             | ConstArgKind::Literal(..)
             | ConstArgKind::TupleCall(..)
+            | ConstArgKind::Array(..)
             | ConstArgKind::Path(_)
             | ConstArgKind::Error(..)
             | ConstArgKind::Infer(..) => None,
