@@ -15,7 +15,7 @@ use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, sym};
+use rustc_span::ErrorGuaranteed;
 
 use crate::errors;
 
@@ -79,7 +79,10 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         if self.tcx.features().rustc_attrs() {
-            if !self.tcx.has_attr(ty_def_id, sym::rustc_has_incoherent_inherent_impls) {
+            if !find_attr!(
+                self.tcx.get_all_attrs(ty_def_id),
+                AttributeKind::RustcHasIncoherentInherentImpls
+            ) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
             }

@@ -62,12 +62,12 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
-    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
-    RustcLegacyConstGenericsParser, RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser,
-    RustcLintOptTyParser, RustcLintQueryInstabilityParser,
-    RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
-    RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser,
-    RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
+    RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
+    RustcLayoutScalarValidRangeStartParser, RustcLegacyConstGenericsParser,
+    RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser,
+    RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
+    RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
+    RustcNoImplicitAutorefsParser, RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
@@ -264,6 +264,7 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
+        Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
         Single<WithoutArgs<RustcLintDiagnosticsParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
