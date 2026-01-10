@@ -27,11 +27,13 @@
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 109..118,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 109..118,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -62,11 +64,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -97,11 +101,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -132,15 +138,45 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
+                is_import: false,
+                do_not_complete: Yes,
+                _marker: PhantomData<&()>,
+            },
+            FileSymbol {
+                name: "ra_test_fixture",
+                def: Module(
+                    Module {
+                        id: ModuleIdLt {
+                            [salsa id]: Id(3800),
+                        },
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        EditionedFileId(
+                            Id(3000),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: SOURCE_FILE,
+                        range: 0..128,
+                    },
+                    name_ptr: None,
+                },
+                container_name: None,
+                is_alias: false,
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
@@ -167,11 +203,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -202,11 +240,13 @@
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 109..118,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 109..118,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -237,11 +277,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
