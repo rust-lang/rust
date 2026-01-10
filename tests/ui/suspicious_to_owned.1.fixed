@@ -13,7 +13,7 @@ fn main() {
 
     // we expect this to be linted
     let cow = Cow::Borrowed(moo);
-    let _ = cow.to_owned();
+    let _ = cow.into_owned();
     //~^ suspicious_to_owned
 
     // we expect no lints for this
@@ -25,7 +25,7 @@ fn main() {
 
     // we expect this to be linted
     let cow = Cow::Borrowed(&moos);
-    let _ = cow.to_owned();
+    let _ = cow.into_owned();
     //~^ suspicious_to_owned
 
     // we expect no lints for this
@@ -37,7 +37,7 @@ fn main() {
 
     // we expect this to be linted
     let cow = Cow::Borrowed(&moos_vec);
-    let _ = cow.to_owned();
+    let _ = cow.into_owned();
     //~^ suspicious_to_owned
 
     // we expect no lints for this
@@ -49,7 +49,7 @@ fn main() {
 
     // we expect this to be linted
     let cow = unsafe { CStr::from_ptr(c_moo_ptr) }.to_string_lossy();
-    let _ = cow.to_owned();
+    let _ = cow.into_owned();
     //~^ suspicious_to_owned
 
     // we expect no lints for this
@@ -65,9 +65,9 @@ fn main() {
     let _ = moos.to_owned();
 
     // we expect implicit_clone lints for these
-    let _ = String::from(moo).to_owned();
+    let _ = String::from(moo).clone();
     //~^ implicit_clone
 
-    let _ = moos_vec.to_owned();
+    let _ = moos_vec.clone();
     //~^ implicit_clone
 }
