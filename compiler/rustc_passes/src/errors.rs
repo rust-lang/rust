@@ -194,15 +194,6 @@ pub(crate) struct BothFfiConstAndPure {
     pub attr_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_must_not_suspend)]
-pub(crate) struct MustNotSuspend {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_link)]
 #[warning]

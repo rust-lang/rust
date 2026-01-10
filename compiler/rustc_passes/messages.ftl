@@ -376,10 +376,6 @@ passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` a
 
 passes_must_implement_not_function_span_note = required by this annotation
 
-passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
-    .label = is not a struct, enum, union, or trait
-
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`
     .here_is_main = here is a function named `main`

@@ -51,6 +51,7 @@ use crate::attributes::macro_attrs::{
     AllowInternalUnsafeParser, CollapseDebugInfoParser, MacroEscapeParser, MacroExportParser,
     MacroUseParser,
 };
+use crate::attributes::must_not_suspend::MustNotSuspendParser;
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::no_link::NoLinkParser;
@@ -89,7 +90,6 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
-
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
@@ -208,6 +208,7 @@ attribute_parsers!(
         Single<LinkageParser>,
         Single<MacroExportParser>,
         Single<MoveSizeLimitParser>,
+        Single<MustNotSuspendParser>,
         Single<MustUseParser>,
         Single<ObjcClassParser>,
         Single<ObjcSelectorParser>,

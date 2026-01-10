@@ -71,6 +71,7 @@ impl AttributeKind {
             Marker(..) => No,
             MayDangle(..) => No,
             MoveSizeLimit { .. } => No,
+            MustNotSupend { .. } => Yes,
             MustUse { .. } => Yes,
             Naked(..) => No,
             NoCore(..) => No,
