@@ -212,12 +212,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         ident: Ident,
         ns: Namespace,
-        new_binding: Decl<'ra>,
         old_binding: Decl<'ra>,
+        new_binding: Decl<'ra>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
-            return self.report_conflict(ident, ns, old_binding, new_binding);
+            return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
         let container = match old_binding.parent_module.unwrap().kind {
