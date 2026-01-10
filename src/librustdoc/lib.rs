@@ -214,12 +214,12 @@ fn opts() -> Vec<RustcOptGroup> {
         opt(
             Stable,
             Opt,
-            "",
+            "o",
             "output",
             "Which directory to place the output. This option is deprecated, use --out-dir instead.",
             "PATH",
         ),
-        opt(Stable, Opt, "o", "out-dir", "which directory to place the output", "PATH"),
+        opt(Stable, Opt, "", "out-dir", "which directory to place the output", "PATH"),
         opt(Stable, Opt, "", "crate-name", "specify the name of this crate", "NAME"),
         make_crate_type_option(),
         opt(Stable, Multi, "L", "library-path", "directory to add to crate search path", "DIR"),
@@ -764,7 +764,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     let include_sources = !opt.html_no_source;
     html::render::write_not_crate_specific(
         &crates,
-        &opt.output,
+        &opt.output_dir_html(),
         &opt,
         &opt.themes,
         opt.extension_css.as_deref(),

@@ -233,7 +233,7 @@ impl fmt::Debug for Options {
 #[derive(Clone, Debug)]
 pub(crate) struct RenderOptions {
     /// Output directory to generate docs into. Defaults to `doc`.
-    pub(crate) output: PathBuf,
+    pub(crate) output: Output,
     /// External files to insert into generated pages.
     pub(crate) external_html: ExternalHtml,
     /// A pre-populated `IdMap` with the default headings and any headings added by Markdown files
@@ -299,9 +299,6 @@ pub(crate) struct RenderOptions {
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
     pub(crate) html_no_source: bool,
-    /// This field is only used for the JSON output. If it's set to true, no file will be created
-    /// and content will be displayed in stdout directly.
-    pub(crate) output_to_stdout: bool,
     /// Whether we should read or write rendered cross-crate info in the doc root.
     pub(crate) should_merge: ShouldMerge,
     /// Path to crate-info for external crates.
@@ -312,6 +309,27 @@ pub(crate) struct RenderOptions {
     pub(crate) disable_minification: bool,
     /// If `true`, HTML source pages will generate the possibility to expand macros.
     pub(crate) generate_macro_expansion: bool,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum Output {
+    /// `-o` / `--output`
+    Output(PathBuf),
+    /// `--out-dir`
+    OutDir(PathBuf),
+}
+
+impl Output {
+    /// The output directory, assuming we're in the HTML backend.
+    ///
+    /// This should *not* be called from the JSON backend, as that treets
+    /// `--output` and `--output-dir` differently
+    pub fn output_dir_html(&self) -> &Path {
+        match self {
+            Output::Output(o) => Path::new(o),
+            Output::OutDir(o) => Path::new(o),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -356,6 +374,11 @@ impl RenderOptions {
             }
         }
         None
+    }
+
+    /// See [`Output::output_dir_html`].
+    pub(crate) fn output_dir_html(&self) -> &Path {
+        self.output.output_dir_html()
     }
 }
 
@@ -637,18 +660,15 @@ impl Options {
             dcx.fatal("the `--test` flag must be passed to enable `--no-run`");
         }
 
-        let mut output_to_stdout = false;
         let test_builder_wrappers =
             matches.opt_strs("test-builder-wrapper").iter().map(PathBuf::from).collect();
         let output = match (matches.opt_str("out-dir"), matches.opt_str("output")) {
             (Some(_), Some(_)) => {
                 dcx.fatal("cannot use both 'out-dir' and 'output' at once");
             }
-            (Some(out_dir), None) | (None, Some(out_dir)) => {
-                output_to_stdout = out_dir == "-";
-                PathBuf::from(out_dir)
-            }
-            (None, None) => PathBuf::from("doc"),
+            (Some(out_dir), None) => Output::OutDir(PathBuf::from(out_dir)),
+            (None, Some(output)) => Output::Output(PathBuf::from(output)),
+            (None, None) => Output::OutDir(PathBuf::from("doc")),
         };
 
         let cfgs = matches.opt_strs("cfg");
@@ -905,7 +925,6 @@ impl Options {
             call_locations,
             no_emit_shared: false,
             html_no_source,
-            output_to_stdout,
             should_merge,
             include_parts_dir,
             parts_out_dir,

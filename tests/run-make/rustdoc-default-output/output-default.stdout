@@ -6,9 +6,9 @@ Options:
     -v, --verbose       use verbose output
     -w, --output-format [html]
                         the output type to write
-        --output PATH   Which directory to place the output. This option is
+    -o, --output PATH   Which directory to place the output. This option is
                         deprecated, use --out-dir instead.
-    -o, --out-dir PATH  which directory to place the output
+        --out-dir PATH  which directory to place the output
         --crate-name NAME
                         specify the name of this crate
         --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>

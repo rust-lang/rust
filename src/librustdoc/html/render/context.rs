@@ -587,12 +587,12 @@ impl<'tcx> Context<'tcx> {
             expanded_codes,
         };
 
-        let dst = output;
-        scx.ensure_dir(&dst)?;
+        let dst = output.output_dir_html();
+        scx.ensure_dir(dst)?;
 
         let mut cx = Context {
             current: Vec::new(),
-            dst,
+            dst: dst.to_path_buf(),
             id_map: RefCell::new(id_map),
             deref_id_map: Default::default(),
             shared: scx,
