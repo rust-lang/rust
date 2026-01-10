@@ -336,8 +336,8 @@ impl File {
         crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
-    pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -702,6 +702,25 @@ mod uefi_fs {
                 Err(io::Error::from_raw_os_error(r.as_usize()))
             } else {
                 Ok(Some(info))
+            }
+        }
+
+        pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
+            let file_ptr = self.protocol.as_ptr();
+            let mut buf_size = buf.len();
+
+            let r = unsafe {
+                ((*file_ptr).write)(
+                    file_ptr,
+                    &mut buf_size,
+                    buf.as_ptr().cast::<crate::ffi::c_void>().cast_mut(),
+                )
+            };
+
+            if buf_size == 0 && r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                Ok(buf_size)
             }
         }
 
