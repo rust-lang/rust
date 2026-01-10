@@ -5576,7 +5576,7 @@ impl Methods {
                     unnecessary_fallible_conversions::check_method(cx, expr);
                 },
                 (sym::to_owned, []) => {
-                    if !suspicious_to_owned::check(cx, expr, recv) {
+                    if !suspicious_to_owned::check(cx, expr, span) {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
