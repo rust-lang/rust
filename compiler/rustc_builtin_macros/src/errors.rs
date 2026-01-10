@@ -1010,21 +1010,21 @@ pub(crate) struct CfgSelectUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_macro)]
+#[diag(builtin_macros_eii_declaration_expected_macro)]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_list)]
+#[diag(builtin_macros_eii_declaration_expected_list)]
 pub(crate) struct EiiExternTargetExpectedList {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_unsafe)]
+#[diag(builtin_macros_eii_declaration_expected_unsafe)]
 pub(crate) struct EiiExternTargetExpectedUnsafe {
     #[primary_span]
     #[note]

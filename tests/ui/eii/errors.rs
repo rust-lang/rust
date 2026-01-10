@@ -5,19 +5,19 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_extern_target(bar)] //~ ERROR `#[eii_extern_target(...)]` is only valid on macros
+#[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
 fn hello() {
-    #[eii_extern_target(bar)] //~ ERROR `#[eii_extern_target(...)]` is only valid on macros
+    #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
     let x = 3 + 3;
 }
 
-#[eii_extern_target] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
-#[eii_extern_target()] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
-#[eii_extern_target(bar, hello)] //~ ERROR expected this argument to be "unsafe"
-#[eii_extern_target(bar, "unsafe", hello)] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
-#[eii_extern_target(bar, hello, "unsafe")] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
-#[eii_extern_target = "unsafe"] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
-#[eii_extern_target(bar)]
+#[eii_declaration] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
+#[eii_declaration()] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
+#[eii_declaration(bar, hello)] //~ ERROR expected this argument to be "unsafe"
+#[eii_declaration(bar, "unsafe", hello)] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
+#[eii_declaration(bar, hello, "unsafe")] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
+#[eii_declaration = "unsafe"] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
+#[eii_declaration(bar)]
 #[rustc_builtin_macro(eii_shared_macro)]
 macro foo() {}
 

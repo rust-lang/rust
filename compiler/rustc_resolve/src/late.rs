@@ -1079,7 +1079,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     self.smart_resolve_path(
                         *node_id,
                         &None,
-                        &target.extern_item_path,
+                        &target.foreign_item,
                         PathSource::Expr(None),
                     );
                 } else {
@@ -2931,8 +2931,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
 
-                if let Some(EiiExternTarget { extern_item_path, impl_unsafe: _ }) =
-                    &macro_def.eii_extern_target
+                if let Some(EiiDecl { foreign_item: extern_item_path, impl_unsafe: _ }) =
+                    &macro_def.eii_declaration
                 {
                     self.smart_resolve_path(
                         item.id,

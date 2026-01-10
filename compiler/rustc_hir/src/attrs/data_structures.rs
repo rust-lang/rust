@@ -43,7 +43,7 @@ pub struct EiiImpl {
 
 #[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct EiiDecl {
-    pub eii_extern_target: DefId,
+    pub foreign_item: DefId,
     /// whether or not it is unsafe to implement this EII
     pub impl_unsafe: bool,
     pub name: Ident,
@@ -744,10 +744,10 @@ pub enum AttributeKind {
     Dummy,
 
     /// Implementation detail of `#[eii]`
-    EiiExternItem,
+    EiiDeclaration(EiiDecl),
 
     /// Implementation detail of `#[eii]`
-    EiiExternTarget(EiiDecl),
+    EiiExternItem,
 
     /// Implementation detail of `#[eii]`
     EiiImpls(ThinVec<EiiImpl>),

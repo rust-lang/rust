@@ -1,7 +1,7 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiExternTarget, EiiImpl, ItemKind, MetaItem, Path, Stmt, StmtKind,
+    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, Stmt, StmtKind,
     Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
@@ -30,7 +30,7 @@ use crate::errors::{
 /// }
 ///
 /// #[rustc_builtin_macro(eii_shared_macro)]
-/// #[eii_extern_target(panic_handler)]
+/// #[eii_declaration(panic_handler)]
 /// macro panic_handler() {}
 /// ```
 pub(crate) fn eii(
@@ -210,8 +210,8 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
-        known_eii_macro_resolution: Some(ast::EiiExternTarget {
-            extern_item_path: ecx.path(
+        known_eii_macro_resolution: Some(ast::EiiDecl {
+            foreign_item: ecx.path(
                 foreign_item_name.span,
                 // prefix super to escape the `dflt` module generated below
                 vec![Ident::from_str_and_span("super", foreign_item_name.span), foreign_item_name],
@@ -349,7 +349,7 @@ fn generate_foreign_item(
 /// // This attribute tells the compiler that
 /// #[builtin_macro(eii_shared_macro)]
 /// // the metadata to link this macro to the generated foreign item.
-/// #[eii_extern_target(<related_reign_item>)]
+/// #[eii_declaration(<related_foreign_item>)]
 /// macro macro_name { () => {} }
 /// ```
 fn generate_attribute_macro_to_implement(
@@ -401,9 +401,9 @@ fn generate_attribute_macro_to_implement(
                     ]),
                 }),
                 macro_rules: false,
-                // #[eii_extern_target(foreign_item_ident)]
-                eii_extern_target: Some(ast::EiiExternTarget {
-                    extern_item_path: ast::Path::from_ident(foreign_item_name),
+                // #[eii_declaration(foreign_item_ident)]
+                eii_declaration: Some(ast::EiiDecl {
+                    foreign_item: ast::Path::from_ident(foreign_item_name),
                     impl_unsafe,
                 }),
             },
@@ -412,7 +412,7 @@ fn generate_attribute_macro_to_implement(
     })
 }
 
-pub(crate) fn eii_extern_target(
+pub(crate) fn eii_declaration(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     meta_item: &ast::MetaItem,
@@ -461,7 +461,7 @@ pub(crate) fn eii_extern_target(
         false
     };
 
-    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe });
+    d.eii_declaration = Some(EiiDecl { foreign_item: extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
     vec![item]

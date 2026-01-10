@@ -935,7 +935,7 @@ symbols! {
         eh_catch_typeinfo,
         eh_personality,
         eii,
-        eii_extern_target,
+        eii_declaration,
         eii_impl,
         eii_internals,
         eii_shared_macro,
