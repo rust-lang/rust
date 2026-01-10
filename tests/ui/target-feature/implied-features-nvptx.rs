@@ -1,13 +1,16 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -C target-cpu=sm_80 -Z unstable-options -Clinker-flavor=llbc
-//@ only-nvptx64
+//@ compile-flags: --target=nvptx64-nvidia-cuda --crate-type cdylib -C target-cpu=sm_80
+//@ needs-llvm-components: nvptx
 //@ build-pass
-#![no_std]
+//@ ignore-backends: gcc
+#![feature(no_core, rustc_attrs)]
+#![no_core]
 #![allow(dead_code)]
 
-#[panic_handler]
-pub fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
 }
 
 // -Ctarget-cpu=sm_80 directly enables sm_80 and ptx70

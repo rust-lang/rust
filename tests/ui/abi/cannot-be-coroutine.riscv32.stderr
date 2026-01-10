@@ -23,10 +23,10 @@ LL + extern "riscv-interrupt-s" fn riscv_s() {
    |
 
 error: requires `ResumeTy` lang_item
-  --> $DIR/cannot-be-coroutine.rs:38:19
+  --> $DIR/cannot-be-coroutine.rs:38:20
    |
-LL |   async fn vanilla(){
-   |  ___________________^
+LL |   async fn vanilla() {
+   |  ____________________^
 LL | |
 LL | | }
    | |_^

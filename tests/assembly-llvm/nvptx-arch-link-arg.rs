@@ -1,5 +1,5 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -C link-arg=--arch=sm_60
+//@ compile-flags: --crate-type cdylib -Ctarget-cpu=sm_60 -C link-arg=--arch=sm_60
 //@ only-nvptx64
 //@ ignore-nvptx64
 
