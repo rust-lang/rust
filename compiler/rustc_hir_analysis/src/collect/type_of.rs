@@ -420,7 +420,22 @@ fn infer_placeholder_type<'tcx>(
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.typeck(def_id).node_type(hir_id);
+    // If the type is omitted on a #[type_const] we can't run
+    // type check on since that requires the const have a body
+    // which type_consts don't.
+    let ty = if tcx.is_type_const(def_id.to_def_id()) {
+        if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
+            tcx.type_of(trait_item_def_id).instantiate_identity()
+        } else {
+            Ty::new_error_with_message(
+                tcx,
+                ty_span,
+                "constant with #[type_const] requires an explicit type",
+            )
+        }
+    } else {
+        tcx.typeck(def_id).node_type(hir_id)
+    };
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
