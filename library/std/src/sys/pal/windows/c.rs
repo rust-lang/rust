@@ -227,6 +227,21 @@ compat_fn_with_fallback! {
     }
 }
 
+#[cfg(target_vendor = "win7")]
+compat_fn_with_fallback! {
+    pub static WS2_32: &CStr = c"ws2_32";
+
+    pub fn GetHostNameW(name: PWSTR, namelen: i32) -> i32 {
+        unsafe {
+            crate::sys::winsock::hostname_fallback(name, namelen)
+        }
+    }
+}
+
+// Only available starting with Windows 8.
+#[cfg(not(target_vendor = "win7"))]
+windows_link::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
+
 cfg_select! {
     target_vendor = "uwp" => {
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : FILE_ACCESS_RIGHTS, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : FILE_FLAGS_AND_ATTRIBUTES, shareaccess : FILE_SHARE_MODE, createdisposition : NTCREATEFILE_CREATE_DISPOSITION, createoptions : NTCREATEFILE_CREATE_OPTIONS, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
@@ -235,9 +250,8 @@ cfg_select! {
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn RtlNtStatusToDosError(status : NTSTATUS) -> u32);
     }
+    target_vendor = "win7" => {
+        windows_link::link!("ws2_32.dll" "system" fn gethostname(name : PSTR, namelen : i32) -> i32);
+    }
     _ => {}
 }
-
-// Only available starting with Windows 8.
-#[cfg(not(target_vendor = "win7"))]
-windows_link::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
