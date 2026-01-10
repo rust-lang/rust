@@ -133,6 +133,20 @@ impl<'tcx> MatchPairTree<'tcx> {
         }
 
         let place = place_builder.try_to_place(cx);
+
+        // Apply any type ascriptions to the value at `match_pair.place`.
+        if let Some(place) = place
+            && let Some(extra) = &pattern.extra
+        {
+            for &Ascription { ref annotation, variance } in &extra.ascriptions {
+                extra_data.ascriptions.push(super::Ascription {
+                    source: place,
+                    annotation: annotation.clone(),
+                    variance,
+                });
+            }
+        }
+
         let mut subpairs = Vec::new();
         let testable_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
@@ -195,28 +209,6 @@ impl<'tcx> MatchPairTree<'tcx> {
                 Some(TestableCase::Constant { value, kind: const_kind })
             }
 
-            PatKind::AscribeUserType {
-                ascription: Ascription { ref annotation, variance },
-                ref subpattern,
-                ..
-            } => {
-                MatchPairTree::for_pattern(
-                    place_builder,
-                    subpattern,
-                    cx,
-                    &mut subpairs,
-                    extra_data,
-                );
-
-                // Apply the type ascription to the value at `match_pair.place`
-                if let Some(source) = place {
-                    let annotation = annotation.clone();
-                    extra_data.ascriptions.push(super::Ascription { source, annotation, variance });
-                }
-
-                None
-            }
-
             PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
                 // In order to please the borrow checker, when lowering a pattern
                 // like `x @ subpat` we must establish any bindings in `subpat`
@@ -260,11 +252,6 @@ impl<'tcx> MatchPairTree<'tcx> {
                     }));
                 }
 
-                None
-            }
-
-            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
-                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
                 None
             }
 
