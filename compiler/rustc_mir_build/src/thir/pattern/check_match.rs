@@ -680,20 +680,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        // These next few matches want to peek through `AscribeUserType` to see
-        // the underlying pattern.
-        let mut unpeeled_pat = pat;
-        while let PatKind::AscribeUserType { ref subpattern, .. } = unpeeled_pat.kind {
-            unpeeled_pat = subpattern;
-        }
-
-        if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, unpeeled_pat) {
+        if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, pat) {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
             // When we encounter a constant as the binding name, point at the `const` definition.
             interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
             interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
-        } else if let PatKind::Constant { .. } = unpeeled_pat.kind
+        } else if let PatKind::Constant { .. } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
@@ -1213,7 +1206,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // The pattern must be a named constant, and the name that appears in
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
-    if let PatKind::ExpandedConstant { def_id, .. } = pat.kind
+    if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
         && matches!(tcx.def_kind(def_id), DefKind::Const)
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
