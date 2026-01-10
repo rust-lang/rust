@@ -81,7 +81,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
     }
 
     // now we have all eiis! For each of them, choose one we want to actually generate.
-    for (foreign_item, FoundEii { decl, decl_crate, impls }) in eiis {
+    for (decl_did, FoundEii { decl, decl_crate, impls }) in eiis {
         let mut default_impls = Vec::new();
         let mut explicit_impls = Vec::new();
 
@@ -97,7 +97,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
         // is instantly an error.
         if explicit_impls.len() > 1 {
             tcx.dcx().emit_err(DuplicateEiiImpls {
-                name: decl.name.name,
+                name: tcx.item_name(decl_did),
                 first_span: tcx.def_span(explicit_impls[0].0),
                 first_crate: tcx.crate_name(explicit_impls[0].1),
                 second_span: tcx.def_span(explicit_impls[1].0),
@@ -116,7 +116,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
         }
 
         if default_impls.len() > 1 {
-            let decl_span = tcx.def_ident_span(foreign_item).unwrap();
+            let decl_span = tcx.def_ident_span(decl_did).unwrap();
             tcx.dcx().span_delayed_bug(decl_span, "multiple not supported right now");
         }
 
@@ -139,9 +139,8 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
                     tcx.dcx().emit_err(EiiWithoutImpl {
                         current_crate_name: tcx.crate_name(LOCAL_CRATE),
                         decl_crate_name: tcx.crate_name(decl_crate),
-                        // FIXME: shouldn't call `item_name`
-                        name: decl.name.name,
-                        span: decl.name.span,
+                        name: tcx.item_name(decl_did),
+                        span: decl.span,
                         help: (),
                     });
 
