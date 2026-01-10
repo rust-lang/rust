@@ -510,7 +510,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Create the generic arguments for the associated type or constant by joining the
             // parent arguments (the arguments of the trait) and the own arguments (the ones of
             // the associated item itself) and construct an alias type using them.
-            let alias_term = candidate.map_bound(|trait_ref| {
+            candidate.map_bound(|trait_ref| {
                 let item_segment = hir::PathSegment {
                     ident: constraint.ident,
                     hir_id: constraint.hir_id,
@@ -528,20 +528,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 debug!(?alias_args);
 
                 ty::AliasTerm::new_from_args(tcx, assoc_item.def_id, alias_args)
-            });
-
-            // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
-            if let Some(const_arg) = constraint.ct()
-                && let hir::ConstArgKind::Anon(anon_const) = const_arg.kind
-            {
-                let ty = alias_term
-                    .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));
-                let ty =
-                    check_assoc_const_binding_type(self, constraint.ident, ty, constraint.hir_id);
-                tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
-            }
-
-            alias_term
+            })
         };
 
         match constraint.kind {
@@ -555,7 +542,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => self.lower_const_arg(ct, FeedConstTy::No).into(),
+                    hir::Term::Const(ct) => {
+                        // Provide the resolved type of the associated constant
+                        let ty = projection_term.map_bound(|alias| {
+                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
+                        });
+                        let ty = check_assoc_const_binding_type(
+                            self,
+                            constraint.ident,
+                            ty,
+                            constraint.hir_id,
+                        );
+
+                        self.lower_const_arg(ct, FeedConstTy::WithTy(ty)).into()
+                    }
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
@@ -871,7 +871,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 /// probably gate this behind another feature flag.
 ///
 /// [^1]: <https://github.com/rust-lang/project-const-generics/issues/28>.
-fn check_assoc_const_binding_type<'tcx>(
+pub(crate) fn check_assoc_const_binding_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     assoc_const: Ident,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
