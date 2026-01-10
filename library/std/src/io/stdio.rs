@@ -1287,4 +1287,4 @@ pub fn _eprint(args: fmt::Arguments<'_>) {
 }
 
 #[cfg(test)]
-pub use realstd::io::{_eprint, _print};
+pub use realstd::test_internals::{_eprint, _print};

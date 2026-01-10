@@ -4,46 +4,73 @@ use super::thread::Thread;
 use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sys::thread as imp;
-use crate::sys::thread_local::local_pointer;
 
 const NONE: *mut () = ptr::null_mut();
 const BUSY: *mut () = ptr::without_provenance_mut(1);
 const DESTROYED: *mut () = ptr::without_provenance_mut(2);
 
-local_pointer! {
-    static CURRENT;
+cfg_select! {
+    test  => {
+        use realstd::test_internals::CURRENT_THREAD as CURRENT;
+    }
+    _ => {
+        use crate::sys::thread_local::local_pointer;
+
+        local_pointer! {
+            pub static CURRENT;
+        }
+    }
 }
 
 /// Persistent storage for the thread ID.
 ///
 /// We store the thread ID so that it never gets destroyed during the lifetime
 /// of a thread, either using `#[thread_local]` or multiple `local_pointer!`s.
-pub(super) mod id {
+pub mod id {
     use super::*;
 
     cfg_select! {
         target_thread_local => {
-            use crate::cell::Cell;
+            cfg_select! {
+                test => {
+                    use realstd::test_internals::CURRENT_THREAD_ID as ID;
+                }
+                _ => {
+                    use crate::cell::Cell;
 
-            #[thread_local]
-            static ID: Cell<Option<ThreadId>> = Cell::new(None);
+                    #[thread_local]
+                    pub static ID: Cell<Option<u64>> = Cell::new(None);
 
+                }
+            }
             pub(super) const CHEAP: bool = true;
 
             pub(crate) fn get() -> Option<ThreadId> {
-                ID.get()
+                ID.get().and_then(ThreadId::from_u64)
             }
 
             pub(super) fn set(id: ThreadId) {
-                ID.set(Some(id))
+                ID.set(Some(id.as_u64().get()))
             }
         }
         target_pointer_width = "16" => {
-            local_pointer! {
-                static ID0;
-                static ID16;
-                static ID32;
-                static ID48;
+            cfg_select! {
+                test => {
+                    use realstd::test_internals::CURRENT_THREAD_ID0 as ID0;
+                    use realstd::test_internals::CURRENT_THREAD_ID16 as ID16;
+                    use realstd::test_internals::CURRENT_THREAD_ID32 as ID32;
+                    use realstd::test_internals::CURRENT_THREAD_ID48 as ID48;
+                }
+                _ => {
+                    use crate::sys::thread_local::local_pointer;
+
+                    local_pointer! {
+                        pub static ID0;
+                        pub static ID16;
+                        pub static ID32;
+                        pub static ID48;
+                    }
+                }
             }
 
             pub(super) const CHEAP: bool = false;
@@ -65,9 +92,19 @@ pub(super) mod id {
             }
         }
         target_pointer_width = "32" => {
-            local_pointer! {
-                static ID0;
-                static ID32;
+            cfg_select! {
+                test => {
+                    use realstd::test_internals::CURRENT_THREAD_ID0 as ID0;
+                    use realstd::test_internals::CURRENT_THREAD_ID32 as ID32;
+                }
+                _ => {
+                    use crate::sys::thread_local::local_pointer;
+
+                    local_pointer! {
+                        pub static ID0;
+                        pub static ID32;
+                    }
+                }
             }
 
             pub(super) const CHEAP: bool = false;
@@ -85,8 +122,17 @@ pub(super) mod id {
             }
         }
         _ => {
-            local_pointer! {
-                static ID;
+            cfg_select! {
+                test => {
+                    use realstd::test_internals::CURRENT_THREAD_ID as ID;
+                }
+                _ => {
+                    use crate::sys::thread_local::local_pointer;
+
+                    local_pointer! {
+                        pub static ID;
+                    }
+                }
             }
 
             pub(super) const CHEAP: bool = true;
