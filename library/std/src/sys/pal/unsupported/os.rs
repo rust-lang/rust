@@ -4,14 +4,6 @@ use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
 use crate::{fmt, io};
 
-pub fn errno() -> i32 {
-    0
-}
-
-pub fn error_string(_errno: i32) -> String {
-    "operation successful".to_string()
-}
-
 pub fn getcwd() -> io::Result<PathBuf> {
     unsupported()
 }

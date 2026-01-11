@@ -29,7 +29,7 @@ use crate::hint::spin_loop;
 use crate::ops::Range;
 use crate::sync::Mutex;
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sys::os::errno_location;
+use crate::sys::io::errno_location;
 
 pub struct ThreadInfo {
     pub tid: u64,
