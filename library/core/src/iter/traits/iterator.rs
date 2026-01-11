@@ -1906,9 +1906,12 @@ pub trait Iterator {
 
     /// Transforms an iterator into a collection.
     ///
-    /// `collect()` can take anything iterable, and turn it into a relevant
-    /// collection. This is one of the more powerful methods in the standard
-    /// library, used in a variety of contexts.
+    /// `collect()` takes ownership of an iterator and produces whichever
+    /// collection type you request. The iterator itself carries no knowledge of
+    /// the eventual container; the target collection is chosen entirely by the
+    /// type you ask `collect()` to return. This makes `collect()` one of the
+    /// more powerful methods in the standard library, and it shows up in a wide
+    /// variety of contexts.
     ///
     /// The most basic pattern in which `collect()` is used is to turn one
     /// collection into another. You take a collection, call [`iter`] on it,

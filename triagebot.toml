@@ -1365,11 +1365,11 @@ message = "The rustc-dev-guide subtree was changed. If this PR *only* touches th
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_hir/src/attrs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]

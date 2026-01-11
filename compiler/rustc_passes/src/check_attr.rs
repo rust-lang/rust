@@ -306,6 +306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::RustcHasIncoherentInherentImpls
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -325,9 +326,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_has_incoherent_inherent_impls, ..] => {
-                            self.check_has_incoherent_inherent_impls(attr, span, target)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -1161,17 +1159,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
-        }
-    }
-
-    fn check_has_incoherent_inherent_impls(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
-            }
         }
     }
 

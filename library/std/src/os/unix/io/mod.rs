@@ -92,9 +92,138 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::io::{self, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::os::fd::*;
+#[allow(unused_imports)] // not used on all targets
+use crate::sys::cvt;
 
 // Tests for this module
 #[cfg(test)]
 mod tests;
+
+#[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+pub trait StdioExt: crate::sealed::Sealed {
+    /// Redirects the stdio file descriptor to point to the file description underpinning `fd`.
+    ///
+    /// Rust std::io write buffers (if any) are flushed, but other runtimes
+    /// (e.g. C stdio) or libraries that acquire a clone of the file descriptor
+    /// will not be aware of this change.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This is [currently] implemented using
+    ///
+    /// - `fd_renumber` on wasip1
+    /// - `dup2` on most unixes
+    ///
+    /// [currently]: crate::io#platform-specific-behavior
+    ///
+    /// ```
+    /// #![feature(stdio_swap)]
+    /// use std::io::{self, Read, Write};
+    /// use std::os::unix::io::StdioExt;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///    let (reader, mut writer) = io::pipe()?;
+    ///    let mut stdin = io::stdin();
+    ///    stdin.set_fd(reader)?;
+    ///    writer.write_all(b"Hello, world!")?;
+    ///    let mut buffer = vec![0; 13];
+    ///    assert_eq!(stdin.read(&mut buffer)?, 13);
+    ///    assert_eq!(&buffer, b"Hello, world!");
+    ///    Ok(())
+    /// }
+    /// ```
+    fn set_fd<T: Into<OwnedFd>>(&mut self, fd: T) -> io::Result<()>;
+
+    /// Redirects the stdio file descriptor and returns a new `OwnedFd`
+    /// backed by the previous file description.
+    ///
+    /// See [`set_fd()`] for details.
+    ///
+    /// [`set_fd()`]: StdioExt::set_fd
+    fn replace_fd<T: Into<OwnedFd>>(&mut self, replace_with: T) -> io::Result<OwnedFd>;
+
+    /// Redirects the stdio file descriptor to the null device (`/dev/null`)
+    /// and returns a new `OwnedFd` backed by the previous file description.
+    ///
+    /// Programs that communicate structured data via stdio can use this early in `main()` to
+    /// extract the fds, treat them as other IO types (`File`, `UnixStream`, etc),
+    /// apply custom buffering or avoid interference from stdio use later in the program.
+    ///
+    /// See [`set_fd()`] for additional details.
+    ///
+    /// [`set_fd()`]: StdioExt::set_fd
+    fn take_fd(&mut self) -> io::Result<OwnedFd>;
+}
+
+macro io_ext_impl($stdio_ty:ty, $stdio_lock_ty:ty, $writer:literal) {
+    #[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+    impl StdioExt for $stdio_ty {
+        fn set_fd<T: Into<OwnedFd>>(&mut self, fd: T) -> io::Result<()> {
+            self.lock().set_fd(fd)
+        }
+
+        fn take_fd(&mut self) -> io::Result<OwnedFd> {
+            self.lock().take_fd()
+        }
+
+        fn replace_fd<T: Into<OwnedFd>>(&mut self, replace_with: T) -> io::Result<OwnedFd> {
+            self.lock().replace_fd(replace_with)
+        }
+    }
+
+    #[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+    impl StdioExt for $stdio_lock_ty {
+        fn set_fd<T: Into<OwnedFd>>(&mut self, fd: T) -> io::Result<()> {
+            #[cfg($writer)]
+            self.flush()?;
+            replace_stdio_fd(self.as_fd(), fd.into())
+        }
+
+        fn take_fd(&mut self) -> io::Result<OwnedFd> {
+            let null = null_fd()?;
+            let cloned = self.as_fd().try_clone_to_owned()?;
+            self.set_fd(null)?;
+            Ok(cloned)
+        }
+
+        fn replace_fd<T: Into<OwnedFd>>(&mut self, replace_with: T) -> io::Result<OwnedFd> {
+            let cloned = self.as_fd().try_clone_to_owned()?;
+            self.set_fd(replace_with)?;
+            Ok(cloned)
+        }
+    }
+}
+
+io_ext_impl!(Stdout, StdoutLock<'_>, true);
+io_ext_impl!(Stdin, StdinLock<'_>, false);
+io_ext_impl!(Stderr, StderrLock<'_>, true);
+
+fn null_fd() -> io::Result<OwnedFd> {
+    let null_dev = crate::fs::OpenOptions::new().read(true).write(true).open("/dev/null")?;
+    Ok(null_dev.into())
+}
+
+/// Replaces the underlying file descriptor with the one from `other`.
+/// Does not set CLOEXEC.
+fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
+    cfg_select! {
+        all(target_os = "wasi", target_env = "p1") => {
+            cvt(unsafe { libc::__wasilibc_fd_renumber(other.as_raw_fd(), this.as_raw_fd()) }).map(|_| ())
+        }
+        not(any(
+            target_arch = "wasm32",
+            target_os = "hermit",
+            target_os = "trusty",
+            target_os = "motor"
+        )) => {
+            cvt(unsafe {libc::dup2(other.as_raw_fd(), this.as_raw_fd())}).map(|_| ())
+        }
+        _ => {
+            let _ = (this, other);
+            Err(io::Error::UNSUPPORTED_PLATFORM)
+        }
+    }
+}
