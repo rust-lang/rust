@@ -1632,11 +1632,14 @@ pub(crate) enum SupertraitItemShadowee {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_self_in_type_alias, code = E0411)]
-pub(crate) struct SelfInTypeAlias {
+#[diag(hir_analysis_dyn_trait_assoc_item_binding_mentions_self)]
+pub(crate) struct DynTraitAssocItemBindingMentionsSelf {
     #[primary_span]
     #[label]
     pub span: Span,
+    pub kind: &'static str,
+    #[label(hir_analysis_binding_label)]
+    pub binding: Span,
 }
 
 #[derive(Diagnostic)]

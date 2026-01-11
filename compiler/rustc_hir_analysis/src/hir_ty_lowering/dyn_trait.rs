@@ -22,7 +22,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
-use crate::errors::SelfInTypeAlias;
+use crate::errors::DynTraitAssocItemBindingMentionsSelf;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -140,28 +140,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Map the projection bounds onto a key that makes it easy to remove redundant
         // bounds that are constrained by supertraits of the principal trait.
         //
-        // Also make sure we detect conflicting bounds from expanding a trait alias and
-        // also specifying it manually, like:
-        // ```
-        // type Alias = Trait<Assoc = i32>;
-        // let _: &dyn Alias<Assoc = u32> = /* ... */;
-        // ```
+        // Also make sure we detect conflicting bounds from expanding trait aliases.
+        //
+        // FIXME(#150936): Since the elaborated projection bounds also include the user-written ones
+        //                 and we're separately rejecting duplicate+conflicting bindings for trait
+        //                 object types when lowering assoc item bindings, there are basic cases
+        //                 where we're emitting two distinct but very similar diagnostics.
         let mut projection_bounds = FxIndexMap::default();
         for (proj, proj_span) in elaborated_projection_bounds {
-            let proj = proj.map_bound(|mut b| {
-                if let Some(term_ty) = &b.term.as_type() {
-                    let references_self = term_ty.walk().any(|arg| arg == dummy_self.into());
-                    if references_self {
-                        // With trait alias and type alias combined, type resolver
-                        // may not be able to catch all illegal `Self` usages (issue 139082)
-                        let guar = self.dcx().emit_err(SelfInTypeAlias { span });
-                        b.term = replace_dummy_self_with_error(tcx, b.term, guar);
-                    }
-                }
-                b
-            });
-
             let item_def_id = proj.item_def_id();
+
+            let proj = proj.map_bound(|mut proj| {
+                let references_self = proj.term.walk().any(|arg| arg == dummy_self.into());
+                if references_self {
+                    let guar = self.dcx().emit_err(DynTraitAssocItemBindingMentionsSelf {
+                        span,
+                        kind: tcx.def_descr(item_def_id),
+                        binding: proj_span,
+                    });
+                    proj.term = replace_dummy_self_with_error(tcx, proj.term, guar);
+                }
+                proj
+            });
 
             let key = (
                 item_def_id,

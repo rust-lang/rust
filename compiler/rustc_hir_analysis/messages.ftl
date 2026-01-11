@@ -165,6 +165,11 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
 
+hir_analysis_dyn_trait_assoc_item_binding_mentions_self =
+    {$kind} binding in trait object type mentions `Self`
+    .label = contains a mention of `Self`
+    .binding_label = this binding mentions `Self`
+
 hir_analysis_eii_with_generics =
     `{$impl_name}` cannot have generic parameters other than lifetimes
     .label = required by this attribute
@@ -477,9 +482,6 @@ hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
-
-hir_analysis_self_in_type_alias = `Self` is not allowed in type aliases
-    .label = `Self` is only available in impls, traits, and concrete type definitions
 
 hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
     .label = `Self` type parameter is implicitly captured by this `impl Trait`
