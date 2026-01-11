@@ -8,9 +8,10 @@
 //!   partial equivalence relation.
 //! * [`Eq`] indicates that the overloaded `==` operator corresponds to an
 //!   equivalence relation.
-//! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
-//!   partial orderings between values, respectively. Implementing them overloads
-//!   the `<`, `<=`, `>`, and `>=` operators.
+//! * [`PartialOrd<Rhs>`] overloads the `<`, `<=`, `>`, and `>=` operators. If
+//!   `Rhs` is `Self`, then `<` and `>` correspond to strict partial orders.
+//! * [`Ord`] indicates that exactly one of `x < y`, `x == y`, or `x > y` is
+//!   true.
 //! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and
 //!   [`PartialOrd`], and describes an ordering of two values (less, equal, or
 //!   greater).
@@ -1111,44 +1112,44 @@ pub macro Ord($item:item) {
     /* compiler built-in */
 }
 
-/// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).
+/// Trait for overloading the `<`, `<=`, `>`, and `>=` operators.
 ///
-/// The `lt`, `le`, `gt`, and `ge` methods of this trait can be called using the `<`, `<=`, `>`, and
-/// `>=` operators, respectively.
+/// The above operators call the the `lt`, `le`, `gt`, and `ge` methods of this trait, respectively.
 ///
 /// This trait should **only** contain the comparison logic for a type **if one plans on only
 /// implementing `PartialOrd` but not [`Ord`]**. Otherwise the comparison logic should be in [`Ord`]
 /// and this trait implemented with `Some(self.cmp(other))`.
 ///
 /// The methods of this trait must be consistent with each other and with those of [`PartialEq`].
-/// The following conditions must hold:
+/// Specifically, in addition to the conditions of [`PartialEq`], the following **must** hold for
+/// all values `a`, `b`, `c` of types `A: PartialOrd<B>`, `B`, `C` respectively:
 ///
-/// 1. `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`.
-/// 2. `a < b` if and only if `partial_cmp(a, b) == Some(Less)`
-/// 3. `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`
-/// 4. `a <= b` if and only if `a < b || a == b`
-/// 5. `a >= b` if and only if `a > b || a == b`
-/// 6. `a != b` if and only if `!(a == b)`.
+/// 1. **Consistency:**
+///     1. `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`.
+///     2. `a < b` if and only if `partial_cmp(a, b) == Some(Less)`
+///     3. `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`
+///     4. `a <= b` if and only if `a < b || a == b`
+///     5. `a >= b` if and only if `a > b || a == b`
+/// 2. **Transitivity of `<`:** if `B: PartialOrd<C>` and `A: PartialOrd<C>`, then `a < b` and `b <
+///    c` together imply `a < c`. This must also hold for longer chains, so that e.g. `a < b`, `b <
+///    c`, and `c < d` together imply `a < d` whenever `d` is of type `D` such that `C:
+///    PartialOrd<D>` and `A: PartialOrd<D>`.
+/// 3. **Duality:** if `B: PartialOrd<A>`, then `a < b` if and only if `b > a`.
 ///
-/// Conditions 2–5 above are ensured by the default implementation. Condition 6 is already ensured
-/// by [`PartialEq`].
+/// Conditions 1.2–1.5 above are ensured by the default implementation.
 ///
-/// If [`Ord`] is also implemented for `Self` and `Rhs`, it must also be consistent with
+/// For 2 and 3, note that the `B: PartialOrd<A>` (dual) and `A: PartialOrd<C>` (transitive) impls
+/// are not forced to exist, but these requirements apply whenever they do exist.
+///
+/// Also note that these requirements *do not* guarantee that `<=` and `>=` correspond to [partial
+/// orders](https://en.wikipedia.org/wiki/Partial_order). However, they do guarantee that `<` and
+/// `>` correspond to [strict partial orders](https://en.wikipedia.org/wiki/Strict_partial_order).
+/// See the section [Strict and non-strict partial orders](PartialOrd#strict-and-non-strict-partial-orders)
+/// below for more details.
+///
+/// If [`Ord`] is also implemented for `Self` and `Rhs`, it **must** also be consistent with
 /// `partial_cmp` (see the documentation of that trait for the exact requirements). It's easy to
 /// accidentally make them disagree by deriving some of the traits and manually implementing others.
-///
-/// The comparison relations must satisfy the following conditions (for all `a`, `b`, `c` of type
-/// `A`, `B`, `C`):
-///
-/// - **Transitivity**: if `A: PartialOrd<B>` and `B: PartialOrd<C>` and `A: PartialOrd<C>`, then `a
-///   < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`. This must also
-///   work for longer chains, such as when `A: PartialOrd<B>`, `B: PartialOrd<C>`, `C:
-///   PartialOrd<D>`, and `A: PartialOrd<D>` all exist.
-/// - **Duality**: if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then `a < b` if and only if `b >
-///   a`.
-///
-/// Note that the `B: PartialOrd<A>` (dual) and `A: PartialOrd<C>` (transitive) impls are not forced
-/// to exist, but these requirements apply whenever they do exist.
 ///
 /// Violating these requirements is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
@@ -1174,29 +1175,9 @@ pub macro Ord($item:item) {
 /// Not having such foreign `impl`s also avoids forward compatibility issues where one crate adding
 /// more `PartialOrd` implementations can cause build failures in downstream crates.
 ///
-/// ## Corollaries
-///
-/// The following corollaries follow from the above requirements:
-///
-/// - irreflexivity of `<` and `>`: `!(a < a)`, `!(a > a)`
-/// - transitivity of `>`: if `a > b` and `b > c` then `a > c`
-/// - duality of `partial_cmp`: `partial_cmp(a, b) == partial_cmp(b, a).map(Ordering::reverse)`
-///
-/// ## Strict and non-strict partial orders
-///
-/// The `<` and `>` operators behave according to a *strict* partial order. However, `<=` and `>=`
-/// do **not** behave according to a *non-strict* partial order. That is because mathematically, a
-/// non-strict partial order would require reflexivity, i.e. `a <= a` would need to be true for
-/// every `a`. This isn't always the case for types that implement `PartialOrd`, for example:
-///
-/// ```
-/// let a = f64::sqrt(-1.0);
-/// assert_eq!(a <= a, false);
-/// ```
-///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`.
+/// This trait can be automatically implemented using `#[derive]`.
 ///
 /// When `derive`d on structs, it will produce a
 /// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering based on the
@@ -1228,18 +1209,14 @@ pub macro Ord($item:item) {
 /// assert!(E::Bottom < E::Top);
 /// ```
 ///
-/// ## How can I implement `PartialOrd`?
+/// ## How can I manually implement `PartialOrd`?
 ///
 /// `PartialOrd` only requires implementation of the [`partial_cmp`] method, with the others
 /// generated from default implementations.
 ///
-/// However it remains possible to implement the others separately for types which do not have a
-/// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 == false`
-/// (cf. IEEE 754-2008 section 5.11).
+/// ### Example: implementing `PartialOrd` using `Ord`
 ///
-/// `PartialOrd` requires your type to be [`PartialEq`].
-///
-/// If your type is [`Ord`], you can implement [`partial_cmp`] by using [`cmp`]:
+/// If your type is [`Ord`], you should implement [`partial_cmp`] by using [`cmp`]:
 ///
 /// ```
 /// use std::cmp::Ordering;
@@ -1271,9 +1248,11 @@ pub macro Ord($item:item) {
 /// impl Eq for Person {}
 /// ```
 ///
-/// You may also find it useful to use [`partial_cmp`] on your type's fields. Here is an example of
-/// `Person` types who have a floating-point `height` field that is the only field to be used for
-/// sorting:
+/// ### Example: implementing `PartialOrd` on a non-`Ord` type
+///
+/// Some types are `PartialOrd` but not [`Ord`]. For example, both `f64::NAN <= 0.0` and
+/// `0.0 <= f64::NAN` are false, so [`f64`] cannot be `Ord`. Here is an example of a `Person` type
+/// ordered by a floating-point `height`:
 ///
 /// ```
 /// use std::cmp::Ordering;
@@ -1297,7 +1276,7 @@ pub macro Ord($item:item) {
 /// }
 /// ```
 ///
-/// ## Examples of incorrect `PartialOrd` implementations
+/// ### Examples of incorrect `PartialOrd` implementations
 ///
 /// ```
 /// use std::cmp::Ordering;
@@ -1329,15 +1308,61 @@ pub macro Ord($item:item) {
 /// assert_ne!(a, b); // a != b according to `PartialEq`.
 /// ```
 ///
-/// # Examples
+/// ## Useful properties
+///
+/// The following corollaries follow from the above requirements for all values `a`, `b`, `c` of
+/// type `A`, `B`, `C`:
+///
+/// 1. `<` and `>` are [irreflexive](https://en.wikipedia.org/wiki/Irreflexive_relation). That is, if `A: PartialOrd<A>`, then:
+///     * `!(a < a)`.
+///     * `!(a > a)`.
+/// 2. `>`, `<=` and `>=` are also [transitive](https://en.wikipedia.org/wiki/Transitive_relation). That is, if `A: PartialOrd<B> + PartialOrd<C>` and `B:
+///    PartialOrd<C>`, then:
+///     * If `a > b` and `b > c`, then `a > c`.
+///     * If `a <= b` and `b <= c`, then `a <= c`.
+///     * If `a >= b` and `b >= c`, then `a >= c`.
+/// 3. `<` and `>` are [asymmetric](https://en.wikipedia.org/wiki/Asymmetric_relation). That is, if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then:
+///     * If `a < b`, then `!(b < a)`;
+///     * If `a > b`, then `!(b > a)`.
+/// 4. `<=` and `>=` are [antisymmetric](https://en.wikipedia.org/wiki/Antisymmetric_relation) *modulo `==`*. That is, if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then:
+///     * If `a <= b` and `b <= a`, then `a == b`.
+///     * If `a >= b` and `b >= a`, then `a == b`.
+///     * The converses of the above also hold: `a == b` implies `a <= b`, `b <= a`, `a >= b`, and `b >= a`.
+///     * Note that this is not antisymmetry in the usual sense, because `==` might not be the identity relation. (See below for further discussion.)
+/// 5. Duality of `partial_cmp`: if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then
+///    `partial_cmp(a, b) == partial_cmp(b, a).map(Ordering::reverse)`
+///
+/// ## Strict and non-strict partial orders
+///
+/// For a type `T: PartialOrd`, the `<=` and `>=` relations are [partial orders](https://en.wikipedia.org/wiki/Partial_order)
+/// on the type's values *if and only if* `==` is the identity relation. (This can be shown from
+/// corollary 4.) However, this is not the case in general. For example, two distinct values can
+/// compare equal under `==`:
 ///
 /// ```
-/// let x: u32 = 0;
-/// let y: u32 = 1;
-///
-/// assert_eq!(x < y, true);
-/// assert_eq!(x.lt(&y), true);
+/// let a = -0.0;
+/// let b = +0.0;
+/// assert_ne!(a.to_bits(), b.to_bits()); // `a` and `b` are distinct because their sign bits differ.
+/// assert!(a == b); // Yet they are equal under `==`.
+/// assert!(a <= b && b <= a); // And so this is true (corollary 4).
 /// ```
+///
+/// And `==` may return `false`, even when comparing a value against itself:
+///
+/// ```
+/// let a = f64::sqrt(-1.0); // This produces a NaN.
+/// assert_eq!(a == a, false); // Which does not compare equal to any value.
+/// assert_eq!(a <= a, false); // Nor does it compare less than or equal to any value.
+/// ```
+///
+/// However, corollaries 1-3 imply that `<` and `>` satisfy the definition of a
+/// [*strict* partial order](https://en.wikipedia.org/wiki/Strict_partial_order).
+///
+/// More importantly, however, if `T` also implements [`Eq`], then `==` is an equivalence relation,
+/// and from corollary 4 `<=` and `>=` give partial orders on its
+/// [*equivalence classes*](https://en.wikipedia.org/wiki/Equivalence_class). This usually
+/// suffices for when a partial order is required: we typically only care whether two objects "look"
+/// the same, not whether they are exactly identical.
 ///
 /// [`partial_cmp`]: PartialOrd::partial_cmp
 /// [`cmp`]: Ord::cmp
