@@ -1040,6 +1040,16 @@ pub(crate) struct EiiSharedMacroExpectedFunction {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_in_statement_position)]
+pub(crate) struct EiiSharedMacroInStatementPosition {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+    #[label]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_eii_only_once)]
 pub(crate) struct EiiOnlyOnce {
     #[primary_span]
