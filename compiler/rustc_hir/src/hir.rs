@@ -513,6 +513,8 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
     /// Tuple constructor variant
     TupleCall(QPath<'hir>, &'hir [&'hir ConstArg<'hir>]),
+    /// Array literal argument
+    Array(&'hir ConstArgArrayExpr<'hir>),
     /// Error const
     Error(ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
@@ -527,6 +529,12 @@ pub struct ConstArgExprField<'hir> {
     pub span: Span,
     pub field: Ident,
     pub expr: &'hir ConstArg<'hir>,
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct ConstArgArrayExpr<'hir> {
+    pub span: Span,
+    pub elems: &'hir [&'hir ConstArg<'hir>],
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]

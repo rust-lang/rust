@@ -1101,6 +1101,12 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
             }
             V::Result::output()
         }
+        ConstArgKind::Array(array_expr) => {
+            for arg in array_expr.elems {
+                try_visit!(visitor.visit_const_arg_unambig(*arg));
+            }
+            V::Result::output()
+        }
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
         ConstArgKind::Error(_) => V::Result::output(), // errors and spans are not important
