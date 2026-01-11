@@ -210,6 +210,14 @@ impl Neg for isize {
     }
 }
 
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> i8 {
+        loop {}
+    }
+}
+
 #[lang = "sync"]
 pub trait Sync {}
 impl_marker_trait!(
@@ -279,6 +287,16 @@ pub enum c_void {
     __variant1,
     __variant2,
 }
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+impl Copy for Ordering {}
 
 #[lang = "const_param_ty"]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
