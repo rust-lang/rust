@@ -4,6 +4,7 @@ use expect_test::Expect;
 use span::{
     EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange,
 };
+use std::ops::Range;
 
 use crate::{
     EnvSnapshot, ProcMacroClientInterface, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path,
@@ -136,6 +137,10 @@ impl ProcMacroClientInterface for MockCallback<'_> {
         let line_col = line_index.try_line_col(span.range.start())?;
         // proc_macro uses 1-based line/column
         Some((line_col.line as u32 + 1, line_col.col as u32 + 1))
+    }
+
+    fn byte_range(&mut self, span: Span) -> Range<usize> {
+        Range { start: span.range.start().into(), end: span.range.end().into() }
     }
 }
 

@@ -162,7 +162,10 @@ impl server::Span for RaSpanServer<'_> {
         span
     }
     fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
-        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL
+        if let Some(cb) = self.callback.as_mut() {
+            return cb.byte_range(span);
+        }
+
         Range { start: span.range.start().into(), end: span.range.end().into() }
     }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
