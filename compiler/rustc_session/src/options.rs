@@ -797,7 +797,7 @@ mod desc {
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
     pub(crate) const parse_offload: &str =
-        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
+        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`, `Args`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1479,6 +1479,13 @@ pub mod parse {
                         return false;
                     }
                     Offload::Test
+                }
+                "Args" => {
+                    if let Some(_) = arg {
+                        // Args does not accept a value
+                        return false;
+                    }
+                    Offload::Args
                 }
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized
@@ -2526,10 +2533,12 @@ options! {
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
     offload: Vec<crate::config::Offload> = (Vec::new(), parse_offload, [TRACKED],
-        "a list of offload flags to enable
-        Mandatory setting:
-        `=Enable`
-        Currently the only option available"),
+        "a list of offload flags to enable:
+        `=Device`
+        `=Host(path)`
+        `=Test`
+        `=Args`
+        Multiple options can be combined with commas."),
     on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
         "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
