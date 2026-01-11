@@ -8,7 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 
 use crate::builder::Builder;
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
 use crate::{SimpleCx, attributes};
@@ -338,8 +338,8 @@ impl KernelArgsTy {
 pub(crate) struct OffloadKernelGlobals<'ll> {
     pub offload_sizes: &'ll llvm::Value,
     pub memtransfer_types: &'ll llvm::Value,
-    pub region_id: &'ll llvm::Value,
-    pub offload_entry: &'ll llvm::Value,
+    pub region_id: Option<&'ll llvm::Value>,
+    pub offload_entry: Option<&'ll llvm::Value>,
 }
 
 fn gen_tgt_data_mappers<'ll>(
@@ -410,6 +410,7 @@ pub(crate) fn gen_define_handling<'ll>(
     types: &[&'ll Type],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
+    host: bool,
 ) -> OffloadKernelGlobals<'ll> {
     if let Some(entry) = cx.offload_kernel_cache.borrow().get(&symbol) {
         return *entry;
@@ -440,33 +441,38 @@ pub(crate) fn gen_define_handling<'ll>(
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
 
-    let name = format!(".{symbol}.region_id");
-    let initializer = cx.get_const_i8(0);
-    let region_id = add_global(&cx, &name, initializer, WeakAnyLinkage);
+    let (offload_entry, region_id) = if !host {
+        let name = format!(".{symbol}.region_id");
+        let initializer = cx.get_const_i8(0);
+        let region_id = add_global(&cx, &name, initializer, WeakAnyLinkage);
 
-    let c_entry_name = CString::new(symbol.clone()).unwrap();
-    let c_val = c_entry_name.as_bytes_with_nul();
-    let offload_entry_name = format!(".offloading.entry_name.{symbol}");
+        let c_entry_name = CString::new(symbol.clone()).unwrap();
+        let c_val = c_entry_name.as_bytes_with_nul();
+        let offload_entry_name = format!(".offloading.entry_name.{symbol}");
 
-    let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
-    let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
-    llvm::set_alignment(llglobal, Align::ONE);
-    llvm::set_section(llglobal, c".llvm.rodata.offloading");
+        let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+        let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
+        llvm::set_alignment(llglobal, Align::ONE);
+        llvm::set_section(llglobal, c".llvm.rodata.offloading");
 
-    let name = format!(".offloading.entry.{symbol}");
+        let name = format!(".offloading.entry.{symbol}");
 
-    // See the __tgt_offload_entry documentation above.
-    let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
+        // See the __tgt_offload_entry documentation above.
+        let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
 
-    let initializer = crate::common::named_struct(offload_entry_ty, &elems);
-    let c_name = CString::new(name).unwrap();
-    let offload_entry = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
-    llvm::set_global_constant(offload_entry, true);
-    llvm::set_linkage(offload_entry, WeakAnyLinkage);
-    llvm::set_initializer(offload_entry, initializer);
-    llvm::set_alignment(offload_entry, Align::EIGHT);
-    let c_section_name = CString::new("llvm_offload_entries").unwrap();
-    llvm::set_section(offload_entry, &c_section_name);
+        let initializer = crate::common::named_struct(offload_entry_ty, &elems);
+        let c_name = CString::new(name).unwrap();
+        let offload_entry = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
+        llvm::set_global_constant(offload_entry, true);
+        llvm::set_linkage(offload_entry, WeakAnyLinkage);
+        llvm::set_initializer(offload_entry, initializer);
+        llvm::set_alignment(offload_entry, Align::EIGHT);
+        let c_section_name = CString::new("llvm_offload_entries").unwrap();
+        llvm::set_section(offload_entry, &c_section_name);
+        (Some(offload_entry), Some(region_id))
+    } else {
+        (None, None)
+    };
 
     let result =
         OffloadKernelGlobals { offload_sizes, memtransfer_types, region_id, offload_entry };
@@ -517,13 +523,16 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     types: &[&Type],
     metadata: &[OffloadMetadata],
     offload_globals: &OffloadGlobals<'ll>,
-    offload_dims: &OffloadKernelDims<'ll>,
+    offload_dims: Option<&OffloadKernelDims<'ll>>,
+    host: bool,
+    host_llfn: &'ll Value,
+    host_llty: &'ll Type,
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals { offload_sizes, offload_entry, memtransfer_types, region_id } =
         offload_data;
-    let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
-        offload_dims;
+    //let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
+    //    offload_dims;
 
     let tgt_decl = offload_globals.launcher_fn;
     let tgt_target_kernel_ty = offload_globals.launcher_ty;
@@ -538,7 +547,12 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // FIXME(Sa4dUs): dummy loads are a temp workaround, we should find a proper way to prevent these
     // variables from being optimized away
-    for val in [offload_sizes, offload_entry] {
+    let to_keep: &[&llvm::Value] = if let Some(offload_entry) = offload_entry {
+        &[offload_sizes, offload_entry]
+    } else {
+        &[offload_sizes]
+    };
+    for val in to_keep {
         unsafe {
             let dummy = llvm::LLVMBuildLoad2(
                 &builder.llbuilder,
@@ -648,27 +662,53 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         num_args,
         s_ident_t,
     );
-    let values =
-        KernelArgsTy::new(&cx, num_args, memtransfer_types, geps, workgroup_dims, thread_dims);
 
-    // Step 3)
-    // Here we fill the KernelArgsTy, see the documentation above
-    for (i, value) in values.iter().enumerate() {
-        let ptr = builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
-        builder.store(value.1, ptr, value.0);
+    if host {
+        let fn_name = "omp_get_mapped_ptr";
+        let ty2: &'ll Type = cx.type_func(&[cx.type_ptr(), cx.type_i32()], cx.type_ptr());
+        let mapper_fn = unsafe {
+            llvm::LLVMRustGetOrInsertFunction(
+                builder.llmod,
+                fn_name.as_c_char_ptr(),
+                fn_name.len(),
+                ty2,
+            )
+        };
+
+        let mut device_vals = Vec::with_capacity(vals.len());
+        let device_num = cx.get_const_i32(0);
+        for arg in vals {
+            let device_arg =
+                builder.call(ty2, None, None, mapper_fn, &[arg, device_num], None, None);
+            device_vals.push(device_arg);
+        }
+        builder.call(host_llty, None, None, host_llfn, &device_vals, None, None);
+    } else {
+        let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
+            offload_dims.unwrap();
+        let values =
+            KernelArgsTy::new(&cx, num_args, memtransfer_types, geps, workgroup_dims, thread_dims);
+
+        // Step 3)
+        // Here we fill the KernelArgsTy, see the documentation above
+        for (i, value) in values.iter().enumerate() {
+            let ptr =
+                builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
+            builder.store(value.1, ptr, value.0);
+        }
+        // In the host case, we know by construction that this variable is set.
+        let args = vec![
+            s_ident_t,
+            // FIXME(offload) give users a way to select which GPU to use.
+            cx.get_const_i64(u64::MAX), // MAX == -1.
+            num_workgroups,
+            threads_per_block,
+            region_id.unwrap(),
+            a5,
+        ];
+        // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
+        builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
     }
-
-    let args = vec![
-        s_ident_t,
-        // FIXME(offload) give users a way to select which GPU to use.
-        cx.get_const_i64(u64::MAX), // MAX == -1.
-        num_workgroups,
-        threads_per_block,
-        region_id,
-        a5,
-    ];
-    builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
-    // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 
     // Step 4)
     let geps = get_geps(builder, ty, ty2, a1, a2, a4);

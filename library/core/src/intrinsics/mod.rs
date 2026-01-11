@@ -3374,6 +3374,10 @@ pub const fn copysignf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload_args<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
+
 /// Generates the LLVM body of a wrapper function to offload a kernel `f`.
 ///
 /// Type Parameters:

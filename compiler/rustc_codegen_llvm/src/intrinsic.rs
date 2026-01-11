@@ -217,7 +217,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
                 }
 
-                codegen_offload(self, tcx, instance, args);
+                codegen_offload(self, tcx, instance, args, false);
+                return Ok(());
+            }
+            sym::offload_args => {
+                if tcx.sess.opts.unstable_opts.offload.is_empty() {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
+                }
+
+                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                }
+
+                codegen_offload(self, tcx, instance, args, true);
                 return Ok(());
             }
             sym::is_val_statically_known => {
@@ -1364,6 +1376,7 @@ fn codegen_offload<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
+    host: bool,
 ) {
     let cx = bx.cx;
     let fn_args = instance.args;
@@ -1386,8 +1399,18 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
-    let args = get_args_from_tuple(bx, args[3], fn_target);
+    let llfn = cx.get_fn(fn_target);
+    let (offload_dims, args) = if host {
+        // If we only map arguments to the gpu and otherwise work on host code, there is no need to
+        // handle block or thread dimensions.
+        let args = get_args_from_tuple(bx, args[1], fn_target);
+        (None, args)
+    } else {
+        let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
+        let args = get_args_from_tuple(bx, args[3], fn_target);
+        (Some(offload_dims), args)
+    };
+
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
@@ -1406,8 +1429,24 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     register_offload(cx);
-    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
-    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
+    let instance = rustc_middle::ty::Instance::mono(tcx, fn_target.def_id());
+    let fn_abi = cx.fn_abi_of_instance(instance, tcx.mk_type_list(&[]));
+    let host_fn_ty = fn_abi.llvm_type(cx);
+
+    let offload_data =
+        gen_define_handling(&cx, &metadata, &types, target_symbol.clone(), offload_globals, host);
+    gen_call_handling(
+        bx,
+        &offload_data,
+        &args,
+        &types,
+        &metadata,
+        offload_globals,
+        offload_dims.as_ref(),
+        host,
+        llfn,
+        host_fn_ty,
+    );
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
