@@ -306,6 +306,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::RustcSymbolName(..)
+                    | AttributeKind::RustcDefPath(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);

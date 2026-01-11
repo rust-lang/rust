@@ -4,15 +4,13 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
-use rustc_span::{Symbol, sym};
 
 use crate::errors::{Kind, TestOutput};
-
-const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
-const DEF_PATH: Symbol = sym::rustc_def_path;
 
 pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
@@ -54,7 +52,11 @@ impl SymbolNamesTest<'_> {
         // The formatting of `tag({})` is chosen so that tests can elect
         // to test the entirety of the string, if they choose, or else just
         // some subset.
-        for attr in tcx.get_attrs(def_id, SYMBOL_NAME) {
+        for attr in tcx
+            .get_all_attrs(def_id)
+            .into_iter()
+            .filter(|attr| matches!(attr, Attribute::Parsed(AttributeKind::RustcSymbolName(..))))
+        {
             let def_id = def_id.to_def_id();
             let instance = Instance::new_raw(
                 def_id,
@@ -80,7 +82,11 @@ impl SymbolNamesTest<'_> {
             }
         }
 
-        for attr in tcx.get_attrs(def_id, DEF_PATH) {
+        for attr in tcx
+            .get_all_attrs(def_id)
+            .into_iter()
+            .filter(|attr| matches!(attr, Attribute::Parsed(AttributeKind::RustcDefPath(..))))
+        {
             tcx.dcx().emit_err(TestOutput {
                 span: attr.span(),
                 kind: Kind::DefPath,
