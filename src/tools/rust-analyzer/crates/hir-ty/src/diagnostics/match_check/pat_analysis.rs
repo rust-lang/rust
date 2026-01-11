@@ -11,7 +11,7 @@ use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
-use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
+use rustc_type_ir::inherent::{AdtDef, IntoKind};
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 
@@ -150,7 +150,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
         let fields_len = variant.fields(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
-            let ty = field_tys[fid].instantiate(self.infcx.interner, substs);
+            let ty = field_tys[fid].get().instantiate(self.infcx.interner, substs);
             let ty = self
                 .infcx
                 .at(&ObligationCause::dummy(), self.env)

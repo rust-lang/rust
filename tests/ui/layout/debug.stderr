@@ -16,7 +16,7 @@ error: layout_of(E) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -52,7 +52,7 @@ error: layout_of(E) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -77,7 +77,7 @@ error: layout_of(E) = Layout {
                                Size(4 bytes),
                                Size(8 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                                1,
                                2,
@@ -130,7 +130,7 @@ error: layout_of(S) = Layout {
                    Size(8 bytes),
                    Size(4 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                    2,
                    1,
@@ -200,7 +200,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -251,7 +251,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            offsets: [
                                Size(4 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -289,7 +289,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            offsets: [
                                Size(4 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },

@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, UintTy};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::LitToConstInput;
@@ -44,12 +44,14 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
         (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
-            if matches!(inner_ty.kind(), ty::Slice(_) | ty::Array(..)) =>
+            if let ty::Slice(ty) | ty::Array(ty, _) = inner_ty.kind()
+                && let ty::Uint(UintTy::U8) = ty.kind() =>
         {
             ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str())
         }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(_) | ty::Array(..))
-            if tcx.features().deref_patterns() =>
+        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(inner_ty) | ty::Array(inner_ty, _))
+            if tcx.features().deref_patterns()
+                && let ty::Uint(UintTy::U8) = inner_ty.kind() =>
         {
             // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
             // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
@@ -63,7 +65,7 @@ pub(crate) fn lit_to_const<'tcx>(
             // A CStr is a newtype around a byte slice, so we create the inner slice here.
             // We need a branch for each "level" of the data structure.
             let bytes = ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str());
-            ty::ValTree::from_branches(tcx, [bytes])
+            ty::ValTree::from_branches(tcx, [ty::Const::new_value(tcx, bytes, *inner_ty)])
         }
         (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
             let scalar_int = trunc(n.get(), *ui);

@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.93"
+version = "0.1.94"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -42,7 +42,7 @@ walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
-askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
+askama = { version = "0.15", default-features = false, features = ["alloc", "config", "derive"] }
 
 [dev-dependencies.toml]
 version = "0.9.7"

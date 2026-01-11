@@ -373,6 +373,9 @@ define_Conf! {
     /// Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
     #[lints(indexing_slicing)]
     allow_indexing_slicing_in_tests: bool = false,
+    /// Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
+    #[lints(large_stack_frames)]
+    allow_large_stack_frames_in_tests: bool = true,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,

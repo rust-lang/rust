@@ -274,6 +274,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(decl_macro)]
@@ -343,7 +344,6 @@
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
 #![feature(ip)]
-#![feature(lazy_get)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
@@ -667,7 +667,7 @@ pub mod arch {
     pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
-    #[stable(feature = "stdarch_s390x_feature_detection", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
@@ -681,9 +681,7 @@ pub mod arch {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use std_detect::is_x86_feature_detected;
 
-// Platform-abstraction modules
 mod sys;
-mod sys_common;
 
 pub mod alloc;
 

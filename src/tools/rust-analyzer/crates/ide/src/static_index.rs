@@ -10,7 +10,7 @@ use ide_db::{
     documentation::Documentation,
     famous_defs::FamousDefs,
 };
-use syntax::{AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T, TextRange};
+use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
@@ -136,12 +136,12 @@ fn documentation_for_definition(
 }
 
 // FIXME: This is a weird function
-fn get_definitions(
-    sema: &Semantics<'_, RootDatabase>,
+fn get_definitions<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<ArrayVec<Definition, 2>> {
+) -> Option<ArrayVec<(Definition, Option<hir::GenericSubstitution<'db>>), 2>> {
     for token in sema.descend_into_macros_exact(token) {
-        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
         if let Some(defs) = def
             && !defs.is_empty()
         {
@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     type_hints: true,
                     sized_bound: false,
                     parameter_hints: true,
+                    parameter_hints_for_missing_arguments: false,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
                         lifetime_hints: false,
@@ -226,12 +227,6 @@ impl StaticIndex<'_> {
             show_drop_glue: true,
             minicore: MiniCore::default(),
         };
-        let tokens = tokens.filter(|token| {
-            matches!(
-                token.kind(),
-                IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self]
-            )
-        });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
 
         let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
@@ -291,9 +286,9 @@ impl StaticIndex<'_> {
             let range = token.text_range();
             let node = token.parent().unwrap();
             match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
-                Some(it) => {
-                    for i in it {
-                        add_token(i, range, &node);
+                Some(defs) => {
+                    for (def, _) in defs {
+                        add_token(def, range, &node);
                     }
                 }
                 None => continue,
@@ -331,12 +326,12 @@ impl StaticIndex<'_> {
             };
             let mut visited_files = FxHashSet::default();
             for module in work {
-                let file_id = module.definition_source_file_id(db).original_file(db);
+                let file_id =
+                    module.definition_source_file_id(db).original_file(db).file_id(&analysis.db);
                 if visited_files.contains(&file_id) {
                     continue;
                 }
-                this.add_file(file_id.file_id(&analysis.db));
-                // mark the file
+                this.add_file(file_id);
                 visited_files.insert(file_id);
             }
             this

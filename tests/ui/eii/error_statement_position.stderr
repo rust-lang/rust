@@ -1,0 +1,8 @@
+error: `#[eii]` is only valid on functions
+  --> $DIR/error_statement_position.rs:13:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: aborting due to 1 previous error
+

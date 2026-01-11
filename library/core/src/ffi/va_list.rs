@@ -31,6 +31,9 @@ use crate::marker::PhantomCovariantLifetime;
 // the pointer decay behavior in Rust, while otherwise matching Rust semantics.
 // This attribute ensures that the compiler uses the correct ABI for functions
 // like `extern "C" fn takes_va_list(va: VaList<'_>)` by passing `va` indirectly.
+//
+// The Clang `BuiltinVaListKind` enumerates the `va_list` variations that Clang supports,
+// and we mirror these here.
 crate::cfg_select! {
     all(
         target_arch = "aarch64",
@@ -121,6 +124,23 @@ crate::cfg_select! {
             stk: *const i32,
             reg: *const i32,
             ndx: i32,
+        }
+    }
+
+    all(target_arch = "hexagon", target_env = "musl") => {
+        /// Hexagon Musl implementation of a `va_list`.
+        ///
+        /// See the [LLVM source] for more details. On bare metal Hexagon uses an opaque pointer.
+        ///
+        /// [LLVM source]:
+        /// https://github.com/llvm/llvm-project/blob/0cdc1b6dd4a870fc41d4b15ad97e0001882aba58/clang/lib/CodeGen/Targets/Hexagon.cpp#L407-L417
+        #[repr(C)]
+        #[derive(Debug)]
+        #[rustc_pass_indirectly_in_non_rustic_abis]
+        struct VaListInner {
+            __current_saved_reg_area_pointer: *const c_void,
+            __saved_reg_area_end_pointer: *const c_void,
+            __overflow_area_pointer: *const c_void,
         }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.93"
+version = "0.1.94"
 edition = "2024"
 description = "Helpful tools for writing lints, provided as they are used in Clippy"
 repository = "https://github.com/rust-lang/rust-clippy"
@@ -15,6 +15,10 @@ itertools = "0.12"
 # FIXME(f16_f128): remove when no longer needed for parsing
 rustc_apfloat = "0.2.0"
 serde = { version = "1.0", features = ["derive"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

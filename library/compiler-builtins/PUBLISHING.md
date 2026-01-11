@@ -5,7 +5,7 @@ It's not great, but it works for now. PRs to improve this process would be
 greatly appreciated!
 
 1. Make sure you've got a clean working tree and it's updated with the latest
-   changes on `master`
+   changes on `main`
 2. Edit `Cargo.toml` to bump the version number
 3. Commit this change
 4. Run `git tag` to create a tag for this version

@@ -1,0 +1,20 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `Iuse`
+  --> $DIR/nested-import-root-symbol-150103.rs:6:9
+   |
+LL |     use Iuse::{ ::Fish };
+   |         ^^^^ use of unresolved module or unlinked crate `Iuse`
+   |
+help: you might be missing a crate named `Iuse`, add it to your project and import it in your code
+   |
+LL + extern crate Iuse;
+   |
+
+error[E0433]: failed to resolve: crate root in paths can only be used in start position
+  --> $DIR/nested-import-root-symbol-150103.rs:10:13
+   |
+LL |     use A::{::Fish};
+   |             ^ crate root in paths can only be used in start position
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

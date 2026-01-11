@@ -168,7 +168,7 @@ macro_rules! assert_ne {
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(panic_internals)]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {
@@ -401,7 +401,7 @@ macro_rules! debug_assert_ne {
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(assert_matches)]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
         $crate::assert_matches::assert_matches!($($arg)*);
@@ -1888,6 +1888,31 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[unstable(feature = "derive_from", issue = "144889")]
     pub macro From($item: item) {
+        /* compiler built-in */
+    }
+
+    /// Externally Implementable Item: Defines an attribute macro that can override the item
+    /// this is applied to.
+    #[unstable(feature = "extern_item_impls", issue = "125418")]
+    #[rustc_builtin_macro]
+    #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
+    pub macro eii($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Unsafely Externally Implementable Item: Defines an unsafe attribute macro that can override
+    /// the item this is applied to.
+    #[unstable(feature = "extern_item_impls", issue = "125418")]
+    #[rustc_builtin_macro]
+    #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
+    pub macro unsafe_eii($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Impl detail of EII
+    #[unstable(feature = "eii_internals", issue = "none")]
+    #[rustc_builtin_macro]
+    pub macro eii_extern_target($item:item) {
         /* compiler built-in */
     }
 }

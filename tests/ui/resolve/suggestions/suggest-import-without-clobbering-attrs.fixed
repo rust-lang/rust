@@ -3,7 +3,7 @@
 //@ compile-flags: -Aunused
 
 use y::z;
-#[cfg(all())]
+#[cfg(true)]
 use y::Whatever;
 
 mod y {

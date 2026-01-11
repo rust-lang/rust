@@ -15,24 +15,22 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Span, Symbol};
 
-use crate::search_paths::PathKind;
-
 // lonely orphan structs and enums looking for a better home
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
 #[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct CrateSource {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub rmeta: Option<(PathBuf, PathKind)>,
-    pub sdylib_interface: Option<(PathBuf, PathKind)>,
+    pub dylib: Option<PathBuf>,
+    pub rlib: Option<PathBuf>,
+    pub rmeta: Option<PathBuf>,
+    pub sdylib_interface: Option<PathBuf>,
 }
 
 impl CrateSource {
     #[inline]
     pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
-        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
+        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter())
     }
 }
 
@@ -41,12 +39,13 @@ impl CrateSource {
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
-    /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g., the injected panic runtime.
-    Implicit,
+    /// A dependency that is injected into the crate graph but which only
+    /// sometimes needs to actually be linked in, e.g., the injected panic runtime.
+    Conditional,
     /// A dependency that is required by an rlib version of this crate.
-    /// Ordinary `extern crate`s result in `Explicit` dependencies.
-    Explicit,
+    /// Ordinary `extern crate`s as well as most injected dependencies result
+    /// in `Unconditional` dependencies.
+    Unconditional,
 }
 
 impl CrateDepKind {
@@ -54,7 +53,7 @@ impl CrateDepKind {
     pub fn macros_only(self) -> bool {
         match self {
             CrateDepKind::MacrosOnly => true,
-            CrateDepKind::Implicit | CrateDepKind::Explicit => false,
+            CrateDepKind::Conditional | CrateDepKind::Unconditional => false,
         }
     }
 }

@@ -99,5 +99,11 @@ error: use of a disallowed method `conf_disallowed_methods::renamed`
 LL |     renamed(1);
    |     ^^^^^^^
 
-error: aborting due to 16 previous errors
+error: use of a disallowed method `std::future::Future::poll`
+  --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:95:11
+   |
+LL |         f.poll(cx);
+   |           ^^^^
+
+error: aborting due to 17 previous errors
 

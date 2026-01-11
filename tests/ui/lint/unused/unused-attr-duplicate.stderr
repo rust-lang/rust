@@ -17,18 +17,6 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:37:1
-   |
-LL | #[no_link]
-   | ^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:36:1
-   |
-LL | #[no_link]
-   | ^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:34:1
    |
 LL | #![no_builtins]
@@ -39,6 +27,18 @@ note: attribute also specified here
    |
 LL | #![no_builtins]
    | ^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:37:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:36:1
+   |
+LL | #[no_link]
+   | ^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:41:1

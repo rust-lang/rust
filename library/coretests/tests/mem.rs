@@ -815,7 +815,7 @@ fn drop_guard_into_inner() {
     let dropped = Cell::new(false);
     let value = DropGuard::new(42, |_| dropped.set(true));
     let guard = DropGuard::new(value, |_| dropped.set(true));
-    let inner = guard.dismiss();
+    let inner = DropGuard::dismiss(guard);
     assert_eq!(dropped.get(), false);
     assert_eq!(*inner, 42);
 }
@@ -837,7 +837,7 @@ fn drop_guard_always_drops_value_if_closure_drop_unwinds() {
     // run the destructor of the value we passed, which we validate.
     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let guard = DropGuard::new(value_with_tracked_destruction, closure_that_panics_on_drop);
-        guard.dismiss();
+        DropGuard::dismiss(guard);
     }));
     assert!(value_was_dropped);
 }

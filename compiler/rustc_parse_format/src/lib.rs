@@ -184,6 +184,9 @@ pub enum Suggestion {
     /// `format!("{foo:?x}")` -> `format!("{foo:x?}")`
     /// `format!("{foo:?X}")` -> `format!("{foo:X?}")`
     ReorderFormatParameter(Range<usize>, String),
+    /// Add missing colon:
+    /// `format!("{foo?}")` -> `format!("{foo:?}")`
+    AddMissingColon(Range<usize>),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -453,10 +456,11 @@ impl<'input> Parser<'input> {
             suggestion: Suggestion::None,
         });
 
-        if let Some((_, _, c)) = self.peek() {
-            match c {
-                '?' => self.suggest_format_debug(),
-                '<' | '^' | '>' => self.suggest_format_align(c),
+        if let (Some((_, _, c)), Some((_, _, nc))) = (self.peek(), self.peek_ahead()) {
+            match (c, nc) {
+                ('?', '}') => self.missing_colon_before_debug_formatter(),
+                ('?', _) => self.suggest_format_debug(),
+                ('<' | '^' | '>', _) => self.suggest_format_align(c),
                 _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
             }
         }
@@ -844,6 +848,23 @@ impl<'input> Parser<'input> {
                     span: range,
                     secondary_label: None,
                     suggestion: Suggestion::None,
+                },
+            );
+        }
+    }
+
+    fn missing_colon_before_debug_formatter(&mut self) {
+        if let Some((range, _)) = self.consume_pos('?') {
+            let span = range.clone();
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "expected `}`, found `?`".to_owned(),
+                    note: Some(format!("to print `{{`, you can escape it using `{{{{`",)),
+                    label: "expected `:` before `?` to format with `Debug`".to_owned(),
+                    span: range,
+                    secondary_label: None,
+                    suggestion: Suggestion::AddMissingColon(span),
                 },
             );
         }

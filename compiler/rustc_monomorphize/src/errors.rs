@@ -78,6 +78,8 @@ pub(crate) struct AbiErrorDisabledVectorType<'a> {
     pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
+    /// Whether this is a problem with a fixed length vector or a scalable vector
+    pub is_scalable: bool,
 }
 
 #[derive(Diagnostic)]
@@ -114,4 +116,16 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub abi: &'a str,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_static_initializer_cyclic)]
+#[note]
+pub(crate) struct StaticInitializerCyclic<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub labels: Vec<Span>,
+    pub head: &'a str,
+    pub target: &'a str,
 }

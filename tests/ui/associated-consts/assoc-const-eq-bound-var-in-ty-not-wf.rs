@@ -1,10 +1,10 @@
 // Check that we eventually catch types of assoc const bounds
 // (containing late-bound vars) that are ill-formed.
 #![feature(
-    associated_const_equality,
     min_generic_const_args,
     adt_const_params,
     unsized_const_params,
+    generic_const_parameter_types,
 )]
 #![allow(incomplete_features)]
 
@@ -18,7 +18,7 @@ trait Trait<T: ConstParamTy_> {
 fn take(
     _: impl Trait<
         <<for<'a> fn(&'a str) -> &'a str as Project>::Out as Discard>::Out,
-        K = { () }
+        K = const { () }
     >,
 ) {}
 //~^^^ ERROR higher-ranked subtype error

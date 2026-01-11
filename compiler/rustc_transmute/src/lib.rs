@@ -129,10 +129,7 @@ mod rustc {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::sym;
 
-            let Some(cv) = ct.try_to_value() else {
-                return None;
-            };
-
+            let cv = ct.try_to_value()?;
             let adt_def = cv.ty.ty_adt_def()?;
 
             if !tcx.is_lang_item(adt_def.did(), LangItem::TransmuteOpts) {
@@ -149,7 +146,7 @@ mod rustc {
             }
 
             let variant = adt_def.non_enum_variant();
-            let fields = cv.valtree.unwrap_branch();
+            let fields = cv.to_branch();
 
             let get_field = |name| {
                 let (field_idx, _) = variant
@@ -158,14 +155,14 @@ mod rustc {
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)
                     .unwrap_or_else(|| panic!("There were no fields named `{name}`."));
-                fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
+                fields[field_idx].try_to_leaf().map(|leaf| leaf == ScalarInt::TRUE)
             };
 
             Some(Self {
-                alignment: get_field(sym::alignment),
-                lifetimes: get_field(sym::lifetimes),
-                safety: get_field(sym::safety),
-                validity: get_field(sym::validity),
+                alignment: get_field(sym::alignment)?,
+                lifetimes: get_field(sym::lifetimes)?,
+                safety: get_field(sym::safety)?,
+                validity: get_field(sym::validity)?,
             })
         }
     }

@@ -60,7 +60,7 @@ use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, Stable
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
+use rustc_span::{BytePos, DUMMY_SP, FileName};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -877,7 +877,8 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
-            let html = MarkdownItemInfo(note, &mut id_map);
+            let links = item.links(cx);
+            let html = MarkdownItemInfo::new(note, &links, &mut id_map);
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
         }
@@ -2772,7 +2773,7 @@ fn render_call_locations<W: fmt::Write>(
             files
                 .iter()
                 .find(|file| match &file.name {
-                    FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
+                    FileName::Real(real) => real.local_path().map_or(false, |p| p == rel_path),
                     _ => false,
                 })
                 .map(|file| file.start_pos)

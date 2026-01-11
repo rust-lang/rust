@@ -5,8 +5,7 @@
 pub fn unwrap_unchecked(x: Option<i32>) -> i32 {
     // CHECK-LABEL: fn unwrap_unchecked(
     // CHECK-NOT: UbChecks()
-    // CHECK: [[assume:_.*]] = const false;
-    // CHECK-NEXT: assume(copy [[assume]]);
+    // CHECK: assume(const false);
     // CHECK-NEXT: unreachable_unchecked::precondition_check
     unsafe { x.unwrap_unchecked() }
 }

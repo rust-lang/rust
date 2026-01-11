@@ -169,6 +169,7 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
+    pub llvm_clang_dir: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -188,6 +189,7 @@ pub struct Config {
 
     // gcc codegen options
     pub gcc_ci_mode: GccCiMode,
+    pub libgccjit_libs_dir: Option<PathBuf>,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -603,6 +605,7 @@ impl Config {
             use_linker: llvm_use_linker,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
+            offload_clang_dir: llvm_clang_dir,
             polly: llvm_polly,
             clang: llvm_clang,
             enable_warnings: llvm_enable_warnings,
@@ -620,7 +623,10 @@ impl Config {
             vendor: dist_vendor,
         } = toml.dist.unwrap_or_default();
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
+        let Gcc {
+            download_ci_gcc: gcc_download_ci_gcc,
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
+        } = toml.gcc.unwrap_or_default();
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -1346,6 +1352,7 @@ impl Config {
             keep_stage: flags_keep_stage,
             keep_stage_std: flags_keep_stage_std,
             libdir: install_libdir.map(PathBuf::from),
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
             lldb: build_lldb.map(PathBuf::from),
@@ -1356,6 +1363,7 @@ impl Config {
             llvm_cflags,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,
+            llvm_clang_dir: llvm_clang_dir.map(PathBuf::from),
             llvm_cxxflags,
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
@@ -1851,7 +1859,7 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(if target.contains("fuchsia") {
+            .unwrap_or(if target.contains("fuchsia") || target.contains("hexagon") {
                 LlvmLibunwind::InTree
             } else {
                 LlvmLibunwind::No

@@ -68,3 +68,10 @@ EXPORT uintptr_t do_one_deref(const int32_t ***ptr) {
 EXPORT void pass_fn_ptr(void f(void)) {
   (void)f; // suppress unused warning
 }
+
+/* Test: function_ptrs */
+EXPORT void call_fn_ptr(void f(void)) {
+    if (f != NULL) {
+        f();
+    }
+}

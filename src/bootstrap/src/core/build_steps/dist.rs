@@ -21,6 +21,7 @@ use tracing::instrument;
 
 use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
@@ -180,7 +181,7 @@ impl Step for RustcDocs {
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &target.triple);
         tarball.set_product_name("Rustc Documentation");
-        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc");
+        tarball.add_bulk_dir(builder.compiler_doc_out(target), "share/doc/rust/html/rustc-docs");
         tarball.generate()
     }
 }
@@ -892,8 +893,8 @@ impl Step for Std {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
     /// The compiler that will build rustc which will be shipped in this component.
-    build_compiler: Compiler,
-    target: TargetSelection,
+    pub build_compiler: Compiler,
+    pub target: TargetSelection,
 }
 
 impl RustcDev {
@@ -1210,6 +1211,9 @@ impl Step for Src {
     }
 }
 
+/// Tarball for people who want to build rustc and other components from the source.
+/// Does not contain GPL code, which is separated into `PlainSourceTarballGpl`
+/// for licensing reasons.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
@@ -1232,51 +1236,18 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
-        // means neither rustup nor rustup-toolchain-install-master know how to download it.
-        // It also contains symbolic links, unlike other any other dist tarball.
-        // It's used for distros building rustc from source in a pre-vendored environment.
-        let mut tarball = Tarball::new(builder, "rustc", "src");
-        tarball.permit_symlinks(true);
-        let plain_dst_src = tarball.image_dir();
-
-        // This is the set of root paths which will become part of the source package
-        let src_files = [
-            // tidy-alphabetical-start
-            ".gitmodules",
-            "CONTRIBUTING.md",
-            "COPYRIGHT",
-            "Cargo.lock",
-            "Cargo.toml",
-            "LICENSE-APACHE",
-            "LICENSE-MIT",
-            "README.md",
-            "RELEASES.md",
-            "REUSE.toml",
-            "bootstrap.example.toml",
-            "configure",
-            "license-metadata.json",
-            "package.json",
-            "x",
-            "x.ps1",
-            "x.py",
-            "yarn.lock",
-            // tidy-alphabetical-end
-        ];
-        let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];
-
-        copy_src_dirs(
+        let tarball = prepare_source_tarball(
             builder,
-            &builder.src,
-            &src_dirs,
+            "src",
             &[
                 // We don't currently use the GCC source code for building any official components,
                 // it is very big, and has unclear licensing implications due to being GPL licensed.
                 // We thus exclude it from the source tarball from now.
                 "src/gcc",
             ],
-            plain_dst_src,
         );
+
+        let plain_dst_src = tarball.image_dir();
         // We keep something in src/gcc because it is a registered submodule,
         // and if it misses completely it can cause issues elsewhere
         // (see https://github.com/rust-lang/rust/issues/137332).
@@ -1288,74 +1259,136 @@ impl Step for PlainSourceTarball {
                 "The GCC source code is not included due to unclear licensing implications\n"
             ));
         }
-
-        // Copy the files normally
-        for item in &src_files {
-            builder.copy_link(
-                &builder.src.join(item),
-                &plain_dst_src.join(item),
-                FileType::Regular,
-            );
-        }
-
-        // Create the version file
-        builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-
-        // Create the files containing git info, to ensure --version outputs the same.
-        let write_git_info = |info: Option<&Info>, path: &Path| {
-            if let Some(info) = info {
-                t!(std::fs::create_dir_all(path));
-                channel::write_commit_hash_file(path, &info.sha);
-                channel::write_commit_info_file(path, info);
-            }
-        };
-        write_git_info(builder.rust_info().info(), plain_dst_src);
-        write_git_info(builder.cargo_info.info(), &plain_dst_src.join("./src/tools/cargo"));
-
-        if builder.config.dist_vendor {
-            builder.require_and_update_all_submodules();
-
-            // Vendor packages that are required by opt-dist to collect PGO profiles.
-            let pkgs_for_pgo_training = build_helper::LLVM_PGO_CRATES
-                .iter()
-                .chain(build_helper::RUSTC_PGO_CRATES)
-                .map(|pkg| {
-                    let mut manifest_path =
-                        builder.src.join("./src/tools/rustc-perf/collector/compile-benchmarks");
-                    manifest_path.push(pkg);
-                    manifest_path.push("Cargo.toml");
-                    manifest_path
-                });
-
-            // Vendor all Cargo dependencies
-            let vendor = builder.ensure(Vendor {
-                sync_args: pkgs_for_pgo_training.collect(),
-                versioned_dirs: true,
-                root_dir: plain_dst_src.into(),
-                output_dir: VENDOR_DIR.into(),
-            });
-
-            let cargo_config_dir = plain_dst_src.join(".cargo");
-            builder.create_dir(&cargo_config_dir);
-            builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
-        }
-
-        // Delete extraneous directories
-        // FIXME: if we're managed by git, we should probably instead ask git if the given path
-        // is managed by it?
-        for entry in walkdir::WalkDir::new(tarball.image_dir())
-            .follow_links(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__"))
-            {
-                t!(fs::remove_dir_all(entry.path()));
-            }
-        }
-
         tarball.bare()
     }
+}
+
+/// Tarball with *all* source code for source builds, including GPL-licensed code.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct PlainSourceTarballGpl;
+
+impl Step for PlainSourceTarballGpl {
+    /// Produces the location of the tarball generated
+    type Output = GeneratedTarball;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc-src-gpl")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.rust_dist_src
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(PlainSourceTarballGpl);
+    }
+
+    /// Creates the plain source tarball
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        let tarball = prepare_source_tarball(builder, "src-gpl", &[]);
+        tarball.bare()
+    }
+}
+
+fn prepare_source_tarball<'a>(
+    builder: &'a Builder<'a>,
+    name: &str,
+    exclude_dirs: &[&str],
+) -> Tarball<'a> {
+    // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
+    // means neither rustup nor rustup-toolchain-install-master know how to download it.
+    // It also contains symbolic links, unlike other any other dist tarball.
+    // It's used for distros building rustc from source in a pre-vendored environment.
+    let mut tarball = Tarball::new(builder, "rustc", name);
+    tarball.permit_symlinks(true);
+    let plain_dst_src = tarball.image_dir();
+
+    // This is the set of root paths which will become part of the source package
+    let src_files = [
+        // tidy-alphabetical-start
+        ".gitmodules",
+        "CONTRIBUTING.md",
+        "COPYRIGHT",
+        "Cargo.lock",
+        "Cargo.toml",
+        "LICENSE-APACHE",
+        "LICENSE-MIT",
+        "README.md",
+        "RELEASES.md",
+        "REUSE.toml",
+        "bootstrap.example.toml",
+        "configure",
+        "license-metadata.json",
+        "package.json",
+        "x",
+        "x.ps1",
+        "x.py",
+        "yarn.lock",
+        // tidy-alphabetical-end
+    ];
+    let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];
+
+    copy_src_dirs(builder, &builder.src, &src_dirs, exclude_dirs, plain_dst_src);
+
+    // Copy the files normally
+    for item in &src_files {
+        builder.copy_link(&builder.src.join(item), &plain_dst_src.join(item), FileType::Regular);
+    }
+
+    // Create the version file
+    builder.create(&plain_dst_src.join("version"), &builder.rust_version());
+
+    // Create the files containing git info, to ensure --version outputs the same.
+    let write_git_info = |info: Option<&Info>, path: &Path| {
+        if let Some(info) = info {
+            t!(std::fs::create_dir_all(path));
+            channel::write_commit_hash_file(path, &info.sha);
+            channel::write_commit_info_file(path, info);
+        }
+    };
+    write_git_info(builder.rust_info().info(), plain_dst_src);
+    write_git_info(builder.cargo_info.info(), &plain_dst_src.join("./src/tools/cargo"));
+
+    if builder.config.dist_vendor {
+        builder.require_and_update_all_submodules();
+
+        // Vendor packages that are required by opt-dist to collect PGO profiles.
+        let pkgs_for_pgo_training =
+            build_helper::LLVM_PGO_CRATES.iter().chain(build_helper::RUSTC_PGO_CRATES).map(|pkg| {
+                let mut manifest_path =
+                    builder.src.join("./src/tools/rustc-perf/collector/compile-benchmarks");
+                manifest_path.push(pkg);
+                manifest_path.push("Cargo.toml");
+                manifest_path
+            });
+
+        // Vendor all Cargo dependencies
+        let vendor = builder.ensure(Vendor {
+            sync_args: pkgs_for_pgo_training.collect(),
+            versioned_dirs: true,
+            root_dir: plain_dst_src.into(),
+            output_dir: VENDOR_DIR.into(),
+        });
+
+        let cargo_config_dir = plain_dst_src.join(".cargo");
+        builder.create_dir(&cargo_config_dir);
+        builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
+    }
+
+    // Delete extraneous directories
+    // FIXME: if we're managed by git, we should probably instead ask git if the given path
+    // is managed by it?
+    for entry in walkdir::WalkDir::new(tarball.image_dir())
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__")) {
+            t!(fs::remove_dir_all(entry.path()));
+        }
+    }
+    tarball
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1619,23 +1652,7 @@ impl Step for CraneliftCodegenBackend {
             return None;
         }
 
-        // Get the relative path of where the codegen backend should be stored.
-        let backends_dst = builder.sysroot_codegen_backends(compilers.target_compiler());
-        let backends_rel = backends_dst
-            .strip_prefix(builder.sysroot(compilers.target_compiler()))
-            .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(compilers.target_compiler()))
-            .unwrap();
-        // Don't use custom libdir here because ^lib/ will be resolved again with installer
-        let backends_dst = PathBuf::from("lib").join(backends_rel);
-
-        let codegen_backend_dylib = get_codegen_backend_file(&stamp);
-        tarball.add_renamed_file(
-            &codegen_backend_dylib,
-            &backends_dst,
-            &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
-            FileType::NativeLibrary,
-        );
+        add_codegen_backend_to_tarball(builder, &tarball, compilers.target_compiler(), &stamp);
 
         Some(tarball.generate())
     }
@@ -1646,6 +1663,113 @@ impl Step for CraneliftCodegenBackend {
                 .built_by(self.compilers.build_compiler()),
         )
     }
+}
+
+/// Builds a dist component containing the GCC codegen backend.
+/// Note that for this backend to work, it must have a set of libgccjit dylibs available
+/// at runtime.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct GccCodegenBackend {
+    pub compilers: RustcPrivateCompilers,
+    pub target: TargetSelection,
+}
+
+impl Step for GccCodegenBackend {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        // We only want to build the gcc backend in `x dist` if the backend was enabled
+        // in rust.codegen-backends.
+        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // So we just use the host target.
+        builder
+            .config
+            .enabled_codegen_backends(builder.host_target)
+            .contains(&CodegenBackendKind::Gcc)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(GccCodegenBackend {
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents rustc_codegen_gcc from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+        if target != "x86_64-unknown-linux-gnu" {
+            builder
+                .info(&format!("target `{target}` not supported by rustc_codegen_gcc. skipping"));
+            return None;
+        }
+
+        let mut tarball = Tarball::new(builder, "rustc-codegen-gcc", &target.triple);
+        tarball.set_overlay(OverlayKind::RustcCodegenGcc);
+        tarball.is_preview(true);
+        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_gcc");
+
+        let compilers = self.compilers;
+        let backend = builder.ensure(compile::GccCodegenBackend::for_target(compilers, target));
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        add_codegen_backend_to_tarball(
+            builder,
+            &tarball,
+            compilers.target_compiler(),
+            backend.stamp(),
+        );
+
+        Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::dist("rustc_codegen_gcc", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
+}
+
+/// Add a codegen backend built for `compiler`, with its artifacts stored in `stamp`, to the given
+/// `tarball` at the correct place.
+fn add_codegen_backend_to_tarball(
+    builder: &Builder<'_>,
+    tarball: &Tarball<'_>,
+    compiler: Compiler,
+    stamp: &BuildStamp,
+) {
+    // Get the relative path of where the codegen backend should be stored.
+    let backends_dst = builder.sysroot_codegen_backends(compiler);
+    let backends_rel = backends_dst
+        .strip_prefix(builder.sysroot(compiler))
+        .unwrap()
+        .strip_prefix(builder.sysroot_libdir_relative(compiler))
+        .unwrap();
+    // Don't use custom libdir here because ^lib/ will be resolved again with installer
+    let backends_dst = PathBuf::from("lib").join(backends_rel);
+
+    let codegen_backend_dylib = get_codegen_backend_file(stamp);
+    tarball.add_renamed_file(
+        &codegen_backend_dylib,
+        &backends_dst,
+        &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
+        FileType::NativeLibrary,
+    );
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -2838,30 +2962,33 @@ impl Step for ReproducibleArtifacts {
 /// Tarball containing a prebuilt version of the libgccjit library,
 /// needed as a dependency for the GCC codegen backend (similarly to the LLVM
 /// backend needing a prebuilt libLLVM).
+///
+/// This component is used for `download-ci-gcc`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Gcc {
+pub struct GccDev {
     target: TargetSelection,
 }
 
-impl Step for Gcc {
+impl Step for GccDev {
     type Output = GeneratedTarball;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("gcc")
+        run.alias("gcc-dev")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Gcc { target: run.target });
+        run.builder.ensure(GccDev { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let tarball = Tarball::new(builder, "gcc", &self.target.triple);
-        let output = builder.ensure(super::gcc::Gcc { target: self.target });
-        tarball.add_file(&output.libgccjit, "lib", FileType::NativeLibrary);
+        let tarball = Tarball::new(builder, "gcc-dev", &self.target.triple);
+        let output = builder
+            .ensure(super::gcc::Gcc { target_pair: GccTargetPair::for_native_build(self.target) });
+        tarball.add_file(output.libgccjit(), "lib", FileType::NativeLibrary);
         tarball.generate()
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::dist("gcc", self.target))
+        Some(StepMetadata::dist("gcc-dev", self.target))
     }
 }

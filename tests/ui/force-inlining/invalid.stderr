@@ -152,7 +152,7 @@ LL | #[rustc_force_inline]
    |
    = help: `#[rustc_force_inline]` can only be applied to functions
 
-error: `#[rustc_force_inline]` attribute cannot be used on function params
+error: `#[rustc_force_inline]` attribute cannot be used on type parameters
   --> $DIR/invalid.rs:72:10
    |
 LL | enum Bar<#[rustc_force_inline] T> {

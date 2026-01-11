@@ -520,7 +520,7 @@ pub fn set_name(name: &CStr) {
     debug_assert_eq!(res, libc::OK);
 }
 
-#[cfg(not(target_os = "espidf"))]
+#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
 pub fn sleep(dur: Duration) {
     let mut secs = dur.as_secs();
     let mut nsecs = dur.subsec_nanos() as _;
@@ -546,7 +546,13 @@ pub fn sleep(dur: Duration) {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(
+    target_os = "espidf",
+    // wasi-libc prior to WebAssembly/wasi-libc#696 has a broken implementation
+    // of `nanosleep`, used above by most platforms, so use `usleep` until
+    // that fix propagates throughout the ecosystem.
+    target_os = "wasi",
+))]
 pub fn sleep(dur: Duration) {
     // ESP-IDF does not have `nanosleep`, so we use `usleep` instead.
     // As per the documentation of `usleep`, it is expected to support

@@ -1,9 +1,9 @@
 //@ edition: 2024
 
-#[unsafe(cfg(any()))] //~ ERROR: is not an unsafe attribute
+#[unsafe(cfg(false))] //~ ERROR: is not an unsafe attribute
 fn a() {}
 
-#[unsafe(cfg_attr(any(), allow(dead_code)))] //~ ERROR: is not an unsafe attribute
+#[unsafe(cfg_attr(false, allow(dead_code)))] //~ ERROR: is not an unsafe attribute
 fn b() {}
 
 #[unsafe(test)] //~ ERROR: is not an unsafe attribute

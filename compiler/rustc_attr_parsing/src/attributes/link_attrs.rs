@@ -33,7 +33,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -62,10 +62,10 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         let items = match args {
             ArgParser::List(list) => list,
             // This is an edgecase added because making this a hard error would break too many crates
@@ -76,7 +76,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                 return None;
             }
             _ => {
-                cx.expected_list(cx.attr_span);
+                cx.expected_list(cx.attr_span, args);
                 return None;
             }
         };
@@ -242,7 +242,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
 impl LinkParser {
     fn parse_link_name<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         name: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -267,7 +267,7 @@ impl LinkParser {
     }
 
     fn parse_link_kind<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         kind: &mut Option<NativeLibKind>,
         cx: &mut AcceptContext<'_, '_, S>,
         sess: &Session,
@@ -347,7 +347,7 @@ impl LinkParser {
     }
 
     fn parse_link_modifiers<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         modifiers: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -368,7 +368,7 @@ impl LinkParser {
     }
 
     fn parse_link_cfg<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         cfg: &mut Option<CfgEntry>,
         cx: &mut AcceptContext<'_, '_, S>,
         sess: &Session,
@@ -379,7 +379,7 @@ impl LinkParser {
             return true;
         }
         let Some(link_cfg) = item.args().list() else {
-            cx.expected_list(item.span());
+            cx.expected_list(item.span(), item.args());
             return true;
         };
         let Some(link_cfg) = link_cfg.single() else {
@@ -400,7 +400,7 @@ impl LinkParser {
     }
 
     fn parse_link_wasm_import_module<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         wasm_import_module: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -421,7 +421,7 @@ impl LinkParser {
     }
 
     fn parse_link_import_name_type<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         import_name_type: &mut Option<(PeImportNameType, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -469,7 +469,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
@@ -478,7 +477,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -551,7 +550,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ordinal = parse_single_integer(cx, args)?;
 
         // According to the table at
@@ -587,12 +586,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignFn),
+        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
 
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
@@ -607,7 +606,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
         "weak_odr",
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(name_value) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, Some(sym::linkage));
             return None;

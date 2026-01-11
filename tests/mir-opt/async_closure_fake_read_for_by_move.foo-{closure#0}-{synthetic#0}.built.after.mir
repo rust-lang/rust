@@ -4,18 +4,16 @@ fn foo::{closure#0}::{synthetic#0}(_1: {async closure body@$DIR/async_closure_fa
 yields ()
  {
     debug _task_context => _2;
-    debug f => (_1.0: &Foo);
+    debug f => (*(_1.0: &Foo));
     let mut _0: ();
     let mut _3: &Foo;
     let mut _4: &&Foo;
-    let mut _5: &&&Foo;
-    let mut _6: isize;
-    let mut _7: bool;
+    let mut _5: isize;
+    let mut _6: bool;
 
     bb0: {
-        PlaceMention((_1.0: &Foo));
-        _6 = discriminant((*(_1.0: &Foo)));
-        switchInt(move _6) -> [0: bb2, otherwise: bb1];
+        _5 = discriminant((*(_1.0: &Foo)));
+        switchInt(move _5) -> [0: bb2, otherwise: bb1];
     }
 
     bb1: {
@@ -29,24 +27,22 @@ yields ()
 
     bb3: {
         _3 = &fake shallow (*(_1.0: &Foo));
-        _4 = &fake shallow (_1.0: &Foo);
         nop;
-        StorageLive(_7);
-        _7 = const true;
-        switchInt(move _7) -> [0: bb5, otherwise: bb4];
+        StorageLive(_6);
+        _6 = const true;
+        switchInt(move _6) -> [0: bb5, otherwise: bb4];
     }
 
     bb4: {
-        StorageDead(_7);
+        StorageDead(_6);
         FakeRead(ForMatchGuard, _3);
         FakeRead(ForMatchGuard, _4);
-        FakeRead(ForMatchGuard, _5);
         _0 = const ();
         goto -> bb6;
     }
 
     bb5: {
-        StorageDead(_7);
+        StorageDead(_6);
         falseEdge -> [real: bb1, imaginary: bb1];
     }
 

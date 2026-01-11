@@ -20,6 +20,16 @@ pub enum WildcardAccessLevel {
     Read,
     Write,
 }
+impl WildcardAccessLevel {
+    /// Weather this access kind is allowed at this level.
+    pub fn allows(self, kind: AccessKind) -> bool {
+        let required_level = match kind {
+            AccessKind::Read => Self::Read,
+            AccessKind::Write => Self::Write,
+        };
+        required_level <= self
+    }
+}
 
 /// Where the access happened relative to the current node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -430,7 +440,7 @@ impl Tree {
                 .map(|p| p.permission())
                 .unwrap_or_else(|| node.default_location_state().permission());
 
-            let access_type = perm.strongest_allowed_child_access(protected);
+            let access_type = perm.strongest_allowed_local_access(protected);
             WildcardState::update_exposure(
                 id,
                 access_type,
@@ -480,7 +490,7 @@ impl Tree {
                         perms.get(id).copied().unwrap_or_else(|| node.default_location_state());
 
                     perm.permission()
-                        .strongest_allowed_child_access(protected_tags.contains_key(&node.tag))
+                        .strongest_allowed_local_access(protected_tags.contains_key(&node.tag))
                 } else {
                     WildcardAccessLevel::None
                 };

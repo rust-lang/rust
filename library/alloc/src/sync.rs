@@ -2423,10 +2423,10 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
     }
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Arc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
@@ -4852,7 +4852,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 }
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueArc<T> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]

@@ -880,7 +880,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::Rustdoc,
+                test::RustdocHtml,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::CodegenCranelift,
@@ -967,6 +967,7 @@ impl<'a> Builder<'a> {
                 dist::Mingw,
                 dist::Rustc,
                 dist::CraneliftCodegenBackend,
+                dist::GccCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -986,9 +987,10 @@ impl<'a> Builder<'a> {
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
+                dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::GccDev
             ),
             Kind::Install => describe!(
                 install::Docs,
@@ -998,6 +1000,7 @@ impl<'a> Builder<'a> {
                 // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
                 // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
                 install::Rustc,
+                install::RustcDev,
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,

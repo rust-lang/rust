@@ -1384,13 +1384,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(parent), .. })
                 | hir::Node::Expr(parent) = tcx.parent_hir_node(path_expr.hir_id)
             {
-                let replacement_span =
-                    if let hir::ExprKind::Call(..) | hir::ExprKind::Struct(..) = parent.kind {
-                        // We want to replace the parts that need to go, like `()` and `{}`.
+                // We want to replace the parts that need to go, like `()` and `{}`.
+                let replacement_span = match parent.kind {
+                    hir::ExprKind::Call(callee, _) if callee.hir_id == path_expr.hir_id => {
                         span.with_hi(parent.span.hi())
-                    } else {
-                        span
-                    };
+                    }
+                    hir::ExprKind::Struct(..) => span.with_hi(parent.span.hi()),
+                    _ => span,
+                };
                 match (variant.ctor, parent.kind) {
                     (None, hir::ExprKind::Struct(..)) => {
                         // We want a struct and we have a struct. We won't suggest changing
@@ -2511,7 +2512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 applicability = Applicability::HasPlaceholders;
                 "(...)".to_owned()
             };
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 sugg_span,
                 "use associated function syntax instead",
                 format!("{ty_str}::{item_name}{args}"),
@@ -3543,10 +3544,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         return_type: Option<Ty<'tcx>>,
     ) {
-        let output_ty = match self.err_ctxt().get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
-            _ => return,
-        };
+        let Some(output_ty) = self.err_ctxt().get_impl_future_output_ty(ty) else { return };
+        let output_ty = self.resolve_vars_if_possible(output_ty);
         let method_exists =
             self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);

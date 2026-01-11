@@ -4,7 +4,7 @@ use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     Flags, InferTy, TypeFlags, UintTy,
-    inherent::{AdtDef, BoundExistentialPredicates as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef, BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use stdx::never;
 
@@ -83,8 +83,13 @@ impl CastError {
         expr: ExprId,
         expr_ty: Ty<'db>,
         cast_ty: Ty<'db>,
-    ) -> InferenceDiagnostic<'db> {
-        InferenceDiagnostic::InvalidCast { expr, error: self, expr_ty, cast_ty }
+    ) -> InferenceDiagnostic {
+        InferenceDiagnostic::InvalidCast {
+            expr,
+            error: self,
+            expr_ty: expr_ty.store(),
+            cast_ty: cast_ty.store(),
+        }
     }
 }
 
@@ -109,7 +114,7 @@ impl<'db> CastCheck<'db> {
     pub(super) fn check(
         &mut self,
         ctx: &mut InferenceContext<'_, 'db>,
-    ) -> Result<(), InferenceDiagnostic<'db>> {
+    ) -> Result<(), InferenceDiagnostic> {
         self.expr_ty = ctx.table.try_structurally_resolve_type(self.expr_ty);
         self.cast_ty = ctx.table.try_structurally_resolve_type(self.cast_ty);
 
@@ -137,7 +142,7 @@ impl<'db> CastCheck<'db> {
         {
             return Err(InferenceDiagnostic::CastToUnsized {
                 expr: self.expr,
-                cast_ty: self.cast_ty,
+                cast_ty: self.cast_ty.store(),
             });
         }
 
@@ -393,8 +398,9 @@ fn pointer_kind<'db>(
 
             let struct_data = id.fields(ctx.db);
             if let Some((last_field, _)) = struct_data.fields().iter().last() {
-                let last_field_ty =
-                    ctx.db.field_types(id.into())[last_field].instantiate(ctx.interner(), subst);
+                let last_field_ty = ctx.db.field_types(id.into())[last_field]
+                    .get()
+                    .instantiate(ctx.interner(), subst);
                 pointer_kind(last_field_ty, ctx)
             } else {
                 Ok(Some(PointerKind::Thin))

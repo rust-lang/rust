@@ -47,21 +47,21 @@ cfg_select! {
         #[path = "os/x86.rs"]
         mod os;
     }
-    all(any(target_os = "linux", target_os = "android"), feature = "libc") => {
+    any(target_os = "linux", target_os = "android") => {
         #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
         #[path = "os/riscv.rs"]
         mod riscv;
         #[path = "os/linux/mod.rs"]
         mod os;
     }
-    all(target_os = "freebsd", feature = "libc") => {
+    target_os = "freebsd" => {
         #[cfg(target_arch = "aarch64")]
         #[path = "os/aarch64.rs"]
         mod aarch64;
         #[path = "os/freebsd/mod.rs"]
         mod os;
     }
-    all(target_os = "openbsd", feature = "libc") => {
+    target_os = "openbsd" => {
         #[allow(dead_code)] // we don't use code that calls the mrs instruction.
         #[cfg(target_arch = "aarch64")]
         #[path = "os/aarch64.rs"]
@@ -73,7 +73,7 @@ cfg_select! {
         #[path = "os/windows/aarch64.rs"]
         mod os;
     }
-    all(target_vendor = "apple", target_arch = "aarch64", feature = "libc") => {
+    all(target_vendor = "apple", target_arch = "aarch64") => {
         #[path = "os/darwin/aarch64.rs"]
         mod os;
     }

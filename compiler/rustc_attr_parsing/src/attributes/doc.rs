@@ -10,7 +10,7 @@ use thin_vec::ThinVec;
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
-use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
+use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttributeNotAttribute,
     DocKeywordNotKeyword,
@@ -43,10 +43,10 @@ fn check_attribute<S: Stage>(
     false
 }
 
-fn parse_keyword_and_attribute<'c, S, F>(
-    cx: &'c mut AcceptContext<'_, '_, S>,
-    path: &PathParser<'_>,
-    args: &ArgParser<'_>,
+fn parse_keyword_and_attribute<S, F>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    path: &OwnedPathParser,
+    args: &ArgParser,
     attr_value: &mut Option<(Symbol, Span)>,
     callback: F,
 ) where
@@ -82,10 +82,10 @@ pub(crate) struct DocParser {
 }
 
 impl DocParser {
-    fn parse_single_test_doc_attr_item<'c, S: Stage>(
+    fn parse_single_test_doc_attr_item<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        mip: &'c MetaItemParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        mip: &MetaItemParser,
     ) {
         let path = mip.path();
         let args = mip.args();
@@ -106,7 +106,7 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.list() else {
-                    cx.expected_list(cx.attr_span);
+                    cx.expected_list(cx.attr_span, args);
                     return;
                 };
 
@@ -132,9 +132,9 @@ impl DocParser {
         }
     }
 
-    fn add_alias<'c, S: Stage>(
+    fn add_alias<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_, S>,
         alias: Symbol,
         span: Span,
     ) {
@@ -167,11 +167,11 @@ impl DocParser {
         self.attribute.aliases.insert(alias, span);
     }
 
-    fn parse_alias<'c, S: Stage>(
+    fn parse_alias<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        path: &PathParser<'_>,
-        args: &ArgParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        path: &OwnedPathParser,
+        args: &ArgParser,
     ) {
         match args {
             ArgParser::NoArgs => {
@@ -197,11 +197,11 @@ impl DocParser {
         }
     }
 
-    fn parse_inline<'c, S: Stage>(
+    fn parse_inline<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        path: &PathParser<'_>,
-        args: &ArgParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        path: &OwnedPathParser,
+        args: &ArgParser,
         inline: DocInline,
     ) {
         if let Err(span) = args.no_args() {
@@ -212,11 +212,7 @@ impl DocParser {
         self.attribute.inline.push((inline, path.span()));
     }
 
-    fn parse_cfg<'c, S: Stage>(
-        &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &ArgParser<'_>,
-    ) {
+    fn parse_cfg<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         // This function replaces cases like `cfg(all())` with `true`.
         fn simplify_cfg(cfg_entry: &mut CfgEntry) {
             match cfg_entry {
@@ -236,11 +232,11 @@ impl DocParser {
         }
     }
 
-    fn parse_auto_cfg<'c, S: Stage>(
+    fn parse_auto_cfg<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        path: &PathParser<'_>,
-        args: &ArgParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        path: &OwnedPathParser,
+        args: &ArgParser,
     ) {
         match args {
             ArgParser::NoArgs => {
@@ -343,10 +339,10 @@ impl DocParser {
         }
     }
 
-    fn parse_single_doc_attr_item<'c, S: Stage>(
+    fn parse_single_doc_attr_item<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        mip: &MetaItemParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        mip: &MetaItemParser,
     ) {
         let path = mip.path();
         let args = mip.args();
@@ -506,10 +502,10 @@ impl DocParser {
         }
     }
 
-    fn accept_single_doc_attr<'c, S: Stage>(
+    fn accept_single_doc_attr<S: Stage>(
         &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
     ) {
         match args {
             ArgParser::NoArgs => {

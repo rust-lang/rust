@@ -58,9 +58,7 @@ pub(crate) fn ssr_assists(
 mod tests {
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
-    use ide_db::{
-        FileRange, FxHashSet, RootDatabase, base_db::salsa::Setter as _, symbol_index::LocalRoots,
-    };
+    use ide_db::{FileRange, FxHashSet, LocalRoots, RootDatabase, base_db::salsa::Setter as _};
     use test_fixture::WithFixture;
 
     use super::ssr_assists;

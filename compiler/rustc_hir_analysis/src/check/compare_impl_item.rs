@@ -14,8 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -352,6 +353,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // type would be more appropriate. In other places we have a `Vec<Span>`
     // corresponding to their `Vec<Predicate>`, but we don't have that here.
     // Fixing this would improve the output of test `issue-83765.rs`.
+    // There's the same issue in compare_eii code.
     let result = ocx.sup(&cause, param_env, trait_sig, impl_sig);
 
     if let Err(terr) = result {
@@ -1093,6 +1095,55 @@ fn check_region_bounds_on_impl_item<'tcx>(
     let trait_generics = tcx.generics_of(trait_m.def_id);
     let trait_params = trait_generics.own_counts().lifetimes;
 
+    let Err(CheckNumberOfEarlyBoundRegionsError { span, generics_span, bounds_span, where_span }) =
+        check_number_of_early_bound_regions(
+            tcx,
+            impl_m.def_id.expect_local(),
+            trait_m.def_id,
+            impl_generics,
+            impl_params,
+            trait_generics,
+            trait_params,
+        )
+    else {
+        return Ok(());
+    };
+
+    if !delay && let Some(guar) = check_region_late_boundedness(tcx, impl_m, trait_m) {
+        return Err(guar);
+    }
+
+    let reported = tcx
+        .dcx()
+        .create_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind: impl_m.descr(),
+            ident: impl_m.ident(tcx),
+            generics_span,
+            bounds_span,
+            where_span,
+        })
+        .emit_unless_delay(delay);
+
+    Err(reported)
+}
+
+pub(super) struct CheckNumberOfEarlyBoundRegionsError {
+    pub(super) span: Span,
+    pub(super) generics_span: Span,
+    pub(super) bounds_span: Vec<Span>,
+    pub(super) where_span: Option<Span>,
+}
+
+pub(super) fn check_number_of_early_bound_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: LocalDefId,
+    trait_def_id: DefId,
+    impl_generics: &Generics,
+    impl_params: usize,
+    trait_generics: &Generics,
+    trait_params: usize,
+) -> Result<(), CheckNumberOfEarlyBoundRegionsError> {
     debug!(?trait_generics, ?impl_generics);
 
     // Must have same number of early-bound lifetime parameters.
@@ -1108,20 +1159,16 @@ fn check_region_bounds_on_impl_item<'tcx>(
         return Ok(());
     }
 
-    if !delay && let Some(guar) = check_region_late_boundedness(tcx, impl_m, trait_m) {
-        return Err(guar);
-    }
-
     let span = tcx
-        .hir_get_generics(impl_m.def_id.expect_local())
+        .hir_get_generics(impl_def_id)
         .expect("expected impl item to have generics or else we can't compare them")
         .span;
 
-    let mut generics_span = tcx.def_span(trait_m.def_id);
+    let mut generics_span = tcx.def_span(trait_def_id);
     let mut bounds_span = vec![];
     let mut where_span = None;
 
-    if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
+    if let Some(trait_node) = tcx.hir_get_if_local(trait_def_id)
         && let Some(trait_generics) = trait_node.generics()
     {
         generics_span = trait_generics.span;
@@ -1146,7 +1193,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
                 _ => {}
             }
         }
-        if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
+        if let Some(impl_node) = tcx.hir_get_if_local(impl_def_id.into())
             && let Some(impl_generics) = impl_node.generics()
         {
             let mut impl_bounds = 0;
@@ -1177,19 +1224,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         }
     }
 
-    let reported = tcx
-        .dcx()
-        .create_err(LifetimesOrBoundsMismatchOnTrait {
-            span,
-            item_kind: impl_m.descr(),
-            ident: impl_m.ident(tcx),
-            generics_span,
-            bounds_span,
-            where_span,
-        })
-        .emit_unless_delay(delay);
-
-    Err(reported)
+    Err(CheckNumberOfEarlyBoundRegionsError { span, generics_span, bounds_span, where_span })
 }
 
 #[allow(unused)]

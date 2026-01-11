@@ -5,22 +5,6 @@ LL | #[doc(cfg(), cfg(foo, bar))]
    | ^^^^^^^^^--^^^^^^^^^^^^^^^^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:3:1
@@ -29,22 +13,6 @@ LL | #[doc(cfg(), cfg(foo, bar))]
    | ^^^^^^^^^^^^^^^^----------^^
    |                 |
    |                 expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:6:1
@@ -53,22 +21,6 @@ LL | #[doc(cfg())]
    | ^^^^^^^^^--^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg())]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg())]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg())]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg())]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:7:1
@@ -77,22 +29,6 @@ LL | #[doc(cfg(foo, bar))]
    | ^^^^^^^^^----------^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(foo, bar))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(foo, bar))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(foo, bar))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(foo, bar))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:8:1
@@ -101,22 +37,6 @@ LL | #[doc(auto_cfg(hide(foo::bar)))]
    | ^^^^^^^^^^^^^^^^^^^^--------^^^^
    |                     |
    |                     expected a valid identifier here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error: aborting due to 5 previous errors
 

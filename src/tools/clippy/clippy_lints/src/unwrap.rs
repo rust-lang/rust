@@ -180,14 +180,19 @@ impl Local {
                 field_indices,
                 ..
             } => {
+                let field_projections = place
+                    .projections
+                    .iter()
+                    .filter(|proj| matches!(proj.kind, ProjectionKind::Field(_, _)))
+                    .collect::<Vec<_>>();
                 is_potentially_local_place(*local_id, place)
                     // If there were projections other than field projections, err on the side of caution and say that they
                     // _might_ be mutating something.
                     //
                     // The reason we use `<=` and not `==` is that a mutation of `struct` or `struct.field1` should count as
                     // mutation of the child fields such as `struct.field1.field2`
-                    && place.projections.len() <= field_indices.len()
-                    && iter::zip(&place.projections, field_indices.iter().copied().rev()).all(|(proj, field_idx)| {
+                    && field_projections.len() <= field_indices.len()
+                    && iter::zip(&field_projections, field_indices.iter().copied().rev()).all(|(proj, field_idx)| {
                          match proj.kind {
                             ProjectionKind::Field(f_idx, _) => f_idx == field_idx,
                                 // If this is a projection we don't expect, it _might_ be mutating something

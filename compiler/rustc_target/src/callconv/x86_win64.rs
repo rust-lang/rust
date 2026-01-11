@@ -25,6 +25,7 @@ where
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
+            BackendRepr::ScalableVector { .. } => panic!("scalable vectors are unsupported"),
             BackendRepr::Scalar(scalar) => {
                 if is_ret && matches!(scalar.primitive(), Primitive::Int(Integer::I128, _)) {
                     if cx.target_spec().rustc_abi == Some(RustcAbi::X86Softfloat) {

@@ -64,7 +64,7 @@ Before the stabilization will be considered by the lang team, there must be a co
 There is a central listing of unstable feature-gates in [`compiler/rustc_feature/src/unstable.rs`].
 Search for the `declare_features!`  macro.
 There should be an entry for the feature you are aiming to stabilize,
-something like the following (taken from [rust-lang/rust#32409]:
+something like the following (taken from [rust-lang/rust#32409]):
 
 ```rust,ignore
 // pub(restricted) visibilities (RFC 1422)

@@ -1,7 +1,12 @@
 [package]
 name = "libm"
 version = "0.2.15"
-authors = ["Jorge Aparicio <jorge@japaric.io>"]
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
 description = "libm in pure Rust"
 categories = ["no-std"]
 keywords = ["libm", "math"]

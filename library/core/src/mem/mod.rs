@@ -19,6 +19,10 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+mod maybe_dangling;
+#[unstable(feature = "maybe_dangling", issue = "118166")]
+pub use maybe_dangling::MaybeDangling;
+
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, TransmuteFrom};
@@ -32,6 +36,9 @@ pub use drop_guard::DropGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
+
+#[unstable(feature = "type_info", issue = "146922")]
+pub mod type_info;
 
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///

@@ -37,7 +37,11 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             change: Some(TextDocumentSyncKind::INCREMENTAL),
             will_save: None,
             will_save_wait_until: None,
-            save: Some(SaveOptions::default().into()),
+            save: if config.caps().did_save_text_document_dynamic_registration() {
+                None
+            } else {
+                Some(SaveOptions::default().into())
+            },
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {

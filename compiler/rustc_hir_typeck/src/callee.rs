@@ -169,27 +169,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let valid = match canon_abi {
+        match canon_abi {
             // Rust doesn't know how to call functions with this ABI.
-            CanonAbi::Custom => false,
-
-            // These is an entry point for the host, and cannot be called on the GPU.
-            CanonAbi::GpuKernel => false,
-
+            CanonAbi::Custom
             // The interrupt ABIs should only be called by the CPU. They have complex
             // pre- and postconditions, and can use non-standard instructions like `iret` on x86.
-            CanonAbi::Interrupt(_) => false,
+            | CanonAbi::Interrupt(_) => {
+                let err = crate::errors::AbiCannotBeCalled { span, abi };
+                self.tcx.dcx().emit_err(err);
+            }
+
+            // This is an entry point for the host, and cannot be called directly.
+            CanonAbi::GpuKernel => {
+                let err = crate::errors::GpuKernelAbiCannotBeCalled { span };
+                self.tcx.dcx().emit_err(err);
+            }
 
             CanonAbi::C
             | CanonAbi::Rust
             | CanonAbi::RustCold
             | CanonAbi::Arm(_)
-            | CanonAbi::X86(_) => true,
-        };
-
-        if !valid {
-            let err = crate::errors::AbiCannotBeCalled { span, abi };
-            self.tcx.dcx().emit_err(err);
+            | CanonAbi::X86(_) => {}
         }
     }
 
@@ -458,15 +458,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Actually need to unwrap one more layer of HIR to get to
             // the _real_ closure...
-            if let hir::Node::Expr(&hir::Expr {
+            let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) = self.tcx.parent_hir_node(parent_hir_id)
-            {
-                fn_decl_span
-            } else {
+            else {
                 return;
-            }
+            };
+            fn_decl_span
         } else {
             return;
         };

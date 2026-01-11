@@ -104,7 +104,8 @@ types! {
 }
 
 types! {
-    #![unstable(feature = "stdarch_neon_f16", issue = "136306")]
+    #![cfg_attr(not(target_arch = "arm"), stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION"))]
+    #![cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 
     /// Arm-specific 64-bit wide vector of four packed `f16`.
     pub struct float16x4_t(4 x pub(crate) f16);
@@ -747,19 +748,40 @@ pub struct uint32x4x4_t(
 /// Arm-specific type containing two `float16x4_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x4x2_t(pub float16x4_t, pub float16x4_t);
 
 /// Arm-specific type containing three `float16x4_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x4x3_t(pub float16x4_t, pub float16x4_t, pub float16x4_t);
 
 /// Arm-specific type containing four `float16x4_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x4x4_t(
     pub float16x4_t,
     pub float16x4_t,
@@ -770,19 +792,40 @@ pub struct float16x4x4_t(
 /// Arm-specific type containing two `float16x8_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x8x2_t(pub float16x8_t, pub float16x8_t);
 
 /// Arm-specific type containing three `float16x8_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x8x3_t(pub float16x8_t, pub float16x8_t, pub float16x8_t);
 
 /// Arm-specific type containing four `float16x8_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub struct float16x8x4_t(
     pub float16x8_t,
     pub float16x8_t,

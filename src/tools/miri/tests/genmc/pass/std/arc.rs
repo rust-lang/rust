@@ -1,6 +1,5 @@
 //@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@revisions: check_count try_upgrade
-//@normalize-stderr-test: "\n *= note: inside `std::.*" -> ""
 
 // Check that various operations on `std::sync::Arc` are handled properly in GenMC mode.
 //

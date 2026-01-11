@@ -3,19 +3,22 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, RtsanSetting, UsedBy};
+use rustc_hir::attrs::{
+    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 
 use crate::errors;
@@ -41,37 +44,6 @@ fn try_fn_sig<'tcx>(
     } else {
         tcx.dcx().span_delayed_bug(attr_span, "this attribute can only be applied to functions");
         None
-    }
-}
-
-// FIXME(jdonszelmann): remove when instruction_set becomes a parsed attr
-fn parse_instruction_set_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<InstructionSetAttr> {
-    let list = attr.meta_item_list()?;
-
-    match &list[..] {
-        [MetaItemInner::MetaItem(set)] => {
-            let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-            match segments.as_slice() {
-                [sym::arm, sym::a32 | sym::t32] if !tcx.sess.target.has_thumb_interworking => {
-                    tcx.dcx().emit_err(errors::UnsupportedInstructionSet { span: attr.span() });
-                    None
-                }
-                [sym::arm, sym::a32] => Some(InstructionSetAttr::ArmA32),
-                [sym::arm, sym::t32] => Some(InstructionSetAttr::ArmT32),
-                _ => {
-                    tcx.dcx().emit_err(errors::InvalidInstructionSet { span: attr.span() });
-                    None
-                }
-            }
-        }
-        [] => {
-            tcx.dcx().emit_err(errors::BareInstructionSet { span: attr.span() });
-            None
-        }
-        _ => {
-            tcx.dcx().emit_err(errors::MultipleInstructionSet { span: attr.span() });
-            None
-        }
     }
 }
 
@@ -310,11 +282,64 @@ fn process_builtin_attrs(
                 AttributeKind::ObjcSelector { methname, .. } => {
                     codegen_fn_attrs.objc_selector = Some(*methname);
                 }
+                AttributeKind::EiiExternItem => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                }
+                AttributeKind::EiiImpls(impls) => {
+                    for i in impls {
+                        let extern_item = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => {
+                                let Some(extern_item) = find_attr!(
+                                    tcx.get_all_attrs(def_id),
+                                    AttributeKind::EiiExternTarget(target) => target.eii_extern_target
+                                ) else {
+                                    tcx.dcx().span_delayed_bug(
+                                        i.span,
+                                        "resolved to something that's not an EII",
+                                    );
+                                    continue;
+                                };
+                                extern_item
+                            }
+                            EiiImplResolution::Known(decl) => decl.eii_extern_target,
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
+
+                        // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                        // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                        // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                        // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                        // the default implementation is used while an explicit implementation is given.
+                        if
+                        // if this is a default impl
+                        i.is_default
+                            // iterate over all implementations *in the current crate*
+                            // (this is ok since we generate codegen fn attrs in the local crate)
+                            // if any of them is *not default* then don't emit the alias.
+                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&extern_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
+                        {
+                            continue;
+                        }
+
+                        codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                            extern_item,
+                            if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
+                            Visibility::Default,
+                        ));
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                    }
+                }
+                AttributeKind::ThreadLocal => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL
+                }
+                AttributeKind::InstructionSet(instruction_set) => {
+                    codegen_fn_attrs.instruction_set = Some(*instruction_set)
+                }
                 _ => {}
             }
         }
 
-        let Some(Ident { name, .. }) = attr.ident() else {
+        let Some(name) = attr.name() else {
             continue;
         };
 
@@ -325,10 +350,6 @@ fn process_builtin_attrs(
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
-            }
-            sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::instruction_set => {
-                codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }
             sym::patchable_function_entry => {
                 codegen_fn_attrs.patchable_function_entry =
@@ -411,6 +432,12 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
             //   both for exports and imports through foreign items. This is handled further,
             //   during symbol mangling logic.
+        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
+        {
+            // * externally implementable items keep their mangled symbol name.
+            //   multiple EIIs can have the same name, so not mangling them would be a bug.
+            //   Implementing an EII does the appropriate name resolution to make sure the implementations
+            //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
         } else if codegen_fn_attrs.symbol_name.is_some() {
             // * This can be overridden with the `#[link_name]` attribute
         } else {
@@ -721,11 +748,10 @@ pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     };
 
     // First read the ret symbol from the attribute
-    let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
-        p1.segments.first().unwrap().ident
-    } else {
+    let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity else {
         span_bug!(attr.span(), "rustc_autodiff attribute must contain the return activity");
     };
+    let ret_symbol = p1.segments.first().unwrap().ident;
 
     // Then parse it into an actual DiffActivity
     let Ok(ret_activity) = DiffActivity::from_str(ret_symbol.as_str()) else {

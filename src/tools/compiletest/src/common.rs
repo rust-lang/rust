@@ -18,7 +18,7 @@ string_enum! {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocJson => "rustdoc-json",
         CodegenUnits => "codegen-units",
         Incremental => "incremental",
@@ -69,7 +69,7 @@ string_enum! {
         Pretty => "pretty",
         RunMake => "run-make",
         RunMakeCargo => "run-make-cargo",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
         RustdocJsStd=> "rustdoc-js-std",
@@ -438,6 +438,11 @@ pub struct Config {
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub with_std_debug_assertions: bool,
 
+    /// Whether *staged* `std` was built with remapping of debuginfo.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
+    pub with_std_remap_debuginfo: bool,
+
     /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
     ///
     /// FIXME(#139660): the current hand-rolled test executor intentionally mimics the `libtest`
@@ -620,6 +625,9 @@ pub struct Config {
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
 
+    /// Whether to run `offload` autodiff tests.
+    pub has_offload: bool,
+
     /// The current Rust channel info.
     ///
     /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but
@@ -707,6 +715,11 @@ pub struct Config {
     pub override_codegen_backend: Option<String>,
     /// Whether to ignore `//@ ignore-backends`.
     pub bypass_ignore_backends: bool,
+
+    /// Number of parallel jobs configured for the build.
+    ///
+    /// This is forwarded from bootstrap's `jobs` configuration.
+    pub jobs: u32,
 }
 
 impl Config {

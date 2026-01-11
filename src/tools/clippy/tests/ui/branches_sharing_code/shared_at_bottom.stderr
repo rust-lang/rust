@@ -202,5 +202,73 @@ LL ~     }
 LL ~     1;
    |
 
-error: aborting due to 12 previous errors
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:313:5
+   |
+LL | /     if false {
+LL | |
+LL | |         type ISize = isize;
+LL | |         return ISize::MAX;
+   | |__________________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     type ISize = isize;
+LL +     return ISize::MAX;
+LL +     if false {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:322:5
+   |
+LL | /     if false {
+LL | |
+LL | |         fn foo() -> isize {
+LL | |             4
+LL | |         }
+LL | |         return foo();
+   | |_____________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     fn foo() -> isize {
+LL +         4
+LL +     }
+LL +     return foo();
+LL +     if false {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:335:5
+   |
+LL | /     if false {
+LL | |
+LL | |         use std::num::NonZeroIsize;
+LL | |         return NonZeroIsize::new(4).unwrap().get();
+   | |___________________________________________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     use std::num::NonZeroIsize;
+LL +     return NonZeroIsize::new(4).unwrap().get();
+LL +     if false {
+   |
+
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:344:5
+   |
+LL | /     if false {
+LL | |
+LL | |         const B: isize = 5;
+LL | |         return B;
+   | |_________________^
+   |
+help: consider moving these statements before the if
+   |
+LL ~     const B: isize = 5;
+LL +     return B;
+LL +     if false {
+   |
+
+error: aborting due to 16 previous errors
 

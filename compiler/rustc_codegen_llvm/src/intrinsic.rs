@@ -1,7 +1,11 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
+use std::ffi::c_uint;
+use std::ptr;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
+use rustc_abi::{
+    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -26,8 +30,9 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::TgtOffloadEntry;
+use crate::builder::gpu_offload::{OffloadKernelDims, gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
+use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
 };
@@ -202,13 +207,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
-                if !tcx
-                    .sess
-                    .opts
-                    .unstable_opts
-                    .offload
-                    .contains(&rustc_session::config::Offload::Enable)
-                {
+                if tcx.sess.opts.unstable_opts.offload.is_empty() {
                     let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
                 }
 
@@ -351,7 +350,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => bug!(),
                 };
                 let ptr = args[0].immediate();
-                let locality = fn_args.const_at(1).to_value().valtree.unwrap_leaf().to_i32();
+                let locality = fn_args.const_at(1).to_leaf().to_i32();
                 self.call_intrinsic(
                     "llvm.prefetch",
                     &[self.val_ty(ptr)],
@@ -480,6 +479,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
+                    ScalableVector { .. } => {
+                        tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                            span,
+                            name: sym::raw_eq,
+                            ty: tp_ty,
+                        });
+                        return Ok(());
+                    }
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -629,6 +636,99 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             self.store_to_place(llval, result.val);
         }
         Ok(())
+    }
+
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value {
+        let tcx = self.tcx();
+
+        // FIXME remove usage of fn_abi
+        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+        assert!(!fn_abi.ret.is_indirect());
+        let fn_ty = fn_abi.llvm_type(self);
+
+        let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
+            llfn
+        } else {
+            let sym = tcx.symbol_name(instance).name;
+
+            // FIXME use get_intrinsic
+            let llfn = if let Some(llfn) = self.get_declared_value(sym) {
+                llfn
+            } else {
+                // Function addresses in Rust are never significant, allowing functions to
+                // be merged.
+                let llfn = declare_raw_fn(
+                    self,
+                    sym,
+                    fn_abi.llvm_cconv(self),
+                    llvm::UnnamedAddr::Global,
+                    llvm::Visibility::Default,
+                    fn_ty,
+                );
+                fn_abi.apply_attrs_llfn(self, llfn, Some(instance));
+
+                llfn
+            };
+
+            self.intrinsic_instances.borrow_mut().insert(instance, llfn);
+
+            llfn
+        };
+
+        let mut llargs = vec![];
+
+        for arg in args {
+            match arg.val {
+                OperandValue::ZeroSized => {}
+                OperandValue::Immediate(_) => llargs.push(arg.immediate()),
+                OperandValue::Pair(a, b) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                }
+                OperandValue::Ref(op_place_val) => {
+                    let mut llval = op_place_val.llval;
+                    // We can't use `PlaceRef::load` here because the argument
+                    // may have a type we don't treat as immediate, but the ABI
+                    // used for this call is passing it by-value. In that case,
+                    // the load would just produce `OperandValue::Ref` instead
+                    // of the `OperandValue::Immediate` we need for the call.
+                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
+                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                        if scalar.is_bool() {
+                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
+                        }
+                        // We store bools as `i8` so we need to truncate to `i1`.
+                        llval = self.to_immediate_scalar(llval, scalar);
+                    }
+                    llargs.push(llval);
+                }
+            }
+        }
+
+        debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
+        let args = self.check_call("call", fn_ty, fn_ptr, &llargs);
+        let llret = unsafe {
+            llvm::LLVMBuildCallWithOperandBundles(
+                self.llbuilder,
+                fn_ty,
+                fn_ptr,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                ptr::dangling(),
+                0,
+                c"".as_ptr(),
+            )
+        };
+        if is_cleanup {
+            self.apply_attrs_to_cleanup_callsite(llret);
+        }
+
+        llret
     }
 
     fn abort(&mut self) {
@@ -1284,10 +1384,9 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    let args = get_args_from_tuple(bx, args[1], fn_target);
+    let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
+    let args = get_args_from_tuple(bx, args[3], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
-
-    let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
 
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
     let inputs = sig.inputs();
@@ -1296,17 +1395,16 @@ fn codegen_offload<'ll, 'tcx>(
 
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
-    let offload_data = crate::builder::gpu_offload::gen_define_handling(
-        cx,
-        offload_entry_ty,
-        &metadata,
-        &types,
-        &target_symbol,
-    );
-
-    // FIXME(Sa4dUs): pass the original builder once we separate kernel launch logic from globals
-    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
-    crate::builder::gpu_offload::gen_call_handling(cx, bb, &offload_data, &args, &types, &metadata);
+    let offload_globals_ref = cx.offload_globals.borrow();
+    let offload_globals = match offload_globals_ref.as_ref() {
+        Some(globals) => globals,
+        None => {
+            // Offload is not initialized, cannot continue
+            return;
+        }
+    };
+    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
+    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
@@ -1528,7 +1626,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle_const_generic {
-        let idx = fn_args[2].expect_const().to_value().valtree.unwrap_branch();
+        let idx = fn_args[2].expect_const().to_branch();
         let n = idx.len() as u64;
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
@@ -1547,7 +1645,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .iter()
             .enumerate()
             .map(|(arg_idx, val)| {
-                let idx = val.unwrap_leaf().to_i32();
+                let idx = val.to_leaf().to_i32();
                 if idx >= i32::try_from(total_len).unwrap() {
                     bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
                         span,
@@ -1679,11 +1777,27 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        let in_elem_bitwidth = require_int_or_uint_ty!(
-            m_elem_ty.kind(),
-            InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
-        );
-        let m_i1s = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len);
+
+        let m_i1s = if args[1].layout.ty.is_scalable_vector() {
+            match m_elem_ty.kind() {
+                ty::Bool => {}
+                _ => return_error!(InvalidMonomorphization::MaskWrongElementType {
+                    span,
+                    name,
+                    ty: m_elem_ty
+                }),
+            };
+            let i1 = bx.type_i1();
+            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
+            bx.trunc(args[0].immediate(), i1xn)
+        } else {
+            let in_elem_bitwidth = require_int_or_uint_ty!(
+                m_elem_ty.kind(),
+                InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
+            );
+            vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len)
+        };
+
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
@@ -1756,11 +1870,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }};
         }
 
-        let elem_ty = if let ty::Float(f) = in_elem.kind() {
-            bx.cx.type_float_from_ty(*f)
-        } else {
+        let ty::Float(f) = in_elem.kind() else {
             return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
         };
+        let elem_ty = bx.cx.type_float_from_ty(*f);
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
 
@@ -1944,9 +2057,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
-        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-            .unwrap_leaf()
-            .to_simd_alignment();
+        let alignment = fn_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -2039,9 +2150,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
-        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-            .unwrap_leaf()
-            .to_simd_alignment();
+        let alignment = fn_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;

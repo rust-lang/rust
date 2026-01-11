@@ -15,7 +15,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
             span: cx.attr_span,
             reason: match args {
@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
             span: cx.attr_span,
             reason: match args {

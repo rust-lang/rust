@@ -5,22 +5,6 @@ LL | #[doc(123)]
    | ^^^^^^---^^
    |       |
    |       expected this to be of the form `... = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(123)]
-LL + #[doc = "string"]
-   |
-LL - #[doc(123)]
-LL + #[doc(alias)]
-   |
-LL - #[doc(123)]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(123)]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:11:1
@@ -29,22 +13,6 @@ LL | #[doc("hello", "bar")]
    | ^^^^^^-------^^^^^^^^^
    |       |
    |       expected this to be of the form `... = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc = "string"]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(alias)]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:11:1
@@ -53,22 +21,6 @@ LL | #[doc("hello", "bar")]
    | ^^^^^^^^^^^^^^^-----^^
    |                |
    |                expected this to be of the form `... = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc = "string"]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(alias)]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc("hello", "bar")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error: unknown `doc` attribute `as_ptr`
   --> $DIR/doc-attr.rs:5:7

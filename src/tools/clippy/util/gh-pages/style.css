@@ -637,14 +637,14 @@ pre, hr {
     display: flex;
 }
 
-ul.dropdown-menu li.checkbox > button {
+#menu-filters ul.dropdown-menu li.checkbox > button {
     border: 0;
     width: 100%;
     background: var(--theme-popup-bg);
     color: var(--fg);
 }
 
-ul.dropdown-menu li.checkbox > button:hover {
+#menu-filters ul.dropdown-menu li.checkbox > button:hover {
     background: var(--theme-hover);
     box-shadow: none;
 }

@@ -1,5 +1,5 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -Z unstable-options -Clinker-flavor=llbc
+//@ compile-flags: --crate-type cdylib
 //@ only-nvptx64
 
 #![no_std]

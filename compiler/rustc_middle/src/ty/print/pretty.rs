@@ -16,7 +16,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
-use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
+use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -890,7 +890,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
                             // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
                         )?;
                     } else {
                         write!(self, "@")?;
@@ -921,7 +921,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
                             // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
                         )?;
                     } else {
                         write!(self, "@")?;
@@ -947,10 +947,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 self.print_def_path(did.to_def_id(), args)?;
                             } else {
                                 let span = self.tcx().def_span(did);
-                                let preference = if with_forced_trimmed_paths() {
-                                    FileNameDisplayPreference::Short
+                                let loc = if with_forced_trimmed_paths() {
+                                    self.tcx().sess.source_map().span_to_short_string(
+                                        span,
+                                        RemapPathScopeComponents::DIAGNOSTICS,
+                                    )
                                 } else {
-                                    FileNameDisplayPreference::Remapped
+                                    self.tcx().sess.source_map().span_to_diagnostic_string(span)
                                 };
                                 write!(
                                     self,
@@ -958,7 +961,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                     // This may end up in stderr diagnostics but it may also be
                                     // emitted into MIR. Hence we use the remapped path if
                                     // available
-                                    self.tcx().sess.source_map().span_to_string(span, preference)
+                                    loc
                                 )?;
                             }
                         } else {
@@ -1004,18 +1007,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             self.print_def_path(did.to_def_id(), args)?;
                         } else {
                             let span = self.tcx().def_span(did);
-                            let preference = if with_forced_trimmed_paths() {
-                                FileNameDisplayPreference::Short
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            let loc = if with_forced_trimmed_paths() {
+                                self.tcx().sess.source_map().span_to_short_string(
+                                    span,
+                                    RemapPathScopeComponents::DIAGNOSTICS,
+                                )
                             } else {
-                                FileNameDisplayPreference::Remapped
+                                self.tcx().sess.source_map().span_to_diagnostic_string(span)
                             };
-                            write!(
-                                self,
-                                "@{}",
-                                // This may end up in stderr diagnostics but it may also be emitted
-                                // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_string(span, preference)
-                            )?;
+                            write!(self, "@{loc}")?;
                         }
                     } else {
                         write!(self, "@")?;
@@ -1917,66 +1919,65 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 self.pretty_print_byte_str(bytes)?;
                 return Ok(());
             }
-            // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            (ty::ValTreeKind::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents = self.tcx().destructure_const(ty::Const::new_value(
-                    self.tcx(),
-                    cv.valtree,
-                    cv.ty,
-                ));
-                let fields = contents.fields.iter().copied();
+            (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
+                let fields_iter = fields.iter().copied();
+
                 match *cv.ty.kind() {
                     ty::Array(..) => {
                         write!(self, "[")?;
-                        self.comma_sep(fields)?;
+                        self.comma_sep(fields_iter)?;
                         write!(self, "]")?;
                     }
                     ty::Tuple(..) => {
                         write!(self, "(")?;
-                        self.comma_sep(fields)?;
-                        if contents.fields.len() == 1 {
+                        self.comma_sep(fields_iter)?;
+                        if fields.len() == 1 {
                             write!(self, ",")?;
                         }
                         write!(self, ")")?;
                     }
-                    ty::Adt(def, _) if def.variants().is_empty() => {
-                        self.typed_value(
-                            |this| {
-                                write!(this, "unreachable()")?;
-                                Ok(())
-                            },
-                            |this| this.print_type(cv.ty),
-                            ": ",
-                        )?;
-                    }
-                    ty::Adt(def, args) => {
-                        let variant_idx =
-                            contents.variant.expect("destructed const of adt without variant idx");
-                        let variant_def = &def.variant(variant_idx);
-                        self.pretty_print_value_path(variant_def.def_id, args)?;
-                        match variant_def.ctor_kind() {
-                            Some(CtorKind::Const) => {}
-                            Some(CtorKind::Fn) => {
-                                write!(self, "(")?;
-                                self.comma_sep(fields)?;
-                                write!(self, ")")?;
-                            }
-                            None => {
-                                write!(self, " {{ ")?;
-                                let mut first = true;
-                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
-                                    if !first {
-                                        write!(self, ", ")?;
-                                    }
-                                    write!(self, "{}: ", field_def.name)?;
-                                    field.print(self)?;
-                                    first = false;
+                    _ => unreachable!(),
+                }
+                return Ok(());
+            }
+            (ty::ValTreeKind::Branch(_), ty::Adt(def, args)) => {
+                let contents = cv.destructure_adt_const();
+                let fields = contents.fields.iter().copied();
+
+                if def.variants().is_empty() {
+                    self.typed_value(
+                        |this| {
+                            write!(this, "unreachable()")?;
+                            Ok(())
+                        },
+                        |this| this.print_type(cv.ty),
+                        ": ",
+                    )?;
+                } else {
+                    let variant_idx = contents.variant;
+                    let variant_def = &def.variant(variant_idx);
+                    self.pretty_print_value_path(variant_def.def_id, args)?;
+                    match variant_def.ctor_kind() {
+                        Some(CtorKind::Const) => {}
+                        Some(CtorKind::Fn) => {
+                            write!(self, "(")?;
+                            self.comma_sep(fields)?;
+                            write!(self, ")")?;
+                        }
+                        None => {
+                            write!(self, " {{ ")?;
+                            let mut first = true;
+                            for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                                if !first {
+                                    write!(self, ", ")?;
                                 }
-                                write!(self, " }}")?;
+                                write!(self, "{}: ", field_def.name)?;
+                                field.print(self)?;
+                                first = false;
                             }
+                            write!(self, " }}")?;
                         }
                     }
-                    _ => unreachable!(),
                 }
                 return Ok(());
             }
@@ -2258,7 +2259,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                     "<impl at {}>",
                     // This may end up in stderr diagnostics but it may also be emitted
                     // into MIR. Hence we use the remapped path if available
-                    self.tcx.sess.source_map().span_to_embeddable_string(span)
+                    self.tcx.sess.source_map().span_to_diagnostic_string(span)
                 )?;
                 self.empty_path = false;
 
@@ -3379,7 +3380,7 @@ define_print_and_forward_display! {
 fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
     // Iterate all (non-anonymous) local crate items no matter where they are defined.
     for id in tcx.hir_free_items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Use) {
+        if tcx.def_kind(id.owner_id) == DefKind::Use {
             continue;
         }
 

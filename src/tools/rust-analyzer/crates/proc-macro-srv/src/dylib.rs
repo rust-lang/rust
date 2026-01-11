@@ -12,8 +12,8 @@ use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
-    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, dylib::proc_macros::ProcMacros,
-    token_stream::TokenStream,
+    PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan,
+    dylib::proc_macros::ProcMacros, token_stream::TokenStream,
 };
 
 pub(crate) struct Expander {
@@ -37,7 +37,7 @@ impl Expander {
         Ok(Expander { inner: library, modified_time })
     }
 
-    pub(crate) fn expand<S: ProcMacroSrvSpan>(
+    pub(crate) fn expand<'a, S: ProcMacroSrvSpan + 'a>(
         &self,
         macro_name: &str,
         macro_body: TokenStream<S>,
@@ -45,13 +45,14 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
-        <S::Server as bridge::server::Types>::TokenStream: Default,
+        <S::Server<'a> as bridge::server::Types>::TokenStream: Default,
     {
         self.inner
             .proc_macros
-            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
+            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site, callback)
     }
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {

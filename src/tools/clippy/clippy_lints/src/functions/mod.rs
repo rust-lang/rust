@@ -596,4 +596,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
         ref_option::check_trait_item(cx, item, self.avoid_breaking_exported_api);
     }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        result::check_expr(cx, expr, self.large_error_threshold, &self.large_error_ignored);
+    }
 }

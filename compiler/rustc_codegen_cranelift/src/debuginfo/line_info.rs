@@ -6,7 +6,10 @@ use std::path::{Component, Path};
 use cranelift_codegen::MachSrcLoc;
 use cranelift_codegen::binemit::CodeOffset;
 use gimli::write::{FileId, FileInfo, LineProgram, LineString, LineStringTable};
-use rustc_span::{FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHashAlgorithm, hygiene};
+use rustc_span::{
+    FileName, Pos, RemapPathScopeComponents, SourceFile, SourceFileAndLine,
+    SourceFileHashAlgorithm, hygiene,
+};
 
 use crate::debuginfo::FunctionDebugContext;
 use crate::debuginfo::emit::address_for_func;
@@ -95,7 +98,7 @@ impl DebugContext {
             match &source_file.name {
                 FileName::Real(path) => {
                     let (dir_path, file_name) =
-                        split_path_dir_and_file(path.to_path(self.filename_display_preference));
+                        split_path_dir_and_file(path.path(RemapPathScopeComponents::DEBUGINFO));
                     let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
                     let file_name = osstr_as_utf8_bytes(file_name);
 

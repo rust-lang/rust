@@ -9,8 +9,11 @@ use std::{
 
 use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_type_ir::Upcast;
 use rustc_type_ir::elaborate::Elaboratable;
+use rustc_type_ir::{
+    Upcast,
+    solve::{Certainty, NoSolution, inspect},
+};
 use tracing::debug;
 
 use crate::next_solver::{
@@ -36,10 +39,6 @@ pub struct ObligationCause {
 }
 
 impl ObligationCause {
-    #[expect(
-        clippy::new_without_default,
-        reason = "`new` is temporary, eventually we will provide span etc. here"
-    )]
     #[inline]
     pub fn new() -> ObligationCause {
         ObligationCause { _private: () }
@@ -82,6 +81,15 @@ pub struct Obligation<'db, T> {
     /// holds for certain. Stupid halting problem; such a drag.
     pub recursion_depth: usize,
 }
+
+/// A callback that can be provided to `inspect_typeck`. Invoked on evaluation
+/// of root obligations.
+pub type ObligationInspector<'db> = fn(
+    &InferCtxt<'db>,
+    &PredicateObligation<'db>,
+    Result<Certainty, NoSolution>,
+    Option<inspect::GoalEvaluation<DbInterner<'db>>>,
+);
 
 /// For [`Obligation`], a sub-obligation is combined with the current obligation's
 /// param-env and cause code.

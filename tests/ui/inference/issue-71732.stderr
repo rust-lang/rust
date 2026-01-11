@@ -10,7 +10,7 @@ LL |         .get(&"key".into())
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
              where T: ?Sized;
-note: required by a bound in `HashMap::<K, V, S>::get`
+note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 help: consider specifying the generic argument
    |

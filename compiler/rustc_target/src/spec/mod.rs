@@ -1686,6 +1686,7 @@ supported_targets! {
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
     ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
+    ("riscv64im-unknown-none-elf", riscv64im_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
@@ -2393,6 +2394,9 @@ pub struct TargetOptions {
     pub archive_format: StaticCow<str>,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
+    /// Static initializers must be acyclic.
+    /// Defaults to false
+    pub static_initializer_must_be_acyclic: bool,
     /// Whether the runtime startup code requires the `main` function be passed
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
@@ -2776,6 +2780,7 @@ impl Default for TargetOptions {
             archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
+            static_initializer_must_be_acyclic: false,
             has_thread_local: false,
             obj_is_bitcode: false,
             min_atomic_width: None,
@@ -2954,11 +2959,6 @@ impl Target {
             self.arch == Arch::Bpf,
             matches!(self.linker_flavor, LinkerFlavor::Bpf),
             "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
-        );
-        check_eq!(
-            self.arch == Arch::Nvptx64,
-            matches!(self.linker_flavor, LinkerFlavor::Ptx),
-            "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
         );
 
         for args in [

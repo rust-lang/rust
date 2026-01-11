@@ -2,6 +2,8 @@
 #![allow(missing_docs, nonstandard_style)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+use crate::io;
+
 pub mod abi;
 
 #[path = "../itron"]
@@ -18,8 +20,6 @@ pub mod itron {
 // `crate::sys::error`
 pub(crate) mod error;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub use self::itron::thread_parking;
 pub mod time;
 
@@ -30,12 +30,12 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 // SAFETY: must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {}
 
-pub fn unsupported<T>() -> crate::io::Result<T> {
+pub fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::UNSUPPORTED_PLATFORM
+pub fn unsupported_err() -> io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
 }
 
 #[inline]
@@ -43,7 +43,7 @@ pub fn is_interrupted(code: i32) -> bool {
     crate::sys::net::is_interrupted(code)
 }
 
-pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
+pub fn decode_error_kind(code: i32) -> io::ErrorKind {
     error::decode_error_kind(code)
 }
 

@@ -6,7 +6,7 @@
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
 //! available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 //! [wikipedia_bmi]:
 //! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
@@ -24,7 +24,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "bmi2")]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
     let result: u128 = (a as u128) * (b as u128);
     *hi = (result >> 64) as u64;
     result as u64
@@ -79,12 +80,13 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86_64::*;
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_pext_u64() {
+    fn test_pext_u64() {
         let n = 0b1011_1110_1001_0011u64;
 
         let m0 = 0b0110_0011_1000_0101u64;
@@ -98,7 +100,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_pdep_u64() {
+    fn test_pdep_u64() {
         let n = 0b1011_1110_1001_0011u64;
 
         let m0 = 0b0110_0011_1000_0101u64;
@@ -112,7 +114,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_bzhi_u64() {
+    fn test_bzhi_u64() {
         let n = 0b1111_0010u64;
         let s = 0b0001_0010u64;
         assert_eq!(_bzhi_u64(n, 5), s);
@@ -120,7 +122,7 @@ mod tests {
 
     #[simd_test(enable = "bmi2")]
     #[rustfmt::skip]
-    unsafe fn test_mulx_u64() {
+    const fn test_mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;
         let mut hi = 0;

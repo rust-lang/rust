@@ -60,7 +60,9 @@ impl<'tcx> Tree {
         let span = machine.current_user_relevant_span();
         self.perform_access(
             prov,
-            Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
+            range,
+            access_kind,
+            diagnostics::AccessCause::Explicit(access_kind),
             global,
             alloc_id,
             span,
@@ -94,8 +96,7 @@ impl<'tcx> Tree {
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         let span = machine.current_user_relevant_span();
-        // `None` makes it the magic on-protector-end operation
-        self.perform_access(ProvenanceExtra::Concrete(tag), None, global, alloc_id, span)?;
+        self.perform_protector_end_access(tag, global, alloc_id, span)?;
 
         self.update_exposure_for_protector_release(tag);
 
@@ -219,26 +220,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr(), 0) {
-            Ok(data) => {
-                // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
-                // After all, the pointer may be lazily initialized outside this initial range.
-                data
-            }
-            Err(_) => {
-                assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
-                // This pointer doesn't come with an AllocId, so there's no
-                // memory to do retagging in.
-                let new_prov = place.ptr().provenance;
-                trace!(
-                    "reborrow of size 0: reusing {:?} (pointee {})",
-                    place.ptr(),
-                    place.layout.ty,
-                );
-                log_creation(this, None)?;
-                // Keep original provenance.
-                return interp_ok(new_prov);
-            }
+        // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
+        // After all, the pointer may be lazily initialized outside this initial range.
+        let Ok((alloc_id, base_offset, parent_prov)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+        else {
+            assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
+            // This pointer doesn't come with an AllocId, so there's no
+            // memory to do retagging in.
+            let new_prov = place.ptr().provenance;
+            trace!("reborrow of size 0: reusing {:?} (pointee {})", place.ptr(), place.layout.ty,);
+            log_creation(this, None)?;
+            // Keep original provenance.
+            return interp_ok(new_prov);
         };
         let new_prov = Provenance::Concrete { alloc_id, tag: new_tag };
 
@@ -344,7 +337,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 tree_borrows.perform_access(
                     parent_prov,
-                    Some((range_in_alloc, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
+                    range_in_alloc,
+                    AccessKind::Read,
+                    diagnostics::AccessCause::Reborrow,
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
                     this.machine.current_user_relevant_span(),
@@ -609,8 +604,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
-            _ => {
-                eprintln!("Can't give the name {name} to Wildcard pointer");
+            Some(Provenance::Wildcard) => {
+                eprintln!("Can't give the name {name} to wildcard pointer");
+                return interp_ok(());
+            }
+            None => {
+                eprintln!("Can't give the name {name} to pointer without provenance");
                 return interp_ok(());
             }
         };

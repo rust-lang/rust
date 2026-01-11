@@ -1,4 +1,5 @@
 use crate::fmt::{self, Debug};
+use crate::marker::Destruct;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 
@@ -78,32 +79,37 @@ where
     ///
     /// let value = String::from("Nori likes chicken");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
-    /// assert_eq!(guard.dismiss(), "Nori likes chicken");
+    /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
+    #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[inline]
-    pub fn dismiss(self) -> T {
+    pub const fn dismiss(guard: Self) -> T
+    where
+        F: [const] Destruct,
+    {
         // First we ensure that dropping the guard will not trigger
         // its destructor
-        let mut this = ManuallyDrop::new(self);
+        let mut guard = ManuallyDrop::new(guard);
 
         // Next we manually read the stored value from the guard.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        let value = unsafe { ManuallyDrop::take(&mut this.inner) };
+        let value = unsafe { ManuallyDrop::take(&mut guard.inner) };
 
         // Finally we drop the stored closure. We do this *after* having read
         // the value, so that even if the closure's `drop` function panics,
         // unwinding still tries to drop the value.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        unsafe { ManuallyDrop::drop(&mut this.f) };
+        unsafe { ManuallyDrop::drop(&mut guard.f) };
         value
     }
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-impl<T, F> Deref for DropGuard<T, F>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, F> const Deref for DropGuard<T, F>
 where
     F: FnOnce(T),
 {
@@ -115,7 +121,8 @@ where
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-impl<T, F> DerefMut for DropGuard<T, F>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, F> const DerefMut for DropGuard<T, F>
 where
     F: FnOnce(T),
 {
@@ -125,9 +132,10 @@ where
 }
 
 #[unstable(feature = "drop_guard", issue = "144426")]
-impl<T, F> Drop for DropGuard<T, F>
+#[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
+impl<T, F> const Drop for DropGuard<T, F>
 where
-    F: FnOnce(T),
+    F: [const] FnOnce(T),
 {
     fn drop(&mut self) {
         // SAFETY: `DropGuard` is in the process of being dropped.

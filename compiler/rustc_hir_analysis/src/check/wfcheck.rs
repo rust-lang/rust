@@ -2,11 +2,11 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -39,6 +39,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use super::compare_eii::compare_eii_function_types;
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::errors::InvalidReceiverTyHint;
@@ -326,7 +327,7 @@ pub(crate) fn check_trait_item<'tcx>(
 
     let mut res = Ok(());
 
-    if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
+    if tcx.def_kind(def_id) == DefKind::AssocFn {
         for &assoc_ty_def_id in
             tcx.associated_types_for_impl_traits_in_associated_fn(def_id.to_def_id())
         {
@@ -1037,7 +1038,21 @@ fn check_type_defn<'tcx>(
                     hir_ty.span,
                     Some(WellFormedLoc::Ty(field_id)),
                     ty.into(),
-                )
+                );
+
+                if matches!(ty.kind(), ty::Adt(def, _) if def.repr().scalable())
+                    && !matches!(adt_def.repr().scalable, Some(ScalableElt::Container))
+                {
+                    // Scalable vectors can only be fields of structs if the type has a
+                    // `rustc_scalable_vector` attribute w/out specifying an element count
+                    tcx.dcx().span_err(
+                        hir_ty.span,
+                        format!(
+                            "scalable vectors cannot be fields of a {}",
+                            adt_def.variant_descr()
+                        ),
+                    );
+                }
             }
 
             // For DST, or when drop needs to copy things around, all
@@ -1170,10 +1185,40 @@ fn check_item_fn(
     decl: &hir::FnDecl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+        check_eiis(tcx, def_id);
+
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
+}
+
+fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    // does the function have an EiiImpl attribute? that contains the defid of a *macro*
+    // that was used to mark the implementation. This is a two step process.
+    for EiiImpl { resolution, span, .. } in
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
+            .into_iter()
+            .flatten()
+    {
+        let (foreign_item, name) = match resolution {
+            EiiImplResolution::Macro(def_id) => {
+                // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
+                // signature that we'd like to compare the function we're currently checking with
+                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target: t, ..}) => *t)
+                {
+                    (foreign_item, tcx.item_name(*def_id))
+                } else {
+                    tcx.dcx().span_delayed_bug(*span, "resolved to something that's not an EII");
+                    continue;
+                }
+            }
+            EiiImplResolution::Known(decl) => (decl.eii_extern_target, decl.name.name),
+            EiiImplResolution::Error(_eg) => continue,
+        };
+
+        let _ = compare_eii_function_types(tcx, def_id, foreign_item, name, *span);
+    }
 }
 
 #[instrument(level = "debug", skip(tcx))]

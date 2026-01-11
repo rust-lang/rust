@@ -26,14 +26,6 @@ error[E0463]: can't find crate for `wloop`
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: malformed `instruction_set` attribute input
-  --> $DIR/malformed-attrs.rs:112:1
-   |
-LL | #[instruction_set]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[instruction_set(set)]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
-
 error: malformed `patchable_function_entry` attribute input
   --> $DIR/malformed-attrs.rs:114:1
    |
@@ -54,12 +46,6 @@ LL + #[must_not_suspend = "reason"]
 LL - #[must_not_suspend()]
 LL + #[must_not_suspend]
    |
-
-error: malformed `cfi_encoding` attribute input
-  --> $DIR/malformed-attrs.rs:140:1
-   |
-LL | #[cfi_encoding]
-   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:184:1
@@ -140,20 +126,6 @@ LL | #[forbid(lint1, lint2, ...)]
    |         +++++++++++++++++++
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
-
-error: malformed `thread_local` attribute input
-  --> $DIR/malformed-attrs.rs:210:1
-   |
-LL | #[thread_local()]
-   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[thread_local]`
-
-error: malformed `no_link` attribute input
-  --> $DIR/malformed-attrs.rs:214:1
-   |
-LL | #[no_link()]
-   | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute>
 
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:105:1
@@ -240,22 +212,6 @@ LL | #[deprecated = 5]
    | ^^^^^^^^^^^^^^^-^
    |                |
    |                expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated = "reason"]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(note = "reason")]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(since = "version")]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `rustc_macro_transparency` attribute input
   --> $DIR/malformed-attrs.rs:44:1
@@ -267,8 +223,8 @@ help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[rustc_macro_transparency = "opaque"]
    |                            ++++++++++
-LL | #[rustc_macro_transparency = "semitransparent"]
-   |                            +++++++++++++++++++
+LL | #[rustc_macro_transparency = "semiopaque"]
+   |                            ++++++++++++++
 LL | #[rustc_macro_transparency = "transparent"]
    |                            +++++++++++++++
 
@@ -287,17 +243,6 @@ LL | #[repr]
    | ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[repr(<integer type>)]
-   |       ++++++++++++++++
-LL | #[repr(C)]
-   |       +++
-LL | #[repr(Rust)]
-   |       ++++++
-LL | #[repr(align(...))]
-   |       ++++++++++++
-   = and 2 other candidates
 
 error[E0565]: malformed `rustc_as_ptr` attribute input
   --> $DIR/malformed-attrs.rs:50:1
@@ -341,11 +286,23 @@ LL | #[cold = 1]
    | |      didn't expect any arguments here
    | help: must be of the form: `#[cold]`
 
-error: valid forms for the attribute are `#[must_use = "reason"]` and `#[must_use]`
+error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:61:1
    |
 LL | #[must_use()]
-   | ^^^^^^^^^^^^^
+   | ^^^^^^^^^^--^
+   |           |
+   |           didn't expect a list here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[must_use()]
+LL + #[must_use = "reason"]
+   |
+LL - #[must_use()]
+LL + #[must_use]
+   |
 
 error[E0565]: malformed `no_mangle` attribute input
   --> $DIR/malformed-attrs.rs:63:1
@@ -437,17 +394,6 @@ LL | #[link]
    | ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[link(name = "...")]
-   |       ++++++++++++++
-LL | #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-LL | #[link(name = "...", kind = "dylib|static|...")]
-   |       +++++++++++++++++++++++++++++++++++++++++
-LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   = and 1 other candidate
 
 error[E0539]: malformed `link_name` attribute input
   --> $DIR/malformed-attrs.rs:88:1
@@ -483,18 +429,6 @@ error[E0539]: malformed `sanitize` attribute input
    |
 LL | #[sanitize]
    | ^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[sanitize(address = "on|off")]
-   |           ++++++++++++++++++++
-LL | #[sanitize(cfi = "on|off")]
-   |           ++++++++++++++++
-LL | #[sanitize(hwaddress = "on|off")]
-   |           ++++++++++++++++++++++
-LL | #[sanitize(kcfi = "on|off")]
-   |           +++++++++++++++++
-   = and 6 other candidates
 
 error[E0565]: malformed `no_implicit_prelude` attribute input
   --> $DIR/malformed-attrs.rs:101:1
@@ -513,6 +447,17 @@ LL | #[proc_macro = 18]
    | |            |
    | |            didn't expect any arguments here
    | help: must be of the form: `#[proc_macro]`
+
+error[E0539]: malformed `instruction_set` attribute input
+  --> $DIR/malformed-attrs.rs:112:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^
+   | |
+   | valid arguments are `arm::a32` or `arm::t32`
+   | help: must be of the form: `#[instruction_set(set)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0565]: malformed `coroutine` attribute input
   --> $DIR/malformed-attrs.rs:117:5
@@ -582,6 +527,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0539]: malformed `cfi_encoding` attribute input
+  --> $DIR/malformed-attrs.rs:140:1
+   |
+LL | #[cfi_encoding = ""]
+   | ^^^^^^^^^^^^^^^^^--^
+   | |                |
+   | |                string is not allowed to be empty
+   | help: must be of the form: `#[cfi_encoding = "encoding"]`
+
 error[E0565]: malformed `marker` attribute input
   --> $DIR/malformed-attrs.rs:161:1
    |
@@ -634,18 +588,6 @@ error[E0539]: malformed `linkage` attribute input
    |
 LL |     #[linkage]
    |     ^^^^^^^^^^ expected this to be of the form `linkage = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[linkage = "available_externally"]
-   |               ++++++++++++++++++++++++
-LL |     #[linkage = "common"]
-   |               ++++++++++
-LL |     #[linkage = "extern_weak"]
-   |               +++++++++++++++
-LL |     #[linkage = "external"]
-   |               ++++++++++++
-   = and 5 other candidates
 
 error[E0539]: malformed `debugger_visualizer` attribute input
   --> $DIR/malformed-attrs.rs:194:1
@@ -676,17 +618,58 @@ LL | #[non_exhaustive = 1]
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
 
-error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+error[E0565]: malformed `thread_local` attribute input
+  --> $DIR/malformed-attrs.rs:210:1
+   |
+LL | #[thread_local()]
+   | ^^^^^^^^^^^^^^--^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[thread_local]`
+
+error[E0565]: malformed `no_link` attribute input
+  --> $DIR/malformed-attrs.rs:214:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^--^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#[no_link]`
+
+error[E0539]: malformed `macro_use` attribute input
   --> $DIR/malformed-attrs.rs:216:1
    |
 LL | #[macro_use = 1]
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^---^
+   |             |
+   |             expected a list or no arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use(name1, name2, ...)]
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use]
+   |
 
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
+error[E0539]: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[macro_export = 18]
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^----^
+   |                |
+   |                expected a list or no arguments here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export(local_inner_macros)]
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export]
+   |
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
   --> $DIR/malformed-attrs.rs:223:1

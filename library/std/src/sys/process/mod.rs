@@ -28,7 +28,8 @@ mod env;
 
 pub use env::CommandEnvs;
 pub use imp::{
-    Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
+    ChildPipe, Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
+    read_output,
 };
 
 #[cfg(any(
@@ -45,8 +46,6 @@ pub use imp::{
     target_os = "motor"
 ))]
 pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-    use crate::sys::pipe::read2;
-
     let (mut process, mut pipes) = cmd.spawn(Stdio::MakePipe, false)?;
 
     drop(pipes.stdin.take());
@@ -62,7 +61,7 @@ pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<
             res.unwrap();
         }
         (Some(out), Some(err)) => {
-            let res = read2(out, &mut stdout, err, &mut stderr);
+            let res = read_output(out, &mut stdout, err, &mut stderr);
             res.unwrap();
         }
     }

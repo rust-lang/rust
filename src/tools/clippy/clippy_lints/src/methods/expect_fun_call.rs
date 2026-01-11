@@ -26,12 +26,10 @@ pub(super) fn check<'tcx>(
     let arg_root = get_arg_root(cx, arg);
     if contains_call(cx, arg_root) && !contains_return(arg_root) {
         let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
-        let closure_args = if receiver_type.is_diag_item(cx, sym::Option) {
-            "||"
-        } else if receiver_type.is_diag_item(cx, sym::Result) {
-            "|_|"
-        } else {
-            return;
+        let closure_args = match receiver_type.opt_diag_name(cx) {
+            Some(sym::Option) => "||",
+            Some(sym::Result) => "|_|",
+            _ => return,
         };
 
         let span_replace_word = method_span.with_hi(expr.span.hi());

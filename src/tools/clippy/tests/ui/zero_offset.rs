@@ -1,4 +1,4 @@
-#[allow(clippy::borrow_as_ptr)]
+#[allow(clippy::borrow_as_ptr, clippy::ptr_offset_by_literal)]
 fn main() {
     unsafe {
         let m = &mut () as *mut ();

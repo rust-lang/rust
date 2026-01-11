@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
         llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".into(),
+        features: "+v7,+vfp3d16,+thumb2,-neon,+strict-align".into(),
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(64),
@@ -24,6 +24,7 @@ pub(crate) fn target() -> Target {
         emit_debug_gdb_scripts: false,
         // GCC defaults to 8 for arm-none here.
         c_enum_min_bits: Some(8),
+        has_thumb_interworking: true,
         ..Default::default()
     };
     Target {

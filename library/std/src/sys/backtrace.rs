@@ -11,6 +11,12 @@ use crate::{env, fmt, io};
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
+pub(crate) const FULL_BACKTRACE_DEFAULT: bool = cfg_select! {
+    // Fuchsia components default to full backtrace.
+    target_os = "fuchsia" => true,
+    _ => false,
+};
+
 pub(crate) struct BacktraceLock<'a>(#[allow(dead_code)] MutexGuard<'a, ()>);
 
 pub(crate) fn lock<'a>() -> BacktraceLock<'a> {

@@ -142,12 +142,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } else {
                     item_msg = access_place_desc;
                     let local_info = self.body.local_decls[local].local_info();
-                    if let LocalInfo::StaticRef { def_id, .. } = *local_info {
-                        let static_name = &self.infcx.tcx.item_name(def_id);
-                        reason = format!(", as `{static_name}` is an immutable static item");
-                    } else {
+                    let LocalInfo::StaticRef { def_id, .. } = *local_info else {
                         bug!("is_ref_to_static return true, but not ref to static?");
-                    }
+                    };
+                    let static_name = &self.infcx.tcx.item_name(def_id);
+                    reason = format!(", as `{static_name}` is an immutable static item");
                 }
             }
             PlaceRef { local, projection: [proj_base @ .., ProjectionElem::Deref] } => {

@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
             llvm_floatabi: Some(FloatAbi::Hard),
             // Most of these settings are copied from the arm_unknown_linux_gnueabihf
             // target.
-            features: "+strict-align,+v6,+vfp2,-d32".into(),
+            features: "+strict-align,+v6,+vfp2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
             // FIXME(compiler-team#422): musl targets should be dynamically linked by default.

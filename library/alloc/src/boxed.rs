@@ -2253,7 +2253,7 @@ impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.

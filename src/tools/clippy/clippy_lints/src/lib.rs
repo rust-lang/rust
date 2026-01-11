@@ -182,6 +182,7 @@ mod large_include_file;
 mod large_stack_arrays;
 mod large_stack_frames;
 mod legacy_numeric_constants;
+mod len_without_is_empty;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -201,6 +202,7 @@ mod manual_clamp;
 mod manual_float_methods;
 mod manual_hash_one;
 mod manual_ignore_case_cmp;
+mod manual_ilog2;
 mod manual_is_ascii_check;
 mod manual_is_power_of_two;
 mod manual_let_else;
@@ -316,6 +318,7 @@ mod replace_box;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
+mod same_length_and_capacity;
 mod same_name_method;
 mod self_named_constructors;
 mod semicolon_block;
@@ -538,6 +541,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(unnecessary_mut_passed::UnnecessaryMutPassed)),
         Box::new(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default()),
         Box::new(move |_| Box::new(len_zero::LenZero::new(conf))),
+        Box::new(|_| Box::new(len_without_is_empty::LenWithoutIsEmpty)),
         Box::new(move |_| Box::new(attrs::Attributes::new(conf))),
         Box::new(|_| Box::new(blocks_in_conditions::BlocksInConditions)),
         Box::new(|_| Box::new(unicode::Unicode)),
@@ -736,7 +740,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(cargo::Cargo::new(conf))),
         Box::new(|_| Box::new(empty_with_brackets::EmptyWithBrackets::default())),
         Box::new(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings)),
-        Box::new(|_| Box::new(format_push_string::FormatPushString)),
+        {
+            let format_args = format_args_storage.clone();
+            Box::new(move |_| Box::new(format_push_string::FormatPushString::new(format_args.clone())))
+        },
         Box::new(move |_| Box::new(large_include_file::LargeIncludeFile::new(conf))),
         Box::new(|_| Box::new(strings::TrimSplitWhitespace)),
         Box::new(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit)),
@@ -848,6 +855,8 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(toplevel_ref_arg::ToplevelRefArg)),
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
+        Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
+        Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

@@ -1,9 +1,9 @@
 use std::borrow::Cow;
-use std::fmt;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
+pub use rustc_ast::attr::data_structures::*;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, ast};
 use rustc_data_structures::fx::FxIndexMap;
@@ -11,13 +11,43 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum EiiImplResolution {
+    /// Usually, finding the extern item that an EII implementation implements means finding
+    /// the defid of the associated attribute macro, and looking at *its* attributes to find
+    /// what foreign item its associated with.
+    Macro(DefId),
+    /// Sometimes though, we already know statically and can skip some name resolution.
+    /// Stored together with the eii's name for diagnostics.
+    Known(EiiDecl),
+    /// For when resolution failed, but we want to continue compilation
+    Error(ErrorGuaranteed),
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EiiImpl {
+    pub resolution: EiiImplResolution,
+    pub impl_marked_unsafe: bool,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EiiDecl {
+    pub eii_extern_target: DefId,
+    /// whether or not it is unsafe to implement this EII
+    pub impl_unsafe: bool,
+    pub name: Ident,
+}
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
@@ -43,7 +73,17 @@ impl InlineAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
+#[derive(
+    Copy,
+    Clone,
+    Encodable,
+    Decodable,
+    Debug,
+    PartialEq,
+    Eq,
+    HashStable_Generic,
+    PrintAttribute
+)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
@@ -182,83 +222,6 @@ pub struct StrippedCfgItem<ModId = DefId> {
 impl<ModId> StrippedCfgItem<ModId> {
     pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
         StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
-    }
-}
-
-#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic, PrintAttribute)]
-pub enum CfgEntry {
-    All(ThinVec<CfgEntry>, Span),
-    Any(ThinVec<CfgEntry>, Span),
-    Not(Box<CfgEntry>, Span),
-    Bool(bool, Span),
-    NameValue { name: Symbol, value: Option<Symbol>, span: Span },
-    Version(Option<RustcVersion>, Span),
-}
-
-impl CfgEntry {
-    pub fn span(&self) -> Span {
-        let (Self::All(_, span)
-        | Self::Any(_, span)
-        | Self::Not(_, span)
-        | Self::Bool(_, span)
-        | Self::NameValue { span, .. }
-        | Self::Version(_, span)) = self;
-        *span
-    }
-
-    /// Same as `PartialEq` but doesn't check spans and ignore order of cfgs.
-    pub fn is_equivalent_to(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::All(a, _), Self::All(b, _)) | (Self::Any(a, _), Self::Any(b, _)) => {
-                a.len() == b.len() && a.iter().all(|a| b.iter().any(|b| a.is_equivalent_to(b)))
-            }
-            (Self::Not(a, _), Self::Not(b, _)) => a.is_equivalent_to(b),
-            (Self::Bool(a, _), Self::Bool(b, _)) => a == b,
-            (
-                Self::NameValue { name: name1, value: value1, .. },
-                Self::NameValue { name: name2, value: value2, .. },
-            ) => name1 == name2 && value1 == value2,
-            (Self::Version(a, _), Self::Version(b, _)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-impl fmt::Display for CfgEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn write_entries(
-            name: &str,
-            entries: &[CfgEntry],
-            f: &mut fmt::Formatter<'_>,
-        ) -> fmt::Result {
-            write!(f, "{name}(")?;
-            for (nb, entry) in entries.iter().enumerate() {
-                if nb != 0 {
-                    f.write_str(", ")?;
-                }
-                entry.fmt(f)?;
-            }
-            f.write_str(")")
-        }
-        match self {
-            Self::All(entries, _) => write_entries("all", entries, f),
-            Self::Any(entries, _) => write_entries("any", entries, f),
-            Self::Not(entry, _) => write!(f, "not({entry})"),
-            Self::Bool(value, _) => write!(f, "{value}"),
-            Self::NameValue { name, value, .. } => {
-                match value {
-                    // We use `as_str` and debug display to have characters escaped and `"`
-                    // characters surrounding the string.
-                    Some(value) => write!(f, "{name} = {:?}", value.as_str()),
-                    None => write!(f, "{name}"),
-                }
-            }
-            Self::Version(version, _) => match version {
-                Some(version) => write!(f, "{version}"),
-                None => Ok(()),
-            },
-        }
     }
 }
 
@@ -513,7 +476,7 @@ pub struct CfgHideShow {
     pub values: ThinVec<CfgInfo>,
 }
 
-#[derive(Clone, Debug, Default, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, Default, HashStable_Generic, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
@@ -547,6 +510,62 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
+    fn encode(&self, encoder: &mut E) {
+        let DocAttribute {
+            aliases,
+            hidden,
+            inline,
+            cfg,
+            auto_cfg,
+            auto_cfg_change,
+            fake_variadic,
+            keyword,
+            attribute,
+            masked,
+            notable_trait,
+            search_unbox,
+            html_favicon_url,
+            html_logo_url,
+            html_playground_url,
+            html_root_url,
+            html_no_source,
+            issue_tracker_base_url,
+            rust_logo,
+            test_attrs,
+            no_crate_inject,
+        } = self;
+        rustc_serialize::Encodable::<E>::encode(aliases, encoder);
+        rustc_serialize::Encodable::<E>::encode(hidden, encoder);
+
+        // FIXME: The `doc(inline)` attribute is never encoded, but is it actually the right thing
+        // to do? I suspect the condition was broken, should maybe instead not encode anything if we
+        // have `doc(no_inline)`.
+        let inline: ThinVec<_> =
+            inline.iter().filter(|(i, _)| *i != DocInline::Inline).cloned().collect();
+        rustc_serialize::Encodable::<E>::encode(&inline, encoder);
+
+        rustc_serialize::Encodable::<E>::encode(cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg_change, encoder);
+        rustc_serialize::Encodable::<E>::encode(fake_variadic, encoder);
+        rustc_serialize::Encodable::<E>::encode(keyword, encoder);
+        rustc_serialize::Encodable::<E>::encode(attribute, encoder);
+        rustc_serialize::Encodable::<E>::encode(masked, encoder);
+        rustc_serialize::Encodable::<E>::encode(notable_trait, encoder);
+        rustc_serialize::Encodable::<E>::encode(search_unbox, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_favicon_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_logo_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_playground_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_root_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_no_source, encoder);
+        rustc_serialize::Encodable::<E>::encode(issue_tracker_base_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(rust_logo, encoder);
+        rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
+        rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
+    }
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -630,6 +649,15 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents the trace attribute of `#[cfg_attr]`
+    CfgAttrTrace,
+
+    /// Represents the trace attribute of `#[cfg]`
+    CfgTrace(ThinVec<(CfgEntry, Span)>),
+
+    /// Represents `#[cfi_encoding]`
+    CfiEncoding { encoding: Symbol },
+
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 
@@ -692,6 +720,15 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dummy]`.
     Dummy,
 
+    /// Implementation detail of `#[eii]`
+    EiiExternItem,
+
+    /// Implementation detail of `#[eii]`
+    EiiExternTarget(EiiDecl),
+
+    /// Implementation detail of `#[eii]`
+    EiiImpls(ThinVec<EiiImpl>),
+
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
         /// The name to export this item with.
@@ -721,6 +758,9 @@ pub enum AttributeKind {
 
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[instruction_set]`
+    InstructionSet(InstructionSetAttr),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
@@ -776,6 +816,9 @@ pub enum AttributeKind {
 
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude(Span),
+
+    /// Represents `#[no_link]`
+    NoLink,
 
     /// Represents `#[no_mangle]`
     NoMangle(Span),
@@ -837,20 +880,58 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
+    /// Represents `#[rustc_has_incoherent_inherent_impls]`
+    RustcHasIncoherentInherentImpls,
+
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
 
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
+    /// Represents `#[rustc_legacy_const_generics]`
+    RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
+
+    /// Represents `#[rustc_lint_diagnostics]`
+    RustcLintDiagnostics,
+
+    /// Represents `#[rustc_lint_opt_deny_field_access]`
+    RustcLintOptDenyFieldAccess { lint_message: Symbol },
+
+    /// Represents `#[rustc_lint_opt_ty]`
+    RustcLintOptTy,
+
+    /// Represents `#[rustc_lint_query_instability]`
+    RustcLintQueryInstability,
+
+    /// Represents `#[rustc_lint_untracked_query_information]`
+    RustcLintUntrackedQueryInformation,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
+
+    /// Represents `#[rustc_must_implement_one_of]`
+    RustcMustImplementOneOf { attr_span: Span, fn_names: ThinVec<Ident> },
+
+    /// Represents `#[rustc_never_returns_null_ptr]`
+    RustcNeverReturnsNullPointer,
+
+    /// Represents `#[rustc_no_implicit_autorefs]`
+    RustcNoImplicitAutorefs,
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
+
+    /// Represents `#[rustc_scalable_vector(N)]`
+    RustcScalableVector {
+        /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
+        /// is not provided for representing tuple types.
+        element_count: Option<u16>,
+        span: Span,
+    },
 
     /// Represents `#[rustc_should_not_be_called_on_const_items]`
     RustcShouldNotBeCalledOnConstItems(Span),
@@ -892,6 +973,9 @@ pub enum AttributeKind {
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
     TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
+
+    /// Represents `#[thread_local]`
+    ThreadLocal,
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

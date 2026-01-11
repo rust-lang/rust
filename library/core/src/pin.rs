@@ -1825,7 +1825,7 @@ where
 {
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 /// Trait that indicates that this is a pointer or a wrapper for one, where
 /// unsizing can be performed on the pointee when it is pinned.
 ///
@@ -2027,7 +2027,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 #[allow_internal_unstable(super_let)]
 #[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt

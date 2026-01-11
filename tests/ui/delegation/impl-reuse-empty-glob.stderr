@@ -1,0 +1,8 @@
+error: empty glob delegation is not supported
+  --> $DIR/impl-reuse-empty-glob.rs:9:5
+   |
+LL |     reuse impl T for S { self.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

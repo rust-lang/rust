@@ -8,7 +8,7 @@ use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::net::{getsockopt, setsockopt};
 use crate::sys::pal::IsMinusOne;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
 use crate::{cmp, mem};
 
@@ -294,7 +294,7 @@ impl Socket {
             )
         })?;
         unsafe {
-            buf.advance(ret as usize);
+            buf.advance_unchecked(ret as usize);
         }
         Ok(())
     }
@@ -614,7 +614,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> RawFd {
         self.as_raw_fd()
     }

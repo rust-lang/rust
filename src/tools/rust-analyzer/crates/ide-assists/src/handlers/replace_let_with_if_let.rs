@@ -60,11 +60,13 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                     }
                 }
             };
+            let init_expr =
+                if let_expr_needs_paren(&init) { make.expr_paren(init).into() } else { init };
 
             let block = make.block_expr([], None);
             block.indent(IndentLevel::from_node(let_stmt.syntax()));
             let if_expr = make.expr_if(
-                make.expr_let(pat, init).into(),
+                make.expr_let(pat, init_expr).into(),
                 block,
                 let_stmt
                     .let_else()
@@ -77,6 +79,16 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
+}
+
+fn let_expr_needs_paren(expr: &ast::Expr) -> bool {
+    let fake_expr_let =
+        ast::make::expr_let(ast::make::tuple_pat(None).into(), ast::make::ext::expr_unit());
+    let Some(fake_expr) = fake_expr_let.expr() else {
+        stdx::never!();
+        return false;
+    };
+    expr.needs_parens_in_place_of(fake_expr_let.syntax(), fake_expr.syntax())
 }
 
 #[cfg(test)]
@@ -101,6 +113,42 @@ enum E<T> { X(T), Y(T) }
 
 fn main() {
     if let x = E::X(92) {
+    }
+}
+            ",
+        )
+    }
+
+    #[test]
+    fn replace_let_logic_and() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+fn main() {
+    $0let x = true && false;
+}
+            ",
+            r"
+fn main() {
+    if let x = (true && false) {
+    }
+}
+            ",
+        )
+    }
+
+    #[test]
+    fn replace_let_logic_or() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+fn main() {
+    $0let x = true || false;
+}
+            ",
+            r"
+fn main() {
+    if let x = (true || false) {
     }
 }
             ",

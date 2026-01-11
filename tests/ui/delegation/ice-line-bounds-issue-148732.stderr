@@ -5,7 +5,6 @@ LL |     dbg!(b);
    |     ^^^^^^^ expected named lifetime parameter
    |
    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
-   |
 
 error[E0425]: cannot find function `a` in this scope
   --> $DIR/ice-line-bounds-issue-148732.rs:1:7

@@ -545,7 +545,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (right, right_len) = self.project_to_simd(&args[1])?;
                 let (dest, dest_len) = self.project_to_simd(&dest)?;
 
-                let index = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
+                let index = generic_args[2].expect_const().to_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
@@ -553,7 +553,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 for i in 0..dest_len {
                     let src_index: u64 =
-                        index[usize::try_from(i).unwrap()].unwrap_leaf().to_u32().into();
+                        index[usize::try_from(i).unwrap()].to_leaf().to_u32().into();
                     let dest = self.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
@@ -657,9 +657,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     dest_layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..dest_len {
@@ -689,9 +687,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     args[2].layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..vals_len {

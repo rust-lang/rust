@@ -205,15 +205,17 @@ lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dr
     .ret_ty = return type is `{$ret_ty}`
     .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
-    .label_ptr = this pointer will immediately be invalid
-    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
-    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
-    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+lint_dangling_pointers_from_temporaries = this creates a dangling pointer because temporary `{$ty}` is dropped at end of statement
+    .label_ptr = pointer created here
+    .label_temporary = this `{$ty}` is dropped at end of statement
+    .help_bind = bind the `{$ty}` to a variable such that it outlives the pointer returned by `{$callee}`
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_return = returning a pointer to a local variable will always result in a dangling pointer
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
@@ -470,6 +472,9 @@ lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
 lint_improper_ctypes_unsafe_binder = unsafe binders are incompatible with foreign function interfaces
 
+lint_improper_gpu_kernel_arg = passing type `{$ty}` to a function with "gpu-kernel" ABI may have unexpected behavior
+    .help = use primitive types and raw pointers to get reliable behavior
+
 lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
     .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
     .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
@@ -596,6 +601,10 @@ lint_mismatched_lifetime_syntaxes_suggestion_mixed =
 
 lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
     use `'_` for type paths
+
+lint_missing_gpu_kernel_export_name = function with the "gpu-kernel" ABI has a mangled name
+    .note = mangled names make it hard to find the kernel, this is usually not intended
+    .help = use `unsafe(no_mangle)` or `unsafe(export_name = "<name>")`
 
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
@@ -883,6 +892,7 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_boolean = you may have meant to use `{$literal}` (notice the capitalization). Doing so makes this predicate evaluate to `{$literal}` unconditionally
 lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`

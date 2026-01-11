@@ -25,9 +25,9 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -46,9 +46,8 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
                 extract_value(cx, sym::dialect, arg, meta_item.span(), &mut dialect, &mut failed);
             } else if let Some(arg) = meta_item.word_is(sym::phase) {
                 extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
-            } else if let Some(word) = meta_item.path().word() {
-                let word = word.to_string();
-                cx.unknown_key(meta_item.span(), word, &["dialect", "phase"]);
+            } else if let Some(..) = meta_item.path().word() {
+                cx.expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
                 failed = true;
             } else {
                 cx.expected_name_value(meta_item.span(), None);
@@ -70,7 +69,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 fn extract_value<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     key: Symbol,
-    arg: &ArgParser<'_>,
+    arg: &ArgParser,
     span: Span,
     out_val: &mut Option<(Symbol, Span)>,
     failed: &mut bool,

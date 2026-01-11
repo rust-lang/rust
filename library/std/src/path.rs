@@ -3206,6 +3206,17 @@ impl Path {
         Display { inner: self.inner.display() }
     }
 
+    /// Returns the same path as `&Path`.
+    ///
+    /// This method is redundant when used directly on `&Path`, but
+    /// it helps dereferencing other `PathBuf`-like types to `Path`s,
+    /// for example references to `Box<Path>` or `Arc<Path>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_path(&self) -> &Path {
+        self
+    }
+
     /// Queries the file system to get information about a file, directory, etc.
     ///
     /// This function will traverse symbolic links to query information about the

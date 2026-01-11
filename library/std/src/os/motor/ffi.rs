@@ -3,7 +3,7 @@
 
 use crate::ffi::{OsStr, OsString};
 use crate::sealed::Sealed;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys::{AsInner, IntoInner};
 
 /// Motor OS–specific extensions to [`OsString`].
 ///

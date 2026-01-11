@@ -527,15 +527,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_solarish_stat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn stat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
@@ -558,15 +556,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_solarish_lstat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn lstat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!(
                 "`macos_fbsd_solaris_lstat` should not be called on {}",
                 this.tcx.sess.target.os
@@ -595,7 +591,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux | Os::Android
         ) {
             panic!("`fstat` should not be called on {}", this.tcx.sess.target.os);
         }
@@ -906,9 +902,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::Linux | Os::Solaris | Os::Illumos | Os::FreeBsd)
-        {
-            panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
+        ) {
+            panic!("`readdir64` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -1157,10 +1155,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
-        // FIXME: Support ftruncate64 for all FDs
-        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
-            err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
-        })?;
+        let Some(file) = fd.downcast::<FileHandle>() else {
+            // The docs say that EINVAL is returned when the FD "does not reference a regular file
+            // or a POSIX shared memory object" (and we don't support shmem objects).
+            return interp_ok(this.eval_libc("EINVAL"));
+        };
 
         if file.writable {
             if let Ok(length) = length.try_into() {
@@ -1202,10 +1201,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return interp_ok(this.eval_libc("EBADF"));
         };
-        let file = match fd.downcast::<FileHandle>() {
-            Some(file_handle) => file_handle,
+        let Some(file) = fd.downcast::<FileHandle>() else {
             // Man page specifies to return ENODEV if `fd` is not a regular file.
-            None => return interp_ok(this.eval_libc("ENODEV")),
+            return interp_ok(this.eval_libc("ENODEV"));
         };
 
         if !file.writable {

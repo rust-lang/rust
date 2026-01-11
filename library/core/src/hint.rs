@@ -269,6 +269,15 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
     crate::cfg_select! {
+        miri => {
+            unsafe extern "Rust" {
+                safe fn miri_spin_loop();
+            }
+
+            // Miri does support some of the intrinsics that are called below, but to guarantee
+            // consistent behavior across targets, this custom function is used.
+            miri_spin_loop();
+        }
         target_arch = "x86" => {
             // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
             crate::arch::x86::_mm_pause()

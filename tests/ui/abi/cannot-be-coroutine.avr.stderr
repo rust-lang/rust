@@ -1,5 +1,5 @@
 error: functions with the "avr-interrupt" ABI cannot be `async`
-  --> $DIR/cannot-be-coroutine.rs:37:1
+  --> $DIR/cannot-be-coroutine.rs:42:1
    |
 LL | async extern "avr-interrupt" fn avr() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL + extern "avr-interrupt" fn avr() {
    |
 
 error: requires `ResumeTy` lang_item
-  --> $DIR/cannot-be-coroutine.rs:33:19
+  --> $DIR/cannot-be-coroutine.rs:38:19
    |
 LL |   async fn vanilla(){
    |  ___________________^

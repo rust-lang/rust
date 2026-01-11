@@ -13,7 +13,7 @@ use super::JOIN_ABSOLUTE_PATHS;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx Expr<'tcx>, join_arg: &'tcx Expr<'tcx>, expr_span: Span) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
-    if (ty.is_diag_item(cx, sym::Path) || ty.is_diag_item(cx, sym::PathBuf))
+    if matches!(ty.opt_diag_name(cx), Some(sym::Path | sym::PathBuf))
         && let ExprKind::Lit(spanned) = expr_or_init(cx, join_arg).kind
         && let LitKind::Str(symbol, _) = spanned.node
         && let sym_str = symbol.as_str()

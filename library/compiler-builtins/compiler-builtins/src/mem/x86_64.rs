@@ -22,13 +22,12 @@ use core::{intrinsics, mem};
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
-    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    core::arch::asm!(
-        "repe movsb (%rsi), (%rdi)",
+    asm!(
+        "rep movsb [rdi], [rsi]",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -42,21 +41,21 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
         inout("ecx") pre_byte_count => _,
         inout("rdi") dest => dest,
         inout("rsi") src => src,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
     asm!(
         "rep movsq",
         inout("rcx") qword_count => _,
         inout("rdi") dest => dest,
         inout("rsi") src => src,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
     asm!(
         "rep movsb",
         inout("ecx") byte_count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -67,14 +66,13 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     asm!(
         "std",
         "rep movsb",
-        "sub $7, %rsi",
-        "sub $7, %rdi",
-        "mov {qword_count:r}, %rcx",
+        "sub rsi, 7",
+        "sub rdi, 7",
+        "mov rcx, {qword_count:r}",
         "rep movsq",
-        "test {pre_byte_count:e}, {pre_byte_count:e}",
-        "add $7, %rsi",
-        "add $7, %rdi",
-        "mov {pre_byte_count:e}, %ecx",
+        "add rsi, 7",
+        "add rdi, 7",
+        "mov ecx, {pre_byte_count:e}",
         "rep movsb",
         "cld",
         pre_byte_count = in(reg) pre_byte_count,
@@ -82,21 +80,19 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         inout("ecx") byte_count => _,
         inout("rdi") dest.add(count - 1) => _,
         inout("rsi") src.add(count - 1) => _,
-        // We modify flags, but we restore it afterwards
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack)
     );
 }
 
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
-    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    core::arch::asm!(
-        "repe stosb %al, (%rdi)",
+    asm!(
+        "rep stosb [rdi], al",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("al") c => _,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     )
 }
 
@@ -111,21 +107,21 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
         inout("ecx") pre_byte_count => _,
         inout("rdi") dest => dest,
         in("rax") c,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
     asm!(
         "rep stosq",
         inout("rcx") qword_count => _,
         inout("rdi") dest => dest,
         in("rax") c,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
     asm!(
         "rep stosb",
         inout("ecx") byte_count => _,
         inout("rdi") dest => _,
         in("rax") c,
-        options(att_syntax, nostack, preserves_flags)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -212,10 +208,10 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
     let x = {
         let r;
         asm!(
-            "movdqa ({addr:r}), {dest}",
+            "movdqa {dest}, [{addr:r}]",
             addr = in(reg) s,
             dest = out(xmm_reg) r,
-            options(att_syntax, nostack),
+            options(nostack, preserves_flags),
         );
         r
     };
@@ -232,10 +228,10 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
         let x = {
             let r;
             asm!(
-                "movdqa ({addr:r}), {dest}",
+                "movdqa {dest}, [{addr:r}]",
                 addr = in(reg) s,
                 dest = out(xmm_reg) r,
-                options(att_syntax, nostack),
+                options(nostack, preserves_flags),
             );
             r
         };
@@ -277,10 +273,10 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
         let mut cs = {
             let r: u64;
             asm!(
-                "mov ({addr}), {dest}",
+                "mov {dest}, [{addr}]",
                 addr = in(reg) s,
                 dest = out(reg) r,
-                options(att_syntax, nostack),
+                options(nostack, preserves_flags),
             );
             r
         };

@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
-    Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
+    Map, PlaceCollectionMode, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
 use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
@@ -55,10 +55,10 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         // `O(num_nodes * tracked_places * n)` in terms of time complexity. Since the number of
         // map nodes is strongly correlated to the number of tracked places, this becomes more or
         // less `O(n)` if we place a constant limit on the number of tracked places.
-        let place_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
+        let value_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
 
         // Decide which places to track during the analysis.
-        let map = Map::new(tcx, body, place_limit);
+        let map = Map::new(tcx, body, PlaceCollectionMode::Full { value_limit });
 
         // Perform the actual dataflow analysis.
         let const_ = debug_span!("analyze")
@@ -211,6 +211,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
+            Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
             Operand::Constant(box constant) => {
                 ValueOrPlace::Value(self.handle_constant(constant, state))
             }
@@ -463,9 +464,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {
-                return ValueOrPlace::TOP;
-            }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
@@ -533,6 +531,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         operand: &Operand<'tcx>,
     ) {
         match operand {
+            Operand::RuntimeChecks(_) => {}
             Operand::Copy(rhs) | Operand::Move(rhs) => {
                 if let Some(rhs) = self.map.find(rhs.as_ref()) {
                     state.insert_place_idx(place, rhs, &self.map);
@@ -1039,7 +1038,7 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
                     self.super_operand(operand, location)
                 }
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 

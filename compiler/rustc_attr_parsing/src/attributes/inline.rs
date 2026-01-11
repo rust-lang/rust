@@ -34,7 +34,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
@@ -77,7 +77,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
 
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {

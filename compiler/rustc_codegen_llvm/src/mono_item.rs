@@ -1,3 +1,6 @@
+use std::ffi::CString;
+
+use rustc_abi::AddressSpace;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
@@ -41,6 +44,9 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         llvm::set_visibility(g, base::visibility_to_llvm(visibility));
         self.assume_dso_local(g, false);
 
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        self.add_aliases(g, &attrs.foreign_item_symbol_aliases);
+
         self.instances.borrow_mut().insert(instance, g);
     }
 
@@ -78,12 +84,34 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         self.assume_dso_local(lldecl, false);
 
+        self.add_aliases(lldecl, &attrs.foreign_item_symbol_aliases);
+
         self.instances.borrow_mut().insert(instance, lldecl);
     }
 }
 
 impl CodegenCx<'_, '_> {
-    /// Whether a definition or declaration can be assumed to be local to a group of
+    fn add_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
+        let ty = self.get_type_of_global(aliasee);
+
+        for (alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+
+            tracing::debug!("ALIAS: {alias:?} {linkage:?} {visibility:?}");
+            let lldecl = llvm::add_alias(
+                self.llmod,
+                ty,
+                AddressSpace::ZERO,
+                aliasee,
+                &CString::new(symbol_name.name).unwrap(),
+            );
+
+            llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
+            llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
+        }
+    }
+
+    /// A definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     /// Marks the local as DSO if so.
     pub(crate) fn assume_dso_local(&self, llval: &llvm::Value, is_declaration: bool) -> bool {
@@ -125,7 +153,7 @@ impl CodegenCx<'_, '_> {
             return false;
         }
 
-        // With pie relocation model calls of functions defined in the translation
+        // With pie relocation model, calls of functions defined in the translation
         // unit can use copy relocations.
         if self.tcx.sess.relocation_model() == RelocModel::Pie && !is_declaration {
             return true;

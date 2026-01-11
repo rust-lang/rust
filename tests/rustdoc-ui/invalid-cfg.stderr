@@ -2,23 +2,9 @@ error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:2:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:3:1
@@ -27,44 +13,14 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:7:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:8:1
@@ -73,44 +29,14 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:12:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:13:1
@@ -119,44 +45,14 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:18:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg = "x")]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:19:1
@@ -165,22 +61,6 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc = "string"]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(alias)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(attribute)]
-   |
-LL - #[doc(cfg(x, y))]
-LL + #[doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error: aborting due to 8 previous errors
 

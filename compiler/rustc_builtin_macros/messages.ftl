@@ -55,7 +55,6 @@ builtin_macros_assert_requires_expression = macro requires an expression as an a
 builtin_macros_autodiff = autodiff must be applied to function
 builtin_macros_autodiff_missing_config = autodiff requires at least a name and mode
 builtin_macros_autodiff_mode_activity = {$act} can not be used in {$mode} Mode
-builtin_macros_autodiff_not_build = this rustc version does not support autodiff
 builtin_macros_autodiff_number_activities = expected {$expected} activities, but found {$found}
 builtin_macros_autodiff_ret_activity = invalid return activity {$act} in {$mode} Mode
 builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
@@ -152,6 +151,17 @@ builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept 
 
 builtin_macros_duplicate_macro_attribute = duplicated attribute
 
+builtin_macros_eii_extern_target_expected_list = `#[eii_extern_target(...)]` expects a list of one or two elements
+builtin_macros_eii_extern_target_expected_macro = `#[eii_extern_target(...)]` is only valid on macros
+builtin_macros_eii_extern_target_expected_unsafe = expected this argument to be "unsafe"
+    .note = the second argument is optional
+
+builtin_macros_eii_only_once = `#[{$name}]` can only be specified once
+    .note = specified again here
+
+builtin_macros_eii_shared_macro_expected_function = `#[{$name}]` is only valid on functions
+builtin_macros_eii_shared_macro_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
+
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .cargo_typo = there is a similar Cargo environment variable: `{$suggested_var}`
@@ -171,6 +181,8 @@ builtin_macros_expected_other = expected operand, {$is_inline_asm ->
     }, or additional template string
 
 builtin_macros_export_macro_rules = cannot export macro_rules! macros from a `proc-macro` crate type currently
+
+builtin_macros_format_add_missing_colon = add a colon before the format specifier
 
 builtin_macros_format_duplicate_arg = duplicate argument named `{$ident}`
     .label1 = previously here

@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // element, so we require the `Copy` trait.
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
-                        Operand::Copy(..) | Operand::Constant(..) => {
+                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
                             // These are always okay: direct use of a const, or a value that can
                             // evidently be copied.
                         }
@@ -1045,8 +1045,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
@@ -1583,12 +1581,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     .unwrap();
                                 }
                                 (None, None) => {
+                                    // `struct_tail` returns regions which haven't been mapped
+                                    // to nll vars yet so we do it here as `outlives_constraints`
+                                    // expects nll vars.
+                                    let src_lt = self.universal_regions.to_region_vid(src_lt);
+                                    let dst_lt = self.universal_regions.to_region_vid(dst_lt);
+
                                     // The principalless (no non-auto traits) case:
                                     // You can only cast `dyn Send + 'long` to `dyn Send + 'short`.
                                     self.constraints.outlives_constraints.push(
                                         OutlivesConstraint {
-                                            sup: src_lt.as_var(),
-                                            sub: dst_lt.as_var(),
+                                            sup: src_lt,
+                                            sub: dst_lt,
                                             locations: location.to_locations(),
                                             span: location.to_locations().span(self.body),
                                             category: ConstraintCategory::Cast {
@@ -2276,7 +2280,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

@@ -161,9 +161,9 @@ fn main() {
             match builtin#lang(into_iter)(
                 0..10,
             ) {
-                mut <ra@gennew>11 => loop {
+                mut <ra@gennew>0 => loop {
                     match builtin#lang(next)(
-                        &mut <ra@gennew>11,
+                        &mut <ra@gennew>0,
                     ) {
                         builtin#lang(None) => break,
                         builtin#lang(Some)(ident) => {
@@ -261,10 +261,10 @@ fn main() {
 }
 
 #[test]
-fn desugar_builtin_format_args() {
+fn desugar_builtin_format_args_before_1_93_0() {
     let (db, body, def) = lower(
         r#"
-//- minicore: fmt
+//- minicore: fmt_before_1_93_0
 fn main() {
     let are = "are";
     let count = 10;
@@ -278,16 +278,16 @@ fn main() {
             let are = "are";
             let count = 10;
             {
-                let args = (&"fancy", &(), &"!", &count, &are, );
-                let args = [
+                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
+                let <ra@gennew>0 = [
                     builtin#lang(Argument::new_display)(
-                        args.3,
+                        <ra@gennew>0.3,
                     ), builtin#lang(Argument::new_display)(
-                        args.0,
+                        <ra@gennew>0.0,
                     ), builtin#lang(Argument::new_debug)(
-                        args.4,
+                        <ra@gennew>0.4,
                     ), builtin#lang(Argument::new_display)(
-                        args.2,
+                        <ra@gennew>0.2,
                     ),
                 ];
                 unsafe {
@@ -295,7 +295,7 @@ fn main() {
                         &[
                             "\u{1b}hello ", " ", " friends, we ", " ", "",
                         ],
-                        &args,
+                        &<ra@gennew>0,
                         &[
                             builtin#lang(Placeholder::new)(
                                 0usize,
@@ -344,6 +344,59 @@ fn main() {
 }
 
 #[test]
+fn desugar_builtin_format_args() {
+    let (db, body, def) = lower(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+    builtin#format_args("hello world");
+    builtin#format_args("hello world", orphan = ());
+}
+"#,
+    );
+
+    expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            {
+                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
+                let <ra@gennew>0 = [
+                    builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.3,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.0,
+                    ), builtin#lang(Argument::new_debug)(
+                        <ra@gennew>0.4,
+                    ), builtin#lang(Argument::new_display)(
+                        <ra@gennew>0.2,
+                    ),
+                ];
+                ();
+                unsafe {
+                    builtin#lang(Arguments::new)(
+                        "\x07\x1bhello \xc3 \x00\x00i\x02\x00\x01 \xc0\r friends, we \xc0\x01 \xc8\x01\x00\xc8\x03\x00\x00",
+                        &<ra@gennew>0,
+                    )
+                }
+            };
+            builtin#lang(Arguments::from_str)(
+                "hello world",
+            );
+            {
+                ();
+                builtin#lang(Arguments::from_str)(
+                    "hello world",
+                )
+            };
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}
+
+#[test]
 fn test_macro_hygiene() {
     let (db, body, def) = lower(
         r##"
@@ -382,27 +435,16 @@ impl SsrError {
         fn main() {
             _ = ra_test_fixture::error::SsrError::new(
                 {
-                    let args = [
+                    let <ra@gennew>0 = (&node.text(), );
+                    let <ra@gennew>0 = [
                         builtin#lang(Argument::new_display)(
-                            &node.text(),
+                            <ra@gennew>0.0,
                         ),
                     ];
                     unsafe {
-                        builtin#lang(Arguments::new_v1_formatted)(
-                            &[
-                                "Failed to resolve path `", "`",
-                            ],
-                            &args,
-                            &[
-                                builtin#lang(Placeholder::new)(
-                                    0usize,
-                                    ' ',
-                                    builtin#lang(Alignment::Unknown),
-                                    0u32,
-                                    builtin#lang(Count::Implied),
-                                    builtin#lang(Count::Implied),
-                                ),
-                            ],
+                        builtin#lang(Arguments::new)(
+                            "\x18Failed to resolve path `\xc0\x01`\x00",
+                            &<ra@gennew>0,
                         )
                     }
                 },

@@ -6,7 +6,7 @@
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{fs, io, net, ptr, sys};
 
 /// Raw HANDLEs.

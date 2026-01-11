@@ -88,7 +88,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                     | Rvalue::ShallowInitBox(..)
                     | Rvalue::WrapUnsafeBinder(..) => true,
                     Rvalue::ThreadLocalRef(..)
-                    | Rvalue::NullaryOp(..)
                     | Rvalue::UnaryOp(..)
                     | Rvalue::BinaryOp(..)
                     | Rvalue::Ref(..)

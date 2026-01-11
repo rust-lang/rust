@@ -163,6 +163,7 @@ impl ProjectJson {
                         cfg,
                         target: crate_data.target,
                         env: crate_data.env,
+                        crate_attrs: crate_data.crate_attrs,
                         proc_macro_dylib_path: crate_data
                             .proc_macro_dylib_path
                             .map(absolutize_on_base),
@@ -244,6 +245,8 @@ pub struct Crate {
     pub(crate) cfg: Vec<CfgAtom>,
     pub(crate) target: Option<String>,
     pub(crate) env: FxHashMap<String, String>,
+    // Extra crate-level attributes, without the surrounding `#![]`.
+    pub(crate) crate_attrs: Vec<String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
     pub(crate) is_workspace_member: bool,
     pub(crate) include: Vec<AbsPathBuf>,
@@ -365,6 +368,8 @@ struct CrateData {
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
+    #[serde(default)]
+    crate_attrs: Vec<String>,
     proc_macro_dylib_path: Option<Utf8PathBuf>,
     is_workspace_member: Option<bool>,
     source: Option<CrateSource>,

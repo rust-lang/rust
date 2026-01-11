@@ -1,0 +1,38 @@
+error[E0433]: failed to resolve: could not find `eii3` in `codegen`
+  --> $DIR/privacy2.rs:16:12
+   |
+LL | #[codegen::eii3]
+   |            ^^^^ could not find `eii3` in `codegen`
+
+error[E0603]: function `decl1` is private
+  --> $DIR/privacy2.rs:26:14
+   |
+LL |     codegen::decl1(42);
+   |              ^^^^^ private function
+   |
+note: the function `decl1` is defined here
+  --> $DIR/auxiliary/other_crate_privacy2.rs:7:1
+   |
+LL | fn decl1(x: u64);
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[eii2]` required, but not found
+  --> $DIR/auxiliary/other_crate_privacy2.rs:9:7
+   |
+LL | #[eii(eii2)]
+   |       ^^^^ expected because `#[eii2]` was declared here in crate `other_crate_privacy2`
+   |
+   = help: expected at least one implementation in crate `privacy2` or any of its dependencies
+
+error: `#[eii3]` required, but not found
+  --> $DIR/auxiliary/other_crate_privacy2.rs:13:11
+   |
+LL |     #[eii(eii3)]
+   |           ^^^^ expected because `#[eii3]` was declared here in crate `other_crate_privacy2`
+   |
+   = help: expected at least one implementation in crate `privacy2` or any of its dependencies
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0433, E0603.
+For more information about an error, try `rustc --explain E0433`.

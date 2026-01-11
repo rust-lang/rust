@@ -16,13 +16,11 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a Unique retag
    |
 LL |     let res = helper(val, ptr);
    |                      ^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `helper` at tests/fail/box-cell-alias.rs:LL:CC
-note: inside `main`
-  --> tests/fail/box-cell-alias.rs:LL:CC
-   |
-LL |     let res = helper(val, ptr);
-   |               ^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: helper
+               at tests/fail/box-cell-alias.rs:LL:CC
+           1: main
+               at tests/fail/box-cell-alias.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

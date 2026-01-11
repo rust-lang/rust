@@ -33,6 +33,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -1229,7 +1230,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         chain.push((expr.span, prev_ty));
 
         let mut prev = None;
-        for (span, err_ty) in chain.into_iter().rev() {
+        let mut iter = chain.into_iter().rev().peekable();
+        while let Some((span, err_ty)) = iter.next() {
+            let is_last = iter.peek().is_none();
             let err_ty = get_e_type(err_ty);
             let err_ty = match (err_ty, prev) {
                 (Some(err_ty), Some(prev)) if !self.can_eq(obligation.param_env, err_ty, prev) => {
@@ -1241,27 +1244,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     continue;
                 }
             };
-            if self
+
+            let implements_from = self
                 .infcx
                 .type_implements_trait(
                     self.tcx.get_diagnostic_item(sym::From).unwrap(),
                     [self_ty, err_ty],
                     obligation.param_env,
                 )
-                .must_apply_modulo_regions()
-            {
-                if !suggested {
-                    let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                    err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
-                }
+                .must_apply_modulo_regions();
+
+            let err_ty_str = self.tcx.short_string(err_ty, err.long_ty_path());
+            let label = if !implements_from && is_last {
+                format!(
+                    "this can't be annotated with `?` because it has type `Result<_, {err_ty_str}>`"
+                )
             } else {
-                let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                err.span_label(
-                    span,
-                    format!(
-                        "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
-                    ),
-                );
+                format!("this has type `Result<_, {err_ty_str}>`")
+            };
+
+            if !suggested || !implements_from {
+                err.span_label(span, label);
             }
             prev = Some(err_ty);
         }
@@ -1284,10 +1287,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.span_note(
                     self.tcx.def_span(def.did()),
                     format!("`{self_ty}` needs to implement `From<{ty}>`"),
-                );
-                err.span_note(
-                    self.tcx.def_span(found.did()),
-                    format!("alternatively, `{ty}` needs to implement `Into<{self_ty}>`"),
                 );
             }
             (ty::Adt(def, _), None) if def.did().is_local() => {
@@ -2170,6 +2169,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.suggest_function_pointers_impl(None, &exp_found, err);
                     }
 
+                    if let ty::Adt(def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind()
+                        && let crates = self.tcx.duplicate_crate_names(def.did().krate)
+                        && !crates.is_empty()
+                    {
+                        self.note_two_crate_versions(def.did().krate, MultiSpan::new(), err);
+                        err.help("you can use `cargo tree` to explore your dependency tree");
+                    }
                     true
                 })
             }) {
@@ -2279,6 +2285,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         String::new()
                     }
                 ));
+            }
+
+            if let ty::Adt(def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind()
+                && let crates = self.tcx.duplicate_crate_names(def.did().krate)
+                && !crates.is_empty()
+            {
+                self.note_two_crate_versions(def.did().krate, MultiSpan::new(), err);
+                err.help("you can use `cargo tree` to explore your dependency tree");
             }
             true
         };
@@ -2443,11 +2457,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn note_two_crate_versions(
         &self,
-        did: DefId,
+        krate: CrateNum,
         sp: impl Into<MultiSpan>,
         err: &mut Diag<'_>,
     ) {
-        let crate_name = self.tcx.crate_name(did.krate);
+        let crate_name = self.tcx.crate_name(krate);
         let crate_msg = format!(
             "there are multiple different versions of crate `{crate_name}` in the dependency graph"
         );
@@ -2512,7 +2526,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         for (similar_item, _) in similar_items {
             err.span_help(self.tcx.def_span(similar_item), "item with same name found");
-            self.note_two_crate_versions(similar_item, MultiSpan::new(), err);
+            self.note_two_crate_versions(similar_item.krate, MultiSpan::new(), err);
         }
     }
 

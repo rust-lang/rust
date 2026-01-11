@@ -1,0 +1,92 @@
+error: expected `:`, found keyword `impl`
+  --> $DIR/impl-reuse-illegal-places.rs:14:11
+   |
+LL | struct X {
+   |        - while parsing this struct
+LL |     reuse impl T for F { self.0 }
+   |           ^^^^ expected `:`
+
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/impl-reuse-illegal-places.rs:19:5
+   |
+LL |     reuse impl T for F { self.0 }
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/impl-reuse-illegal-places.rs:24:5
+   |
+LL |     reuse impl T for F { self.0 }
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: implementation is not supported in `extern` blocks
+  --> $DIR/impl-reuse-illegal-places.rs:29:5
+   |
+LL |     reuse impl T for F { self.0 }
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/impl-reuse-illegal-places.rs:39:15
+   |
+LL |         reuse impl T for F { self.0 }
+   |               ^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `as`, or `}`, found keyword `impl`
+  --> $DIR/impl-reuse-illegal-places.rs:39:15
+   |
+LL |         reuse impl T for F { self.0 }
+   |              -^^^^ expected one of `,`, `as`, or `}`
+   |              |
+   |              help: missing `,`
+
+error: expected one of `,`, `as`, or `}`, found `T`
+  --> $DIR/impl-reuse-illegal-places.rs:39:20
+   |
+LL |         reuse impl T for F { self.0 }
+   |                   -^ expected one of `,`, `as`, or `}`
+   |                   |
+   |                   help: missing `,`
+
+error: expected identifier, found keyword `for`
+  --> $DIR/impl-reuse-illegal-places.rs:39:22
+   |
+LL |         reuse impl T for F { self.0 }
+   |                      ^^^ expected identifier, found keyword
+
+error: expected one of `,`, `as`, or `}`, found keyword `for`
+  --> $DIR/impl-reuse-illegal-places.rs:39:22
+   |
+LL |         reuse impl T for F { self.0 }
+   |                     -^^^ expected one of `,`, `as`, or `}`
+   |                     |
+   |                     help: missing `,`
+
+error: expected one of `,`, `as`, or `}`, found `F`
+  --> $DIR/impl-reuse-illegal-places.rs:39:26
+   |
+LL |         reuse impl T for F { self.0 }
+   |                         -^ expected one of `,`, `as`, or `}`
+   |                         |
+   |                         help: missing `,`
+
+error: expected one of `,`, `as`, or `}`, found `{`
+  --> $DIR/impl-reuse-illegal-places.rs:39:28
+   |
+LL |         reuse impl T for F { self.0 }
+   |                            ^ expected one of `,`, `as`, or `}`
+
+error: expected item, found `}`
+  --> $DIR/impl-reuse-illegal-places.rs:48:1
+   |
+LL | }
+   | ^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 12 previous errors
+

@@ -40,7 +40,6 @@ use crate::io;
 /// [`name`]: Builder::name
 /// [`spawn`]: Builder::spawn
 /// [`thread::spawn`]: super::spawn
-/// [`io::Result`]: crate::io::Result
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
@@ -262,7 +261,6 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     ///
-    /// [`io::Result`]: crate::io::Result
     /// [`thread::spawn`]: super::spawn
     /// [`spawn`]: super::spawn
     /// [`add_spawn_hook`]: crate::thread::add_spawn_hook

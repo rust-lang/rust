@@ -74,12 +74,12 @@ impl char {
 
     /// The maximum number of bytes required to [encode](char::encode_utf8) a `char` to
     /// UTF-8 encoding.
-    #[stable(feature = "char_max_len_assoc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "char_max_len_assoc", since = "1.93.0")]
     pub const MAX_LEN_UTF8: usize = 4;
 
     /// The maximum number of two-byte units required to [encode](char::encode_utf16) a `char`
     /// to UTF-16 encoding.
-    #[stable(feature = "char_max_len_assoc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "char_max_len_assoc", since = "1.93.0")]
     pub const MAX_LEN_UTF16: usize = 2;
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a

@@ -1,7 +1,7 @@
 //@ check-pass
 
 #![feature(generic_const_items, min_generic_const_args)]
-#![feature(associated_const_equality, adt_const_params)]
+#![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
 trait Owner {
@@ -17,7 +17,7 @@ impl Owner for () {
     #[type_const]
     const C<const N: u32>: u32 = N;
     #[type_const]
-    const K<const N: u32>: u32 = 99 + 1;
+    const K<const N: u32>: u32 = const { 99 + 1 };
     // FIXME(mgca): re-enable once we properly support ctors and generics on paths
     // #[type_const]
     // const Q<T>: Maybe<T> = Maybe::Nothing;

@@ -69,7 +69,6 @@ pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span
             span,
             character: c,
             crate_name,
-            help: span.is_none().then_some(()),
         }));
     }
 

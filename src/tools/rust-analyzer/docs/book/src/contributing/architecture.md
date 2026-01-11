@@ -10,7 +10,7 @@ See also these implementation-related blog posts:
 
 * <https://rust-analyzer.github.io/blog/2019/11/13/find-usages.html>
 * <https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html>
-* <https://rust-analyzer.github.io/blog/2020/09/16/challeging-LR-parsing.html>
+* <https://rust-analyzer.github.io/blog/2020/09/16/challenging-LR-parsing.html>
 * <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
 * <https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html>
 

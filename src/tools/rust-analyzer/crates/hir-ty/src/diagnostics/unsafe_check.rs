@@ -97,9 +97,9 @@ enum UnsafeDiagnostic {
     DeprecatedSafe2024 { node: ExprId, inside_unsafe_block: InsideUnsafeBlock },
 }
 
-pub fn unsafe_operations_for_body<'db>(
-    db: &'db dyn HirDatabase,
-    infer: &InferenceResult<'db>,
+pub fn unsafe_operations_for_body(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
     def: DefWithBodyId,
     body: &Body,
     callback: &mut dyn FnMut(ExprOrPatId),
@@ -116,9 +116,9 @@ pub fn unsafe_operations_for_body<'db>(
     }
 }
 
-pub fn unsafe_operations<'db>(
-    db: &'db dyn HirDatabase,
-    infer: &InferenceResult<'db>,
+pub fn unsafe_operations(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
     def: DefWithBodyId,
     body: &Body,
     current: ExprId,
@@ -136,7 +136,7 @@ pub fn unsafe_operations<'db>(
 
 struct UnsafeVisitor<'db> {
     db: &'db dyn HirDatabase,
-    infer: &'db InferenceResult<'db>,
+    infer: &'db InferenceResult,
     body: &'db Body,
     resolver: Resolver<'db>,
     def: DefWithBodyId,
@@ -155,7 +155,7 @@ struct UnsafeVisitor<'db> {
 impl<'db> UnsafeVisitor<'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        infer: &'db InferenceResult<'db>,
+        infer: &'db InferenceResult,
         body: &'db Body,
         def: DefWithBodyId,
         unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
@@ -260,7 +260,7 @@ impl<'db> UnsafeVisitor<'db> {
 
         match pat {
             Pat::Record { .. } => {
-                if let Some((AdtId::UnionId(_), _)) = self.infer[current].as_adt() {
+                if let Some((AdtId::UnionId(_), _)) = self.infer.pat_ty(current).as_adt() {
                     let old_inside_union_destructure =
                         mem::replace(&mut self.inside_union_destructure, true);
                     self.body.walk_pats_shallow(current, |pat| self.walk_pat(pat));
@@ -286,7 +286,7 @@ impl<'db> UnsafeVisitor<'db> {
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
-                let callee = self.infer[callee];
+                let callee = self.infer.expr_ty(callee);
                 if let TyKind::FnDef(CallableIdWrapper(CallableDefId::FunctionId(func)), _) =
                     callee.kind()
                 {
@@ -341,7 +341,7 @@ impl<'db> UnsafeVisitor<'db> {
                 }
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let TyKind::RawPtr(..) = self.infer[*expr].kind() {
+                if let TyKind::RawPtr(..) = self.infer.expr_ty(*expr).kind() {
                     self.on_unsafe_op(current.into(), UnsafetyReason::RawPtrDeref);
                 }
             }

@@ -108,10 +108,9 @@ pub fn parallel_prime_caches(
                     hir::attach_db(&db, || {
                         // method resolution is likely to hit all trait impls at some point
                         // we pre-populate it here as this will hit a lot of parses ...
-                        _ = hir::TraitImpls::for_crate(&db, crate_id);
-                        // we compute the lang items here as the work for them is also highly recursive and will be trigger by the module symbols query
+                        // This also computes the lang items, which is what we want as the work for them is also highly recursive and will be trigger by the module symbols query
                         // slowing down leaf crate analysis tremendously as we go back to being blocked on a single thread
-                        _ = hir::crate_lang_items(&db, crate_id);
+                        _ = hir::TraitImpls::for_crate(&db, crate_id);
                     })
                 });
 
@@ -271,7 +270,6 @@ pub fn parallel_prime_caches(
                 }
 
                 if crate_def_maps_done == crate_def_maps_total {
-                    // Can we trigger lru-eviction once at this point to reduce peak memory usage?
                     cb(ParallelPrimeCachesProgress {
                         crates_currently_indexing: vec![],
                         crates_done: crate_def_maps_done,

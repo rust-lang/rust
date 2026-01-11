@@ -35,6 +35,10 @@ impl Instant {
 }
 
 impl SystemTime {
+    pub const MAX: SystemTime = SystemTime(Duration::MAX);
+
+    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
+
     pub fn now() -> SystemTime {
         let result = blocking_scalar(systime_server(), GetUtcTimeMs.into())
             .expect("failed to request utc time in ms");

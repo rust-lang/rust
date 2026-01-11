@@ -77,6 +77,32 @@ pub struct Event {
     pub span: Span,
 }
 
+/// Diagnostics data about the current access and the location we are accessing.
+/// Used to create history events and errors.
+#[derive(Clone, Debug)]
+pub struct DiagnosticInfo {
+    pub alloc_id: AllocId,
+    pub span: Span,
+    /// The range the diagnostic actually applies to.
+    /// This is always a subset of `access_range`.
+    pub transition_range: Range<u64>,
+    /// The range the access is happening to. Is `None` if this is the protector release access
+    pub access_range: Option<AllocRange>,
+    pub access_cause: AccessCause,
+}
+impl DiagnosticInfo {
+    /// Creates a history event.
+    pub fn create_event(&self, transition: PermTransition, is_foreign: bool) -> Event {
+        Event {
+            transition,
+            is_foreign,
+            access_cause: self.access_cause,
+            access_range: self.access_range,
+            transition_range: self.transition_range.clone(),
+            span: self.span,
+        }
+    }
+}
 /// List of all events that affected a tag.
 /// NOTE: not all of these events are relevant for a particular location,
 /// the events should be filtered before the generation of diagnostics.
@@ -280,32 +306,29 @@ impl History {
 pub(super) struct TbError<'node> {
     /// What failure occurred.
     pub error_kind: TransitionError,
-    /// The allocation in which the error is happening.
-    pub alloc_id: AllocId,
-    /// The offset (into the allocation) at which the conflict occurred.
-    pub error_offset: u64,
+    /// Diagnostic data about the access that caused the error.
+    pub access_info: &'node DiagnosticInfo,
     /// The tag on which the error was triggered.
     /// On protector violations, this is the tag that was protected.
     /// On accesses rejected due to insufficient permissions, this is the
     /// tag that lacked those permissions.
-    pub conflicting_info: &'node NodeDebugInfo,
-    // What kind of access caused this error (read, write, reborrow, deallocation)
-    pub access_cause: AccessCause,
+    pub conflicting_node_info: &'node NodeDebugInfo,
     /// Which tag, if any, the access that caused this error was made through, i.e.
     /// which tag was used to read/write/deallocate.
     /// Not set on wildcard accesses.
-    pub accessed_info: Option<&'node NodeDebugInfo>,
+    pub accessed_node_info: Option<&'node NodeDebugInfo>,
 }
 
 impl TbError<'_> {
     /// Produce a UB error.
     pub fn build<'tcx>(self) -> InterpErrorKind<'tcx> {
         use TransitionError::*;
-        let cause = self.access_cause;
-        let accessed = self.accessed_info;
+        let cause = self.access_info.access_cause;
+        let error_offset = self.access_info.transition_range.start;
+        let accessed = self.accessed_node_info;
         let accessed_str =
-            self.accessed_info.map(|v| format!("{v}")).unwrap_or_else(|| "<wildcard>".into());
-        let conflicting = self.conflicting_info;
+            self.accessed_node_info.map(|v| format!("{v}")).unwrap_or_else(|| "<wildcard>".into());
+        let conflicting = self.conflicting_node_info;
         // An access is considered conflicting if it happened through a
         // different tag than the one who caused UB.
         // When doing a wildcard access (where `accessed` is `None`) we
@@ -316,9 +339,8 @@ impl TbError<'_> {
         // all tags through which an access would cause UB.
         let accessed_is_conflicting = accessed.map(|a| a.tag) == Some(conflicting.tag);
         let title = format!(
-            "{cause} through {accessed_str} at {alloc_id:?}[{offset:#x}] is forbidden",
-            alloc_id = self.alloc_id,
-            offset = self.error_offset
+            "{cause} through {accessed_str} at {alloc_id:?}[{error_offset:#x}] is forbidden",
+            alloc_id = self.access_info.alloc_id
         );
         let (title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
@@ -362,13 +384,13 @@ impl TbError<'_> {
             }
         };
         let mut history = HistoryData::default();
-        if let Some(accessed_info) = self.accessed_info
+        if let Some(accessed_info) = self.accessed_node_info
             && !accessed_is_conflicting
         {
             history.extend(accessed_info.history.forget(), "accessed", false);
         }
         history.extend(
-            self.conflicting_info.history.extract_relevant(self.error_offset, self.error_kind),
+            self.conflicting_node_info.history.extract_relevant(error_offset, self.error_kind),
             conflicting_tag_name,
             true,
         );
@@ -379,12 +401,12 @@ impl TbError<'_> {
 /// Cannot access this allocation with wildcard provenance, as there are no
 /// valid exposed references for this access kind.
 pub fn no_valid_exposed_references_error<'tcx>(
-    alloc_id: AllocId,
-    offset: u64,
-    access_cause: AccessCause,
+    DiagnosticInfo { alloc_id, transition_range, access_cause, .. }: &DiagnosticInfo,
 ) -> InterpErrorKind<'tcx> {
-    let title =
-        format!("{access_cause} through <wildcard> at {alloc_id:?}[{offset:#x}] is forbidden");
+    let title = format!(
+        "{access_cause} through <wildcard> at {alloc_id:?}[{offset:#x}] is forbidden",
+        offset = transition_range.start
+    );
     let details = vec![format!("there are no exposed tags which may perform this access here")];
     let history = HistoryData::default();
     err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, details, history })

@@ -7,6 +7,7 @@
 //@ normalize-stderr: "note: .*\n\n" -> ""
 //@ normalize-stderr: "thread 'rustc'.*panicked.*\n" -> ""
 //@ normalize-stderr: "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
+//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 
 extern crate proc_macro_generate_packed;

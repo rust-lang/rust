@@ -5,6 +5,11 @@
 #[macro_use]
 mod macros;
 
+#[cfg(test)]
+mod test;
+#[cfg(test)]
+use test::assert_eq_const;
+
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
 mod riscv_shared;
 
@@ -274,6 +279,16 @@ pub mod arch {
         pub use crate::core_arch::nvptx::*;
     }
 
+    /// Platform-specific intrinsics for the `amdgpu` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "amdgpu", doc))]
+    #[doc(cfg(target_arch = "amdgpu"))]
+    #[unstable(feature = "stdarch_amdgpu", issue = "149988")]
+    pub mod amdgpu {
+        pub use crate::core_arch::amdgpu::*;
+    }
+
     /// Platform-specific intrinsics for the `loongarch32` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
@@ -348,6 +363,10 @@ mod powerpc64;
 #[cfg(any(target_arch = "nvptx64", doc))]
 #[doc(cfg(target_arch = "nvptx64"))]
 mod nvptx;
+
+#[cfg(any(target_arch = "amdgpu", doc))]
+#[doc(cfg(target_arch = "amdgpu"))]
+mod amdgpu;
 
 #[cfg(any(target_arch = "loongarch32", doc))]
 #[doc(cfg(target_arch = "loongarch32"))]

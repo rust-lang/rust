@@ -8,9 +8,8 @@ use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
-use crate::sys::c;
 use crate::sys::pal::winsock::last_error;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, c};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 
@@ -244,7 +243,7 @@ impl Socket {
                 }
             }
             _ => {
-                unsafe { buf.advance(result as usize) };
+                unsafe { buf.advance_unchecked(result as usize) };
                 Ok(())
             }
         }
@@ -440,7 +439,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> c::SOCKET {
         debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
         debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());

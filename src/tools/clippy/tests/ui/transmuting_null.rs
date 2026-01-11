@@ -30,7 +30,26 @@ fn transmute_const() {
     }
 }
 
+fn transmute_const_int() {
+    unsafe {
+        let _: &u64 = std::mem::transmute(u64::MIN as *const u64);
+        //~^ transmuting_null
+    }
+}
+
+fn transumute_single_expr_blocks() {
+    unsafe {
+        let _: &u64 = std::mem::transmute({ 0 as *const u64 });
+        //~^ transmuting_null
+
+        let _: &u64 = std::mem::transmute(const { u64::MIN as *const u64 });
+        //~^ transmuting_null
+    }
+}
+
 fn main() {
     one_liners();
     transmute_const();
+    transmute_const_int();
+    transumute_single_expr_blocks();
 }

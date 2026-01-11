@@ -392,11 +392,14 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // a_1 = move? place.1
             // ...
             // ```
-            StatementKind::Assign(box (lhs, Rvalue::Use(ref op))) => {
-                let (rplace, copy) = match *op {
-                    Operand::Copy(rplace) => (rplace, true),
-                    Operand::Move(rplace) => (rplace, false),
-                    Operand::Constant(_) => bug!(),
+            StatementKind::Assign(box (
+                lhs,
+                Rvalue::Use(ref op @ (Operand::Copy(rplace) | Operand::Move(rplace))),
+            )) => {
+                let copy = match *op {
+                    Operand::Copy(_) => true,
+                    Operand::Move(_) => false,
+                    Operand::Constant(_) | Operand::RuntimeChecks(_) => bug!(),
                 };
                 if let Some(final_locals) = self.replacements.place_fragments(lhs) {
                     for (field, ty, new_local) in final_locals {

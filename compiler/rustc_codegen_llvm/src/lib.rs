@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(slice_as_array))]
 #![feature(assert_matches)]
 #![feature(extern_types)]
 #![feature(file_buffered)]
@@ -13,6 +12,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
+#![feature(once_cell_try)]
 #![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -240,6 +240,27 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
+
+        // autodiff is based on Enzyme, a library which we might not have available, when it was
+        // neither build, nor downloaded via rustup. If autodiff is used, but not available we emit
+        // an early error here and abort compilation.
+        {
+            use rustc_session::config::AutoDiff;
+
+            use crate::back::lto::enable_autodiff_settings;
+            if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
+                match llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
+                    Ok(_) => {}
+                    Err(llvm::EnzymeLibraryError::NotFound { err }) => {
+                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentMissing { err });
+                    }
+                    Err(llvm::EnzymeLibraryError::LoadFailed { err }) => {
+                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable { err });
+                    }
+                }
+                enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
+            }
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {

@@ -1,0 +1,80 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:13:33
+   |
+LL | type Adt4<const N: usize> = Foo<{ 1 + 1 }>;
+   |                                 ^^^^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:21:34
+   |
+LL | type Arr4<const N: usize> = [(); 1 + 1];
+   |                                  ^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:30:19
+   |
+LL |     let _4 = [(); 1 + 1];
+   |                   ^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:45:38
+   |
+LL | const ITEM4<const N: usize>: usize = { 1 + 1 };
+   |                                      ^^^^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:62:23
+   |
+LL |     T4: Trait<ASSOC = { 1 + 1 }>,
+   |                       ^^^^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/explicit_anon_consts.rs:71:50
+   |
+LL | struct Default4<const N: usize, const M: usize = { 1 + 1 }>;
+   |                                                  ^^^^^^^^^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:42:46
+   |
+LL | const ITEM3<const N: usize>: usize = const { N };
+   |                                              ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:60:31
+   |
+LL |     T3: Trait<ASSOC = const { N }>,
+   |                               ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:69:58
+   |
+LL | struct Default3<const N: usize, const M: usize = const { N }>;
+   |                                                          ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:28:27
+   |
+LL |     let _3 = [(); const { N }];
+   |                           ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:33:26
+   |
+LL |     let _6: [(); const { N }] = todo!();
+   |                          ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:11:41
+   |
+LL | type Adt3<const N: usize> = Foo<const { N }>;
+   |                                         ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts.rs:19:42
+   |
+LL | type Arr3<const N: usize> = [(); const { N }];
+   |                                          ^
+
+error: aborting due to 13 previous errors
+

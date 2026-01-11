@@ -2,7 +2,7 @@
 //
 //@ check-pass
 #![feature(guard_patterns, never_type)]
-#![expect(incomplete_features, unused_parens)]
+#![expect(incomplete_features)]
 #![deny(unreachable_code)]
 
 fn main() {

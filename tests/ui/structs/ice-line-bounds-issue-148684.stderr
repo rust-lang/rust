@@ -9,7 +9,6 @@ LL | | }
 ...
 LL |       A(2, vec![])
    |       ^^^^^^^^^^^^
-   |
 
 error: aborting due to 1 previous error
 

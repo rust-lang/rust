@@ -2,8 +2,7 @@ use super::Result;
 use super::lifecycle::JoinInner;
 use super::thread::Thread;
 use crate::fmt;
-use crate::sys::thread as imp;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys::{AsInner, IntoInner, thread as imp};
 
 /// An owned permission to join on a thread (block on its termination).
 ///

@@ -366,6 +366,7 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
+            EarlyParsedAttribute,
             Movability,
             Mutability,
             Pinnedness,
@@ -393,6 +394,7 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<Pat>,
             ThinVec<Box<Ty>>,
             ThinVec<TyPat>,
+            ThinVec<EiiImpl>,
         );
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`
@@ -415,6 +417,7 @@ macro_rules! common_visitor_and_walkers {
             UnsafeBinderCastKind,
             BinOpKind,
             BlockCheckMode,
+            MgcaDisambiguation,
             BorrowKind,
             BoundAsyncness,
             BoundConstness,
@@ -455,6 +458,7 @@ macro_rules! common_visitor_and_walkers {
             ModSpans,
             MutTy,
             NormalAttr,
+            AttrItemKind,
             Parens,
             ParenthesizedArgs,
             PatFieldsRest,
@@ -485,6 +489,8 @@ macro_rules! common_visitor_and_walkers {
             WhereEqPredicate,
             WhereRegionPredicate,
             YieldKind,
+            EiiExternTarget,
+            EiiImpl,
         );
 
         /// Each method of this trait is a hook to be potentially
@@ -919,13 +925,13 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque },
+                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impls },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,
                         defaultness, ident, header, generics, decl,
-                        contract, body, span, define_opaque
-                    )
+                        contract, body, span, define_opaque, eii_impls
+                    );
                 }
                 FnKind::Closure(binder, coroutine_kind, decl, body) =>
                     visit_visitable!($($mut)? vis, binder, coroutine_kind, decl, body),

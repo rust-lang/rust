@@ -1,6 +1,6 @@
 // Regression test for #140571. The compiler used to ICE
 
-#![feature(associated_const_equality, min_generic_const_args, specialization)]
+#![feature(min_generic_const_args, specialization)]
 //~^ WARN the feature `specialization` is incomplete
 //~| WARN the feature `min_generic_const_args` is incomplete
 

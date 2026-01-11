@@ -40,8 +40,7 @@ use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
-    Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
@@ -595,7 +594,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .filter(|fmap| !fmap.is_imported())
             .map(|fmap| {
                 (
-                    escape_dep_filename(&fmap.name.prefer_local().to_string()),
+                    escape_dep_filename(&fmap.name.prefer_local_unconditionally().to_string()),
                     // This needs to be unnormalized,
                     // as external tools wouldn't know how rustc normalizes them
                     fmap.unnormalized_source_len as u64,
@@ -610,10 +609,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.psess.file_depinfo.borrow();
 
-        let normalize_path = |path: PathBuf| {
-            let file = FileName::from(path);
-            escape_dep_filename(&file.prefer_local().to_string())
-        };
+        let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
         // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
@@ -684,19 +680,19 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
             for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
-                if let Some((path, _)) = &source.dylib {
+                if let Some(path) = &source.dylib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rlib {
+                if let Some(path) = &source.rlib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rmeta {
+                if let Some(path) = &source.rmeta {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
@@ -1061,6 +1057,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         parallel!(
             {
                 sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
+                sess.time("check_externally_implementable_items", || {
+                    tcx.ensure_ok().check_externally_implementable_items(())
+                });
 
                 sess.time("looking_for_derive_registrar", || {
                     tcx.ensure_ok().proc_macro_decls_static(())

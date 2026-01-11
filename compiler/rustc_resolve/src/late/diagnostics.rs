@@ -440,6 +440,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
+        self.suggest_range_struct_destructuring(&mut err, path, source);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
@@ -890,10 +891,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
             for resolution in r.resolutions(m).borrow().values() {
-                let Some(did) = resolution
-                    .borrow()
-                    .best_binding()
-                    .and_then(|binding| binding.res().opt_def_id())
+                let Some(did) =
+                    resolution.borrow().best_decl().and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1383,6 +1382,84 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn suggest_range_struct_destructuring(
+        &mut self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        source: PathSource<'_, '_, '_>,
+    ) {
+        if !matches!(source, PathSource::Pat | PathSource::TupleStruct(..) | PathSource::Expr(..)) {
+            return;
+        }
+
+        let Some(pat) = self.diag_metadata.current_pat else { return };
+        let ast::PatKind::Range(start, end, end_kind) = &pat.kind else { return };
+
+        let [segment] = path else { return };
+        let failing_span = segment.ident.span;
+
+        let in_start = start.as_ref().is_some_and(|e| e.span.contains(failing_span));
+        let in_end = end.as_ref().is_some_and(|e| e.span.contains(failing_span));
+
+        if !in_start && !in_end {
+            return;
+        }
+
+        let start_snippet =
+            start.as_ref().and_then(|e| self.r.tcx.sess.source_map().span_to_snippet(e.span).ok());
+        let end_snippet =
+            end.as_ref().and_then(|e| self.r.tcx.sess.source_map().span_to_snippet(e.span).ok());
+
+        let field = |name: &str, val: String| {
+            if val == name { val } else { format!("{name}: {val}") }
+        };
+
+        let mut resolve_short_name = |short: Symbol, full: &str| -> String {
+            let ident = Ident::with_dummy_span(short);
+            let path = Segment::from_path(&Path::from_ident(ident));
+
+            match self.resolve_path(&path, Some(TypeNS), None, PathSource::Type) {
+                PathResult::NonModule(..) => short.to_string(),
+                _ => full.to_string(),
+            }
+        };
+        // FIXME(new_range): Also account for new range types
+        let (struct_path, fields) = match (start_snippet, end_snippet, &end_kind.node) {
+            (Some(start), Some(end), ast::RangeEnd::Excluded) => (
+                resolve_short_name(sym::Range, "std::ops::Range"),
+                vec![field("start", start), field("end", end)],
+            ),
+            (Some(start), Some(end), ast::RangeEnd::Included(_)) => (
+                resolve_short_name(sym::RangeInclusive, "std::ops::RangeInclusive"),
+                vec![field("start", start), field("end", end)],
+            ),
+            (Some(start), None, _) => (
+                resolve_short_name(sym::RangeFrom, "std::ops::RangeFrom"),
+                vec![field("start", start)],
+            ),
+            (None, Some(end), ast::RangeEnd::Excluded) => {
+                (resolve_short_name(sym::RangeTo, "std::ops::RangeTo"), vec![field("end", end)])
+            }
+            (None, Some(end), ast::RangeEnd::Included(_)) => (
+                resolve_short_name(sym::RangeToInclusive, "std::ops::RangeToInclusive"),
+                vec![field("end", end)],
+            ),
+            _ => return,
+        };
+
+        err.span_suggestion_verbose(
+            pat.span,
+            format!("if you meant to destructure a range use a struct pattern"),
+            format!("{} {{ {} }}", struct_path, fields.join(", ")),
+            Applicability::MaybeIncorrect,
+        );
+
+        err.note(
+            "range patterns match against the start and end of a range; \
+             to bind the components, use a struct pattern",
+        );
+    }
+
     fn suggest_swapping_misplaced_self_ty_and_trait(
         &mut self,
         err: &mut Diag<'_>,
@@ -1510,19 +1587,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, None, None, *source)
             {
-                let targets: Vec<_> = self
-                    .r
-                    .resolutions(module)
-                    .borrow()
-                    .iter()
-                    .filter_map(|(key, resolution)| {
-                        resolution
-                            .borrow()
-                            .best_binding()
-                            .map(|binding| binding.res())
-                            .and_then(|res| if filter_fn(res) { Some((*key, res)) } else { None })
-                    })
-                    .collect();
+                let targets: Vec<_> =
+                    self.r
+                        .resolutions(module)
+                        .borrow()
+                        .iter()
+                        .filter_map(|(key, resolution)| {
+                            resolution.borrow().best_decl().map(|binding| binding.res()).and_then(
+                                |res| if filter_fn(res) { Some((*key, res)) } else { None },
+                            )
+                        })
+                        .collect();
                 if let [target] = targets.as_slice() {
                     return Some(TypoSuggestion::single_item_from_ident(
                         target.0.ident.0,
@@ -1537,86 +1612,80 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
-        let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
+        let Some(ast::WherePredicate {
             kind:
                 ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                     bounded_ty,
                     bound_generic_params,
                     bounds,
                 }),
-            span,
+            span: where_span,
             ..
         }) = self.diag_metadata.current_where_predicate
-        {
-            if !bound_generic_params.is_empty() {
-                return false;
-            }
-            (bounded_ty, bounds, span)
-        } else {
+        else {
             return false;
         };
+        if !bound_generic_params.is_empty() {
+            return false;
+        }
 
         // Confirm that the target is an associated type.
-        let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
-            // use this to verify that ident is a type param.
-            let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
-                return false;
-            };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
-            ) {
-                return false;
-            }
-            (&qself.ty, qself.position, path)
-        } else {
+        let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind else { return false };
+        // use this to verify that ident is a type param.
+        let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else { return false };
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
+        ) {
+            return false;
+        }
+
+        let peeled_ty = qself.ty.peel_refs();
+        let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind else { return false };
+        // Confirm that the `SelfTy` is a type parameter.
+        let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
             return false;
         };
-
-        let peeled_ty = ty.peel_refs();
-        if let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind {
-            // Confirm that the `SelfTy` is a type parameter.
-            let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
+        ) {
+            return false;
+        }
+        let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
+            (&type_param_path.segments[..], &bounds[..])
+        else {
+            return false;
+        };
+        let [ast::PathSegment { ident, args: None, id }] =
+            &poly_trait_ref.trait_ref.path.segments[..]
+        else {
+            return false;
+        };
+        if poly_trait_ref.modifiers != ast::TraitBoundModifiers::NONE {
+            return false;
+        }
+        if ident.span == span {
+            let Some(partial_res) = self.r.partial_res_map.get(&id) else {
                 return false;
             };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
-            ) {
+            if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
                 return false;
             }
-            if let (
-                [ast::PathSegment { args: None, .. }],
-                [ast::GenericBound::Trait(poly_trait_ref)],
-            ) = (&type_param_path.segments[..], &bounds[..])
-                && let [ast::PathSegment { ident, args: None, id }] =
-                    &poly_trait_ref.trait_ref.path.segments[..]
-                && poly_trait_ref.modifiers == ast::TraitBoundModifiers::NONE
-            {
-                if ident.span == span {
-                    let Some(partial_res) = self.r.partial_res_map.get(&id) else {
-                        return false;
-                    };
-                    if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
-                        return false;
-                    }
 
-                    let Some(new_where_bound_predicate) =
-                        mk_where_bound_predicate(path, poly_trait_ref, ty)
-                    else {
-                        return false;
-                    };
-                    err.span_suggestion_verbose(
-                        *where_span,
-                        format!("constrain the associated type to `{ident}`"),
-                        where_bound_predicate_to_string(&new_where_bound_predicate),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                return true;
-            }
+            let Some(new_where_bound_predicate) =
+                mk_where_bound_predicate(path, poly_trait_ref, &qself.ty)
+            else {
+                return false;
+            };
+            err.span_suggestion_verbose(
+                *where_span,
+                format!("constrain the associated type to `{ident}`"),
+                where_bound_predicate_to_string(&new_where_bound_predicate),
+                Applicability::MaybeIncorrect,
+            );
         }
-        false
+        true
     }
 
     /// Check if the source is call expression and the first argument is `self`. If true,
@@ -2413,9 +2482,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .resolutions(*module)
             .borrow()
             .iter()
-            .filter_map(|(key, res)| {
-                res.borrow().best_binding().map(|binding| (key, binding.res()))
-            })
+            .filter_map(|(key, res)| res.borrow().best_decl().map(|binding| (key, binding.res())))
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2726,7 +2793,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             in_module.for_each_child(self.r, |r, ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
-                if result.is_some() || !name_binding.vis.is_visible_locally() {
+                if result.is_some() || !name_binding.vis().is_visible_locally() {
                     return;
                 }
                 if let Some(module_def_id) = name_binding.res().module_like_def_id() {

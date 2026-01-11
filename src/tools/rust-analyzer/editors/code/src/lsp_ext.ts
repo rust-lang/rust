@@ -67,6 +67,9 @@ export const interpretFunction = new lc.RequestType<lc.TextDocumentPositionParam
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>(
     "rust-analyzer/viewItemTree",
 );
+export const getFailedObligations = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
+    "rust-analyzer/getFailedObligations",
+);
 
 export type DiscoverTestParams = { testId?: string | undefined };
 export type RunTestParams = {

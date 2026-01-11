@@ -435,17 +435,15 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = hir::attach_db(sema.db, || {
-                    highlight::name_like(
-                        sema,
-                        krate,
-                        bindings_shadow_count,
-                        &is_unsafe_node,
-                        config.syntactic_name_ref_highlighting,
-                        name_like,
-                        edition,
-                    )
-                });
+                let hl = highlight::name_like(
+                    sema,
+                    krate,
+                    bindings_shadow_count,
+                    &is_unsafe_node,
+                    config.syntactic_name_ref_highlighting,
+                    name_like,
+                    edition,
+                );
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
                     // as that would potentially overwrite our result
@@ -453,10 +451,10 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
+            NodeOrToken::Token(token) => {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
-            }),
+            }
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {

@@ -1155,6 +1155,51 @@ fn pclmulqdq<'tcx>(
     interp_ok(())
 }
 
+/// Shuffles bytes from `left` using `right` as pattern. Each 16-byte block is shuffled independently.
+///
+/// `left` and `right` are both vectors of type `len` x i8.
+///
+/// If the highest bit of a byte in `right` is not set, the corresponding byte in `dest` is taken
+/// from the current 16-byte block of `left` at the position indicated by the lowest 4 bits of this
+/// byte in `right`. If the highest bit of a byte in `right` is set, the corresponding byte in
+/// `dest` is set to `0`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shuffle_epi8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shuffle_epi8>
+fn pshufb<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, right_len);
+
+    for i in 0..dest_len {
+        let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?.to_u8()?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        let res = if right & 0x80 == 0 {
+            // Shuffle each 128-bit (16-byte) block independently.
+            let block_offset = i & !15; // round down to previous multiple of 16
+            let j = block_offset.strict_add((right % 16).into());
+            ecx.read_scalar(&ecx.project_index(&left, j)?)?
+        } else {
+            // If the highest bit in `right` is 1, write zero.
+            Scalar::from_u8(0)
+        };
+
+        ecx.write_scalar(res, &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Packs two N-bit integer vectors to a single N/2-bit integers.
 ///
 /// The conversion from N-bit to N/2-bit should be provided by `f`.

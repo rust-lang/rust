@@ -1,4 +1,4 @@
-#![feature(generic_const_items, associated_const_equality, min_generic_const_args)]
+#![feature(generic_const_items, min_generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Foo {
