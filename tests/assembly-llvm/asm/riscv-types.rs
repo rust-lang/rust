@@ -30,7 +30,7 @@
 //@ compile-flags: -C target-feature=+d
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, f16)]
+#![feature(no_core, f16, asm_experimental_reg)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
@@ -135,6 +135,20 @@ check!(reg_f64 f64 reg "mv");
 // CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mv");
+
+// riscv32-LABEL: reg_pair_i64:
+// riscv32: #APP
+// riscv32: mv {{[a-z0-9]+[02468]}}, {{[a-z0-9]+[02468]}}
+// riscv32: #NO_APP
+#[cfg(riscv32)]
+check!(reg_pair_i64 i64 reg_pair "mv");
+
+// riscv64-LABEL: reg_pair_i128:
+// riscv64: #APP
+// riscv64: mv {{[a-z0-9]+[02468]}}, {{[a-z0-9]+[02468]}}
+// riscv64: #NO_APP
+#[cfg(riscv64)]
+check!(reg_pair_i128 i128 reg_pair "mv");
 
 // CHECK-LABEL: freg_f16:
 // zfhmin-NOT: or

@@ -617,7 +617,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.supported_types(arch),
             Self::Arm(r) => r.supported_types(arch),
             Self::AArch64(r) => r.supported_types(arch),
-            Self::RiscV(r) => r.supported_types(arch),
+            Self::RiscV(r) => r.supported_types(arch, allow_experimental_reg),
             Self::Nvptx(r) => r.supported_types(arch),
             Self::PowerPC(r) => r.supported_types(arch),
             Self::Hexagon(r) => r.supported_types(arch),

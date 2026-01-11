@@ -723,6 +723,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg_pair) => "R",
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
             unreachable!("clobber-only")
@@ -807,6 +808,13 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg_pair) => {
+            if cx.tcx.sess.asm_arch.unwrap() == InlineAsmArch::RiscV64 {
+                cx.type_i128()
+            } else {
+                cx.type_i64()
+            }
+        }
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
             unreachable!("clobber-only")
@@ -983,6 +991,7 @@ fn modifier_to_gcc(
         }
         InlineAsmRegClass::PowerPC(_) => None,
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg)
+        | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg_pair)
         | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => None,
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
             unreachable!("clobber-only")
