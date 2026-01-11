@@ -3065,6 +3065,7 @@ pub(crate) mod dep_tracking {
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
+    use rustc_hir::attrs::CollapseMacroDebuginfo;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
@@ -3074,13 +3075,12 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
-        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
-        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
+        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
+        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3297,25 +3297,6 @@ pub enum ProcMacroExecutionStrategy {
 
     /// Run the proc-macro code on a different thread.
     CrossThread,
-}
-
-/// How to perform collapse macros debug info
-/// if-ext - if macro from different crate (related to callsite code)
-/// | cmd \ attr    | no  | (unspecified) | external | yes |
-/// | no            | no  | no            | no       | no  |
-/// | (unspecified) | no  | no            | if-ext   | yes |
-/// | external      | no  | if-ext        | if-ext   | yes |
-/// | yes           | yes | yes           | yes      | yes |
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CollapseMacroDebuginfo {
-    /// Don't collapse debuginfo for the macro
-    No = 0,
-    /// Unspecified value
-    Unspecified = 1,
-    /// Collapse debuginfo if the macro comes from a different crate
-    External = 2,
-    /// Collapse debuginfo for the macro
-    Yes = 3,
 }
 
 /// Which format to use for `-Z dump-mono-stats`

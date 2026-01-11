@@ -229,6 +229,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CollapseDebugInfo(..)
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
@@ -324,7 +325,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
@@ -713,18 +713,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
                 tcx.dcx().emit_err(errors::ObjectLifetimeErr { span: p.span, repr });
-            }
-        }
-    }
-    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
-    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::MacroDef => {}
-            _ => {
-                self.tcx.dcx().emit_err(errors::CollapseDebuginfo {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
             }
         }
     }
