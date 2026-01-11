@@ -196,6 +196,8 @@ pub enum Offload {
     Device,
     /// Second step in the offload pipeline, generates the host code to call kernels.
     Host(String),
+    /// We only map arguments, but still call host (=CPU) code.
+    Args,
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
 }

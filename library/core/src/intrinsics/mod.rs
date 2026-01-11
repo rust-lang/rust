@@ -3390,6 +3390,72 @@ pub const fn copysignf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
+/// This intrinsic maps the given args from the Host(=CPU) to a GPU device. It then calls the given
+/// function. Unlike the full `offload` intrinsic, this intrinsic expects a host function, in which
+/// we will replace all usages of the given host args with their device version. This enables
+/// support for various GPU libraries like `cuBLAS`, `cuDNN`, or `rocBLAS`, which *must* be called
+/// from the host, but expect a mixture of host and device arguments.
+///
+/// Type Parameters:
+/// - `F`: The kernel to call. Must be a function item.
+/// - `T`: A tuple of arguments passed to `f`.
+/// - `R`: The return type of the kernel.
+///
+/// Arguments:
+/// - `f`: The host function to be called.
+/// - `args`: A tuple of arguments, will be mapped to the gpu and forwarded to `f`.
+///
+/// Example usage (pseudocode):
+///
+/// ```rust,ignore (pseudocode)
+/// fn kernel(A: &[f32; 6], x: &[f32; 3], y: &mut [f64; 2]) {
+///     core::intrinsics::offload_args(sgemv_wrapper, (A.as_ptr(),x.as_ptr(),y.as_mut_ptr()))
+/// }
+///
+/// #[cfg(target_os = "linux")]
+/// extern "C" {
+///     pub fn rocblas_sgemv(
+///         alpha: *const f32,
+///         A: *const f32,
+///         x: *const f32,
+///         beta: *const f32,
+///         y: *mut f32,
+///     );
+/// }
+///
+/// #[cfg(not(target_os = "linux"))]
+/// fn sgemv_wrapper(A: *const [f32; 6], x: *const [f32; 3], y: *mut [f64; 2]) {
+///     // A, x, y were mapped to the GPU by our offload_args intrinsic call above.
+///     // As such, trying to access them in this function (and therefore from the CPU) would be
+///     // UB. We therefore are using raw pointers instead of references, since they do not point to
+///     // a valid (host) memory location.
+///
+///     // rocblas expects scalars to be passed as host pointers.
+///     let alpha = 1.0;
+///     let beta = 1.0;
+///     unsafe {
+///         rocblas_sgemv(
+///             // Host ptr
+///             &alpha as *const f32,
+///             // Replaced by device ptr
+///             A,
+///             // Replaced by device ptr
+///             x,
+///             // Host ptr
+///             &beta as *const f32,
+///             // Replaced by device ptr
+///             y
+///         );
+///     }
+/// }
+/// ```
+///
+/// For reference, see the Clang documentation on offloading:
+/// <https://clang.llvm.org/docs/OffloadingDesign.html>.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload_args<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
+
 /// Generates the LLVM body of a wrapper function to offload a kernel `f`.
 ///
 /// Type Parameters:

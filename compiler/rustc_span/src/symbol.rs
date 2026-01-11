@@ -1614,6 +1614,7 @@ symbols! {
         of,
         off,
         offload,
+        offload_args,
         offset,
         offset_of,
         offset_of_enum,
