@@ -2075,7 +2075,7 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
-        panic!("staticlibs not supported")
+        self.sess.dcx().emit_fatal(errors::BpfStaticlibNotSupported)
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, _whole_archive: bool) {
