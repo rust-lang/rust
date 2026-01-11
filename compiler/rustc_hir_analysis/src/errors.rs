@@ -1652,3 +1652,15 @@ pub(crate) struct LifetimesOrBoundsMismatchOnEii {
     pub bounds_span: Vec<Span>,
     pub ident: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_eii_with_generics)]
+#[help]
+pub(crate) struct EiiWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr: Span,
+    pub eii_name: Symbol,
+    pub impl_name: Symbol,
+}
