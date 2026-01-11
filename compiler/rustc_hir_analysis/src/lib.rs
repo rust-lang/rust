@@ -101,7 +101,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
 pub use crate::collect::suggest_impl_trait;
-use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
+use crate::hir_ty_lowering::HirTyLowerer;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -301,8 +301,8 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
 pub fn lower_const_arg_for_rustdoc<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_ct: &hir::ConstArg<'tcx>,
-    feed: FeedConstTy<'tcx>,
+    ty: Ty<'tcx>,
 ) -> Const<'tcx> {
     let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);
-    collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, feed)
+    collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, ty)
 }

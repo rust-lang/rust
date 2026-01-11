@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 
 use crate::errors;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, FeedConstTy, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
+    AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
     OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
 };
 
@@ -543,7 +543,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
-                        // Provide the resolved type of the associated constant
                         let ty = projection_term.map_bound(|alias| {
                             tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
                         });
@@ -554,7 +553,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             constraint.hir_id,
                         );
 
-                        self.lower_const_arg(ct, FeedConstTy::WithTy(ty)).into()
+                        self.lower_const_arg(ct, ty).into()
                     }
                 };
 
