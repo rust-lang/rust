@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use rustc_ast::attr::{AttributeExt, MarkedAttrs};
+use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
@@ -16,7 +16,7 @@ use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, CfgEntry, Deprecation};
+use rustc_hir::attrs::{AttributeKind, CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
@@ -24,7 +24,6 @@ use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::Session;
-use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
@@ -34,7 +33,6 @@ use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
-use crate::base::ast::MetaItemInner;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::mbe::macro_rules::ParserAnyMacro;
@@ -887,25 +885,6 @@ impl SyntaxExtension {
         }
     }
 
-    fn collapse_debuginfo_by_name(
-        attr: &impl AttributeExt,
-    ) -> Result<CollapseMacroDebuginfo, Span> {
-        let list = attr.meta_item_list();
-        let Some([MetaItemInner::MetaItem(item)]) = list.as_deref() else {
-            return Err(attr.span());
-        };
-        if !item.is_word() {
-            return Err(item.span);
-        }
-
-        match item.name() {
-            Some(sym::no) => Ok(CollapseMacroDebuginfo::No),
-            Some(sym::external) => Ok(CollapseMacroDebuginfo::External),
-            Some(sym::yes) => Ok(CollapseMacroDebuginfo::Yes),
-            _ => Err(item.path.span),
-        }
-    }
-
     /// if-ext - if macro from different crate (related to callsite code)
     /// | cmd \ attr    | no  | (unspecified) | external | yes |
     /// | no            | no  | no            | no       | no  |
@@ -914,21 +893,15 @@ impl SyntaxExtension {
     /// | yes           | yes | yes           | yes      | yes |
     fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
-        let attr = ast::attr::find_by_name(attrs, sym::collapse_debuginfo)
-            .and_then(|attr| {
-                Self::collapse_debuginfo_by_name(attr)
-                    .map_err(|span| {
-                        sess.dcx().emit_err(errors::CollapseMacroDebuginfoIllegal { span })
-                    })
-                    .ok()
-            })
-            .unwrap_or_else(|| {
-                if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
-                    CollapseMacroDebuginfo::Yes
-                } else {
-                    CollapseMacroDebuginfo::Unspecified
-                }
-            });
+        let attr =
+            if let Some(info) = find_attr!(attrs, AttributeKind::CollapseDebugInfo(info) => info) {
+                info.clone()
+            } else if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
+                CollapseMacroDebuginfo::Yes
+            } else {
+                CollapseMacroDebuginfo::Unspecified
+            };
+
         #[rustfmt::skip]
         let collapse_table = [
             [false, false, false, false],
