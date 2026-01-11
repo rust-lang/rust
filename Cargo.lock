@@ -4455,6 +4455,7 @@ dependencies = [
  "rustc_privacy",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
  "tracing",

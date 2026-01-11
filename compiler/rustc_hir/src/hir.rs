@@ -1364,9 +1364,6 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
-            Attribute::Parsed(AttributeKind::RustcSymbolName(span)) => *span,
-            Attribute::Parsed(AttributeKind::RustcDefPath(span)) => *span,
-
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }

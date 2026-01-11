@@ -310,6 +310,7 @@ const SYMBOL_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
     Allow(Target::Fn),
     Allow(Target::Method(MethodKind::TraitImpl)),
     Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),
     Allow(Target::Impl { of_trait: false }),
