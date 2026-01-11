@@ -301,9 +301,12 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
         && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
         && import1 == import2
     {
-        assert_eq!(d1.ambiguity.get(), d2.ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
+        if d1.ambiguity.get() != d2.ambiguity.get() {
+            assert!(d1.ambiguity.get().is_some());
+            assert!(d2.ambiguity.get().is_none());
+        }
         // Visibility of the new import declaration may be different,
         // because it already incorporates the visibility of the source binding.
         // `warn_ambiguity` of a re-fetched glob can also change in both directions.
@@ -377,6 +380,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
             assert!(!deep_decl.is_glob_import());
+            if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
+                // Do not lose glob ambiguities when re-fetching the glob.
+                glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
+            }
             if glob_decl.is_ambiguity_recursive() {
                 glob_decl.warn_ambiguity.set_unchecked(true);
             }
