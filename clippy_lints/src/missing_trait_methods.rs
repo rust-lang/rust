@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
+use clippy_utils::source::snippet_opt;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -84,7 +85,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                     cx.tcx.def_span(item.owner_id),
                     format!("missing trait method provided by default: `{}`", assoc.name()),
                     |diag| {
-                        diag.span_help(cx.tcx.def_span(assoc.def_id), "implement the method");
+                        if assoc.def_id.is_local() {
+                            diag.span_help(cx.tcx.def_span(assoc.def_id), "implement the method");
+                        } else if let Some(snippet) = snippet_opt(cx, of_trait.trait_ref.path.span) {
+                            diag.help(format!(
+                                "implement the missing `{}` method of the `{snippet}` trait",
+                                assoc.name(),
+                            ));
+                        }
                     },
                 );
             }

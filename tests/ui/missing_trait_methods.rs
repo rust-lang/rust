@@ -62,3 +62,10 @@ impl MissingMultiple for Partial {}
 //~| missing_trait_methods
 
 fn main() {}
+
+//~v missing_trait_methods
+impl PartialEq<Partial> for Partial {
+    fn eq(&self, other: &Partial) -> bool {
+        todo!()
+    }
+}
