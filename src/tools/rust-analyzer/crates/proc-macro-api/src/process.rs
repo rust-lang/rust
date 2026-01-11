@@ -210,9 +210,8 @@ impl ProcMacroServerProcess {
         callback: Option<SubCallback<'_>>,
     ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
-                legacy_protocol::find_proc_macros(self, dylib_path)
-            }
+            Protocol::LegacyJson { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
+
             Protocol::BidirectionalPostcardPrototype { .. } => {
                 let cb = callback.expect("callback required for bidirectional protocol");
                 bidirectional_protocol::find_proc_macros(self, dylib_path, cb)
@@ -279,7 +278,7 @@ impl ProcMacroServerProcess {
         let result = match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::expand(
                 proc_macro,
-                    self,
+                self,
                 subtree,
                 attr,
                 env,
@@ -344,11 +343,7 @@ impl ProcMacroServerProcess {
                 match state.process.exit_err() {
                     None => e,
                     Some(server_error) => {
-                        proc_macro_worker
-                            .get_exited()
-                            .get_or_init(|| AssertUnwindSafe(server_error))
-                            .0
-                            .clone()
+                        self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
                     }
                 }
             } else {

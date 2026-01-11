@@ -155,8 +155,15 @@ impl ProcMacroClient {
         version: Option<&Version>,
         num_process: usize,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::spawn(process_path, env, version)?;
-        Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
+        let pool_size = num_process;
+        let mut workers = Vec::with_capacity(pool_size);
+        for _ in 0..pool_size {
+            let worker = ProcMacroServerProcess::spawn(process_path, env.clone(), version)?;
+            workers.push(worker);
+        }
+
+        let pool = ProcMacroServerPool::new(workers);
+        Ok(ProcMacroClient { pool: Arc::new(pool), path: process_path.to_owned() })
     }
 
     /// Invokes `spawn` and returns a client connected to the resulting read and write handles.
@@ -170,11 +177,20 @@ impl ProcMacroClient {
             Box<dyn process::ProcessExit>,
             Box<dyn io::Write + Send + Sync>,
             Box<dyn io::BufRead + Send + Sync>,
-        )>,
+        )> + Clone,
         version: Option<&Version>,
+        num_process: usize,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(spawn, version, || "<unknown>".to_owned())?;
-        Ok(ProcMacroClient { worker: Arc::new(process), path: process_path.to_owned() })
+        let pool_size = num_process;
+        let mut workers = Vec::with_capacity(pool_size);
+        for _ in 0..pool_size {
+            let worker =
+                ProcMacroServerProcess::run(spawn.clone(), version, || "<unknown>".to_owned())?;
+            workers.push(worker);
+        }
+
+        let pool = ProcMacroServerPool::new(workers);
+        Ok(ProcMacroClient { pool: Arc::new(pool), path: process_path.to_owned() })
     }
 
     /// Returns the absolute path to the proc-macro server.
