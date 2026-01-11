@@ -95,6 +95,7 @@ impl AttributeKind {
             Repr { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
+            RustcDefPath(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcLegacyConstGenerics { .. } => Yes,
@@ -112,6 +113,7 @@ impl AttributeKind {
             RustcScalableVector { .. } => Yes,
             RustcShouldNotBeCalledOnConstItems(..) => Yes,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
+            RustcSymbolName(..) => Yes,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,

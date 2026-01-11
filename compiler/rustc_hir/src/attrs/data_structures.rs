@@ -880,6 +880,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
+    /// Represents `#[rustc_def_path]`
+    RustcDefPath(Span),
+
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
 
@@ -935,6 +938,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
+
+    /// Represents `#[rustc_symbol_name]`
+    RustcSymbolName(Span),
 
     /// Represents `#[sanitize]`
     ///

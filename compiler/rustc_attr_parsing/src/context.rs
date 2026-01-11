@@ -62,13 +62,13 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
-    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
+    RustcDefPath, RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
     RustcLegacyConstGenericsParser, RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser,
     RustcLintOptTyParser, RustcLintQueryInstabilityParser,
     RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
     RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser,
     RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
-    RustcSimdMonomorphizeLaneLimitParser,
+    RustcSimdMonomorphizeLaneLimitParser, RustcSymbolName,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -215,6 +215,7 @@ attribute_parsers!(
         Single<ProcMacroDeriveParser>,
         Single<RecursionLimitParser>,
         Single<RustcBuiltinMacroParser>,
+        Single<RustcDefPath>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEndParser>,
         Single<RustcLayoutScalarValidRangeStartParser>,
@@ -224,6 +225,7 @@ attribute_parsers!(
         Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
+        Single<RustcSymbolName>,
         Single<SanitizeParser>,
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
