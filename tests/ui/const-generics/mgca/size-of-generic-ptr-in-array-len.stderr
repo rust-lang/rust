@@ -4,5 +4,11 @@ error: tuple constructor with invalid base path
 LL |     [0; size_of::<*mut T>()];
    |         ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: generic parameters may not be used in const operations
+  --> $DIR/size-of-generic-ptr-in-array-len.rs:8:32
+   |
+LL |     [0; const { size_of::<*mut T>() }];
+   |                                ^
+
+error: aborting due to 2 previous errors
 
