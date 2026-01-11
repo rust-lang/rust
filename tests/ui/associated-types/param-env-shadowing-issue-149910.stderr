@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-149910.rs:10:5
+  --> $DIR/param-env-shadowing-issue-149910.rs:10:5
    |
 LL | fn foo<T: Trait>(x: T) -> T::Assoc {
    |        -                  -------- expected `<T as Trait>::Assoc` because of return type
    |        |
    |        found this type parameter
-LL |     x 
+LL |     x
    |     ^ expected associated type, found type parameter `T`
    |
    = note: expected associated type `<T as Trait>::Assoc`
