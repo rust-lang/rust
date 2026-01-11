@@ -697,6 +697,49 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Platform-specific behavior
 ///
+/// On Linux, Android, Cygwin, GNU Nurd, NuttX, and Emscripten, this function
+/// returns the target of the `/proc/self/exe` symlink. If the executable has
+/// been deleted, Linux returns the previous path with the string `" deleted()"`
+/// appended.
+///
+/// On Apple operating systems, this function calls `_NSGetExecutablePath`.
+///
+/// On Windows, this function calls `GetModuleFileNameW`.
+///
+/// On FreeBSD, and DragonFlyBSD, this function reads the `KERN_PROC_PATHNAME`
+/// sysctl.
+///
+/// On NetBSD, this function reads the `KERN_PROC_PATHNAME` sysctl, and if that
+/// fails it reads the `/proc/curproc/exe` symlink.
+///
+/// On OpenBSD, this function reads the `KERN_PROC_ARGV` sysctl.
+///
+/// On AIX, this function searches `$PATH` for an executable file whose name
+/// matches the first [command line argument][args].
+///
+/// On QNX Neutrino, this function reads `/proc/self/exefile`.
+///
+/// On Solaris and Illumos, this function reads the symlink
+/// `/proc/self/path/a.out`, and if that fails calls `getexecname`. If the
+/// returned path is not absolute, the current directory is prepended.
+///
+/// On Haiku OS, this calls `find_path` with `B_FIND_PATH_IMAGE_PATH`.
+///
+/// On RedoxOS, this reads `/scheme/sys/exe`.
+///
+/// On RTEMS, this reads `sys:exe`.
+///
+/// On VxWorks and Fuchsia, this function [canonicalizes][] and returns the
+/// first [command line argument][args].
+///
+/// On Motor OS, this calls `moto_rt::process::current_exe`.
+///
+/// On UEFI, this returns the loaded image device path from the Loaded Image
+/// Protocol.
+///
+/// On other platforms, this function returns an error of kind
+/// [`Unsupported`][unsupported].
+///
 /// If the executable was invoked through a symbolic link, some platforms will
 /// return the path of the symbolic link and other platforms will return the
 /// path of the symbolic link’s target.
@@ -704,16 +747,15 @@ pub fn temp_dir() -> PathBuf {
 /// If the executable is renamed while it is running, platforms may return the
 /// path at the time it was loaded instead of the new path.
 ///
-/// If the executable has been deleted, Linux returns the previous path with the string `"
-/// deleted()"` appended.
-///
-/// Note that the platform-specific behavior [may change in the future][changes].
+/// Note that platform-specific behavior [may change in the future][changes].
 ///
 /// # Errors
 ///
 /// Acquiring the path of the current executable is a platform-specific operation
 /// that can fail for a good number of reasons. Some errors can include, but not
-/// be limited to, filesystem operations failing or general syscall failures.
+/// be limited to, the `/proc` filesystem being inaccessible, filesystem
+/// operations failing, the function not being supported on the current OS, and
+/// general syscall failures.
 ///
 /// # Security
 ///
@@ -753,6 +795,9 @@ pub fn temp_dir() -> PathBuf {
 /// ```
 ///
 /// [changes]: crate::io#platform-specific-behavior
+/// [args]: crate::env::args
+/// [unsupported]: crate::io::ErrorKind::Unsupported
+/// [canonicalizes]: crate::path::Path::canonicalize
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
