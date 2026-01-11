@@ -6,7 +6,10 @@ use proc_macro_api::{
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version::CURRENT_API_VERSION,
 };
-use std::{io, ops::Range};
+use std::{
+    io::{self, BufRead, Write},
+    ops::Range,
+};
 
 use legacy::Message;
 
