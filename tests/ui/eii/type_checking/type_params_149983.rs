@@ -5,3 +5,6 @@
 
 #[eii]
 fn foo<T>() {}
+//~^ ERROR externally implementable items may not have type parameters
+
+fn main() {}
