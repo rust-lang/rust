@@ -285,11 +285,11 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        unsupported()
+        self.datasync()
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        unsupported()
+        self.0.flush()
     }
 
     pub fn lock(&self) -> io::Result<()> {
@@ -348,8 +348,9 @@ impl File {
         false
     }
 
+    // Write::flush is only meant for buffered writers. So should be noop for unbuffered files.
     pub fn flush(&self) -> io::Result<()> {
-        unsupported()
+        Ok(())
     }
 
     pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
@@ -762,6 +763,12 @@ mod uefi_fs {
             // Spec states that even in case of failure, the file handle will be closed.
             crate::mem::forget(self);
 
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
+        pub(crate) fn flush(&self) -> io::Result<()> {
+            let file_ptr = self.protocol.as_ptr();
+            let r = unsafe { ((*file_ptr).flush)(file_ptr) };
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
         }
 
