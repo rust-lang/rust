@@ -48,7 +48,8 @@ use crate::attributes::lint_helpers::{
 };
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::macro_attrs::{
-    AllowInternalUnsafeParser, MacroEscapeParser, MacroExportParser, MacroUseParser,
+    AllowInternalUnsafeParser, CollapseDebugInfoParser, MacroEscapeParser, MacroExportParser,
+    MacroUseParser,
 };
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
@@ -191,6 +192,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CfiEncodingParser>,
+        Single<CollapseDebugInfoParser>,
         Single<CoverageParser>,
         Single<CrateNameParser>,
         Single<CustomMirParser>,
