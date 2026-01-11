@@ -79,6 +79,10 @@ fn basic_impl() {
 fn random_patterns() {
     check_is_partial_sorted_ranges(&patterns::random(10));
     check_is_partial_sorted_ranges(&patterns::random(50));
-    check_is_partial_sorted_ranges(&patterns::random(100));
-    check_is_partial_sorted_ranges(&patterns::random(1000));
+
+    // Longer tests would take hours to run under Miri.
+    if !cfg!(miri) {
+        check_is_partial_sorted_ranges(&patterns::random(100));
+        check_is_partial_sorted_ranges(&patterns::random(1000));
+    }
 }
