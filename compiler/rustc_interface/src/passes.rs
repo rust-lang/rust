@@ -1234,12 +1234,6 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.ensure_ok().trigger_delayed_bug(def_id);
     }
 
-    // Don't run this test assertions when not doing codegen. Compiletest tries to build
-    // build-fail tests in check mode first and expects it to not give an error in that case.
-    if tcx.sess.opts.output_types.should_codegen() {
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-    }
-
     // Don't do code generation if there were any errors. Likewise if
     // there were any delayed bugs, because codegen will likely cause
     // more ICEs, obscuring the original problem.

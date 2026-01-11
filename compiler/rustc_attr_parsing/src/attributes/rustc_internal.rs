@@ -305,3 +305,47 @@ impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
         Some(AttributeKind::RustcScalableVector { element_count: Some(n), span: cx.attr_span })
     }
 }
+
+const SYMBOL_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    Allow(Target::Fn),
+    Allow(Target::Method(MethodKind::TraitImpl)),
+    Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
+    Allow(Target::ForeignFn),
+    Allow(Target::ForeignStatic),
+    Allow(Target::Impl { of_trait: false }),
+]);
+
+pub(crate) struct RustcSymbolName;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {
+    const ALLOWED_TARGETS: AllowedTargets = SYMBOL_TARGETS;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const PATH: &[Symbol] = &[sym::rustc_symbol_name];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+            return None;
+        }
+        Some(AttributeKind::RustcSymbolName(cx.attr_span))
+    }
+}
+
+pub(crate) struct RustcDefPath;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcDefPath {
+    const ALLOWED_TARGETS: AllowedTargets = SYMBOL_TARGETS;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const PATH: &[Symbol] = &[sym::rustc_def_path];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+            return None;
+        }
+        Some(AttributeKind::RustcDefPath(cx.attr_span))
+    }
+}

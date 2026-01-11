@@ -55,7 +55,15 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use crate::{errors, fluent_generated as fluent};
-
+const SYMBOL_TARGETS: &'static [Target] = &[
+    Target::Fn,
+    Target::Method(MethodKind::TraitImpl),
+    Target::Method(MethodKind::Inherent),
+    Target::Method(MethodKind::Trait { body: true }),
+    Target::ForeignFn,
+    Target::ForeignStatic,
+    Target::Impl { of_trait: false },
+];
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
 struct DiagnosticOnUnimplementedOnlyForTraits;
@@ -222,7 +230,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
-                },
+                }
+                Attribute::Parsed(AttributeKind::RustcSymbolName(attr_span)) => {
+                    self.check_rustc_symbol_name(*attr_span, hir_id, target)
+                }
+                Attribute::Parsed(AttributeKind::RustcDefPath(attr_span)) => {
+                    self.check_rustc_def_path(*attr_span, hir_id, target);
+                }
                 Attribute::Parsed(
                     AttributeKind::EiiExternTarget { .. }
                     | AttributeKind::EiiExternItem
@@ -446,6 +460,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn check_rustc_symbol_name(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        // Don't run this test assertions when not doing codegen. Compiletest tries to build
+        // build-fail tests in check mode first and expects it to not give an error in that case.
+        if self.tcx.sess.opts.output_types.should_codegen() && SYMBOL_TARGETS.contains(&target) {
+            rustc_symbol_mangling::test::process_symbol_name_attr(
+                self.tcx,
+                hir_id.owner.def_id,
+                attr_span,
+            );
+        }
+    }
+
+    fn check_rustc_def_path(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        // Don't run this test assertions when not doing codegen. Compiletest tries to build
+        // build-fail tests in check mode first and expects it to not give an error in that case.
+        if self.tcx.sess.opts.output_types.should_codegen() && SYMBOL_TARGETS.contains(&target) {
+            rustc_symbol_mangling::test::process_def_path_attr(
+                self.tcx,
+                hir_id.owner.def_id,
+                attr_span,
+            );
+        }
     }
 
     fn check_rustc_must_implement_one_of(
