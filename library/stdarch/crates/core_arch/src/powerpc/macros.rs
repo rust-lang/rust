@@ -274,20 +274,6 @@ macro_rules! t_b {
     };
 }
 
-macro_rules! impl_neg {
-    ($s: ident : $zero: expr) => {
-        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-        impl crate::ops::Neg for s_t_l!($s) {
-            type Output = s_t_l!($s);
-            #[inline]
-            fn neg(self) -> Self::Output {
-                unsafe { simd_neg(self) }
-            }
-        }
-    };
-}
-
-pub(crate) use impl_neg;
 pub(crate) use impl_vec_trait;
 pub(crate) use s_t_l;
 pub(crate) use t_b;
