@@ -294,8 +294,12 @@ impl<'tcx> ConstToPat<'tcx> {
                     || pointee_ty.is_slice()
                     || pointee_ty.is_sized(tcx, self.typing_env)
                 {
-                    // References have the same valtree representation as their pointee.
                     PatKind::Deref {
+                        // This node has type `ty::Ref`, so it's not a pin-deref.
+                        pin: hir::Pinnedness::Not,
+                        // Lower the valtree to a pattern as the pointee type.
+                        // This works because references have the same valtree
+                        // representation as their pointee.
                         subpattern: self.valtree_to_pat(ty::Value { ty: *pointee_ty, valtree }),
                     }
                 } else {
