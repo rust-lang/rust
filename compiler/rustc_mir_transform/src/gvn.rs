@@ -83,8 +83,8 @@
 //! inlining. For instance, constants that contain a fn pointer (`AllocId` pointing to a
 //! `GlobalAlloc::Function`) point to a different symbol in each codegen unit. To avoid this,
 //! when writing constants in MIR, we do not write `Const`s that contain `AllocId`s. This is
-//! checked by `may_have_provenance`. See https://github.com/rust-lang/rust/issues/128775 for more
-//! information.
+//! checked by `may_have_provenance`. See <https://github.com/rust-lang/rust/issues/128775> for
+//! more information.
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
