@@ -353,8 +353,24 @@ impl File {
         Ok(())
     }
 
-    pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        unsupported()
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        const NEG_OFF_ERR: io::Error =
+            io::const_error!(io::ErrorKind::InvalidInput, "cannot seek to negative offset.");
+
+        let off = match pos {
+            SeekFrom::Start(p) => p,
+            SeekFrom::End(p) => {
+                // Seeking to position 0xFFFFFFFFFFFFFFFF causes the current position to be set to the end of the file.
+                if p == 0 {
+                    0xFFFFFFFFFFFFFFFF
+                } else {
+                    self.file_attr()?.size().checked_add_signed(p).ok_or(NEG_OFF_ERR)?
+                }
+            }
+            SeekFrom::Current(p) => self.tell()?.checked_add_signed(p).ok_or(NEG_OFF_ERR)?,
+        };
+
+        self.0.set_position(off).map(|_| off)
     }
 
     pub fn size(&self) -> Option<io::Result<u64>> {
@@ -754,6 +770,12 @@ mod uefi_fs {
 
             let r = unsafe { ((*file_ptr).get_position)(file_ptr, &mut pos) };
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(pos) }
+        }
+
+        pub(crate) fn set_position(&self, pos: u64) -> io::Result<()> {
+            let file_ptr = self.protocol.as_ptr();
+            let r = unsafe { ((*file_ptr).set_position)(file_ptr, pos) };
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
         }
 
         pub(crate) fn delete(self) -> io::Result<()> {
