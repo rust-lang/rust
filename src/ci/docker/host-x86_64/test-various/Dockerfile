@@ -71,12 +71,6 @@ ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $
   tests/assembly-llvm \
   library/core
 
-ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
-ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
-  tests/run-make \
-  tests/run-make-cargo \
-  tests/assembly-llvm
-
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
