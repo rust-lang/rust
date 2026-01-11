@@ -115,7 +115,6 @@ backtrace-trace-only = []
 panic-unwind = ["dep:panic_unwind"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
-compiler-builtins-no-f16-f128 = ["alloc/compiler-builtins-no-f16-f128"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 

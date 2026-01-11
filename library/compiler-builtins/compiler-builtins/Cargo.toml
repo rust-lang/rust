@@ -45,10 +45,6 @@ c = ["dep:cc"]
 # the generic versions on all platforms.
 no-asm = []
 
-# Workaround for codegen backends which haven't yet implemented `f16` and
-# `f128` support. Disabled any intrinsics which use those types.
-no-f16-f128 = []
-
 # Flag this library as the unstable compiler-builtins lib
 compiler-builtins = []
 
