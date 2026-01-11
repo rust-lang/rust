@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -410,13 +410,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn try_plant_decl_into_local_module(
         &mut self,
         module: Module<'ra>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
         let res = decl.res();
-        self.check_reserved_macro_name(ident, res);
+        self.check_reserved_macro_name(ident.0, res);
         self.set_decl_parent_module(decl, module);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
@@ -512,7 +512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let import_decl = self.new_import_decl(binding, *import);
                 let _ = self.try_plant_decl_into_local_module(
                     import.parent_scope.module,
-                    ident.0,
+                    ident,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
@@ -534,11 +534,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_decl = self.new_import_decl(dummy_decl, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ =
-                    this.try_plant_decl_into_local_module(module, target, ns, dummy_decl, false);
+                let ident = Macros20NormalizedIdent::new(target);
+                let _ = this.try_plant_decl_into_local_module(module, ident, ns, dummy_decl, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
-                    let key = BindingKey::new(target, ns);
+                    let key = BindingKey::new(ident, ns);
                     this.update_local_resolution(module, key, false, |_, resolution| {
                         resolution.single_imports.swap_remove(&import);
                     })
@@ -917,7 +917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let import_decl = this.new_import_decl(binding, import);
                         this.get_mut_unchecked().plant_decl_into_local_module(
                             parent,
-                            target,
+                            Macros20NormalizedIdent::new(target),
                             ns,
                             import_decl,
                         );
@@ -926,7 +926,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
-                            let key = BindingKey::new(target, ns);
+                            let key = BindingKey::new(Macros20NormalizedIdent::new(target), ns);
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,
@@ -1542,7 +1542,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_plant_decl_into_local_module(
                     import.parent_scope.module,
-                    key.ident.0,
+                    key.ident,
                     key.ns,
                     import_decl,
                     warn_ambiguity,

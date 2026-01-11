@@ -1187,7 +1187,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(*ident, res)),
+                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(ident.0, res)),
                         );
                     }
                 }
@@ -1199,7 +1199,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions
-                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident, res))
+                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident.0, res))
                         }
                     }
                 }
@@ -2892,7 +2892,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let binding_key = BindingKey::new(ident, MacroNS);
+        let binding_key = BindingKey::new(Macros20NormalizedIdent::new(ident), MacroNS);
         let binding = self.resolution(crate_module, binding_key)?.binding()?;
         let Res::Def(DefKind::Macro(kinds), _) = binding.res() else {
             return None;

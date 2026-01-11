@@ -572,17 +572,17 @@ struct BindingKey {
 }
 
 impl BindingKey {
-    fn new(ident: Ident, ns: Namespace) -> Self {
-        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator: 0 }
+    fn new(ident: Macros20NormalizedIdent, ns: Namespace) -> Self {
+        BindingKey { ident, ns, disambiguator: 0 }
     }
 
     fn new_disambiguated(
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         disambiguator: impl FnOnce() -> u32,
     ) -> BindingKey {
         let disambiguator = if ident.name == kw::Underscore { disambiguator() } else { 0 };
-        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator }
+        BindingKey { ident, ns, disambiguator }
     }
 }
 
@@ -1080,7 +1080,7 @@ impl ExternPreludeEntry<'_> {
 
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
-    helper_attrs: Vec<(usize, Ident)>,
+    helper_attrs: Vec<(usize, Macros20NormalizedIdent)>,
     has_derive_copy: bool,
 }
 
@@ -1245,7 +1245,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
     macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'ra>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, Decl<'ra>)>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Macros20NormalizedIdent, Decl<'ra>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,
@@ -2255,20 +2255,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn extern_prelude_get_item<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         finalize: bool,
     ) -> Option<Decl<'ra>> {
-        let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
-        entry.and_then(|entry| entry.item_decl).map(|(binding, _)| {
+        let entry = self.extern_prelude.get(&ident);
+        entry.and_then(|entry| entry.item_decl).map(|(decl, _)| {
             if finalize {
-                self.get_mut().record_use(ident, binding, Used::Scope);
+                self.get_mut().record_use(ident.0, decl, Used::Scope);
             }
-            binding
+            decl
         })
     }
 
-    fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<Decl<'ra>> {
-        let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
+    fn extern_prelude_get_flag(
+        &self,
+        ident: Macros20NormalizedIdent,
+        finalize: bool,
+    ) -> Option<Decl<'ra>> {
+        let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
             let (pending_decl, finalized) = flag_decl.get();
             let decl = match pending_decl {
