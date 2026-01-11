@@ -21,7 +21,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
-use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
@@ -1749,10 +1749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count_span = count.span;
         let count = self.try_structurally_resolve_const(
             count_span,
-            self.normalize(
-                count_span,
-                self.lower_const_arg(count, FeedConstTy::WithTy(tcx.types.usize)),
-            ),
+            self.normalize(count_span, self.lower_const_arg(count, tcx.types.usize)),
         );
 
         if let Some(count) = count.try_to_target_usize(tcx) {

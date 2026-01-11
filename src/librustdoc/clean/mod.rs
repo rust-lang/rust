@@ -43,7 +43,6 @@ use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{LangItem, PredicateOrigin, find_attr};
-use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -485,7 +484,7 @@ fn clean_hir_term<'tcx>(
                 Ty::new_error_with_message(cx.tcx, span, "cannot find the associated constant")
             };
 
-            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, FeedConstTy::WithTy(ty));
+            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct), cx))
         }
     }
@@ -663,12 +662,7 @@ fn clean_generic_param<'tcx>(
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
                     Box::new(
-                        lower_const_arg_for_rustdoc(
-                            cx.tcx,
-                            ct,
-                            FeedConstTy::WithTy(lower_ty(cx.tcx, ty)),
-                        )
-                        .to_string(),
+                        lower_const_arg_for_rustdoc(cx.tcx, ct, lower_ty(cx.tcx, ty)).to_string(),
                     )
                 }),
             },
@@ -1831,11 +1825,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             let length = match const_arg.kind {
                 hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
-                    let ct = lower_const_arg_for_rustdoc(
-                        cx.tcx,
-                        const_arg,
-                        FeedConstTy::WithTy(cx.tcx.types.usize),
-                    );
+                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                     let ct = cx.tcx.normalize_erasing_regions(typing_env, ct);
                     print_const(cx, ct)
@@ -1846,11 +1836,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 | hir::ConstArgKind::Tup(..)
                 | hir::ConstArgKind::Array(..)
                 | hir::ConstArgKind::Literal(..) => {
-                    let ct = lower_const_arg_for_rustdoc(
-                        cx.tcx,
-                        const_arg,
-                        FeedConstTy::WithTy(cx.tcx.types.usize),
-                    );
+                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     print_const(cx, ct)
                 }
             };
