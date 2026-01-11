@@ -16,6 +16,12 @@ pub mod module {
     pub fn whatever() {}
 }
 
+#[doc(alias = "==")]
+pub struct OperatorEqEqAlias;
+
+#[doc(alias = "!=")]
+pub struct OperatorNotEqAlias;
+
 pub fn foobar() {}
 
 pub type Alias = u32;
