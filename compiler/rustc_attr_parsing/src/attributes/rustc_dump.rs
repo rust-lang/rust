@@ -15,3 +15,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpUserArgs {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpUserArgs;
 }
+
+pub(crate) struct RustcDumpDefParents;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpDefParents {
+    const PATH: &[Symbol] = &[sym::rustc_dump_def_parents];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpDefParents;
+}

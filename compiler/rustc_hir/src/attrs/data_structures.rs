@@ -906,6 +906,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
+    /// Represents `#[rustc_dump_def_parents]`
+    RustcDumpDefParents,
+    
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 

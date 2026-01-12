@@ -310,6 +310,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::MustNotSupend { .. }
                     | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpDefParents
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -369,7 +370,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_abi
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls
-                            | sym::rustc_dump_def_parents
                             | sym::rustc_never_type_options
                             | sym::rustc_autodiff
                             | sym::rustc_capture_analysis

@@ -97,6 +97,7 @@ impl AttributeKind {
             Repr { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
+            RustcDumpDefParents => No,
             RustcDumpUserArgs => No,
             RustcHasIncoherentInherentImpls => Yes,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
