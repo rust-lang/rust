@@ -295,7 +295,18 @@ pub fn valtree_to_const_value<'tcx>(
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
         ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
-            let layout = tcx.layout_of(typing_env.as_query_input(cv.ty)).unwrap();
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(cv.ty)) else {
+                // If layout fails, we delay a bug.
+                // If the user code has errors (like missing generics), those will be printed
+                // and this delayed bug will be ignored (defused).
+                // If the user code is valid, this will trigger an ICE at the end of compilation,
+                // preventing us from silently generating bad code (UB).
+                tcx.dcx().span_delayed_bug(
+                    rustc_span::DUMMY_SP,
+                    format!("failed to get layout for type: {:?}", cv.ty),
+                );
+                return mir::ConstValue::ZeroSized;
+            };
             if layout.is_zst() {
                 // Fast path to avoid some allocations.
                 return mir::ConstValue::ZeroSized;

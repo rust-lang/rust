@@ -1,0 +1,49 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/adt-const-param-ice-150969-gcc.rs:2:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/adt-const-param-ice-150969-gcc.rs:4:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/adt-const-param-ice-150969-gcc.rs:7:31
+   |
+LL | fn pass_enum<const N : usize, const M : usize = const {N}>() {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0107]: missing generics for enum `Option`
+  --> $DIR/adt-const-param-ice-150969-gcc.rs:10:18
+   |
+LL |     pass_enum::<{None}>();
+   |                  ^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     pass_enum::<{None<T>}>();
+   |                      +++
+
+error[E0080]: constructing invalid value: encountered uninitialized memory, but expected an integer
+  --> $DIR/adt-const-param-ice-150969-gcc.rs:7:49
+   |
+LL | fn pass_enum<const N : usize, const M : usize = const {N}>() {
+   |                                                 ^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+           }
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0080, E0107.
+For more information about an error, try `rustc --explain E0080`.

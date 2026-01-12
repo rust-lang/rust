@@ -1,0 +1,37 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/adt-const-param-ice-150969.rs:2:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/adt-const-param-ice-150969.rs:4:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/adt-const-param-ice-150969.rs:7:31
+   |
+LL | fn pass_enum<const N : usize, const M : usize = const {N}>() {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0107]: missing generics for enum `Option`
+  --> $DIR/adt-const-param-ice-150969.rs:9:18
+   |
+LL |     pass_enum::<{None}>();
+   |                  ^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     pass_enum::<{None<T>}>();
+   |                      +++
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0107`.
