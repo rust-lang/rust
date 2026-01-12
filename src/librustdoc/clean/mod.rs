@@ -471,19 +471,13 @@ fn clean_middle_term<'tcx>(
 fn clean_hir_term<'tcx>(
     assoc_item: Option<DefId>,
     term: &hir::Term<'tcx>,
-    span: rustc_span::Span,
     cx: &mut DocContext<'tcx>,
 ) -> Term {
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => {
-            let ty = if let Some(assoc_item) = assoc_item {
-                // FIXME(generic_const_items): this should instantiate with the alias item's args
-                cx.tcx.type_of(assoc_item).instantiate_identity()
-            } else {
-                Ty::new_error_with_message(cx.tcx, span, "cannot find the associated constant")
-            };
-
+            // FIXME(generic_const_items): this should instantiate with the alias item's args
+            let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity();
             let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct), cx))
         }
@@ -3170,9 +3164,7 @@ fn clean_assoc_item_constraint<'tcx>(
                     .associated_items(trait_did)
                     .find_by_ident_and_kind(cx.tcx, constraint.ident, assoc_tag, trait_did)
                     .map(|item| item.def_id);
-                AssocItemConstraintKind::Equality {
-                    term: clean_hir_term(assoc_item, term, constraint.span, cx),
-                }
+                AssocItemConstraintKind::Equality { term: clean_hir_term(assoc_item, term, cx) }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
                 bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, cx)).collect(),

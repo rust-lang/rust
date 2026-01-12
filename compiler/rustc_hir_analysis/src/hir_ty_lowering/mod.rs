@@ -1283,6 +1283,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             )
                                         });
 
+                                        // FIXME(mgca): code duplication with other places we lower
+                                        // the rhs' of associated const bindings
                                         let ty = projection_term.map_bound(|alias| {
                                             tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
                                         });
