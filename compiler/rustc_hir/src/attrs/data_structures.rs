@@ -331,6 +331,8 @@ pub enum NativeLibKind {
         bundle: Option<bool>,
         /// Whether to link static library without throwing any object files away
         whole_archive: Option<bool>,
+        /// Whether to export c static library symbols
+        export_symbols: Option<bool>,
     },
     /// Dynamic library (e.g. `libfoo.so` on Linux)
     /// or an import library corresponding to a dynamic library (e.g. `foo.lib` on Windows/MSVC).
@@ -363,8 +365,8 @@ pub enum NativeLibKind {
 impl NativeLibKind {
     pub fn has_modifiers(&self) -> bool {
         match self {
-            NativeLibKind::Static { bundle, whole_archive } => {
-                bundle.is_some() || whole_archive.is_some()
+            NativeLibKind::Static { bundle, whole_archive, export_symbols } => {
+                bundle.is_some() || whole_archive.is_some() || export_symbols.is_some()
             }
             NativeLibKind::Dylib { as_needed }
             | NativeLibKind::Framework { as_needed }

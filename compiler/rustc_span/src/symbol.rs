@@ -1001,6 +1001,7 @@ symbols! {
         explicit_tail_calls,
         export_name,
         export_stable,
+        export_symbols: "export-symbols",
         expr,
         expr_2021,
         expr_fragment_specifier_2024,
