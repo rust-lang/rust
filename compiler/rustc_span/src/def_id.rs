@@ -81,7 +81,7 @@ impl fmt::Display for CrateNum {
 /// because it depends on the set of crates in the entire crate graph of a
 /// compilation session. Again, using the same crate with a different version
 /// number would fix the issue with a high probability -- but that might be
-/// easier said then done if the crates in questions are dependencies of
+/// easier said than done if the crates in questions are dependencies of
 /// third-party crates.
 ///
 /// That being said, given a high quality hash function, the collision

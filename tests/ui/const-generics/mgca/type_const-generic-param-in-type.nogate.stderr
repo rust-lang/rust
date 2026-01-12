@@ -1,0 +1,57 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:9:45
+   |
+LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = const { [] };
+   |                                             ^ the type must not depend on the parameter `T`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:14:33
+   |
+LL | const BAR<const N: usize>: [(); N] = const { [] };
+   |                                 ^ the type must not depend on the parameter `N`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:19:18
+   |
+LL | const BAZ<'a>: [&'a (); 0] = const { [] };
+   |                  ^^ the type must not depend on the parameter `'a`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:25:51
+   |
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0];
+   |                                                   ^ the type must not depend on the parameter `T`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:29:45
+   |
+LL |     const ASSOC_CONST<const N: usize>: [(); N];
+   |                                             ^ the type must not depend on the parameter `N`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:33:27
+   |
+LL |     const ASSOC_LT<'a>: [&'a (); 0];
+   |                           ^^ the type must not depend on the parameter `'a`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:39:51
+   |
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = const { [] };
+   |                                                   ^ the type must not depend on the parameter `T`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:44:45
+   |
+LL |     const ASSOC_CONST<const N: usize>: [(); N] = const { [] };
+   |                                             ^ the type must not depend on the parameter `N`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:49:27
+   |
+LL |     const ASSOC_LT<'a>: [&'a (); 0] = const { [] };
+   |                           ^^ the type must not depend on the parameter `'a`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

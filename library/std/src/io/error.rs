@@ -187,7 +187,7 @@ pub struct SimpleMessage {
 ///     Err(FAIL)
 /// }
 /// ```
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
 #[allow_internal_unstable(hint_must_use, io_const_error_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {

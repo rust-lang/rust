@@ -144,7 +144,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
-        let mut orig_values = self.goal.orig_values.to_vec();
+        let mut orig_values = self.goal.orig_values.clone();
 
         let mut instantiated_goals = vec![];
         for step in &self.steps {
@@ -186,7 +186,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
-        let mut orig_values = self.goal.orig_values.to_vec();
+        let mut orig_values = self.goal.orig_values.clone();
 
         for step in &self.steps {
             match **step {

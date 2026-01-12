@@ -1,8 +1,8 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, variables: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
-| 1: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, variables: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
+| 0: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, var_kinds: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
+| 1: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, var_kinds: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
 |
 fn main() -> () {
     let mut _0: ();

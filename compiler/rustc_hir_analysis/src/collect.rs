@@ -1479,23 +1479,27 @@ fn rendered_precise_capturing_args<'tcx>(
 
 fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    local_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let hir::Node::GenericParam(hir::GenericParam {
         kind: hir::GenericParamKind::Const { default: Some(default_ct), .. },
         ..
-    }) = tcx.hir_node_by_def_id(def_id)
+    }) = tcx.hir_node_by_def_id(local_def_id)
     else {
         span_bug!(
-            tcx.def_span(def_id),
+            tcx.def_span(local_def_id),
             "`const_param_default` expected a generic parameter with a constant"
         )
     };
-    let icx = ItemCtxt::new(tcx, def_id);
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+
+    let icx = ItemCtxt::new(tcx, local_def_id);
+
+    let def_id = local_def_id.to_def_id();
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
+
     let ct = icx
         .lowerer()
-        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(default_ct, FeedConstTy::with_type_of(tcx, def_id, identity_args));
     ty::EarlyBinder::bind(ct)
 }
 
@@ -1553,7 +1557,7 @@ fn const_of_item<'tcx>(
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let ct = icx
         .lowerer()
-        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(ct_arg, FeedConstTy::with_type_of(tcx, def_id.to_def_id(), identity_args));
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {

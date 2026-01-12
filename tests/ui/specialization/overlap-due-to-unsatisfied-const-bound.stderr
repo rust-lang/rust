@@ -1,17 +1,17 @@
 warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:3:39
+  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:3:12
    |
-LL | #![feature(associated_const_equality, min_generic_const_args, specialization)]
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+LL | #![feature(min_generic_const_args, specialization)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:3:63
+  --> $DIR/overlap-due-to-unsatisfied-const-bound.rs:3:36
    |
-LL | #![feature(associated_const_equality, min_generic_const_args, specialization)]
-   |                                                               ^^^^^^^^^^^^^^
+LL | #![feature(min_generic_const_args, specialization)]
+   |                                    ^^^^^^^^^^^^^^
    |
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete

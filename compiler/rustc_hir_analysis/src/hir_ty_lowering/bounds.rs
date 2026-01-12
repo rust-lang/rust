@@ -610,9 +610,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 AttributeKind::TypeConst(_)
                             )
                         {
-                            if tcx.features().min_generic_const_args()
-                                || tcx.features().associated_const_equality()
-                            {
+                            if tcx.features().min_generic_const_args() {
                                 let mut err = self.dcx().struct_span_err(
                                     constraint.span,
                                     "use of trait associated const without `#[type_const]`",

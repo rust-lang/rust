@@ -60,6 +60,9 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None),
     /// Allows a test to fail without failing the whole suite.
     (removed, allow_fail, "1.60.0", Some(46488), Some("removed due to no clear use cases"), 93416),
+    /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
+    (removed, associated_const_equality, "CURRENT_RUSTC_VERSION", Some(92827),
+     Some("merged into `min_generic_const_args`")),
     (removed, await_macro, "1.38.0", Some(50547),
      Some("subsumed by `.await` syntax"), 62293),
     /// Allows using the `box $expr` syntax.

@@ -169,7 +169,7 @@
 //! on pattern-tuples.
 //!
 //! Let `pt_1, .., pt_n` and `qt` be length-m tuples of patterns for the same type `(T_1, .., T_m)`.
-//! We compute `usefulness(tp_1, .., tp_n, tq)` as follows:
+//! We compute `usefulness(pt_1, .., pt_n, qt)` as follows:
 //!
 //! - Base case: `m == 0`.
 //!     The pattern-tuples are all empty, i.e. they're all `()`. Thus `tq` is useful iff there are

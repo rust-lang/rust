@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::{AttrArgs, AttrKind, Attribute, LitKind};
+use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, Attribute, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -92,7 +92,7 @@ impl EarlyLintPass for LargeIncludeFile {
             && let AttrKind::Normal(ref item) = attr.kind
             && let Some(doc) = attr.doc_str()
             && doc.as_str().len() as u64 > self.max_file_size
-            && let AttrArgs::Eq { expr: meta, .. } = &item.item.args
+            && let AttrItemKind::Unparsed(AttrArgs::Eq { expr: meta, .. }) = &item.item.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the
             // whole attribute snippet and then modify for our suggestion.

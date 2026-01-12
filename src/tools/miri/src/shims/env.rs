@@ -119,9 +119,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let index = thread.to_u32();
         let target_os = &this.tcx.sess.target.os;
-        if matches!(target_os, Os::Linux | Os::NetBsd) {
-            // On Linux, the main thread has PID == TID so we uphold this. NetBSD also appears
-            // to exhibit the same behavior, though I can't find a citation.
+        if matches!(target_os, Os::Linux | Os::Android) {
+            // On Linux, the main thread has PID == TID so we uphold this.
             this.get_pid().strict_add(index)
         } else {
             // Other platforms do not display any relationship between PID and TID.

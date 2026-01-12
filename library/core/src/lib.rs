@@ -124,6 +124,7 @@
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
+#![feature(type_info)]
 #![feature(ub_checks)]
 #![feature(unsafe_pinned)]
 #![feature(utf16_extra)]

@@ -34,6 +34,7 @@ use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
@@ -2116,10 +2117,9 @@ pub struct MacroDef {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
 pub struct EiiExternTarget {
-    /// path to the extern item we're targetting
+    /// path to the extern item we're targeting
     pub extern_item_path: Path,
     pub impl_unsafe: bool,
-    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -3390,7 +3390,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
+                args: AttrItemKind::Unparsed(AttrArgs::Empty),
                 tokens: None,
             },
             tokens: None,
@@ -3402,9 +3402,51 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrArgs,
+    pub args: AttrItemKind,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
+}
+
+/// Some attributes are stored in a parsed form, for performance reasons.
+/// Their arguments don't have to be reparsed everytime they're used
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum AttrItemKind {
+    Parsed(EarlyParsedAttribute),
+    Unparsed(AttrArgs),
+}
+
+impl AttrItemKind {
+    pub fn unparsed(self) -> Option<AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            AttrItemKind::Unparsed(args) => args.span(),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+}
+
+/// Some attributes are stored in parsed form in the AST.
+/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+///
+/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
+/// When adding new early parsed attributes, consider whether they should be pretty printed.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {
@@ -3770,6 +3812,19 @@ pub struct Fn {
 pub struct EiiImpl {
     pub node_id: NodeId,
     pub eii_macro_path: Path,
+    /// This field is an implementation detail that prevents a lot of bugs.
+    /// See <https://github.com/rust-lang/rust/issues/149981> for an example.
+    ///
+    /// The problem is, that if we generate a declaration *together* with its default,
+    /// we generate both a declaration and an implementation. The generated implementation
+    /// uses the same mechanism to register itself as a user-defined implementation would,
+    /// despite being invisible to users. What does happen is a name resolution step.
+    /// The invisible default implementation has to find the declaration.
+    /// Both are generated at the same time, so we can skip that name resolution step.
+    ///
+    /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
+    /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
+    pub known_eii_macro_resolution: Option<EiiExternTarget>,
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,

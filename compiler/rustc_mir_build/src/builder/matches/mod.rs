@@ -576,7 +576,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer_id: ExprId,
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
-            // Optimize the case of `let x = ...` to write directly into `x`
+            // Optimize `let x = ...` and `let x: T = ...` to write directly into `x`,
+            // and then require that `T == typeof(x)` if present.
             PatKind::Binding { mode: BindingMode(ByRef::No, _), var, subpattern: None, .. } => {
                 let place = self.storage_live_binding(
                     block,
@@ -592,43 +593,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet(None), place);
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
-                block.unit()
-            }
+                let ascriptions: &[_] =
+                    try { irrefutable_pat.extra.as_deref()?.ascriptions.as_slice() }
+                        .unwrap_or_default();
+                for thir::Ascription { annotation, variance: _ } in ascriptions {
+                    let ty_source_info = self.source_info(annotation.span);
 
-            // Optimize the case of `let x: T = ...` to write directly
-            // into `x` and then require that `T == typeof(x)`.
-            PatKind::AscribeUserType {
-                ref subpattern,
-                ascription: thir::Ascription { ref annotation, variance: _ },
-            } if let PatKind::Binding {
-                mode: BindingMode(ByRef::No, _),
-                var,
-                subpattern: None,
-                ..
-            } = subpattern.kind =>
-            {
-                let place = self.storage_live_binding(
-                    block,
-                    var,
-                    irrefutable_pat.span,
-                    false,
-                    OutsideGuard,
-                    ScheduleDrops::Yes,
-                );
-                block = self.expr_into_dest(place, block, initializer_id).into_block();
-
-                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
-                let pattern_source_info = self.source_info(irrefutable_pat.span);
-                let cause_let = FakeReadCause::ForLet(None);
-                self.cfg.push_fake_read(block, pattern_source_info, cause_let, place);
-
-                let ty_source_info = self.source_info(annotation.span);
-
-                let base = self.canonical_user_type_annotations.push(annotation.clone());
-                self.cfg.push(
-                    block,
-                    Statement::new(
+                    let base = self.canonical_user_type_annotations.push(annotation.clone());
+                    let stmt = Statement::new(
                         ty_source_info,
                         StatementKind::AscribeUserType(
                             Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
@@ -648,8 +620,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // `<expr>`.
                             ty::Invariant,
                         ),
-                    ),
-                );
+                    );
+                    self.cfg.push(block, stmt);
+                }
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
@@ -879,6 +852,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &ProjectedUserTypesNode<'_>,
         ),
     ) {
+        // Ascriptions correspond to user-written types like `let A::<'a>(_): A<'static> = ...;`.
+        //
+        // Caution: Pushing user types here is load-bearing even for
+        // patterns containing no bindings, to ensure that the type ends
+        // up represented in MIR _somewhere_.
+        let user_tys = match pattern.extra.as_deref() {
+            Some(PatExtra { ascriptions, .. }) if !ascriptions.is_empty() => {
+                let base_user_tys = ascriptions
+                    .iter()
+                    .map(|thir::Ascription { annotation, variance: _ }| {
+                        // Note that the variance doesn't apply here, as we are tracking the effect
+                        // of user types on any bindings contained with subpattern.
+                        self.canonical_user_type_annotations.push(annotation.clone())
+                    })
+                    .collect();
+                &user_tys.push_user_types(base_user_tys)
+            }
+            _ => user_tys,
+        };
+
         // Avoid having to write the full method name at each recursive call.
         let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
             this.visit_primary_bindings_special(subpat, user_tys, f)
@@ -922,31 +915,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::DerefPattern { ref subpattern, .. } => {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
-            }
-
-            PatKind::AscribeUserType {
-                ref subpattern,
-                ascription: thir::Ascription { ref annotation, variance: _ },
-            } => {
-                // This corresponds to something like
-                //
-                // ```
-                // let A::<'a>(_): A<'static> = ...;
-                // ```
-                //
-                // Note that the variance doesn't apply here, as we are tracking the effect
-                // of `user_ty` on any bindings contained with subpattern.
-
-                // Caution: Pushing this user type here is load-bearing even for
-                // patterns containing no bindings, to ensure that the type ends
-                // up represented in MIR _somewhere_.
-                let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
-                let subpattern_user_tys = user_tys.push_user_type(base_user_ty);
-                visit_subpat(self, subpattern, &subpattern_user_tys, f)
-            }
-
-            PatKind::ExpandedConstant { ref subpattern, .. } => {
-                visit_subpat(self, subpattern, user_tys, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {

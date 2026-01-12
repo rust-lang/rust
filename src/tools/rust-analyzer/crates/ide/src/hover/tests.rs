@@ -4089,6 +4089,7 @@ fn foo() {
     let fo$0o = async { S };
 }
 //- /core.rs crate:core
+#![feature(lang_items)]
 pub mod future {
     #[lang = "future_trait"]
     pub trait Future {}

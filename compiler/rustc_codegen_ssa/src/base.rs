@@ -6,7 +6,8 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
+    AllocatorTy,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -671,7 +672,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
         methods.push(AllocatorMethod {
             name: ALLOC_ERROR_HANDLER,
             special: None,
-            inputs: &[],
+            inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
             output: AllocatorTy::Never,
         });
     }

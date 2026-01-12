@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(associated_const_equality, min_generic_const_args, generic_const_items)]
+#![feature(min_generic_const_args, generic_const_items)]
 #![expect(incomplete_features)]
 
 // Regression test for #133066 where we would try to evaluate `<() as Foo>::ASSOC<_>` even

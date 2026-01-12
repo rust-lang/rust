@@ -342,8 +342,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild |
                 // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
-                PatKind::ExpandedConstant { .. } |
-                PatKind::AscribeUserType { .. } |
                 PatKind::Error(_) => {}
             }
         };

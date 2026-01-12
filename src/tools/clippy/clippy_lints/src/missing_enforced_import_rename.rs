@@ -82,7 +82,8 @@ impl LateLintPass<'_> for ImportRename {
                     && let Some(import) = match snip.split_once(" as ") {
                         None => Some(snip.as_str()),
                         Some((import, rename)) => {
-                            if rename.trim() == name.as_str() {
+                            let trimmed_rename = rename.trim();
+                            if trimmed_rename == "_" || trimmed_rename == name.as_str() {
                                 None
                             } else {
                                 Some(import.trim())

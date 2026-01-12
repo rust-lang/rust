@@ -127,13 +127,11 @@ impl server::Span for RaSpanServer<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span)
     }
-    fn file(&mut self, _: Self::Span) -> String {
-        // FIXME
-        String::new()
+    fn file(&mut self, span: Self::Span) -> String {
+        self.callback.as_mut().map(|cb| cb.file(span.anchor.file_id.file_id())).unwrap_or_default()
     }
-    fn local_file(&mut self, _: Self::Span) -> Option<String> {
-        // FIXME
-        None
+    fn local_file(&mut self, span: Self::Span) -> Option<String> {
+        self.callback.as_mut().and_then(|cb| cb.local_file(span.anchor.file_id.file_id()))
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
         // FIXME, quote is incompatible with third-party tools
@@ -152,11 +150,7 @@ impl server::Span for RaSpanServer<'_> {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
-        let file_id = span.anchor.file_id;
-        let start: u32 = span.range.start().into();
-        let end: u32 = span.range.end().into();
-
-        self.callback.as_mut()?.source_text(file_id.file_id().index(), start, end)
+        self.callback.as_mut()?.source_text(span)
     }
 
     fn parent(&mut self, _span: Self::Span) -> Option<Self::Span> {

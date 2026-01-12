@@ -961,7 +961,7 @@ pub fn vbcaxq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcadd))]
 pub fn vcadd_rot270_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -979,7 +979,7 @@ pub fn vcadd_rot270_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcadd))]
 pub fn vcaddq_rot270_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -1045,7 +1045,7 @@ pub fn vcaddq_rot270_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcadd))]
 pub fn vcadd_rot90_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -1063,7 +1063,7 @@ pub fn vcadd_rot90_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcadd))]
 pub fn vcaddq_rot90_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -1501,7 +1501,7 @@ pub fn vceqh_f16(a: f16, b: f16) -> u16 {
 #[inline]
 #[cfg_attr(test, assert_instr(fcmeq))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqz_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
@@ -1512,7 +1512,7 @@ pub fn vceqz_f16(a: float16x4_t) -> uint16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcmeq))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqzq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -2837,7 +2837,7 @@ pub fn vcltzh_f16(a: f16) -> u16 {
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmla_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
@@ -2855,7 +2855,7 @@ pub fn vcmla_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t 
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmlaq_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
@@ -2923,7 +2923,7 @@ pub fn vcmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -2952,7 +2952,7 @@ pub fn vcmla_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3030,7 +3030,7 @@ pub fn vcmlaq_lane_f32<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3059,7 +3059,7 @@ pub fn vcmla_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3135,7 +3135,7 @@ pub fn vcmlaq_laneq_f32<const LANE: i32>(
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmla_rot180_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
@@ -3153,7 +3153,7 @@ pub fn vcmla_rot180_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmlaq_rot180_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
@@ -3221,7 +3221,7 @@ pub fn vcmlaq_rot180_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> floa
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot180_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3250,7 +3250,7 @@ pub fn vcmla_rot180_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot180_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3328,7 +3328,7 @@ pub fn vcmlaq_rot180_lane_f32<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot180_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3357,7 +3357,7 @@ pub fn vcmla_rot180_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot180_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3433,7 +3433,7 @@ pub fn vcmlaq_rot180_laneq_f32<const LANE: i32>(
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmla_rot270_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
@@ -3451,7 +3451,7 @@ pub fn vcmla_rot270_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmlaq_rot270_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
@@ -3519,7 +3519,7 @@ pub fn vcmlaq_rot270_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> floa
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot270_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3548,7 +3548,7 @@ pub fn vcmla_rot270_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot270_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3626,7 +3626,7 @@ pub fn vcmlaq_rot270_lane_f32<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot270_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3655,7 +3655,7 @@ pub fn vcmla_rot270_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot270_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3731,7 +3731,7 @@ pub fn vcmlaq_rot270_laneq_f32<const LANE: i32>(
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmla_rot90_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
@@ -3749,7 +3749,7 @@ pub fn vcmla_rot90_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float1
 #[inline]
 #[target_feature(enable = "neon,fcma")]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fcmla))]
 pub fn vcmlaq_rot90_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
@@ -3817,7 +3817,7 @@ pub fn vcmlaq_rot90_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot90_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3846,7 +3846,7 @@ pub fn vcmla_rot90_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot90_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -3924,7 +3924,7 @@ pub fn vcmlaq_rot90_lane_f32<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmla_rot90_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -3953,7 +3953,7 @@ pub fn vcmla_rot90_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcmlaq_rot90_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -7219,7 +7219,7 @@ pub fn vcvtq_f64_u64(a: uint64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtn2))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
     vcombine_f16(a, vcvt_f16_f32(b))
@@ -7229,7 +7229,7 @@ pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtl2))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f32_f16(a: float16x8_t) -> float32x4_t {
     vcvt_f32_f16(vget_high_f16(a))
@@ -7468,7 +7468,7 @@ pub fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtas))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvta_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -7485,7 +7485,7 @@ pub fn vcvta_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtas))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtaq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -7566,7 +7566,7 @@ pub fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtau))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -7583,7 +7583,7 @@ pub fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtau))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtaq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8154,7 +8154,7 @@ pub fn vcvth_u64_f16(a: f16) -> u64 {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtms))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtm_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8171,7 +8171,7 @@ pub fn vcvtm_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtms))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -8252,7 +8252,7 @@ pub fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtmu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -8269,7 +8269,7 @@ pub fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtmu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8502,7 +8502,7 @@ pub fn vcvtmd_u64_f64(a: f64) -> u64 {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtns))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtn_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8519,7 +8519,7 @@ pub fn vcvtn_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtns))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -8600,7 +8600,7 @@ pub fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtnu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -8617,7 +8617,7 @@ pub fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtnu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -8850,7 +8850,7 @@ pub fn vcvtnd_u64_f64(a: f64) -> u64 {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtps))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtp_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
@@ -8867,7 +8867,7 @@ pub fn vcvtp_s16_f16(a: float16x4_t) -> int16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtps))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtpq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
@@ -8948,7 +8948,7 @@ pub fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtpu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
@@ -8965,7 +8965,7 @@ pub fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtpu))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtpq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
@@ -9429,7 +9429,7 @@ pub fn vcvtxd_f32_f64(a: f64) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdiv_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdiv_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -9439,7 +9439,7 @@ pub fn vdiv_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdivq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdivq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -10106,7 +10106,7 @@ pub fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfma_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10122,7 +10122,7 @@ pub fn vfma_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfma_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10138,7 +10138,7 @@ pub fn vfma_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmaq_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10154,7 +10154,7 @@ pub fn vfmaq_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmla, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmaq_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10432,7 +10432,7 @@ pub fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal2))]
 pub fn vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10450,7 +10450,7 @@ pub fn vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float3
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal2))]
 pub fn vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10470,7 +10470,7 @@ pub fn vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_lane_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10487,7 +10487,7 @@ pub fn vfmlal_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_laneq_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10504,7 +10504,7 @@ pub fn vfmlal_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_lane_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10521,7 +10521,7 @@ pub fn vfmlalq_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10538,7 +10538,7 @@ pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_lane_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10555,7 +10555,7 @@ pub fn vfmlal_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlal_laneq_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10572,7 +10572,7 @@ pub fn vfmlal_laneq_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_lane_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10589,7 +10589,7 @@ pub fn vfmlalq_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10604,7 +10604,7 @@ pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal))]
 pub fn vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10622,7 +10622,7 @@ pub fn vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlal))]
 pub fn vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10640,7 +10640,7 @@ pub fn vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float3
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl2))]
 pub fn vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10658,7 +10658,7 @@ pub fn vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float3
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl2))]
 pub fn vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10678,7 +10678,7 @@ pub fn vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_lane_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10695,7 +10695,7 @@ pub fn vfmlsl_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10712,7 +10712,7 @@ pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_lane_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10729,7 +10729,7 @@ pub fn vfmlslq_lane_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10746,7 +10746,7 @@ pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_lane_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10763,7 +10763,7 @@ pub fn vfmlsl_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
     r: float32x2_t,
@@ -10780,7 +10780,7 @@ pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_lane_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10797,7 +10797,7 @@ pub fn vfmlslq_lane_low_f16<const LANE: i32>(
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
 #[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
     r: float32x4_t,
@@ -10812,7 +10812,7 @@ pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl))]
 pub fn vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
@@ -10830,7 +10830,7 @@ pub fn vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32
 #[inline]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmlsl))]
 pub fn vfmlslq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
@@ -10861,7 +10861,7 @@ pub fn vfms_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfms_lane_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10877,7 +10877,7 @@ pub fn vfms_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfms_laneq_f16<const LANE: i32>(
     a: float16x4_t,
@@ -10893,7 +10893,7 @@ pub fn vfms_laneq_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsq_lane_f16<const LANE: i32>(
     a: float16x8_t,
@@ -10909,7 +10909,7 @@ pub fn vfmsq_lane_f16<const LANE: i32>(
 #[cfg_attr(test, assert_instr(fmls, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsq_laneq_f16<const LANE: i32>(
     a: float16x8_t,
@@ -14739,7 +14739,7 @@ pub fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64
 #[cfg_attr(test, assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
@@ -14756,7 +14756,7 @@ pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float1
 #[cfg_attr(test, assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
@@ -15263,7 +15263,7 @@ pub fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmulx))]
 pub fn vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -15280,7 +15280,7 @@ pub fn vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmulx))]
 pub fn vmulxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -15363,7 +15363,7 @@ pub fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
@@ -15380,7 +15380,7 @@ pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float1
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
@@ -15397,7 +15397,7 @@ pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
@@ -15427,7 +15427,7 @@ pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float
 #[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
@@ -15789,7 +15789,7 @@ pub fn vpaddd_u64(a: uint64x2_t) -> u64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(faddp))]
 pub fn vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16008,7 +16008,7 @@ pub fn vpaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmax_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxp))]
 pub fn vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16025,7 +16025,7 @@ pub fn vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxp))]
 pub fn vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16042,7 +16042,7 @@ pub fn vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnm_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16059,7 +16059,7 @@ pub fn vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnmq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
 pub fn vpmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16316,7 +16316,7 @@ pub fn vpmaxs_f32(a: float32x2_t) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmin_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminp))]
 pub fn vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16333,7 +16333,7 @@ pub fn vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminp))]
 pub fn vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -16350,7 +16350,7 @@ pub fn vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnm_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub fn vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -16367,7 +16367,7 @@ pub fn vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnmq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fminnmp))]
 pub fn vpminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -21493,7 +21493,7 @@ pub fn vrecpxh_f16(a: f16) -> f16 {
 #[inline]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
@@ -21504,7 +21504,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[inline]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
@@ -21516,7 +21516,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[inline]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
@@ -21527,7 +21527,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[inline]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
@@ -21542,7 +21542,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[inline]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
@@ -21553,7 +21553,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[inline]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
@@ -21567,7 +21567,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[inline]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
@@ -21578,7 +21578,7 @@ pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
 #[inline]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
@@ -23157,7 +23157,7 @@ pub fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
@@ -23167,7 +23167,7 @@ pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndq_f16(a: float16x8_t) -> float16x8_t {
@@ -23213,7 +23213,7 @@ pub fn vrndq_f64(a: float64x2_t) -> float64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
@@ -23223,7 +23223,7 @@ pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndaq_f16(a: float16x8_t) -> float16x8_t {
@@ -23289,7 +23289,7 @@ pub fn vrndh_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinti))]
 pub fn vrndi_f16(a: float16x4_t) -> float16x4_t {
@@ -23306,7 +23306,7 @@ pub fn vrndi_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndiq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinti))]
 pub fn vrndiq_f16(a: float16x8_t) -> float16x8_t {
@@ -23404,7 +23404,7 @@ pub fn vrndih_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
@@ -23414,7 +23414,7 @@ pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmq_f16(a: float16x8_t) -> float16x8_t {
@@ -23535,7 +23535,7 @@ pub fn vrndns_f32(a: f32) -> f32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
@@ -23545,7 +23545,7 @@ pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndpq_f16(a: float16x8_t) -> float16x8_t {
@@ -23601,7 +23601,7 @@ pub fn vrndph_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
@@ -23611,7 +23611,7 @@ pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
@@ -25034,7 +25034,7 @@ pub fn vsqadds_u32(a: u32, b: i32) -> u32 {
 #[inline]
 #[cfg_attr(test, assert_instr(fsqrt))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vsqrt_f16(a: float16x4_t) -> float16x4_t {
     unsafe { simd_fsqrt(a) }
@@ -25044,7 +25044,7 @@ pub fn vsqrt_f16(a: float16x4_t) -> float16x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(fsqrt))]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vsqrtq_f16(a: float16x8_t) -> float16x8_t {
     unsafe { simd_fsqrt(a) }
@@ -27532,7 +27532,7 @@ pub fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 pub fn vtrn1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -27542,7 +27542,7 @@ pub fn vtrn1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 pub fn vtrn1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -27768,7 +27768,7 @@ pub fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 pub fn vtrn2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -27778,7 +27778,7 @@ pub fn vtrn2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
 pub fn vtrn2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28309,7 +28309,7 @@ pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x1
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 pub fn vuzp1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28319,7 +28319,7 @@ pub fn vuzp1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 pub fn vuzp1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28545,7 +28545,7 @@ pub fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 pub fn vuzp2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28555,7 +28555,7 @@ pub fn vuzp2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
 pub fn vuzp2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -28799,7 +28799,7 @@ pub fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 pub fn vzip1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -28809,7 +28809,7 @@ pub fn vzip1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 pub fn vzip1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
@@ -29035,7 +29035,7 @@ pub fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 pub fn vzip2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
@@ -29045,7 +29045,7 @@ pub fn vzip2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_f16)"]
 #[inline]
 #[target_feature(enable = "neon,fp16")]
-#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
 pub fn vzip2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {

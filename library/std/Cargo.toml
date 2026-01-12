@@ -128,10 +128,6 @@ debug_refcell = ["core/debug_refcell"]
 
 llvm_enzyme = ["core/llvm_enzyme"]
 
-# Enable std_detect features:
-std_detect_file_io = ["std_detect/std_detect_file_io"]
-std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
-
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.
 windows_raw_dylib = ["windows-targets/windows_raw_dylib"]

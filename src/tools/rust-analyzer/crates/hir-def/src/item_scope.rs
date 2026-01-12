@@ -158,7 +158,7 @@ pub struct ItemScope {
     /// declared.
     declarations: ThinVec<ModuleDefId>,
 
-    impls: ThinVec<ImplId>,
+    impls: ThinVec<(ImplId, /* trait impl */ bool)>,
     builtin_derive_impls: ThinVec<BuiltinDeriveImplId>,
     extern_blocks: ThinVec<ExternBlockId>,
     unnamed_consts: ThinVec<ConstId>,
@@ -327,7 +327,15 @@ impl ItemScope {
     }
 
     pub fn impls(&self) -> impl ExactSizeIterator<Item = ImplId> + '_ {
-        self.impls.iter().copied()
+        self.impls.iter().map(|&(id, _)| id)
+    }
+
+    pub fn trait_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls.iter().filter(|&&(_, is_trait_impl)| is_trait_impl).map(|&(id, _)| id)
+    }
+
+    pub fn inherent_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls.iter().filter(|&&(_, is_trait_impl)| !is_trait_impl).map(|&(id, _)| id)
     }
 
     pub fn builtin_derive_impls(&self) -> impl ExactSizeIterator<Item = BuiltinDeriveImplId> + '_ {
@@ -472,8 +480,8 @@ impl ItemScope {
         self.legacy_macros.get(name).map(|it| &**it)
     }
 
-    pub(crate) fn define_impl(&mut self, imp: ImplId) {
-        self.impls.push(imp);
+    pub(crate) fn define_impl(&mut self, imp: ImplId, is_trait_impl: bool) {
+        self.impls.push((imp, is_trait_impl));
     }
 
     pub(crate) fn define_builtin_derive_impl(&mut self, imp: BuiltinDeriveImplId) {

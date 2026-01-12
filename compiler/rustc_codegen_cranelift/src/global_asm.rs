@@ -233,7 +233,7 @@ pub(crate) fn compile_global_asm(
                 #![allow(internal_features)]
                 #![no_core]
                 #[rustc_builtin_macro]
-                #[rustc_macro_transparency = "semitransparent"]
+                #[rustc_macro_transparency = "semiopaque"]
                 macro global_asm() { /* compiler built-in */ }
                 global_asm!(r###"
                 "####,

@@ -4,7 +4,7 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 

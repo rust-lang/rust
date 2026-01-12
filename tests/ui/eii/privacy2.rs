@@ -1,8 +1,8 @@
-//@ aux-build:codegen3.rs
-// Tests whether name resulution respects privacy properly.
+//@ aux-build:other_crate_privacy2.rs
+// Tests whether name resolution respects privacy properly.
 #![feature(extern_item_impls)]
 
-extern crate codegen3 as codegen;
+extern crate other_crate_privacy2 as codegen;
 
 // has a span but in the other crate
 //~? ERROR `#[eii2]` required, but not found

@@ -5,8 +5,8 @@ use std::{
 
 use either::Either;
 use hir::{
-    ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
-    HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
+    ClosureStyle, DisplayTarget, EditionedFileId, GenericParam, GenericParamId, HasVisibility,
+    HirDisplay, HirDisplayError, HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
 use ide_db::{
     FileRange, MiniCore, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder,
@@ -703,6 +703,21 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
         } else {
             LazyProperty::Computed({
                 let Some(location) = ModuleDef::from(def).try_to_nav(self.sema) else { return };
+                let location = location.call_site();
+                FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
+            })
+        });
+    }
+
+    fn start_location_link_generic(&mut self, def: GenericParamId) {
+        never!(self.location.is_some(), "location link is already started");
+        self.make_new_part();
+
+        self.location = Some(if self.resolve {
+            LazyProperty::Lazy
+        } else {
+            LazyProperty::Computed({
+                let Some(location) = GenericParam::from(def).try_to_nav(self.sema) else { return };
                 let location = location.call_site();
                 FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
             })

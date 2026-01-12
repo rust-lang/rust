@@ -329,6 +329,10 @@ fn make_format_args(
                     replacement,
                 });
             }
+            parse::Suggestion::AddMissingColon(span) => {
+                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                e.sugg_ = Some(errors::InvalidFormatStringSuggestion::AddMissingColon { span });
+            }
         }
         let guar = ecx.dcx().emit_err(e);
         return ExpandResult::Ready(Err(guar));

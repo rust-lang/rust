@@ -300,7 +300,7 @@ pub(crate) mod instant_internal {
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
     use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
-    use crate::sys_common::mul_div_u64;
+    use crate::sys::helpers::mul_div_u64;
 
     const NS_PER_SEC: u64 = 1_000_000_000;
 

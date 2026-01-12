@@ -14,16 +14,3 @@ LL |     unsafe { print_pointer(&x) };
            1: main
                at tests/native-lib/pass/ptr_read_access.rs:LL:CC
 
-warning: sharing a function pointer with a native function called via FFI
-  --> tests/native-lib/pass/ptr_read_access.rs:LL:CC
-   |
-LL |         pass_fn_ptr(Some(nop)); // this one is not
-   |         ^^^^^^^^^^^^^^^^^^^^^^ sharing a function pointer with a native function
-   |
-   = help: calling Rust functions from C is not supported and will, in the best case, crash the program
-   = note: stack backtrace:
-           0: pass_fn_ptr
-               at tests/native-lib/pass/ptr_read_access.rs:LL:CC
-           1: main
-               at tests/native-lib/pass/ptr_read_access.rs:LL:CC
-

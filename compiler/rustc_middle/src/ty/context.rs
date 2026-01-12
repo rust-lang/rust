@@ -907,10 +907,6 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.coroutine_clone()
     }
 
-    fn associated_const_equality(self) -> bool {
-        self.associated_const_equality()
-    }
-
     fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
         // We don't consider feature bounds to hold in the crate when `staged_api` feature is
         // enabled, even if it is enabled through `#[feature]`.
@@ -1893,6 +1889,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
+    }
+
+    /// Check if the given `def_id` is a const with the `#[type_const]` attribute.
+    pub fn is_type_const(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+            && find_attr!(self.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics

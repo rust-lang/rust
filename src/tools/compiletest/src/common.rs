@@ -18,7 +18,7 @@ string_enum! {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocJson => "rustdoc-json",
         CodegenUnits => "codegen-units",
         Incremental => "incremental",
@@ -69,7 +69,7 @@ string_enum! {
         Pretty => "pretty",
         RunMake => "run-make",
         RunMakeCargo => "run-make-cargo",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
         RustdocJsStd=> "rustdoc-js-std",
@@ -715,6 +715,11 @@ pub struct Config {
     pub override_codegen_backend: Option<String>,
     /// Whether to ignore `//@ ignore-backends`.
     pub bypass_ignore_backends: bool,
+
+    /// Number of parallel jobs configured for the build.
+    ///
+    /// This is forwarded from bootstrap's `jobs` configuration.
+    pub jobs: u32,
 }
 
 impl Config {

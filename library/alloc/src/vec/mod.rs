@@ -81,12 +81,14 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::PhantomData;
+#[cfg(not(no_global_oom_handling))]
+use core::marker::Destruct;
+use core::marker::{Freeze, PhantomData};
 use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, TransmuteFrom};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-use core::{fmt, intrinsics, ub_checks};
+use core::{fmt, hint, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
@@ -519,7 +521,8 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "vec_with_capacity"]
-    pub fn with_capacity(capacity: usize) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
 
@@ -881,29 +884,28 @@ impl<T> Vec<T> {
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
+
+    /// Interns the `Vec<T>`, making the underlying memory read-only. This method should be
+    /// called during compile time. (This is a no-op if called during runtime)
+    ///
+    /// This method must be called if the memory used by `Vec` needs to appear in the final
+    /// values of constants.
+    #[unstable(feature = "const_heap", issue = "79597")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn const_make_global(mut self) -> &'static [T]
+    where
+        T: Freeze,
+    {
+        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+        let me = ManuallyDrop::new(self);
+        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+    }
 }
 
-impl<T, A: Allocator> Vec<T, A> {
-    /// Constructs a new, empty `Vec<T, A>`.
-    ///
-    /// The vector will not allocate until elements are pushed onto it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// # #[allow(unused_mut)]
-    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
-    /// ```
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> Self {
-        Vec { buf: RawVec::new_in(alloc), len: 0 }
-    }
-
+#[cfg(not(no_global_oom_handling))]
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
+const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
     /// with the provided allocator.
     ///
@@ -959,11 +961,107 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let vec_units = Vec::<(), System>::with_capacity_in(10, System);
     /// assert_eq!(vec_units.capacity(), usize::MAX);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
+    }
+
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2];
+    /// vec.push(3);
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push_back", "put", "append")]
+    pub fn push(&mut self, value: T) {
+        let _ = self.push_mut(value);
+    }
+
+    /// Appends an element to the back of a collection, returning a reference to it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    ///
+    ///
+    /// let mut vec = vec![1, 2];
+    /// let last = vec.push_mut(3);
+    /// assert_eq!(*last, 3);
+    /// assert_eq!(vec, [1, 2, 3]);
+    ///
+    /// let last = vec.push_mut(3);
+    /// *last += 1;
+    /// assert_eq!(vec, [1, 2, 3, 4]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[inline]
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
+    pub fn push_mut(&mut self, value: T) -> &mut T {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            &mut *end
+        }
+    }
+}
+
+impl<T, A: Allocator> Vec<T, A> {
+    /// Constructs a new, empty `Vec<T, A>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// # #[allow(unused_mut)]
+    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn new_in(alloc: A) -> Self {
+        Vec { buf: RawVec::new_in(alloc), len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
@@ -1649,7 +1747,11 @@ impl<T, A: Allocator> Vec<T, A> {
         // * We only construct `&mut` references to `self.buf` through `&mut self` methods; borrow-
         //   check ensures that it is not possible to mutably alias `self.buf` within the
         //   returned lifetime.
-        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
+        unsafe {
+            // normally this would use `slice::from_raw_parts`, but it's
+            // instantiated often enough that avoiding the UB check is worth it
+            &*core::intrinsics::aggregate_raw_ptr::<*const [T], _, _>(self.as_ptr(), self.len)
+        }
     }
 
     /// Extracts a mutable slice of the entire vector.
@@ -1681,7 +1783,11 @@ impl<T, A: Allocator> Vec<T, A> {
         // * We only construct references to `self.buf` through `&self` and `&mut self` methods;
         //   borrow-check ensures that it is not possible to construct a reference to `self.buf`
         //   within the returned lifetime.
-        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
+        unsafe {
+            // normally this would use `slice::from_raw_parts_mut`, but it's
+            // instantiated often enough that avoiding the UB check is worth it
+            &mut *core::intrinsics::aggregate_raw_ptr::<*mut [T], _, _>(self.as_mut_ptr(), self.len)
+        }
     }
 
     /// Returns a raw pointer to the vector's buffer, or a dangling raw pointer
@@ -2292,13 +2398,8 @@ impl<T, A: Allocator> Vec<T, A> {
             return;
         }
 
-        // Avoid double drop if the drop guard is not executed,
-        // since we may make some holes during the process.
-        unsafe { self.set_len(0) };
-
         // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
-        //      |<-              processed len   ->| ^- next to check
-        //                  |<-  deleted cnt     ->|
+        //      |            ^- write                ^- read             |
         //      |<-              original_len                          ->|
         // Kept: Elements which predicate returns true on.
         // Hole: Moved or dropped element slot.
@@ -2307,77 +2408,77 @@ impl<T, A: Allocator> Vec<T, A> {
         // This drop guard will be invoked when predicate or `drop` of element panicked.
         // It shifts unchecked elements to cover holes and `set_len` to the correct length.
         // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct BackshiftOnDrop<'a, T, A: Allocator> {
+        struct PanicGuard<'a, T, A: Allocator> {
             v: &'a mut Vec<T, A>,
-            processed_len: usize,
-            deleted_cnt: usize,
+            read: usize,
+            write: usize,
             original_len: usize,
         }
 
-        impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
+        impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                if self.deleted_cnt > 0 {
-                    // SAFETY: Trailing unchecked items must be valid since we never touch them.
-                    unsafe {
-                        ptr::copy(
-                            self.v.as_ptr().add(self.processed_len),
-                            self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
-                            self.original_len - self.processed_len,
-                        );
-                    }
+                let remaining = self.original_len - self.read;
+                // SAFETY: Trailing unchecked items must be valid since we never touch them.
+                unsafe {
+                    ptr::copy(
+                        self.v.as_ptr().add(self.read),
+                        self.v.as_mut_ptr().add(self.write),
+                        remaining,
+                    );
                 }
                 // SAFETY: After filling holes, all items are in contiguous memory.
                 unsafe {
-                    self.v.set_len(self.original_len - self.deleted_cnt);
+                    self.v.set_len(self.write + remaining);
                 }
             }
         }
 
-        let mut g = BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len };
-
-        fn process_loop<F, T, A: Allocator, const DELETED: bool>(
-            original_len: usize,
-            f: &mut F,
-            g: &mut BackshiftOnDrop<'_, T, A>,
-        ) where
-            F: FnMut(&mut T) -> bool,
-        {
-            while g.processed_len != original_len {
-                // SAFETY: Unchecked element must be valid.
-                let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
-                if !f(cur) {
-                    // Advance early to avoid double drop if `drop_in_place` panicked.
-                    g.processed_len += 1;
-                    g.deleted_cnt += 1;
-                    // SAFETY: We never touch this element again after dropped.
-                    unsafe { ptr::drop_in_place(cur) };
-                    // We already advanced the counter.
-                    if DELETED {
-                        continue;
-                    } else {
-                        break;
-                    }
-                }
-                if DELETED {
-                    // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
-                    // We use copy for move, and never touch this element again.
-                    unsafe {
-                        let hole_slot = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
-                        ptr::copy_nonoverlapping(cur, hole_slot, 1);
-                    }
-                }
-                g.processed_len += 1;
+        let mut read = 0;
+        loop {
+            // SAFETY: read < original_len
+            let cur = unsafe { self.get_unchecked_mut(read) };
+            if hint::unlikely(!f(cur)) {
+                break;
+            }
+            read += 1;
+            if read == original_len {
+                // All elements are kept, return early.
+                return;
             }
         }
 
-        // Stage 1: Nothing was deleted.
-        process_loop::<F, T, A, false>(original_len, &mut f, &mut g);
+        // Critical section starts here and at least one element is going to be removed.
+        // Advance `g.read` early to avoid double drop if `drop_in_place` panicked.
+        let mut g = PanicGuard { v: self, read: read + 1, write: read, original_len };
+        // SAFETY: previous `read` is always less than original_len.
+        unsafe { ptr::drop_in_place(&mut *g.v.as_mut_ptr().add(read)) };
 
-        // Stage 2: Some elements were deleted.
-        process_loop::<F, T, A, true>(original_len, &mut f, &mut g);
+        while g.read < g.original_len {
+            // SAFETY: `read` is always less than original_len.
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
+            if !f(cur) {
+                // Advance `read` early to avoid double drop if `drop_in_place` panicked.
+                g.read += 1;
+                // SAFETY: We never touch this element again after dropped.
+                unsafe { ptr::drop_in_place(cur) };
+            } else {
+                // SAFETY: `read` > `write`, so the slots don't overlap.
+                // We use copy for move, and never touch the source element again.
+                unsafe {
+                    let hole = g.v.as_mut_ptr().add(g.write);
+                    ptr::copy_nonoverlapping(cur, hole, 1);
+                }
+                g.write += 1;
+                g.read += 1;
+            }
+        }
 
-        // All item are processed. This can be optimized to `set_len` by LLVM.
-        drop(g);
+        // We are leaving the critical section and no panic happened,
+        // Commit the length change and forget the guard.
+        // SAFETY: `write` is always less than or equal to original_len.
+        unsafe { g.v.set_len(g.write) };
+        mem::forget(g);
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
@@ -2551,34 +2652,6 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Appends an element to the back of a collection.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1, 2];
-    /// vec.push(3);
-    /// assert_eq!(vec, [1, 2, 3]);
-    /// ```
-    ///
-    /// # Time complexity
-    ///
-    /// Takes amortized *O*(1) time. If the vector's length would exceed its
-    /// capacity after the push, *O*(*capacity*) time is taken to copy the
-    /// vector's elements to a larger allocation. This expensive operation is
-    /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push_back", "put", "append")]
-    pub fn push(&mut self, value: T) {
-        let _ = self.push_mut(value);
-    }
-
     /// Appends an element and returns a reference to it if there is sufficient spare capacity,
     /// otherwise an error is returned with the element.
     ///
@@ -2629,55 +2702,6 @@ impl<T, A: Allocator> Vec<T, A> {
 
             // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
             Ok(&mut *end)
-        }
-    }
-
-    /// Appends an element to the back of a collection, returning a reference to it.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(push_mut)]
-    ///
-    ///
-    /// let mut vec = vec![1, 2];
-    /// let last = vec.push_mut(3);
-    /// assert_eq!(*last, 3);
-    /// assert_eq!(vec, [1, 2, 3]);
-    ///
-    /// let last = vec.push_mut(3);
-    /// *last += 1;
-    /// assert_eq!(vec, [1, 2, 3, 4]);
-    /// ```
-    ///
-    /// # Time complexity
-    ///
-    /// Takes amortized *O*(1) time. If the vector's length would exceed its
-    /// capacity after the push, *O*(*capacity*) time is taken to copy the
-    /// vector's elements to a larger allocation. This expensive operation is
-    /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[unstable(feature = "push_mut", issue = "135974")]
-    #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
-    pub fn push_mut(&mut self, value: T) -> &mut T {
-        // Inform codegen that the length does not change across grow_one().
-        let len = self.len;
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(len);
-            ptr::write(end, value);
-            self.len = len + 1;
-            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
-            &mut *end
         }
     }
 
