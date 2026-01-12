@@ -1,11 +1,11 @@
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
+  --> $DIR/bound-var-in-ty-not-wf.rs:21:13
    |
 LL |         K = const { () }
    |             ^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
+  --> $DIR/bound-var-in-ty-not-wf.rs:21:13
    |
 LL |         K = const { () }
    |             ^^^^^^^^^^^^
