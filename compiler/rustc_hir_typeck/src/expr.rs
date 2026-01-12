@@ -322,9 +322,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            let diverges = if self.tcx.is_expanded_by(expr.span, sym::todo_macro) {
-                // We don't warn for `todo!()` that diverges to avoid flooding the
-                // user with warnings while they are still working on their code.
+            let diverges = if self.tcx.is_locally_expanded_by(expr.span, sym::todo_macro) {
+                self.tcx().node_span_lint(
+                    rustc_lint::builtin::TODO_MACRO_USES, // ignore-tidy-todo
+                    expr.hir_id,
+                    expr.span,
+                    |lint| {
+                        lint.span(expr.span);
+                        lint.primary_message("`todo!()` macro used");
+                    },
+                );
+                // We don't trigger `unreachable_code` for `todo!()` within this crate's code
+                // that diverges to avoid flooding the user with warnings while they are still
+                // working on their code.
                 Diverges::WarnedAlways
             } else {
                 Diverges::always(expr.span)
