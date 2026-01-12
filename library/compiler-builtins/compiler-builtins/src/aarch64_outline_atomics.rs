@@ -135,18 +135,73 @@ macro_rules! stxp {
     };
 }
 
+// The AArch64 assembly syntax for relocation specifiers
+// when accessing symbols changes depending on the target executable format.
+// In ELF (used in Linux), we have a prefix notation surrounded by colons (:specifier:sym),
+// while in Mach-O object files (used in MacOS), a postfix notation is used (sym@specifier).
+
+/// AArch64 ELF position-independent addressing:
+///
+///   adrp xN, symbol
+///   add  xN, xN, :lo12:symbol
+///
+/// The :lo12: modifier selects the low 12 bits of the symbol address
+/// and emits an ELF relocation such as R_AARCH64_ADD_ABS_LO12_NC.
+///
+/// Defined by the AArch64 ELF psABI.
+/// See: <https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst#static-miscellaneous-relocations>.
+#[cfg(not(target_vendor = "apple"))]
+macro_rules! sym {
+    ($sym:literal) => {
+        $sym
+    };
+}
+
+#[cfg(not(target_vendor = "apple"))]
+macro_rules! sym_off {
+    ($sym:literal) => {
+        concat!(":lo12:", $sym)
+    };
+}
+
+/// Mach-O ARM64 relocation types:
+///   ARM64_RELOC_PAGE21
+///   ARM64_RELOC_PAGEOFF12
+///
+/// These relocations implement the @PAGE / @PAGEOFF split used by
+/// adrp + add sequences on Apple platforms.
+///
+///   adrp xN, symbol@PAGE      -> ARM64_RELOC_PAGE21
+///   add  xN, xN, symbol@PAGEOFF -> ARM64_RELOC_PAGEOFF12
+///
+/// Relocation types defined by Apple in XNU: <mach-o/arm64/reloc.h>.
+/// See: <https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/EXTERNAL_HEADERS/mach-o/arm64/reloc.h>.
+#[cfg(target_vendor = "apple")]
+macro_rules! sym {
+    ($sym:literal) => {
+        concat!($sym, "@PAGE")
+    };
+}
+
+#[cfg(target_vendor = "apple")]
+macro_rules! sym_off {
+    ($sym:literal) => {
+        concat!($sym, "@PAGEOFF")
+    };
+}
+
 // If supported, perform the requested LSE op and return, or fallthrough.
 macro_rules! try_lse_op {
     ($op: literal, $ordering:ident, $bytes:tt, $($reg:literal,)* [ $mem:ident ] ) => {
         concat!(
-            ".arch_extension lse; ",
-            "adrp    x16, {have_lse}; ",
-            "ldrb    w16, [x16, :lo12:{have_lse}]; ",
-            "cbz     w16, 8f; ",
+            ".arch_extension lse\n",
+            concat!("adrp    x16, ", sym!("{have_lse}"), "\n"),
+            concat!("ldrb    w16, [x16, ", sym_off!("{have_lse}"), "]\n"),
+            "cbz     w16, 8f\n",
             // LSE_OP  s(reg),* [$mem]
-            concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]; ",),
-            "ret; ",
-            "8:"
+            concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]\n",),
+            "ret
+            8:"
         )
     };
 }
