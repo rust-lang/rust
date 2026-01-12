@@ -264,7 +264,7 @@ impl<'db> TryToNav for FileSymbol<'db> {
                         .flatten()
                         .map_or_else(|| self.name.clone(), |it| it.symbol().clone()),
                     alias: self.is_alias.then(|| self.name.clone()),
-                    kind: Some(self.def.into()),
+                    kind: Some(SymbolKind::from_module_def(db, self.def)),
                     full_range,
                     focus_range,
                     container_name: self.container_name.clone(),
@@ -480,16 +480,11 @@ impl ToNav for hir::Module {
             ModuleSource::Module(node) => (node.syntax(), node.name()),
             ModuleSource::BlockExpr(node) => (node.syntax(), None),
         };
+        let kind = if self.is_crate_root(db) { SymbolKind::CrateRoot } else { SymbolKind::Module };
 
         orig_range_with_focus(db, file_id, syntax, focus).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
-                NavigationTarget::from_syntax(
-                    file_id,
-                    name.clone(),
-                    focus_range,
-                    full_range,
-                    SymbolKind::Module,
-                )
+                NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
             },
         )
     }
@@ -549,7 +544,7 @@ impl TryToNav for hir::ExternCrateDecl {
                     self.alias_or_name(db).unwrap_or_else(|| self.name(db)).symbol().clone(),
                     focus_range,
                     full_range,
-                    SymbolKind::Module,
+                    SymbolKind::CrateRoot,
                 );
 
                 res.docs = self.docs(db).map(Documentation::into_owned);
