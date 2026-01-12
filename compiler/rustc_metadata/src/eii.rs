@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl};
+use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 pub(crate) type EiiMapEncodedKeyValue = (DefId, (EiiDecl, Vec<(DefId, EiiImpl)>));
 
 pub(crate) type EiiMap = FxIndexMap<
-    DefId, // the defid of the macro that declared the eii
+    DefId, // the defid of the foreign item associated with the eii
     (
         // the corresponding declaration
         EiiDecl,
@@ -28,18 +28,34 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
         for i in
             find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiImpls(e) => e).into_iter().flatten()
         {
-            eiis.entry(i.eii_macro)
-                .or_insert_with(|| {
+            let decl = match i.resolution {
+                EiiImplResolution::Macro(macro_defid) => {
                     // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
-                    (find_attr!(tcx.get_all_attrs(i.eii_macro), AttributeKind::EiiExternTarget(d) => *d).unwrap(), Default::default())
-                }).1.insert(id.into(), *i);
+                    let Some(decl) = find_attr!(tcx.get_all_attrs(macro_defid), AttributeKind::EiiExternTarget(d) => *d)
+                    else {
+                        // skip if it doesn't have eii_extern_target (if we resolved to another macro that's not an EII)
+                        tcx.dcx()
+                            .span_delayed_bug(i.span, "resolved to something that's not an EII");
+                        continue;
+                    };
+                    decl
+                }
+                EiiImplResolution::Known(decl) => decl,
+                EiiImplResolution::Error(_eg) => continue,
+            };
+
+            // FIXME(eii) remove extern target from encoded decl
+            eiis.entry(decl.eii_extern_target)
+                .or_insert_with(|| (decl, Default::default()))
+                .1
+                .insert(id.into(), *i);
         }
 
         // if we find a new declaration, add it to the list without a known implementation
         if let Some(decl) =
             find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiExternTarget(d) => *d)
         {
-            eiis.entry(id.into()).or_insert((decl, Default::default()));
+            eiis.entry(decl.eii_extern_target).or_insert((decl, Default::default()));
         }
     }
 

@@ -101,3 +101,19 @@ mod issue15103 {
         (1..1_000).filter(|&i| i == d(d(i)) && i != d(i)).sum()
     }
 }
+
+fn wrongly_unmangled_macros(a: u32, b: u32) {
+    struct Wrapper(u32);
+    let a = Wrapper(a);
+    let b = Wrapper(b);
+    macro_rules! dot_0 {
+        ($x:expr) => {
+            $x.0
+        };
+    }
+
+    if dot_0!(a).is_multiple_of(dot_0!(b)) {
+        //~^ manual_is_multiple_of
+        todo!()
+    }
+}

@@ -305,3 +305,18 @@ impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
         Some(AttributeKind::RustcScalableVector { element_count: Some(n), span: cx.attr_span })
     }
 }
+
+pub(crate) struct RustcHasIncoherentInherentImplsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParser {
+    const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Trait),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::ForeignTy),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
+}

@@ -235,7 +235,7 @@ declare_features! (
     (accepted, generic_param_attrs, "1.27.0", Some(48848)),
     /// Allows the `#[global_allocator]` attribute.
     (accepted, global_allocator, "1.28.0", Some(27389)),
-    // FIXME: explain `globs`.
+    /// Allows globs imports (`use module::*;`) to import all public items from a module.
     (accepted, globs, "1.0.0", None),
     /// Allows using `..=X` as a pattern.
     (accepted, half_open_range_patterns, "1.66.0", Some(67264)),

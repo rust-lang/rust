@@ -32,21 +32,21 @@ use crate::errors::{EiiWithGenerics, LifetimesOrBoundsMismatchOnEii};
 pub(crate) fn compare_eii_function_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     external_impl: LocalDefId,
-    declaration: DefId,
+    foreign_item: DefId,
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    check_is_structurally_compatible(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
+    check_is_structurally_compatible(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
 
     let external_impl_span = tcx.def_span(external_impl);
     let cause = ObligationCause::new(
         external_impl_span,
         external_impl,
-        ObligationCauseCode::CompareEii { external_impl, declaration },
+        ObligationCauseCode::CompareEii { external_impl, declaration: foreign_item },
     );
 
     // FIXME(eii): even if we don't support generic functions, we should support explicit outlive bounds here
-    let param_env = tcx.param_env(declaration);
+    let param_env = tcx.param_env(foreign_item);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
@@ -62,7 +62,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     let mut wf_tys = FxIndexSet::default();
     let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
 
-    let declaration_sig = tcx.fn_sig(declaration).instantiate_identity();
+    let declaration_sig = tcx.fn_sig(foreign_item).instantiate_identity();
     let declaration_sig = tcx.liberate_late_bound_regions(external_impl.into(), declaration_sig);
     debug!(?declaration_sig);
 
@@ -103,7 +103,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
             cause,
             param_env,
             terr,
-            (declaration, declaration_sig),
+            (foreign_item, declaration_sig),
             (external_impl, external_impl_sig),
             eii_attr_span,
             eii_name,

@@ -48,7 +48,7 @@ type Foo = u32;
 #[rustc_scalable_vector(4)]
 //~^ ERROR: `#[rustc_scalable_vector]` attribute cannot be used on enums
 enum Bar<#[rustc_scalable_vector(4)] T> {
-//~^ ERROR: `#[rustc_scalable_vector]` attribute cannot be used on function params
+//~^ ERROR: `#[rustc_scalable_vector]` attribute cannot be used on type parameters
     #[rustc_scalable_vector(4)]
 //~^ ERROR: `#[rustc_scalable_vector]` attribute cannot be used on enum variants
     Baz(std::marker::PhantomData<T>),

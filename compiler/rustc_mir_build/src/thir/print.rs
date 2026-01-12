@@ -73,6 +73,24 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         self.fmt
     }
 
+    fn print_list<T>(
+        &mut self,
+        label: &str,
+        list: &[T],
+        depth_lvl: usize,
+        print_fn: impl Fn(&mut Self, &T, usize),
+    ) {
+        if list.is_empty() {
+            print_indented!(self, format_args!("{label}: []"), depth_lvl);
+        } else {
+            print_indented!(self, format_args!("{label}: ["), depth_lvl);
+            for item in list {
+                print_fn(self, item, depth_lvl + 1)
+            }
+            print_indented!(self, "]", depth_lvl);
+        }
+    }
+
     fn print_param(&mut self, param: &Param<'tcx>, depth_lvl: usize) {
         let Param { pat, ty, ty_span, self_kind, hir_id } = param;
 
@@ -663,12 +681,34 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_pat(&mut self, pat: &Pat<'tcx>, depth_lvl: usize) {
-        let &Pat { ty, span, ref kind } = pat;
+        let &Pat { ty, span, ref kind, ref extra } = pat;
 
         print_indented!(self, "Pat: {", depth_lvl);
         print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 1);
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+        self.print_pat_extra(extra.as_deref(), depth_lvl + 1);
         self.print_pat_kind(kind, depth_lvl + 1);
+        print_indented!(self, "}", depth_lvl);
+    }
+
+    fn print_pat_extra(&mut self, extra: Option<&PatExtra<'tcx>>, depth_lvl: usize) {
+        let Some(extra) = extra else {
+            // Skip printing in the common case of a pattern node with no extra data.
+            return;
+        };
+
+        let PatExtra { expanded_const, ascriptions } = extra;
+
+        print_indented!(self, "extra: PatExtra {", depth_lvl);
+        print_indented!(self, format_args!("expanded_const: {expanded_const:?}"), depth_lvl + 1);
+        self.print_list(
+            "ascriptions",
+            ascriptions,
+            depth_lvl + 1,
+            |this, ascription, depth_lvl| {
+                print_indented!(this, format_args!("{ascription:?}"), depth_lvl);
+            },
+        );
         print_indented!(self, "}", depth_lvl);
     }
 
@@ -684,13 +724,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             PatKind::Never => {
                 print_indented!(self, "Never", depth_lvl + 1);
-            }
-            PatKind::AscribeUserType { ascription, subpattern } => {
-                print_indented!(self, "AscribeUserType: {", depth_lvl + 1);
-                print_indented!(self, format!("ascription: {:?}", ascription), depth_lvl + 2);
-                print_indented!(self, "subpattern: ", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 3);
-                print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Binding { name, mode, var, ty, subpattern, is_primary, is_shorthand } => {
                 print_indented!(self, "Binding {", depth_lvl + 1);
@@ -754,13 +787,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Constant { value } => {
                 print_indented!(self, "Constant {", depth_lvl + 1);
                 print_indented!(self, format!("value: {}", value), depth_lvl + 2);
-                print_indented!(self, "}", depth_lvl + 1);
-            }
-            PatKind::ExpandedConstant { def_id, subpattern } => {
-                print_indented!(self, "ExpandedConstant {", depth_lvl + 1);
-                print_indented!(self, format!("def_id: {def_id:?}"), depth_lvl + 2);
-                print_indented!(self, "subpattern:", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Range(pat_range) => {

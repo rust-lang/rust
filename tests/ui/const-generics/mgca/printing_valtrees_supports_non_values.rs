@@ -9,7 +9,7 @@ struct Foo;
 
 trait Trait {
     #[type_const]
-    const ASSOC: usize;
+    const ASSOC: u32;
 }
 
 fn foo<const N: Foo>() {}
@@ -27,7 +27,7 @@ fn baz<T: Trait>() {
 fn main() {}
 
 fn test_ice_missing_bound<T>() {
-    foo::<{Option::Some::<u32>{0: <T as Trait>::ASSOC}}>();
+    foo::<{ Option::Some::<u32> { 0: <T as Trait>::ASSOC } }>();
     //~^ ERROR the trait bound `T: Trait` is not satisfied
     //~| ERROR the constant `Option::<u32>::Some(_)` is not of type `Foo`
 }

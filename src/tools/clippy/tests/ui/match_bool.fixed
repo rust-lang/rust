@@ -74,4 +74,15 @@ fn issue15351() {
     }
 }
 
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val + 1) > 0
+        };
+    }
+
+    let x = 5;
+    if test_expr!(x) { 1 } else { 0 };
+}
+
 fn main() {}

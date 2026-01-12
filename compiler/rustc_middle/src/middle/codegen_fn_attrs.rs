@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rustc_abi::Align;
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr, RtsanSetting};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -72,7 +73,7 @@ pub struct CodegenFnAttrs {
     /// generate this function under its real name,
     /// but *also* under the same name as this foreign function so that the foreign function has an implementation.
     // FIXME: make "SymbolName<'tcx>"
-    pub foreign_item_symbol_aliases: Vec<(Symbol, Linkage, Visibility)>,
+    pub foreign_item_symbol_aliases: Vec<(DefId, Linkage, Visibility)>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the

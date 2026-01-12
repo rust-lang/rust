@@ -26,12 +26,12 @@
                   scope 4 {
                       debug _x => _8;
                   }
-                  scope 18 (inlined foo) {
+                  scope 19 (inlined foo) {
                       let mut _27: *const [()];
                   }
               }
-              scope 16 (inlined slice_from_raw_parts::<()>) {
-                  scope 17 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+              scope 17 (inlined slice_from_raw_parts::<()>) {
+                  scope 18 (inlined std::ptr::from_raw_parts::<[()], ()>) {
                   }
               }
           }
@@ -49,19 +49,21 @@
               scope 7 {
                   let _21: std::ptr::NonNull<[u8]>;
                   scope 8 {
-                      scope 11 (inlined NonNull::<[u8]>::as_mut_ptr) {
-                          scope 12 (inlined NonNull::<[u8]>::as_non_null_ptr) {
-                              scope 13 (inlined NonNull::<[u8]>::cast::<u8>) {
+                      scope 12 (inlined NonNull::<[u8]>::as_mut_ptr) {
+                          scope 13 (inlined NonNull::<[u8]>::as_non_null_ptr) {
+                              scope 14 (inlined NonNull::<[u8]>::cast::<u8>) {
                                   let mut _25: *mut [u8];
-                                  scope 14 (inlined NonNull::<[u8]>::as_ptr) {
+                                  scope 15 (inlined NonNull::<[u8]>::as_ptr) {
                                   }
                               }
                           }
-                          scope 15 (inlined NonNull::<u8>::as_ptr) {
+                          scope 16 (inlined NonNull::<u8>::as_ptr) {
                           }
                       }
                   }
                   scope 10 (inlined <std::alloc::Global as Allocator>::allocate) {
+                      scope 11 (inlined std::alloc::Global::alloc_impl) {
+                      }
                   }
               }
               scope 9 (inlined #[track_caller] Layout::from_size_align_unchecked) {
@@ -192,8 +194,8 @@
 +         _18 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
           StorageDead(_24);
           StorageLive(_19);
--         _19 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], copy _18, const false) -> [return: bb7, unwind unreachable];
-+         _19 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
+-         _19 = std::alloc::Global::alloc_impl_runtime(copy _18, const false) -> [return: bb7, unwind unreachable];
++         _19 = std::alloc::Global::alloc_impl_runtime(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {

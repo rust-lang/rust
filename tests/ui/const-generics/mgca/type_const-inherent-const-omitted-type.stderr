@@ -1,0 +1,13 @@
+error: missing type for `const` item
+  --> $DIR/type_const-inherent-const-omitted-type.rs:8:12
+   |
+LL |     const B = 4;
+   |            ^
+   |
+help: provide a type for the item
+   |
+LL |     const B: <type> = 4;
+   |            ++++++++
+
+error: aborting due to 1 previous error
+

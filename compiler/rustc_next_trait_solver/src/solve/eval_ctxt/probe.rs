@@ -47,7 +47,7 @@ where
         let max_input_universe = outer.max_input_universe;
         let mut nested = EvalCtxt {
             delegate,
-            variables: outer.variables,
+            var_kinds: outer.var_kinds,
             var_values: outer.var_values,
             current_goal_kind: outer.current_goal_kind,
             max_input_universe,
