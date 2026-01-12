@@ -55,6 +55,7 @@ mod liveness;
 mod patch;
 mod shim;
 mod ssa;
+mod storage_remover;
 mod trivial_const;
 
 /// We import passes via this macro so that we can have a static list of pass names

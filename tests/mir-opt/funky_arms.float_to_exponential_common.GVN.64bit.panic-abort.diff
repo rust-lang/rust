@@ -142,18 +142,17 @@
       }
   
       bb9: {
+          StorageDead(_22);
           _7 = discriminant(_6);
           switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb12];
       }
   
       bb10: {
-          StorageDead(_22);
           _6 = const Option::<usize>::None;
           goto -> bb9;
       }
   
       bb11: {
-          StorageDead(_22);
           StorageLive(_24);
           StorageLive(_25);
           _25 = copy (((*_1).0: std::fmt::FormattingOptions).2: u16);

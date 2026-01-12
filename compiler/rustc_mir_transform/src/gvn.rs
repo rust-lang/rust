@@ -113,6 +113,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
 use crate::ssa::SsaLocals;
+use crate::storage_remover::StorageRemover;
 
 pub(super) struct GVN;
 
@@ -1938,37 +1939,5 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
             self.invalidate_derefs();
         }
         self.super_terminator(terminator, location);
-    }
-}
-
-struct StorageRemover<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    reused_locals: DenseBitSet<Local>,
-}
-
-impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
-        if let Operand::Move(place) = *operand
-            && !place.is_indirect_first_projection()
-            && self.reused_locals.contains(place.local)
-        {
-            *operand = Operand::Copy(place);
-        }
-    }
-
-    fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, loc: Location) {
-        match stmt.kind {
-            // When removing storage statements, we need to remove both (#107511).
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
-                if self.reused_locals.contains(l) =>
-            {
-                stmt.make_nop(true)
-            }
-            _ => self.super_statement(stmt, loc),
-        }
     }
 }
