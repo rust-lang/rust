@@ -308,6 +308,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
                     | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::MustNotSupend { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -325,7 +326,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -1149,16 +1149,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
-        }
-    }
-
-    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
-    fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct | Target::Enum | Target::Union | Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::MustNotSuspend { attr_span: attr.span(), span });
-            }
         }
     }
 
