@@ -618,15 +618,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.max_nameable_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
+                    // FIXME: consider if `self.placeholder_representative(scc)` is enough here.
+                    // That will simplify the logic quite a bit, but won't work if the placeholder
+                    // isn't *in* `scc` but rather was *reached from* `scc`, presumably because
+                    // `scc` is some transient boring region that's essentially a placeholder
+                    // under a different name.
+                    return match self.reaches_single_placeholder(scc) {
                         // If the region contains a single placeholder then they're equal.
-                        Some((0, placeholder)) => {
-                            return ty::Region::new_placeholder(tcx, placeholder);
-                        }
-
+                        Some(placeholder) => ty::Region::new_placeholder(tcx, placeholder),
                         // Fallback: this will produce a cryptic error message.
-                        _ => return region,
-                    }
+                        _ => region,
+                    };
                 }
 
                 // Find something that we can name

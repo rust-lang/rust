@@ -29,7 +29,6 @@ use tracing::{debug, instrument, trace};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
-use crate::region_infer::values::RegionElement;
 use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
@@ -104,15 +103,9 @@ pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
 
-    /// Higher-ranked subtyping error.
-    BoundUniversalRegionError {
-        /// The placeholder free region.
-        longer_fr: RegionVid,
-        /// The region element that erroneously must be outlived by `longer_fr`.
-        error_element: RegionElement<'tcx>,
-        /// The placeholder region.
-        placeholder: ty::PlaceholderRegion<'tcx>,
-    },
+    /// 'p outlives 'r, which does not hold. 'p is always a placeholder
+    /// and 'r is some other region.
+    PlaceholderOutlivesIllegalRegion { longer_fr: RegionVid, illegally_outlived_r: RegionVid },
 
     /// Any other lifetime error.
     RegionError {
@@ -205,60 +198,47 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+        let Some(gat_hir_id) = self
             .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) =
-                        tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
+            .placeholder_representative(scc)
+            .and_then(|placeholder| placeholder.bound.kind.get_id())
+            .and_then(|id| id.as_local())
+            .map(|local| self.infcx.tcx.local_def_id_to_hir_id(local))
+        else {
+            return;
+        };
 
         // Look for the where-bound which introduces the placeholder.
         // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
         // and `T: for<'a> Trait`<'a>.
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|&(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
-                    pred.kind
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
-                } else {
-                    for bound in *bounds {
-                        if let Trait(trait_bound) = bound {
-                            if trait_bound
-                                .bound_generic_params
-                                .iter()
-                                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
-                                .is_some()
-                            {
-                                hrtb_bounds.push(bound);
-                                return;
-                            }
-                        }
-                    }
+
+        // FIXME(amandasystems) we can probably flatten this.
+        for pred in self
+            .infcx
+            .tcx
+            .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
+            .generics()
+            .map(|gen_impl| gen_impl.predicates)
+            .into_iter()
+            .flatten()
+        {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
                 }
             }
-        });
+        }
         debug!(?hrtb_bounds);
 
         let mut suggestions = vec![];
@@ -361,28 +341,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::BoundUniversalRegionError {
+                RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                     longer_fr,
-                    placeholder,
-                    error_element,
+                    illegally_outlived_r,
                 } => {
-                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
-
-                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let cause = self
-                        .regioncx
-                        .best_blame_constraint(
-                            longer_fr,
-                            NllRegionVariableOrigin::Placeholder(placeholder),
-                            error_vid,
-                        )
-                        .0
-                        .cause;
-
-                    let universe = placeholder.universe;
-                    let universe_info = self.regioncx.universe_info(universe);
-
-                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                    self.report_erroneous_rvid_reaches_placeholder(longer_fr, illegally_outlived_r)
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {

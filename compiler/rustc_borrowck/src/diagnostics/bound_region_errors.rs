@@ -24,7 +24,6 @@ use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_
 use tracing::{debug, instrument};
 
 use crate::MirBorrowckCtxt;
-use crate::region_infer::values::RegionElement;
 use crate::session_diagnostics::{
     HigherRankedErrorCause, HigherRankedLifetimeError, HigherRankedSubtypeError,
 };
@@ -49,11 +48,12 @@ impl<'tcx> UniverseInfo<'tcx> {
         UniverseInfo::RelateTys { expected, found }
     }
 
+    /// Report an error where an element erroneously made its way into `placeholder`.
     pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion<'tcx>,
-        error_element: RegionElement<'tcx>,
+        error_element: Option<ty::PlaceholderRegion<'tcx>>,
         cause: ObligationCause<'tcx>,
     ) {
         match *self {
@@ -153,10 +153,17 @@ pub(crate) trait TypeOpInfo<'tcx> {
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion<'tcx>,
-        error_element: RegionElement<'tcx>,
+        error_element: Option<ty::PlaceholderRegion<'tcx>>,
         cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
+
+        // FIXME: this logic is convoluted and strange, and
+        // we should probably just use the placeholders we get
+        // as arguments! However, upstream error reporting code
+        // needs adaptations for that to work (this universe is
+        // neither the assigned one, nor the calculated one but
+        // some base-shifted one for some reason?).
         let base_universe = self.base_universe();
         debug!(?base_universe);
 
@@ -172,19 +179,13 @@ pub(crate) trait TypeOpInfo<'tcx> {
             ty::Placeholder::new(adjusted_universe.into(), placeholder.bound),
         );
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    ty::Region::new_placeholder(
-                        tcx,
-                        ty::Placeholder::new(adjusted.into(), error_placeholder.bound),
-                    )
-                })
-            } else {
-                None
-            };
+        // FIXME: one day this should just be error_element, but see above about the adjusted universes. At that point, this method can probably be removed entirely.
+        let error_region = error_element.and_then(|e| {
+            let adjusted_universe = e.universe.as_u32().checked_sub(base_universe.as_u32());
+            adjusted_universe.map(|adjusted| {
+                ty::Region::new_placeholder(tcx, ty::Placeholder::new(adjusted.into(), e.bound))
+            })
+        });
 
         debug!(?placeholder_region);
 

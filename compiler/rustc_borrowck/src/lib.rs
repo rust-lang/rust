@@ -2687,6 +2687,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
         }
     }
+
+    /// Report that `longer_fr: error_vid`, which doesn't hold,
+    /// where `longer_fr` is a placeholder.
+    fn report_erroneous_rvid_reaches_placeholder(
+        &mut self,
+        longer_fr: RegionVid,
+        error_vid: RegionVid,
+    ) {
+        use NllRegionVariableOrigin::*;
+
+        let origin_longer = self.regioncx.definitions[longer_fr].origin;
+
+        // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
+        let cause =
+            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+
+        let Placeholder(placeholder) = origin_longer else {
+            bug!("Expected {longer_fr:?} to come from placeholder!");
+        };
+
+        // FIXME: Is throwing away the existential region really the best here?
+        let error_region = match self.regioncx.definitions[error_vid].origin {
+            FreeRegion | Existential { .. } => None,
+            Placeholder(other_placeholder) => Some(other_placeholder),
+        };
+
+        // FIXME these methods should have better names, and also probably not be this generic.
+        // FIXME note that we *throw away* the error element here! We probably want to
+        // thread it through the computation further down and use it, but there currently isn't
+        // anything there to receive it.
+        self.regioncx.universe_info(placeholder.universe).report_erroneous_element(
+            self,
+            placeholder,
+            error_region,
+            cause,
+        );
+    }
 }
 
 /// The degree of overlap between 2 places for borrow-checking.
