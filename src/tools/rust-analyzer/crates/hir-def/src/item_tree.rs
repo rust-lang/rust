@@ -614,7 +614,9 @@ pub struct Trait {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Impl {}
+pub struct Impl {
+    pub is_trait_impl: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAlias {

@@ -190,8 +190,8 @@ impl PickConstraintsForShadowed {
         // An item never shadows itself
         candidate.item.def_id != self.def_id
             // and we're only concerned about inherent impls doing the shadowing.
-            // Shadowing can only occur if the shadowed is further along
-            // the Receiver dereferencing chain than the shadowed.
+            // Shadowing can only occur if the impl being shadowed is further along
+            // the Receiver dereferencing chain than the impl doing the shadowing.
             && match candidate.kind {
                 CandidateKind::InherentImplCandidate { receiver_steps, .. } => match self.receiver_steps {
                     Some(shadowed_receiver_steps) => receiver_steps > shadowed_receiver_steps,

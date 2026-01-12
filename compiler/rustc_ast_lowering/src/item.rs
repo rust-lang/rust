@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl};
+use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{
@@ -134,6 +134,56 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_eii_extern_target(
+        &mut self,
+        id: NodeId,
+        eii_name: Ident,
+        EiiExternTarget { extern_item_path, impl_unsafe }: &EiiExternTarget,
+    ) -> Option<EiiDecl> {
+        self.lower_path_simple_eii(id, extern_item_path).map(|did| EiiDecl {
+            eii_extern_target: did,
+            impl_unsafe: *impl_unsafe,
+            name: eii_name,
+        })
+    }
+
+    fn lower_eii_impl(
+        &mut self,
+        EiiImpl {
+            node_id,
+            eii_macro_path,
+            impl_safety,
+            span,
+            inner_span,
+            is_default,
+            known_eii_macro_resolution,
+        }: &EiiImpl,
+    ) -> hir::attrs::EiiImpl {
+        let resolution = if let Some(target) = known_eii_macro_resolution
+            && let Some(decl) = self.lower_eii_extern_target(
+                *node_id,
+                // the expect is ok here since we always generate this path in the eii macro.
+                eii_macro_path.segments.last().expect("at least one segment").ident,
+                target,
+            ) {
+            EiiImplResolution::Known(decl)
+        } else if let Some(macro_did) = self.lower_path_simple_eii(*node_id, eii_macro_path) {
+            EiiImplResolution::Macro(macro_did)
+        } else {
+            EiiImplResolution::Error(
+                self.dcx().span_delayed_bug(*span, "eii never resolved without errors given"),
+            )
+        };
+
+        hir::attrs::EiiImpl {
+            span: self.lower_span(*span),
+            inner_span: self.lower_span(*inner_span),
+            impl_marked_unsafe: self.lower_safety(*impl_safety, hir::Safety::Safe).is_unsafe(),
+            is_default: *is_default,
+            resolution,
+        }
+    }
+
     fn generate_extra_attrs_for_item_kind(
         &mut self,
         id: NodeId,
@@ -143,49 +193,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Fn(box Fn { eii_impls, .. }) if eii_impls.is_empty() => Vec::new(),
             ItemKind::Fn(box Fn { eii_impls, .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
-                    eii_impls
-                        .iter()
-                        .flat_map(
-                            |EiiImpl {
-                                 node_id,
-                                 eii_macro_path,
-                                 impl_safety,
-                                 span,
-                                 inner_span,
-                                 is_default,
-                             }| {
-                                self.lower_path_simple_eii(*node_id, eii_macro_path).map(|did| {
-                                    hir::attrs::EiiImpl {
-                                        eii_macro: did,
-                                        span: self.lower_span(*span),
-                                        inner_span: self.lower_span(*inner_span),
-                                        impl_marked_unsafe: self
-                                            .lower_safety(*impl_safety, hir::Safety::Safe)
-                                            .is_unsafe(),
-                                        is_default: *is_default,
-                                    }
-                                })
-                            },
-                        )
-                        .collect(),
+                    eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
             }
-            ItemKind::MacroDef(
-                _,
-                MacroDef {
-                    eii_extern_target: Some(EiiExternTarget { extern_item_path, impl_unsafe, span }),
-                    ..
-                },
-            ) => self
-                .lower_path_simple_eii(id, extern_item_path)
-                .map(|did| {
-                    vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(EiiDecl {
-                        eii_extern_target: did,
-                        impl_unsafe: *impl_unsafe,
-                        span: self.lower_span(*span),
-                    }))]
-                })
+            ItemKind::MacroDef(name, MacroDef { eii_extern_target: Some(target), .. }) => self
+                .lower_eii_extern_target(id, *name, target)
+                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(decl))])
                 .unwrap_or_default(),
+
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
             | ItemKind::Static(..)
@@ -264,8 +279,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
-                let ty =
-                    self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
+                let ty = self
+                    .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                 let body_id = self.lower_const_body(span, e.as_deref());
                 self.lower_define_opaque(hir_id, define_opaque);
                 hir::ItemKind::Static(*m, ident, ty, body_id)
@@ -279,8 +294,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_ty_alloc(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), span);
                         (ty, rhs)
                     },
@@ -379,7 +396,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             );
                             this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
                         }
-                        Some(ty) => this.lower_ty(
+                        Some(ty) => this.lower_ty_alloc(
                             ty,
                             ImplTraitContext::OpaqueTy {
                                 origin: hir::OpaqueTyOrigin::TyAlias {
@@ -453,7 +470,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .as_deref()
                             .map(|of_trait| this.lower_trait_impl_header(of_trait));
 
-                        let lowered_ty = this.lower_ty(
+                        let lowered_ty = this.lower_ty_alloc(
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ImplSelf),
                         );
@@ -758,8 +775,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 safety,
                 define_opaque,
             }) => {
-                let ty =
-                    self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
+                let ty = self
+                    .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                 let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
                 if define_opaque.is_some() {
                     self.dcx().span_err(i.span, "foreign statics cannot define opaque types");
@@ -870,7 +887,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         (index, f): (usize, &FieldDef),
     ) -> hir::FieldDef<'hir> {
-        let ty = self.lower_ty(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
+        let ty =
+            self.lower_ty_alloc(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field);
         hir::FieldDef {
@@ -908,8 +926,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_ty_alloc(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         let rhs = rhs
                             .as_ref()
                             .map(|rhs| this.lower_const_item_rhs(attrs, Some(rhs), i.span));
@@ -1008,7 +1028,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = ty.as_ref().map(|x| {
-                            this.lower_ty(
+                            this.lower_ty_alloc(
                                 x,
                                 ImplTraitContext::Disallowed(ImplTraitPosition::AssocTy),
                             )
@@ -1120,8 +1140,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_ty_alloc(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         this.lower_define_opaque(hir_id, &define_opaque);
                         let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), i.span);
                         hir::ImplItemKind::Const(ty, rhs)
@@ -1180,7 +1202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 hir::ImplItemKind::Type(ty)
                             }
                             Some(ty) => {
-                                let ty = this.lower_ty(
+                                let ty = this.lower_ty_alloc(
                                     ty,
                                     ImplTraitContext::OpaqueTy {
                                         origin: hir::OpaqueTyOrigin::TyAlias {
@@ -1916,7 +1938,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         bound_generic_params,
                         hir::GenericParamSource::Binder,
                     ),
-                    bounded_ty: self.lower_ty(
+                    bounded_ty: self.lower_ty_alloc(
                         bounded_ty,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
@@ -1945,10 +1967,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
                 hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
-                    lhs_ty: self
-                        .lower_ty(lhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
-                    rhs_ty: self
-                        .lower_ty(rhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
+                    lhs_ty: self.lower_ty_alloc(
+                        lhs_ty,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    ),
+                    rhs_ty: self.lower_ty_alloc(
+                        rhs_ty,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    ),
                 })
             }
         });

@@ -177,5 +177,16 @@ LL |     println!(r#"\x7B}\u8 {"#, 1);
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: aborting due to 18 previous errors
+error: invalid format string: expected `}`, found `?`
+  --> $DIR/format-string-error-2.rs:87:17
+   |
+LL |     println!("{x?}, world!",);
+   |                 ^
+   |                 |
+   |                 expected `:` before `?` to format with `Debug` in format string
+   |                 help: add a colon before the format specifier: `:?`
+   |
+   = note: to print `{`, you can escape it using `{{`
+
+error: aborting due to 19 previous errors
 

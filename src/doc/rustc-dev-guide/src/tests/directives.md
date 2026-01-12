@@ -308,12 +308,12 @@ Asked in
 
 #### Test-suite-specific directives
 
-The test suites [`rustdoc`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
+The test suites [`rustdoc-html`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
 and [`rustdoc-json`][rustdoc-json-tests] each feature an additional set of directives whose basic
 syntax resembles the one of compiletest directives but which are ultimately read and checked by
 separate tools. For more information, please read their respective chapters as linked above.
 
-[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
 [rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 

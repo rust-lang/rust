@@ -1,7 +1,7 @@
 // We used to say "ambiguous associated type" on ambiguous associated consts.
 // Ensure that we now use the correct label.
 
-#![feature(associated_const_equality, min_generic_const_args, unsized_const_params)]
+#![feature(min_generic_const_args, unsized_const_params)]
 #![allow(incomplete_features)]
 
 trait Trait0: Parent0<i32> + Parent0<u32> {}

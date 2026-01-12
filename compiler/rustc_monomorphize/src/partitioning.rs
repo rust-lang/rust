@@ -124,6 +124,7 @@ use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
+use crate::graph_checks::target_specific_checks;
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -576,6 +577,16 @@ fn internalize_symbols<'tcx>(
                 {
                     // Found a user from another CGU, so skip to the next item
                     // without marking this one as internal.
+                    continue;
+                }
+            }
+
+            // When LTO inlines the caller of a naked function, it will attempt but fail to make the
+            // naked function symbol visible. To ensure that LTO works correctly, do not default
+            // naked functions to internal linkage and default visibility.
+            if let MonoItem::Fn(instance) = item {
+                let flags = cx.tcx.codegen_instance_attrs(instance.def).flags;
+                if flags.contains(CodegenFnAttrFlags::NAKED) {
                     continue;
                 }
             }
@@ -1125,6 +1136,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     };
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
+    // Perform checks that need to operate on the entire mono item graph
+    target_specific_checks(tcx, &items, &usage_map);
 
     // If there was an error during collection (e.g. from one of the constants we evaluated),
     // then we stop here. This way codegen does not have to worry about failing constants.

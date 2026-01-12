@@ -15,7 +15,7 @@ use crate::directives::directive_names::{
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
-use crate::directives::line::{DirectiveLine, line_directive};
+use crate::directives::line::DirectiveLine;
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -29,6 +29,7 @@ mod directive_names;
 mod file;
 mod handlers;
 mod line;
+pub(crate) use line::line_directive;
 mod line_number;
 pub(crate) use line_number::LineNumber;
 mod needs;
@@ -551,7 +552,7 @@ fn check_directive<'a>(
 
     let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
         || match mode {
-            TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
+            TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             _ => false,
         };

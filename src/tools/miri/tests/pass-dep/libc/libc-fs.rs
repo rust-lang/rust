@@ -1,4 +1,4 @@
-//@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]

@@ -78,15 +78,15 @@ LL |     g::foo();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/duplicate.rs:24:13
+  --> $DIR/duplicate.rs:29:13
    |
 LL |     pub use crate::a::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/duplicate.rs:25:13
+  --> $DIR/duplicate.rs:30:13
    |
-LL |     pub use crate::b::*;
+LL |     pub use crate::f::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
@@ -106,15 +106,15 @@ LL |     g::foo();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/duplicate.rs:24:13
+  --> $DIR/duplicate.rs:29:13
    |
 LL |     pub use crate::a::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/duplicate.rs:25:13
+  --> $DIR/duplicate.rs:30:13
    |
-LL |     pub use crate::b::*;
+LL |     pub use crate::f::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default

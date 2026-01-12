@@ -285,7 +285,7 @@ pub const unsafe trait TrivialClone: [const] Clone {}
 /// Derive macro generating an impl of the trait `Clone`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_clone_copy, trivial_clone)]
+#[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals, trivial_clone)]
 pub macro Clone($item:item) {
     /* compiler built-in */
 }
@@ -350,7 +350,7 @@ impl_use_cloned! {
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
 #[unstable(
-    feature = "derive_clone_copy",
+    feature = "derive_clone_copy_internals",
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
@@ -360,7 +360,7 @@ pub struct AssertParamIsClone<T: Clone + PointeeSized> {
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
 #[unstable(
-    feature = "derive_clone_copy",
+    feature = "derive_clone_copy_internals",
     reason = "deriving hack, should not be public",
     issue = "none"
 )]

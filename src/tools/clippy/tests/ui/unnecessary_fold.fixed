@@ -178,4 +178,15 @@ fn issue10000() {
     }
 }
 
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($e:expr) => {
+            ($e + 1) > 2
+        };
+    }
+
+    let _ = (0..3).any(|x| test_expr!(x));
+    //~^ unnecessary_fold
+}
+
 fn main() {}

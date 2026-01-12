@@ -23,7 +23,7 @@ error: struct expression with missing field initialiser for `field`
   --> $DIR/adt_expr_erroneuous_inits.rs:16:17
    |
 LL |     accepts::<{ Foo::<u8> { }}>();
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
 
 error: struct expression with multiple initialisers for `field`
   --> $DIR/adt_expr_erroneuous_inits.rs:18:49
@@ -35,13 +35,13 @@ error: struct expression with invalid base path
   --> $DIR/adt_expr_erroneuous_inits.rs:20:17
    |
 LL |     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
-   |                 ^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct expression with invalid base path
   --> $DIR/adt_expr_erroneuous_inits.rs:23:17
    |
 LL |     accepts::<{ NonStruct { }}>();
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

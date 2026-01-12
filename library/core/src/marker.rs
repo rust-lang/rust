@@ -163,7 +163,7 @@ pub trait Sized: MetaSized {
 }
 
 /// Types with a size that can be determined from pointer metadata.
-#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[unstable(feature = "sized_hierarchy", issue = "144404")]
 #[lang = "meta_sized"]
 #[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known",
@@ -181,7 +181,7 @@ pub trait MetaSized: PointeeSized {
 }
 
 /// Types that may or may not have a size.
-#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[unstable(feature = "sized_hierarchy", issue = "144404")]
 #[lang = "pointee_sized"]
 #[diagnostic::on_unimplemented(
     message = "values of type `{Self}` may or may not have a size",
@@ -466,7 +466,7 @@ pub trait Copy: Clone {
 /// Derive macro generating an impl of the trait `Copy`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+#[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals)]
 pub macro Copy($item:item) {
     /* compiler built-in */
 }

@@ -10,7 +10,8 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    FindPathConfig, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
+    FindPathConfig, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -66,6 +67,7 @@ pub type Result<T = (), E = HirDisplayError> = std::result::Result<T, E>;
 
 pub trait HirWrite: fmt::Write {
     fn start_location_link(&mut self, _location: ModuleDefId) {}
+    fn start_location_link_generic(&mut self, _location: GenericParamId) {}
     fn end_location_link(&mut self) {}
 }
 
@@ -145,6 +147,10 @@ impl<'db> BoundsFormattingCtx<'db> {
 impl<'db> HirFormatter<'_, 'db> {
     pub fn start_location_link(&mut self, location: ModuleDefId) {
         self.fmt.start_location_link(location);
+    }
+
+    pub fn start_location_link_generic(&mut self, location: GenericParamId) {
+        self.fmt.start_location_link_generic(location);
     }
 
     pub fn end_location_link(&mut self) {
@@ -686,7 +692,9 @@ impl<'db> HirDisplay<'db> for Const<'db> {
             ConstKind::Param(param) => {
                 let generics = generics(f.db, param.id.parent());
                 let param_data = &generics[param.id.local_id()];
+                f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name().unwrap().display(f.db, f.edition()))?;
+                f.end_location_link();
                 Ok(())
             }
             ConstKind::Value(const_bytes) => render_const_scalar(
@@ -1489,6 +1497,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
+                            f.start_location_link_generic(param.id.into());
                             write!(
                                 f,
                                 "{}",
@@ -1496,7 +1505,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                                     .clone()
                                     .unwrap_or_else(Name::missing)
                                     .display(f.db, f.edition())
-                            )?
+                            )?;
+                            f.end_location_link();
                         }
                         TypeParamProvenance::ArgumentImplTrait => {
                             let bounds = GenericPredicates::query_all(f.db, param.id.parent())
@@ -1519,7 +1529,9 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         }
                     },
                     TypeOrConstParamData::ConstParamData(p) => {
+                        f.start_location_link_generic(param.id.into());
                         write!(f, "{}", p.name.display(f.db, f.edition()))?;
+                        f.end_location_link();
                     }
                 }
             }
@@ -2031,7 +2043,9 @@ impl<'db> HirDisplay<'db> for Region<'db> {
             RegionKind::ReEarlyParam(param) => {
                 let generics = generics(f.db, param.id.parent);
                 let param_data = &generics[param.id.local_id];
+                f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
+                f.end_location_link();
                 Ok(())
             }
             RegionKind::ReBound(BoundVarIndexKind::Bound(db), idx) => {

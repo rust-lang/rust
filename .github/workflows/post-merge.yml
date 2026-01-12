@@ -29,7 +29,7 @@ jobs:
           sleep 60
 
           # Get closest bors merge commit
-          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+          PARENT_COMMIT=`git rev-list --author='122020455+rust-bors\[bot\]@users.noreply.github.com' -n1 --first-parent HEAD^1`
           echo "Parent: ${PARENT_COMMIT}"
 
           # Find PR for the current commit

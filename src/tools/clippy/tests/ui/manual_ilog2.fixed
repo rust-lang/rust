@@ -30,3 +30,20 @@ fn foo(a: u32, b: u64) {
     external!($a.ilog(2));
     with_span!(span; a.ilog(2));
 }
+
+fn wrongly_unmangled_macros() {
+    struct S {
+        inner: u32,
+    }
+
+    let x = S { inner: 42 };
+    macro_rules! access {
+        ($s:expr) => {
+            $s.inner
+        };
+    }
+    let log = access!(x).ilog2();
+    //~^ manual_ilog2
+    let log = access!(x).ilog2();
+    //~^ manual_ilog2
+}

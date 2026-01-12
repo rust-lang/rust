@@ -8,15 +8,15 @@ LL |     g::foo();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/ambiguous-14.rs:13:13
+  --> $DIR/ambiguous-14.rs:18:13
    |
 LL |     pub use a::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/ambiguous-14.rs:14:13
+  --> $DIR/ambiguous-14.rs:19:13
    |
-LL |     pub use b::*;
+LL |     pub use f::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
@@ -34,15 +34,15 @@ LL |     g::foo();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/ambiguous-14.rs:13:13
+  --> $DIR/ambiguous-14.rs:18:13
    |
 LL |     pub use a::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/ambiguous-14.rs:14:13
+  --> $DIR/ambiguous-14.rs:19:13
    |
-LL |     pub use b::*;
+LL |     pub use f::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default

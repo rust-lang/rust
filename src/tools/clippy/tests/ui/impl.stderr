@@ -19,7 +19,24 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:26:5
+  --> tests/ui/impl.rs:16:1
+   |
+LL | / impl<'a> MyStruct {
+LL | |
+LL | |     fn lifetimed() {}
+LL | | }
+   | |_^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:6:1
+   |
+LL | / impl MyStruct {
+LL | |     fn first() {}
+LL | | }
+   | |_^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:27:5
    |
 LL | /     impl super::MyStruct {
 LL | |
@@ -37,7 +54,7 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:48:1
+  --> tests/ui/impl.rs:49:1
    |
 LL | / impl WithArgs<u64> {
 LL | |
@@ -47,7 +64,7 @@ LL | | }
    | |_^
    |
 note: first implementation here
-  --> tests/ui/impl.rs:45:1
+  --> tests/ui/impl.rs:46:1
    |
 LL | / impl WithArgs<u64> {
 LL | |     fn f2() {}
@@ -55,28 +72,85 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:71:1
+  --> tests/ui/impl.rs:72:1
    |
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/impl.rs:68:1
+  --> tests/ui/impl.rs:69:1
    |
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:84:1
+  --> tests/ui/impl.rs:85:1
    |
 LL | impl OneExpected {}
    | ^^^^^^^^^^^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/impl.rs:81:1
+  --> tests/ui/impl.rs:82:1
    |
 LL | impl OneExpected {}
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:94:1
+   |
+LL | impl Lifetime<'_> {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:93:1
+   |
+LL | impl Lifetime<'_> {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:98:1
+   |
+LL | impl<'a> Lifetime<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:97:1
+   |
+LL | impl<'a> Lifetime<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:110:1
+   |
+LL | impl<G> Generic<G> {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:109:1
+   |
+LL | impl<G> Generic<G> {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:124:1
+   |
+LL | / impl<T: Debug> GenericWithBounds<T> {
+LL | |
+LL | |     fn make_two(_two: T) -> Self {
+LL | |         todo!()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:118:1
+   |
+LL | / impl<T: Debug> GenericWithBounds<T> {
+LL | |     fn make_one(_one: T) -> Self {
+LL | |         todo!()
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to 10 previous errors
 

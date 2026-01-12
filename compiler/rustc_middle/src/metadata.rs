@@ -26,7 +26,7 @@ impl Reexport {
     }
 }
 
-/// This structure is supposed to keep enough data to re-create `NameBinding`s for other crates
+/// This structure is supposed to keep enough data to re-create `Decl`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
 /// need to add more data in the future to correctly support macros 2.0, for example.
 /// Module child can be either a proper item or a reexport (including private imports).
@@ -45,16 +45,9 @@ pub struct ModChild {
     pub reexport_chain: SmallVec<[Reexport; 2]>,
 }
 
-#[derive(Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum AmbigModChildKind {
-    GlobVsGlob,
-    GlobVsExpanded,
-}
-
 /// Same as `ModChild`, however, it includes ambiguity error.
 #[derive(Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct AmbigModChild {
     pub main: ModChild,
     pub second: ModChild,
-    pub kind: AmbigModChildKind,
 }

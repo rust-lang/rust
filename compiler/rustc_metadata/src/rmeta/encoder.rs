@@ -1441,7 +1441,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         // Skip encoding defs for these as they should not have had a `DefId` created
                         hir::ConstArgKind::Error(..)
                         | hir::ConstArgKind::Struct(..)
+                        | hir::ConstArgKind::TupleCall(..)
+                        | hir::ConstArgKind::Tup(..)
                         | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Literal(..)
                         | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
@@ -1654,9 +1657,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
 
-        self.lazy_array(externally_implementable_items.iter().map(|(decl_did, (decl, impls))| {
-            (*decl_did, (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()))
-        }))
+        self.lazy_array(externally_implementable_items.iter().map(
+            |(foreign_item, (decl, impls))| {
+                (
+                    *foreign_item,
+                    (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()),
+                )
+            },
+        ))
     }
 
     #[instrument(level = "trace", skip(self))]

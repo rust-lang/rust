@@ -269,7 +269,7 @@ impl<'test> TestCx<'test> {
             TestMode::Pretty => self.run_pretty_test(),
             TestMode::DebugInfo => self.run_debuginfo_test(),
             TestMode::Codegen => self.run_codegen_test(),
-            TestMode::Rustdoc => self.run_rustdoc_test(),
+            TestMode::RustdocHtml => self.run_rustdoc_html_test(),
             TestMode::RustdocJson => self.run_rustdoc_json_test(),
             TestMode::CodegenUnits => self.run_codegen_units_test(),
             TestMode::Incremental => self.run_incremental_test(),
@@ -1758,7 +1758,7 @@ impl<'test> TestCx<'test> {
             }
             TestMode::Pretty
             | TestMode::DebugInfo
-            | TestMode::Rustdoc
+            | TestMode::RustdocHtml
             | TestMode::RustdocJson
             | TestMode::RunMake
             | TestMode::RustdocJs => {

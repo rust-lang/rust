@@ -1,3 +1,5 @@
+use std::iter;
+
 use rand::Rng;
 use test::{Bencher, black_box};
 
@@ -20,7 +22,9 @@ macro_rules! int_sqrt_bench {
             let mut rng = crate::bench_rng();
             /* Exponentially distributed random numbers from the whole range of the type.  */
             let numbers: Vec<$t> =
-                (0..256).map(|_| rng.random::<$t>() >> rng.random_range(0..<$t>::BITS)).collect();
+                iter::repeat_with(|| rng.random::<$t>() >> rng.random_range(0..<$t>::BITS))
+                    .take(256)
+                    .collect();
             bench.iter(|| {
                 for x in &numbers {
                     black_box(black_box(x).isqrt());
@@ -32,9 +36,10 @@ macro_rules! int_sqrt_bench {
         fn $random_small(bench: &mut Bencher) {
             let mut rng = crate::bench_rng();
             /* Exponentially distributed random numbers from the range 0..256.  */
-            let numbers: Vec<$t> = (0..256)
-                .map(|_| (rng.random::<u8>() >> rng.random_range(0..u8::BITS)) as $t)
-                .collect();
+            let numbers: Vec<$t> =
+                iter::repeat_with(|| (rng.random::<u8>() >> rng.random_range(0..u8::BITS)) as $t)
+                    .take(256)
+                    .collect();
             bench.iter(|| {
                 for x in &numbers {
                     black_box(black_box(x).isqrt());
@@ -44,9 +49,9 @@ macro_rules! int_sqrt_bench {
 
         #[bench]
         fn $random_uniform(bench: &mut Bencher) {
-            let mut rng = crate::bench_rng();
+            let rng = crate::bench_rng();
             /* Exponentially distributed random numbers from the whole range of the type.  */
-            let numbers: Vec<$t> = (0..256).map(|_| rng.random::<$t>()).collect();
+            let numbers: Vec<$t> = rng.random_iter().take(256).collect();
             bench.iter(|| {
                 for x in &numbers {
                     black_box(black_box(x).isqrt());
