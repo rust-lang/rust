@@ -82,15 +82,15 @@ call-function: ("check-notable-tooltip-position", {
     "i_x": 528,
 })
 
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
+// This is needed to ensure that the text color is computed.
+show-text: true
+
 // Now check the colors.
 define-function: (
     "check-colors",
     [theme, header_color, content_color, type_color, trait_color, link_color],
     block {
-        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
-        // This is needed to ensure that the text color is computed.
-        show-text: true
-
         call-function: ("switch-theme", {"theme": |theme|})
 
         assert-css: (
@@ -251,7 +251,6 @@ reload:
 assert-count: ("//*[@class='tooltip popover']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
-click: "rustdoc-toolbar .settings-menu a"
-wait-for: "#settings"
+call-function: ("open-settings-menu", {})
 assert-count: ("//*[@class='tooltip popover']", 0)
 assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"

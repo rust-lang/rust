@@ -9,7 +9,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -50,7 +51,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut self: CmResolver<'r, 'ra, 'tcx>,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
-        ctxt: SyntaxContext,
+        orig_ctxt: SyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
             &mut CmResolver<'r, 'ra, 'tcx>,
@@ -100,7 +101,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 4c. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude: builtin attributes (closed, controlled).
 
-        let rust_2015 = ctxt.edition().is_rust_2015();
         let (ns, macro_kind) = match scope_set {
             ScopeSet::All(ns)
             | ScopeSet::Module(ns, _)
@@ -123,7 +123,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             TypeNS | ValueNS => Scope::ModuleNonGlobs(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
-        let mut ctxt = ctxt.normalize_to_macros_2_0();
+        let mut ctxt = orig_ctxt.normalize_to_macros_2_0();
         let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
@@ -148,7 +148,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     true
                 }
                 Scope::ModuleNonGlobs(..) | Scope::ModuleGlobs(..) => true,
-                Scope::MacroUsePrelude => use_prelude || rust_2015,
+                Scope::MacroUsePrelude => use_prelude || orig_ctxt.edition().is_rust_2015(),
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
                     use_prelude || module_and_extern_prelude || extern_prelude
@@ -397,7 +397,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         assert!(force || finalize.is_none()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
-        if orig_ident.is_path_segment_keyword() && !matches!(scope_set, ScopeSet::Module(..)) {
+        if !matches!(scope_set, ScopeSet::Module(..)) && orig_ident.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
 
@@ -424,7 +424,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_results: Vec<(Decl<'_>, Scope<'_>)> = Vec::new();
+        let mut innermost_results: SmallVec<[(Decl<'_>, Scope<'_>); 2]> = SmallVec::new();
         let mut determinacy = Determinacy::Determined;
 
         // Go through all the scopes and try to resolve the name.
@@ -434,12 +434,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
+                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+                // The passed `ctxt` is already normalized, so avoid expensive double normalization.
+                let ident = Macros20NormalizedIdent(ident);
                 let res = match this.reborrow().resolve_ident_in_scope(
-                    orig_ident,
+                    ident,
                     ns,
                     scope,
                     use_prelude,
-                    ctxt,
                     scope_set,
                     parent_scope,
                     // Shadowed decls don't need to be marked as used or non-speculatively loaded.
@@ -508,11 +510,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_ident_in_scope<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        orig_ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         scope: Scope<'ra>,
         use_prelude: UsePrelude,
-        ctxt: SyntaxContext,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
@@ -520,7 +521,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
-        let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
                 if let Some(decl) = self
@@ -599,11 +599,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             self.get_mut().lint_buffer.buffer_lint(
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
-                                orig_ident.span,
+                                ident.span,
                                 errors::ProcMacroDeriveResolutionFallback {
-                                    span: orig_ident.span,
+                                    span: ident.span,
                                     ns_descr: ns.descr(),
-                                    ident,
+                                    ident: ident.0,
                                 },
                             );
                         }
@@ -649,11 +649,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             self.get_mut().lint_buffer.buffer_lint(
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
-                                orig_ident.span,
+                                ident.span,
                                 errors::ProcMacroDeriveResolutionFallback {
-                                    span: orig_ident.span,
+                                    span: ident.span,
                                     ns_descr: ns.descr(),
-                                    ident,
+                                    ident: ident.0,
                                 },
                             );
                         }
@@ -699,7 +699,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut result = Err(Determinacy::Determined);
                 if let Some(prelude) = self.prelude
                     && let Ok(decl) = self.reborrow().resolve_ident_in_scope_set(
-                        ident,
+                        ident.0,
                         ScopeSet::Module(ns, prelude),
                         parent_scope,
                         None,
@@ -983,7 +983,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_ident_in_module_non_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         module: Module<'ra>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
@@ -1006,7 +1006,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
-                ident,
+                ident.0,
                 binding,
                 parent_scope,
                 module,
@@ -1017,7 +1017,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
         if let Some(binding) = binding {
-            let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+            let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
             return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
 
@@ -1046,7 +1046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolve_ident_in_module_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         module: Module<'ra>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
@@ -1067,7 +1067,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
-                ident,
+                ident.0,
                 binding,
                 parent_scope,
                 module,
@@ -1103,7 +1103,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
             return if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
-                let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+                let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
                 if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
             } else {
                 Err(ControlFlow::Break(Undetermined))
@@ -1136,9 +1136,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => return Err(ControlFlow::Continue(Undetermined)),
             };
             let tmp_parent_scope;
-            let (mut adjusted_parent_scope, mut ident) =
-                (parent_scope, ident.normalize_to_macros_2_0());
-            match ident.span.glob_adjust(module.expansion, glob_import.span) {
+            let (mut adjusted_parent_scope, mut ident) = (parent_scope, ident);
+            match ident.0.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
                         ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
@@ -1148,7 +1147,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => continue,
             };
             let result = self.reborrow().resolve_ident_in_scope_set(
-                ident,
+                ident.0,
                 ScopeSet::Module(ns, module),
                 adjusted_parent_scope,
                 None,
@@ -1160,7 +1159,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match result {
                 Err(Determined) => continue,
                 Ok(binding)
-                    if !self.is_accessible_from(binding.vis, glob_import.parent_scope.module) =>
+                    if !self.is_accessible_from(binding.vis(), glob_import.parent_scope.module) =>
                 {
                     continue;
                 }
@@ -1187,7 +1186,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return Err(ControlFlow::Continue(Determined));
         };
 
-        if !self.is_accessible_from(binding.vis, parent_scope.module) {
+        if !self.is_accessible_from(binding.vis(), parent_scope.module) {
             if report_private {
                 self.privacy_errors.push(PrivacyError {
                     ident,
@@ -1304,7 +1303,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
-                    if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
+                    if !self
+                        .is_accessible_from(binding.vis(), single_import.parent_scope.module) =>
                 {
                     continue;
                 }

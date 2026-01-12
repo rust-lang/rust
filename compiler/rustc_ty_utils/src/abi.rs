@@ -549,15 +549,9 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
-        });
-
-        if arg.layout.is_zst() {
-            arg.mode = PassMode::Ignore;
-        }
-
-        Ok(arg)
+        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, drop_target_pointee)
+        }))
     };
 
     let mut fn_abi = FnAbi {

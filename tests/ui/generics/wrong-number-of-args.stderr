@@ -926,16 +926,8 @@ help: add missing generic arguments
 LL |         type C = HashMap<'static, K, V>;
    |                                 ++++++
 
-error[E0107]: struct takes at most 3 generic arguments but 4 generic arguments were supplied
-  --> $DIR/wrong-number-of-args.rs:324:18
-   |
-LL |         type D = HashMap<usize, String, char, f64>;
-   |                  ^^^^^^^                    ----- help: remove the unnecessary generic argument
-   |                  |
-   |                  expected at most 3 generic arguments
-
 error[E0107]: struct takes at least 2 generic arguments but 0 generic arguments were supplied
-  --> $DIR/wrong-number-of-args.rs:328:18
+  --> $DIR/wrong-number-of-args.rs:324:18
    |
 LL |         type E = HashMap<>;
    |                  ^^^^^^^ expected at least 2 generic arguments
@@ -946,7 +938,7 @@ LL |         type E = HashMap<K, V>;
    |                          ++++
 
 error[E0107]: missing generics for enum `Result`
-  --> $DIR/wrong-number-of-args.rs:334:18
+  --> $DIR/wrong-number-of-args.rs:330:18
    |
 LL |         type A = Result;
    |                  ^^^^^^ expected 2 generic arguments
@@ -957,7 +949,7 @@ LL |         type A = Result<T, E>;
    |                        ++++++
 
 error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
-  --> $DIR/wrong-number-of-args.rs:338:18
+  --> $DIR/wrong-number-of-args.rs:334:18
    |
 LL |         type B = Result<String>;
    |                  ^^^^^^ ------ supplied 1 generic argument
@@ -970,7 +962,7 @@ LL |         type B = Result<String, E>;
    |                               +++
 
 error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/wrong-number-of-args.rs:342:18
+  --> $DIR/wrong-number-of-args.rs:338:18
    |
 LL |         type C = Result<'static>;
    |                  ^^^^^^--------- help: remove the unnecessary generics
@@ -978,7 +970,7 @@ LL |         type C = Result<'static>;
    |                  expected 0 lifetime arguments
 
 error[E0107]: enum takes 2 generic arguments but 0 generic arguments were supplied
-  --> $DIR/wrong-number-of-args.rs:342:18
+  --> $DIR/wrong-number-of-args.rs:338:18
    |
 LL |         type C = Result<'static>;
    |                  ^^^^^^ expected 2 generic arguments
@@ -989,7 +981,7 @@ LL |         type C = Result<'static, T, E>;
    |                                ++++++
 
 error[E0107]: enum takes 2 generic arguments but 3 generic arguments were supplied
-  --> $DIR/wrong-number-of-args.rs:348:18
+  --> $DIR/wrong-number-of-args.rs:344:18
    |
 LL |         type D = Result<usize, String, char>;
    |                  ^^^^^^              ------ help: remove the unnecessary generic argument
@@ -997,7 +989,7 @@ LL |         type D = Result<usize, String, char>;
    |                  expected 2 generic arguments
 
 error[E0107]: enum takes 2 generic arguments but 0 generic arguments were supplied
-  --> $DIR/wrong-number-of-args.rs:352:18
+  --> $DIR/wrong-number-of-args.rs:348:18
    |
 LL |         type E = Result<>;
    |                  ^^^^^^ expected 2 generic arguments
@@ -1007,7 +999,7 @@ help: add missing generic arguments
 LL |         type E = Result<T, E>;
    |                         ++++
 
-error: aborting due to 71 previous errors
+error: aborting due to 70 previous errors
 
 Some errors have detailed explanations: E0106, E0107.
 For more information about an error, try `rustc --explain E0106`.

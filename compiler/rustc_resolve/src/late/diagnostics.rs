@@ -2793,7 +2793,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             in_module.for_each_child(self.r, |r, ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
-                if result.is_some() || !name_binding.vis.is_visible_locally() {
+                if result.is_some() || !name_binding.vis().is_visible_locally() {
                     return;
                 }
                 if let Some(module_def_id) = name_binding.res().module_like_def_id() {

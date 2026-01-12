@@ -936,7 +936,7 @@ fn handle_macro_def_scope(
         // A macro is allowed to refer to variables from before its declaration.
         // Therefore, if we got to the rib of its declaration, give up its hygiene
         // and use its parent expansion.
-        *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(db));
+        *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semiopaque(db));
         *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
             let expansion = db.lookup_intern_macro_call(expansion.into());
             (parent_ctx.parent(db), expansion.def)

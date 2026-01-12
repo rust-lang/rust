@@ -1652,23 +1652,7 @@ impl Step for CraneliftCodegenBackend {
             return None;
         }
 
-        // Get the relative path of where the codegen backend should be stored.
-        let backends_dst = builder.sysroot_codegen_backends(compilers.target_compiler());
-        let backends_rel = backends_dst
-            .strip_prefix(builder.sysroot(compilers.target_compiler()))
-            .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(compilers.target_compiler()))
-            .unwrap();
-        // Don't use custom libdir here because ^lib/ will be resolved again with installer
-        let backends_dst = PathBuf::from("lib").join(backends_rel);
-
-        let codegen_backend_dylib = get_codegen_backend_file(&stamp);
-        tarball.add_renamed_file(
-            &codegen_backend_dylib,
-            &backends_dst,
-            &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
-            FileType::NativeLibrary,
-        );
+        add_codegen_backend_to_tarball(builder, &tarball, compilers.target_compiler(), &stamp);
 
         Some(tarball.generate())
     }
@@ -1679,6 +1663,113 @@ impl Step for CraneliftCodegenBackend {
                 .built_by(self.compilers.build_compiler()),
         )
     }
+}
+
+/// Builds a dist component containing the GCC codegen backend.
+/// Note that for this backend to work, it must have a set of libgccjit dylibs available
+/// at runtime.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct GccCodegenBackend {
+    pub compilers: RustcPrivateCompilers,
+    pub target: TargetSelection,
+}
+
+impl Step for GccCodegenBackend {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        // We only want to build the gcc backend in `x dist` if the backend was enabled
+        // in rust.codegen-backends.
+        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // So we just use the host target.
+        builder
+            .config
+            .enabled_codegen_backends(builder.host_target)
+            .contains(&CodegenBackendKind::Gcc)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(GccCodegenBackend {
+            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents rustc_codegen_gcc from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+        if target != "x86_64-unknown-linux-gnu" {
+            builder
+                .info(&format!("target `{target}` not supported by rustc_codegen_gcc. skipping"));
+            return None;
+        }
+
+        let mut tarball = Tarball::new(builder, "rustc-codegen-gcc", &target.triple);
+        tarball.set_overlay(OverlayKind::RustcCodegenGcc);
+        tarball.is_preview(true);
+        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_gcc");
+
+        let compilers = self.compilers;
+        let backend = builder.ensure(compile::GccCodegenBackend::for_target(compilers, target));
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        add_codegen_backend_to_tarball(
+            builder,
+            &tarball,
+            compilers.target_compiler(),
+            backend.stamp(),
+        );
+
+        Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::dist("rustc_codegen_gcc", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
+}
+
+/// Add a codegen backend built for `compiler`, with its artifacts stored in `stamp`, to the given
+/// `tarball` at the correct place.
+fn add_codegen_backend_to_tarball(
+    builder: &Builder<'_>,
+    tarball: &Tarball<'_>,
+    compiler: Compiler,
+    stamp: &BuildStamp,
+) {
+    // Get the relative path of where the codegen backend should be stored.
+    let backends_dst = builder.sysroot_codegen_backends(compiler);
+    let backends_rel = backends_dst
+        .strip_prefix(builder.sysroot(compiler))
+        .unwrap()
+        .strip_prefix(builder.sysroot_libdir_relative(compiler))
+        .unwrap();
+    // Don't use custom libdir here because ^lib/ will be resolved again with installer
+    let backends_dst = PathBuf::from("lib").join(backends_rel);
+
+    let codegen_backend_dylib = get_codegen_backend_file(stamp);
+    tarball.add_renamed_file(
+        &codegen_backend_dylib,
+        &backends_dst,
+        &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
+        FileType::NativeLibrary,
+    );
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

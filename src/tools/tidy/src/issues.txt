@@ -379,7 +379,6 @@ ui/borrowck/issue-88434-minimal-example.rs
 ui/borrowck/issue-88434-removal-index-should-be-less.rs
 ui/borrowck/issue-91206.rs
 ui/borrowck/issue-92015.rs
-ui/borrowck/issue-92157.rs
 ui/borrowck/issue-93078.rs
 ui/borrowck/issue-93093.rs
 ui/borrowck/issue-95079-missing-move-in-nested-closure.rs

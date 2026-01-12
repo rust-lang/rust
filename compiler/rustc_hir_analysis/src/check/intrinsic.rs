@@ -213,6 +213,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id
         | sym::type_id_eq
         | sym::type_name
+        | sym::type_of
         | sym::ub_checks
         | sym::variant_count
         | sym::vtable_for
@@ -308,13 +309,22 @@ pub(crate) fn check_intrinsic_type(
         sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
-        sym::type_id => {
-            (1, 0, vec![], tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity())
-        }
+        sym::type_id => (
+            1,
+            0,
+            vec![],
+            tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap(),
+        ),
         sym::type_id_eq => {
-            let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
+            let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
         }
+        sym::type_of => (
+            0,
+            0,
+            vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap()],
+            tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
+        ),
         sym::offload => (
             3,
             0,

@@ -38,7 +38,7 @@ impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
-    pub variables: I::CanonicalVarKinds,
+    pub var_kinds: I::CanonicalVarKinds,
 }
 
 impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
@@ -68,17 +68,17 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value } = self;
-        Canonical { max_universe, variables, value: map_op(value) }
+        let Canonical { max_universe, var_kinds, value } = self;
+        Canonical { max_universe, var_kinds, value: map_op(value) }
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, var_kinds } = self;
         write!(
             f,
-            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?} }}",
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, var_kinds: {var_kinds:?} }}",
         )
     }
 }
@@ -311,30 +311,30 @@ impl<I: Interner> CanonicalVarValues<I> {
 
     pub fn instantiate(
         cx: I,
-        variables: I::CanonicalVarKinds,
+        var_kinds: I::CanonicalVarKinds,
         mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
     ) -> CanonicalVarValues<I> {
         // Instantiating `CanonicalVarValues` is really hot, but limited to less than
         // 4 most of the time. Avoid creating a `Vec` here.
-        if variables.len() <= 4 {
+        if var_kinds.len() <= 4 {
             let mut var_values = ArrayVec::<_, 4>::new();
-            for info in variables.iter() {
+            for info in var_kinds.iter() {
                 var_values.push(f(&var_values, info));
             }
             CanonicalVarValues { var_values: cx.mk_args(&var_values) }
         } else {
-            CanonicalVarValues::instantiate_cold(cx, variables, f)
+            CanonicalVarValues::instantiate_cold(cx, var_kinds, f)
         }
     }
 
     #[cold]
     fn instantiate_cold(
         cx: I,
-        variables: I::CanonicalVarKinds,
+        var_kinds: I::CanonicalVarKinds,
         mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
     ) -> CanonicalVarValues<I> {
-        let mut var_values = Vec::with_capacity(variables.len());
-        for info in variables.iter() {
+        let mut var_values = Vec::with_capacity(var_kinds.len());
+        for info in var_kinds.iter() {
             var_values.push(f(&var_values, info));
         }
         CanonicalVarValues { var_values: cx.mk_args(&var_values) }

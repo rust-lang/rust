@@ -177,8 +177,9 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
-    /// of executing the code at `l`.
-    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
+    /// of executing the code at `l`. Only very rarely (e.g. inline asm)
+    /// is there more than one Init at any `l`.
+    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 1]>>,
     pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
 }
 

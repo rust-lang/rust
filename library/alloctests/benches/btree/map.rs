@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::RangeBounds;
 
 use rand::Rng;
+use rand::distr::{Distribution, Uniform};
 use rand::seq::SliceRandom;
 use test::{Bencher, black_box};
 
@@ -106,7 +107,8 @@ macro_rules! map_find_rand_bench {
 
             // setup
             let mut rng = crate::bench_rng();
-            let mut keys: Vec<_> = (0..n).map(|_| rng.random::<u32>() % n).collect();
+            let mut keys: Vec<_> =
+                Uniform::new(0, n).unwrap().sample_iter(&mut rng).take(n as usize).collect();
 
             for &k in &keys {
                 map.insert(k, k);

@@ -450,12 +450,14 @@ fn main() -> anyhow::Result<()> {
             "rust-docs-json",
             "rust-analyzer",
             "rustc-src",
+            "rustc-src-gpl",
             "extended",
             "clippy",
             "miri",
             "rustfmt",
             "generate-copyright",
             "bootstrap",
+            "rustc_codegen_gcc",
         ] {
             build_args.extend(["--skip".to_string(), target.to_string()]);
         }
