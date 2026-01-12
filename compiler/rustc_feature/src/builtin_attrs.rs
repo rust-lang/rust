@@ -962,7 +962,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
     gated!(
-        rustc_eii_extern_item, Normal, template!(Word),
+        rustc_eii_foreign_item, Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::Yes, eii_internals,
         "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),

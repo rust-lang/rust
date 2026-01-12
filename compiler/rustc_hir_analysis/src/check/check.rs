@@ -508,23 +508,18 @@ fn sanity_check_found_hidden_type<'tcx>(
             return Ok(());
         }
     }
-    let strip_vars = |ty: Ty<'tcx>| {
-        ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |t| t,
-            ct_op: |c| c,
-            lt_op: |l| match l.kind() {
-                RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
-                _ => l,
-            },
+    let erase_re_vars = |ty: Ty<'tcx>| {
+        fold_regions(tcx, ty, |r, _| match r.kind() {
+            RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
+            _ => r,
         })
     };
     // Closures frequently end up containing erased lifetimes in their final representation.
     // These correspond to lifetime variables that never got resolved, so we patch this up here.
-    ty.ty = strip_vars(ty.ty);
+    ty.ty = erase_re_vars(ty.ty);
     // Get the hidden type.
     let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-    let hidden_ty = strip_vars(hidden_ty);
+    let hidden_ty = erase_re_vars(hidden_ty);
 
     // If the hidden types differ, emit a type mismatch diagnostic.
     if hidden_ty == ty.ty {

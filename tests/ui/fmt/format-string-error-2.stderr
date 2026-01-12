@@ -188,5 +188,15 @@ LL |     println!("{x?}, world!",);
    |
    = note: to print `{`, you can escape it using `{{`
 
-error: aborting due to 19 previous errors
+error: invalid format string: python's numeric grouping `,` is not supported in rust format strings
+  --> $DIR/format-string-error-2.rs:89:17
+   |
+LL |     println!("{x,}, world!",);
+   |               - ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: to print `{`, you can escape it using `{{`
+
+error: aborting due to 20 previous errors
 
