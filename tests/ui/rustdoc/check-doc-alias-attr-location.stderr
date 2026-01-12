@@ -4,7 +4,7 @@ error: `#[doc]` attribute cannot be used on function params
 LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
    |            ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[doc]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro calls, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, unions, use statements, and where predicates
+   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, unions, and use statements
 
 error: `#[doc(alias = "...")]` isn't allowed on foreign module
   --> $DIR/check-doc-alias-attr-location.rs:9:15
