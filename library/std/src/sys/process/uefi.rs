@@ -5,7 +5,7 @@ use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::{NonZero, NonZeroI32};
-use crate::path::Path;
+use crate::path::{Path, PathBuf};
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
 use crate::sys::pal::helpers;
@@ -138,7 +138,9 @@ impl Command {
 }
 
 pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-    let mut cmd = uefi_command_internal::Image::load_image(&command.prog)?;
+    let prog_path = resolve_program(&command.prog)
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "could not find the program."))?;
+    let mut cmd = uefi_command_internal::Image::load_image(prog_path.as_os_str())?;
 
     // UEFI adds the bin name by default
     if !command.args.is_empty() {
@@ -364,6 +366,38 @@ pub fn read_output(
     _stderr: &mut Vec<u8>,
 ) -> io::Result<()> {
     match out.diverge() {}
+}
+
+// Search for programs similar to UEFI Shell defined in Section 3.6.1. It follows the following flow:
+// 1. If program is already absolute path, just check if it exists.
+// 2. For non-absolute path, search relative to current directory.
+// 3. Search the path list sequentially.
+//
+// [UEFI Shell Specification](https://uefi.org/sites/default/files/resources/UEFI_Shell_2_2.pdf).
+fn resolve_program<S: AsRef<OsStr> + ?Sized>(prog: &S) -> Option<PathBuf> {
+    let absolute_prog_path = crate::path::absolute(prog.as_ref()).ok()?;
+
+    match crate::fs::exists(&absolute_prog_path) {
+        Ok(true) => return Some(absolute_prog_path),
+        // If program path was already absolute and is not found, then stop.
+        Ok(false) if Path::new(prog.as_ref()).is_absolute() => return None,
+        _ => {}
+    }
+
+    // Search for the program in path.
+    if let Ok(path_var) = crate::env::var("path") {
+        for p in path_var.split(";") {
+            let mut temp = PathBuf::new();
+            temp.push(p);
+            temp.push(prog.as_ref());
+
+            if let Ok(true) = crate::fs::exists(&temp) {
+                return Some(temp);
+            }
+        }
+    }
+
+    None
 }
 
 #[allow(dead_code)]
