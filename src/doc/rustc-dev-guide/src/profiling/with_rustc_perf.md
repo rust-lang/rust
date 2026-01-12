@@ -18,7 +18,7 @@ You can use normal bootstrap flags for this command, such as `--stage 1` or `--s
 - `compare <baseline> <modified>`: Compare the benchmark results of two compilers with the two passed `id`s.
 - `eprintln`: Just run the compiler and capture its `stderr` output.
   Note that the compiler normally does not print
-  anything to `stderr`, you might want to add some `eprintln!` calls to get any output.
+  anything to `stderr`, so you might want to add some `eprintln!` calls to get any output.
 - `samply`: Profile the compiler using the [samply][samply] sampling profiler.
 - `cachegrind`: Use [Cachegrind][cachegrind] to generate a detailed simulated trace of the compiler's execution.
 
