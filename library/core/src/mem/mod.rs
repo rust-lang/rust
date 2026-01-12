@@ -705,9 +705,40 @@ pub const unsafe fn zeroed<T>() -> T {
 /// Therefore, it is immediate undefined behavior to call this function on nearly all types,
 /// including integer types and arrays of integer types, and even if the result is unused.
 ///
+/// # Safety
+///
+/// - `T` must be *valid* with any sequence of bytes of the appropriate length,
+///   initialized or uninitialized (e.g. `T` can be [`MaybeUninit`]).
+/// - `T` must be *[inhabited]*, i.e. possible to construct. This means that types
+///   like zero-variant enums and [`!`] are unsound to construct with this function.
+/// - You must use the value only in ways which do not violate any *safety*
+///   invariants of the type.
+///
+/// # Examples
+///
+/// Correct usage of this function: constructing an uninitialized array of [`MaybeUninit`].
+///
+/// ```
+/// use std::mem::{self, MaybeUninit};
+///
+/// // SAFETY: an array of `MaybeUninit<u8>` is always valid, even if uninitialized.
+/// let array: [MaybeUninit<u8>; 10] = unsafe { mem::uninitialized() };
+/// ```
+///
+/// *Incorrect* usage of this function: constructing an uninitialized `bool`.
+///
+/// ```rust,no_run
+/// use std::mem;
+///
+/// let b: bool = unsafe { mem::uninitialized() };
+/// // bool does not permit to have an uninitialized state,
+/// // so this last line caused undefined behavior. ⚠️
+/// ```
+///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
+/// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
 #[inline(always)]
 #[must_use]
 #[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
