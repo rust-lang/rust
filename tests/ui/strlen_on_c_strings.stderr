@@ -2,7 +2,7 @@ error: using `libc::strlen` on a `CString` value
   --> tests/ui/strlen_on_c_strings.rs:10:13
    |
 LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.as_bytes().len()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.to_bytes().len()`
    |
    = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
@@ -43,5 +43,23 @@ error: using `libc::strlen` on a `CStr` value
 LL |     let _ = unsafe { strlen(f(cstr).as_ptr()) };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `f(cstr).to_bytes().len()`
 
-error: aborting due to 7 previous errors
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:40:13
+   |
+LL |     let _ = unsafe { libc::strlen(box_cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `box_cstring.to_bytes().len()`
+
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:42:13
+   |
+LL |     let _ = unsafe { libc::strlen(box_cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `box_cstr.to_bytes().len()`
+
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:44:13
+   |
+LL |     let _ = unsafe { libc::strlen(arc_cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `arc_cstring.to_bytes().len()`
+
+error: aborting due to 10 previous errors
 

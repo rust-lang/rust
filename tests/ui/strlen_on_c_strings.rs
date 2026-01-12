@@ -1,5 +1,5 @@
 #![warn(clippy::strlen_on_c_strings)]
-#![allow(clippy::manual_c_str_literals)]
+#![allow(clippy::manual_c_str_literals, clippy::boxed_local)]
 
 use libc::strlen;
 use std::ffi::{CStr, CString};
@@ -33,4 +33,14 @@ fn main() {
     let f: unsafe fn(_) -> _ = unsafe_identity;
     let _ = unsafe { strlen(f(cstr).as_ptr()) };
     //~^ ERROR: using `libc::strlen` on a `CStr` value
+}
+
+// make sure we lint types that _adjust_ to `CStr`
+fn adjusted(box_cstring: Box<CString>, box_cstr: Box<CStr>, arc_cstring: std::sync::Arc<CStr>) {
+    let _ = unsafe { libc::strlen(box_cstring.as_ptr()) };
+    //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
+    let _ = unsafe { libc::strlen(box_cstr.as_ptr()) };
+    //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
+    let _ = unsafe { libc::strlen(arc_cstring.as_ptr()) };
+    //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
 }

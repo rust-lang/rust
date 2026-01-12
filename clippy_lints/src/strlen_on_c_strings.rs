@@ -47,14 +47,19 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             && let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind
             && !recv.span.from_expansion()
             && path.ident.name == sym::as_ptr
+            && let typeck = cx.typeck_results()
+            && typeck
+                .expr_ty_adjusted(self_arg)
+                .peel_refs()
+                .is_lang_item(cx, LangItem::CStr)
         {
-            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            let (ty_name, method_name) = if ty.is_diag_item(cx, sym::cstring_type) {
-                ("CString", "as_bytes")
+            let ty = typeck.expr_ty(self_arg).peel_refs();
+            let ty_kind = if ty.is_diag_item(cx, sym::cstring_type) {
+                "`CString` value"
             } else if ty.is_lang_item(cx, LangItem::CStr) {
-                ("CStr", "to_bytes")
+                "`CStr` value"
             } else {
-                return;
+                "type that dereferences to `CStr`"
             };
 
             let ctxt = expr.span.ctxt();
@@ -71,11 +76,11 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                 cx,
                 STRLEN_ON_C_STRINGS,
                 span,
-                format!("using `libc::strlen` on a `{ty_name}` value"),
+                format!("using `libc::strlen` on a {ty_kind}"),
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let val_name = snippet_with_context(cx, self_arg.span, ctxt, "_", &mut app).0;
-                    diag.span_suggestion(span, "use", format!("{val_name}.{method_name}().len()"), app);
+                    diag.span_suggestion(span, "use", format!("{val_name}.to_bytes().len()"), app);
                 },
             );
         }
