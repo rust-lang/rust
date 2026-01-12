@@ -151,9 +151,9 @@ builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept 
 
 builtin_macros_duplicate_macro_attribute = duplicated attribute
 
-builtin_macros_eii_extern_target_expected_list = `#[eii_extern_target(...)]` expects a list of one or two elements
-builtin_macros_eii_extern_target_expected_macro = `#[eii_extern_target(...)]` is only valid on macros
-builtin_macros_eii_extern_target_expected_unsafe = expected this argument to be "unsafe"
+builtin_macros_eii_declaration_expected_list = `#[eii_declaration(...)]` expects a list of one or two elements
+builtin_macros_eii_declaration_expected_macro = `#[eii_declaration(...)]` is only valid on macros
+builtin_macros_eii_declaration_expected_unsafe = expected this argument to be "unsafe"
     .note = the second argument is optional
 
 builtin_macros_eii_only_once = `#[{$name}]` can only be specified once

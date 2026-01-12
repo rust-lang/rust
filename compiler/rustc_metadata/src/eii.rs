@@ -31,9 +31,9 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
             let decl = match i.resolution {
                 EiiImplResolution::Macro(macro_defid) => {
                     // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
-                    let Some(decl) = find_attr!(tcx.get_all_attrs(macro_defid), AttributeKind::EiiExternTarget(d) => *d)
+                    let Some(decl) = find_attr!(tcx.get_all_attrs(macro_defid), AttributeKind::EiiDeclaration(d) => *d)
                     else {
-                        // skip if it doesn't have eii_extern_target (if we resolved to another macro that's not an EII)
+                        // skip if it doesn't have eii_declaration (if we resolved to another macro that's not an EII)
                         tcx.dcx()
                             .span_delayed_bug(i.span, "resolved to something that's not an EII");
                         continue;
@@ -45,7 +45,7 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
             };
 
             // FIXME(eii) remove extern target from encoded decl
-            eiis.entry(decl.eii_extern_target)
+            eiis.entry(decl.foreign_item)
                 .or_insert_with(|| (decl, Default::default()))
                 .1
                 .insert(id.into(), *i);
@@ -53,9 +53,9 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
 
         // if we find a new declaration, add it to the list without a known implementation
         if let Some(decl) =
-            find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiExternTarget(d) => *d)
+            find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiDeclaration(d) => *d)
         {
-            eiis.entry(decl.eii_extern_target).or_insert((decl, Default::default()));
+            eiis.entry(decl.foreign_item).or_insert((decl, Default::default()));
         }
     }
 

@@ -282,16 +282,16 @@ fn process_builtin_attrs(
                 AttributeKind::ObjcSelector { methname, .. } => {
                     codegen_fn_attrs.objc_selector = Some(*methname);
                 }
-                AttributeKind::EiiExternItem => {
+                AttributeKind::EiiForeignItem => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
                 }
                 AttributeKind::EiiImpls(impls) => {
                     for i in impls {
-                        let extern_item = match i.resolution {
+                        let foreign_item = match i.resolution {
                             EiiImplResolution::Macro(def_id) => {
                                 let Some(extern_item) = find_attr!(
                                     tcx.get_all_attrs(def_id),
-                                    AttributeKind::EiiExternTarget(target) => target.eii_extern_target
+                                    AttributeKind::EiiDeclaration(target) => target.foreign_item
                                 ) else {
                                     tcx.dcx().span_delayed_bug(
                                         i.span,
@@ -301,7 +301,7 @@ fn process_builtin_attrs(
                                 };
                                 extern_item
                             }
-                            EiiImplResolution::Known(decl) => decl.eii_extern_target,
+                            EiiImplResolution::Known(decl) => decl.foreign_item,
                             EiiImplResolution::Error(_eg) => continue,
                         };
 
@@ -316,13 +316,13 @@ fn process_builtin_attrs(
                             // iterate over all implementations *in the current crate*
                             // (this is ok since we generate codegen fn attrs in the local crate)
                             // if any of them is *not default* then don't emit the alias.
-                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&extern_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
+                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
                         {
                             continue;
                         }
 
                         codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                            extern_item,
+                            foreign_item,
                             if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
                             Visibility::Default,
                         ));
