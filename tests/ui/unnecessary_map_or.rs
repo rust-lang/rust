@@ -74,7 +74,7 @@ fn main() {
     let _ = r.map_or(false, |x| x == 7);
     //~^ unnecessary_map_or
 
-    // lint constructs that are not comparaisons as well
+    // lint constructs that are not comparisons as well
     let func = |_x| true;
     let r: Result<i32, S> = Ok(3);
     let _ = r.map_or(false, func);

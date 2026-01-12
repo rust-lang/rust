@@ -3933,7 +3933,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
+    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
+    ///
     /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
     ///
     /// ### Why is this bad?
@@ -5629,7 +5630,7 @@ impl Methods {
                             manual_saturating_arithmetic::check_sub_unwrap_or_default(cx, expr, lhs, rhs);
                         },
                         Some((sym::map, m_recv, [arg], span, _)) => {
-                            manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                            manual_is_variant_and::check_map_unwrap_or_default(cx, expr, m_recv, arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
