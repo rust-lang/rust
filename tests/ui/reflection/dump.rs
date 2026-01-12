@@ -27,4 +27,6 @@ fn main() {
     println!("{:#?}", const { Type::of::<&Unsized>() }.kind);
     println!("{:#?}", const { Type::of::<&str>() }.kind);
     println!("{:#?}", const { Type::of::<&[u8]>() }.kind);
+    println!("{:#?}", const { Type::of::<str>() }.kind);
+    println!("{:#?}", const { Type::of::<[u8]>() }.kind);
 }
