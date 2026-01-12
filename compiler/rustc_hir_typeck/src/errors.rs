@@ -1384,3 +1384,7 @@ pub(crate) struct ProjectOnNonPinProjectType {
     )]
     pub sugg_span: Option<Span>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag("`todo!()` macro used")]
+pub(crate) struct TodoMacroUse;

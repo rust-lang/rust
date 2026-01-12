@@ -1347,19 +1347,34 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns whether this context was expanded by the macro with the given name.
-    pub fn is_expanded_by(self, span: Span, mac: Symbol) -> bool {
+    /// Returns whether this context was expanded by the macro with the given name where
+    /// the macro call is local in the current crate.
+    pub fn is_locally_expanded_by(self, span: Span, mac: Symbol) -> bool {
+        let source_map = self.sess.source_map();
         let mut ctxt = span.ctxt();
+        let Some(mac_def_id) = self.get_diagnostic_item(mac) else {
+            // do not have a def id to search for, so no match is possible
+            return false;
+        };
+        let mut todo_source_file_idx = usize::MAX;
+        let mut has_todo = false;
         while !ctxt.is_root() {
             let data = ctxt.outer_expn_data();
             if let Some(def_id) = data.macro_def_id
-                && self.is_diagnostic_item(mac, def_id)
+                && mac_def_id == def_id
             {
-                return true;
+                todo_source_file_idx = source_map.lookup_source_file_idx(data.call_site.lo());
+                has_todo = true;
+            } else if has_todo
+                && source_map.lookup_source_file_idx(data.def_site.lo()) != todo_source_file_idx
+            {
+                return false;
             }
             ctxt = data.call_site.ctxt();
         }
-        false
+        has_todo
+            && todo_source_file_idx
+                == source_map.lookup_source_file_idx(ctxt.outer_expn_data().call_site.lo())
     }
 }
 
