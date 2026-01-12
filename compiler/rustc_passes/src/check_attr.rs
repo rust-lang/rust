@@ -310,6 +310,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::MustNotSupend { .. }
                     | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpDefParents
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
@@ -386,7 +387,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_evaluate_where_clauses
                             | sym::rustc_dump_vtable
                             | sym::rustc_delayed_bug_from_inside_query
-                            | sym::rustc_dump_item_bounds
                             | sym::rustc_def_path
                             | sym::rustc_partition_reused
                             | sym::rustc_partition_codegened

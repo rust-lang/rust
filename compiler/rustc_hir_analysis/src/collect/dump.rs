@@ -1,7 +1,7 @@
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{find_attr, intravisit};
-use rustc_hir::attrs::AttributeKind;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
@@ -39,7 +39,7 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
             }
             diag.emit();
         }
-        if tcx.has_attr(id, sym::rustc_dump_item_bounds) {
+        if find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcDumpItemBounds) {
             let bounds = tcx.item_bounds(id).instantiate_identity();
             let span = tcx.def_span(id);
 
