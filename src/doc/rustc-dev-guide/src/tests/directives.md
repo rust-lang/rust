@@ -130,7 +130,7 @@ means the test won't be compiled or run.
   main test files but that `compiletest` should not try to build the file itself.
   Please backlink to which main test is actually using the auxiliary file.
 * `ignore-test` always ignores the test. This can be used to temporarily disable
-  a test if it is currently not working, but you want to keep it in tree to
+  a test if it is currently not working, but you want to keep it in-tree to
   re-enable it later.
 
 Some examples of `X` in `ignore-X` or `only-X`:
@@ -211,7 +211,7 @@ settings:
 - `needs-target-std` — ignores if target platform does not have std support.
 - `ignore-backends` — ignores the listed backends, separated by whitespace characters. Please note
   that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
-  flag. 
+  flag.
 - `needs-backends` — only runs the test if current codegen backend is listed.
 - `needs-offload` — ignores if our LLVM backend was not built with offload support.
 - `needs-enzyme` — ignores if our Enzyme submodule was not built.
@@ -290,9 +290,9 @@ You can also force `./x test` to use a specific edition by passing the `-- --edi
 However, tests with the `//@ edition` directive will clamp the value passed to the argument.
 For example, if we run `./x test -- --edition=2015`:
 
-- A test with the `//@ edition: 2018` will run with the 2018 edition. 
-- A test with the `//@ edition: 2015..2021` will be run with the 2015 edition. 
-- A test with the `//@ edition: 2018..` will run with the 2018 edition. 
+- A test with the `//@ edition: 2018` will run with the 2018 edition.
+- A test with the `//@ edition: 2015..2021` will be run with the 2015 edition.
+- A test with the `//@ edition: 2018..` will run with the 2018 edition.
 
 ### Rustdoc
 
