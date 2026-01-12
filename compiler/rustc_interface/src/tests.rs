@@ -46,6 +46,7 @@ where
         &early_dcx,
         &sessopts.target_triple,
         sessopts.sysroot.path(),
+        sessopts.unstable_opts.unstable_options,
     );
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
     let checksum_hash_kind = sessopts.unstable_opts.checksum_hash_algorithm();
