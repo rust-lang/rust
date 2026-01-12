@@ -222,8 +222,6 @@ fn resolve_associated_item<'tcx>(
                 return Err(guar);
             }
 
-            let args = tcx.erase_and_anonymize_regions(args);
-
             // We check that the impl item is compatible with the trait item
             // because otherwise we may ICE in const eval due to type mismatches,
             // signature incompatibilities, etc.

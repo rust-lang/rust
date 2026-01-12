@@ -2781,11 +2781,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.tcx.instantiate_bound_regions_with_erased(trait_pred),
             );
 
-            let src_and_dst = rustc_transmute::Types {
-                dst: trait_pred.trait_ref.args.type_at(0),
-                src: trait_pred.trait_ref.args.type_at(1),
-            };
-
             let ocx = ObligationCtxt::new(self);
             let Ok(assume) = ocx.structurally_normalize_const(
                 &obligation.cause,
@@ -2812,7 +2807,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
             match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx)
-                .is_transmutable(src_and_dst, assume)
+                .is_transmutable(src, dst, assume)
             {
                 Answer::No(reason) => {
                     let safe_transmute_explanation = match reason {
