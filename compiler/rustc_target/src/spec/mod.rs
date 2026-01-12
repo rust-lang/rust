@@ -393,11 +393,11 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(..)
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
-            | LinkerFlavor::Llbc => LldFlavor::Ld,
+            | LinkerFlavor::Llbc
+            | LinkerFlavor::Wild => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
             LinkerFlavor::Msvc(..) => LldFlavor::Link,
-            LinkerFlavor::Wild => todo!(),
         }
     }
 
