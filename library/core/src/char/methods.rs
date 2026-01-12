@@ -1143,12 +1143,12 @@ impl char {
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
-    /// `'ﬃ'` (U+FB03) is a single Unicode code point (a ligature) that maps to "FFI" in uppercase.
+    /// `'ﬅ'` (U+FB05) is a single Unicode code point (a ligature) that maps to "ST" in uppercase.
     ///
     /// As an iterator:
     ///
     /// ```
-    /// for c in 'ﬃ'.to_uppercase() {
+    /// for c in 'ﬅ'.to_uppercase() {
     ///     print!("{c}");
     /// }
     /// println!();
@@ -1157,13 +1157,13 @@ impl char {
     /// Using `println!` directly:
     ///
     /// ```
-    /// println!("{}", 'ﬃ'.to_uppercase());
+    /// println!("{}", 'ﬅ'.to_uppercase());
     /// ```
     ///
     /// Both are equivalent to:
     ///
     /// ```
-    /// println!("FFI");
+    /// println!("ST");
     /// ```
     ///
     /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
@@ -1172,7 +1172,7 @@ impl char {
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
     ///
     /// // Sometimes the result is more than one character:
-    /// assert_eq!('ﬃ'.to_uppercase().to_string(), "FFI");
+    /// assert_eq!('ﬅ'.to_uppercase().to_string(), "ST");
     ///
     /// // Characters that do not have both uppercase and lowercase
     /// // convert into themselves.
