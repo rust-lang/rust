@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypingMode};
+use rustc_middle::ty::{self, TypingMode};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -382,10 +382,10 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
                 ty::Movability::Static => Err(EvaluationFailure::NoSolution),
                 ty::Movability::Movable => {
                     if tcx.features().coroutine_clone() {
-                        Ok(ty::Binder::dummy(vec![
-                            args.as_coroutine().tupled_upvars_ty(),
-                            Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args),
-                        ]))
+                        Ok(tcx
+                            .coroutine_hidden_types(def_id)
+                            .instantiate(tcx, args)
+                            .map_bound(|bound| bound.types.to_vec()))
                     } else {
                         Err(EvaluationFailure::NoSolution)
                     }
@@ -394,12 +394,6 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         }
 
         ty::UnsafeBinder(_) => Err(EvaluationFailure::NoSolution),
-
-        // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
-        ty::CoroutineWitness(def_id, args) => Ok(tcx
-            .coroutine_hidden_types(def_id)
-            .instantiate(tcx, args)
-            .map_bound(|bound| bound.types.to_vec())),
     }?;
 
     Ok(constituent_tys

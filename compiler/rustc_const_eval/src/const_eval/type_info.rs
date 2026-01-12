@@ -75,7 +75,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
                         | ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
                         | ty::Never
                         | ty::Alias(..)
                         | ty::Param(_)

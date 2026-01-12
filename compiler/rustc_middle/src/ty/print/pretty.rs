@@ -1001,7 +1001,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         self.print_def_path(did, args)?;
                     }
                 } else {
-<<<<<<< HEAD
                     self.print_def_path(did, args)?;
                     write!(self, " closure_kind_ty=")?;
                     args.as_coroutine_closure().kind_ty().print(self)?;
@@ -1011,19 +1010,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     args.as_coroutine_closure().tupled_upvars_ty().print(self)?;
                     write!(self, " coroutine_captures_by_ref_ty=")?;
                     args.as_coroutine_closure().coroutine_captures_by_ref_ty().print(self)?;
-=======
-                    p!(print_def_path(did, args));
-                    p!(
-                        " closure_kind_ty=",
-                        print(args.as_coroutine_closure().kind_ty()),
-                        " signature_parts_ty=",
-                        print(args.as_coroutine_closure().signature_parts_ty()),
-                        " upvar_tys=",
-                        print(args.as_coroutine_closure().tupled_upvars_ty()),
-                        " coroutine_captures_by_ref_ty=",
-                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty())
-                    );
->>>>>>> 3995d8bfb2b (Remove coroutine witness type)
                 }
                 write!(self, "}}")?;
             }

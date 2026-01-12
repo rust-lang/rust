@@ -437,8 +437,7 @@ where
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..) => {
+            | ty::Coroutine(..) => {
                 unreachable!("unnameable type in coherence: {ty:?}");
             }
         };

@@ -122,7 +122,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CheckGpuKernelTypes<'tcx> {
             | ty::Closure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineClosure(_, _)
-            | ty::CoroutineWitness(..)
             | ty::Dynamic(_, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
