@@ -44,10 +44,14 @@ pub mod version {
     pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
 }
 
-#[derive(Copy, Clone)]
+/// Protocol format for communication between client and server.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProtocolFormat {
+    /// JSON-based legacy protocol (newline-delimited JSON).
     JsonLegacy,
+    /// Postcard-based legacy protocol (COBS-encoded postcard).
     PostcardLegacy,
+    /// Bidirectional postcard protocol with sub-request support.
     BidirectionalPostcardPrototype,
 }
 
