@@ -10,11 +10,25 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[lib]
+doctest = false
+
 [dependencies]
 proc-macro-srv.workspace = true
 proc-macro-api.workspace = true
 postcard.workspace = true
 clap = {version = "4.5.42", default-features = false, features = ["std"]}
+
+[dev-dependencies]
+expect-test.workspace = true
+paths.workspace = true
+# span = {workspace = true, default-features = false} does not work
+span = { path = "../span", default-features = false}
+tt.workspace = true
+intern.workspace = true
+
+# used as proc macro test target
+proc-macro-test.path = "../proc-macro-srv/proc-macro-test"
 
 [features]
 default = []

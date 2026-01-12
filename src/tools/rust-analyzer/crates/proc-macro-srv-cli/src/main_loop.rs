@@ -1,6 +1,6 @@
 //! The main loop of the proc-macro server.
 use proc_macro_api::{
-    Codec,
+    Codec, ProtocolFormat,
     bidirectional_protocol::msg as bidirectional,
     legacy_protocol::msg as legacy,
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
@@ -15,7 +15,6 @@ use legacy::Message;
 
 use proc_macro_srv::{EnvSnapshot, SpanId};
 
-use crate::ProtocolFormat;
 struct SpanTrans;
 
 impl legacy::SpanTransformer for SpanTrans {
@@ -35,7 +34,7 @@ impl legacy::SpanTransformer for SpanTrans {
     }
 }
 
-pub(crate) fn run(
+pub fn run(
     stdin: &mut (dyn BufRead + Send + Sync),
     stdout: &mut (dyn Write + Send + Sync),
     format: ProtocolFormat,

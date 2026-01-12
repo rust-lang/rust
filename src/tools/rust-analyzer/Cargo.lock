@@ -1879,9 +1879,15 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "expect-test",
+ "intern",
+ "paths",
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",
+ "proc-macro-test",
+ "span",
+ "tt",
 ]
 
 [[package]]
