@@ -1390,10 +1390,6 @@ impl clean::FnDecl {
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
-        if item.is_doc_hidden() {
-            f.write_str("#[doc(hidden)] ")?;
-        }
-
         let Some(vis) = item.visibility(cx.tcx()) else {
             return Ok(());
         };
