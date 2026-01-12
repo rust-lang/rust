@@ -3,12 +3,22 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: Tr> S<T::Assoc> {
    |      ^ unconstrained type parameter
+   |
+help: make use of the type parameter `T` in the `self` type
+   |
+LL | impl<T: Tr> S<T::Assoc, T> {
+   |                       +++
 
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-26262.rs:17:6
    |
 LL | impl<'a,T: Trait2<'a>> Trait1<<T as Trait2<'a>>::Foo> for T {
    |      ^^ unconstrained lifetime parameter
+   |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a,T: Trait2<'a>> Trait1<<T as Trait2<'a>>::Foo> for T<'a> {
+   |                                                            ++++
 
 error: aborting due to 2 previous errors
 

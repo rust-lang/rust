@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-1.rs:9:17
+  --> $DIR/missing-lifetime-in-assoc-type-1.rs:10:17
    |
 LL | impl<'a> IntoIterator for &S {
    |     ---- there is a named lifetime specified on the impl block you could use
@@ -24,6 +24,10 @@ help: consider using the named lifetime here instead of an implicit lifetime
    |
 LL | impl<'a> IntoIterator for &'a S {
    |                            ++
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a> IntoIterator for &S<'a> {
+   |                             ++++
 
 error: aborting due to 2 previous errors
 

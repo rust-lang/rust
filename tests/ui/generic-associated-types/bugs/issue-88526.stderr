@@ -3,6 +3,14 @@ error[E0207]: the type parameter `I` is not constrained by the impl trait, self 
    |
 LL | impl<'q, Q, I, F> A for TestB<Q, F>
    |             ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `I`, or make use of it
+   |
+LL - impl<'q, Q, I, F> A for TestB<Q, F>
+LL + impl<'q, Q, F> A for TestB<Q, F>
+   |
+LL | impl<'q, Q, I, F> A for TestB<Q, F, I>
+   |                                   +++
 
 error[E0309]: the parameter type `F` may not live long enough
   --> $DIR/issue-88526.rs:16:5
