@@ -10,6 +10,7 @@ error[E0277]: the trait bound `bool: Step` is not satisfied
 LL |     for i in false..true {}
    |              ^^^^^^^^^^^ the nightly-only, unstable trait `Step` is not implemented for `bool`
    |
+   = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
    = note: required for `std::ops::Range<bool>` to implement `Iterator`
    = note: required for `std::ops::Range<bool>` to implement `IntoIterator`
 
