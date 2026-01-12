@@ -371,6 +371,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 
 impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
+    #[inline]
     fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -419,6 +420,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         Ok(if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
     }
 
+    #[inline]
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let kind = match *self.kind() {
             ty::RawPtr(ty, mutbl) => ty::RawPtr(ty.fold_with(folder), mutbl),
@@ -460,6 +462,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
+    #[inline]
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
             ty::RawPtr(ty, _mutbl) => ty.visit_with(visitor),
@@ -582,6 +585,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
 }
 
 impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    #[inline]
     fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -590,6 +594,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         Ok(folder.cx().reuse_or_mk_predicate(self, new))
     }
 
+    #[inline]
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let new = self.kind().fold_with(folder);
         folder.cx().reuse_or_mk_predicate(self, new)
@@ -597,6 +602,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    #[inline]
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.kind().visit_with(visitor)
     }
@@ -609,12 +615,14 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    #[inline]
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.as_slice().visit_with(visitor)
     }
 }
 
 impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    #[inline]
     fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -622,6 +630,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
         ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_clauses(v))
     }
 
+    #[inline]
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_clauses(v))
     }
@@ -647,6 +656,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 }
 
 impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
+    #[inline]
     fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -665,6 +675,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         if kind != self.kind() { Ok(folder.cx().mk_ct_from_kind(kind)) } else { Ok(self) }
     }
 
+    #[inline]
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let kind = match self.kind() {
             ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.fold_with(folder)),
@@ -682,6 +693,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
+    #[inline]
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
             ConstKind::Unevaluated(uv) => uv.visit_with(visitor),

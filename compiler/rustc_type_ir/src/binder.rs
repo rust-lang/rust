@@ -133,6 +133,7 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
+    #[inline]
     fn try_super_fold_with<F: FallibleTypeFolder<I>>(
         self,
         folder: &mut F,
@@ -140,12 +141,14 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         self.try_map_bound(|t| t.try_fold_with(folder))
     }
 
+    #[inline]
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         self.map_bound(|t| t.fold_with(folder))
     }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
+    #[inline]
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         self.as_ref().skip_binder().visit_with(visitor)
     }
