@@ -124,7 +124,7 @@ Then, when you do a pull, the merge works without conflicts.
 While it's definitely possible to resolve conflicts during a pull, you may have to redo the conflict
 resolution if your PR doesn't get merged fast enough and there are new conflicts.
 Do not try to
-rebase the result of a `git subtree pull`, rebasing merge commits is a bad idea in general.
+rebase the result of a `git subtree pull`; rebasing merge commits is a bad idea in general.
 
 You always need to specify the `-P` prefix to the subtree directory and the corresponding remote
 repository.
