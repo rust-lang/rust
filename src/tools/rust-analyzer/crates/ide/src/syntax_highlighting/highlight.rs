@@ -494,10 +494,9 @@ pub(super) fn highlight_def(
             (Highlight::new(HlTag::Symbol(SymbolKind::Field)), Some(field.attrs(sema.db)))
         }
         Definition::TupleField(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Field)), None),
-        Definition::Crate(krate) => (
-            Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot)).into(),
-            Some(krate.attrs(sema.db)),
-        ),
+        Definition::Crate(krate) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot)), Some(krate.attrs(sema.db)))
+        }
         Definition::Module(module) => {
             let h = Highlight::new(HlTag::Symbol(if module.is_crate_root(db) {
                 SymbolKind::CrateRoot
@@ -661,7 +660,7 @@ pub(super) fn highlight_def(
             (h, None)
         }
         Definition::ExternCrateDecl(extern_crate) => {
-            let mut highlight = Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot)).into();
+            let mut highlight = Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot));
             if extern_crate.alias(db).is_none() {
                 highlight |= HlMod::Library;
             }
