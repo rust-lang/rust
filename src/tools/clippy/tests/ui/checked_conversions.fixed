@@ -1,6 +1,7 @@
 #![allow(
     clippy::cast_lossless,
     clippy::legacy_numeric_constants,
+    clippy::no_effect,
     unused,
     // Int::max_value will be deprecated in the future
     deprecated,
@@ -102,6 +103,21 @@ fn msrv_1_33() {
 fn msrv_1_34() {
     let value: i64 = 34;
     let _ = u32::try_from(value).is_ok();
+    //~^ checked_conversions
+}
+
+fn issue16293() {
+    struct Outer {
+        inner: u32,
+    }
+    let outer = Outer { inner: 42 };
+    macro_rules! dot_inner {
+        ($obj:expr) => {
+            $obj.inner
+        };
+    }
+
+    i32::try_from(dot_inner!(outer)).is_ok();
     //~^ checked_conversions
 }
 

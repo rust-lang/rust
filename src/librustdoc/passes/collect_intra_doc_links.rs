@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -1047,18 +1048,7 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        // We want to resolve in the lexical scope of the documentation.
-        // In the presence of re-exports, this is not the same as the module of the item.
-        // Rather than merging all documentation into one, resolve it one attribute at a time
-        // so we know which module it came from.
-        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
-                continue;
-            }
-            debug!("combined_docs={doc}");
-            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
-            // This is a degenerate case and it's not supported by rustdoc.
-            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
+        let mut insert_links = |item_id, doc: &str| {
             let module_id = match self.cx.tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
@@ -1074,6 +1064,35 @@ impl LinkCollector<'_, '_> {
                         .insert(link);
                 }
             }
+        };
+
+        // We want to resolve in the lexical scope of the documentation.
+        // In the presence of re-exports, this is not the same as the module of the item.
+        // Rather than merging all documentation into one, resolve it one attribute at a time
+        // so we know which module it came from.
+        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+            if !may_have_doc_links(&doc) {
+                continue;
+            }
+
+            debug!("combined_docs={doc}");
+            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
+            // This is a degenerate case and it's not supported by rustdoc.
+            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
+            insert_links(item_id, &doc)
+        }
+
+        // Also resolve links in the note text of `#[deprecated]`.
+        for attr in &item.attrs.other_attrs {
+            let Some(note_sym) = attr.deprecation_note() else { continue };
+            let note = note_sym.as_str();
+
+            if !may_have_doc_links(note) {
+                continue;
+            }
+
+            debug!("deprecated_note={note}");
+            insert_links(item.item_id.expect_def_id(), note)
         }
     }
 
@@ -1086,7 +1105,7 @@ impl LinkCollector<'_, '_> {
     /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
-        dox: &String,
+        dox: &str,
         item: &Item,
         item_id: DefId,
         module_id: DefId,

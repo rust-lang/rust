@@ -442,7 +442,6 @@ define_symbols! {
     rustc_skip_array_during_method_dispatch,
     rustc_skip_during_method_dispatch,
     rustc_force_inline,
-    semitransparent,
     shl_assign,
     shl,
     shr_assign,

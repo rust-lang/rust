@@ -54,7 +54,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use rustc_trait_selection::solve::{Certainty, Goal, NoSolution};
@@ -1828,10 +1828,9 @@ impl<'tcx> CoerceMany<'tcx> {
                 // If the block is from an external macro or try (`?`) desugaring, then
                 // do not suggest adding a semicolon, because there's nowhere to put it.
                 // See issues #81943 and #87051.
-                && matches!(
-                    cond_expr.span.desugaring_kind(),
-                    None | Some(DesugaringKind::WhileLoop)
-                )
+                // Similarly, if the block is from a loop desugaring, then also do not
+                // suggest adding a semicolon. See issue #150850.
+                && cond_expr.span.desugaring_kind().is_none()
                 && !cond_expr.span.in_external_macro(fcx.tcx.sess.source_map())
                 && !matches!(
                     cond_expr.kind,

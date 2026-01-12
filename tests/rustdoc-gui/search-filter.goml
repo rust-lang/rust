@@ -70,9 +70,7 @@ assert-css: ("#crate-search", {
 })
 
 // We now check the dark theme.
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
-click: "#theme-dark"
+call-function: ("switch-theme", {"theme": "dark"})
 wait-for-css: ("#crate-search", {
     "border": "1px solid #e0e0e0",
     "color": "#ddd",
@@ -80,7 +78,7 @@ wait-for-css: ("#crate-search", {
 })
 
 // And finally we check the ayu theme.
-click: "#theme-ayu"
+call-function: ("switch-theme", {"theme": "ayu"})
 wait-for-css: ("#crate-search", {
     "border": "1px solid #5c6773",
     "color": "#c5c5c5",

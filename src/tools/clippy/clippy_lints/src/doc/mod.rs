@@ -869,10 +869,12 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         }),
         true,
     );
-    let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
-        add_doc_fragment(&mut acc, fragment);
-        acc
-    });
+
+    let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
+
+    for fragment in &fragments {
+        add_doc_fragment(&mut doc, fragment);
+    }
     doc.pop();
 
     if doc.trim().is_empty() {

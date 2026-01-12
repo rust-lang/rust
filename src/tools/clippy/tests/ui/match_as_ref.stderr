@@ -127,5 +127,26 @@ LL -     };
 LL +     let _: Option<&dyn std::fmt::Debug> = Some(0).as_ref().map(|x| x as _);
    |
 
-error: aborting due to 6 previous errors
+error: manual implementation of `Option::as_ref`
+  --> tests/ui/match_as_ref.rs:125:27
+   |
+LL |       let _: Option<&u32> = match test_expr!(42) {
+   |  ___________________________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref v) => Some(v),
+LL | |     };
+   | |_____^
+   |
+help: use `Option::as_ref()` directly
+   |
+LL -     let _: Option<&u32> = match test_expr!(42) {
+LL -
+LL -         None => None,
+LL -         Some(ref v) => Some(v),
+LL -     };
+LL +     let _: Option<&u32> = test_expr!(42).as_ref();
+   |
+
+error: aborting due to 7 previous errors
 

@@ -1003,6 +1003,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."library/core/src/mem/type_info.rs"]
+message = """
+The reflection data structures are tied exactly to the implementation
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs
+"""
+cc = ["@oli-obk"]
+
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
@@ -1358,11 +1365,11 @@ message = "The rustc-dev-guide subtree was changed. If this PR *only* touches th
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_hir/src/attrs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]

@@ -1,0 +1,33 @@
+error[E0658]: use of unstable library feature `type_info`
+  --> $DIR/feature_gate.rs:1:5
+   |
+LL | use std::mem::type_info::Type;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+   = help: add `#![feature(type_info)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `type_info`
+  --> $DIR/feature_gate.rs:5:14
+   |
+LL |     let ty = std::mem::type_info::Type::of::<()>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+   = help: add `#![feature(type_info)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `type_info`
+  --> $DIR/feature_gate.rs:5:14
+   |
+LL |     let ty = std::mem::type_info::Type::of::<()>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+   = help: add `#![feature(type_info)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

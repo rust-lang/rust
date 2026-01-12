@@ -20,7 +20,7 @@ test = { path = "../test", public = true }
 
 # Forward features to the `std` crate as necessary
 [features]
-default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
+default = ["panic-unwind"]
 backtrace = ["std/backtrace"]
 backtrace-trace-only = ["std/backtrace-trace-only"]
 compiler-builtins-c = ["std/compiler-builtins-c"]
@@ -32,7 +32,5 @@ system-llvm-libunwind = ["std/system-llvm-libunwind"]
 optimize_for_size = ["std/optimize_for_size"]
 panic-unwind = ["std/panic-unwind"]
 profiler = ["dep:profiler_builtins"]
-std_detect_file_io = ["std/std_detect_file_io"]
-std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]
 windows_raw_dylib = ["std/windows_raw_dylib"]
 llvm_enzyme = ["std/llvm_enzyme"]

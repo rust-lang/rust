@@ -33,7 +33,7 @@ pub mod inner {
     // Make sure the logic is not affected by re-exports.
     mod unrenamed {
         //@ !has krate/macro.unrenamed.html
-        #[rustc_macro_transparency = "semitransparent"]
+        #[rustc_macro_transparency = "semiopaque"]
         pub macro unrenamed() {}
     }
     //@ has krate/inner/macro.unrenamed.html

@@ -12,7 +12,7 @@ fn foo<const N: Option<u32>>() {}
 
 trait Trait {
     #[type_const]
-    const ASSOC: usize;
+    const ASSOC: u32;
 }
 
 fn bar<T: Trait, const N: u32>() {

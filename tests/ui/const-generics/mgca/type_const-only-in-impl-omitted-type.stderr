@@ -1,0 +1,16 @@
+error: missing type for `const` item
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:12:15
+   |
+LL |     const NUM: = 84;
+   |               ^ help: provide a type for the associated constant: `usize`
+
+error: use of trait associated const without `#[type_const]`
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:17:43
+   |
+LL | fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
+   |                                           ^^^^^^^^^^^
+   |
+   = note: the declaration in the trait must be marked with `#[type_const]`
+
+error: aborting due to 2 previous errors
+

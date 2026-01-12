@@ -586,11 +586,18 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
+        // This method looks different to `Ty::try_super_fold_with` and `Const::super_fold_with`.
+        // Why is that? `PredicateKind` provides little scope for optimized folding, unlike
+        // `TyKind` and `ConstKind` (which have common variants that don't require recursive
+        // `fold_with` calls on their fields). So we just derive the `TypeFoldable` impl for
+        // `PredicateKind` and call it here because the derived code is as fast as hand-written
+        // code would be.
         let new = self.kind().try_fold_with(folder)?;
         Ok(folder.cx().reuse_or_mk_predicate(self, new))
     }
 
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // See comment in `Predicate::try_super_fold_with`.
         let new = self.kind().fold_with(folder);
         folder.cx().reuse_or_mk_predicate(self, new)
     }
@@ -598,6 +605,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        // See comment in `Predicate::try_super_fold_with`.
         self.kind().visit_with(visitor)
     }
 }

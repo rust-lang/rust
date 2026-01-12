@@ -4,6 +4,7 @@ mod tests;
 use hashbrown::hash_map as base;
 
 use self::Entry::*;
+use crate::alloc::{Allocator, Global};
 use crate::borrow::Borrow;
 use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::error::Error;
@@ -243,8 +244,13 @@ use crate::ops::Index;
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashMap")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
-pub struct HashMap<K, V, S = RandomState> {
-    base: base::HashMap<K, V, S>,
+pub struct HashMap<
+    K,
+    V,
+    S = RandomState,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::HashMap<K, V, S, A>,
 }
 
 impl<K, V> HashMap<K, V, RandomState> {
@@ -283,6 +289,46 @@ impl<K, V> HashMap<K, V, RandomState> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> HashMap<K, V, RandomState> {
         HashMap::with_capacity_and_hasher(capacity, Default::default())
+    }
+}
+
+impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
+    /// Creates an empty `HashMap` using the given allocator.
+    ///
+    /// The hash map is initially created with a capacity of 0, so it will not allocate until it
+    /// is first inserted into.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_in(alloc: A) -> Self {
+        HashMap::with_hasher_in(Default::default(), alloc)
+    }
+
+    /// Creates an empty `HashMap` with at least the specified capacity using
+    /// the given allocator.
+    ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is zero, the hash map will not allocate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+        HashMap::with_capacity_and_hasher_in(capacity, Default::default(), alloc)
     }
 }
 
@@ -346,6 +392,47 @@ impl<K, V, S> HashMap<K, V, S> {
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hasher) }
+    }
+}
+
+impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
+    /// Creates an empty `HashMap` which will use the given hash builder and
+    /// allocator.
+    ///
+    /// The created map has the default initial capacity.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the `HashMap` to be useful, see its documentation for details.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
+        HashMap { base: base::HashMap::with_hasher_in(hash_builder, alloc) }
+    }
+
+    /// Creates an empty `HashMap` with at least the specified capacity, using
+    /// `hasher` to hash the keys and `alloc` to allocate memory.
+    ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is zero, the hash map will not allocate.
+    ///
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// The `hasher` passed should implement the [`BuildHasher`] trait for
+    /// the `HashMap` to be useful, see its documentation for details.
+    ///
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
+        HashMap { base: base::HashMap::with_capacity_and_hasher_in(capacity, hash_builder, alloc) }
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -424,7 +511,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[rustc_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_keys(self) -> IntoKeys<K, V> {
+    pub fn into_keys(self) -> IntoKeys<K, V, A> {
         IntoKeys { inner: self.into_iter() }
     }
 
@@ -519,7 +606,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[rustc_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_values(self) -> IntoValues<K, V> {
+    pub fn into_values(self) -> IntoValues<K, V, A> {
         IntoValues { inner: self.into_iter() }
     }
 
@@ -648,7 +735,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[rustc_lint_query_instability]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, K, V> {
+    pub fn drain(&mut self) -> Drain<'_, K, V, A> {
         Drain { base: self.base.drain() }
     }
 
@@ -688,7 +775,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[rustc_lint_query_instability]
     #[stable(feature = "hash_extract_if", since = "1.88.0")]
-    pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F>
+    pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F, A>
     where
         F: FnMut(&K, &mut V) -> bool,
     {
@@ -762,10 +849,11 @@ impl<K, V, S> HashMap<K, V, S> {
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
+impl<K, V, S, A> HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     S: BuildHasher,
+    A: Allocator,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to speculatively
@@ -884,7 +972,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, A> {
         map_entry(self.base.rustc_entry(key))
     }
 
@@ -1232,7 +1320,7 @@ where
     /// assert_eq!(err.value, "b");
     /// ```
     #[unstable(feature = "map_try_insert", issue = "82766")]
-    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V, A>> {
         match self.entry(key) {
             Occupied(entry) => Err(OccupiedError { entry, value }),
             Vacant(entry) => Ok(entry.insert(value)),
@@ -1298,11 +1386,12 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> Clone for HashMap<K, V, S>
+impl<K, V, S, A> Clone for HashMap<K, V, S, A>
 where
     K: Clone,
     V: Clone,
     S: Clone,
+    A: Allocator + Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -1316,13 +1405,14 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> PartialEq for HashMap<K, V, S>
+impl<K, V, S, A> PartialEq for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     V: PartialEq,
     S: BuildHasher,
+    A: Allocator,
 {
-    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
+    fn eq(&self, other: &HashMap<K, V, S, A>) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -1332,19 +1422,21 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> Eq for HashMap<K, V, S>
+impl<K, V, S, A> Eq for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     V: Eq,
     S: BuildHasher,
+    A: Allocator,
 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> Debug for HashMap<K, V, S>
+impl<K, V, S, A> Debug for HashMap<K, V, S, A>
 where
     K: Debug,
     V: Debug,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1364,11 +1456,12 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
+impl<K, Q: ?Sized, V, S, A> Index<&Q> for HashMap<K, V, S, A>
 where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash,
     S: BuildHasher,
+    A: Allocator,
 {
     type Output = V;
 
@@ -1523,11 +1616,15 @@ impl<K, V> Default for IterMut<'_, K, V> {
 /// let iter = map.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<K, V> {
-    base: base::IntoIter<K, V>,
+pub struct IntoIter<
+    K,
+    V,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::IntoIter<K, V, A>,
 }
 
-impl<K, V> IntoIter<K, V> {
+impl<K, V, A: Allocator> IntoIter<K, V, A> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
@@ -1656,11 +1753,16 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_drain_ty")]
-pub struct Drain<'a, K: 'a, V: 'a> {
-    base: base::Drain<'a, K, V>,
+pub struct Drain<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::Drain<'a, K, V, A>,
 }
 
-impl<'a, K, V> Drain<'a, K, V> {
+impl<'a, K, V, A: Allocator> Drain<'a, K, V, A> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
@@ -1687,8 +1789,14 @@ impl<'a, K, V> Drain<'a, K, V> {
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed; \
     use `retain` to remove and discard elements"]
-pub struct ExtractIf<'a, K, V, F> {
-    base: base::ExtractIf<'a, K, V, F>,
+pub struct ExtractIf<
+    'a,
+    K,
+    V,
+    F,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::ExtractIf<'a, K, V, F, A>,
 }
 
 /// A mutable iterator over the values of a `HashMap`.
@@ -1740,8 +1848,12 @@ impl<K, V> Default for ValuesMut<'_, K, V> {
 /// let iter_keys = map.into_keys();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-pub struct IntoKeys<K, V> {
-    inner: IntoIter<K, V>,
+pub struct IntoKeys<
+    K,
+    V,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    inner: IntoIter<K, V, A>,
 }
 
 #[stable(feature = "default_iters_hash", since = "1.83.0")]
@@ -1770,8 +1882,12 @@ impl<K, V> Default for IntoKeys<K, V> {
 /// let iter_keys = map.into_values();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-pub struct IntoValues<K, V> {
-    inner: IntoIter<K, V>,
+pub struct IntoValues<
+    K,
+    V,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    inner: IntoIter<K, V, A>,
 }
 
 #[stable(feature = "default_iters_hash", since = "1.83.0")]
@@ -1789,14 +1905,19 @@ impl<K, V> Default for IntoValues<K, V> {
 /// [`entry`]: HashMap::entry
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashMapEntry")]
-pub enum Entry<'a, K: 'a, V: 'a> {
+pub enum Entry<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Occupied(#[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V>),
+    Occupied(#[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V, A>),
 
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Vacant(#[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V>),
+    Vacant(#[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V, A>),
 }
 
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
@@ -1812,12 +1933,17 @@ impl<K: Debug, V: Debug> Debug for Entry<'_, K, V> {
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
-    base: base::RustcOccupiedEntry<'a, K, V>,
+pub struct OccupiedEntry<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::RustcOccupiedEntry<'a, K, V, A>,
 }
 
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
-impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
+impl<K: Debug, V: Debug, A: Allocator> Debug for OccupiedEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -1829,12 +1955,17 @@ impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VacantEntry<'a, K: 'a, V: 'a> {
-    base: base::RustcVacantEntry<'a, K, V>,
+pub struct VacantEntry<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    base: base::RustcVacantEntry<'a, K, V, A>,
 }
 
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
-impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
+impl<K: Debug, V, A: Allocator> Debug for VacantEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
@@ -1844,15 +1975,20 @@ impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
 ///
 /// Contains the occupied entry, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
-pub struct OccupiedError<'a, K: 'a, V: 'a> {
+pub struct OccupiedError<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     /// The entry in the map that was already occupied.
-    pub entry: OccupiedEntry<'a, K, V>,
+    pub entry: OccupiedEntry<'a, K, V, A>,
     /// The value which was not inserted, because the entry was already occupied.
     pub value: V,
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
+impl<K: Debug, V: Debug, A: Allocator> Debug for OccupiedError<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
             .field("key", self.entry.key())
@@ -1863,7 +1999,7 @@ impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
+impl<'a, K: Debug, V: Debug, A: Allocator> fmt::Display for OccupiedError<'a, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -1876,10 +2012,10 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug, V: Debug> Error for OccupiedError<'a, K, V> {}
+impl<'a, K: Debug, V: Debug, A: Allocator> Error for OccupiedError<'a, K, V, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
+impl<'a, K, V, S, A: Allocator> IntoIterator for &'a HashMap<K, V, S, A> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -1891,7 +2027,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
+impl<'a, K, V, S, A: Allocator> IntoIterator for &'a mut HashMap<K, V, S, A> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1903,9 +2039,9 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> IntoIterator for HashMap<K, V, S> {
+impl<K, V, S, A: Allocator> IntoIterator for HashMap<K, V, S, A> {
     type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V, A>;
 
     /// Creates a consuming iterator, that is, one that moves each key-value
     /// pair out of the map in arbitrary order. The map cannot be used after
@@ -1927,7 +2063,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    fn into_iter(self) -> IntoIter<K, V> {
+    fn into_iter(self) -> IntoIter<K, V, A> {
         IntoIter { base: self.base.into_iter() }
     }
 }
@@ -2015,7 +2151,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V> Iterator for IntoIter<K, V> {
+impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
     type Item = (K, V);
 
     #[inline]
@@ -2040,17 +2176,17 @@ impl<K, V> Iterator for IntoIter<K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V> ExactSizeIterator for IntoIter<K, V> {
+impl<K, V, A: Allocator> ExactSizeIterator for IntoIter<K, V, A> {
     #[inline]
     fn len(&self) -> usize {
         self.base.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<K, V> FusedIterator for IntoIter<K, V> {}
+impl<K, V, A: Allocator> FusedIterator for IntoIter<K, V, A> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
+impl<K: Debug, V: Debug, A: Allocator> fmt::Debug for IntoIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
@@ -2169,7 +2305,7 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> Iterator for IntoKeys<K, V> {
+impl<K, V, A: Allocator> Iterator for IntoKeys<K, V, A> {
     type Item = K;
 
     #[inline]
@@ -2194,24 +2330,24 @@ impl<K, V> Iterator for IntoKeys<K, V> {
     }
 }
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
+impl<K, V, A: Allocator> ExactSizeIterator for IntoKeys<K, V, A> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> FusedIterator for IntoKeys<K, V> {}
+impl<K, V, A: Allocator> FusedIterator for IntoKeys<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K: Debug, V> fmt::Debug for IntoKeys<K, V> {
+impl<K: Debug, V, A: Allocator> fmt::Debug for IntoKeys<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
     }
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> Iterator for IntoValues<K, V> {
+impl<K, V, A: Allocator> Iterator for IntoValues<K, V, A> {
     type Item = V;
 
     #[inline]
@@ -2236,24 +2372,24 @@ impl<K, V> Iterator for IntoValues<K, V> {
     }
 }
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> ExactSizeIterator for IntoValues<K, V> {
+impl<K, V, A: Allocator> ExactSizeIterator for IntoValues<K, V, A> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V> FusedIterator for IntoValues<K, V> {}
+impl<K, V, A: Allocator> FusedIterator for IntoValues<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V: Debug> fmt::Debug for IntoValues<K, V> {
+impl<K, V: Debug, A: Allocator> fmt::Debug for IntoValues<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, K, V> Iterator for Drain<'a, K, V> {
+impl<'a, K, V, A: Allocator> Iterator for Drain<'a, K, V, A> {
     type Item = (K, V);
 
     #[inline]
@@ -2274,17 +2410,17 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     }
 }
 #[stable(feature = "drain", since = "1.6.0")]
-impl<K, V> ExactSizeIterator for Drain<'_, K, V> {
+impl<K, V, A: Allocator> ExactSizeIterator for Drain<'_, K, V, A> {
     #[inline]
     fn len(&self) -> usize {
         self.base.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<K, V> FusedIterator for Drain<'_, K, V> {}
+impl<K, V, A: Allocator> FusedIterator for Drain<'_, K, V, A> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<K, V> fmt::Debug for Drain<'_, K, V>
+impl<K, V, A: Allocator> fmt::Debug for Drain<'_, K, V, A>
 where
     K: fmt::Debug,
     V: fmt::Debug,
@@ -2295,7 +2431,7 @@ where
 }
 
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
-impl<K, V, F> Iterator for ExtractIf<'_, K, V, F>
+impl<K, V, F, A: Allocator> Iterator for ExtractIf<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
@@ -2312,10 +2448,13 @@ where
 }
 
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
-impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
+impl<K, V, F, A: Allocator> FusedIterator for ExtractIf<'_, K, V, F, A> where
+    F: FnMut(&K, &mut V) -> bool
+{
+}
 
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
-impl<K, V, F> fmt::Debug for ExtractIf<'_, K, V, F>
+impl<K, V, F, A: Allocator> fmt::Debug for ExtractIf<'_, K, V, F, A>
 where
     K: fmt::Debug,
     V: fmt::Debug,
@@ -2325,7 +2464,7 @@ where
     }
 }
 
-impl<'a, K, V> Entry<'a, K, V> {
+impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -2473,7 +2612,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// ```
     #[inline]
     #[stable(feature = "entry_insert", since = "1.83.0")]
-    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, A> {
         match self {
             Occupied(mut entry) => {
                 entry.insert(value);
@@ -2510,7 +2649,7 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     }
 }
 
-impl<'a, K, V> OccupiedEntry<'a, K, V> {
+impl<'a, K, V, A: Allocator> OccupiedEntry<'a, K, V, A> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -2682,7 +2821,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
+impl<'a, K: 'a, V: 'a, A: Allocator> VacantEntry<'a, K, V, A> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -2760,7 +2899,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// ```
     #[inline]
     #[stable(feature = "entry_insert", since = "1.83.0")]
-    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, A> {
         let base = self.base.insert_entry(value);
         OccupiedEntry { base }
     }
@@ -2786,10 +2925,11 @@ where
 /// Inserts all new key-values from the iterator and replaces values with existing
 /// keys with new values returned from the iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
+impl<K, V, S, A> Extend<(K, V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     S: BuildHasher,
+    A: Allocator,
 {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
@@ -2808,11 +2948,12 @@ where
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
-impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
+impl<'a, K, V, S, A> Extend<(&'a K, &'a V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash + Copy,
     V: Copy,
     S: BuildHasher,
+    A: Allocator,
 {
     #[inline]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
@@ -2831,7 +2972,9 @@ where
 }
 
 #[inline]
-fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, V> {
+fn map_entry<'a, K: 'a, V: 'a, A: Allocator>(
+    raw: base::RustcEntry<'a, K, V, A>,
+) -> Entry<'a, K, V, A> {
     match raw {
         base::RustcEntry::Occupied(base) => Entry::Occupied(OccupiedEntry { base }),
         base::RustcEntry::Vacant(base) => Entry::Vacant(VacantEntry { base }),

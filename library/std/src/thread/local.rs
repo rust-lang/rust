@@ -140,7 +140,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro thread_local_process_attrs {
 
     // Parse `cfg_attr` to figure out whether it's a `rustc_align_static`.

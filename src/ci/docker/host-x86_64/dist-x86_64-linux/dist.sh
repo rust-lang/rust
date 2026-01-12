@@ -7,7 +7,9 @@ python3 ../x.py build --set rust.debug=true opt-dist
 ./build/$HOSTS/stage1-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
-    build-manifest bootstrap
+    build-manifest \
+    bootstrap \
+    rustc_codegen_gcc
 
 # Use GCC for building GCC components, as it seems to behave badly when built with Clang
 # Only build GCC on full builds, not try builds
