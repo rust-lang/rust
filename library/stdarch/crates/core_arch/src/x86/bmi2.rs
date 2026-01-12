@@ -84,7 +84,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_pext_u32() {
+    fn test_pext_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_pdep_u32() {
+    fn test_pdep_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -112,14 +112,14 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_bzhi_u32() {
+    fn test_bzhi_u32() {
         let n = 0b1111_0010u32;
         let s = 0b0001_0010u32;
         assert_eq!(_bzhi_u32(n, 5), s);
     }
 
     #[simd_test(enable = "bmi2")]
-    const unsafe fn test_mulx_u32() {
+    const fn test_mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
         let mut hi = 0;

@@ -1,4 +1,4 @@
-#![feature(associated_const_equality, min_generic_const_args)]
+#![feature(min_generic_const_args)]
 #![allow(incomplete_features)]
 
 // Issue 110549

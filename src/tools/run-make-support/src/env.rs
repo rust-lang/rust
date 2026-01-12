@@ -49,3 +49,17 @@ pub fn set_current_dir<P: AsRef<std::path::Path>>(dir: P) {
     std::env::set_current_dir(dir.as_ref())
         .expect(&format!("could not set current directory to \"{}\"", dir.as_ref().display()));
 }
+
+/// Number of parallel jobs bootstrap was configured with.
+///
+/// This may fallback to [`std::thread::available_parallelism`] when no explicit jobs count has been
+/// configured. Refer to bootstrap's jobs fallback logic.
+#[track_caller]
+pub fn jobs() -> u32 {
+    std::env::var_os("__BOOTSTRAP_JOBS")
+        .expect("`__BOOTSTRAP_JOBS` must be set by `compiletest`")
+        .to_str()
+        .expect("`__BOOTSTRAP_JOBS` must be a valid string")
+        .parse::<u32>()
+        .expect("`__BOOTSTRAP_JOBS` must be a valid `u32`")
+}

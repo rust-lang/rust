@@ -225,6 +225,7 @@ impl ConfigBuilder {
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",
+            "--jobs=0",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -630,7 +631,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let modes = [
         "pretty",
         "debuginfo",
-        "rustdoc",
+        "rustdoc-html",
         "rustdoc-json",
         "codegen-units",
         "incremental",

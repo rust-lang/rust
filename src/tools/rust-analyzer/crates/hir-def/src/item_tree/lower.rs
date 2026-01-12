@@ -271,7 +271,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
-        let res = Impl {};
+        let res = Impl { is_trait_impl: impl_def.trait_().is_some() };
         self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Impl(res));
         ast_id
     }

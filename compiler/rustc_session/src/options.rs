@@ -794,7 +794,8 @@ mod desc {
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
-    pub(crate) const parse_offload: &str = "a comma separated list of settings: `Enable`";
+    pub(crate) const parse_offload: &str =
+        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1470,6 +1471,13 @@ pub mod parse {
                         return false;
                     }
                     Offload::Device
+                }
+                "Test" => {
+                    if let Some(_) = arg {
+                        // Test does not accept a value
+                        return false;
+                    }
+                    Offload::Test
                 }
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized

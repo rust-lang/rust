@@ -1,6 +1,6 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
-//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bitalg,+avx512vpopcntdq
+//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bitalg,+avx512vpopcntdq,+avx512vnni
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -13,12 +13,14 @@ fn main() {
     assert!(is_x86_feature_detected!("avx512vl"));
     assert!(is_x86_feature_detected!("avx512bitalg"));
     assert!(is_x86_feature_detected!("avx512vpopcntdq"));
+    assert!(is_x86_feature_detected!("avx512vnni"));
 
     unsafe {
         test_avx512();
         test_avx512bitalg();
         test_avx512vpopcntdq();
         test_avx512ternarylogic();
+        test_avx512vnni();
     }
 }
 
@@ -409,6 +411,101 @@ unsafe fn test_avx512ternarylogic() {
         assert_eq_m128i(r, e);
     }
     test_mm_ternarylogic_epi32();
+}
+
+#[target_feature(enable = "avx512vnni")]
+unsafe fn test_avx512vnni() {
+    #[target_feature(enable = "avx512vnni")]
+    unsafe fn test_mm512_dpbusd_epi32() {
+        const SRC: [i32; 16] = [
+            1,
+            // Test that addition with the `src` element uses wrapping arithmetic.
+            i32::MAX,
+            i32::MIN,
+            0,
+            0,
+            7,
+            12345,
+            -9876,
+            0x01020304,
+            -1,
+            42,
+            0,
+            1_000_000_000,
+            -1_000_000_000,
+            17,
+            -17,
+        ];
+
+        // The `A` array must be interpreted as a sequence of unsigned 8-bit integers. Setting
+        // the high bit of a byte tests that this is implemented correctly.
+        const A: [i32; 16] = [
+            0x01010101,
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([u8::MAX; 4]),
+            i32::from_le_bytes([u8::MAX; 4]),
+            0x02_80_01_FF,
+            0x00_FF_00_FF,
+            0x7F_80_FF_01,
+            0x10_20_30_40,
+            0xDE_AD_BE_EFu32 as i32,
+            0x00_00_00_FF,
+            0x12_34_56_78,
+            0xFF_00_FF_00u32 as i32,
+            0x01_02_03_04,
+            0xAA_55_AA_55u32 as i32,
+            0x11_22_33_44,
+        ];
+
+        // The `B` array must be interpreted as a sequence of signed 8-bit integers. Setting
+        // the high bit of a byte tests that this is implemented correctly.
+        const B: [i32; 16] = [
+            0x01010101,
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([(-1i8).cast_unsigned(); 4]),
+            i32::from_le_bytes([i8::MAX.cast_unsigned(); 4]),
+            i32::from_le_bytes([i8::MIN.cast_unsigned(); 4]),
+            0xFF_01_80_7Fu32 as i32,
+            0x01_FF_01_FF,
+            0x80_7F_00_FFu32 as i32,
+            0x7F_01_FF_80u32 as i32,
+            0x01_02_03_04,
+            0xFF_FF_FF_FFu32 as i32,
+            0x80_00_7F_FFu32 as i32,
+            0x7F_80_7F_80u32 as i32,
+            0x40_C0_20_E0u32 as i32,
+            0x00_01_02_03,
+            0x7F_7E_80_81u32 as i32,
+        ];
+
+        const DST: [i32; 16] = [
+            5,
+            i32::MAX.wrapping_add(4),
+            i32::MIN.wrapping_add(-4),
+            129540,
+            -130560,
+            32390,
+            11835,
+            -9877,
+            16902884,
+            2093,
+            -213,
+            8498,
+            1000064770,
+            -1000000096,
+            697,
+            -8738,
+        ];
+
+        let src = _mm512_loadu_si512(SRC.as_ptr().cast::<__m512i>());
+        let a = _mm512_loadu_si512(A.as_ptr().cast::<__m512i>());
+        let b = _mm512_loadu_si512(B.as_ptr().cast::<__m512i>());
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+
+        assert_eq_m512i(_mm512_dpbusd_epi32(src, a, b), dst);
+    }
+    test_mm512_dpbusd_epi32();
 }
 
 #[track_caller]

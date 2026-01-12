@@ -81,7 +81,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
                 }
 
                 bidirectional::Request::ApiVersionCheck {} => {
-                    // bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION).write::<_, C>(stdout)
                     send_response::<C>(
                         &stdout,
                         bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
@@ -167,28 +166,57 @@ struct ProcMacroClientHandle<'a, C: Codec> {
     buf: &'a mut C::Buf,
 }
 
-impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
-        let req = bidirectional::BidirectionalMessage::SubRequest(
-            bidirectional::SubRequest::SourceText { file_id, start, end },
-        );
+impl<'a, C: Codec> ProcMacroClientHandle<'a, C> {
+    fn roundtrip(
+        &mut self,
+        req: bidirectional::SubRequest,
+    ) -> Option<bidirectional::BidirectionalMessage> {
+        let msg = bidirectional::BidirectionalMessage::SubRequest(req);
 
-        if req.write::<_, C>(&mut self.stdout.lock()).is_err() {
+        if msg.write::<_, C>(&mut self.stdout.lock()).is_err() {
             return None;
         }
 
-        let msg = match bidirectional::BidirectionalMessage::read::<_, C>(
-            &mut self.stdin.lock(),
-            self.buf,
-        ) {
-            Ok(Some(msg)) => msg,
-            _ => return None,
-        };
+        match bidirectional::BidirectionalMessage::read::<_, C>(&mut self.stdin.lock(), self.buf) {
+            Ok(Some(msg)) => Some(msg),
+            _ => None,
+        }
+    }
+}
 
-        match msg {
-            bidirectional::BidirectionalMessage::SubResponse(
+impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
+    fn file(&mut self, file_id: proc_macro_srv::span::FileId) -> String {
+        match self.roundtrip(bidirectional::SubRequest::FilePath { file_id: file_id.index() }) {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::FilePathResult { name },
+            )) => name,
+            _ => String::new(),
+        }
+    }
+
+    fn source_text(
+        &mut self,
+        proc_macro_srv::span::Span { range, anchor, ctx: _ }: proc_macro_srv::span::Span,
+    ) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::SourceText {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            start: range.start().into(),
+            end: range.end().into(),
+        }) {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
                 bidirectional::SubResponse::SourceTextResult { text },
-            ) => text,
+            )) => text,
+            _ => None,
+        }
+    }
+
+    fn local_file(&mut self, file_id: proc_macro_srv::span::FileId) -> Option<String> {
+        match self.roundtrip(bidirectional::SubRequest::LocalFilePath { file_id: file_id.index() })
+        {
+            Some(bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::LocalFilePathResult { name },
+            )) => name,
             _ => None,
         }
     }

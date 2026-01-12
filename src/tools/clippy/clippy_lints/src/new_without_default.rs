@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::return_ty;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::sugg::DiagExt;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::HirIdSet;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Attribute, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
@@ -57,6 +58,7 @@ pub struct NewWithoutDefault {
 impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
+    #[expect(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let hir::ItemKind::Impl(hir::Impl {
             of_trait: None,
@@ -121,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 let attrs_sugg = {
                     let mut sugg = String::new();
                     for attr in cx.tcx.hir_attrs(assoc_item_hir_id) {
-                        if !attr.has_name(sym::cfg_trace) {
+                        let Attribute::Parsed(AttributeKind::CfgTrace(attrs)) = attr else {
                             // This might be some other attribute that the `impl Default` ought to inherit.
                             // But it could also be one of the many attributes that:
                             // - can't be put on an impl block -- like `#[inline]`
@@ -131,19 +133,40 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // reduce the applicability
                             app = Applicability::MaybeIncorrect;
                             continue;
-                        }
+                        };
 
-                        sugg.push_str(&snippet_with_applicability(cx.sess(), attr.span(), "_", &mut app));
-                        sugg.push('\n');
+                        for (_, attr_span) in attrs {
+                            sugg.push_str(&snippet_with_applicability(cx.sess(), *attr_span, "_", &mut app));
+                            sugg.push('\n');
+                        }
                     }
                     sugg
                 };
                 let generics_sugg = snippet_with_applicability(cx, generics.span, "", &mut app);
                 let where_clause_sugg = if generics.has_where_clause_predicates {
-                    format!(
-                        "\n{}\n",
-                        snippet_with_applicability(cx, generics.where_clause_span, "", &mut app)
-                    )
+                    let where_clause_sugg =
+                        snippet_with_applicability(cx, generics.where_clause_span, "", &mut app).to_string();
+                    let mut where_clause_sugg = reindent_multiline(&where_clause_sugg, true, Some(4));
+                    if impl_item.generics.has_where_clause_predicates {
+                        if !where_clause_sugg.ends_with(',') {
+                            where_clause_sugg.push(',');
+                        }
+
+                        let additional_where_preds =
+                            snippet_with_applicability(cx, impl_item.generics.where_clause_span, "", &mut app);
+                        let ident = indent_of(cx, generics.where_clause_span).unwrap_or(0);
+                        // Remove the leading `where ` keyword
+                        let additional_where_preds = additional_where_preds.trim_start_matches("where").trim_start();
+                        where_clause_sugg.push('\n');
+                        where_clause_sugg.extend(std::iter::repeat_n(' ', ident));
+                        where_clause_sugg.push_str(additional_where_preds);
+                    }
+                    format!("\n{where_clause_sugg}\n")
+                } else if impl_item.generics.has_where_clause_predicates {
+                    let where_clause_sugg =
+                        snippet_with_applicability(cx, impl_item.generics.where_clause_span, "", &mut app);
+                    let where_clause_sugg = reindent_multiline(&where_clause_sugg, true, Some(4));
+                    format!("\n{}\n", where_clause_sugg.trim_start())
                 } else {
                     String::new()
                 };

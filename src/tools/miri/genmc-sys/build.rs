@@ -202,6 +202,11 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
 }
 
 fn main() {
+    // For check-only builds, we don't need to do anything.
+    if cfg!(feature = "check_only") {
+        return;
+    }
+
     // Select which path to use for the GenMC repo:
     let (genmc_path, always_configure) = if let Some(genmc_src_path) = option_env!("GENMC_SRC_PATH")
     {

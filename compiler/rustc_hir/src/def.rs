@@ -563,29 +563,6 @@ pub enum Res<Id = hir::HirId> {
         /// to get the underlying type.
         alias_to: DefId,
 
-        /// Whether the `Self` type is disallowed from mentioning generics (i.e. when used in an
-        /// anonymous constant).
-        ///
-        /// HACK(min_const_generics): self types also have an optional requirement to **not**
-        /// mention any generic parameters to allow the following with `min_const_generics`:
-        /// ```
-        /// # struct Foo;
-        /// impl Foo { fn test() -> [u8; size_of::<Self>()] { todo!() } }
-        ///
-        /// struct Bar([u8; baz::<Self>()]);
-        /// const fn baz<T>() -> usize { 10 }
-        /// ```
-        /// We do however allow `Self` in repeat expression even if it is generic to not break code
-        /// which already works on stable while causing the `const_evaluatable_unchecked` future
-        /// compat lint:
-        /// ```
-        /// fn foo<T>() {
-        ///     let _bar = [1_u8; size_of::<*mut T>()];
-        /// }
-        /// ```
-        // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
-        forbid_generic: bool,
-
         /// Is this within an `impl Foo for bar`?
         is_trait_impl: bool,
     },
@@ -910,8 +887,8 @@ impl<Id> Res<Id> {
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
             Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
-            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
-                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            Res::SelfTyAlias { alias_to, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
@@ -926,8 +903,8 @@ impl<Id> Res<Id> {
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)?),
             Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
-            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
-                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            Res::SelfTyAlias { alias_to, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),

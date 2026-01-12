@@ -21,12 +21,17 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
-use std::{fmt, fs, io};
+use std::{env, fmt, fs, io};
+
+use build_helper::ci::CiEnv;
 
 use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
 
 mod rustdoc_js;
+
+#[cfg(test)]
+mod tests;
 
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
@@ -43,6 +48,7 @@ const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+const SPELLCHECK_VER: &str = "1.38.1";
 
 pub fn check(
     root_path: &Path,
@@ -115,6 +121,7 @@ fn check_impl(
             .collect(),
         None => vec![],
     };
+    lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
             ck.is_non_auto_or_matches(path)
@@ -421,21 +428,11 @@ fn py_runner(
 /// Create a virtuaenv at a given path if it doesn't already exist, or validate
 /// the install if it does. Returns the path to that venv's python executable.
 fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf, Error> {
-    let mut should_create = true;
-    let dst_reqs_path = venv_path.join("requirements.txt");
     let mut py_path = venv_path.to_owned();
     py_path.extend(REL_PY_PATH);
 
-    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
-        if req == fs::read_to_string(src_reqs_path)? {
-            // found existing environment
-            should_create = false;
-        } else {
-            eprintln!("requirements.txt file mismatch, recreating environment");
-        }
-    }
-
-    if should_create {
+    if !has_py_tools(venv_path, src_reqs_path)? {
+        let dst_reqs_path = venv_path.join("requirements.txt");
         eprintln!("removing old virtual environment");
         if venv_path.is_dir() {
             fs::remove_dir_all(venv_path).unwrap_or_else(|_| {
@@ -448,6 +445,18 @@ fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf,
 
     verify_py_version(&py_path)?;
     Ok(py_path)
+}
+
+fn has_py_tools(venv_path: &Path, src_reqs_path: &Path) -> Result<bool, Error> {
+    let dst_reqs_path = venv_path.join("requirements.txt");
+    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
+        if req == fs::read_to_string(src_reqs_path)? {
+            return Ok(true);
+        }
+        eprintln!("requirements.txt file mismatch");
+    }
+
+    Ok(false)
 }
 
 /// Attempt to create a virtualenv at this path. Cycles through all expected
@@ -591,23 +600,26 @@ fn install_requirements(
     Ok(())
 }
 
+/// Returns `Ok` if shellcheck is installed, `Err` otherwise.
+fn has_shellcheck() -> Result<(), Error> {
+    match Command::new("shellcheck").arg("--version").status() {
+        Ok(_) => Ok(()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Err(Error::MissingReq(
+            "shellcheck",
+            "shell file checks",
+            Some(
+                "see <https://github.com/koalaman/shellcheck#installing> \
+                for installation instructions"
+                    .to_owned(),
+            ),
+        )),
+        Err(e) => Err(e.into()),
+    }
+}
+
 /// Check that shellcheck is installed then run it at the given path
 fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
-    match Command::new("shellcheck").arg("--version").status() {
-        Ok(_) => (),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            return Err(Error::MissingReq(
-                "shellcheck",
-                "shell file checks",
-                Some(
-                    "see <https://github.com/koalaman/shellcheck#installing> \
-                    for installation instructions"
-                        .to_owned(),
-                ),
-            ));
-        }
-        Err(e) => return Err(e.into()),
-    }
+    has_shellcheck()?;
 
     let status = Command::new("shellcheck").args(args).status()?;
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
@@ -621,7 +633,7 @@ fn spellcheck_runner(
     args: &[&str],
 ) -> Result<(), Error> {
     let bin_path =
-        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.38.1")?;
+        ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", SPELLCHECK_VER)?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -675,6 +687,83 @@ fn find_with_extension(
     Ok(output)
 }
 
+/// Check if the given executable is installed and the version is expected.
+fn ensure_version(build_dir: &Path, bin_name: &str, version: &str) -> Result<PathBuf, Error> {
+    let bin_path = build_dir.join("misc-tools").join("bin").join(bin_name);
+
+    match Command::new(&bin_path).arg("--version").output() {
+        Ok(output) => {
+            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last()
+            else {
+                return Err(Error::Generic("version check failed".to_string()));
+            };
+
+            if v != version {
+                return Err(Error::Version { program: "", required: "", installed: v.to_string() });
+            }
+            Ok(bin_path)
+        }
+        Err(e) => Err(Error::Io(e)),
+    }
+}
+
+/// If the given executable is installed with the given version, use that,
+/// otherwise install via cargo.
+fn ensure_version_or_cargo_install(
+    build_dir: &Path,
+    cargo: &Path,
+    pkg_name: &str,
+    bin_name: &str,
+    version: &str,
+) -> Result<PathBuf, Error> {
+    if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
+        return Ok(bin_path);
+    }
+
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
+
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
+
+    // use --force to ensure that if the required version is bumped, we update it.
+    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
+    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
+    let mut cmd = Command::new(cargo);
+    cmd.args(["install", "--locked", "--force", "--quiet"])
+        .arg("--root")
+        .arg(&tool_root_dir)
+        .arg("--target-dir")
+        .arg(tool_root_dir.join("target"))
+        .arg(format!("{pkg_name}@{version}"))
+        .env(
+            "PATH",
+            env::join_paths(
+                env::split_paths(&env::var("PATH").unwrap())
+                    .chain(std::iter::once(tool_bin_dir.clone())),
+            )
+            .expect("build dir contains invalid char"),
+        );
+
+    // On CI, we set opt-level flag for quicker installation.
+    // Since lower opt-level decreases the tool's performance,
+    // we don't set this option on local.
+    if CiEnv::is_ci() {
+        cmd.env("RUSTFLAGS", "-Copt-level=0");
+    }
+
+    let cargo_exit_code = cmd.spawn()?.wait()?;
+    if !cargo_exit_code.success() {
+        return Err(Error::Generic("cargo install failed".to_string()));
+    }
+    assert!(
+        matches!(bin_path.try_exists(), Ok(true)),
+        "cargo install did not produce the expected binary"
+    );
+    eprintln!("finished building tool {bin_name}");
+    Ok(bin_path)
+}
+
 #[derive(Debug)]
 enum Error {
     Io(io::Error),
@@ -723,7 +812,7 @@ impl From<io::Error> for Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ExtraCheckParseError {
     #[allow(dead_code, reason = "shown through Debug")]
     UnknownKind(String),
@@ -736,10 +825,16 @@ enum ExtraCheckParseError {
     Empty,
     /// `auto` specified without lang part.
     AutoRequiresLang,
+    /// `if-installed` specified without lang part.
+    IfInstalledRequiresLang,
 }
 
+#[derive(PartialEq, Debug)]
 struct ExtraCheckArg {
+    /// Only run the check if files to check have been modified.
     auto: bool,
+    /// Only run the check if the requisite software is already installed.
+    if_installed: bool,
     lang: ExtraCheckLang,
     /// None = run all extra checks for the given lang
     kind: Option<ExtraCheckKind>,
@@ -748,6 +843,58 @@ struct ExtraCheckArg {
 impl ExtraCheckArg {
     fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
+    }
+
+    fn is_non_if_installed_or_matches(&self, root_path: &Path, build_dir: &Path) -> bool {
+        if !self.if_installed {
+            return true;
+        }
+
+        match self.lang {
+            ExtraCheckLang::Spellcheck => {
+                match ensure_version(build_dir, "typos", SPELLCHECK_VER) {
+                    Ok(_) => true,
+                    Err(Error::Version { installed, .. }) => {
+                        eprintln!(
+                            "warning: the tool `typos` is detected, but version {installed} doesn't match with the expected version {SPELLCHECK_VER}"
+                        );
+                        false
+                    }
+                    _ => false,
+                }
+            }
+            ExtraCheckLang::Shell => has_shellcheck().is_ok(),
+            ExtraCheckLang::Js => {
+                match self.kind {
+                    Some(ExtraCheckKind::Lint) => {
+                        // If Lint is enabled, check both eslint and es-check.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                    }
+                    Some(ExtraCheckKind::Typecheck) => {
+                        // If Typecheck is enabled, check tsc.
+                        rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    None => {
+                        // No kind means it will check both Lint and Typecheck.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                            && rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    Some(_) => unreachable!("js shouldn't have other type of ExtraCheckKind"),
+                }
+            }
+            ExtraCheckLang::Py | ExtraCheckLang::Cpp => {
+                let venv_path = build_dir.join("venv");
+                let mut reqs_path = root_path.to_owned();
+                reqs_path.extend(PIP_REQ_PATH);
+                let Ok(v) = has_py_tools(&venv_path, &reqs_path) else {
+                    return false;
+                };
+
+                v
+            }
+        }
     }
 
     /// Returns `false` if this is an auto arg and the passed filename does not trigger the auto rule
@@ -792,22 +939,44 @@ impl FromStr for ExtraCheckArg {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut auto = false;
+        let mut if_installed = false;
         let mut parts = s.split(':');
-        let Some(mut first) = parts.next() else {
-            return Err(ExtraCheckParseError::Empty);
+        let mut first = match parts.next() {
+            Some("") | None => return Err(ExtraCheckParseError::Empty),
+            Some(part) => part,
         };
-        if first == "auto" {
-            let Some(part) = parts.next() else {
-                return Err(ExtraCheckParseError::AutoRequiresLang);
-            };
-            auto = true;
-            first = part;
+
+        // The loop allows users to specify `auto` and `if-installed` in any order.
+        // Both auto:if-installed:<check> and if-installed:auto:<check> are valid.
+        loop {
+            match (first, auto, if_installed) {
+                ("auto", false, _) => {
+                    let Some(part) = parts.next() else {
+                        return Err(ExtraCheckParseError::AutoRequiresLang);
+                    };
+                    auto = true;
+                    first = part;
+                }
+                ("if-installed", _, false) => {
+                    let Some(part) = parts.next() else {
+                        return Err(ExtraCheckParseError::IfInstalledRequiresLang);
+                    };
+                    if_installed = true;
+                    first = part;
+                }
+                _ => break,
+            }
         }
         let second = parts.next();
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        let arg = Self {
+            auto,
+            if_installed,
+            lang: first.parse()?,
+            kind: second.map(|s| s.parse()).transpose()?,
+        };
         if !arg.has_supported_kind() {
             return Err(ExtraCheckParseError::UnsupportedKindForLang);
         }
@@ -816,7 +985,7 @@ impl FromStr for ExtraCheckArg {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 enum ExtraCheckLang {
     Py,
     Shell,
@@ -840,7 +1009,7 @@ impl FromStr for ExtraCheckLang {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 enum ExtraCheckKind {
     Lint,
     Fmt,

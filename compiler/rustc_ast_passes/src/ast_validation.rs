@@ -401,8 +401,15 @@ impl<'a> AstValidator<'a> {
                     | CanonAbi::Rust
                     | CanonAbi::RustCold
                     | CanonAbi::Arm(_)
-                    | CanonAbi::GpuKernel
                     | CanonAbi::X86(_) => { /* nothing to check */ }
+
+                    CanonAbi::GpuKernel => {
+                        // An `extern "gpu-kernel"` function cannot be `async` and/or `gen`.
+                        self.reject_coroutine(abi, sig);
+
+                        // An `extern "gpu-kernel"` function cannot return a value.
+                        self.reject_return(abi, sig);
+                    }
 
                     CanonAbi::Custom => {
                         // An `extern "custom"` function must be unsafe.
@@ -433,18 +440,7 @@ impl<'a> AstValidator<'a> {
                                 self.dcx().emit_err(errors::AbiX86Interrupt { spans, param_count });
                             }
 
-                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
-                                && match &ret_ty.kind {
-                                    TyKind::Never => false,
-                                    TyKind::Tup(tup) if tup.is_empty() => false,
-                                    _ => true,
-                                }
-                            {
-                                self.dcx().emit_err(errors::AbiMustNotHaveReturnType {
-                                    span: ret_ty.span,
-                                    abi,
-                                });
-                            }
+                            self.reject_return(abi, sig);
                         } else {
                             // An `extern "interrupt"` function must have type `fn()`.
                             self.reject_params_or_return(abi, ident, sig);
@@ -493,6 +489,18 @@ impl<'a> AstValidator<'a> {
                 coroutine_kind_span,
                 coroutine_kind_str: coroutine_kind.as_str(),
             });
+        }
+    }
+
+    fn reject_return(&self, abi: ExternAbi, sig: &FnSig) {
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+            && match &ret_ty.kind {
+                TyKind::Never => false,
+                TyKind::Tup(tup) if tup.is_empty() => false,
+                _ => true,
+            }
+        {
+            self.dcx().emit_err(errors::AbiMustNotHaveReturnType { span: ret_ty.span, abi });
         }
     }
 

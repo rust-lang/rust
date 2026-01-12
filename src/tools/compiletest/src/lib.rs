@@ -85,7 +85,7 @@ fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc-html \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
         )
@@ -218,7 +218,8 @@ fn parse_config(args: Vec<String>) -> Config {
             "the codegen backend to use instead of the default one",
             "CODEGEN BACKEND [NAME | PATH]",
         )
-        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives");
+        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
+        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -363,6 +364,11 @@ fn parse_config(args: Vec<String>) -> Config {
     let build_test_suite_root = opt_path(matches, "build-test-suite-root");
     assert!(build_test_suite_root.starts_with(&build_root));
 
+    let jobs = match matches.opt_str("jobs") {
+        Some(jobs) => jobs.parse::<u32>().expect("expected `--jobs` to be an `u32`"),
+        None => panic!("`--jobs` is required"),
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -481,6 +487,8 @@ fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend,
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
+
+        jobs,
     }
 }
 
@@ -1094,8 +1102,8 @@ fn make_test_name_and_filterable_path(
 /// of some other tests's name.
 ///
 /// For example, suppose the test suite contains these two test files:
-/// - `tests/rustdoc/primitive.rs`
-/// - `tests/rustdoc/primitive/no_std.rs`
+/// - `tests/rustdoc-html/primitive.rs`
+/// - `tests/rustdoc-html/primitive/no_std.rs`
 ///
 /// The test runner might put the output from those tests in these directories:
 /// - `$build/test/rustdoc/primitive/`

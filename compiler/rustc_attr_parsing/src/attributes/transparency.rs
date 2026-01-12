@@ -15,7 +15,7 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
     });
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
-        template!(NameValueStr: ["transparent", "semitransparent", "opaque"]);
+        template!(NameValueStr: ["transparent", "semiopaque", "opaque"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
@@ -24,12 +24,12 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
         };
         match nv.value_as_str() {
             Some(sym::transparent) => Some(Transparency::Transparent),
-            Some(sym::semiopaque | sym::semitransparent) => Some(Transparency::SemiOpaque),
+            Some(sym::semiopaque) => Some(Transparency::SemiOpaque),
             Some(sym::opaque) => Some(Transparency::Opaque),
             Some(_) => {
                 cx.expected_specific_argument_strings(
                     nv.value_span,
-                    &[sym::transparent, sym::semitransparent, sym::opaque],
+                    &[sym::transparent, sym::semiopaque, sym::opaque],
                 );
                 None
             }

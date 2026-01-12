@@ -219,7 +219,7 @@ degree documented below):
 - We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
   - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
   - `freebsd`: maintained by @YohDeadfall and @LorrensP-2158466. Supports the entire test suite.
-  - `android`: **maintainer wanted**. Basic OS APIs and concurrency work, but file system access is not supported.
+  - `android`: **maintainer wanted**. Supports the entire test suite.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs
