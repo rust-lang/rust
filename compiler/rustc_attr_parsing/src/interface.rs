@@ -442,7 +442,17 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
     /// Returns whether there is a parser for an attribute with this name
     pub fn is_parsed_attribute(path: &[Symbol]) -> bool {
-        Late::parsers().accepters.contains_key(path) || EARLY_PARSED_ATTRIBUTES.contains(&path)
+        /// The list of attributes that are parsed attributes,
+        /// even though they don't have a parser in `Late::parsers()`
+        const SPECIAL_ATTRIBUTES: &[&[Symbol]] = &[
+            // Cfg attrs are removed after being early-parsed, so don't need to be in the parser list
+            &[sym::cfg],
+            &[sym::cfg_attr],
+        ];
+
+        Late::parsers().accepters.contains_key(path)
+            || EARLY_PARSED_ATTRIBUTES.contains(&path)
+            || SPECIAL_ATTRIBUTES.contains(&path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {

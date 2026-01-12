@@ -375,15 +375,6 @@ pub(crate) struct UnusedMultiple {
     pub name: Symbol,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_collapse_debuginfo)]
-pub(crate) struct CollapseDebuginfo {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_deprecated_annotation_has_no_effect)]
 pub(crate) struct DeprecatedAnnotationHasNoEffect {

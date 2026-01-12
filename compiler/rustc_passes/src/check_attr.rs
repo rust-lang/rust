@@ -229,6 +229,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CollapseDebugInfo(..)
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
@@ -324,7 +325,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
@@ -336,8 +336,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::warn
                             | sym::deny
                             | sym::forbid
-                            | sym::cfg
-                            | sym::cfg_attr
                             // need to be fixed
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
@@ -346,7 +344,54 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::panic_handler
                             | sym::lang
                             | sym::needs_allocator
-                            | sym::default_lib_allocator,
+                            | sym::default_lib_allocator
+                            | sym::rustc_diagnostic_item
+                            | sym::rustc_no_mir_inline
+                            | sym::rustc_insignificant_dtor
+                            | sym::rustc_nonnull_optimization_guaranteed
+                            | sym::rustc_intrinsic
+                            | sym::rustc_inherit_overflow_checks
+                            | sym::rustc_intrinsic_const_stable_indirect
+                            | sym::rustc_trivial_field_reads
+                            | sym::rustc_on_unimplemented
+                            | sym::rustc_do_not_const_check
+                            | sym::rustc_reservation_impl
+                            | sym::rustc_doc_primitive
+                            | sym::rustc_allocator
+                            | sym::rustc_deallocator
+                            | sym::rustc_reallocator
+                            | sym::rustc_conversion_suggestion
+                            | sym::rustc_allocator_zeroed
+                            | sym::rustc_allocator_zeroed_variant
+                            | sym::rustc_deprecated_safe_2024
+                            | sym::rustc_test_marker
+                            | sym::rustc_abi
+                            | sym::rustc_layout
+                            | sym::rustc_proc_macro_decls
+                            | sym::rustc_dump_def_parents
+                            | sym::rustc_never_type_options
+                            | sym::rustc_autodiff
+                            | sym::rustc_capture_analysis
+                            | sym::rustc_regions
+                            | sym::rustc_strict_coherence
+                            | sym::rustc_dump_predicates
+                            | sym::rustc_variance
+                            | sym::rustc_variance_of_opaques
+                            | sym::rustc_hidden_type_of_opaques
+                            | sym::rustc_mir
+                            | sym::rustc_dump_user_args
+                            | sym::rustc_effective_visibility
+                            | sym::rustc_outlives
+                            | sym::rustc_symbol_name
+                            | sym::rustc_evaluate_where_clauses
+                            | sym::rustc_dump_vtable
+                            | sym::rustc_delayed_bug_from_inside_query
+                            | sym::rustc_dump_item_bounds
+                            | sym::rustc_def_path
+                            | sym::rustc_partition_reused
+                            | sym::rustc_partition_codegened
+                            | sym::rustc_expected_cgu_reuse
+                            | sym::rustc_nounwind,
                             ..
                         ] => {}
                         [name, rest@..] => {
@@ -361,15 +406,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                         continue
                                     }
 
-                                    // FIXME: differentiate between unstable and internal attributes just
-                                    // like we do with features instead of just accepting `rustc_`
-                                    // attributes by name. That should allow trimming the above list, too.
-                                    if !name.as_str().starts_with("rustc_") {
-                                        span_bug!(
-                                            attr.span(),
-                                            "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
-                                        )
-                                    }
+                                    span_bug!(
+                                        attr.span(),
+                                        "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
+                                    )
                                 }
                                 None => (),
                             }
@@ -713,18 +753,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
                 tcx.dcx().emit_err(errors::ObjectLifetimeErr { span: p.span, repr });
-            }
-        }
-    }
-    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
-    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::MacroDef => {}
-            _ => {
-                self.tcx.dcx().emit_err(errors::CollapseDebuginfo {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
             }
         }
     }
