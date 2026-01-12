@@ -2,7 +2,7 @@ use super::{Attribute, SHOULD_PANIC_WITHOUT_EXPECT};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{AttrArgs, AttrKind, AttrItemKind};
+use rustc_ast::{AttrArgs, AttrItemKind, AttrKind};
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 use rustc_span::sym;

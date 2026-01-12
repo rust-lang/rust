@@ -37,7 +37,9 @@ use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{
+    BytePos, DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
+};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -1069,8 +1071,20 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         debug!("(resolving function) entering function");
 
         if let FnKind::Fn(_, _, f) = fn_kind {
-            for EiiImpl { node_id, eii_macro_path, .. } in &f.eii_impls {
-                self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
+            for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in &f.eii_impls
+            {
+                // See docs on the `known_eii_macro_resolution` field:
+                // if we already know the resolution statically, don't bother resolving it.
+                if let Some(target) = known_eii_macro_resolution {
+                    self.smart_resolve_path(
+                        *node_id,
+                        &None,
+                        &target.extern_item_path,
+                        PathSource::Expr(None),
+                    );
+                } else {
+                    self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
+                }
             }
         }
 
@@ -2917,7 +2931,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
 
-                if let Some(EiiExternTarget { extern_item_path, impl_unsafe: _, span: _ }) =
+                if let Some(EiiExternTarget { extern_item_path, impl_unsafe: _ }) =
                     &macro_def.eii_extern_target
                 {
                     self.smart_resolve_path(
@@ -3629,7 +3643,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return;
         };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = BindingKey::new(ident, ns);
+        let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
         let mut decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
         debug!(?decl);
         if decl.is_none() {
@@ -3640,7 +3654,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = BindingKey::new(ident, ns);
+            let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
             decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
             debug!(?decl);
         }

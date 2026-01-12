@@ -3446,30 +3446,48 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") {
+        // if path's parent is None, it is "/" path, which should
+        // return Ok immediately
+        if path == Path::new("") || path.parent() == None {
             return Ok(());
         }
 
-        match self.inner.mkdir(path) {
-            Ok(()) => return Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
-            Err(e) => return Err(e),
-        }
-        match path.parent() {
-            Some(p) => self.create_dir_all(p)?,
-            None => {
-                return Err(io::const_error!(
-                    io::ErrorKind::Uncategorized,
-                    "failed to create whole tree",
-                ));
+        let ancestors = path.ancestors();
+        let mut uncreated_dirs = 0;
+
+        for ancestor in ancestors {
+            // for relative paths like "foo/bar", the parent of
+            // "foo" will be "" which there's no need to invoke
+            // a mkdir syscall on
+            if ancestor == Path::new("") || ancestor.parent() == None {
+                break;
+            }
+
+            match self.inner.mkdir(ancestor) {
+                Ok(()) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => uncreated_dirs += 1,
+                // we check if the err is AlreadyExists for two reasons
+                //    - in case the path exists as a *file*
+                //    - and to avoid calls to .is_dir() in case of other errs
+                //      (i.e. PermissionDenied)
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && ancestor.is_dir() => break,
+                Err(e) => return Err(e),
             }
         }
-        match self.inner.mkdir(path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
-            Err(e) => Err(e),
+
+        // collect only the uncreated directories w/o letting the vec resize
+        let mut uncreated_dirs_vec = Vec::with_capacity(uncreated_dirs);
+        uncreated_dirs_vec.extend(ancestors.take(uncreated_dirs));
+
+        for uncreated_dir in uncreated_dirs_vec.iter().rev() {
+            if let Err(e) = self.inner.mkdir(uncreated_dir) {
+                if e.kind() != io::ErrorKind::AlreadyExists || !uncreated_dir.is_dir() {
+                    return Err(e);
+                }
+            }
         }
+
+        Ok(())
     }
 }
 

@@ -65,3 +65,15 @@ fn issue13378() {
     let (funky_mtx): Mutex<u64> = Mutex::new(0);
     //~^ mutex_integer
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val > 0 && true)
+        };
+    }
+
+    let _ = Mutex::new(test_expr!(1));
+    //~^ mutex_atomic
+    // The suggestion should preserve the macro call: `AtomicBool::new(test_expr!(true))`
+}

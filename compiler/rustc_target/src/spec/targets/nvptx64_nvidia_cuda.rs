@@ -59,6 +59,9 @@ pub(crate) fn target() -> Target {
             // Support using `self-contained` linkers like the llvm-bitcode-linker
             link_self_contained: LinkSelfContainedDefault::True,
 
+            // Static initializers must not have cycles on this target
+            static_initializer_must_be_acyclic: true,
+
             ..Default::default()
         },
     }

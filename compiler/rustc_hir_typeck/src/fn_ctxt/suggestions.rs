@@ -10,8 +10,8 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
-    GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
-    WherePredicateKind, expr_needs_parens, is_range_literal,
+    GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,
+    TyKind, WherePredicateKind, expr_needs_parens, is_range_literal,
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
@@ -1170,15 +1170,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let found = self.resolve_vars_if_possible(found);
 
-        let in_loop = self.is_loop(id)
-            || self
-                .tcx
+        let innermost_loop = if self.is_loop(id) {
+            Some(self.tcx.hir_node(id))
+        } else {
+            self.tcx
                 .hir_parent_iter(id)
                 .take_while(|(_, node)| {
                     // look at parents until we find the first body owner
                     node.body_id().is_none()
                 })
-                .any(|(parent_id, _)| self.is_loop(parent_id));
+                .find_map(|(parent_id, node)| self.is_loop(parent_id).then_some(node))
+        };
+        let can_break_with_value = innermost_loop.is_some_and(|node| {
+            matches!(
+                node,
+                Node::Expr(Expr { kind: ExprKind::Loop(_, _, LoopSource::Loop, ..), .. })
+            )
+        });
 
         let in_local_statement = self.is_local_statement(id)
             || self
@@ -1186,7 +1194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .hir_parent_iter(id)
                 .any(|(parent_id, _)| self.is_local_statement(parent_id));
 
-        if in_loop && in_local_statement {
+        if can_break_with_value && in_local_statement {
             err.multipart_suggestion(
                 "you might have meant to break the loop with this value",
                 vec![

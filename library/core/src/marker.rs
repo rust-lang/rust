@@ -466,7 +466,7 @@ pub trait Copy: Clone {
 /// Derive macro generating an impl of the trait `Copy`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+#[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals)]
 pub macro Copy($item:item) {
     /* compiler built-in */
 }

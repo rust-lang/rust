@@ -25,8 +25,8 @@ LL | fn foo<const N: Foo>() {}
 error[E0277]: the trait bound `T: Trait` is not satisfied
   --> $DIR/printing_valtrees_supports_non_values.rs:30:5
    |
-LL |     foo::<{Option::Some::<u32>{0: <T as Trait>::ASSOC}}>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+LL |     foo::<{ Option::Some::<u32> { 0: <T as Trait>::ASSOC } }>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
    |
 help: consider restricting type parameter `T` with trait `Trait`
    |
@@ -34,10 +34,10 @@ LL | fn test_ice_missing_bound<T: Trait>() {
    |                            +++++++
 
 error: the constant `Option::<u32>::Some(_)` is not of type `Foo`
-  --> $DIR/printing_valtrees_supports_non_values.rs:30:12
+  --> $DIR/printing_valtrees_supports_non_values.rs:30:13
    |
-LL |     foo::<{Option::Some::<u32>{0: <T as Trait>::ASSOC}}>();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<u32>`
+LL |     foo::<{ Option::Some::<u32> { 0: <T as Trait>::ASSOC } }>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<u32>`
    |
 note: required by a const generic parameter in `foo`
   --> $DIR/printing_valtrees_supports_non_values.rs:15:8

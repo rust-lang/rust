@@ -14,9 +14,9 @@ define-function: (
         assert-css: ("#toggle-all-docs", {"color": |main_color|})
         assert-css: (".main-heading h1 span", {"color": |main_heading_type_color|})
         assert-css: (
-             ".rightside a.src",
-             {"color": |src_link_color|, "text-decoration": "none"},
-             ALL,
+            ".rightside a.src",
+            {"color": |src_link_color|, "text-decoration": "none"},
+            ALL,
         )
         compare-elements-css: (
             ".rightside a.src",
@@ -31,25 +31,39 @@ define-function: (
 
         move-cursor-to: ".main-heading a.src"
         assert-css: (
-             ".main-heading a.src",
-             {"color": |src_link_color|, "text-decoration": "underline"},
+            ".main-heading a.src",
+            {"color": |src_link_color|, "text-decoration": "underline"},
         )
         move-cursor-to: ".impl-items .rightside a.src"
         assert-css: (
-             ".impl-items .rightside a.src",
-             {"color": |src_link_color|, "text-decoration": "none"},
+            ".impl-items .rightside a.src",
+            {"color": |src_link_color|, "text-decoration": "none"},
         )
         move-cursor-to: ".impl-items a.rightside.src"
         assert-css: (
-             ".impl-items a.rightside.src",
-             {"color": |src_link_color|, "text-decoration": "none"},
+            ".impl-items a.rightside.src",
+            {"color": |src_link_color|, "text-decoration": "none"},
         )
+
+        // Now we ensure that the `§` anchor is "reachable" for users on trait methods.
+        // To ensure the anchor is not hovered, we move the cursor to another item.
+        move-cursor-to: "#search-button"
+        // By default, the anchor is not displayed.
+        wait-for-css: ("#method\.vroum .anchor", {"display": "none"})
+        // Once we move the cursor to the method, the anchor should appear.
+        move-cursor-to: "#method\.vroum .code-header"
+        assert-css-false: ("#method\.vroum .anchor", {"display": "none"})
+        // Now we move the cursor to the anchor to check there is no gap between the method and the
+        // anchor, making the anchor disappear and preventing users to click on it.
+        // To make it work, we need to first move it between the method and the anchor.
+        store-position: ("#method\.vroum .code-header", {"x": method_x, "y": method_y})
+        move-cursor-to: (|method_x| - 2, |method_y|)
+        // Anchor should still be displayed.
+        assert-css-false: ("#method\.vroum .anchor", {"display": "none"})
 
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
         // Since we changed page, we need to set the theme again.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        // We reload the page so the local storage settings are being used.
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         assert-css: ("#top-doc-prose-title", {"color": |title_color|})
 

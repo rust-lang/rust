@@ -21,8 +21,8 @@ use rustc_feature::{
     BuiltinAttribute,
 };
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, InlineAttr, MirDialect, MirPhase,
-    ReprAttr, SanitizerSet,
+    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
+    MirDialect, MirPhase, ReprAttr, SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -306,6 +306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::RustcHasIncoherentInherentImpls
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -325,9 +326,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_has_incoherent_inherent_impls, ..] => {
-                            self.check_has_incoherent_inherent_impls(attr, span, target)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -506,7 +504,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
-        for EiiImpl { span, inner_span, eii_macro, impl_marked_unsafe, is_default: _ } in impls {
+        for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
             match target {
                 Target::Fn => {}
                 _ => {
@@ -514,7 +512,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+            if let EiiImplResolution::Macro(eii_macro) = resolution
+                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
@@ -758,9 +757,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpls(impls) => impls) {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                     for i in impls {
+                        let name = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
+                            EiiImplResolution::Known(decl) => decl.name.name,
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
                         self.dcx().emit_err(errors::EiiWithTrackCaller {
                             attr_span,
-                            name: self.tcx.item_name(i.eii_macro),
+                            name,
                             sig_span: sig.span,
                         });
                     }
@@ -1155,17 +1159,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
-        }
-    }
-
-    fn check_has_incoherent_inherent_impls(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
-            }
         }
     }
 

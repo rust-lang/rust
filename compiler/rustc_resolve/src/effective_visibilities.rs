@@ -100,7 +100,9 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 if let Some(node_id) = import.id() {
                     r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
                 }
-            } else if decl.ambiguity.is_some() && eff_vis.is_public_at_level(Level::Reexported) {
+            } else if decl.ambiguity.get().is_some()
+                && eff_vis.is_public_at_level(Level::Reexported)
+            {
                 exported_ambiguities.insert(*decl);
             }
         }
@@ -125,9 +127,10 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // If the binding is ambiguous, put the root ambiguity binding and all reexports
             // leading to it into the table. They are used by the `ambiguous_glob_reexports`
             // lint. For all bindings added to the table this way `is_ambiguity` returns true.
-            let is_ambiguity = |decl: Decl<'ra>, warn: bool| decl.ambiguity.is_some() && !warn;
+            let is_ambiguity =
+                |decl: Decl<'ra>, warn: bool| decl.ambiguity.get().is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
-            let mut warn_ambiguity = decl.warn_ambiguity;
+            let mut warn_ambiguity = decl.warn_ambiguity.get();
             while let DeclKind::Import { source_decl, .. } = decl.kind {
                 self.update_import(decl, parent_id);
 
@@ -140,12 +143,12 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 
                 parent_id = ParentId::Import(decl);
                 decl = source_decl;
-                warn_ambiguity |= source_decl.warn_ambiguity;
+                warn_ambiguity |= source_decl.warn_ambiguity.get();
             }
             if !is_ambiguity(decl, warn_ambiguity)
                 && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
             {
-                self.update_def(def_id, decl.vis.expect_local(), parent_id);
+                self.update_def(def_id, decl.vis().expect_local(), parent_id);
             }
         }
     }
@@ -188,7 +191,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     }
 
     fn update_import(&mut self, decl: Decl<'ra>, parent_id: ParentId<'ra>) {
-        let nominal_vis = decl.vis.expect_local();
+        let nominal_vis = decl.vis().expect_local();
         let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;

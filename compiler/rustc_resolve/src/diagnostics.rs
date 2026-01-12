@@ -1187,7 +1187,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(*ident, res)),
+                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(ident.0, res)),
                         );
                     }
                 }
@@ -1199,7 +1199,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions
-                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident, res))
+                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident.0, res))
                         }
                     }
                 }
@@ -1338,7 +1338,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 let child_accessible =
-                    accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
+                    accessible && this.is_accessible_from(name_binding.vis(), parent_scope.module);
 
                 // do not venture inside inaccessible items of other crates
                 if in_module_is_extern && !child_accessible {
@@ -1358,8 +1358,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 // #90113: Do not count an inaccessible reexported item as a candidate.
                 if let DeclKind::Import { source_decl, .. } = name_binding.kind
-                    && this.is_accessible_from(source_decl.vis, parent_scope.module)
-                    && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                    && this.is_accessible_from(source_decl.vis(), parent_scope.module)
+                    && !this.is_accessible_from(name_binding.vis(), parent_scope.module)
                 {
                     return;
                 }
@@ -2243,7 +2243,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
-            if !first && binding.vis.is_public() {
+            if !first && binding.vis().is_public() {
                 let desc = match binding.kind {
                     DeclKind::Import { .. } => "re-export",
                     _ => "directly",
@@ -2892,7 +2892,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let binding_key = BindingKey::new(ident, MacroNS);
+        let binding_key = BindingKey::new(Macros20NormalizedIdent::new(ident), MacroNS);
         let binding = self.resolution(crate_module, binding_key)?.binding()?;
         let Res::Def(DefKind::Macro(kinds), _) = binding.res() else {
             return None;

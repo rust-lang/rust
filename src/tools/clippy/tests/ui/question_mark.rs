@@ -1,5 +1,5 @@
 #![feature(try_blocks)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::no_effect)]
 
 use std::sync::MutexGuard;
 
@@ -614,4 +614,24 @@ mod issue14894 {
 
         Ok(())
     }
+}
+
+fn wrongly_unmangled_macros() -> Option<i32> {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            Some($val)
+        };
+    }
+
+    let Some(x) = test_expr!(42) else {
+        return None;
+    };
+    //~^^^ question_mark
+    Some(x);
+
+    if test_expr!(42).is_none() {
+        //~^ question_mark
+        return None;
+    }
+    test_expr!(42)
 }

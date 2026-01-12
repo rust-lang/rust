@@ -49,5 +49,11 @@ error: this creates an owned instance just for comparison
 LL |     let _ = foo1 == foo2.to_owned();
    |                     ^^^^^^^^^^^^^^^ help: try: `foo2`
 
-error: aborting due to 8 previous errors
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:110:16
+   |
+LL |     if item == t!(frohes_neu_Jahr).to_string() {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(frohes_neu_Jahr)`
+
+error: aborting due to 9 previous errors
 

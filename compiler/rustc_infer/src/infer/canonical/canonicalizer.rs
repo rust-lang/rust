@@ -289,7 +289,7 @@ struct Canonicalizer<'cx, 'tcx> {
     /// Set to `None` to disable the resolution of inference variables.
     infcx: Option<&'cx InferCtxt<'tcx>>,
     tcx: TyCtxt<'tcx>,
-    variables: SmallVec<[CanonicalVarKind<'tcx>; 8]>,
+    var_kinds: SmallVec<[CanonicalVarKind<'tcx>; 8]>,
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
@@ -507,7 +507,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     {
         let base = Canonical {
             max_universe: ty::UniverseIndex::ROOT,
-            variables: List::empty(),
+            var_kinds: List::empty(),
             value: (),
         };
         Canonicalizer::canonicalize_with_base(
@@ -548,7 +548,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             tcx,
             canonicalize_mode: canonicalize_region_mode,
             needs_canonical_flags,
-            variables: SmallVec::from_slice(base.variables),
+            var_kinds: SmallVec::from_slice(base.var_kinds),
             query_state,
             indices: FxHashMap::default(),
             sub_root_lookup_table: Default::default(),
@@ -569,16 +569,16 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         // anymore.
         debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
-        let canonical_variables =
-            tcx.mk_canonical_var_kinds(&canonicalizer.universe_canonicalized_variables());
+        let canonical_var_kinds =
+            tcx.mk_canonical_var_kinds(&canonicalizer.universe_canonicalized_var_kinds());
 
-        let max_universe = canonical_variables
+        let max_universe = canonical_var_kinds
             .iter()
             .map(|cvar| cvar.universe())
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
+        Canonical { max_universe, var_kinds: canonical_var_kinds, value: (base.value, out_value) }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,
@@ -590,7 +590,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         var_kind: CanonicalVarKind<'tcx>,
         value: GenericArg<'tcx>,
     ) -> BoundVar {
-        let Canonicalizer { variables, query_state, indices, .. } = self;
+        let Canonicalizer { var_kinds, query_state, indices, .. } = self;
 
         let var_values = &mut query_state.var_values;
 
@@ -607,7 +607,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             }
         }
 
-        // This code is hot. `variables` and `var_values` are usually small
+        // This code is hot. `var_kinds` and `var_values` are usually small
         // (fewer than 8 elements ~95% of the time). They are SmallVec's to
         // avoid allocations in those cases. We also don't use `indices` to
         // determine if a kind has been seen before until the limit of 8 has
@@ -620,10 +620,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                 BoundVar::new(idx)
             } else {
                 // `kind` isn't present in `var_values`. Append it. Likewise
-                // for `var_kind` and `variables`.
-                variables.push(var_kind);
+                // for `var_kind` and `var_kinds`.
+                var_kinds.push(var_kind);
                 var_values.push(value);
-                assert_eq!(variables.len(), var_values.len());
+                assert_eq!(var_kinds.len(), var_values.len());
 
                 // If `var_values` has become big enough to be heap-allocated,
                 // fill up `indices` to facilitate subsequent lookups.
@@ -641,10 +641,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         } else {
             // `var_values` is large. Do a hashmap search via `indices`.
             *indices.entry(value).or_insert_with(|| {
-                variables.push(var_kind);
+                var_kinds.push(var_kind);
                 var_values.push(value);
-                assert_eq!(variables.len(), var_values.len());
-                BoundVar::new(variables.len() - 1)
+                assert_eq!(var_kinds.len(), var_values.len());
+                BoundVar::new(var_kinds.len() - 1)
             })
         }
     }
@@ -652,16 +652,16 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
         let root_vid = self.infcx.unwrap().sub_unification_table_root_var(vid);
         let idx =
-            *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
+            *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.var_kinds.len());
         ty::BoundVar::from(idx)
     }
 
     /// Replaces the universe indexes used in `var_values` with their index in
     /// `query_state.universe_map`. This minimizes the maximum universe used in
     /// the canonicalized value.
-    fn universe_canonicalized_variables(self) -> SmallVec<[CanonicalVarKind<'tcx>; 8]> {
+    fn universe_canonicalized_var_kinds(self) -> SmallVec<[CanonicalVarKind<'tcx>; 8]> {
         if self.query_state.universe_map.len() == 1 {
-            return self.variables;
+            return self.var_kinds;
         }
 
         let reverse_universe_map: FxHashMap<ty::UniverseIndex, ty::UniverseIndex> = self
@@ -672,7 +672,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .map(|(idx, universe)| (*universe, ty::UniverseIndex::from_usize(idx)))
             .collect();
 
-        self.variables
+        self.var_kinds
             .iter()
             .map(|&kind| match kind {
                 CanonicalVarKind::Int | CanonicalVarKind::Float => {

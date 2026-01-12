@@ -572,17 +572,17 @@ struct BindingKey {
 }
 
 impl BindingKey {
-    fn new(ident: Ident, ns: Namespace) -> Self {
-        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator: 0 }
+    fn new(ident: Macros20NormalizedIdent, ns: Namespace) -> Self {
+        BindingKey { ident, ns, disambiguator: 0 }
     }
 
     fn new_disambiguated(
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         ns: Namespace,
         disambiguator: impl FnOnce() -> u32,
     ) -> BindingKey {
         let disambiguator = if ident.name == kw::Underscore { disambiguator() } else { 0 };
-        BindingKey { ident: Macros20NormalizedIdent::new(ident), ns, disambiguator }
+        BindingKey { ident, ns, disambiguator }
     }
 }
 
@@ -802,16 +802,16 @@ impl<'ra> fmt::Debug for Module<'ra> {
 }
 
 /// Data associated with any name declaration.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
-    ambiguity: Option<Decl<'ra>>,
+    ambiguity: CmCell<Option<Decl<'ra>>>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: bool,
+    warn_ambiguity: CmCell<bool>,
     expansion: LocalExpnId,
     span: Span,
-    vis: Visibility<DefId>,
+    vis: CmCell<Visibility<DefId>>,
 }
 
 /// All name declarations are unique and allocated on a same arena,
@@ -923,6 +923,10 @@ struct AmbiguityError<'ra> {
 }
 
 impl<'ra> DeclData<'ra> {
+    fn vis(&self) -> Visibility<DefId> {
+        self.vis.get()
+    }
+
     fn res(&self) -> Res {
         match self.kind {
             DeclKind::Def(res) => res,
@@ -938,7 +942,7 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
-        match self.ambiguity {
+        match self.ambiguity.get() {
             Some(ambig_binding) => Some((self, ambig_binding)),
             None => match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
@@ -948,7 +952,7 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn is_ambiguity_recursive(&self) -> bool {
-        self.ambiguity.is_some()
+        self.ambiguity.get().is_some()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
                 _ => false,
@@ -956,7 +960,7 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity
+        self.warn_ambiguity.get()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
@@ -1076,7 +1080,7 @@ impl ExternPreludeEntry<'_> {
 
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
-    helper_attrs: Vec<(usize, Ident)>,
+    helper_attrs: Vec<(usize, Macros20NormalizedIdent)>,
     has_derive_copy: bool,
 }
 
@@ -1241,7 +1245,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
     macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'ra>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, Decl<'ra>)>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Macros20NormalizedIdent, Decl<'ra>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,
@@ -1342,9 +1346,9 @@ impl<'ra> ResolverArenas<'ra> {
     ) -> Decl<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
-            ambiguity: None,
-            warn_ambiguity: false,
-            vis,
+            ambiguity: CmCell::new(None),
+            warn_ambiguity: CmCell::new(false),
+            vis: CmCell::new(vis),
             span,
             expansion,
         })
@@ -2041,7 +2045,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity);
+        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
     }
 
     fn record_use_inner(
@@ -2051,7 +2055,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         used: Used,
         warn_ambiguity: bool,
     ) {
-        if let Some(b2) = used_decl.ambiguity {
+        if let Some(b2) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ident,
@@ -2112,7 +2116,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 source_decl,
                 Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity,
+                warn_ambiguity || source_decl.warn_ambiguity.get(),
             );
         }
     }
@@ -2251,20 +2255,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn extern_prelude_get_item<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        ident: Ident,
+        ident: Macros20NormalizedIdent,
         finalize: bool,
     ) -> Option<Decl<'ra>> {
-        let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
-        entry.and_then(|entry| entry.item_decl).map(|(binding, _)| {
+        let entry = self.extern_prelude.get(&ident);
+        entry.and_then(|entry| entry.item_decl).map(|(decl, _)| {
             if finalize {
-                self.get_mut().record_use(ident, binding, Used::Scope);
+                self.get_mut().record_use(ident.0, decl, Used::Scope);
             }
-            binding
+            decl
         })
     }
 
-    fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<Decl<'ra>> {
-        let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
+    fn extern_prelude_get_flag(
+        &self,
+        ident: Macros20NormalizedIdent,
+        finalize: bool,
+    ) -> Option<Decl<'ra>> {
+        let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
             let (pending_decl, finalized) = flag_decl.get();
             let decl = match pending_decl {

@@ -2,7 +2,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_integer_const;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{ConstBlock, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::symbol::sym;
@@ -40,6 +40,24 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;
+    }
+
+    // Catching:
+    // `std::mem::transmute({ 0 as *const u64 })` and similar const blocks
+    if let ExprKind::Block(block, _) = arg.kind
+        && block.stmts.is_empty()
+        && let Some(inner) = block.expr
+    {
+        // Run again with the inner expression
+        return check(cx, expr, inner, to_ty);
+    }
+
+    // Catching:
+    // `std::mem::transmute(const { u64::MIN as *const u64 });`
+    if let ExprKind::ConstBlock(ConstBlock { body, .. }) = arg.kind {
+        // Strip out the const and run again
+        let block = cx.tcx.hir_body(body).value;
+        return check(cx, expr, block, to_ty);
     }
 
     false

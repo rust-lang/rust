@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_ast::attr::data_structures::CfgEntry;
+use rustc_ast::{AttrItemKind, EarlyParsedAttribute};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_ast::AttrItemKind;
-use rustc_ast::EarlyParsedAttribute;
 use rustc_span::sym;
-use rustc_ast::attr::data_structures::CfgEntry;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -40,7 +39,7 @@ impl EarlyLintPass for CfgNotTest {
                 unreachable!()
             };
 
-            if contains_not_test(&cfg, false) {
+            if contains_not_test(cfg, false) {
                 span_lint_and_then(
                     cx,
                     CFG_NOT_TEST,
@@ -58,11 +57,9 @@ impl EarlyLintPass for CfgNotTest {
 
 fn contains_not_test(cfg: &CfgEntry, not: bool) -> bool {
     match cfg {
-        CfgEntry::All(subs, _) | CfgEntry::Any(subs, _) => subs.iter().any(|item| {
-            contains_not_test(item, not)
-        }),
+        CfgEntry::All(subs, _) | CfgEntry::Any(subs, _) => subs.iter().any(|item| contains_not_test(item, not)),
         CfgEntry::Not(sub, _) => contains_not_test(sub, !not),
         CfgEntry::NameValue { name: sym::test, .. } => not,
-        _ => false
+        _ => false,
     }
 }

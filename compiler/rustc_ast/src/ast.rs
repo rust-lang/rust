@@ -2117,10 +2117,9 @@ pub struct MacroDef {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
 pub struct EiiExternTarget {
-    /// path to the extern item we're targetting
+    /// path to the extern item we're targeting
     pub extern_item_path: Path,
     pub impl_unsafe: bool,
-    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -3813,6 +3812,19 @@ pub struct Fn {
 pub struct EiiImpl {
     pub node_id: NodeId,
     pub eii_macro_path: Path,
+    /// This field is an implementation detail that prevents a lot of bugs.
+    /// See <https://github.com/rust-lang/rust/issues/149981> for an example.
+    ///
+    /// The problem is, that if we generate a declaration *together* with its default,
+    /// we generate both a declaration and an implementation. The generated implementation
+    /// uses the same mechanism to register itself as a user-defined implementation would,
+    /// despite being invisible to users. What does happen is a name resolution step.
+    /// The invisible default implementation has to find the declaration.
+    /// Both are generated at the same time, so we can skip that name resolution step.
+    ///
+    /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
+    /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
+    pub known_eii_macro_resolution: Option<EiiExternTarget>,
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,
