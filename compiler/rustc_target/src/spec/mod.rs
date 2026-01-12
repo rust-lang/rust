@@ -404,11 +404,11 @@ impl LinkerFlavor {
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
             | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => LldFlavor::Ld,
+            | LinkerFlavor::Ptx
+            | LinkerFlavor::Wild => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
             LinkerFlavor::Msvc(..) => LldFlavor::Link,
-            LinkerFlavor::Wild => todo!(),
         }
     }
 

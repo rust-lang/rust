@@ -20,8 +20,9 @@ use serde_derive::Deserialize;
 use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
-use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
-use crate::core::build_steps::tool::copy_wild_artifacts;
+use crate::core::build_steps::tool::{
+    RustcPrivateCompilers, SourceType, copy_lld_artifacts, copy_wild_artifacts,
+};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
