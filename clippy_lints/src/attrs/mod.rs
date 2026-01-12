@@ -468,6 +468,10 @@ declare_clippy_lint! {
     /// #[ignore = "Some good reason"]
     /// fn test() {}
     /// ```
+    ///
+    /// ### Note
+    /// Clippy can only lint compiled code. For this lint to trigger, you must configure `cargo clippy`
+    /// to include test compilation, for instance, by using flags such as `--tests` or `--all-targets`.
     #[clippy::version = "1.88.0"]
     pub IGNORE_WITHOUT_REASON,
     pedantic,
