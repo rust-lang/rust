@@ -71,11 +71,12 @@ changes from the subtree to rust-lang/rust) are performed from the subtree repos
 switch to its repository checkout directory in your terminal).
 
 #### Performing pull
-1) Checkout a new branch that will be used to create a PR into the subtree 2) Run the pull command
+1. Checkout a new branch that will be used to create a PR into the subtree
+2. Run the pull command
     ```
     rustc-josh-sync pull
     ```
-3) Push the branch to your fork and create a PR into the subtree repository
+3. Push the branch to your fork and create a PR into the subtree repository
     - If you have `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
 
 #### Performing push
@@ -83,11 +84,11 @@ switch to its repository checkout directory in your terminal).
 > NOTE:
 > Before you proceed, look at some guidance related to Git [on josh-sync README].
 
-1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+1. Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
     rustc-josh-sync push <branch-name> <gh-username>
     ```
-2) Create a PR from `<branch-name>` into `rust-lang/rust`
+2. Create a PR from `<branch-name>` into `rust-lang/rust`
 
 ### Creating a new Josh subtree dependency
 
