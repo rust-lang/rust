@@ -34,6 +34,19 @@ intrinsics! {
     }
 }
 
+/// Function to enable/disable LSE. To be used only for testing purposes.
+#[cfg(feature = "mangled-names")]
+pub unsafe fn set_have_lse_atomics(has_lse: bool) {
+    let lse_flag = if has_lse { 1 } else { 0 };
+    HAVE_LSE_ATOMICS.store(lse_flag, Ordering::Relaxed);
+}
+
+/// Function to obtain whether LSE is enabled or not. To be used only for testing purposes.
+#[cfg(feature = "mangled-names")]
+pub fn get_have_lse_atomics() -> bool {
+    HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0
+}
+
 /// Translate a byte size to a Rust type.
 #[rustfmt::skip]
 macro_rules! int_ty {
