@@ -5515,7 +5515,14 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
         };
         if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
             format!(
-                "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
+                "{pre_message}the {}trait `{}` is not implemented for{desc} `{}`",
+                if tcx.lookup_stability(trait_predicate.def_id()).map(|s| s.level.is_stable())
+                    == Some(false)
+                {
+                    "nightly-only, unstable "
+                } else {
+                    ""
+                },
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )

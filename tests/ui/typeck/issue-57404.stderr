@@ -2,7 +2,7 @@ error[E0277]: `&mut ()` is not a tuple
   --> $DIR/issue-57404.rs:6:41
    |
 LL |     handlers.unwrap().as_mut().call_mut(&mut ());
-   |                                -------- ^^^^^^^ the trait `std::marker::Tuple` is not implemented for `&mut ()`
+   |                                -------- ^^^^^^^ the nightly-only, unstable trait `std::marker::Tuple` is not implemented for `&mut ()`
    |                                |
    |                                required by a bound introduced by this call
    |
