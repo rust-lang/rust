@@ -91,9 +91,8 @@ of making the test possible to be filtered via `--test-args` as a collection of 
 
 To help other contributors understand what the test is about if their changes
 lead to the test failing, we should make sure a test has sufficient docs about
-its intent/purpose, links to relevant context (incl.
-issue numbers or other
-discussions) and possibly relevant resources (e.g. can be helpful to link to
+its intent/purpose, links to relevant context (including issue numbers or other discussions)
+and possibly relevant resources (e.g. it can be helpful to link to
 Win32 APIs for specific behavior).
 
 **Synopsis of a test with good comments**
@@ -146,7 +145,7 @@ This may include remarks on:
   separate because...).
 - Platform-specific behaviors.
 - Behavior of external dependencies and APIs: syscalls, linkers, tools,
-  environments and the likes.
+  environments and the like.
 
 ## Test content
 
@@ -167,7 +166,7 @@ place.
   contributors and waste their time trying to figure out if test failure is related.
 - Flaky tests provide no useful information from its test results other than
   it's flaky and not reliable: if a test passed but it's flakey, did I just get lucky?
-  if a test is flakey but it failed, was it just spurious?
+  If a test is flakey but it failed, was it just spurious?
 - Flaky tests degrade confidence in the whole test suite.
   If a test suite can
   randomly spuriously fail due to flaky tests, did the whole test suite pass or
