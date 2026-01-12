@@ -312,6 +312,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpVtable(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -385,7 +386,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_outlives
                             | sym::rustc_symbol_name
                             | sym::rustc_evaluate_where_clauses
-                            | sym::rustc_dump_vtable
                             | sym::rustc_delayed_bug_from_inside_query
                             | sym::rustc_def_path
                             | sym::rustc_partition_reused

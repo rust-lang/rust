@@ -100,6 +100,7 @@ impl AttributeKind {
             RustcDumpDefParents => No,
             RustcDumpItemBounds => No,
             RustcDumpUserArgs => No,
+            RustcDumpVtable(..) => No,
             RustcHasIncoherentInherentImpls => Yes,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,

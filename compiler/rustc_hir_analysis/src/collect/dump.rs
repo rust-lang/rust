@@ -103,7 +103,9 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
     for id in tcx.hir_free_items() {
         let def_id = id.owner_id.def_id;
 
-        let Some(attr) = tcx.get_attr(def_id, sym::rustc_dump_vtable) else {
+        let Some(&attr_span) =
+            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcDumpVtable(span) => span)
+        else {
             continue;
         };
 
@@ -112,14 +114,14 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                 let trait_ref = tcx.impl_trait_ref(def_id).instantiate_identity();
                 if trait_ref.has_non_region_param() {
                     tcx.dcx().span_err(
-                        attr.span(),
+                        attr_span,
                         "`rustc_dump_vtable` must be applied to non-generic impl",
                     );
                     continue;
                 }
                 if !tcx.is_dyn_compatible(trait_ref.def_id) {
                     tcx.dcx().span_err(
-                        attr.span(),
+                        attr_span,
                         "`rustc_dump_vtable` must be applied to dyn-compatible trait",
                     );
                     continue;
@@ -128,7 +130,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     .try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref)
                 else {
                     tcx.dcx().span_err(
-                        attr.span(),
+                        attr_span,
                         "`rustc_dump_vtable` applied to impl header that cannot be normalized",
                     );
                     continue;
@@ -139,7 +141,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 if ty.has_non_region_param() {
                     tcx.dcx().span_err(
-                        attr.span(),
+                        attr_span,
                         "`rustc_dump_vtable` must be applied to non-generic type",
                     );
                     continue;
@@ -148,14 +150,13 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     tcx.try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 else {
                     tcx.dcx().span_err(
-                        attr.span(),
+                        attr_span,
                         "`rustc_dump_vtable` applied to type alias that cannot be normalized",
                     );
                     continue;
                 };
                 let ty::Dynamic(data, _) = *ty.kind() else {
-                    tcx.dcx()
-                        .span_err(attr.span(), "`rustc_dump_vtable` to type alias of dyn type");
+                    tcx.dcx().span_err(attr_span, "`rustc_dump_vtable` to type alias of dyn type");
                     continue;
                 };
                 if let Some(principal) = data.principal() {
@@ -168,7 +169,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
             }
             _ => {
                 tcx.dcx().span_err(
-                    attr.span(),
+                    attr_span,
                     "`rustc_dump_vtable` only applies to impl, or type alias of dyn type",
                 );
                 continue;
