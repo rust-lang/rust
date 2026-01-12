@@ -309,6 +309,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfiEncoding { .. }
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::MustNotSupend { .. }
+                    | AttributeKind::RustcDumpUserArgs
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -379,7 +380,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_variance_of_opaques
                             | sym::rustc_hidden_type_of_opaques
                             | sym::rustc_mir
-                            | sym::rustc_dump_user_args
                             | sym::rustc_effective_visibility
                             | sym::rustc_outlives
                             | sym::rustc_symbol_name
