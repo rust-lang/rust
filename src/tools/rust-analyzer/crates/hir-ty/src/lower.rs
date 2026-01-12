@@ -53,7 +53,7 @@ use tracing::debug;
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind, all_super_traits,
     consteval::intern_const_ref,
     db::{HirDatabase, InternedOpaqueTyId},
     generics::{Generics, generics, trait_self_param_idx},
@@ -1624,11 +1624,16 @@ pub(crate) fn field_types_with_diagnostics_query<'db>(
     (res, create_diagnostics(ctx.diagnostics))
 }
 
+/// Predicates for `param_id` of the form `P: SomeTrait`. If
+/// `assoc_name` is provided, only return predicates referencing traits
+/// that have an associated type of that name.
+///
 /// This query exists only to be used when resolving short-hand associated types
 /// like `T::Item`.
 ///
 /// See the analogous query in rustc and its comment:
 /// <https://github.com/rust-lang/rust/blob/9150f844e2624eb013ec78ca08c1d416e6644026/src/librustc_typeck/astconv.rs#L46>
+///
 /// This is a query mostly to handle cycles somewhat gracefully; e.g. the
 /// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
@@ -1652,7 +1657,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
     );
 
     // we have to filter out all other predicates *first*, before attempting to lower them
-    let predicate = |pred: &_, ctx: &mut TyLoweringContext<'_, '_>| match pred {
+    let has_relevant_bound = |pred: &_, ctx: &mut TyLoweringContext<'_, '_>| match pred {
         WherePredicate::ForLifetime { target, bound, .. }
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = { ctx.lower_ty_only_param(*target) != Some(param_id) };
@@ -1700,11 +1705,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
                         return false;
                     };
 
-                    rustc_type_ir::elaborate::supertrait_def_ids(interner, tr.into()).any(|tr| {
-                        tr.0.trait_items(db).items.iter().any(|(name, item)| {
-                            matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
-                        })
-                    })
+                    trait_or_supertrait_has_assoc_type(db, tr, assoc_name)
                 }
                 TypeBound::Use(_) | TypeBound::Lifetime(_) | TypeBound::Error => false,
             }
@@ -1717,7 +1718,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
     {
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
-            if predicate(pred, &mut ctx) {
+            if has_relevant_bound(pred, &mut ctx) {
                 predicates.extend(
                     ctx.lower_where_predicate(
                         pred,
@@ -1755,6 +1756,27 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
     _assoc_name: Option<Name>,
 ) -> StoredEarlyBinder<StoredClauses> {
     StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store())
+}
+
+/// Check if this trait or any of its supertraits define an associated
+/// type with the given name.
+fn trait_or_supertrait_has_assoc_type(
+    db: &dyn HirDatabase,
+    tr: TraitId,
+    assoc_name: &Name,
+) -> bool {
+    for trait_id in all_super_traits(db, tr) {
+        if trait_id
+            .trait_items(db)
+            .items
+            .iter()
+            .any(|(name, item)| matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name)
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[inline]

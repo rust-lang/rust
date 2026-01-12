@@ -2598,3 +2598,51 @@ trait ColumnLike {
     "#,
     );
 }
+
+#[test]
+fn issue_21006_generic_predicates_for_param_supertrait_cycle() {
+    check_no_mismatches(
+        r#"
+trait VCipherSuite {}
+
+trait CipherSuite
+where
+    OprfHash<Self>: Hash,
+{
+}
+
+type Bar<CS: CipherSuite> = <CS::Baz as VCipherSuite>::Hash;
+
+type OprfHash<CS: CipherSuite> = <CS::Baz as VCipherSuite>::Hash;
+
+impl<CS: CipherSuite> Foo<CS> {
+    fn seal() {}
+}
+        "#,
+    );
+}
+
+#[test]
+fn issue_21006_self_assoc_trait() {
+    check_types(
+        r#"
+trait Baz {
+    fn baz(&self);
+}
+
+trait Foo {
+    type Assoc;
+}
+
+trait Bar: Foo
+where
+    Self::Assoc: Baz,
+{
+    fn bar(v: Self::Assoc) {
+        let _ = v.baz();
+        //  ^ ()
+    }
+}
+        "#,
+    );
+}
