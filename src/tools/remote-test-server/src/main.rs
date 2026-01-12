@@ -387,7 +387,7 @@ fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
     if n > 0 {
         t!(dst.write_all(buf));
         // Marking buf finished
-        t!(dst.write_all(&[which, 0, 0, 0, 0,]));
+        t!(dst.write_all(&create_header(which, 0)));
     }
 }
 
