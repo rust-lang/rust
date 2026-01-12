@@ -820,6 +820,7 @@ pub enum AttributeLintKind {
         name: Symbol,
     },
     DocTestLiteral,
+    AttrCrateLevelOnly,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

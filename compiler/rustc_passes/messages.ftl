@@ -29,11 +29,6 @@ passes_attr_application_struct_union =
     attribute should be applied to a struct or union
     .label = not a struct or union
 
-passes_attr_crate_level =
-    this attribute can only be applied at the crate level
-    .suggestion = to apply to the crate, use an inner attribute
-    .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function
     .label = not a function
@@ -107,9 +102,6 @@ passes_doc_alias_bad_location =
 
 passes_doc_alias_not_an_alias =
     `#[doc(alias = "{$attr_str}"]` is the same as the item's name
-
-passes_doc_attr_not_crate_level =
-    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity

@@ -48,6 +48,14 @@ pub(crate) struct DocAliasStartEnd<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_doc_attr_not_crate_level)]
+pub(crate) struct DocAttrNotCrateLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_doc_keyword_not_keyword)]
 #[help]
 pub(crate) struct DocKeywordNotKeyword {
