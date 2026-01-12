@@ -45,6 +45,15 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        // FIXME: remove this block once wasi-sdk is updated with the fix from
+        // https://github.com/WebAssembly/wasi-libc/pull/716
+        // WASI does not support threading via pthreads. While wasi-libc provides
+        // pthread stubs, pthread_create returns EAGAIN, which causes confusing
+        // errors. We return UNSUPPORTED_PLATFORM directly instead.
+        if cfg!(target_os = "wasi") {
+            return Err(io::Error::UNSUPPORTED_PLATFORM);
+        }
+
         let data = init;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
