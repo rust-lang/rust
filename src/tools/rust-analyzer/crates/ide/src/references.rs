@@ -1079,7 +1079,7 @@ use self$0;
 use self$0;
 "#,
             expect![[r#"
-                _ Module FileId(0) 0..10
+                _ CrateRoot FileId(0) 0..10
 
                 FileId(0) 4..8 import
             "#]],

@@ -1452,7 +1452,7 @@ foo = { path = "../foo" }
         json!([
         {
           "name": "bar",
-          "kind": 2,
+          "kind": 4,
           "location": {
             "uri": "file:///[..]bar/src/lib.rs",
             "range": {
@@ -1511,7 +1511,7 @@ version = "0.0.0"
         json!([
         {
           "name": "baz",
-          "kind": 2,
+          "kind": 4,
           "location": {
             "uri": "file:///[..]baz/src/lib.rs",
             "range": {
