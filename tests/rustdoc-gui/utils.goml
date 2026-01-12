@@ -1,11 +1,35 @@
 // This file contains code to be re-used by other tests.
 
 define-function: (
+    "click-settings-button",
+    [],
+    block {
+        store-count: ("rustdoc-topbar", __topbar_count)
+        store-value: (__topbar_display, "none")
+        // The `rustdoc-topbar` element is created with JS when the window size is below a given
+        // size, however if the window size gets bigger again, the element isn't deleted, just
+        // hidden, so we need to check for both that it exists and is visible.
+        if: (|__topbar_count| != 0, block {
+            store-css: ("rustdoc-topbar", {"display": __topbar_display})
+        })
+
+        // Open the settings menu.
+        if: (|__topbar_display| != "none", block {
+            // In mobile mode, this is instead the "topbar" the settings button is located into.
+            click: "rustdoc-topbar .settings-menu"
+        })
+        else: block {
+            // We're not in mobile mode so clicking on the "normal" sidebar.
+            click: "rustdoc-toolbar .settings-menu"
+        }
+    }
+)
+
+define-function: (
     "open-settings-menu",
     [],
     block {
-        // Open the settings menu.
-        click: "rustdoc-toolbar .settings-menu"
+        call-function: ("click-settings-button", {})
         // Wait for the popover to appear...
         wait-for-css: ("#settings", {"display": "block"})
     }
@@ -15,7 +39,8 @@ define-function: (
     "close-settings-menu",
     [],
     block {
-        click: "rustdoc-toolbar .settings-menu"
+        call-function: ("click-settings-button", {})
+        // Wait for the popover to disappear...
         wait-for-css-false: ("#settings", {"display": "block"})
     }
 )
@@ -29,24 +54,6 @@ define-function: (
         // Change the setting.
         click: "#theme-"+ |theme|
         call-function: ("close-settings-menu", {})
-        // Ensure that the local storage was correctly updated.
-        assert-local-storage: {"rustdoc-theme": |theme|}
-    },
-)
-
-// FIXME: To be removed once `browser-ui-test` has conditions.
-define-function: (
-    "switch-theme-mobile",
-    [theme],
-    block {
-        // Open the settings menu.
-        click: "rustdoc-topbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for-css: ("#settings", {"display": "block"})
-        // Change the setting.
-        click: "#theme-"+ |theme|
-        click: "rustdoc-topbar .settings-menu"
-        wait-for-css-false: ("#settings", {"display": "block"})
         // Ensure that the local storage was correctly updated.
         assert-local-storage: {"rustdoc-theme": |theme|}
     },

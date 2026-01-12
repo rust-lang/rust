@@ -82,7 +82,7 @@ The following test suites are available, with links for more information:
 
 | Test suite                           | Purpose                                                                  |
 |--------------------------------------|--------------------------------------------------------------------------|
-| [`rustdoc`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
+| [`rustdoc-html`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
 | [`rustdoc-gui`][rustdoc-gui-tests]   | Check `rustdoc`'s GUI using a web browser                                |
 | [`rustdoc-js`][rustdoc-js-tests]     | Check `rustdoc`'s search engine and index                                |
 | [`rustdoc-js-std`][rustdoc-js-tests] | Check `rustdoc`'s search engine and index on the std library docs        |
@@ -94,7 +94,7 @@ These tests ensure that certain lints that are emitted as part of executing rust
 are also run when executing rustc.
 Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
-[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
 [rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
 [rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md

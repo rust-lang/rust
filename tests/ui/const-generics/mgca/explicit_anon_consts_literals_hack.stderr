@@ -1,8 +1,0 @@
-error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts_literals_hack.rs:29:30
-   |
-LL |     takes_n::<{ ADT { field: 1 } }>();
-   |                              ^
-
-error: aborting due to 1 previous error
-

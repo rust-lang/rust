@@ -1,0 +1,23 @@
+Tuple(
+    Tuple {
+        fields: [
+            Field {
+                ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+                offset: 0,
+            },
+            Field {
+                ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+                offset: 1,
+            },
+            Field {
+                ty: TypeId(0x41223169ff28813ba79b7268a2a968d9),
+                offset: 2,
+            },
+        ],
+    },
+)
+Other
+Other
+Other
+Other
+Other

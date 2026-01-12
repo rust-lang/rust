@@ -891,10 +891,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
             for resolution in r.resolutions(m).borrow().values() {
-                let Some(did) = resolution
-                    .borrow()
-                    .best_binding()
-                    .and_then(|binding| binding.res().opt_def_id())
+                let Some(did) =
+                    resolution.borrow().best_decl().and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1589,19 +1587,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, None, None, *source)
             {
-                let targets: Vec<_> = self
-                    .r
-                    .resolutions(module)
-                    .borrow()
-                    .iter()
-                    .filter_map(|(key, resolution)| {
-                        resolution
-                            .borrow()
-                            .best_binding()
-                            .map(|binding| binding.res())
-                            .and_then(|res| if filter_fn(res) { Some((*key, res)) } else { None })
-                    })
-                    .collect();
+                let targets: Vec<_> =
+                    self.r
+                        .resolutions(module)
+                        .borrow()
+                        .iter()
+                        .filter_map(|(key, resolution)| {
+                            resolution.borrow().best_decl().map(|binding| binding.res()).and_then(
+                                |res| if filter_fn(res) { Some((*key, res)) } else { None },
+                            )
+                        })
+                        .collect();
                 if let [target] = targets.as_slice() {
                     return Some(TypoSuggestion::single_item_from_ident(
                         target.0.ident.0,
@@ -2486,9 +2482,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .resolutions(*module)
             .borrow()
             .iter()
-            .filter_map(|(key, res)| {
-                res.borrow().best_binding().map(|binding| (key, binding.res()))
-            })
+            .filter_map(|(key, res)| res.borrow().best_decl().map(|binding| (key, binding.res())))
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2799,7 +2793,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             in_module.for_each_child(self.r, |r, ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
-                if result.is_some() || !name_binding.vis.is_visible_locally() {
+                if result.is_some() || !name_binding.vis().is_visible_locally() {
                     return;
                 }
                 if let Some(module_def_id) = name_binding.res().module_like_def_id() {

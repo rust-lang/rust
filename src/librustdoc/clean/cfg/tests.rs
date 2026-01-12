@@ -1,8 +1,5 @@
-use rustc_ast::ast::LitIntType;
-use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, StrStyle};
 use rustc_data_structures::thin_vec::thin_vec;
 use rustc_hir::attrs::CfgEntry;
-use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, create_default_session_globals_then};
 
 use super::*;
@@ -28,10 +25,6 @@ fn name_value_cfg_e(name: &str, value: &str) -> CfgEntry {
     }
 }
 
-fn dummy_lit(symbol: Symbol, kind: LitKind) -> MetaItemInner {
-    MetaItemInner::Lit(MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP })
-}
-
 fn cfg_all(v: ThinVec<CfgEntry>) -> Cfg {
     Cfg(cfg_all_e(v))
 }
@@ -50,51 +43,6 @@ fn cfg_any_e(v: ThinVec<CfgEntry>) -> CfgEntry {
 
 fn cfg_not(v: CfgEntry) -> Cfg {
     Cfg(CfgEntry::Not(Box::new(v), DUMMY_SP))
-}
-
-fn dummy_meta_item_word(name: &str) -> MetaItemInner {
-    MetaItemInner::MetaItem(MetaItem {
-        unsafety: Safety::Default,
-        path: Path::from_ident(Ident::from_str(name)),
-        kind: MetaItemKind::Word,
-        span: DUMMY_SP,
-    })
-}
-
-fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> MetaItemInner {
-    let lit = MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP };
-    MetaItemInner::MetaItem(MetaItem {
-        unsafety: Safety::Default,
-        path: Path::from_ident(Ident::from_str(name)),
-        kind: MetaItemKind::NameValue(lit),
-        span: DUMMY_SP,
-    })
-}
-
-macro_rules! dummy_meta_item_list {
-    ($name:ident, [$($list:ident),* $(,)?]) => {
-        MetaItemInner::MetaItem(MetaItem {
-            unsafety: Safety::Default,
-            path: Path::from_ident(Ident::from_str(stringify!($name))),
-            kind: MetaItemKind::List(thin_vec![
-                $(
-                    dummy_meta_item_word(stringify!($list)),
-                )*
-            ]),
-            span: DUMMY_SP,
-        })
-    };
-
-    ($name:ident, [$($list:expr),* $(,)?]) => {
-        MetaItemInner::MetaItem(MetaItem {
-            unsafety: Safety::Default,
-            path: Path::from_ident(Ident::from_str(stringify!($name))),
-            kind: MetaItemKind::List(thin_vec![
-                $($list,)*
-            ]),
-            span: DUMMY_SP,
-        })
-    };
 }
 
 fn cfg_true() -> Cfg {
@@ -300,87 +248,6 @@ fn test_cfg_or() {
             word_cfg("a") | word_cfg("b") | word_cfg("c"),
             cfg_any(thin_vec![word_cfg_e("a"), word_cfg_e("b"), word_cfg_e("c")])
         );
-    })
-}
-
-#[test]
-fn test_parse_ok() {
-    create_default_session_globals_then(|| {
-        let r#true = Symbol::intern("true");
-        let mi = dummy_lit(r#true, LitKind::Bool(true));
-        assert_eq!(Cfg::parse(&mi), Ok(cfg_true()));
-
-        let r#false = Symbol::intern("false");
-        let mi = dummy_lit(r#false, LitKind::Bool(false));
-        assert_eq!(Cfg::parse(&mi), Ok(cfg_false()));
-
-        let mi = dummy_meta_item_word("all");
-        assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
-
-        let done = Symbol::intern("done");
-        let mi = dummy_meta_item_name_value("all", done, LitKind::Str(done, StrStyle::Cooked));
-        assert_eq!(Cfg::parse(&mi), Ok(name_value_cfg("all", "done")));
-
-        let mi = dummy_meta_item_list!(all, [a, b]);
-        assert_eq!(Cfg::parse(&mi), Ok(word_cfg("a") & word_cfg("b")));
-
-        let mi = dummy_meta_item_list!(any, [a, b]);
-        assert_eq!(Cfg::parse(&mi), Ok(word_cfg("a") | word_cfg("b")));
-
-        let mi = dummy_meta_item_list!(not, [a]);
-        assert_eq!(Cfg::parse(&mi), Ok(!word_cfg("a")));
-
-        let mi = dummy_meta_item_list!(
-            not,
-            [dummy_meta_item_list!(
-                any,
-                [dummy_meta_item_word("a"), dummy_meta_item_list!(all, [b, c]),]
-            ),]
-        );
-        assert_eq!(Cfg::parse(&mi), Ok(!(word_cfg("a") | (word_cfg("b") & word_cfg("c")))));
-
-        let mi = dummy_meta_item_list!(all, [a, b, c]);
-        assert_eq!(Cfg::parse(&mi), Ok(word_cfg("a") & word_cfg("b") & word_cfg("c")));
-    })
-}
-
-#[test]
-fn test_parse_err() {
-    create_default_session_globals_then(|| {
-        let mi = dummy_meta_item_name_value("foo", kw::False, LitKind::Bool(false));
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(not, [a, b]);
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(not, []);
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(foo, []);
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(
-            all,
-            [dummy_meta_item_list!(foo, []), dummy_meta_item_word("b"),]
-        );
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(
-            any,
-            [dummy_meta_item_word("a"), dummy_meta_item_list!(foo, []),]
-        );
-        assert!(Cfg::parse(&mi).is_err());
-
-        let mi = dummy_meta_item_list!(not, [dummy_meta_item_list!(foo, []),]);
-        assert!(Cfg::parse(&mi).is_err());
-
-        let c = Symbol::intern("e");
-        let mi = dummy_lit(c, LitKind::Char('e'));
-        assert!(Cfg::parse(&mi).is_err());
-
-        let five = Symbol::intern("5");
-        let mi = dummy_lit(five, LitKind::Int(5.into(), LitIntType::Unsuffixed));
-        assert!(Cfg::parse(&mi).is_err());
     })
 }
 

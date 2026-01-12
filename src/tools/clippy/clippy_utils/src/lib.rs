@@ -90,13 +90,13 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_ast::join_path_syms;
+use rustc_ast::{LitIntType, join_path_syms};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, CfgEntry};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -1385,6 +1385,17 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     false
 }
 
+/// Checks whether the given expression is an untyped integer literal.
+pub fn is_integer_literal_untyped(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Int(_, suffix) = spanned.node
+    {
+        return suffix == LitIntType::Unsuffixed;
+    }
+
+    false
+}
+
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_float_literal(expr: &Expr<'_>, value: f64) -> bool {
     if let ExprKind::Lit(spanned) = expr.kind
@@ -2401,17 +2412,15 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir_attrs(id).iter().any(|attr| {
-        if attr.has_name(sym::cfg_trace)
-            && let Some(items) = attr.meta_item_list()
-            && let [item] = &*items
-            && item.has_name(sym::test)
-        {
-            true
-        } else {
-            false
-        }
-    })
+    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), AttributeKind::CfgTrace(cfgs) => cfgs)
+        && cfgs
+            .iter()
+            .any(|(cfg, _)| matches!(cfg, CfgEntry::NameValue { name: sym::test, .. }))
+    {
+        true
+    } else {
+        false
+    }
 }
 
 /// Checks if any parent node of `HirId` has `#[cfg(test)]` attribute applied
@@ -2426,11 +2435,12 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.has_attr(def_id, sym::cfg_trace)
-        || tcx
-            .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
-            .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id))
-            .any(|attr| attr.has_name(sym::cfg_trace))
+    find_attr!(tcx.get_all_attrs(def_id), AttributeKind::CfgTrace(..))
+        || find_attr!(
+            tcx.hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
+                .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id)),
+            AttributeKind::CfgTrace(..)
+        )
 }
 
 /// Walks up the HIR tree from the given expression in an attempt to find where the value is

@@ -160,7 +160,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
+        let attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
         // Check feature gates for built-in attributes.
         if let Some(BuiltinAttribute {
             gate: AttributeGate::Gated { feature, message, check, notes, .. },
@@ -505,7 +505,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
     );
-    gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
@@ -518,6 +517,23 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
     gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
+    // associated_const_equality is stabilized as part of min_generic_const_args
+    if let Some(spans) = spans.get(&sym::associated_const_equality) {
+        for span in spans {
+            if !visitor.features.min_generic_const_args()
+                && !span.allows_unstable(sym::min_generic_const_args)
+            {
+                #[allow(rustc::untranslatable_diagnostic)]
+                feature_err(
+                    &visitor.sess,
+                    sym::min_generic_const_args,
+                    *span,
+                    "associated const equality is incomplete",
+                )
+                .emit();
+            }
+        }
+    }
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");

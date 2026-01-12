@@ -244,10 +244,6 @@ passes_function_not_have_default_implementation = function doesn't have a defaul
 passes_functions_names_duplicated = functions names are duplicated
     .note = all `#[rustc_must_implement_one_of]` arguments must be unique
 
-passes_has_incoherent_inherent_impl =
-    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
-    .label = only adts, extern types and traits are supported
-
 passes_ignored_derived_impls =
     `{$name}` has {$trait_list_len ->
       [one] a derived impl

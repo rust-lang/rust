@@ -429,7 +429,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, Normal,
-        template!(NameValueStr: "transparent|semitransparent|opaque"), ErrorFollowing,
+        template!(NameValueStr: "transparent|semiopaque|opaque"), ErrorFollowing,
         "used internally for testing macro hygiene",
     ),
 

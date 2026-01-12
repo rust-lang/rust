@@ -1,5 +1,5 @@
-#![feature(associated_const_equality)]
-#![allow(unused)]
+#![feature(min_generic_const_args)]
+#![allow(incomplete_features, unused)]
 
 pub trait Foo {
     const N: usize;

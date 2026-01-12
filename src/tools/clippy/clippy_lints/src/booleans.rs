@@ -15,6 +15,7 @@ use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, SyntaxContext};
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -356,7 +357,7 @@ impl SuggestContext<'_, '_, '_> {
                         if app != Applicability::MachineApplicable {
                             return None;
                         }
-                        self.output.push_str(&(!snip).to_string());
+                        let _cannot_fail = write!(&mut self.output, "{}", &(!snip));
                     }
                 },
                 True | False | Not(_) => {

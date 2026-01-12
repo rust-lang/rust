@@ -381,15 +381,14 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
-        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, Scalar, Size) -> ArgAttributes,
+        scalar_attrs: impl Fn(Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
-            BackendRepr::Scalar(scalar) => {
-                PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO))
-            }
+            _ if layout.is_zst() => PassMode::Ignore,
+            BackendRepr::Scalar(scalar) => PassMode::Direct(scalar_attrs(scalar, Size::ZERO)),
             BackendRepr::ScalarPair(a, b) => PassMode::Pair(
-                scalar_attrs(&layout, a, Size::ZERO),
-                scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
+                scalar_attrs(a, Size::ZERO),
+                scalar_attrs(b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),

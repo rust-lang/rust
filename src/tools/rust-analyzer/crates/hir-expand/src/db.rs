@@ -9,8 +9,8 @@ use triomphe::Arc;
 
 use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
-    EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, HirFileId, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, FileRange, HirFileId,
+    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     attrs::Meta,
     builtin::pseudo_derive_attr_expansion,
     cfg_process::attr_macro_input_to_token_tree,
@@ -60,6 +60,9 @@ pub trait ExpandDatabase: RootQueryDb {
     #[salsa::invoke(ast_id_map)]
     #[salsa::lru(1024)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
+
+    #[salsa::transparent]
+    fn resolve_span(&self, span: Span) -> FileRange;
 
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
@@ -156,6 +159,13 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
             db.macro_arg_considering_derives(m, &kind).2.ctx
         }
     }
+}
+
+fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
+    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
+    let anchor_offset =
+        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
+    FileRange { file_id, range: range + anchor_offset }
 }
 
 /// This expands the given macro call, but with different arguments. This is

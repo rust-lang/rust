@@ -10,7 +10,7 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text, service_binding, shell};
+use r_efi::protocols::{device_path, device_path_to_text, file, service_binding, shell};
 
 use crate::alloc::Layout;
 use crate::ffi::{OsStr, OsString};
@@ -791,7 +791,7 @@ impl<T> UefiBox<T> {
 
         match NonNull::new(ptr.cast()) {
             Some(inner) => Ok(Self { inner, size: len }),
-            None => Err(io::Error::new(io::ErrorKind::OutOfMemory, "Allocation failed")),
+            None => Err(const_error!(io::ErrorKind::OutOfMemory, "Allocation failed")),
         }
     }
 
@@ -816,5 +816,60 @@ impl<T> Drop for UefiBox<T> {
     fn drop(&mut self) {
         let layout = Layout::from_size_align(self.size, 8).unwrap();
         unsafe { crate::alloc::dealloc(self.inner.as_ptr().cast(), layout) };
+    }
+}
+
+impl UefiBox<file::Info> {
+    fn size(&self) -> u64 {
+        unsafe { (*self.as_ptr()).size }
+    }
+
+    fn set_size(&mut self, s: u64) {
+        unsafe { (*self.as_mut_ptr()).size = s }
+    }
+
+    // Length of string (including NULL), not number of bytes.
+    fn file_name_len(&self) -> usize {
+        (self.size() as usize - size_of::<file::Info<0>>()) / size_of::<u16>()
+    }
+
+    pub(crate) fn file_name(&self) -> &[u16] {
+        unsafe {
+            crate::slice::from_raw_parts((*self.as_ptr()).file_name.as_ptr(), self.file_name_len())
+        }
+    }
+
+    fn file_name_mut(&mut self) -> &mut [u16] {
+        unsafe {
+            crate::slice::from_raw_parts_mut(
+                (*self.as_mut_ptr()).file_name.as_mut_ptr(),
+                self.file_name_len(),
+            )
+        }
+    }
+
+    pub(crate) fn with_file_name(mut self, name: &OsStr) -> io::Result<Self> {
+        // os_string_to_raw returns NULL terminated string. So no need to handle it separately.
+        let fname = os_string_to_raw(name)
+            .ok_or(const_error!(io::ErrorKind::OutOfMemory, "Allocation failed"))?;
+        let new_size = size_of::<file::Info<0>>() + fname.len() * size_of::<u16>();
+
+        // Reuse the current structure if the new name can fit in it.
+        if self.size() >= new_size as u64 {
+            self.file_name_mut()[..fname.len()].copy_from_slice(&fname);
+            self.set_size(new_size as u64);
+
+            return Ok(self);
+        }
+
+        let mut new_box = UefiBox::new(new_size)?;
+
+        unsafe {
+            crate::ptr::copy_nonoverlapping(self.as_ptr(), new_box.as_mut_ptr(), 1);
+        }
+        new_box.set_size(new_size as u64);
+        new_box.file_name_mut().copy_from_slice(&fname);
+
+        Ok(new_box)
     }
 }

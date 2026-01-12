@@ -807,24 +807,29 @@ impl<'a> TraitDef<'a> {
                     rustc_ast::AttrItem {
                         unsafety: Safety::Default,
                         path: rustc_const_unstable,
-                        args: AttrArgs::Delimited(DelimArgs {
-                            dspan: DelimSpan::from_single(self.span),
-                            delim: rustc_ast::token::Delimiter::Parenthesis,
-                            tokens: [
-                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                TokenKind::Comma,
-                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                            ]
-                            .into_iter()
-                            .map(|kind| {
-                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
-                            })
-                            .collect(),
-                        }),
+                        args: rustc_ast::ast::AttrItemKind::Unparsed(AttrArgs::Delimited(
+                            DelimArgs {
+                                dspan: DelimSpan::from_single(self.span),
+                                delim: rustc_ast::token::Delimiter::Parenthesis,
+                                tokens: [
+                                    TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                    TokenKind::Comma,
+                                    TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                                ]
+                                .into_iter()
+                                .map(|kind| {
+                                    TokenTree::Token(
+                                        Token { kind, span: self.span },
+                                        Spacing::Alone,
+                                    )
+                                })
+                                .collect(),
+                            },
+                        )),
                         tokens: None,
                     },
                     self.span,

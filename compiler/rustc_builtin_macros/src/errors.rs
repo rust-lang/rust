@@ -643,6 +643,15 @@ pub(crate) enum InvalidFormatStringSuggestion {
         span: Span,
         replacement: String,
     },
+    #[suggestion(
+        builtin_macros_format_add_missing_colon,
+        code = ":?",
+        applicability = "machine-applicable"
+    )]
+    AddMissingColon {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]

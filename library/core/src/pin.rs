@@ -2027,7 +2027,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 #[allow_internal_unstable(super_let)]
 #[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt

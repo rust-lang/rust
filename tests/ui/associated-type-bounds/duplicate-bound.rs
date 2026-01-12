@@ -1,7 +1,7 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(associated_const_equality, min_generic_const_args, return_type_notation)]
+#![feature(min_generic_const_args, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 

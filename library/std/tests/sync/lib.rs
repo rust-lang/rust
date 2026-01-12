@@ -1,5 +1,6 @@
 #![feature(mapped_lock_guards)]
 #![feature(mpmc_channel)]
+#![feature(oneshot_channel)]
 #![feature(once_cell_try)]
 #![feature(lock_value_accessors)]
 #![feature(reentrant_lock)]
@@ -25,6 +26,8 @@ mod mutex;
 #[cfg(not(any(target_os = "emscripten", target_os = "wasi")))]
 mod once;
 mod once_lock;
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))]
+mod oneshot;
 #[cfg(not(any(target_os = "emscripten", target_os = "wasi")))]
 mod reentrant_lock;
 #[cfg(not(any(target_os = "emscripten", target_os = "wasi")))]

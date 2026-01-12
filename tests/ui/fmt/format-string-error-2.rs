@@ -83,4 +83,7 @@ raw  { \n
 
     println!(r#"\x7B}\u8 {"#, 1);
     //~^ ERROR invalid format string: unmatched `}` found
+
+    println!("{x?}, world!",);
+    //~^ ERROR invalid format string: expected `}`, found `?`
 }

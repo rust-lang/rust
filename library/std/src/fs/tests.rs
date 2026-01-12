@@ -1,7 +1,11 @@
 use rand::RngCore;
 
+#[cfg(not(miri))]
+use super::Dir;
 use crate::assert_matches::assert_matches;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
+#[cfg(not(miri))]
+use crate::io;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -2464,4 +2468,31 @@ fn test_fs_set_times_nofollow() {
     let target_metadata = fs::metadata(&target).unwrap();
     assert_ne!(target_metadata.accessed().unwrap(), accessed);
     assert_ne!(target_metadata.modified().unwrap(), modified);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_smoke_test() {
+    let tmpdir = tmpdir();
+    let dir = Dir::open(tmpdir.path());
+    check!(dir);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_read_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    let f = check!(dir.open_file("foo.txt"));
+    let buf = check!(io::read_to_string(f));
+    assert_eq!("bar", &buf);
+    let f = check!(dir.open_file(tmpdir.join("foo.txt")));
+    let buf = check!(io::read_to_string(f));
+    assert_eq!("bar", &buf);
 }

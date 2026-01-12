@@ -84,3 +84,32 @@ fn issue_13950() {
     let _ = y.div_ceil(-7);
     //~^ manual_div_ceil
 }
+
+struct MyStruct(i32);
+impl MyStruct {
+    // Method matching name on different type should not trigger lint
+    fn next_multiple_of(self, y: i32) -> i32 {
+        self.0.next_multiple_of(y)
+    }
+}
+
+fn issue_16219() {
+    let x = 33i32;
+
+    // Lint.
+    let _ = x.div_ceil(8);
+    //~^ manual_div_ceil
+    let _ = x.div_ceil(8);
+    //~^ manual_div_ceil
+
+    let y = &x;
+    let _ = y.div_ceil(8);
+    //~^ manual_div_ceil
+
+    // No lint.
+    let _ = x.next_multiple_of(8) / 7;
+    let _ = x.next_multiple_of(7) / 8;
+
+    let z = MyStruct(x);
+    let _ = z.next_multiple_of(8) / 8;
+}

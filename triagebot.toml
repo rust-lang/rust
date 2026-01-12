@@ -240,7 +240,7 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "tests/rustdoc",
+    "tests/rustdoc-html",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
     "tests/rustdoc-js/",
@@ -315,7 +315,7 @@ trigger_labels = [
 ]
 trigger_files = [
     "src/librustdoc/html/",
-    "tests/rustdoc/",
+    "tests/rustdoc-html/",
     "tests/rustdoc-gui/",
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std/",
@@ -1003,6 +1003,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."library/core/src/mem/type_info.rs"]
+message = """
+The reflection data structures are tied exactly to the implementation
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs
+"""
+cc = ["@oli-obk"]
+
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
@@ -1059,12 +1066,8 @@ gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
-[mentions."library/core/src/num/dec2flt"]
+[mentions."library/core/src/num/{dec2flt,flt2dec}"]
 message = "Some changes occurred in float parsing"
-cc = ["@tgross35"]
-
-[mentions."library/core/src/num/flt2dec"]
-message = "Some changes occurred in float printing"
 cc = ["@tgross35"]
 
 [mentions."library/core/src/fmt/num.rs"]
@@ -1362,11 +1365,11 @@ message = "The rustc-dev-guide subtree was changed. If this PR *only* touches th
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_hir/src/attrs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]
@@ -1638,7 +1641,7 @@ dep-bumps = [
 "/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["compiler"]
 "/tests/run-make-cargo" =                                ["compiler"]
-"/tests/rustdoc" =                                       ["rustdoc"]
+"/tests/rustdoc-html" =                                  ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]

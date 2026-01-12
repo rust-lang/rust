@@ -55,7 +55,11 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let psess = ParseSess::emitter_with_note(
-                vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+                vec![
+                    crate::DEFAULT_LOCALE_RESOURCE,
+                    rustc_parse::DEFAULT_LOCALE_RESOURCE,
+                    rustc_session::DEFAULT_LOCALE_RESOURCE,
+                ],
                 format!("this occurred on the command line: `--cfg={s}`"),
             );
             let filename = FileName::cfg_spec_source_code(&s);
@@ -129,7 +133,11 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
 
     for s in specs {
         let psess = ParseSess::emitter_with_note(
-            vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+            vec![
+                crate::DEFAULT_LOCALE_RESOURCE,
+                rustc_parse::DEFAULT_LOCALE_RESOURCE,
+                rustc_session::DEFAULT_LOCALE_RESOURCE,
+            ],
             format!("this occurred on the command line: `--check-cfg={s}`"),
         );
         let filename = FileName::cfg_spec_source_code(&s);

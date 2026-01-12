@@ -3,7 +3,9 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{AttributeKind, InlineAttr, Linkage, RtsanSetting, UsedBy};
+use rustc_hir::attrs::{
+    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
@@ -13,10 +15,10 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self as ty, Instance, TyCtxt};
+use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 
 use crate::errors;
@@ -285,13 +287,23 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::EiiImpls(impls) => {
                     for i in impls {
-                        let extern_item = find_attr!(
-                            tcx.get_all_attrs(i.eii_macro),
-                            AttributeKind::EiiExternTarget(target) => target.eii_extern_target
-                        )
-                        .expect("eii should have declaration macro with extern target attribute");
-
-                        let symbol_name = tcx.symbol_name(Instance::mono(tcx, extern_item));
+                        let extern_item = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => {
+                                let Some(extern_item) = find_attr!(
+                                    tcx.get_all_attrs(def_id),
+                                    AttributeKind::EiiExternTarget(target) => target.eii_extern_target
+                                ) else {
+                                    tcx.dcx().span_delayed_bug(
+                                        i.span,
+                                        "resolved to something that's not an EII",
+                                    );
+                                    continue;
+                                };
+                                extern_item
+                            }
+                            EiiImplResolution::Known(decl) => decl.eii_extern_target,
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
 
                         // this is to prevent a bug where a single crate defines both the default and explicit implementation
                         // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
@@ -304,13 +316,13 @@ fn process_builtin_attrs(
                             // iterate over all implementations *in the current crate*
                             // (this is ok since we generate codegen fn attrs in the local crate)
                             // if any of them is *not default* then don't emit the alias.
-                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&i.eii_macro).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
+                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&extern_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
                         {
                             continue;
                         }
 
                         codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                            Symbol::intern(symbol_name.name),
+                            extern_item,
                             if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
                             Visibility::Default,
                         ));
@@ -327,7 +339,7 @@ fn process_builtin_attrs(
             }
         }
 
-        let Some(Ident { name, .. }) = attr.ident() else {
+        let Some(name) = attr.name() else {
             continue;
         };
 

@@ -4,7 +4,7 @@
 //
 // issue: <https://github.com/rust-lang/rust/issues/108220>
 //@ check-pass
-#![feature(associated_const_equality, min_generic_const_args)]
+#![feature(min_generic_const_args)]
 #![allow(incomplete_features)]
 
 pub trait TraitA<T> {
