@@ -2517,6 +2517,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span,
                 }
             }
+            ExprKind::Array(elements) => {
+                let lowered_elems = self.arena.alloc_from_iter(elements.iter().map(|element| {
+                    let const_arg = if let ExprKind::ConstBlock(anon_const) = &element.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
+                        self.lower_anon_const_to_const_arg(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(element)
+                    };
+                    &*self.arena.alloc(const_arg)
+                }));
+                let array_expr = self.arena.alloc(hir::ConstArgArrayExpr {
+                    span: self.lower_span(expr.span),
+                    elems: lowered_elems,
+                });
+
+                ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Array(array_expr),
+                    span,
+                }
+            }
             ExprKind::Underscore => ConstArg {
                 hir_id: self.lower_node_id(expr.id),
                 kind: hir::ConstArgKind::Infer(()),
@@ -2532,6 +2554,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             | ExprKind::Struct(..)
                             | ExprKind::Call(..)
                             | ExprKind::Tup(..)
+                            | ExprKind::Array(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
