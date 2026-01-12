@@ -22,6 +22,7 @@ struct Unsized {
 
 fn main() {
     println!("{:#?}", const { Type::of::<(u8, u8, ())>() }.kind);
+    println!("{:#?}", const { Type::of::<[u8; 2]>() }.kind);
     println!("{:#?}", const { Type::of::<Foo>() }.kind);
     println!("{:#?}", const { Type::of::<Bar>() }.kind);
     println!("{:#?}", const { Type::of::<&Unsized>() }.kind);
