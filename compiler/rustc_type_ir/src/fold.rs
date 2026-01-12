@@ -111,8 +111,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     ) -> Result<Self, F::Error>;
 
     /// A convenient alternative to `try_super_fold_with` for use with
-    /// infallible folders. Do not override this method, to ensure coherence
-    /// with `try_super_fold_with`.
+    /// infallible folders.
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self;
 }
 
@@ -121,10 +120,6 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 /// default that does an "identity" fold. Implementations of these methods
 /// often fall back to a `super_fold_with` method if the primary argument
 /// doesn't satisfy a particular condition.
-///
-/// A blanket implementation of [`FallibleTypeFolder`] will defer to
-/// the infallible methods of this trait to ensure that the two APIs
-/// are coherent.
 pub trait TypeFolder<I: Interner>: Sized {
     fn cx(&self) -> I;
 
@@ -161,10 +156,6 @@ pub trait TypeFolder<I: Interner>: Sized {
 /// This trait is implemented for every folding traversal. There is a fold
 /// method defined for every type of interest. Each such method has a default
 /// that does an "identity" fold.
-///
-/// A blanket implementation of this trait (that defers to the relevant
-/// method of [`TypeFolder`]) is provided for all infallible folders in
-/// order to ensure the two APIs are coherent.
 pub trait FallibleTypeFolder<I: Interner>: Sized {
     type Error;
 
