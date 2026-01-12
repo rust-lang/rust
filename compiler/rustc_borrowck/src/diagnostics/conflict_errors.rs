@@ -1555,7 +1555,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         
         impl<'tcx> hir::intravisit::Visitor<'tcx> for StructFinder<'tcx> {
             fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
-                if let hir::ExprKind::Struct(_, fields, None) = &ex.kind {
+                if let hir::ExprKind::Struct(_, fields, hir::StructTailExpr::None) = &ex.kind {
                     // Check if this struct contains both our move and use spans
                     let mut move_idx = None;
                     let mut use_idx = None;
@@ -1597,7 +1597,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let (Some(struct_expr), Some(move_idx), Some(use_idx)) = 
             (finder.struct_expr, finder.move_field_idx, finder.use_field_idx)
         {
-            if let hir::ExprKind::Struct(_, fields, None) = &struct_expr.kind {
+            if let hir::ExprKind::Struct(_, fields, hir::StructTailExpr::None) = &struct_expr.kind {
                 let move_field = &fields[move_idx];
                 let use_field = &fields[use_idx];
                 
