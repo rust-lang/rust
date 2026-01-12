@@ -636,6 +636,12 @@ pub mod autodiff {
     pub use core::autodiff::{autodiff_forward, autodiff_reverse};
 }
 
+#[unstable(feature = "batching", issue = "none")]
+#[cfg(not(bootstrap))]
+pub mod batch {
+    pub use core::batch::batch;
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.

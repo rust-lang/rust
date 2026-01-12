@@ -243,6 +243,12 @@ pub mod autodiff {
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
 
+#[unstable(feature = "batching", issue = "123")]
+pub mod batch {
+    #[unstable(feature = "batching", issue = "123")]
+    pub use crate::macros::builtin::batch;
+}
+
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
