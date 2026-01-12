@@ -49,10 +49,10 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             && path.ident.name == sym::as_ptr
         {
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            let method_name = if ty.is_diag_item(cx, sym::cstring_type) {
-                "as_bytes"
+            let (ty_name, method_name) = if ty.is_diag_item(cx, sym::cstring_type) {
+                ("CString", "as_bytes")
             } else if ty.is_lang_item(cx, LangItem::CStr) {
-                "to_bytes"
+                ("CStr", "to_bytes")
             } else {
                 return;
             };
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                 cx,
                 STRLEN_ON_C_STRINGS,
                 span,
-                "using `libc::strlen` on a `CString` or `CStr` value",
+                format!("using `libc::strlen` on a `{ty_name}` value"),
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let val_name = snippet_with_context(cx, self_arg.span, ctxt, "_", &mut app).0;

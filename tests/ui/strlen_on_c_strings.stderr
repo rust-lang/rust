@@ -1,4 +1,4 @@
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CString` value
   --> tests/ui/strlen_on_c_strings.rs:10:13
    |
 LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
@@ -7,37 +7,37 @@ LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
    = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:15:13
    |
 LL |     let _ = unsafe { libc::strlen(cstr.as_ptr()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.to_bytes().len()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:18:13
    |
 LL |     let _ = unsafe { strlen(cstr.as_ptr()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.to_bytes().len()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:22:22
    |
 LL |     let _ = unsafe { strlen((*pcstr).as_ptr()) };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `(*pcstr).to_bytes().len()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:28:22
    |
 LL |     let _ = unsafe { strlen(unsafe_identity(cstr).as_ptr()) };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `unsafe_identity(cstr).to_bytes().len()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:30:13
    |
 LL |     let _ = unsafe { strlen(unsafe { unsafe_identity(cstr) }.as_ptr()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `unsafe { unsafe_identity(cstr) }.to_bytes().len()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
+error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:34:22
    |
 LL |     let _ = unsafe { strlen(f(cstr).as_ptr()) };
