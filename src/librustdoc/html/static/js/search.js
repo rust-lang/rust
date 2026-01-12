@@ -1559,7 +1559,8 @@ class DocSearch {
             // If there is more than one element or only separators in the query,
             // we switch to literalSearch in any case.
             query.literalSearch = parserState.totalElems > 1 ||
-                userQuery.replace(/[=, ]/g, "") === "";
+                /^[=, ]+$/.test(userQuery);
+
         }
         query.foundElems = query.elems.length + query.returned.length;
         query.totalElems = parserState.totalElems;
