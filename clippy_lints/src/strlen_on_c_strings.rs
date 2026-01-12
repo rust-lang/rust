@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::is_expr_unsafe;
@@ -48,6 +48,15 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             && !recv.span.from_expansion()
             && path.ident.name == sym::as_ptr
         {
+            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
+            let method_name = if ty.is_diag_item(cx, sym::cstring_type) {
+                "as_bytes"
+            } else if ty.is_lang_item(cx, LangItem::CStr) {
+                "to_bytes"
+            } else {
+                return;
+            };
+
             let ctxt = expr.span.ctxt();
             let span = match cx.tcx.parent_hir_node(expr.hir_id) {
                 Node::Block(&Block {
@@ -58,25 +67,16 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                 _ => expr.span,
             };
 
-            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            let mut app = Applicability::MachineApplicable;
-            let val_name = snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0;
-            let method_name = if ty.is_diag_item(cx, sym::cstring_type) {
-                "as_bytes"
-            } else if ty.is_lang_item(cx, LangItem::CStr) {
-                "to_bytes"
-            } else {
-                return;
-            };
-
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 STRLEN_ON_C_STRINGS,
                 span,
                 "using `libc::strlen` on a `CString` or `CStr` value",
-                "try",
-                format!("{val_name}.{method_name}().len()"),
-                app,
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let val_name = snippet_with_context(cx, self_arg.span, ctxt, "_", &mut app).0;
+                    diag.span_suggestion(span, "use", format!("{val_name}.{method_name}().len()"), app);
+                },
             );
         }
     }
