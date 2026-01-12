@@ -26,9 +26,9 @@ mod helpers;
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
+pub(crate) use helpers::abort_internal;
 #[cfg(target_env = "p1")]
 pub(crate) use helpers::err2io;
-pub(crate) use helpers::{abort_internal, decode_error_kind, is_interrupted};
 #[cfg(not(target_env = "p1"))]
 pub use os::IsMinusOne;
 pub use os::{cvt, cvt_r};

@@ -83,52 +83,6 @@ pub const fn unsupported_err() -> io::Error {
     io::const_error!(io::ErrorKind::Unsupported, "operation not supported on UEFI")
 }
 
-pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
-    use r_efi::efi::Status;
-
-    match r_efi::efi::Status::from_usize(code) {
-        Status::ALREADY_STARTED
-        | Status::COMPROMISED_DATA
-        | Status::CONNECTION_FIN
-        | Status::CRC_ERROR
-        | Status::DEVICE_ERROR
-        | Status::END_OF_MEDIA
-        | Status::HTTP_ERROR
-        | Status::ICMP_ERROR
-        | Status::INCOMPATIBLE_VERSION
-        | Status::LOAD_ERROR
-        | Status::MEDIA_CHANGED
-        | Status::NO_MAPPING
-        | Status::NO_MEDIA
-        | Status::NOT_STARTED
-        | Status::PROTOCOL_ERROR
-        | Status::PROTOCOL_UNREACHABLE
-        | Status::TFTP_ERROR
-        | Status::VOLUME_CORRUPTED => io::ErrorKind::Other,
-        Status::BAD_BUFFER_SIZE | Status::INVALID_LANGUAGE => io::ErrorKind::InvalidData,
-        Status::ABORTED => io::ErrorKind::ConnectionAborted,
-        Status::ACCESS_DENIED => io::ErrorKind::PermissionDenied,
-        Status::BUFFER_TOO_SMALL => io::ErrorKind::FileTooLarge,
-        Status::CONNECTION_REFUSED => io::ErrorKind::ConnectionRefused,
-        Status::CONNECTION_RESET => io::ErrorKind::ConnectionReset,
-        Status::END_OF_FILE => io::ErrorKind::UnexpectedEof,
-        Status::HOST_UNREACHABLE => io::ErrorKind::HostUnreachable,
-        Status::INVALID_PARAMETER => io::ErrorKind::InvalidInput,
-        Status::IP_ADDRESS_CONFLICT => io::ErrorKind::AddrInUse,
-        Status::NETWORK_UNREACHABLE => io::ErrorKind::NetworkUnreachable,
-        Status::NO_RESPONSE => io::ErrorKind::HostUnreachable,
-        Status::NOT_FOUND => io::ErrorKind::NotFound,
-        Status::NOT_READY => io::ErrorKind::ResourceBusy,
-        Status::OUT_OF_RESOURCES => io::ErrorKind::OutOfMemory,
-        Status::SECURITY_VIOLATION => io::ErrorKind::PermissionDenied,
-        Status::TIMEOUT => io::ErrorKind::TimedOut,
-        Status::UNSUPPORTED => io::ErrorKind::Unsupported,
-        Status::VOLUME_FULL => io::ErrorKind::StorageFull,
-        Status::WRITE_PROTECTED => io::ErrorKind::ReadOnlyFilesystem,
-        _ => io::ErrorKind::Uncategorized,
-    }
-}
-
 pub fn abort_internal() -> ! {
     if let Some(exit_boot_service_event) =
         NonNull::new(EXIT_BOOT_SERVICE_EVENT.load(Ordering::Acquire))
@@ -157,8 +111,4 @@ pub fn abort_internal() -> ! {
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
 extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
     uefi::env::disable_boot_services();
-}
-
-pub fn is_interrupted(_code: io::RawOsError) -> bool {
-    false
 }
