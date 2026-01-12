@@ -28,8 +28,8 @@ compile-flags: -C overflow-checks=off`).
 
 Directives are written one directive per line: you cannot write multiple
 directives on the same line.
-For example, if you write `//@ only-x86
-only-windows` then `only-windows` is interpreted as a comment, not a separate directive.
+For example, if you write `//@ only-x86 only-windows`,
+then `only-windows` is interpreted as a comment, not a separate directive.
 
 ## Listing of compiletest directives
 
