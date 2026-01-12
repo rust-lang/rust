@@ -381,6 +381,7 @@ impl CompletionItemKind {
                 SymbolKind::BuiltinAttr => "ba",
                 SymbolKind::Const => "ct",
                 SymbolKind::ConstParam => "cp",
+                SymbolKind::CrateRoot => "cr",
                 SymbolKind::Derive => "de",
                 SymbolKind::DeriveHelper => "dh",
                 SymbolKind::Enum => "en",

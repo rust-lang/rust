@@ -23,7 +23,7 @@ use intern::Symbol;
 use rustc_hash::FxHashMap;
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
-use crate::{HasCrate, Module, ModuleDef, Semantics};
+use crate::{Crate, HasCrate, Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -100,11 +100,6 @@ impl<'a> SymbolCollector<'a> {
         let _p = tracing::info_span!("SymbolCollector::collect", ?module).entered();
         tracing::info!(?module, "SymbolCollector::collect");
 
-        // If this is a crate root module, add a symbol for the crate itself
-        if module.is_crate_root(self.db) {
-            self.push_crate_root(module);
-        }
-
         // The initial work is the root module we're collecting, additional work will
         // be populated as we traverse the module's definitions.
         self.work.push(SymbolCollectorWork { module_id: module.into(), parent: None });
@@ -116,8 +111,7 @@ impl<'a> SymbolCollector<'a> {
 
     /// Push a symbol for a crate's root module.
     /// This allows crate roots to appear in the symbol index for queries like `::` or `::foo`.
-    fn push_crate_root(&mut self, module: Module) {
-        let krate = module.krate(self.db);
+    pub fn push_crate_root(&mut self, krate: Crate) {
         let Some(display_name) = krate.display_name(self.db) else { return };
         let crate_name = display_name.crate_name();
         let canonical_name = display_name.canonical_name();
@@ -131,10 +125,11 @@ impl<'a> SymbolCollector<'a> {
         let ptr = SyntaxNodePtr::new(&syntax_node);
 
         let loc = DeclarationLocation { hir_file_id, ptr, name_ptr: None };
+        let root_module = krate.root_module(self.db);
 
         self.symbols.insert(FileSymbol {
             name: crate_name.symbol().clone(),
-            def: ModuleDef::Module(module),
+            def: ModuleDef::Module(root_module),
             loc,
             container_name: None,
             is_alias: false,
@@ -147,7 +142,7 @@ impl<'a> SymbolCollector<'a> {
         if canonical_name != crate_name.symbol() {
             self.symbols.insert(FileSymbol {
                 name: canonical_name.clone(),
-                def: ModuleDef::Module(module),
+                def: ModuleDef::Module(root_module),
                 loc,
                 container_name: None,
                 is_alias: false,
