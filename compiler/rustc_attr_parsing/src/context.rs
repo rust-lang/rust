@@ -90,7 +90,7 @@ use crate::session_diagnostics::{
 };
 use crate::target_checking::AllowedTargets;
 
-type GroupType<S> = LazyLock<GroupTypeInner<S>>;
+pub(crate) type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
     pub(super) accepters: BTreeMap<&'static [Symbol], Vec<GroupTypeInnerAccept<S>>>,

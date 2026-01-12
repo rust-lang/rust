@@ -144,6 +144,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     self.resolver.tcx.features(),
                     Vec::new(),
                     Early { emit_errors: ShouldEmit::Nothing },
+                    self.resolver.dcx(),
                 );
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,

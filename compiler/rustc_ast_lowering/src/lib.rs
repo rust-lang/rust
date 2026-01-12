@@ -209,6 +209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 tcx.features(),
                 registered_tools,
                 Late,
+                tcx.dcx(),
             ),
             delayed_lints: Vec::new(),
         }

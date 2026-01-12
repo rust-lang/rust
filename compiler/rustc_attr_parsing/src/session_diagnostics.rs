@@ -946,3 +946,12 @@ pub(crate) struct UnsupportedInstructionSet<'a> {
     pub instruction_set: Symbol,
     pub current_target: &'a TargetTuple,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_target_regression)]
+#[help]
+#[note]
+pub(crate) struct AttributeTargetRegression {
+    pub attribute_symbol: Symbol,
+    pub target: &'static str,
+}
