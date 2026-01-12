@@ -289,7 +289,7 @@ jobs:
           fi
 
           # Get closest bors merge commit
-          PARENT_COMMIT=`git rev-list --author='122020455+rust-bors\[bot\]@users.noreply.github.com' -n1 --first-parent HEAD^1`
+          PARENT_COMMIT=`git rev-list --author='bors@rust-lang.org' --author='122020455+rust-bors\[bot\]@users.noreply.github.com' -n1 --first-parent HEAD^1`
 
           ./build/citool/debug/citool postprocess-metrics \
               --job-name ${CI_JOB_NAME} \
