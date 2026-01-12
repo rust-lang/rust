@@ -23,6 +23,19 @@ LL -     type A: S<C<(), i32 = ()> = ()>;
 LL +     type A: S<C<()> = ()>;
    |
 
-error: aborting due to 2 previous errors
+error[E0277]: the trait bound `(): Q` is not satisfied
+  --> $DIR/issue-102335-gat.rs:2:15
+   |
+LL |     type A: S<C<(), i32 = ()> = ()>;
+   |               ^^^^^^^^^^^^^^^^^^^^ the trait `Q` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-102335-gat.rs:8:1
+   |
+LL | trait Q {}
+   | ^^^^^^^
 
-For more information about this error, try `rustc --explain E0229`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0229, E0277.
+For more information about an error, try `rustc --explain E0229`.

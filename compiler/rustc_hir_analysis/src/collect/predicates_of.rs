@@ -1,14 +1,15 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
 use rustc_middle::ty::{
-    self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+    self, Binder, Clause, GenericArgKind, GenericArgs, GenericPredicates, ImplTraitInTraitData, Ty,
+    TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitor, Upcast, UpcastFrom,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
@@ -30,6 +31,11 @@ use crate::hir_ty_lowering::{
 pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
+
+    let implied_item_bounds = elaborate_projection_predicates(tcx, result.predicates.to_vec());
+    result.predicates = tcx
+        .arena
+        .alloc_from_iter(result.predicates.into_iter().copied().chain(implied_item_bounds));
 
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
@@ -76,6 +82,150 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 
     debug!("predicates_of({:?}) = {:?}", def_id, result);
     result
+}
+// If the term of projection is a generic param, we try to add implied item bounds to predicates.
+// FIXME: nested binders and the case that item bound contains bound vars are not handled.
+fn elaborate_projection_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: Vec<(Clause<'tcx>, Span)>,
+) -> Vec<(ty::Clause<'tcx>, Span)> {
+    struct PredicateArgFolder<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        ty_mapping: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
+        region_mapping: FxHashMap<ty::Region<'tcx>, ty::Region<'tcx>>,
+        const_mapping: FxHashMap<ty::Const<'tcx>, ty::Const<'tcx>>,
+    }
+    impl<'tcx> PredicateArgFolder<'tcx> {
+        fn new(tcx: TyCtxt<'tcx>, projection: ty::ProjectionPredicate<'tcx>) -> Self {
+            let mut ty_mapping = FxHashMap::default();
+            let mut region_mapping = FxHashMap::default();
+            let mut const_mapping = FxHashMap::default();
+            let assoc_ty = Ty::new_alias(
+                tcx,
+                ty::AliasTyKind::Projection,
+                ty::AliasTy::new(
+                    tcx,
+                    projection.projection_term.def_id,
+                    GenericArgs::identity_for_item(tcx, projection.projection_term.def_id),
+                ),
+            );
+            ty_mapping.insert(assoc_ty, projection.term.expect_type());
+            let target_assoc_args =
+                GenericArgs::identity_for_item(tcx, projection.projection_term.def_id);
+            for (target_arg, proj_arg) in
+                target_assoc_args.into_iter().zip(projection.projection_term.args)
+            {
+                match (target_arg.kind(), proj_arg.kind()) {
+                    (GenericArgKind::Lifetime(r1), GenericArgKind::Lifetime(r2)) => {
+                        region_mapping.insert(r1, r2);
+                    }
+                    (GenericArgKind::Type(t1), GenericArgKind::Type(t2)) => {
+                        ty_mapping.insert(t1, t2);
+                    }
+                    (GenericArgKind::Const(c1), GenericArgKind::Const(c2)) => {
+                        const_mapping.insert(c1, c2);
+                    }
+                    _ => bug!("mismatched generic arg kinds in projection predicate"),
+                }
+            }
+            debug!(
+                "elaborate_projection_predicates: ty_mapping = {:?}, region_mapping = {:?}, const_mapping = {:?}",
+                ty_mapping, region_mapping, const_mapping
+            );
+            Self { tcx, ty_mapping, region_mapping, const_mapping }
+        }
+    }
+    impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PredicateArgFolder<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            if let Some(replacement) = self.ty_mapping.get(&t) {
+                *replacement
+            } else {
+                t.super_fold_with(self)
+            }
+        }
+
+        fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+            if let Some(replacement) = self.region_mapping.get(&r) { *replacement } else { r }
+        }
+
+        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+            if let Some(replacement) = self.const_mapping.get(&c) { *replacement } else { c }
+        }
+    }
+
+    let mut new_preds = Vec::new();
+    for (pred, _span) in &predicates {
+        if let ty::ClauseKind::Projection(proj_pred) = pred.kind().skip_binder()
+            && let Some(proj_ty) = proj_pred.term.as_type()
+        {
+            // We should minimize this to allow the where clause check to be useful.
+            fn should_add_clause(t: Ty<'_>) -> bool {
+                match t.kind() {
+                    ty::Param(_) => true,
+                    ty::Alias(ty::Projection, alias) => alias.args.types().any(should_add_clause),
+                    _ => false,
+                }
+            }
+            if !should_add_clause(proj_ty) {
+                continue;
+            }
+            debug!("elaborate_projection_predicates: projection predicate = {:?}", pred);
+            let assoc_bounds = tcx.explicit_item_bounds(proj_pred.projection_term.def_id);
+            debug!("elaborate_projection_predicates: original assoc_bounds = {:?}", assoc_bounds);
+            let mut folder = PredicateArgFolder::new(tcx, proj_pred);
+            // FIXME: optimize allocation later.
+            let assoc_bounds: Vec<_> = assoc_bounds
+                .skip_binder()
+                .iter()
+                .map(|(c, span)| {
+                    (
+                        Binder::bind_with_vars(
+                            c.kind().skip_binder().fold_with(&mut folder),
+                            pred.kind().bound_vars(),
+                        ),
+                        *span,
+                    )
+                })
+                .filter(|(c, _)| {
+                    if let ty::ClauseKind::Projection(p) = c.skip_binder() {
+                        if p.projection_term.to_term(tcx) == p.term {
+                            // No need to add identity projection.
+                            // They cause cycles later.
+                            return false;
+                        }
+                        // We shouldn't add opposite projection of existing ones.
+                        // They will be normalized to identity projection by each other.
+                        // We also filter out projections which have the same lhs with existing
+                        // projections.
+                        // They cause ambiguity in normalization.
+                        if predicates.iter().any(|(existing_c, _)| {
+                            if let ty::ClauseKind::Projection(existing_p) =
+                                existing_c.kind().skip_binder()
+                            {
+                                return p.projection_term == existing_p.projection_term
+                                    || (existing_p.projection_term.to_term(tcx) == p.term
+                                        && existing_p.term == p.projection_term.to_term(tcx));
+                            }
+                            false
+                        }) {
+                            return false;
+                        }
+                    }
+                    true
+                })
+                .collect();
+            debug!("elaborate_projection_predicates: replaced assoc_bounds = {:?}", assoc_bounds);
+            let assoc_bounds: Vec<_> =
+                assoc_bounds.into_iter().map(|(c, s)| (Clause::upcast_from(c, tcx), s)).collect();
+            debug!("elaborate_projection_predicates: upcasted assoc_bounds = {:?}", assoc_bounds);
+            new_preds.extend(assoc_bounds);
+        }
+    }
+    new_preds
 }
 
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.

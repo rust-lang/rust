@@ -23,8 +23,20 @@ LL -     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
 LL +     type A: S<C = ()>; // Just one erroneous equality constraint
    |
 
+error[E0277]: the trait bound `(): Q` is not satisfied
+  --> $DIR/issue-102335-ty.rs:2:15
+   |
+LL |     type A: S<C<i32 = u32> = ()>; // Just one erroneous equality constraint
+   |               ^^^^^^^^^^^^^^^^^ the trait `Q` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-102335-ty.rs:15:1
+   |
+LL | trait Q {}
+   | ^^^^^^^
+
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/issue-102335-ty.rs:8:17
+  --> $DIR/issue-102335-ty.rs:9:17
    |
 LL |     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
    |                 ^^^^^^^^^ associated item constraint not allowed here
@@ -36,7 +48,7 @@ LL +     type A: S<C<X = i32> = ()>; // More than one erroneous equality constra
    |
 
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/issue-102335-ty.rs:8:17
+  --> $DIR/issue-102335-ty.rs:9:17
    |
 LL |     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
    |                 ^^^^^^^^^ associated item constraint not allowed here
@@ -48,6 +60,19 @@ LL -     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equal
 LL +     type A: S<C<X = i32> = ()>; // More than one erroneous equality constraints
    |
 
-error: aborting due to 4 previous errors
+error[E0277]: the trait bound `(): Q` is not satisfied
+  --> $DIR/issue-102335-ty.rs:9:15
+   |
+LL |     type A: S<C<i32 = u32, X = i32> = ()>; // More than one erroneous equality constraints
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Q` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-102335-ty.rs:15:1
+   |
+LL | trait Q {}
+   | ^^^^^^^
 
-For more information about this error, try `rustc --explain E0229`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0229, E0277.
+For more information about an error, try `rustc --explain E0229`.

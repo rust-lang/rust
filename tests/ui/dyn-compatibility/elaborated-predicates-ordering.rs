@@ -10,11 +10,11 @@ pub trait Service {
 
 pub trait A1: Service<Response = i32> {}
 
-pub trait A2: Service<Future = Box<dyn Future<Output = i32>>> + A1 {
+pub trait A2: Service<Future = Box<dyn Future<Output = i32> + Unpin>> + A1 {
     fn foo(&self) {}
 }
 
-pub trait B1: Service<Future = Box<dyn Future<Output = i32>>> {}
+pub trait B1: Service<Future = Box<dyn Future<Output = i32> + Unpin>> {}
 
 pub trait B2: Service<Response = i32> + B1 {
     fn foo(&self) {}

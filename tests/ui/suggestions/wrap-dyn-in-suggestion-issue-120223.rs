@@ -1,8 +1,8 @@
 use std::future::Future;
 
 pub fn dyn_func<T>(
-    executor: impl FnOnce(T) -> dyn Future<Output = ()>,
-) -> Box<dyn FnOnce(T) -> dyn Future<Output = ()>> {
+    executor: impl FnOnce(T) -> &'static dyn Future<Output = ()>,
+) -> Box<dyn FnOnce(T) -> &'static dyn Future<Output = ()>> {
     Box::new(executor) //~ ERROR may not live long enough
 }
 
@@ -12,7 +12,7 @@ trait Trait {
 
 impl Trait for fn() {}
 
-pub fn in_ty_param<T: Fn() -> dyn std::fmt::Debug> (t: T) {
+pub fn in_ty_param<T: Fn() -> &'static dyn std::fmt::Debug> (t: T) {
     t.method();
     //~^ ERROR no method named `method` found for type parameter `T`
 }
