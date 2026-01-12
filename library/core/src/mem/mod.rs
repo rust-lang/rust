@@ -708,7 +708,7 @@ pub const unsafe fn zeroed<T>() -> T {
 /// # Safety
 ///
 /// - `T` must be *valid* with any sequence of bytes of the appropriate length,
-///   initialized or uninitialized (e.g. `T` can be [`MaybeUninit`]).
+///   initialized or uninitialized (e.g. `T` can be [`MaybeUninit`] or `()`).
 /// - `T` must be *[inhabited]*, i.e. possible to construct. This means that types
 ///   like zero-variant enums and [`!`] are unsound to construct with this function.
 /// - You must use the value only in ways which do not violate any *safety*
