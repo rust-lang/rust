@@ -32,21 +32,6 @@ error: malformed `patchable_function_entry` attribute input
 LL | #[patchable_function_entry]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: malformed `must_not_suspend` attribute input
-  --> $DIR/malformed-attrs.rs:138:1
-   |
-LL | #[must_not_suspend()]
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[must_not_suspend()]
-LL + #[must_not_suspend = "reason"]
-   |
-LL - #[must_not_suspend()]
-LL + #[must_not_suspend]
-   |
-
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:184:1
    |
@@ -526,6 +511,22 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0539]: malformed `must_not_suspend` attribute input
+  --> $DIR/malformed-attrs.rs:138:1
+   |
+LL | #[must_not_suspend()]
+   | ^^^^^^^^^^^^^^^^^^--^
+   |                   |
+   |                   didn't expect a list here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[must_not_suspend(count)]
+   |                    +++++
+LL - #[must_not_suspend()]
+LL + #[must_not_suspend]
+   |
 
 error[E0539]: malformed `cfi_encoding` attribute input
   --> $DIR/malformed-attrs.rs:140:1
