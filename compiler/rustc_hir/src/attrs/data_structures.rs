@@ -912,6 +912,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
+    /// Represents `#[rustc_dump_predicates]`
+    RustcDumpPredicates,
+
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 

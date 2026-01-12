@@ -99,6 +99,7 @@ impl AttributeKind {
             RustcCoherenceIsCore(..) => No,
             RustcDumpDefParents => No,
             RustcDumpItemBounds => No,
+            RustcDumpPredicates => No,
             RustcDumpUserArgs => No,
             RustcDumpVtable(..) => No,
             RustcHasIncoherentInherentImpls => Yes,

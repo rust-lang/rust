@@ -311,6 +311,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MustNotSupend { .. }
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
                 ) => { /* do nothing  */ }
@@ -377,7 +378,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_capture_analysis
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
-                            | sym::rustc_dump_predicates
                             | sym::rustc_variance
                             | sym::rustc_variance_of_opaques
                             | sym::rustc_hidden_type_of_opaques

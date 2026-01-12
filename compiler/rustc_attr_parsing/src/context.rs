@@ -64,7 +64,8 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_dump::{
-    RustcDumpDefParents, RustcDumpItemBounds, RustcDumpUserArgs, RustcDumpVtable,
+    RustcDumpDefParents, RustcDumpItemBounds, RustcDumpPredicates, RustcDumpUserArgs,
+    RustcDumpVtable,
 };
 use crate::attributes::rustc_internal::{
     RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
@@ -272,6 +273,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcDumpDefParents>>,
         Single<WithoutArgs<RustcDumpItemBounds>>,
+        Single<WithoutArgs<RustcDumpPredicates>>,
         Single<WithoutArgs<RustcDumpUserArgs>>,
         Single<WithoutArgs<RustcDumpVtable>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,

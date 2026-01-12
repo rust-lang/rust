@@ -34,6 +34,21 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpItemBounds {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
 }
 
+pub(crate) struct RustcDumpPredicates;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpPredicates {
+    const PATH: &[Symbol] = &[sym::rustc_dump_predicates];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::AssocTy),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
+}
+
 pub(crate) struct RustcDumpVtable;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVtable {

@@ -29,7 +29,7 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
 
 pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
     for id in tcx.hir_crate_items(()).owners() {
-        if tcx.has_attr(id, sym::rustc_dump_predicates) {
+        if find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcDumpPredicates) {
             let preds = tcx.predicates_of(id).instantiate_identity(tcx).predicates;
             let span = tcx.def_span(id);
 
