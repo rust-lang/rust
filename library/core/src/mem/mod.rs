@@ -722,6 +722,7 @@ pub const unsafe fn zeroed<T>() -> T {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// // SAFETY: an array of `MaybeUninit<u8>` is always valid, even if uninitialized.
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let array: [MaybeUninit<u8>; 10] = unsafe { mem::uninitialized() };
 /// ```
 ///
@@ -730,6 +731,7 @@ pub const unsafe fn zeroed<T>() -> T {
 /// ```rust,no_run
 /// use std::mem;
 ///
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let b: bool = unsafe { mem::uninitialized() };
 /// // bool does not permit to have an uninitialized state,
 /// // so this last line caused undefined behavior. ⚠️
