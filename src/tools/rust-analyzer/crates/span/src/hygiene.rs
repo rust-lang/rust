@@ -241,9 +241,7 @@ const _: () = {
                     edition: zalsa_::interned::Lookup::into_owned(data.2),
                     parent: zalsa_::interned::Lookup::into_owned(data.3),
                     opaque: opaque(zalsa_::FromId::from_id(id)),
-                    opaque_and_semiopaque: opaque_and_semiopaque(
-                        zalsa_::FromId::from_id(id),
-                    ),
+                    opaque_and_semiopaque: opaque_and_semiopaque(zalsa_::FromId::from_id(id)),
                 },
             )
         }
