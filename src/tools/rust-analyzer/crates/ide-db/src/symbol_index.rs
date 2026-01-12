@@ -218,15 +218,18 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_
 // | Editor  | Shortcut |
 // |---------|-----------|
 // | VS Code | <kbd>Ctrl+T</kbd>
-pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
+pub fn world_symbols(db: &RootDatabase, mut query: Query) -> Vec<FileSymbol<'_>> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
-    if query.is_crate_search() {
-        return search_crates(db, &query);
-    }
-
-    // If we have a path filter, resolve it to target modules
-    let indices: Vec<_> = if !query.path_filter.is_empty() {
+    // Search for crates by name (handles "::" and "::foo" queries)
+    let indices: Vec<_> = if query.is_crate_search() {
+        query.only_types = false;
+        query.libs = true;
+        vec![SymbolIndex::extern_prelude_symbols(db)]
+        // If we have a path filter, resolve it to target modules
+    } else if !query.path_filter.is_empty() {
+        query.only_types = false;
+        query.libs = true;
         let target_modules = resolve_path_to_modules(
             db,
             &query.path_filter,
@@ -258,49 +261,20 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
         crates
             .par_iter()
             .for_each_with(db.clone(), |snap, &krate| _ = crate_symbols(snap, krate.into()));
-        crates.into_iter().flat_map(|krate| Vec::from(crate_symbols(db, krate.into()))).collect()
+        crates
+            .into_iter()
+            .flat_map(|krate| Vec::from(crate_symbols(db, krate.into())))
+            .chain(std::iter::once(SymbolIndex::extern_prelude_symbols(db)))
+            .collect()
     };
 
     let mut res = vec![];
 
     // Normal search: use FST to match item name
-    query.search::<()>(&indices, |f| {
+    query.search::<()>(db, &indices, |f| {
         res.push(f.clone());
         ControlFlow::Continue(())
     });
-
-    res
-}
-
-/// Search for crates by name (handles "::" and "::foo" queries)
-fn search_crates<'db>(db: &'db RootDatabase, query: &Query) -> Vec<FileSymbol<'db>> {
-    let mut res = vec![];
-
-    for krate in Crate::all(db) {
-        let Some(display_name) = krate.display_name(db) else { continue };
-        let crate_name = display_name.crate_name().as_str();
-
-        // If query is empty (sole "::"), return all crates
-        // Otherwise, fuzzy match the crate name
-        let matches = if query.query.is_empty() {
-            true
-        } else {
-            query.mode.check(&query.query, query.case_sensitive, crate_name)
-        };
-
-        if matches {
-            // Get the crate root module's symbol index and find the root module symbol
-            let root_module = krate.root_module(db);
-            let index = SymbolIndex::module_symbols(db, root_module);
-            // Find the module symbol itself (representing the crate)
-            for symbol in index.symbols.iter() {
-                if matches!(symbol.def, hir::ModuleDef::Module(m) if m == root_module) {
-                    res.push(symbol.clone());
-                    break;
-                }
-            }
-        }
-    }
 
     res
 }
@@ -452,6 +426,33 @@ impl<'db> SymbolIndex<'db> {
 
         module_symbols(db, InternedModuleId::new(db, hir::ModuleId::from(module)))
     }
+
+    /// The symbol index for all extern prelude crates.
+    pub fn extern_prelude_symbols(db: &dyn HirDatabase) -> &SymbolIndex<'_> {
+        #[salsa::tracked(returns(ref))]
+        fn extern_prelude_symbols<'db>(db: &'db dyn HirDatabase) -> SymbolIndex<'db> {
+            let _p = tracing::info_span!("extern_prelude_symbols").entered();
+
+            // We call this without attaching because this runs in parallel, so we need to attach here.
+            hir::attach_db(db, || {
+                let mut collector = SymbolCollector::new(db, false);
+
+                for krate in Crate::all(db) {
+                    if krate
+                        .display_name(db)
+                        .is_none_or(|name| name.canonical_name().as_str() == "build-script-build")
+                    {
+                        continue;
+                    }
+                    collector.push_crate_root(krate);
+                }
+
+                SymbolIndex::new(collector.finish())
+            })
+        }
+
+        extern_prelude_symbols(db)
+    }
 }
 
 impl fmt::Debug for SymbolIndex<'_> {
@@ -555,6 +556,7 @@ impl Query {
     /// Search symbols in the given indices.
     pub(crate) fn search<'db, T>(
         &self,
+        db: &'db RootDatabase,
         indices: &[&'db SymbolIndex<'db>],
         cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
     ) -> Option<T> {
@@ -568,7 +570,7 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(indices, op.union(), cb)
+                self.search_maps(db, indices, op.union(), cb)
             }
             SearchMode::Fuzzy => {
                 let automaton = fst::automaton::Subsequence::new(&self.lowercased);
@@ -576,7 +578,7 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(indices, op.union(), cb)
+                self.search_maps(db, indices, op.union(), cb)
             }
             SearchMode::Prefix => {
                 let automaton = fst::automaton::Str::new(&self.lowercased).starts_with();
@@ -584,13 +586,14 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(indices, op.union(), cb)
+                self.search_maps(db, indices, op.union(), cb)
             }
         }
     }
 
     fn search_maps<'db, T>(
         &self,
+        db: &'db RootDatabase,
         indices: &[&'db SymbolIndex<'db>],
         mut stream: fst::map::Union<'_>,
         mut cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
@@ -598,18 +601,21 @@ impl Query {
         let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
             for &IndexedValue { index, value } in indexed_values {
-                let symbol_index = &indices[index];
+                let symbol_index = indices[index];
                 let (start, end) = SymbolIndex::map_value_to_range(value);
 
                 for symbol in &symbol_index.symbols[start..end] {
                     let non_type_for_type_only_query = self.only_types
-                        && !matches!(
+                        && !(matches!(
                             symbol.def,
                             hir::ModuleDef::Adt(..)
                                 | hir::ModuleDef::TypeAlias(..)
                                 | hir::ModuleDef::BuiltinType(..)
                                 | hir::ModuleDef::Trait(..)
-                        );
+                        ) || matches!(
+                            symbol.def,
+                            hir::ModuleDef::Module(module) if module.is_crate_root(db)
+                        ));
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
