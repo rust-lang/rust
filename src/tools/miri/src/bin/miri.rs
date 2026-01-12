@@ -550,7 +550,6 @@ fn main() {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
-    let mut guest_args = vec![];
 
     // Note that we require values to be given with `=`, not with a space.
     // This matches how rustc parses `-Z`.
@@ -563,9 +562,10 @@ fn main() {
             rustc_args.extend(miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
-            guest_args.push(arg);
+            rustc_args.push(arg);
         } else if arg == "--" {
             after_dashdash = true;
+            rustc_args.push("--".to_owned());
         } else if arg == "-Zmiri-disable-validation" {
             miri_config.validation = ValidationMode::No;
         } else if arg == "-Zmiri-recursive-validation" {
@@ -820,9 +820,6 @@ fn main() {
             );
         }
     }
-    rustc_args.push("-Zjit-mode".to_owned());
-    rustc_args.push("--".to_owned());
-    rustc_args.extend(guest_args);
 
     run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }
