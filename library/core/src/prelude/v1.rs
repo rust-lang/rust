@@ -122,4 +122,4 @@ pub use crate::macros::builtin::define_opaque;
 pub use crate::macros::builtin::{eii, unsafe_eii};
 
 #[unstable(feature = "eii_internals", issue = "none")]
-pub use crate::macros::builtin::eii_extern_target;
+pub use crate::macros::builtin::eii_declaration;

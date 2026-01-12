@@ -114,7 +114,7 @@ pub use core::prelude::v1::define_opaque;
 pub use core::prelude::v1::{eii, unsafe_eii};
 
 #[unstable(feature = "eii_internals", issue = "none")]
-pub use core::prelude::v1::eii_extern_target;
+pub use core::prelude::v1::eii_declaration;
 
 // The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated
 // rather than glob imported because we want docs to show these re-exports as

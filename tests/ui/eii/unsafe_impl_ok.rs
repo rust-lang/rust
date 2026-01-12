@@ -7,7 +7,7 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[eii_extern_target(bar, "unsafe")]
+#[eii_declaration(bar, "unsafe")]
 #[rustc_builtin_macro(eii_shared_macro)]
 macro foo() {}
 

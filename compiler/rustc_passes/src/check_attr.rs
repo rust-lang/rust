@@ -224,8 +224,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(
-                    AttributeKind::EiiExternTarget { .. }
-                    | AttributeKind::EiiExternItem
+                    AttributeKind::EiiDeclaration { .. }
+                    | AttributeKind::EiiForeignItem
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
@@ -553,7 +553,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
 
             if let EiiImplResolution::Macro(eii_macro) = resolution
-                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EiiImplRequiresUnsafe {

@@ -2283,7 +2283,7 @@ impl<'a> Parser<'a> {
         self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
         Ok(ItemKind::MacroDef(
             ident,
-            ast::MacroDef { body, macro_rules: false, eii_extern_target: None },
+            ast::MacroDef { body, macro_rules: false, eii_declaration: None },
         ))
     }
 
@@ -2333,7 +2333,7 @@ impl<'a> Parser<'a> {
 
         Ok(ItemKind::MacroDef(
             ident,
-            ast::MacroDef { body, macro_rules: true, eii_extern_target: None },
+            ast::MacroDef { body, macro_rules: true, eii_declaration: None },
         ))
     }
 
