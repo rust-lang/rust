@@ -304,6 +304,7 @@ fn run_tests(
                 config.program.args.push(flag.into());
             }
         }
+        config.program.args.push("-Zjit-mode".into());
     }
 
     // If we're testing the native-lib functionality, then build the shared object file for testing
