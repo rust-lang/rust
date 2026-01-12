@@ -76,7 +76,7 @@ pub fn spawn_with_streaming_output(
     Ok(Output { status, stdout, stderr })
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_arch = "wasm32")))]
 mod imp {
     use std::{
         io::{self, prelude::*},
