@@ -14,10 +14,9 @@ use crate::num::NonZero;
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
-use crate::sys::{os, stack_overflow};
 use crate::thread::ThreadInit;
 use crate::time::Duration;
-use crate::{cmp, io, ptr};
+use crate::{cmp, io, ptr, sys};
 #[cfg(not(any(
     target_os = "l4re",
     target_os = "vxworks",
@@ -77,7 +76,7 @@ impl Thread {
                     // multiple of the system page size. Because it's definitely
                     // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                     // Round up to the nearest page and try again.
-                    let page_size = os::page_size();
+                    let page_size = sys::os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
 
@@ -114,7 +113,7 @@ impl Thread {
 
                 // Now that the thread information is set, set up our stack
                 // overflow handler.
-                let _handler = stack_overflow::Handler::new();
+                let _handler = sys::stack_overflow::Handler::new();
 
                 rust_start();
             }
@@ -536,7 +535,7 @@ pub fn sleep(dur: Duration) {
             secs -= ts.tv_sec as u64;
             let ts_ptr = &raw mut ts;
             if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
-                assert_eq!(os::errno(), libc::EINTR);
+                assert_eq!(sys::io::errno(), libc::EINTR);
                 secs += ts.tv_sec as u64;
                 nsecs = ts.tv_nsec;
             } else {
