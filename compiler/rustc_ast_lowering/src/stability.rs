@@ -96,6 +96,11 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
         ExternAbi::RustCold => {
             Err(UnstableAbi { abi, feature: sym::rust_cold_cc, explain: GateReason::Experimental })
         }
+        ExternAbi::RustPreserveNone => Err(UnstableAbi {
+            abi,
+            feature: sym::rust_preserve_none_cc,
+            explain: GateReason::Experimental,
+        }),
         ExternAbi::RustInvalid => {
             Err(UnstableAbi { abi, feature: sym::rustc_attrs, explain: GateReason::ImplDetail })
         }
