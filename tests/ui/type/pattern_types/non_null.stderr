@@ -88,9 +88,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -98,14 +95,9 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Scalar(
                            Initialized {
                                value: Pointer(
@@ -134,8 +126,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(8 bytes),
                    },
                ],
            },

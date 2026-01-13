@@ -44,9 +44,6 @@ error: layout_of(E) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -54,14 +51,9 @@ error: layout_of(E) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(12 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -77,8 +69,6 @@ error: layout_of(E) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: true,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
@@ -216,9 +206,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -243,14 +230,9 @@ error: layout_of(Result<i32, i32>) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                    VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -275,8 +257,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },

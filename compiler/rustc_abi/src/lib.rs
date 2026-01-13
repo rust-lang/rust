@@ -2236,14 +2236,11 @@ pub enum AbiFromStrErr {
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct VariantLayout<FieldIdx: Idx> {
     pub size: Size,
-    pub align: AbiAlign,
     pub backend_repr: BackendRepr,
     pub field_offsets: IndexVec<FieldIdx, Size>,
     fields_in_memory_order: IndexVec<u32, FieldIdx>,
     largest_niche: Option<Niche>,
     uninhabited: bool,
-    max_repr_align: Option<Align>,
-    unadjusted_abi_align: Align,
 }
 
 impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
@@ -2254,14 +2251,11 @@ impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
 
         Self {
             size: layout.size,
-            align: layout.align,
             backend_repr: layout.backend_repr,
             field_offsets: offsets,
             fields_in_memory_order: in_memory_order,
             largest_niche: layout.largest_niche,
             uninhabited: layout.uninhabited,
-            max_repr_align: layout.max_repr_align,
-            unadjusted_abi_align: layout.unadjusted_abi_align,
         }
     }
 

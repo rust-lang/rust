@@ -129,9 +129,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -139,14 +136,9 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Scalar(
                            Initialized {
                                value: Int(
@@ -173,8 +165,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
@@ -228,9 +218,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -238,14 +225,9 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Scalar(
                            Initialized {
                                value: Int(
@@ -272,8 +254,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },

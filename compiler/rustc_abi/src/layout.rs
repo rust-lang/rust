@@ -575,6 +575,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         let calculate_niche_filling_layout = || -> Option<LayoutData<FieldIdx, VariantIdx>> {
+            struct VariantLayoutInfo {
+                align_abi: Align,
+            }
+
             if repr.inhibit_enum_layout_opt() {
                 return None;
             }
@@ -588,10 +592,13 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut unadjusted_abi_align = align;
             let mut combined_seed = repr.field_shuffle_seed;
 
+            let mut variants_info = IndexVec::<VariantIdx, _>::with_capacity(variants.len());
             let mut variant_layouts = variants
                 .iter()
                 .map(|v| {
                     let st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
+
+                    variants_info.push(VariantLayoutInfo { align_abi: st.align.abi });
 
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -636,7 +643,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
 
                 // Determine if it'll fit after the niche.
-                let this_align = layout.align.abi;
+                let this_align = variants_info[i].align_abi;
                 let this_offset = (niche_offset + niche_size).align_to(this_align);
 
                 if this_offset + layout.size > size {
@@ -667,7 +674,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 .iter_enumerated()
                 .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
             let same_size = size == variant_layouts[largest_variant_index].size;
-            let same_align = align == variant_layouts[largest_variant_index].align.abi;
+            let same_align = align == variants_info[largest_variant_index].align_abi;
 
             let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
             let abi = if same_size && same_align && others_zst {
@@ -1017,10 +1024,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 if matches!(variant.backend_repr, BackendRepr::Memory { .. } if variant.has_fields())
                 {
                     variant.backend_repr = abi;
-                    // Also need to bump up the size and alignment, so that the entire value fits
-                    // in here.
+                    // Also need to bump up the size, so that the entire value fits in here.
                     variant.size = cmp::max(variant.size, size);
-                    variant.align.abi = cmp::max(variant.align.abi, align);
                 }
             }
         }

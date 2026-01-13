@@ -293,20 +293,12 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
             }
             for variant in variants.iter() {
-                // Variants should have the same or a smaller size as the full thing,
-                // and same for alignment.
+                // Variants should have the same or a smaller size as the full thing.
                 if variant.size > layout.size {
                     bug!(
                         "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
                         layout.size.bytes(),
                         variant.size.bytes(),
-                    )
-                }
-                if variant.align.abi > layout.align.abi {
-                    bug!(
-                        "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                        layout.align.bytes(),
-                        variant.align.bytes(),
                     )
                 }
                 // Skip empty variants.
