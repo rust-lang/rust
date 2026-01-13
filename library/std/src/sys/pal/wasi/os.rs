@@ -6,7 +6,7 @@ use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::unsupported;
-use crate::{fmt, io, str};
+use crate::{fmt, io};
 
 // Add a few symbols not in upstream `libc` just yet.
 pub mod libc {
@@ -16,34 +16,6 @@ pub mod libc {
         pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
         pub fn chdir(dir: *const c_char) -> c_int;
         pub fn __wasilibc_get_environ() -> *mut *mut c_char;
-    }
-}
-
-unsafe extern "C" {
-    #[thread_local]
-    #[link_name = "errno"]
-    static mut libc_errno: libc::c_int;
-}
-
-pub fn errno() -> i32 {
-    unsafe { libc_errno as i32 }
-}
-
-pub fn set_errno(val: i32) {
-    unsafe {
-        libc_errno = val;
-    }
-}
-
-pub fn error_string(errno: i32) -> String {
-    let mut buf = [0 as libc::c_char; 1024];
-
-    let p = buf.as_mut_ptr();
-    unsafe {
-        if libc::strerror_r(errno as libc::c_int, p, buf.len()) < 0 {
-            panic!("strerror_r failure");
-        }
-        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
     }
 }
 

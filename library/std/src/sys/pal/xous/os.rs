@@ -1,7 +1,6 @@
 use super::unsupported;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
-use crate::os::xous::ffi::Error as XousError;
 use crate::path::{self, PathBuf};
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::{fmt, io};
@@ -61,14 +60,6 @@ mod c_compat {
         }
         exit(unsafe { main() });
     }
-}
-
-pub fn errno() -> i32 {
-    0
-}
-
-pub fn error_string(errno: i32) -> String {
-    Into::<XousError>::into(errno).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {

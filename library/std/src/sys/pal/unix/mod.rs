@@ -91,7 +91,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_vendor = "apple",
         )))]
         'poll: {
-            use crate::sys::os::errno;
+            use crate::sys::io::errno;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
                 libc::pollfd { fd: 1, events: 0, revents: 0 },
@@ -135,7 +135,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "vita",
         )))]
         {
-            use crate::sys::os::errno;
+            use crate::sys::io::errno;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
                     open_devnull();
@@ -223,63 +223,6 @@ pub unsafe fn cleanup() {
 
 #[allow(unused_imports)]
 pub use libc::signal;
-
-#[inline]
-pub(crate) fn is_interrupted(errno: i32) -> bool {
-    errno == libc::EINTR
-}
-
-pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
-    use io::ErrorKind::*;
-    match errno as libc::c_int {
-        libc::E2BIG => ArgumentListTooLong,
-        libc::EADDRINUSE => AddrInUse,
-        libc::EADDRNOTAVAIL => AddrNotAvailable,
-        libc::EBUSY => ResourceBusy,
-        libc::ECONNABORTED => ConnectionAborted,
-        libc::ECONNREFUSED => ConnectionRefused,
-        libc::ECONNRESET => ConnectionReset,
-        libc::EDEADLK => Deadlock,
-        libc::EDQUOT => QuotaExceeded,
-        libc::EEXIST => AlreadyExists,
-        libc::EFBIG => FileTooLarge,
-        libc::EHOSTUNREACH => HostUnreachable,
-        libc::EINTR => Interrupted,
-        libc::EINVAL => InvalidInput,
-        libc::EISDIR => IsADirectory,
-        libc::ELOOP => FilesystemLoop,
-        libc::ENOENT => NotFound,
-        libc::ENOMEM => OutOfMemory,
-        libc::ENOSPC => StorageFull,
-        libc::ENOSYS => Unsupported,
-        libc::EMLINK => TooManyLinks,
-        libc::ENAMETOOLONG => InvalidFilename,
-        libc::ENETDOWN => NetworkDown,
-        libc::ENETUNREACH => NetworkUnreachable,
-        libc::ENOTCONN => NotConnected,
-        libc::ENOTDIR => NotADirectory,
-        #[cfg(not(target_os = "aix"))]
-        libc::ENOTEMPTY => DirectoryNotEmpty,
-        libc::EPIPE => BrokenPipe,
-        libc::EROFS => ReadOnlyFilesystem,
-        libc::ESPIPE => NotSeekable,
-        libc::ESTALE => StaleNetworkFileHandle,
-        libc::ETIMEDOUT => TimedOut,
-        libc::ETXTBSY => ExecutableFileBusy,
-        libc::EXDEV => CrossesDevices,
-        libc::EINPROGRESS => InProgress,
-        libc::EOPNOTSUPP => Unsupported,
-
-        libc::EACCES | libc::EPERM => PermissionDenied,
-
-        // These two constants can have the same value on some systems,
-        // but different values on others, so we can't use a match
-        // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => WouldBlock,
-
-        _ => Uncategorized,
-    }
-}
 
 #[doc(hidden)]
 pub trait IsMinusOne {
