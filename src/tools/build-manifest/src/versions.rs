@@ -133,10 +133,7 @@ impl PkgType {
 
     /// Whether to package these target-specific docs for another similar target.
     pub(crate) fn use_docs_fallback(&self) -> bool {
-        match self {
-            PkgType::JsonDocs | PkgType::HtmlDocs => true,
-            _ => false,
-        }
+        matches!(self, PkgType::JsonDocs | PkgType::HtmlDocs | PkgType::RustcDocs)
     }
 }
 
