@@ -113,9 +113,12 @@ impl ArgParser {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
             AttrArgs::Delimited(args) => {
-                // The arguments of rustc_dummy and diagnostic attributes are not validated
-                // if the arguments are delimited
-                if parts == &[sym::rustc_dummy] || parts[0] == sym::diagnostic {
+                // The arguments of rustc_dummy and diagnostic::do_not_recommend are not validated
+                // if the arguments are delimited.
+                // See https://doc.rust-lang.org/reference/attributes/diagnostics.html#r-attributes.diagnostic.namespace.unknown-invalid-syntax
+                if parts == &[sym::rustc_dummy]
+                    || parts == &[sym::diagnostic, sym::do_not_recommend]
+                {
                     return Some(ArgParser::List(MetaItemListParser {
                         sub_parsers: ThinVec::new(),
                         span: args.dspan.entire(),
