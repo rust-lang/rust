@@ -56,7 +56,7 @@ macro_rules! parallel {
     }
 
 // This function only works when `is_dyn_thread_safe()`.
-pub fn scope<'scope, OP, R>(spawn_limit: u128, op: OP) -> R
+pub fn scope<'scope, OP, R>(spawn_limit: u64, op: OP) -> R
 where
     OP: for<'a, 'tcx> FnOnce(Scope<'a, 'scope>) -> R + DynSend,
     R: DynSend,
@@ -70,8 +70,8 @@ where
 
 pub struct Scope<'a, 'scope> {
     scope: &'a rustc_thread_pool::Scope<'scope>,
-    branch_limit: u128,
-    next_branch: u128,
+    branch_limit: u64,
+    next_branch: u64,
 }
 
 impl<'a, 'scope> Scope<'a, 'scope> {

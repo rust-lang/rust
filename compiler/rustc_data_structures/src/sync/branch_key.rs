@@ -1,14 +1,14 @@
 use std::cmp;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BranchKey(u128);
+pub struct BranchKey(u64);
 
 impl BranchKey {
     pub const fn root() -> Self {
-        Self(0x80000000_00000000_00000000_00000000)
+        Self(0x80000000_00000000)
     }
 
-    fn bits_branch(self, branch_num: u128, bits: u32) -> Result<Self, BranchNestingError> {
+    fn bits_branch(self, branch_num: u64, bits: u32) -> Result<Self, BranchNestingError> {
         let trailing_zeros = self.0.trailing_zeros();
         let allocated_shift = trailing_zeros.checked_sub(bits).ok_or(BranchNestingError(()))?;
         Ok(BranchKey(
@@ -18,7 +18,7 @@ impl BranchKey {
         ))
     }
 
-    pub fn branch(self, branch_num: u128, branch_space: u128) -> BranchKey {
+    pub fn branch(self, branch_num: u64, branch_space: u64) -> BranchKey {
         debug_assert!(
             branch_num < branch_space,
             "branch_num = {branch_num} should be less than branch_space = {branch_space}"
@@ -35,7 +35,7 @@ impl BranchKey {
     pub fn nest(self, then: Self) -> Result<Self, BranchNestingError> {
         let trailing_zeros = then.0.trailing_zeros();
         let branch_num = then.0.wrapping_shr(trailing_zeros + 1);
-        let bits = u128::BITS - trailing_zeros;
+        let bits = u64::BITS - trailing_zeros;
         self.bits_branch(branch_num, bits)
     }
 }
