@@ -749,6 +749,10 @@ impl<D: Deps> DepGraphData<D> {
                     false
                 }
             } else {
+                // This node existed in the previous compilation session. Its query was re-executed,
+                // but it doesn't compute a result hash (i.e. it represents a `no_hash` query).
+                // We can only check if node's dependencies are all green, which should be
+                // enough for us to color this node as green too.
                 if !feed && !cx.is_eval_always(key.kind) {
                     if let Some(green) = self.try_mark_previous_green(cx, prev_index, &key, frame) {
                         return green;
