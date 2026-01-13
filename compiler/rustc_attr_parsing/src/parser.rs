@@ -322,6 +322,13 @@ impl NameValueParser {
         self.value_as_lit().kind.str()
     }
 
+    /// If the value is a string literal, it will return its value associated with its span (an
+    /// `Ident` in short).
+    pub fn value_as_ident(&self) -> Option<Ident> {
+        let meta_item = self.value_as_lit();
+        meta_item.kind.str().map(|name| Ident { name, span: meta_item.span })
+    }
+
     pub fn args_span(&self) -> Span {
         self.eq_span.to(self.value_span)
     }

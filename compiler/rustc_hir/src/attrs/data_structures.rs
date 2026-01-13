@@ -136,7 +136,7 @@ pub enum IntType {
 pub struct Deprecation {
     pub since: DeprecatedSince,
     /// The note to issue a reason.
-    pub note: Option<Symbol>,
+    pub note: Option<Ident>,
     /// A text snippet used to completely replace any use of the deprecated item in an expression.
     ///
     /// This is currently unstable.
