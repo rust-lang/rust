@@ -355,32 +355,6 @@ pub fn break_query_cycles<I: Clone + Debug>(
     *cycle_lock = Some(cycle_error);
     rustc_thread_pool::mark_unblocked(registry);
     waiter.condvar.notify_one();
-
-    // // Check that a cycle was found. It is possible for a deadlock to occur without
-    // // a query cycle if a query which can be waited on uses Rayon to do multithreading
-    // // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
-    // // wait using Rayon on B. Rayon may then switch to executing another query (Y)
-    // // which in turn will wait on X causing a deadlock. We have a false dependency from
-    // // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
-    // // only considers the true dependency and won't detect a cycle.
-    // if !found_cycle {
-    //     panic!(
-    //         "deadlock detected as we're unable to find a query cycle to break\n\
-    //         current query map:\n{:#?}",
-    //         query_map
-    //     );
-    // }
-
-    // // Mark all the thread we're about to wake up as unblocked. This needs to be done before
-    // // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
-    // // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
-    // for _ in 0..wakelist.len() {
-    //     rustc_thread_pool::mark_unblocked(registry);
-    // }
-
-    // for waiter in wakelist.into_iter() {
-    //     waiter.condvar.notify_one();
-    // }
 }
 
 #[inline(never)]
