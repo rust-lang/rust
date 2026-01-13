@@ -163,10 +163,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: layout.backend_repr,
             largest_niche: layout.largest_niche,
             uninhabited: layout.uninhabited,
-            align: layout.align,
             size: layout.size,
-            max_repr_align: layout.max_repr_align,
-            unadjusted_abi_align: layout.unadjusted_abi_align,
+            align: parent.align,
+            max_repr_align: parent.max_repr_align,
+            unadjusted_abi_align: parent.unadjusted_abi_align,
             randomization_seed: Hash64::ZERO,
         }
     }
