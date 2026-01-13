@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId,
+    AdtId, AssocItemId, AstIdLoc, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId,
+    Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
     nameres::crate_def_map,
@@ -169,6 +169,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
         let collect_pub_only = self.collect_pub_only;
+        let is_block_module = module_id.is_block_module(self.db);
         let push_decl = |this: &mut Self, def: ModuleDefId, name, vis| {
             if collect_pub_only && vis != Visibility::Public {
                 return;
@@ -240,6 +241,10 @@ impl<'a> SymbolCollector<'a> {
             let source = import_child_source_cache
                 .entry(i.use_)
                 .or_insert_with(|| i.use_.child_source(this.db));
+            if is_block_module && source.file_id.is_macro() {
+                // Macros tend to generate a lot of imports, the user really won't care about them
+                return;
+            }
             let Some(use_tree_src) = source.value.get(i.idx) else { return };
             let rename = use_tree_src.rename().and_then(|rename| rename.name());
             let name_syntax = match rename {
@@ -276,6 +281,12 @@ impl<'a> SymbolCollector<'a> {
                     return;
                 }
                 let loc = i.lookup(this.db);
+                if is_block_module && loc.ast_id().file_id.is_macro() {
+                    // Macros (especially derivves) tend to generate renamed extern crate items,
+                    // the user really won't care about them
+                    return;
+                }
+
                 let source = loc.source(this.db);
                 let rename = source.value.rename().and_then(|rename| rename.name());
 
