@@ -60,6 +60,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
+        Error(Target::Param),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
@@ -364,6 +365,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
         Error(Target::Closure),
+        Error(Target::Param),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }

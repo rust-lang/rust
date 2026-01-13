@@ -6,8 +6,11 @@ impl<S: Stage> SingleAttributeParser<S> for PathParser {
     const PATH: &[Symbol] = &[sym::path];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Error(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Mod),
+        Error(Target::Crate),
+        Error(Target::Param),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "file",
         "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"

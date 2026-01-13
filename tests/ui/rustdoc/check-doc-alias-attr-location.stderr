@@ -1,8 +1,10 @@
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+error: `#[doc]` attribute cannot be used on function params
   --> $DIR/check-doc-alias-attr-location.rs:22:12
    |
 LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
    |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, unions, and use statements
 
 error: `#[doc(alias = "...")]` isn't allowed on foreign module
   --> $DIR/check-doc-alias-attr-location.rs:9:15

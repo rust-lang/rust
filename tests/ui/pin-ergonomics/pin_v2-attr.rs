@@ -83,7 +83,6 @@ const CONST: () = ();
 #[pin_v2] //~ ERROR `#[pin_v2]` attribute cannot be used on functions
 fn f<T, U>(#[pin_v2] param: Foo<T, U>)
 //~^ ERROR `#[pin_v2]` attribute cannot be used on function params
-//~| ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 where
     #[pin_v2]
     //~^ ERROR `#[pin_v2]` attribute cannot be used on where predicates

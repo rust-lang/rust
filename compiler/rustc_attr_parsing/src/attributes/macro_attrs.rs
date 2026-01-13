@@ -35,6 +35,7 @@ const MACRO_USE_ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnR
     Allow(Target::ExternCrate),
     Allow(Target::Crate),
     Error(Target::WherePredicate),
+    Error(Target::Param),
 ]);
 
 impl<S: Stage> AttributeParser<S> for MacroUseParser {
@@ -137,6 +138,7 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         Allow(Target::MacroDef),
         Error(Target::WherePredicate),
         Error(Target::Crate),
+        Error(Target::Param),
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {

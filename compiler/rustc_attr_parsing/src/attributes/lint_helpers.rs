@@ -57,6 +57,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for AutomaticallyDerivedParser {
         Allow(Target::Impl { of_trait: true }),
         Error(Target::Crate),
         Error(Target::WherePredicate),
+        Error(Target::Param),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::AutomaticallyDerived;
 }

@@ -209,6 +209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 tcx.features(),
                 registered_tools,
                 Late,
+                tcx.dcx(),
             ),
             delayed_lints: Vec::new(),
         }
@@ -1349,6 +1350,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TyKind::Path(path)
             }
             TyKind::FnPtr(f) => {
+                let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
+                for param in &f.decl.inputs {
+                    // Attrs on FnPtr need to be lowered, see RFC #2565
+                    self.lower_attrs(hir_id, param.attrs(), param.span, Target::Param);
+                }
+
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
                 hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,

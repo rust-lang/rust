@@ -7,6 +7,7 @@ impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
         Allow(Target::ForeignTy),
         Allow(Target::Enum),
         Allow(Target::Union),
+        Error(Target::Param),
     ]);
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;

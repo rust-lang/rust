@@ -16,6 +16,7 @@
 //! constructions produced by proc macros. This pass is only intended for simple checks that do not
 //! require name resolution or type checking, or other kinds of complex analysis.
 
+use core::slice;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
@@ -25,7 +26,7 @@ use rustc_abi::{CVariadicStatus, CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
-use rustc_attr_parsing::validate_attr;
+use rustc_attr_parsing::{AttributeParser, Late, validate_attr};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, LintBuffer};
 use rustc_feature::Features;
@@ -373,7 +374,12 @@ impl<'a> AstValidator<'a> {
                     sym::forbid,
                     sym::warn,
                 ];
-                !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)
+                !attr.has_any_name(&arr)
+                    && rustc_attr_parsing::is_builtin_attr(*attr)
+                    // Only emit this for non-parsed attrs, because parsed attrs have better lints for this
+                    && !attr.name()
+                        .as_ref()
+                        .is_some_and(|name| AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)))
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {

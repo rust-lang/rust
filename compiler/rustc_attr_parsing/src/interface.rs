@@ -12,10 +12,11 @@ use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
-use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, GroupType, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
-use crate::session_diagnostics::ParsedDescription;
+use crate::session_diagnostics::{AttributeTargetRegression, ParsedDescription};
+use crate::target_checking::AllowedTargets;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
 /// Context created once, for example as part of the ast lowering
@@ -237,7 +238,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         features: &'sess Features,
         tools: Vec<Symbol>,
         stage: S,
+        dcx: DiagCtxtHandle<'_>,
     ) -> Self {
+        Self::check_allowed_attrs(S::parsers(), dcx);
         Self { features: Some(features), tools, parse_only: None, sess, stage }
     }
 
@@ -483,6 +486,33 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     }
                 };
                 AttrArgs::Eq { eq_span: lower_span(*eq_span), expr: lit }
+            }
+        }
+    }
+
+    fn check_allowed_attrs(parsers: &'static GroupType<S>, dcx: DiagCtxtHandle<'_>) {
+        use crate::target_checking::Policy::{Allow, Error, Warn};
+        let targets = [Target::Param];
+        for (syms, accepters) in &parsers.accepters {
+            for accept in accepters {
+                let AllowedTargets::AllowListWarnRest(allow_list) = accept.allowed_targets else {
+                    continue;
+                };
+
+                let missing_targets = targets.into_iter().flat_map(|target| {
+                    (!allow_list.iter().any(|policy| {
+                        [Allow(target), Warn(target), Error(target)].contains(policy)
+                    }))
+                    .then_some(target)
+                });
+                for target in missing_targets {
+                    for sym in *syms {
+                        dcx.emit_warn(AttributeTargetRegression {
+                            attribute_symbol: *sym,
+                            target: target.name(),
+                        });
+                    }
+                }
             }
         }
     }
