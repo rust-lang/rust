@@ -10,8 +10,9 @@ use rustc_type_ir::solve::{
     RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, MayBeErased, Movability, PredicatePolarity, TraitPredicate,
-    TraitRef, TypeVisitableExt as _, TypingMode, Unnormalized, Upcast as _, elaborate,
+    self as ty, ExistentialPredicate, FieldInfo, Interner, MayBeErased, Movability,
+    PredicatePolarity, TraitPredicate, TraitRef, TypeVisitableExt as _, TypingMode, Unnormalized,
+    Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace, warn};
 
@@ -87,12 +88,17 @@ where
             // Impl matches polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
             | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
-                if let TypingMode::Reflection = ecx.typing_mode()
-                    && !cx.is_fully_generic_for_reflection(impl_def_id)
-                {
-                    return Err(NoSolution.into());
-                } else {
-                    Certainty::Yes
+                match ecx.typing_mode() {
+                    TypingMode::Reflection if !cx.is_fully_generic_for_reflection(impl_def_id) => {
+                        return Err(NoSolution.into());
+                    }
+                    TypingMode::Coherence
+                    | TypingMode::ErasedNotCoherence(_)
+                    | TypingMode::Analysis { .. }
+                    | TypingMode::Borrowck { .. }
+                    | TypingMode::PostBorrowckAnalysis { .. }
+                    | TypingMode::PostAnalysis
+                    | TypingMode::Reflection => Certainty::Yes,
                 }
             }
 
@@ -871,6 +877,49 @@ where
             Ok(resp) => Ok(resp),
             Err(NoSolution) => Ok(vec![]),
         }
+    }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution.into());
+        }
+        let cx = ecx.cx();
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let self_ty = goal.predicate.self_ty();
+            let ty_lifetime = goal.predicate.trait_ref.args.region_at(1);
+            match self_ty.kind() {
+                ty::Dynamic(bounds, lifetime) => {
+                    for bound in bounds.iter() {
+                        match bound.skip_binder() {
+                            ExistentialPredicate::Trait(_) => {}
+                            // FIXME(try_as_dyn): check what kind of projections we can allow
+                            ExistentialPredicate::Projection(_) => return Err(NoSolution.into()),
+                            // Auto traits do not affect lifetimes outside of specialization,
+                            // which is disabled in reflection.
+                            ExistentialPredicate::AutoTrait(_) => {}
+                        }
+                    }
+                    ecx.add_goal(
+                        GoalSource::Misc,
+                        goal.with(cx, ty::OutlivesPredicate(ty_lifetime, lifetime)),
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+
+                ty::Bound(..)
+                | ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                ) => {
+                    panic!("unexpected type `{self_ty:?}`")
+                }
+
+                _ => Err(NoSolution.into()),
+            }
+        })
     }
 
     fn consider_builtin_field_candidate(

@@ -1,5 +1,6 @@
 //@ revisions: next old
 //@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@check-pass
 #![feature(try_as_dyn)]
 

@@ -283,8 +283,9 @@ pub struct ImplTraitHeader<'tcx> {
 impl<'tcx> ImplTraitHeader<'tcx> {
     /// For trait impls, checks whether
     /// * the type and trait only use generic lifetime arguments (and no concrete ones like `'static`), and
-    /// * uses each generic param (lifetime or type) only once.
-    /// Pessimistic analysis, so it will reject alias types
+    /// * uses any generic param (lifetime or type) only once.
+    /// 
+    /// This is a pessimistic analysis, so it will reject alias types
     /// and other types that may be actually ok. We can allow more in the future.
     ///
     /// Constants (associated or generic) are irrelevant for this analysis, as their value is neither
@@ -306,14 +307,12 @@ impl<'tcx> ImplTraitHeader<'tcx> {
                             ControlFlow::Break(())
                         }
                     }
-                    RegionKind::ReBound(..) | RegionKind::ReLateParam(_) => {
-                        ControlFlow::Continue(())
-                    }
-                    RegionKind::ReStatic
-                    | RegionKind::ReVar(_)
+                    RegionKind::ReBound(..) => ControlFlow::Continue(()),
+                    RegionKind::ReStatic | RegionKind::ReError(_) => ControlFlow::Break(()),
+                    RegionKind::ReVar(_)
                     | RegionKind::RePlaceholder(_)
                     | RegionKind::ReErased
-                    | RegionKind::ReError(_) => ControlFlow::Break(()),
+                    | RegionKind::ReLateParam(_) => bug!("unexpected lifetime in impl: {r:?}"),
                 }
             }
 
