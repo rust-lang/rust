@@ -1825,5 +1825,5 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
-    providers.items_of_instance = items_of_instance;
+    providers.queries.items_of_instance = items_of_instance;
 }

@@ -9,7 +9,7 @@
 #![feature(map_try_insert)]
 // tidy-alphabetical-end
 
-use rustc_middle::util::Providers;
+use rustc_middle::query::Providers;
 
 pub mod abi_test;
 mod check_attr;
