@@ -44,6 +44,7 @@ impl AttributeKind {
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
+            DoNotRecommend { .. } => Yes,
             Doc(_) => Yes,
             DocComment { .. } => Yes,
             Dummy => No,

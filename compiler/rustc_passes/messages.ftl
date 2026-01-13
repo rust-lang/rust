@@ -246,9 +246,6 @@ passes_implied_feature_not_exist =
 
 passes_incorrect_crate_type = lang items are not allowed in stable dylibs
 
-passes_incorrect_do_not_recommend_args =
-    `#[diagnostic::do_not_recommend]` does not expect any arguments
-
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 

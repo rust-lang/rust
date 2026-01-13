@@ -34,6 +34,7 @@ use crate::attributes::crate_level::{
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::do_not_recommend::DoNotRecommendParser;
 use crate::attributes::doc::DocParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -197,6 +198,7 @@ attribute_parsers!(
         Single<CrateNameParser>,
         Single<CustomMirParser>,
         Single<DeprecationParser>,
+        Single<DoNotRecommendParser>,
         Single<DummyParser>,
         Single<ExportNameParser>,
         Single<IgnoreParser>,
