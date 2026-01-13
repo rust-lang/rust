@@ -34,8 +34,8 @@ pub type Alias = Option<i32>;
 
 Here, we check that documentation generated for crate `file` contains a page for the
 public type alias `Alias` where the code block that is found at the top contains the
-expected rendering of the item. The `//*[@class="rust item-decl"]//code` is an XPath
-expression.
+expected rendering of the item.
+The `//*[@class="rust item-decl"]//code` is an XPath expression.
 
 Conventionally, you place these directives directly above the thing they are meant to test.
 Technically speaking however, they don't need to be as HtmlDocCk only looks for the directives.
@@ -120,8 +120,8 @@ pre-recorded subtree or text (the "snapshot") in file `FILE_STEM.NAME.html` wher
 is the file stem of the test file.
 
 Pass the `--bless` option to `compiletest` to accept the current subtree/text as expected.
-This will overwrite the aforementioned file (or create it if it doesn't exist). It will
-automatically normalize the channel-dependent URL `https://doc.rust-lang.org/CHANNEL` to
+This will overwrite the aforementioned file (or create it if it doesn't exist).
+It will automatically normalize the channel-dependent URL `https://doc.rust-lang.org/CHANNEL` to
 the special string `{{channel}}`.
 
 ### `has-dir`
@@ -152,7 +152,8 @@ It's *strongly recommended* to read that chapter if you don't know anything abou
 Here are some details that are relevant to this test suite specifically:
 
 * While you can use both `//@ compile-flags` and `//@ doc-flags` to pass flags to `rustdoc`,
-  prefer to user the latter to show intent. The former is meant for `rustc`.
+  prefer to user the latter to show intent.
+  The former is meant for `rustc`.
 * Add `//@ build-aux-docs` to the test file that has auxiliary crates to not only compile the
   auxiliaries with `rustc` but to also document them with `rustdoc`.
 
@@ -169,7 +170,8 @@ thus continue to test the correct thing or they won't in which case they would f
 forcing the author of the change to look at them.
 
 Compare that to *negative* checks (e.g., `//@ !has PATH XPATH PATTERN`) which won't fail if their
-XPath expression "no longer" matches. The author who changed "the shape" thus won't get notified and
+XPath expression "no longer" matches.
+The author who changed "the shape" thus won't get notified and
 as a result someone else can unintentionally reintroduce `PATTERN` into the generated docs without
 the original negative check failing.
 
