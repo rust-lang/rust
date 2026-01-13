@@ -1,4 +1,3 @@
-//@run-fail
 #![feature(try_as_dyn)]
 
 use std::any::try_as_dyn;
@@ -28,7 +27,7 @@ fn main() {
 }
 
 fn extend(a: &Payload) -> &'static Payload {
-    // TODO: should panic at the `unwrap` here
     let b: &(dyn Trait + 'static) = try_as_dyn::<&Payload, dyn Trait + 'static>(&a).unwrap();
+    //~^ ERROR: the trait bound `(dyn Trait + 'static): TryAsDynCompatible` is not satisfied
     b.as_static()
 }

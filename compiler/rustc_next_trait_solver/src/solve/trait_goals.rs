@@ -8,8 +8,8 @@ use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
-    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    self as ty, ExistentialPredicate, Interner, Movability, PredicatePolarity, TraitPredicate,
+    TraitRef, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
 
@@ -847,6 +847,48 @@ where
                 }
 
                 _ => vec![],
+            }
+        })
+    }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        let cx = ecx.cx();
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let ty = goal.predicate.self_ty();
+            match ty.kind() {
+                ty::Dynamic(bounds, _lifetime) => {
+                    for bound in bounds.as_slice() {
+                        match bound.skip_binder() {
+                            ExistentialPredicate::Trait(trait_ref) => {
+                                if !cx.trait_is_try_as_dyn_compatible(trait_ref.def_id) {
+                                    return Err(NoSolution);
+                                }
+                            }
+                            // FIXME(try_as_dyn): check what kind of projections we can allow
+                            ExistentialPredicate::Projection(_) => return Err(NoSolution),
+                            // Auto traits do not affect lifetimes outside of specialization,
+                            // which is disabled in reflection.
+                            ExistentialPredicate::AutoTrait(_) => {}
+                        }
+                    }
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+
+                ty::Bound(..)
+                | ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                ) => {
+                    panic!("unexpected type `{ty:?}`")
+                }
+
+                _ => Err(NoSolution),
             }
         })
     }

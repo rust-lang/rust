@@ -385,6 +385,8 @@ pub trait Interner:
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 
+    fn trait_is_try_as_dyn_compatible(self, def_id: Self::TraitId) -> bool;
+
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;

@@ -141,6 +141,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BikeshedGuaranteedNoDropCandidate => {
                 self.confirm_bikeshed_guaranteed_no_drop_candidate(obligation)
             }
+
+            TryAsDynCandidate => self.confirm_try_as_dyn_candidate(obligation),
         })
     }
 
@@ -1332,5 +1334,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
+    }
+
+    fn confirm_try_as_dyn_candidate(
+        &mut self,
+        _obligation: &PolyTraitObligation<'tcx>,
+    ) -> ImplSource<'tcx, PredicateObligation<'tcx>> {
+        ImplSource::Builtin(BuiltinImplSource::Misc, PredicateObligations::new())
     }
 }

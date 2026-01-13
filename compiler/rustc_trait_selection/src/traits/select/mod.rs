@@ -2042,6 +2042,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | PointerLikeCandidate
+                | TryAsDynCandidate
                 | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.

@@ -180,6 +180,8 @@ pub enum SelectionCandidate<'tcx> {
     BuiltinUnsizeCandidate,
 
     BikeshedGuaranteedNoDropCandidate,
+
+    TryAsDynCandidate,
 }
 
 /// The result of trait evaluation. The order is important
