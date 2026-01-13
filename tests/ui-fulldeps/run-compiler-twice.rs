@@ -64,7 +64,7 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         output_dir: None,
         ice_file: None,
         file_loader: None,
-        locale_resources: Vec::new(),
+        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
@@ -80,7 +80,7 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         let krate = rustc_interface::passes::parse(&compiler.sess);
         let linker = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
             let _ = tcx.analysis(());
-            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
+            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend, vec![])
         });
         linker.link(&compiler.sess, &*compiler.codegen_backend);
     });
