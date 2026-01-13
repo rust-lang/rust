@@ -8,7 +8,7 @@ use hir_def::{
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        LabelId, Literal, Pat, PatId, Statement, UnaryOp,
+        InlineAsmKind, LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
     resolver::ValueNs,
 };
@@ -1037,7 +1037,11 @@ impl<'db> InferenceContext<'_, 'db> {
                     // FIXME: `sym` should report for things that are not functions or statics.
                     AsmOperand::Sym(_) => (),
                 });
-                if diverge { self.types.types.never } else { self.types.types.unit }
+                if diverge || asm.kind == InlineAsmKind::NakedAsm {
+                    self.types.types.never
+                } else {
+                    self.types.types.unit
+                }
             }
         };
         // use a new type variable if we got unknown here

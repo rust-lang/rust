@@ -3983,3 +3983,17 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn naked_asm_returns_never() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+
+#[unsafe(naked)]
+extern "C" fn foo() -> ! {
+    core::arch::naked_asm!("");
+}
+    "#,
+    );
+}
