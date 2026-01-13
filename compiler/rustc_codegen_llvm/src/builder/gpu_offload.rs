@@ -29,6 +29,8 @@ pub(crate) struct OffloadGlobals<'ll> {
 
     pub ident_t_global: &'ll llvm::Value,
 
+    // FIXME(offload): Drop this, once we fully automated our offload compilation pipeline, since
+    // LLVM will initialize them for us if it sees gpu kernels being registered.
     pub init_rtls: &'ll llvm::Value,
 }
 
