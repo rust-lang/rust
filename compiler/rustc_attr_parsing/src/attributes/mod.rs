@@ -47,6 +47,7 @@ pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
+pub(crate) mod must_not_suspend;
 pub(crate) mod must_use;
 pub(crate) mod no_implicit_prelude;
 pub(crate) mod no_link;

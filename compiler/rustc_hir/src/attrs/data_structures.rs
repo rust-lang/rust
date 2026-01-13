@@ -824,6 +824,9 @@ pub enum AttributeKind {
     /// Represents `#[move_size_limit]`
     MoveSizeLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
+    /// Represents `#[must_not_suspend]`
+    MustNotSupend { reason: Option<Symbol> },
+
     /// Represents `#[must_use]`.
     MustUse {
         span: Span,
