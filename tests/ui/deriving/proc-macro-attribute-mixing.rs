@@ -9,8 +9,6 @@
 //@ compile-flags: -Zunpretty=expanded
 //@ edition: 2015
 
-#![feature(derive_coerce_pointee)]
-
 #[macro_use]
 extern crate another_proc_macro;
 
