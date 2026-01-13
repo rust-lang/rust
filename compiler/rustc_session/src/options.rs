@@ -781,6 +781,8 @@ mod desc {
     pub(crate) const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
+    pub(crate) const parse_codegen_retag_options: &str =
+        "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
@@ -1297,6 +1299,7 @@ pub mod parse {
             None | Some("none") => CFProtection::None,
             Some("branch") => CFProtection::Branch,
             Some("return") => CFProtection::Return,
+
             Some("full") => CFProtection::Full,
             Some(_) => return false,
         };
@@ -1518,6 +1521,26 @@ pub mod parse {
             "0" => InstrumentCoverage::No,
             _ => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_codegen_retag_options(
+        slot: &mut Option<CodegenRetagOptions>,
+        v: Option<&str>,
+    ) -> bool {
+        let mut opts = CodegenRetagOptions::default();
+        for option in v.into_iter().flat_map(|v| v.split(',')) {
+            match option {
+                "no-precise-im" => {
+                    opts.no_precise_im = true;
+                }
+                "no-precise-pin" => {
+                    opts.no_precise_pin = true;
+                }
+                _ => return false,
+            }
+        }
+        *slot = Some(opts);
         true
     }
 
@@ -2242,6 +2265,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
+        "emit experimental retag intrinsic calls in generated code (default: no)"),
     codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
         "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],

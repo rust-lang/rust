@@ -775,6 +775,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(
         coverage_options,
         CoverageOptions {
@@ -815,6 +816,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(link_directives, false);
     tracked!(link_only, true);
     tracked!(lint_llvm_ir, true);
+    tracked!(llvm_emit_lifetime_markers, true);
     tracked!(llvm_module_flag, vec![("bar".to_string(), 123, "max".to_string())]);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(llvm_writable, true);

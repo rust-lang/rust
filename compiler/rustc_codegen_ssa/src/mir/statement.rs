@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::mir::{self, NonDivergingIntrinsic, Rvalue, StmtDebugInfo};
 use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 
@@ -10,11 +10,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
         self.codegen_stmt_debuginfos(bx, &statement.debuginfos);
         self.set_debug_loc(bx, statement.source_info);
+
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
+                let needs_retag = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some()
+                    // We're not really interested in stores to "outside" locations
+                    && !(place.is_indirect_first_projection()
+                    // `Ref` has its own internal retagging
+                    || matches!(rvalue, Rvalue::Ref(..)));
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {
-                        LocalRef::Place(cg_dest) => self.codegen_rvalue(bx, cg_dest, rvalue),
+                        LocalRef::Place(cg_dest) => {
+                            self.codegen_rvalue(bx, cg_dest, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_place(bx, cg_dest, false);
+                            }
+                        }
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
                             let ty = cg_indirect_dest.layout.ty;
                             span_bug!(
@@ -24,7 +35,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                         }
                         LocalRef::PendingOperand => {
-                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            let mut operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                operand = self.codegen_retag_operand(bx, operand, false);
+                            }
                             self.overwrite_local(index, LocalRef::Operand(operand));
                             self.debug_introduce_local(bx, index);
                         }
@@ -36,15 +50,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     rvalue
                                 );
                             }
-
                             // If the type is zero-sized, it's already been set here,
                             // but we still need to make sure we codegen the operand
-                            self.codegen_rvalue_operand(bx, rvalue);
+                            // and emit a retag.
+                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_operand(bx, operand, false);
+                            }
                         }
                     }
                 } else {
                     let cg_dest = self.codegen_place(bx, place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue);
+                    if needs_retag {
+                        self.codegen_retag_place(bx, cg_dest, false);
+                    }
                 }
             }
             mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {

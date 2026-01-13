@@ -201,12 +201,20 @@ pub enum Offload {
     Test,
 }
 
+/// The different settings that the `-Z codegen-emit-retag` flag can have.
+#[derive(Copy, Clone, PartialEq, Hash, Debug, Encodable, Decodable, Default)]
+pub struct CodegenRetagOptions {
+    /// Track interior mutable data on the level of references, instead of on the byte level.
+    pub no_precise_im: bool,
+    /// Track `UnsafePinned` data on the level of references, instead of on the byte level.
+    pub no_precise_pin: bool,
+}
+
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum AutoDiff {
     /// Enable the autodiff opt pipeline
     Enable,
-
     /// Print TypeAnalysis information
     PrintTA,
     /// Print TypeAnalysis information for a specific function
@@ -3068,12 +3076,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3177,6 +3186,7 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
+        CodegenRetagOptions
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

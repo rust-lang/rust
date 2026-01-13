@@ -701,6 +701,34 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
         OperandRefBuilder { val, layout }
     }
 
+    /// Creates an initialized builder for an existing `operand`.
+    ///
+    /// ICEs for [`BackendRepr::Memory`] types (other than ZSTs), which use
+    /// which use [`OperandValue::Ref`]. In this case, updates should be
+    /// performed by writing into the place
+    pub(super) fn from_existing(operand: OperandRef<'tcx, V>) -> Self {
+        let layout = operand.layout;
+        let val = match (operand.val, layout.backend_repr) {
+            (OperandValue::ZeroSized, _) => OperandValueBuilder::ZeroSized,
+            (OperandValue::Immediate(v), BackendRepr::Scalar(_)) => {
+                OperandValueBuilder::Immediate(Either::Left(v))
+            }
+            (OperandValue::Immediate(v), BackendRepr::SimdVector { .. }) => {
+                OperandValueBuilder::Vector(Either::Left(v))
+            }
+            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(_, _)) => {
+                OperandValueBuilder::Pair(Either::Left(a), Either::Left(b))
+            }
+            (_, BackendRepr::Memory { .. }) => {
+                bug!("Cannot use non-ZST Memory-ABI type in operand builder: {layout:?}");
+            }
+            _ => {
+                bug!("Operand cannot be used with `from_existing`: {operand:?}")
+            }
+        };
+        OperandRefBuilder { val, layout }
+    }
+
     pub(super) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &mut self,
         bx: &mut Bx,
@@ -809,6 +837,27 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
                 *snd = Either::Left(imm);
             }
             _ => bug!("Tried to insert {imm:?} into field {f:?} of {self:?}"),
+        }
+    }
+
+    /// Replaces the current immediate value at the offset `offset`
+    /// with the value `imm`. A value must already be present.
+    ///
+    /// This is used along with [`Self::from_existing`] to perform in-place updates
+    /// of any operand.
+    pub(super) fn update_imm(&mut self, offset: Size, imm: V) {
+        let is_zero_offset = offset == Size::ZERO;
+        match &mut self.val {
+            OperandValueBuilder::Immediate(val @ Either::Left(_)) if is_zero_offset => {
+                *val = Either::Left(imm);
+            }
+            OperandValueBuilder::Pair(fst @ Either::Left(_), _) if is_zero_offset => {
+                *fst = Either::Left(imm);
+            }
+            OperandValueBuilder::Pair(_, snd @ Either::Left(_)) if !is_zero_offset => {
+                *snd = Either::Left(imm);
+            }
+            _ => bug!("Tried to update {imm:?} at offset {offset:?} of {self:?}"),
         }
     }
 

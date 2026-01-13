@@ -103,6 +103,12 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.cond_br(cond, then_llbb, else_llbb)
     }
 
+    fn phi(
+        &mut self,
+        ty: Self::Type,
+        cases: impl ExactSizeIterator<Item = (Self::BasicBlock, Self::Value)>,
+    ) -> Self::Value;
+
     fn switch(
         &mut self,
         v: Self::Value,

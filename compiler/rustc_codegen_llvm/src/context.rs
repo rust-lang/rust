@@ -962,19 +962,36 @@ impl<'ll> CodegenCx<'ll, '_> {
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one (including turning it into `bcmp` sometimes)
         // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
-        if base_name == "memcmp" {
-            let fn_ty = self
-                .type_func(&[self.type_ptr(), self.type_ptr(), self.type_isize()], self.type_int());
-            let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
-
-            return (fn_ty, f);
+        match base_name {
+            "memcmp" => {
+                let fn_ty = self.type_func(
+                    &[self.type_ptr(), self.type_ptr(), self.type_isize()],
+                    self.type_int(),
+                );
+                let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
+                (fn_ty, f)
+            }
+            "__rust_retag_reg" => {
+                let fn_ty = self.type_func(type_params, self.type_ptr());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            "__rust_retag_mem" => {
+                let fn_ty = self.type_func(type_params, self.type_void());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            _ => {
+                let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
+                    .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
+                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                (self.get_type_of_global(f), f)
+            }
         }
-
-        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
-            .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-        let f = intrinsic.get_declaration(self.llmod, &type_params);
-
-        (self.get_type_of_global(f), f)
     }
 
     pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
