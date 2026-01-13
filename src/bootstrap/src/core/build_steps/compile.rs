@@ -299,7 +299,8 @@ impl Step for Std {
             if self.is_for_mir_opt_tests {
                 ArtifactKeepMode::OnlyRmeta
             } else {
-                ArtifactKeepMode::OnlyRlib
+                // We use -Zno-embed-metadata for the standard library
+                ArtifactKeepMode::BothRlibAndRmeta
             },
         );
 
@@ -2645,6 +2646,10 @@ pub enum ArtifactKeepMode {
     OnlyRlib,
     /// Only keep .rmeta files, ignore .rlib files
     OnlyRmeta,
+    /// Keep both .rlib and .rmeta files.
+    /// This is essentially only useful when using `-Zno-embed-metadata`, in which case both the
+    /// .rlib and .rmeta files are needed for compilation/linking.
+    BothRlibAndRmeta,
     /// Custom logic for keeping an artifact
     /// It receives the filename of an artifact, and returns true if it should be kept.
     Custom(Box<dyn Fn(&str) -> bool>),
@@ -2701,6 +2706,9 @@ pub fn run_cargo(
                 match &artifact_keep_mode {
                     ArtifactKeepMode::OnlyRlib => filename.ends_with(".rlib"),
                     ArtifactKeepMode::OnlyRmeta => filename.ends_with(".rmeta"),
+                    ArtifactKeepMode::BothRlibAndRmeta => {
+                        filename.ends_with(".rmeta") || filename.ends_with(".rlib")
+                    }
                     ArtifactKeepMode::Custom(func) => func(&filename),
                 }
             };
