@@ -1794,12 +1794,14 @@ fn render_impl(
             let mut info_buffer = String::new();
             let mut short_documented = true;
 
+            let mut trait_item_deprecated = false;
             if render_method_item {
                 if !is_default_item {
                     if let Some(t) = trait_ {
                         // The trait item may have been stripped so we might not
                         // find any documentation or stability for it.
                         if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
+                            trait_item_deprecated = it.is_deprecated(cx.tcx());
                             // We need the stability of the item from the trait
                             // because impls can't have a stability.
                             if !item.doc_value().is_empty() {
@@ -1839,10 +1841,20 @@ fn render_impl(
                 Either::Right(boring)
             };
 
+            let mut deprecation_class = if trait_item_deprecated || item.is_deprecated(cx.tcx()) {
+                " deprecated"
+            } else {
+                ""
+            };
+
             let toggled = !doc_buffer.is_empty();
             if toggled {
                 let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-                write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>")?;
+                write!(
+                    w,
+                    "<details class=\"toggle{method_toggle_class}{deprecation_class}\" open><summary>"
+                )?;
+                deprecation_class = "";
             }
             match &item.kind {
                 clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
@@ -1859,7 +1871,7 @@ fn render_impl(
                             .map(|item| format!("{}.{name}", item.type_()));
                         write!(
                             w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                                 {}",
                             render_rightside(cx, item, render_mode)
                         )?;
@@ -1885,7 +1897,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode)
                     )?;
@@ -1912,7 +1924,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1944,7 +1956,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1971,7 +1983,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -2143,11 +2155,18 @@ fn render_impl(
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
+            let deprecation_attr = if impl_.is_deprecated
+                || trait_.is_some_and(|trait_| trait_.is_deprecated(cx.tcx()))
+            {
+                " deprecated"
+            } else {
+                ""
+            };
             if toggled {
                 close_tags.push("</details>");
                 write!(
                     w,
-                    "<details class=\"toggle implementors-toggle\"{}>\
+                    "<details class=\"toggle implementors-toggle{deprecation_attr}\"{}>\
                         <summary>",
                     if rendering_params.toggle_open_by_default { " open" } else { "" }
                 )?;

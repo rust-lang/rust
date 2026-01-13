@@ -4920,6 +4920,9 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
 
         const link = document.createElement("a");
         link.className = "result-" + type;
+        if (obj.item.deprecated) {
+            link.className += " deprecated";
+        }
         link.href = obj.href;
 
         const resultName = document.createElement("span");

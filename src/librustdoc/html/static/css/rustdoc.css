@@ -2642,6 +2642,15 @@ However, it's not needed with smaller screen width because the doc/code block is
 	}
 }
 
+/* Items on module pages */
+.hide-deprecated-items dt.deprecated,
+.hide-deprecated-items dt.deprecated + dd,
+/* Items on item pages */
+.hide-deprecated-items .deprecated,
+.hide-deprecated-items .deprecated + .item-info {
+	display: none;
+}
+
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning

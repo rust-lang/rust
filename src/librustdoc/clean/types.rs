@@ -427,6 +427,10 @@ impl Item {
         })
     }
 
+    pub(crate) fn is_deprecated(&self, tcx: TyCtxt<'_>) -> bool {
+        self.deprecation(tcx).is_some_and(|deprecation| deprecation.is_in_effect())
+    }
+
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id.as_def_id().map(|did| inner_docs(tcx.get_all_attrs(did))).unwrap_or(false)
     }
@@ -1269,6 +1273,9 @@ impl Trait {
     }
     pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_dyn_compatible(self.def_id)
+    }
+    pub(crate) fn is_deprecated(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.lookup_deprecation(self.def_id).is_some_and(|deprecation| deprecation.is_in_effect())
     }
 }
 
@@ -2254,6 +2261,7 @@ pub(crate) struct Impl {
     pub(crate) items: Vec<Item>,
     pub(crate) polarity: ty::ImplPolarity,
     pub(crate) kind: ImplKind,
+    pub(crate) is_deprecated: bool,
 }
 
 impl Impl {
