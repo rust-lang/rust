@@ -2415,11 +2415,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let ty::Array(elem_ty, _) = ty.kind() else {
-            return Const::new_error_with_message(
-                tcx,
-                array_expr.span,
-                "const array must have an array type",
-            );
+            let e = tcx
+                .dcx()
+                .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
+            return Const::new_error(tcx, e);
         };
 
         let elems = array_expr
