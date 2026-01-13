@@ -959,8 +959,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { decls, .. } => decls[TypeNS].get().decl(),
             _ => None,
         };
-        let ambiguity_errors_len =
-            |errors: &Vec<AmbiguityError<'_>>| errors.iter().filter(|error| !error.warning).count();
+        let ambiguity_errors_len = |errors: &Vec<AmbiguityError<'_>>| {
+            errors.iter().filter(|error| error.warning.is_none()).count()
+        };
         let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
 
@@ -1176,7 +1177,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         });
                         let res = binding.res();
                         let has_ambiguity_error =
-                            this.ambiguity_errors.iter().any(|error| !error.warning);
+                            this.ambiguity_errors.iter().any(|error| error.warning.is_none());
                         if res == Res::Err || has_ambiguity_error {
                             this.dcx()
                                 .span_delayed_bug(import.span, "some error happened for an import");

@@ -19,6 +19,7 @@ declare_lint_pass! {
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
+        AMBIGUOUS_PANIC_IMPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
         BAD_ASM_STYLE,
@@ -4469,6 +4470,42 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_panic_imports` lint detects ambiguous core and std panic imports, but
+    /// previously didn't do that due to `#[macro_use]` prelude macro import.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_panic_imports)]
+    /// #![no_std]
+    ///
+    /// extern crate std;
+    /// use std::prelude::v1::*;
+    ///
+    /// fn xx() {
+    ///     panic!(); // resolves to core::panic
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Future versions of Rust will no longer accept the ambiguous resolution.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_PANIC_IMPORTS,
+    Warn,
+    "detects ambiguous core and std panic imports",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #147319),
+        report_in_deps: false,
     };
 }
 

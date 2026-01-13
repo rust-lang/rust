@@ -24,7 +24,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
@@ -44,10 +44,11 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingError, BindingKey, Decl, DeclKind, Finalize,
-    ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module, ModuleKind,
-    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError, Resolver, Scope,
-    ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs, path_names_to_string,
+    AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
+    Finalize, ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module,
+    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError,
+    Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs,
+    path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -146,17 +147,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for ambiguity_error in &self.ambiguity_errors {
             let diag = self.ambiguity_diagnostic(ambiguity_error);
 
-            if ambiguity_error.warning {
+            if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
                     DeclKind::Import { import, .. } => import.root_id,
                     DeclKind::Def(_) => CRATE_NODE_ID,
                 };
-                self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
-                    node_id,
-                    diag.ident.span,
-                    diag,
-                );
+
+                let lint = match ambiguity_warning {
+                    AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
+                    AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
+                };
+
+                self.lint_buffer.buffer_lint(lint, node_id, diag.ident.span, diag);
             } else {
                 self.dcx().emit_err(diag);
             }
