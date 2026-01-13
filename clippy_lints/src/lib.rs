@@ -718,7 +718,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::<unused_async::UnusedAsync>::default()),
         Box::new(move |tcx| Box::new(disallowed_types::DisallowedTypes::new(tcx, conf))),
         Box::new(move |tcx| Box::new(missing_enforced_import_rename::ImportRename::new(tcx, conf))),
-        Box::new(|_| Box::new(strlen_on_c_strings::StrlenOnCStrings)),
+        Box::new(move |_| Box::new(strlen_on_c_strings::StrlenOnCStrings::new(conf))),
         Box::new(move |_| Box::new(self_named_constructors::SelfNamedConstructors)),
         Box::new(move |_| Box::new(iter_not_returning_iterator::IterNotReturningIterator)),
         Box::new(move |_| Box::new(manual_assert::ManualAssert)),
