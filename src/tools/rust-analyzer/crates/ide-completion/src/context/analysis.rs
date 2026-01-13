@@ -1305,14 +1305,14 @@ fn classify_name_ref<'db>(
 
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
+        let prev_token = iter::successors(it.first_token(), |it| it.prev_token())
+            .skip(1)
+            .find(|it| !it.kind().is_trivia());
         let in_block_expr = is_in_block(it);
         let (in_loop_body, innermost_breakable) = is_in_breakable(it).unzip();
         let after_if_expr = is_after_if_expr(it.clone());
-        let ref_expr_parent =
-            path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
-        let after_amp = non_trivia_sibling(it.clone().into(), Direction::Prev)
-            .map(|it| it.kind() == SyntaxKind::AMP)
-            .unwrap_or(false);
+        let after_amp = prev_token.as_ref().is_some_and(|it| it.kind() == SyntaxKind::AMP);
+        let ref_expr_parent = prev_token.and_then(|it| it.parent()).and_then(ast::RefExpr::cast);
         let (innermost_ret_ty, self_param) = {
             let find_ret_ty = |it: SyntaxNode| {
                 if let Some(item) = ast::Item::cast(it.clone()) {

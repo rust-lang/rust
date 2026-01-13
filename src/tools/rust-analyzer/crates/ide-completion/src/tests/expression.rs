@@ -706,7 +706,30 @@ fn completes_after_ref_expr() {
             kw while
             kw while let
         "#]],
-    )
+    );
+    check(
+        r#"fn main() { let _ = &$0x.foo() }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
 }
 
 #[test]
