@@ -1,0 +1,41 @@
+error: use of deprecated method `std::cmp::Eq::assert_receiver_is_total_eq`: implementation detail of `#[derive(Eq)]`
+  --> $DIR/internal_eq_trait_method_impls.rs:36:11
+   |
+LL |     Good2.assert_receiver_is_total_eq();
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/internal_eq_trait_method_impls.rs:1:9
+   |
+LL | #![deny(deprecated, internal_eq_trait_method_impls)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated method `std::cmp::Eq::assert_receiver_is_total_eq`: implementation detail of `#[derive(Eq)]`
+  --> $DIR/internal_eq_trait_method_impls.rs:38:10
+   |
+LL |     Good.assert_receiver_is_total_eq();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of deprecated method `std::cmp::Eq::assert_receiver_is_total_eq`: implementation detail of `#[derive(Eq)]`
+  --> $DIR/internal_eq_trait_method_impls.rs:40:9
+   |
+LL |     Bad.assert_receiver_is_total_eq();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Eq::assert_receiver_is_total_eq` should never be implemented by hand
+  --> $DIR/internal_eq_trait_method_impls.rs:11:5
+   |
+LL |     fn assert_receiver_is_total_eq(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #150000 <https://github.com/rust-lang/rust/issues/150000>
+   = note: this method is only used to add checks to the `Eq` derive macro
+note: the lint level is defined here
+  --> $DIR/internal_eq_trait_method_impls.rs:1:21
+   |
+LL | #![deny(deprecated, internal_eq_trait_method_impls)]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

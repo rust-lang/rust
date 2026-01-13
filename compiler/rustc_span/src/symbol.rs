@@ -1270,6 +1270,7 @@ symbols! {
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
         internal,
+        internal_eq_trait_method_impls,
         internal_features,
         into_async_iter_into_iter,
         into_future,
