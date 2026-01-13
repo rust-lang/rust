@@ -1,0 +1,15 @@
+error: expected `usize`, found const array
+  --> $DIR/array-expr-type-mismatch-in-where-bound.rs:11:17
+   |
+LL |     T: Trait1<{ [] }>,
+   |                 ^^
+
+error[E0308]: mismatched types
+  --> $DIR/array-expr-type-mismatch-in-where-bound.rs:17:15
+   |
+LL |     T: Trait2<3>,
+   |               ^ expected `[u8; 3]`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
