@@ -3182,6 +3182,27 @@ impl Target {
                     "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
                 )
             }
+            // PowerPC64 targets that are not AIX must set their ABI to either ELFv1 or ELFv2
+            Arch::PowerPC64 => {
+                if self.os == Os::Aix {
+                    check!(
+                        self.llvm_abiname.is_empty(),
+                        "AIX targets always use the AIX ABI and `llvm_abiname` should be left empty",
+                    );
+                } else if self.endian == Endian::Big {
+                    check_matches!(
+                        &*self.llvm_abiname,
+                        "elfv1" | "elfv2",
+                        "invalid PowerPC64 ABI name: {}",
+                        self.llvm_abiname,
+                    );
+                } else {
+                    check!(
+                        self.llvm_abiname == "elfv2",
+                        "little-endian PowerPC64 targets only support the `elfv2` ABI",
+                    );
+                }
+            }
             _ => {}
         }
 
