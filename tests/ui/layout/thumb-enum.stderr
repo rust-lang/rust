@@ -44,9 +44,6 @@ error: layout_of(A) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -54,8 +51,6 @@ error: layout_of(A) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -114,9 +109,6 @@ error: layout_of(B) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -124,8 +116,6 @@ error: layout_of(B) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -184,9 +174,6 @@ error: layout_of(C) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -194,8 +181,6 @@ error: layout_of(C) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                ],
            },
@@ -254,9 +239,6 @@ error: layout_of(P) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -264,8 +246,6 @@ error: layout_of(P) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
@@ -324,9 +304,6 @@ error: layout_of(T) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -334,8 +311,6 @@ error: layout_of(T) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
