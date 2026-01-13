@@ -382,7 +382,7 @@ where
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
             let id = qcx.next_job_id();
-            let job = QueryJob::new(id, span, current_inclusion, std::thread::current().id());
+            let job = QueryJob::new(id, span, current_inclusion);
             entry.insert((key, QueryResult::Started(job)));
 
             // Drop the lock before we start executing the query

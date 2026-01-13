@@ -164,10 +164,6 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
                 query: Some(QueryInclusion {
                     id: token,
                     branch: BranchKey::root(),
-                    real_depth: NonZero::new(
-                        current_icx.query.map_or(0, |q| q.real_depth.get()).wrapping_add(1),
-                    )
-                    .expect("real query depth exceeded type bounds"),
                 }),
                 query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,

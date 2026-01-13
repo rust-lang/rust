@@ -220,19 +220,18 @@ where
     rustc_thread_pool::join(|| branch_context(0, 2, oper_a), || branch_context(1, 2, oper_b))
 }
 
-fn branch_context<F, R>(branch_num: u128, branch_space: u128, f: F) -> R
+fn branch_context<F, R>(branch_num: u64, branch_space: u64, f: F) -> R
 where
     F: FnOnce() -> R,
 {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx
-            && let Some(QueryInclusion { id, branch, real_depth }) = icx.query
+            && let Some(QueryInclusion { id, branch }) = icx.query
         {
             let icx = tls::ImplicitCtxt {
                 query: Some(QueryInclusion {
                     id,
                     branch: branch.branch(branch_num, branch_space),
-                    real_depth,
                 }),
                 ..*icx
             };
