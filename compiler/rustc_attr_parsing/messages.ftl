@@ -23,6 +23,9 @@ attr_parsing_doc_alias_malformed =
 attr_parsing_doc_alias_start_end =
     {$attr_str} cannot start or end with ' '
 
+attr_parsing_doc_attr_not_crate_level =
+    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
+
 attr_parsing_doc_attribute_not_attribute =
     nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
     .help = only existing builtin attributes are allowed in core/std
