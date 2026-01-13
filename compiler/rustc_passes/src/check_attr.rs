@@ -309,6 +309,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfiEncoding { .. }
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::MustNotSupend { .. }
+                    | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpVtable(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -368,25 +373,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_abi
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls
-                            | sym::rustc_dump_def_parents
                             | sym::rustc_never_type_options
                             | sym::rustc_autodiff
                             | sym::rustc_capture_analysis
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
-                            | sym::rustc_dump_predicates
                             | sym::rustc_variance
                             | sym::rustc_variance_of_opaques
                             | sym::rustc_hidden_type_of_opaques
                             | sym::rustc_mir
-                            | sym::rustc_dump_user_args
                             | sym::rustc_effective_visibility
                             | sym::rustc_outlives
                             | sym::rustc_symbol_name
                             | sym::rustc_evaluate_where_clauses
-                            | sym::rustc_dump_vtable
                             | sym::rustc_delayed_bug_from_inside_query
-                            | sym::rustc_dump_item_bounds
                             | sym::rustc_def_path
                             | sym::rustc_partition_reused
                             | sym::rustc_partition_codegened
