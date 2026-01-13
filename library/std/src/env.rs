@@ -716,11 +716,17 @@ pub fn temp_dir() -> PathBuf {
 /// vulnerabilities, particularly in processes that run with privileges higher
 /// than the user, such as setuid or setgid programs.
 ///
-/// On some Unix platforms, the result is derived from `argv[0]` and `$PATH`,
-/// which can be set arbitrarily by the user who invokes the program.
+/// For example, on some Unix platforms, the result is calculated by
+/// searching `$PATH` for an executable matching `argv[0]`, but both the
+/// environment and arguments can be be set arbitrarily by the user who
+/// invokes the program.
 ///
-/// On Linux, an attacker who can create hardlinks to the executable may be
-/// able to cause this function to return an attacker-controlled path.
+/// On Linux, if `fs.secure_hardlinks` is not set, an attacker who can
+/// create hardlinks to the executable may be able to cause this function
+/// to return an attacker-controlled path, which they later replace with
+/// a different program.
+///
+/// This list of illustrative example attacks is not exhaustive.
 ///
 /// # Examples
 ///
