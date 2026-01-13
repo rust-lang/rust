@@ -113,8 +113,9 @@ impl ArgParser {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
             AttrArgs::Delimited(args) => {
-                // The arguments of rustc_dummy are not validated if the arguments are delimited
-                if parts == &[sym::rustc_dummy] {
+                // The arguments of rustc_dummy and diagnostic attributes are not validated
+                // if the arguments are delimited
+                if parts == &[sym::rustc_dummy] || parts[0] == sym::diagnostic {
                     return Some(ArgParser::List(MetaItemListParser {
                         sub_parsers: ThinVec::new(),
                         span: args.dspan.entire(),
