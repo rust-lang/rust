@@ -1,0 +1,47 @@
+error[E0364]: `f` is private, and cannot be re-exported
+  --> $DIR/decl-macro-use-no-ice.rs:13:13
+   |
+LL |         use f;
+   |             ^
+...
+LL |     foo::m!();
+   |     --------- in this macro invocation
+   |
+note: consider marking `f` as `pub` in the imported module
+  --> $DIR/decl-macro-use-no-ice.rs:13:13
+   |
+LL |         use f;
+   |             ^
+...
+LL |     foo::m!();
+   |     --------- in this macro invocation
+   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: macro import `f` is private
+  --> $DIR/decl-macro-use-no-ice.rs:14:9
+   |
+LL |         f!();
+   |         ^ private macro import
+...
+LL |     foo::m!();
+   |     --------- in this macro invocation
+   |
+note: the macro import `f` is defined here...
+  --> $DIR/decl-macro-use-no-ice.rs:13:13
+   |
+LL |         use f;
+   |             ^
+...
+LL |     foo::m!();
+   |     --------- in this macro invocation
+note: ...and refers to the macro `f` which is defined here
+  --> $DIR/decl-macro-use-no-ice.rs:10:5
+   |
+LL |     macro f() {}
+   |     ^^^^^^^^^
+   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0364, E0603.
+For more information about an error, try `rustc --explain E0364`.
