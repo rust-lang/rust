@@ -1880,6 +1880,10 @@ mod arch {
     pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
+    #[rustc_builtin_macro]
+    pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
 }
 // endregion:asm
 
