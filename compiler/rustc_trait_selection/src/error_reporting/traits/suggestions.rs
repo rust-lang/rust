@@ -5323,12 +5323,9 @@ fn hint_missing_borrow<'tcx>(
                     ty = mut_ty.ty;
                     left -= 1;
                 }
-                let sugg = if left == 0 {
-                    (span, String::new())
-                } else {
-                    (arg.span, expected_arg.to_string())
-                };
-                remove_borrow.push(sugg);
+                if left == 0 {
+                    remove_borrow.push((span, String::new()));
+                }
             }
         }
     }
