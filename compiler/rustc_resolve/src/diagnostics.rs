@@ -25,7 +25,7 @@ use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
-    MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+    EXTERN_AMBIGUOUS_GLOB_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -154,6 +154,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
 
                 let lint = match ambiguity_warning {
+                    AmbiguityWarning::GlobImport if node_id == CRATE_NODE_ID => {
+                        EXTERN_AMBIGUOUS_GLOB_IMPORTS
+                    }
                     AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
                     AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
                 };

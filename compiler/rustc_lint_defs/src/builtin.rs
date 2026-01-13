@@ -41,6 +41,7 @@ declare_lint_pass! {
         ELIDED_LIFETIMES_IN_PATHS,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
+        EXTERN_AMBIGUOUS_GLOB_IMPORTS,
         FFI_UNWIND_CALLS,
         FORBIDDEN_LINT_GROUPS,
         FUNCTION_ITEM_REFERENCES,
@@ -4431,6 +4432,7 @@ declare_lint! {
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
 }
+
 declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.
@@ -4470,6 +4472,42 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// Same as `ambiguous_glob_imports`, but when the ambiguous import comes from another crate.
+    /// Split to a separate lint to soften the migration.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs extern crate)
+    /// // crate A
+    /// mod mod1 { pub const C: u32 = 1; }
+    /// mod mod2 { pub const C: u32 = 2; }
+    ///
+    /// pub use mod1::*;
+    /// pub use mod2::*;
+    ///
+    /// // crate B
+    /// let c = crate_a::C; // ERROR: `C` is ambiguous
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust compiled it successfully because inforation about ambiguous
+    /// imports weren't properly recorded into crate metadata.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub EXTERN_AMBIGUOUS_GLOB_IMPORTS,
+    Warn,
+    "detects certain glob imports that require reporting an ambiguity error",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #114095),
+        report_in_deps: false,
     };
 }
 
