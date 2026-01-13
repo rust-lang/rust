@@ -31,7 +31,7 @@ impl Type {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     // FIXME(reflection): don't require the 'static bound
-    pub const fn of<T: 'static>() -> Self {
+    pub const fn of<T: ?Sized + 'static>() -> Self {
         const { TypeId::of::<T>().info() }
     }
 }
