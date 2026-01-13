@@ -30,7 +30,7 @@ The target can be built by enabling it for a `rustc` build, by placing the follo
 ```toml
 [build]
 target = ["armv7-unknown-linux-uclibceabihf"]
-stage = 2
+build-stage = 2
 
 [target.armv7-unknown-linux-uclibceabihf]
 # ADJUST THIS PATH TO POINT AT YOUR TOOLCHAIN
