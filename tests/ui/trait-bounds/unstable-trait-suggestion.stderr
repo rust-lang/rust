@@ -16,7 +16,7 @@ help: consider restricting type parameter `T` with unstable trait `Unstable`
 LL | pub fn bar<T: Unstable>(t: T) {
    |             ++++++++++
 
-error[E0277]: the trait bound `T: Step` is not satisfied
+error[E0277]: `std::ops::Range<T>` is not an iterator
   --> $DIR/unstable-trait-suggestion.rs:17:14
    |
 LL |     for _ in t {}
