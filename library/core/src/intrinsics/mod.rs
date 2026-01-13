@@ -55,7 +55,7 @@
 #![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaList};
-use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
+use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::{mem, ptr};
 
 mod bounds;
@@ -482,11 +482,14 @@ pub const fn unlikely(b: bool) -> bool {
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
 #[inline]
-pub const fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T
-where
-    T: [const] Destruct,
-{
-    if b { true_val } else { false_val }
+pub const fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+    if b {
+        forget(false_val);
+        true_val
+    } else {
+        forget(true_val);
+        false_val
+    }
 }
 
 /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
