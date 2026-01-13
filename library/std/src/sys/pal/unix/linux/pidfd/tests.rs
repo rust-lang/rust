@@ -1,6 +1,5 @@
 use super::PidFd as InternalPidFd;
 use crate::assert_matches::assert_matches;
-use crate::io::ErrorKind;
 use crate::os::fd::AsRawFd;
 use crate::os::linux::process::{ChildExt, CommandExt as _};
 use crate::os::unix::process::{CommandExt as _, ExitStatusExt};
@@ -62,7 +61,9 @@ fn test_command_pidfd() {
     if let Ok(pidfd) = child.pidfd() {
         match pidfd.as_inner().pid() {
             Ok(pid) => assert_eq!(pid, id),
-            Err(e) if e.kind() == ErrorKind::InvalidInput => { /* older kernel */ }
+            Err(e) if matches!(e.raw_os_error(), Some(libc::EINVAL | libc::ENOTTY)) => {
+                /* older kernel */
+            }
             Err(e) => panic!("unexpected error getting pid from pidfd: {}", e),
         }
     }

@@ -33,7 +33,7 @@ impl PidFd {
         match cvt(unsafe { libc::ioctl(self.0.as_raw_fd(), libc::PIDFD_GET_INFO, &mut pidfd_info) })
         {
             Ok(_) => {}
-            Err(e) if e.raw_os_error() == Some(libc::EINVAL) => {
+            Err(e) if matches!(e.raw_os_error(), Some(libc::EINVAL | libc::ENOTTY)) => {
                 // kernel doesn't support that ioctl, try the glibc helper that looks at procfs
                 weak!(
                     fn pidfd_getpid(pidfd: RawFd) -> libc::pid_t;
