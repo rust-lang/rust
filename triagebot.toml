@@ -1006,7 +1006,7 @@ cc = ["@fmease"]
 [mentions."library/core/src/mem/type_info.rs"]
 message = """
 The reflection data structures are tied exactly to the implementation
-in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs`
 """
 cc = ["@oli-obk"]
 

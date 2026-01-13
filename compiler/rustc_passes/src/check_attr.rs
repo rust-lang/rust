@@ -308,6 +308,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
                     | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::MustNotSupend { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -325,7 +326,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -1062,29 +1062,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
-    fn check_attr_not_crate_level(&self, span: Span, hir_id: HirId, attr_name: &str) -> bool {
-        if CRATE_HIR_ID == hir_id {
-            self.dcx().emit_err(errors::DocAttrNotCrateLevel { span, attr_name });
-            return false;
-        }
-        true
-    }
-
-    /// Checks that an attribute is used at the crate level. Returns `true` if valid.
-    fn check_attr_crate_level(&self, span: Span, hir_id: HirId) -> bool {
-        if hir_id != CRATE_HIR_ID {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                span,
-                errors::AttrCrateLevelOnly {},
-            );
-            return false;
-        }
-        true
-    }
-
     /// Runs various checks on `#[doc]` attributes.
     ///
     /// `specified_inline` should be initialized to `None` and kept for the scope
@@ -1100,9 +1077,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             inline,
             // FIXME: currently unchecked
             cfg: _,
-            // already check in attr_parsing
+            // already checked in attr_parsing
             auto_cfg: _,
-            // already check in attr_parsing
+            // already checked in attr_parsing
             auto_cfg_change: _,
             fake_variadic,
             keyword,
@@ -1110,70 +1087,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // FIXME: currently unchecked
             notable_trait: _,
             search_unbox,
-            html_favicon_url,
-            html_logo_url,
-            html_playground_url,
-            html_root_url,
-            html_no_source,
-            issue_tracker_base_url,
+            // already checked in attr_parsing
+            html_favicon_url: _,
+            // already checked in attr_parsing
+            html_logo_url: _,
+            // already checked in attr_parsing
+            html_playground_url: _,
+            // already checked in attr_parsing
+            html_root_url: _,
+            // already checked in attr_parsing
+            html_no_source: _,
+            // already checked in attr_parsing
+            issue_tracker_base_url: _,
             rust_logo,
             // allowed anywhere
             test_attrs: _,
-            no_crate_inject,
+            // already checked in attr_parsing
+            no_crate_inject: _,
             attribute,
         } = attr;
 
         for (alias, span) in aliases {
-            if self.check_attr_not_crate_level(*span, hir_id, "alias") {
-                self.check_doc_alias_value(*span, hir_id, target, *alias);
-            }
+            self.check_doc_alias_value(*span, hir_id, target, *alias);
         }
 
-        if let Some((_, span)) = keyword
-            && self.check_attr_not_crate_level(*span, hir_id, "keyword")
-        {
+        if let Some((_, span)) = keyword {
             self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
         }
-        if let Some((_, span)) = attribute
-            && self.check_attr_not_crate_level(*span, hir_id, "attribute")
-        {
+        if let Some((_, span)) = attribute {
             self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
         }
 
-        if let Some(span) = fake_variadic
-            && self.check_attr_not_crate_level(*span, hir_id, "fake_variadic")
-        {
+        if let Some(span) = fake_variadic {
             self.check_doc_fake_variadic(*span, hir_id);
         }
 
-        if let Some(span) = search_unbox
-            && self.check_attr_not_crate_level(*span, hir_id, "search_unbox")
-        {
+        if let Some(span) = search_unbox {
             self.check_doc_search_unbox(*span, hir_id);
-        }
-
-        for i in [
-            html_favicon_url,
-            html_logo_url,
-            html_playground_url,
-            issue_tracker_base_url,
-            html_root_url,
-        ] {
-            if let Some((_, span)) = i {
-                self.check_attr_crate_level(*span, hir_id);
-            }
-        }
-
-        for i in [html_no_source, no_crate_inject] {
-            if let Some(span) = i {
-                self.check_attr_crate_level(*span, hir_id);
-            }
         }
 
         self.check_doc_inline(hir_id, target, inline);
 
         if let Some(span) = rust_logo
-            && self.check_attr_crate_level(*span, hir_id)
             && !self.tcx.features().rustdoc_internals()
         {
             feature_err(
@@ -1194,16 +1149,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
-        }
-    }
-
-    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
-    fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct | Target::Enum | Target::Union | Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::MustNotSuspend { attr_span: attr.span(), span });
-            }
         }
     }
 

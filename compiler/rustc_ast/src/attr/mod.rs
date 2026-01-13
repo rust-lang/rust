@@ -235,14 +235,14 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn deprecation_note(&self) -> Option<Symbol> {
+    fn deprecation_note(&self) -> Option<Ident> {
         match &self.kind {
             AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
                 let meta = &normal.item;
 
                 // #[deprecated = "..."]
                 if let Some(s) = meta.value_str() {
-                    return Some(s);
+                    return Some(Ident { name: s, span: meta.span() });
                 }
 
                 // #[deprecated(note = "...")]
@@ -252,7 +252,7 @@ impl AttributeExt for Attribute {
                             && mi.path == sym::note
                             && let Some(s) = mi.value_str()
                         {
-                            return Some(s);
+                            return Some(Ident { name: s, span: mi.span });
                         }
                     }
                 }
@@ -905,7 +905,7 @@ pub trait AttributeExt: Debug {
     /// Returns the deprecation note if this is deprecation attribute.
     /// * `#[deprecated = "note"]` returns `Some("note")`.
     /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
-    fn deprecation_note(&self) -> Option<Symbol>;
+    fn deprecation_note(&self) -> Option<Ident>;
 
     fn is_proc_macro_attr(&self) -> bool {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]

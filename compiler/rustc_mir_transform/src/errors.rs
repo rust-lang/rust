@@ -323,7 +323,7 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
 pub(crate) struct MustNotSuspendReason {
     #[primary_span]
     pub span: Span,
-    pub reason: String,
+    pub reason: Symbol,
 }
 
 #[derive(Diagnostic)]
