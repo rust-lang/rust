@@ -161,10 +161,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: self.tcx,
-                query: Some(QueryInclusion {
-                    id: token,
-                    branch: BranchKey::root(),
-                }),
+                query: Some(QueryInclusion { id: token, branch: BranchKey::root() }),
                 query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,
             };

@@ -72,23 +72,14 @@ pub struct QueryJob<I> {
 
 impl<I> Clone for QueryJob<I> {
     fn clone(&self) -> Self {
-        Self {
-            id: self.id,
-            span: self.span,
-            parent: self.parent,
-            latch: self.latch.clone(),
-        }
+        Self { id: self.id, span: self.span, parent: self.parent, latch: self.latch.clone() }
     }
 }
 
 impl<I> QueryJob<I> {
     /// Creates a new query job.
     #[inline]
-    pub fn new(
-        id: QueryJobId,
-        span: Span,
-        parent: Option<QueryInclusion>,
-    ) -> Self {
+    pub fn new(id: QueryJobId, span: Span, parent: Option<QueryInclusion>) -> Self {
         QueryJob { id, span, parent, latch: Weak::new() }
     }
 
@@ -211,12 +202,8 @@ impl<I> QueryLatch<I> {
         query: Option<QueryInclusion>,
         span: Span,
     ) -> Result<(), CycleError<I>> {
-        let waiter = Arc::new(QueryWaiter {
-            query,
-            span,
-            cycle: Mutex::new(None),
-            condvar: Condvar::new(),
-        });
+        let waiter =
+            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
         self.wait_on_inner(qcx, &waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot

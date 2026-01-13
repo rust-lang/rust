@@ -229,10 +229,7 @@ where
             && let Some(QueryInclusion { id, branch }) = icx.query
         {
             let icx = tls::ImplicitCtxt {
-                query: Some(QueryInclusion {
-                    id,
-                    branch: branch.branch(branch_num, branch_space),
-                }),
+                query: Some(QueryInclusion { id, branch: branch.branch(branch_num, branch_space) }),
                 ..*icx
             };
             tls::enter_context(&icx, f)
