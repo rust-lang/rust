@@ -11,7 +11,6 @@
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
-extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_hir_analysis;
@@ -52,7 +51,6 @@ use miri::{
 };
 use rustc_abi::ExternAbi;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
@@ -65,6 +63,7 @@ use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
+use rustc_middle::sync::{self, DynSync};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::EarlyDiagCtxt;
