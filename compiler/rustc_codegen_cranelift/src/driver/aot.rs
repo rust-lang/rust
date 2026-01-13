@@ -17,12 +17,12 @@ use rustc_codegen_ssa::{
 };
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem, MonoItemData, Visibility};
+use rustc_middle::sync::{IntoDynSyncSend, par_map};
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, OutputFilenames, OutputType};
 
