@@ -22,71 +22,44 @@ where
 /// the current thread. Use that for the longest running block.
 #[macro_export]
 macro_rules! parallel {
-        (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
-            parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
-        };
-        (impl $fblock:block [$($blocks:expr,)*] []) => {
-            #[allow(unreachable_code)]
-            let n = 1 $(+ 'a: { break 'a 1; let _ = || $blocks; })*;
+        ($($blocks:block),*) => {
             $crate::sync::parallel_guard(|guard| {
-                $crate::sync::scope(n, |mut s| {
-                    $(
-                        let block = $crate::sync::FromDyn::from(|| $blocks);
-                        s.spawn(move || {
-                            guard.run(move || block.into_inner()());
-                        });
-                    )*
-                    guard.run(|| $fblock);
-                });
+                if $crate::sync::is_dyn_thread_safe() {
+                    let proof = $crate::sync::FromDyn::from(());
+                    parallel!(impl proof,
+                        $(({
+                            let block = || $blocks;
+                            move || { guard.run(block); }
+                        })),*
+                    );
+                } else {
+                    $(guard.run(|| $blocks);)*
+                }
             });
         };
-        ($fblock:block, $($blocks:block),*) => {
-            if $crate::sync::is_dyn_thread_safe() {
-                // Reverse the order of the later blocks since Rayon executes them in reverse order
-                // when using a single thread. This ensures the execution order matches that
-                // of a single threaded rustc.
-                parallel!(impl $fblock [] [$($blocks),*]);
-            } else {
-                $crate::sync::parallel_guard(|guard| {
-                    guard.run(|| $fblock);
-                    $(guard.run(|| $blocks);)*
-                });
-            }
+        (impl $proof:expr, $f1:expr, $f2:expr, $f3:expr, $f4:expr, $f5:expr, $f6:expr, $f7:expr, $f8:expr, $f9:expr, $f10:expr, $f11:expr, $f12:expr, $f13:expr, $f14:expr, $f15:expr, $f16:expr, $($rest:expr),+) => {
+            std::compiler_error!("`parallel!` only supports up to 16 blocks")
+        };
+        (impl $proof:expr, $f1:expr, $f2:expr, $f3:expr, $f4:expr, $f5:expr, $f6:expr, $f7:expr, $f8:expr, $($rest:expr),+) => {
+            $crate::sync::parallel_macro_internal_join(
+                move || parallel!(impl $proof, $f1, $f2, $f3, $f4, $f5, $f6, $f7, $f8),
+                move || parallel!(impl $proof, $($rest),+),
+                $proof,
+            );
+        };
+        (impl $proof:expr, $f1:expr, $f2:expr, $f3:expr, $f4:expr, $($rest:expr),+) => {
+            $crate::sync::parallel_macro_internal_join(move || parallel!(impl $proof, $f1, $f2, $f3, $f4), move || parallel!(impl $proof, $($rest),+), $proof);
+        };
+        (impl $proof:expr, $f1:expr, $f2:expr, $($rest:expr),+) => {
+            $crate::sync::parallel_macro_internal_join(move || parallel!(impl $proof, $f1, $f2), move || parallel!(impl $proof, $($rest),+), $proof);
+        };
+        (impl $proof:expr, $f1:expr, $f2:expr) => {
+            $crate::sync::parallel_macro_internal_join($f1, $f2, $proof);
+        };
+        (impl $proof:expr, $f1:expr) => {
+            ($f1)();
         };
     }
-
-// This function only works when `is_dyn_thread_safe()`.
-pub fn scope<'scope, OP, R>(spawn_limit: u64, op: OP) -> R
-where
-    OP: for<'a, 'tcx> FnOnce(Scope<'a, 'scope>) -> R + DynSend,
-    R: DynSend,
-{
-    let op = FromDyn::from(op);
-    rustc_thread_pool::scope(|scope| {
-        FromDyn::from(op.into_inner()(Scope { scope, next_branch: 0, branch_limit: spawn_limit }))
-    })
-    .into_inner()
-}
-
-pub struct Scope<'a, 'scope> {
-    scope: &'a rustc_thread_pool::Scope<'scope>,
-    branch_limit: u64,
-    next_branch: u64,
-}
-
-impl<'a, 'scope> Scope<'a, 'scope> {
-    pub fn spawn<F>(&mut self, f: F)
-    where
-        F: FnOnce() + Send + 'scope,
-    {
-        if self.next_branch >= self.branch_limit {
-            panic!("number of spawns exceeded the spawn_limit = {}", self.branch_limit);
-        }
-        let query_branch = self.next_branch;
-        self.next_branch += 1;
-        branch_context(query_branch, self.branch_limit, || self.scope.spawn(|_| f()));
-    }
-}
 
 #[inline]
 pub fn join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -210,6 +183,17 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
             t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
         }
     })
+}
+
+/// Used internally in `parallel` macro. DO NOT USE DIRECTLY!
+pub fn parallel_macro_internal_join<A, B>(oper_a: A, oper_b: B, proof: FromDyn<()>)
+where
+    A: FnOnce() + DynSend,
+    B: FnOnce() + DynSend,
+{
+    let oper_a = proof.derive(oper_a);
+    let oper_b = proof.derive(oper_b);
+    raw_branched_join(move || oper_a.into_inner()(), move || oper_b.into_inner()());
 }
 
 fn raw_branched_join<A, B, RA: Send, RB: Send>(oper_a: A, oper_b: B) -> (RA, RB)
