@@ -151,7 +151,7 @@ impl Socket {
         loop {
             let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
             if result.is_minus_one() {
-                let err = crate::sys::os::errno();
+                let err = crate::sys::io::errno();
                 match err {
                     libc::EINTR => continue,
                     libc::EISCONN => return Ok(()),
