@@ -806,6 +806,7 @@ bidirectional_lang_item_map! {
     Sized,
     TransmuteTrait,
     TrivialClone,
+    TryAsDyn,
     Tuple,
     Unpin,
     Unsize,

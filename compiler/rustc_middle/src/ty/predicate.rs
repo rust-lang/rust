@@ -557,6 +557,12 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TypeOutlivesPredicate<'tcx>> for Predicate<'
     }
 }
 
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTypeOutlivesPredicate<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: PolyTypeOutlivesPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        from.map_bound(|p| PredicateKind::Clause(ClauseKind::TypeOutlives(p))).upcast(tcx)
+    }
+}
+
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ProjectionPredicate<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: ProjectionPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(from))).upcast(tcx)

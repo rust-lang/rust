@@ -425,6 +425,13 @@ where
         unreachable!("BikeshedGuaranteedNoDrop is not const");
     }
 
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("`TryAsDynCompat` is not const: {:?}", goal)
+    }
+
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

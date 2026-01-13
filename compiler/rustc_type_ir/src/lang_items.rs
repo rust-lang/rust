@@ -52,6 +52,7 @@ pub enum SolverTraitLangItem {
     Sized,
     TransmuteTrait,
     TrivialClone,
+    TryAsDyn,
     Tuple,
     Unpin,
     Unsize,

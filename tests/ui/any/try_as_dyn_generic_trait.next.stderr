@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: called `Option::unwrap()` on a `None` value
+  --> $DIR/try_as_dyn_generic_trait.rs:21:51
+   |
+LL |     let convert: &dyn Convert<&'static Payload> = try_as_dyn(&payload).unwrap();
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

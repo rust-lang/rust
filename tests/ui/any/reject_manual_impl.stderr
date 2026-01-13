@@ -1,0 +1,47 @@
+error[E0322]: explicit impls for the `TryAsDynCompatible` trait are not permitted
+  --> $DIR/reject_manual_impl.rs:7:1
+   |
+LL | impl TryAsDynCompatible<u32> for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
+
+error[E0322]: explicit impls for the `TryAsDynCompatible` trait are not permitted
+  --> $DIR/reject_manual_impl.rs:12:1
+   |
+LL | impl<T> TryAsDynCompatible<T> for Bar {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
+
+error[E0322]: explicit impls for the `TryAsDynCompatible` trait are not permitted
+  --> $DIR/reject_manual_impl.rs:17:1
+   |
+LL | impl<T> TryAsDynCompatible<T> for Baz {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
+
+error[E0322]: explicit impls for the `TryAsDynCompatible` trait are not permitted
+  --> $DIR/reject_manual_impl.rs:22:1
+   |
+LL | impl<T> TryAsDynCompatible<T> for dyn Trait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
+
+error[E0322]: explicit impls for the `TryAsDynCompatible` trait are not permitted
+  --> $DIR/reject_manual_impl.rs:25:1
+   |
+LL | impl TryAsDynCompatible<u32> for dyn Iterator<Item = u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/reject_manual_impl.rs:25:1
+   |
+LL | impl TryAsDynCompatible<u32> for dyn Iterator<Item = u32> {}
+   | ^^^^^-----------------------^^^^^------------------------
+   |      |                           |
+   |      |                           `dyn Iterator<Item = u32>` is not defined in the current crate
+   |      `u32` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0117, E0322.
+For more information about an error, try `rustc --explain E0117`.

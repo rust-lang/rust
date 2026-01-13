@@ -141,6 +141,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BikeshedGuaranteedNoDropCandidate => {
                 self.confirm_bikeshed_guaranteed_no_drop_candidate(obligation)
             }
+
+            TryAsDynCandidate => self.confirm_try_as_dyn_candidate(obligation),
         })
     }
 
@@ -1333,6 +1335,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
+    }
+
+    fn confirm_try_as_dyn_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> ImplSource<'tcx, PredicateObligation<'tcx>> {
+        let tcx = self.tcx();
+
+        let mut obligations = PredicateObligations::new();
+
+        let self_ty = obligation.predicate.self_ty();
+        let ty = obligation.predicate.map_bound(|p| p.trait_ref.args.type_at(1));
+
+        match *self_ty.skip_binder().kind() {
+            ty::Dynamic(_bounds, lifetime) => {
+                obligations.push(
+                    obligation.with(tcx, ty.map_bound(|ty| ty::OutlivesPredicate(ty, lifetime))),
+                );
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                panic!("unexpected type `{self_ty:?}`")
+            }
+
+            _ => {}
+        }
         ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
     }
 }
