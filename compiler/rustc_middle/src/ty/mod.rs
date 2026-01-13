@@ -260,9 +260,9 @@ pub struct ImplTraitHeader<'tcx> {
 }
 
 impl<'tcx> ImplTraitHeader<'tcx> {
-    /// For trait impls, checks whether the type and trait only have generic parameters in their
-    /// arguments and only uses each generic param once, too.
-    /// Pessimistic analysis, so it will reject alias types
+    /// For trait impls, checks whether the type and trait only have generic lifetime parameters in their
+    /// arguments and only use any generic param once.
+    /// This is a pessimistic analysis, so it will reject alias types
     /// and other types that may be actually ok. We can allow more in the future.
     pub fn is_fully_generic_for_reflection(self) -> bool {
         #[derive(Default)]
@@ -281,14 +281,12 @@ impl<'tcx> ImplTraitHeader<'tcx> {
                             ControlFlow::Break(())
                         }
                     }
-                    RegionKind::ReBound(..) | RegionKind::ReLateParam(_) => {
-                        ControlFlow::Continue(())
-                    }
-                    RegionKind::ReStatic
-                    | RegionKind::ReVar(_)
+                    RegionKind::ReBound(..) => ControlFlow::Continue(()),
+                    RegionKind::ReStatic | RegionKind::ReError(_) => ControlFlow::Break(()),
+                    RegionKind::ReVar(_)
                     | RegionKind::RePlaceholder(_)
                     | RegionKind::ReErased
-                    | RegionKind::ReError(_) => ControlFlow::Break(()),
+                    | RegionKind::ReLateParam(_) => bug!("unexpected lifetime in impl: {r:?}"),
                 }
             }
 

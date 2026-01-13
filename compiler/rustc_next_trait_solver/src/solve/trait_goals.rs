@@ -86,12 +86,16 @@ where
             // Impl matches polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
             | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
-                if let TypingMode::Reflection = ecx.typing_mode()
-                    && !cx.is_fully_generic_for_reflection(impl_def_id)
-                {
-                    return Err(NoSolution);
-                } else {
-                    Certainty::Yes
+                match ecx.typing_mode() {
+                    TypingMode::Reflection if !cx.is_fully_generic_for_reflection(impl_def_id) => {
+                        return Err(NoSolution);
+                    }
+                    TypingMode::Coherence
+                    | TypingMode::Analysis { .. }
+                    | TypingMode::Borrowck { .. }
+                    | TypingMode::PostBorrowckAnalysis { .. }
+                    | TypingMode::PostAnalysis
+                    | TypingMode::Reflection => Certainty::Yes,
                 }
             }
 
@@ -861,6 +865,39 @@ where
                 }
 
                 _ => vec![],
+            }
+        })
+    }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+        let cx = ecx.cx();
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let self_ty = goal.predicate.self_ty();
+            let ty_lifetime = goal.predicate.trait_ref.args.region_at(1);
+            match self_ty.kind() {
+                ty::Dynamic(_bounds, lifetime) => {
+                    ecx.add_goal(
+                        GoalSource::Misc,
+                        goal.with(cx, ty::OutlivesPredicate(ty_lifetime, lifetime)),
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+
+                ty::Bound(..)
+                | ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                ) => {
+                    panic!("unexpected type `{self_ty:?}`")
+                }
+
+                _ => Err(NoSolution),
             }
         })
     }

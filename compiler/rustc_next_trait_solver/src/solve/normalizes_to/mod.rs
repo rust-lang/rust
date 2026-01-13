@@ -972,6 +972,13 @@ where
         unreachable!("`BikeshedGuaranteedNoDrop` does not have an associated type: {:?}", goal)
     }
 
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("`TryAsDynCompat` does not have an associated type: {:?}", goal)
+    }
+
     fn consider_builtin_field_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
