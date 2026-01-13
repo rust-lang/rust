@@ -50,9 +50,6 @@ error: layout_of(MissingPayloadField) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -76,14 +73,9 @@ error: layout_of(MissingPayloadField) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -91,8 +83,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -158,9 +148,6 @@ error: layout_of(CommonPayloadField) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -185,14 +172,9 @@ error: layout_of(CommonPayloadField) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -217,8 +199,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -283,9 +263,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -309,14 +286,9 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -340,8 +312,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -410,9 +380,6 @@ error: layout_of(NicheFirst) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -448,14 +415,9 @@ error: layout_of(NicheFirst) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -463,14 +425,9 @@ error: layout_of(NicheFirst) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -478,8 +435,6 @@ error: layout_of(NicheFirst) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -548,9 +503,6 @@ error: layout_of(NicheSecond) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -586,14 +538,9 @@ error: layout_of(NicheSecond) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -601,14 +548,9 @@ error: layout_of(NicheSecond) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -616,8 +558,6 @@ error: layout_of(NicheSecond) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
