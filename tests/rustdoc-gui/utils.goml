@@ -60,8 +60,8 @@ define-function: (
 )
 
 define-function: (
-    "perform-search",
-    [query],
+    "open-search",
+    [],
     block {
         // Block requests with doubled `//`.
         // Amazon S3 doesn't support them, but other web hosts do,
@@ -72,6 +72,14 @@ define-function: (
         // Perform search
         click: "#search-button"
         wait-for: ".search-input"
+    }
+)
+
+define-function: (
+    "perform-search",
+    [query],
+    block {
+        call-function: ("open-search", {})
         write-into: (".search-input", |query|)
         press-key: 'Enter'
         // wait for the search to start
