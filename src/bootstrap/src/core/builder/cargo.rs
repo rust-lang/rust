@@ -1095,7 +1095,7 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
-        if matches!(mode, Mode::Std) {
+        if matches!(mode, Mode::Std | Mode::Rustc | Mode::Codegen) {
             cargo.arg("-Zno-embed-metadata");
         }
 
