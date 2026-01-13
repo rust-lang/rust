@@ -12,5 +12,5 @@ fn main() {
     let mut ref mut y = 10; //~  ERROR [E0658]
 
     struct Foo { x: i32 }
-    let Foo { mut ref x } = Foo { x: 10 };
+    let Foo { mut ref x } = Foo { x: 10 }; //~  ERROR [E0658]
 }

@@ -1750,6 +1750,12 @@ impl<'a> Parser<'a> {
             hi = self.prev_token.span;
             let ann = BindingMode(by_ref, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
+            if matches!(
+                fieldpat.kind,
+                PatKind::Ident(BindingMode(ByRef::Yes(..), Mutability::Mut), ..)
+            ) {
+                self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
+            }
             let subpat = if is_box {
                 self.mk_pat(lo.to(hi), PatKind::Box(Box::new(fieldpat)))
             } else {
