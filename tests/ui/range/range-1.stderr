@@ -8,7 +8,7 @@ error[E0277]: `std::ops::Range<bool>` is not an iterator
   --> $DIR/range-1.rs:9:14
    |
 LL |     for i in false..true {}
-   |              ^^^^^^^^^^^ not an iterator
+   |              ^^^^^^^^^^^ `Range<bool>` is not an iterator
    |
    = help: the nightly-only, unstable trait `Step` is not implemented for `bool`
    = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait

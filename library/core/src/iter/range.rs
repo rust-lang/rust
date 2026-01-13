@@ -23,7 +23,7 @@ unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u6
 #[rustc_diagnostic_item = "range_step"]
 #[rustc_on_unimplemented(
     message = "`std::ops::Range<{Self}>` is not an iterator",
-    label = "not an iterator",
+    label = "`Range<{Self}>` is not an iterator",
     note = "`Range` only implements `Iterator` for select types in the standard library, \
             particularly integers; to see the full list of types, see the documentation for the \
             unstable `Step` trait"
