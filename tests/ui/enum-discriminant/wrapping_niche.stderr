@@ -44,9 +44,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -54,14 +51,9 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -69,14 +61,9 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -84,8 +71,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                ],
            },
@@ -144,9 +129,6 @@ error: layout_of(SignedAroundZero) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -154,14 +136,9 @@ error: layout_of(SignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -169,14 +146,9 @@ error: layout_of(SignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -184,8 +156,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                ],
            },

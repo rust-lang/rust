@@ -38,9 +38,6 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -52,14 +49,9 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -80,8 +72,6 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -134,9 +124,6 @@ error: layout_of(MultipleAlignments) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -148,14 +135,9 @@ error: layout_of(MultipleAlignments) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
                    },
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -167,14 +149,9 @@ error: layout_of(MultipleAlignments) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -195,8 +172,6 @@ error: layout_of(MultipleAlignments) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -249,9 +224,6 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -263,14 +235,9 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                    VariantLayout {
                        size: Size(3 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -291,8 +258,6 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -349,9 +314,6 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -363,14 +325,9 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -391,8 +348,6 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },

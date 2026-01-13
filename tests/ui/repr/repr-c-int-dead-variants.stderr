@@ -44,9 +44,6 @@ error: layout_of(UnivariantU8) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Scalar(
                            Initialized {
                                value: Int(
@@ -64,8 +61,6 @@ error: layout_of(UnivariantU8) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: true,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -130,9 +125,6 @@ error: layout_of(TwoVariantsU8) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -156,14 +148,9 @@ error: layout_of(TwoVariantsU8) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: true,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -187,8 +174,6 @@ error: layout_of(TwoVariantsU8) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
@@ -241,9 +226,6 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                variants: [
                    VariantLayout {
                        size: Size(16 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -257,16 +239,9 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: true,
-                       max_repr_align: Some(
-                           Align(8 bytes),
-                       ),
-                       unadjusted_abi_align: Align(8 bytes),
                    },
                    VariantLayout {
                        size: Size(16 bytes),
-                       align: AbiAlign {
-                           abi: Align(8 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -278,8 +253,6 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                        ],
                        largest_niche: None,
                        uninhabited: false,
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(8 bytes),
                    },
                ],
            },
