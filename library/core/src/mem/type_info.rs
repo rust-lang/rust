@@ -43,6 +43,8 @@ impl Type {
 pub enum TypeKind {
     /// Tuples.
     Tuple(Tuple),
+    /// Arrays.
+    Array(Array),
     /// Primitives
     /// FIXME(#146922): disambiguate further
     Leaf,
@@ -68,4 +70,15 @@ pub struct Field {
     pub ty: TypeId,
     /// Offset in bytes from the parent type
     pub offset: usize,
+}
+
+/// Compile-time type information about arrays.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Array {
+    /// The type of each element in the array.
+    pub element_ty: TypeId,
+    /// The length of the array.
+    pub len: usize,
 }
