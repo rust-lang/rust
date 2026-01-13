@@ -1379,9 +1379,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 }
 
 fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-        && find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
-        // AssocConst ==> assoc item has value
+    // AssocConst ==> assoc item has value
+    tcx.is_type_const(def_id)
         && (!matches!(def_kind, DefKind::AssocConst) || assoc_item_has_value(tcx, def_id))
 }
 

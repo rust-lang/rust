@@ -18,6 +18,8 @@ pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
+    debug_assert!(!tcx.is_type_const(owner_def.to_def_id()), "thir_body queried for type_const");
+
     let body = tcx.hir_body_owned_by(owner_def);
     let mut cx = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
