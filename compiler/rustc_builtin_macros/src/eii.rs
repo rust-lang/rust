@@ -1,8 +1,7 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, Stmt, StmtKind,
-    Visibility, ast,
+    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, StmtKind, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -12,6 +11,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::errors::{
     EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
     EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroExpectedFunction,
+    EiiSharedMacroInStatementPosition,
 };
 
 /// ```rust
@@ -55,29 +55,29 @@ fn eii_(
     ecx: &mut ExtCtxt<'_>,
     eii_attr_span: Span,
     meta_item: &ast::MetaItem,
-    item: Annotatable,
+    orig_item: Annotatable,
     impl_unsafe: bool,
 ) -> Vec<Annotatable> {
     let eii_attr_span = ecx.with_def_site_ctxt(eii_attr_span);
 
-    let (item, wrap_item): (_, &dyn Fn(_) -> _) = if let Annotatable::Item(item) = item {
-        (item, &Annotatable::Item)
-    } else if let Annotatable::Stmt(ref stmt) = item
+    let item = if let Annotatable::Item(item) = orig_item {
+        item
+    } else if let Annotatable::Stmt(ref stmt) = orig_item
         && let StmtKind::Item(ref item) = stmt.kind
+        && let ItemKind::Fn(ref f) = item.kind
     {
-        (item.clone(), &|item| {
-            Annotatable::Stmt(Box::new(Stmt {
-                id: DUMMY_NODE_ID,
-                kind: StmtKind::Item(item),
-                span: eii_attr_span,
-            }))
-        })
+        ecx.dcx().emit_err(EiiSharedMacroInStatementPosition {
+            span: eii_attr_span.to(item.span),
+            name: path_to_string(&meta_item.path),
+            item_span: f.ident.span,
+        });
+        return vec![orig_item];
     } else {
         ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![item];
+        return vec![orig_item];
     };
 
     let ast::Item { attrs, id: _, span: _, vis, kind: ItemKind::Fn(func), tokens: _ } =
@@ -87,7 +87,7 @@ fn eii_(
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![wrap_item(item)];
+        return vec![Annotatable::Item(item)];
     };
     // only clone what we need
     let attrs = attrs.clone();
@@ -98,17 +98,19 @@ fn eii_(
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, &func, &meta_item) else {
-        return vec![wrap_item(item)];
+        // we don't need to wrap in Annotatable::Stmt conditionally since
+        // EII can't be used on items in statement position
+        return vec![Annotatable::Item(item)];
     };
 
     // span of the declaring item without attributes
     let item_span = func.sig.span;
     let foreign_item_name = func.ident;
 
-    let mut return_items = Vec::new();
+    let mut module_items = Vec::new();
 
     if func.body.is_some() {
-        return_items.push(generate_default_impl(
+        module_items.push(generate_default_impl(
             ecx,
             &func,
             impl_unsafe,
@@ -119,7 +121,7 @@ fn eii_(
         ))
     }
 
-    return_items.push(generate_foreign_item(
+    module_items.push(generate_foreign_item(
         ecx,
         eii_attr_span,
         item_span,
@@ -127,7 +129,7 @@ fn eii_(
         vis,
         &attrs_from_decl,
     ));
-    return_items.push(generate_attribute_macro_to_implement(
+    module_items.push(generate_attribute_macro_to_implement(
         ecx,
         eii_attr_span,
         macro_name,
@@ -136,7 +138,9 @@ fn eii_(
         &attrs_from_decl,
     ));
 
-    return_items.into_iter().map(wrap_item).collect()
+    // we don't need to wrap in Annotatable::Stmt conditionally since
+    // EII can't be used on items in statement position
+    module_items.into_iter().map(Annotatable::Item).collect()
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -213,28 +217,13 @@ fn generate_default_impl(
         known_eii_macro_resolution: Some(ast::EiiDecl {
             foreign_item: ecx.path(
                 foreign_item_name.span,
-                // prefix super to escape the `dflt` module generated below
-                vec![Ident::from_str_and_span("super", foreign_item_name.span), foreign_item_name],
+                // prefix self to explicitly escape the const block generated below
+                // NOTE: this is why EIIs can't be used on statements
+                vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
             ),
             impl_unsafe,
         }),
     });
-
-    let item_mod = |span: Span, name: Ident, items: ThinVec<Box<ast::Item>>| {
-        ecx.item(
-            item_span,
-            ThinVec::new(),
-            ItemKind::Mod(
-                ast::Safety::Default,
-                name,
-                ast::ModKind::Loaded(
-                    items,
-                    ast::Inline::Yes,
-                    ast::ModSpans { inner_span: span, inject_use_span: span },
-                ),
-            ),
-        )
-    };
 
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
         let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
@@ -248,33 +237,13 @@ fn generate_default_impl(
     };
 
     // const _: () = {
-    //     mod dflt {
-    //         use super::*;
-    //         <orig fn>
-    //     }
+    //     <orig fn>
     // }
     anon_mod(
         item_span,
         thin_vec![ecx.stmt_item(
             item_span,
-            item_mod(
-                item_span,
-                Ident::from_str_and_span("dflt", item_span),
-                thin_vec![
-                    ecx.item(
-                        item_span,
-                        thin_vec![ecx.attr_nested_word(sym::allow, sym::unused_imports, item_span)],
-                        ItemKind::Use(ast::UseTree {
-                            prefix: ast::Path::from_ident(Ident::from_str_and_span(
-                                "super", item_span,
-                            )),
-                            kind: ast::UseTreeKind::Glob,
-                            span: item_span,
-                        })
-                    ),
-                    ecx.item(item_span, attrs, ItemKind::Fn(Box::new(default_func)))
-                ]
-            )
+            ecx.item(item_span, attrs, ItemKind::Fn(Box::new(default_func)))
         ),],
     )
 }
