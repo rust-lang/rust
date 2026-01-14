@@ -161,6 +161,8 @@ builtin_macros_eii_only_once = `#[{$name}]` can only be specified once
 
 builtin_macros_eii_shared_macro_expected_function = `#[{$name}]` is only valid on functions
 builtin_macros_eii_shared_macro_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
+builtin_macros_eii_shared_macro_in_statement_position = `#[{$name}]` can only be used on functions inside a module
+    .label = `#[{$name}]` is used on this item, which is part of another item's local scope
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
