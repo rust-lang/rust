@@ -414,6 +414,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
+    #[tracing::instrument(skip(self), level = "debug")]
     pub(crate) fn smart_resolve_report_errors(
         &mut self,
         path: &[Segment],
@@ -451,7 +452,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             err.span_suggestion_verbose(sugg.0, sugg.1, &sugg.2, Applicability::MaybeIncorrect);
         }
 
-        self.suggest_changing_type_to_const_param(&mut err, res, source, span);
+        self.suggest_changing_type_to_const_param(&mut err, res, source, path, following_seg, span);
         self.explain_functions_in_pattern(&mut err, res, source);
 
         if self.suggest_pattern_match_with_let(&mut err, source, span) {
@@ -1505,8 +1506,40 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         err: &mut Diag<'_>,
         res: Option<Res>,
         source: PathSource<'_, '_, '_>,
+        path: &[Segment],
+        following_seg: Option<&Segment>,
         span: Span,
     ) {
+        if let PathSource::Expr(None) = source
+            && let Some(Res::Def(DefKind::TyParam, _)) = res
+            && following_seg.is_none()
+            && let [segment] = path
+        {
+            // We have something like
+            // impl<T, N> From<[T; N]> for VecWrapper<T> {
+            //     fn from(slice: [T; N]) -> Self {
+            //         VecWrapper(slice.to_vec())
+            //     }
+            // }
+            // where `N` is a type param but should likely have been a const param.
+            let Some(item) = self.diag_metadata.current_item else { return };
+            let Some(generics) = item.kind.generics() else { return };
+            let Some(span) = generics.params.iter().find_map(|param| {
+                // Only consider type params with no bounds.
+                if param.bounds.is_empty() && param.ident.name == segment.ident.name {
+                    Some(param.ident.span)
+                } else {
+                    None
+                }
+            }) else {
+                return;
+            };
+            err.subdiagnostic(errors::UnexpectedResChangeTyParamToConstParamSugg {
+                before: span.shrink_to_lo(),
+                after: span.shrink_to_hi(),
+            });
+            return;
+        }
         let PathSource::Trait(_) = source else { return };
 
         // We don't include `DefKind::Str` and `DefKind::AssocTy` as they can't be reached here anyway.

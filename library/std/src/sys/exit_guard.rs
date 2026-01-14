@@ -34,7 +34,7 @@ cfg_select! {
             // lifetime of the thread. Additionally, accesses to `errno` are
             // async-signal-safe, so this function is available in all imaginable
             // circumstances.
-            let this_thread_id = crate::sys::os::errno_location();
+            let this_thread_id = crate::sys::io::errno_location();
             match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
                 Ok(_) => {
                     // This is the first thread to call `unique_thread_exit`,

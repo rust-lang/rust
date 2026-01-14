@@ -4759,7 +4759,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // slices of `element_ty` with `mutability`.
         let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
             ty::RawPtr(t, m) | ty::Ref(_, t, m) => {
-                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                if let ty::Slice(e) = *t.kind()
+                    && e == element_ty
                     && m == mutability.unwrap_or(m)
                 {
                     // Use the candidate's mutability going forward.
@@ -5549,7 +5550,14 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
         };
         if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
             format!(
-                "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
+                "{pre_message}the {}trait `{}` is not implemented for{desc} `{}`",
+                if tcx.lookup_stability(trait_predicate.def_id()).map(|s| s.level.is_stable())
+                    == Some(false)
+                {
+                    "nightly-only, unstable "
+                } else {
+                    ""
+                },
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )

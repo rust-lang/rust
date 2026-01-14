@@ -206,9 +206,9 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
-    ffi_unwind_calls::provide(providers);
-    shim::provide(providers);
-    cross_crate_inline::provide(providers);
+    ffi_unwind_calls::provide(&mut providers.queries);
+    shim::provide(&mut providers.queries);
+    cross_crate_inline::provide(&mut providers.queries);
     providers.queries = query::Providers {
         mir_keys,
         mir_built,

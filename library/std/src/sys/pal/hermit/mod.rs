@@ -75,32 +75,6 @@ pub unsafe extern "C" fn runtime_entry(
     }
 }
 
-#[inline]
-pub(crate) fn is_interrupted(errno: i32) -> bool {
-    errno == hermit_abi::errno::EINTR
-}
-
-pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
-    match errno {
-        hermit_abi::errno::EACCES => io::ErrorKind::PermissionDenied,
-        hermit_abi::errno::EADDRINUSE => io::ErrorKind::AddrInUse,
-        hermit_abi::errno::EADDRNOTAVAIL => io::ErrorKind::AddrNotAvailable,
-        hermit_abi::errno::EAGAIN => io::ErrorKind::WouldBlock,
-        hermit_abi::errno::ECONNABORTED => io::ErrorKind::ConnectionAborted,
-        hermit_abi::errno::ECONNREFUSED => io::ErrorKind::ConnectionRefused,
-        hermit_abi::errno::ECONNRESET => io::ErrorKind::ConnectionReset,
-        hermit_abi::errno::EEXIST => io::ErrorKind::AlreadyExists,
-        hermit_abi::errno::EINTR => io::ErrorKind::Interrupted,
-        hermit_abi::errno::EINVAL => io::ErrorKind::InvalidInput,
-        hermit_abi::errno::ENOENT => io::ErrorKind::NotFound,
-        hermit_abi::errno::ENOTCONN => io::ErrorKind::NotConnected,
-        hermit_abi::errno::EPERM => io::ErrorKind::PermissionDenied,
-        hermit_abi::errno::EPIPE => io::ErrorKind::BrokenPipe,
-        hermit_abi::errno::ETIMEDOUT => io::ErrorKind::TimedOut,
-        _ => io::ErrorKind::Uncategorized,
-    }
-}
-
 #[doc(hidden)]
 pub trait IsNegative {
     fn is_negative(&self) -> bool;
@@ -131,12 +105,7 @@ impl IsNegative for i32 {
 impl_is_negative! { i8 i16 i64 isize }
 
 pub fn cvt<T: IsNegative>(t: T) -> io::Result<T> {
-    if t.is_negative() {
-        let e = decode_error_kind(t.negate());
-        Err(io::Error::from(e))
-    } else {
-        Ok(t)
-    }
+    if t.is_negative() { Err(io::Error::from_raw_os_error(t.negate())) } else { Ok(t) }
 }
 
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
