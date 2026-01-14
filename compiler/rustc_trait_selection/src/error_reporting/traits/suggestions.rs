@@ -4759,7 +4759,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // slices of `element_ty` with `mutability`.
         let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
             ty::RawPtr(t, m) | ty::Ref(_, t, m) => {
-                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                if let ty::Slice(e) = *t.kind()
+                    && e == element_ty
                     && m == mutability.unwrap_or(m)
                 {
                     // Use the candidate's mutability going forward.

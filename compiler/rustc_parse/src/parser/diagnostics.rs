@@ -761,7 +761,9 @@ impl<'a> Parser<'a> {
         }
 
         // Check for misspelled keywords if there are no suggestions added to the diagnostic.
-        if matches!(&err.suggestions, Suggestions::Enabled(list) if list.is_empty()) {
+        if let Suggestions::Enabled(list) = &err.suggestions
+            && list.is_empty()
+        {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
