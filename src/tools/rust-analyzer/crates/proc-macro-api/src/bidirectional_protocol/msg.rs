@@ -70,7 +70,6 @@ pub struct ExpandMacro {
     pub lib: Utf8PathBuf,
     pub env: Vec<(String, String)>,
     pub current_dir: Option<String>,
-    #[serde(flatten)]
     pub data: ExpandMacroData,
 }
 
