@@ -15,6 +15,7 @@ const OPTIONAL_COMPONENTS: &[&str] = &[
     "csky",
     "mips",
     "powerpc",
+    "spirv",
     "systemz",
     "webassembly",
     "msp430",
