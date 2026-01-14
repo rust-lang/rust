@@ -4,7 +4,7 @@ error[E0277]: the trait bound `Ipv4Addr: ToTokens` is not satisfied
 LL |     let _ = quote! { $ip };
    |             ^^^^^^^^^^^^^^
    |             |
-   |             the trait `ToTokens` is not implemented for `Ipv4Addr`
+   |             the nightly-only, unstable trait `ToTokens` is not implemented for `Ipv4Addr`
    |             required by a bound introduced by this call
    |
    = help: the following other types implement trait `ToTokens`:

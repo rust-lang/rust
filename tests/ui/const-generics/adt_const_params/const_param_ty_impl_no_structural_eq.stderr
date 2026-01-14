@@ -18,7 +18,7 @@ error[E0277]: the type `CantParam` does not `#[derive(PartialEq)]`
 LL | impl std::marker::ConstParamTy_ for CantParam {}
    |                                     ^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `StructuralPartialEq` is not implemented for `CantParam`
+help: the nightly-only, unstable trait `StructuralPartialEq` is not implemented for `CantParam`
   --> $DIR/const_param_ty_impl_no_structural_eq.rs:8:1
    |
 LL | struct CantParam(ImplementsConstParamTy);
@@ -46,7 +46,7 @@ error[E0277]: the type `CantParamDerive` does not `#[derive(PartialEq)]`
 LL | #[derive(std::marker::ConstParamTy)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `StructuralPartialEq` is not implemented for `CantParamDerive`
+help: the nightly-only, unstable trait `StructuralPartialEq` is not implemented for `CantParamDerive`
   --> $DIR/const_param_ty_impl_no_structural_eq.rs:17:1
    |
 LL | struct CantParamDerive(ImplementsConstParamTy);

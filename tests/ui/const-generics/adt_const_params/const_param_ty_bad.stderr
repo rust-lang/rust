@@ -2,7 +2,7 @@ error[E0277]: `fn() {main}` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:7:11
    |
 LL |     check(main);
-   |     ----- ^^^^ the trait `ConstParamTy_` is not implemented for fn item `fn() {main}`
+   |     ----- ^^^^ the nightly-only, unstable trait `ConstParamTy_` is not implemented for fn item `fn() {main}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -24,7 +24,7 @@ LL |     check(|| {});
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `ConstParamTy_` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
+   = help: the nightly-only, unstable trait `ConstParamTy_` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
@@ -40,7 +40,7 @@ error[E0277]: `fn()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:9:11
    |
 LL |     check(main as fn());
-   |     ----- ^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `fn()`
+   |     ----- ^^^^^^^^^^^^ the nightly-only, unstable trait `ConstParamTy_` is not implemented for `fn()`
    |     |
    |     required by a bound introduced by this call
    |
@@ -58,7 +58,7 @@ error[E0277]: `&mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:10:11
    |
 LL |     check(&mut ());
-   |     ----- ^^^^^^^ the trait `ConstParamTy_` is not implemented for `&mut ()`
+   |     ----- ^^^^^^^ the nightly-only, unstable trait `ConstParamTy_` is not implemented for `&mut ()`
    |     |
    |     required by a bound introduced by this call
    |
@@ -78,7 +78,7 @@ error[E0277]: `*mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:11:11
    |
 LL |     check(&mut () as *mut ());
-   |     ----- ^^^^^^^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `*mut ()`
+   |     ----- ^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `ConstParamTy_` is not implemented for `*mut ()`
    |     |
    |     required by a bound introduced by this call
    |
@@ -98,7 +98,7 @@ error[E0277]: `*const ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:12:11
    |
 LL |     check(&() as *const ());
-   |     ----- ^^^^^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `*const ()`
+   |     ----- ^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `ConstParamTy_` is not implemented for `*const ()`
    |     |
    |     required by a bound introduced by this call
    |
