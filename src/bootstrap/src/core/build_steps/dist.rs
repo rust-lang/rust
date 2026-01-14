@@ -30,7 +30,7 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
-use crate::core::config::TargetSelection;
+use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -3033,6 +3033,14 @@ impl Step for Gcc {
         if host != "x86_64-unknown-linux-gnu" {
             builder.info(&format!("host target `{host}` not supported by gcc. skipping"));
             return None;
+        }
+
+        if builder.config.is_running_on_ci {
+            assert_eq!(
+                builder.config.gcc_ci_mode,
+                GccCiMode::BuildLocally,
+                "Cannot use gcc.download-ci-gcc when distributing GCC on CI"
+            );
         }
 
         // We need the GCC sources to build GCC and also to add its license and README
