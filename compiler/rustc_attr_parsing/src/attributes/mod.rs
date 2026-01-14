@@ -57,6 +57,7 @@ pub(crate) mod pin_v2;
 pub(crate) mod proc_macro_attrs;
 pub(crate) mod prototype;
 pub(crate) mod repr;
+pub(crate) mod rustc_dump;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
 pub(crate) mod stability;

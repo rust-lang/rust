@@ -906,6 +906,21 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
+    /// Represents `#[rustc_dump_def_parents]`
+    RustcDumpDefParents,
+
+    /// Represents `#[rustc_dump_item_bounds]`
+    RustcDumpItemBounds,
+
+    /// Represents `#[rustc_dump_predicates]`
+    RustcDumpPredicates,
+
+    /// Represents `#[rustc_dump_user_args]`
+    RustcDumpUserArgs,
+
+    /// Represents `#[rustc_dump_vtable]`
+    RustcDumpVtable(Span),
+
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
 

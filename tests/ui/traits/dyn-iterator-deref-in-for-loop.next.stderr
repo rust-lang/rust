@@ -2,9 +2,9 @@ error[E0277]: `dyn Iterator<Item = &'a mut u8>` is not an iterator
   --> $DIR/dyn-iterator-deref-in-for-loop.rs:9:17
    |
 LL |     for item in *things {
-   |                 ^^^^^^^ the trait `IntoIterator` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   |                 ^^^^^^^ the trait `Sized` is not implemented for `dyn Iterator<Item = &'a mut u8>`
    |
-   = note: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
+   = note: the trait bound `Sized` is not satisfied
    = note: required for `dyn Iterator<Item = &'a mut u8>` to implement `IntoIterator`
 help: consider mutably borrowing here
    |
