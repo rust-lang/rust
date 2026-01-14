@@ -8,4 +8,5 @@ enum Priority {
 fn main() {
     let priority = &Priority::Normal;
     let priority = priority as u8; //~ ERROR casting `&Priority` as `u8` is invalid
+    //~| HELP: dereference the expression
 }
