@@ -353,7 +353,7 @@ macro_rules! test_ftoi_itof {
             assert_itof(i, f, msg);
         }
 
-        let fbits = <$fty>::BITS;
+        let fbits = <$fty as Float>::BITS;
         let fsig_bits = <$fty>::SIGNIFICAND_BITS;
         let ibits = <$ity>::BITS;
         let imax: $ity = <$ity>::MAX;
@@ -528,9 +528,9 @@ macro_rules! test_ftof {
         assert!((<$f1>::NAN as $f2).is_nan(), "{} -> {} nan", stringify!($f1), stringify!($f2));
 
         let min_sub_casted = <$f1>::from_bits(0x1) as $f2;
-        let min_neg_sub_casted = <$f1>::from_bits(0x1 | 1 << (<$f1>::BITS - 1)) as $f2;
+        let min_neg_sub_casted = <$f1>::from_bits(0x1 | 1 << (<$f1 as Float>::BITS - 1)) as $f2;
 
-        if <$f1>::BITS > <$f2>::BITS {
+        if <$f1 as Float>::BITS > <$f2 as Float>::BITS {
             assert_feq(<$f1>::MAX as $f2, <$f2>::INFINITY, "max -> inf");
             assert_feq(<$f1>::MIN as $f2, <$f2>::NEG_INFINITY, "max -> inf");
             assert_biteq(min_sub_casted, f2zero, "min subnormal -> 0.0");
