@@ -44,12 +44,6 @@
                 }
                 break;
             case "sans-serif-fonts":
-                if (value === true) {
-                    addClass(document.documentElement, "sans-serif");
-                } else {
-                    removeClass(document.documentElement, "sans-serif");
-                }
-                break;
             case "hide-sidebar":
             case "hide-toc":
             case "hide-modnav":

@@ -319,9 +319,6 @@ updateTheme();
 if (getSettingValue("source-sidebar-show") === "true") {
     addClass(document.documentElement, "src-sidebar-expanded");
 }
-if (getSettingValue("sans-serif-fonts") === "true") {
-    addClass(document.documentElement, "sans-serif");
-}
 (function() {
     const settings = [
         "hide-sidebar",
@@ -329,6 +326,7 @@ if (getSettingValue("sans-serif-fonts") === "true") {
         "hide-modnav",
         "word-wrap-source-code",
         "hide-deprecated-items",
+        "sans-serif-fonts",
     ];
     for (const setting of settings) {
         if (getSettingValue(setting) === "true") {

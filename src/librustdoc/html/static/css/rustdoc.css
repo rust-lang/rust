@@ -64,7 +64,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 }
 
-:root.sans-serif {
+:root.sans-serif-fonts {
 	--font-family: "Fira Sans", sans-serif;
 	--font-family-code: "Fira Mono", monospace;
 }
