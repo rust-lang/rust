@@ -322,6 +322,12 @@ mod tests {
     }
 
     #[test]
+    fn remove_parens_conflict_cast_before_l_angle() {
+        check_assist_not_applicable(remove_parentheses, r#"fn f() { _ = $0(1 as u32) << 10; }"#);
+        check_assist_not_applicable(remove_parentheses, r#"fn f() { _ = $0(1 as u32) < 10; }"#);
+    }
+
+    #[test]
     fn remove_parens_double_paren_stmt() {
         check_assist(
             remove_parentheses,
