@@ -65,7 +65,6 @@ error: layout_of(E) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -83,7 +82,6 @@ error: layout_of(E) = Layout {
                            1,
                            2,
                        ],
-                       largest_niche: None,
                        uninhabited: true,
                    },
                ],
@@ -244,7 +242,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -271,7 +268,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -625,7 +621,6 @@ error: layout_of(Option<bool>) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -645,16 +640,6 @@ error: layout_of(Option<bool>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
@@ -723,7 +708,6 @@ error: layout_of(Option<char>) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -743,16 +727,6 @@ error: layout_of(Option<char>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=1114111,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
