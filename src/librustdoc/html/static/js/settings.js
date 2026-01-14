@@ -43,27 +43,6 @@
                     }
                 }
                 break;
-            case "hide-sidebar":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-sidebar");
-                } else {
-                    removeClass(document.documentElement, "hide-sidebar");
-                }
-                break;
-            case "hide-toc":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-toc");
-                } else {
-                    removeClass(document.documentElement, "hide-toc");
-                }
-                break;
-            case "hide-modnav":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-modnav");
-                } else {
-                    removeClass(document.documentElement, "hide-modnav");
-                }
-                break;
             case "sans-serif-fonts":
                 if (value === true) {
                     addClass(document.documentElement, "sans-serif");
@@ -71,18 +50,15 @@
                     removeClass(document.documentElement, "sans-serif");
                 }
                 break;
+            case "hide-sidebar":
+            case "hide-toc":
+            case "hide-modnav":
             case "word-wrap-source-code":
-                if (value === true) {
-                    addClass(document.documentElement, "word-wrap-source-code");
-                } else {
-                    removeClass(document.documentElement, "word-wrap-source-code");
-                }
-                break;
             case "hide-deprecated-items":
                 if (value === true) {
-                    addClass(document.documentElement, "hide-deprecated-items");
+                    addClass(document.documentElement, settingName);
                 } else {
-                    removeClass(document.documentElement, "hide-deprecated-items");
+                    removeClass(document.documentElement, settingName);
                 }
         }
     }
