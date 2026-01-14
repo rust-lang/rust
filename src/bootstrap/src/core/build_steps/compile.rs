@@ -2660,7 +2660,7 @@ pub enum ArtifactKeepMode {
 
 pub fn run_cargo(
     builder: &Builder<'_>,
-    cargo: Cargo,
+    mut cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
@@ -2677,6 +2677,16 @@ pub fn run_cargo(
         .parent()
         .unwrap() // chop off `$target`
         .join(target_root_dir.file_name().unwrap());
+
+    match artifact_keep_mode {
+        ArtifactKeepMode::OnlyDylib
+        | ArtifactKeepMode::OnlyRmeta
+        | ArtifactKeepMode::BothRlibAndRmeta
+        | ArtifactKeepMode::Custom(_) => {
+            cargo.arg("-Zno-embed-metadata");
+        }
+        ArtifactKeepMode::OnlyRlib => {}
+    }
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
