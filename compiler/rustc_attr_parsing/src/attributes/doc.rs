@@ -514,9 +514,6 @@ impl DocParser {
                         MetaItemOrLitParser::Lit(lit) => {
                             cx.unexpected_literal(lit.span);
                         }
-                        MetaItemOrLitParser::Err(..) => {
-                            // already had an error here, move on.
-                        }
                     }
                 }
             }
@@ -599,9 +596,6 @@ impl DocParser {
                         }
                         MetaItemOrLitParser::Lit(lit) => {
                             cx.expected_name_value(lit.span, None);
-                        }
-                        MetaItemOrLitParser::Err(..) => {
-                            // already had an error here, move on.
                         }
                     }
                 }

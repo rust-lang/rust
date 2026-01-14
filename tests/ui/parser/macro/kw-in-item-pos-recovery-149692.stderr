@@ -1,0 +1,29 @@
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:10:8
+   |
+LL |     ($id:item()) => {}
+   |      -------- while parsing argument for this `item` macro fragment
+...
+LL | m!(Self());
+   |        ^ expected one of `!` or `::`
+
+error: expected one of `!` or `::`, found `{`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:13:8
+   |
+LL |     ($id:item()) => {}
+   |      -------- while parsing argument for this `item` macro fragment
+...
+LL | m!(Self{});
+   |        ^ expected one of `!` or `::`
+
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:16:9
+   |
+LL |     ($id:item()) => {}
+   |      -------- while parsing argument for this `item` macro fragment
+...
+LL | m!(crate());
+   |         ^ expected one of `!` or `::`
+
+error: aborting due to 3 previous errors
+
