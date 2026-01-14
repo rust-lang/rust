@@ -59,6 +59,43 @@ fn test_tuples() {
 }
 
 #[test]
+fn test_structs() {
+    use TypeKind::*;
+
+    struct TestStruct {
+        first: u8,
+        second: u16,
+    }
+    #[non_exhaustive]
+    struct NonExhaustive {
+        a: u8,
+    }
+    struct TupleStruct(u8, u16);
+
+    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<TestStruct>() }) else {
+        panic!()
+    };
+    assert_eq!(size, Some(size_of::<TestStruct>()));
+    assert!(!ty.non_exhaustive);
+    assert_eq!(ty.fields.len(), 2);
+    assert_eq!(ty.fields[0].name, "first");
+    assert_eq!(ty.fields[1].name, "second");
+
+    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<NonExhaustive>() }) else {
+        panic!()
+    };
+    assert_eq!(size, Some(1));
+    assert!(ty.non_exhaustive);
+
+    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<TupleStruct>() }) else {
+        panic!()
+    };
+    assert_eq!(ty.fields.len(), 2);
+    assert_eq!(ty.fields[0].name, "0");
+    assert_eq!(ty.fields[1].name, "1");
+}
+
+#[test]
 fn test_primitives() {
     use TypeKind::*;
 
