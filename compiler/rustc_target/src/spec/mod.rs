@@ -1873,7 +1873,6 @@ crate::target_spec_enum! {
         Nvptx64 = "nvptx64",
         PowerPC = "powerpc",
         PowerPC64 = "powerpc64",
-        PowerPC64LE = "powerpc64le",
         RiscV32 = "riscv32",
         RiscV64 = "riscv64",
         S390x = "s390x",
@@ -1911,7 +1910,6 @@ impl Arch {
             Self::Nvptx64 => sym::nvptx64,
             Self::PowerPC => sym::powerpc,
             Self::PowerPC64 => sym::powerpc64,
-            Self::PowerPC64LE => sym::powerpc64le,
             Self::RiscV32 => sym::riscv32,
             Self::RiscV64 => sym::riscv64,
             Self::S390x => sym::s390x,
@@ -1940,8 +1938,8 @@ impl Arch {
 
             AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
             | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
-            | PowerPC64 | PowerPC64LE | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32
-            | Wasm64 | X86 | X86_64 | Xtensa => true,
+            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
+            | X86_64 | Xtensa => true,
         }
     }
 }
@@ -3445,7 +3443,6 @@ impl Target {
             Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
             Arch::AmdGpu
             | Arch::Nvptx64
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64
