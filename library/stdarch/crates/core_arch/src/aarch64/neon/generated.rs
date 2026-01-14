@@ -736,7 +736,7 @@ pub fn vaddvq_u64(a: uint64x2_t) -> u64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famax))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
@@ -752,7 +752,7 @@ pub fn vamax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famax))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
@@ -768,7 +768,7 @@ pub fn vamaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famax))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
@@ -784,7 +784,7 @@ pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famax))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
@@ -800,7 +800,7 @@ pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famax))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
@@ -816,7 +816,7 @@ pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamin_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famin))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
@@ -832,7 +832,7 @@ pub fn vamin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f16)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famin))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
@@ -848,7 +848,7 @@ pub fn vaminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamin_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famin))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
@@ -864,7 +864,7 @@ pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famin))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
@@ -880,7 +880,7 @@ pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(famin))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
@@ -12855,7 +12855,7 @@ pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
@@ -12873,7 +12873,7 @@ pub unsafe fn vldap1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) 
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
@@ -12892,7 +12892,7 @@ pub unsafe fn vldap1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t)
 #[inline(always)]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -12905,7 +12905,7 @@ pub unsafe fn vldap1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_
 #[inline(always)]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
@@ -12918,7 +12918,7 @@ pub unsafe fn vldap1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t)
 #[inline(always)]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -12931,7 +12931,7 @@ pub unsafe fn vldap1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t
 #[inline(always)]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
@@ -12944,7 +12944,7 @@ pub unsafe fn vldap1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t)
 #[inline(always)]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(ldap1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub unsafe fn vldap1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -24457,7 +24457,7 @@ pub fn vrsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4
 #[inline(always)]
 #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
 #[target_feature(enable = "neon,fp8")]
-#[cfg_attr(test, assert_instr(fscale))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
 pub fn vscale_f16(vn: float16x4_t, vm: int16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -24473,7 +24473,7 @@ pub fn vscale_f16(vn: float16x4_t, vm: int16x4_t) -> float16x4_t {
 #[inline(always)]
 #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
 #[target_feature(enable = "neon,fp8")]
-#[cfg_attr(test, assert_instr(fscale))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
 pub fn vscaleq_f16(vn: float16x8_t, vm: int16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -24489,7 +24489,7 @@ pub fn vscaleq_f16(vn: float16x8_t, vm: int16x8_t) -> float16x8_t {
 #[inline(always)]
 #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
 #[target_feature(enable = "neon,fp8")]
-#[cfg_attr(test, assert_instr(fscale))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
 pub fn vscale_f32(vn: float32x2_t, vm: int32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -24505,7 +24505,7 @@ pub fn vscale_f32(vn: float32x2_t, vm: int32x2_t) -> float32x2_t {
 #[inline(always)]
 #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
 #[target_feature(enable = "neon,fp8")]
-#[cfg_attr(test, assert_instr(fscale))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
 pub fn vscaleq_f32(vn: float32x4_t, vm: int32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -24521,7 +24521,7 @@ pub fn vscaleq_f32(vn: float32x4_t, vm: int32x4_t) -> float32x4_t {
 #[inline(always)]
 #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
 #[target_feature(enable = "neon,fp8")]
-#[cfg_attr(test, assert_instr(fscale))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
 pub fn vscaleq_f64(vn: float64x2_t, vm: int64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -27119,7 +27119,7 @@ pub unsafe fn vst4q_u64(a: *mut u64, b: uint64x2x4_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x1_t) {
@@ -27130,7 +27130,7 @@ pub fn vstl1_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x1_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1q_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x2_t) {
@@ -27141,7 +27141,7 @@ pub fn vstl1q_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x2_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_u64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x1_t) {
@@ -27152,7 +27152,7 @@ pub fn vstl1_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x1_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_u64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1q_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x2_t) {
@@ -27163,7 +27163,7 @@ pub fn vstl1q_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x2_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_p64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x1_t) {
@@ -27174,7 +27174,7 @@ pub fn vstl1_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x1_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_p64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
@@ -27185,7 +27185,7 @@ pub fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_s64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
@@ -27200,7 +27200,7 @@ pub fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_s64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,rcpc3")]
-#[cfg_attr(test, assert_instr(stl1, LANE = 0))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 pub fn vstl1q_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x2_t) {

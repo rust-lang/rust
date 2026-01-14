@@ -4415,7 +4415,7 @@ intrinsics:
       unsafe: [neon]
     attr:
       - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-unstable-feat-lrcpc3
     types:
@@ -4446,7 +4446,7 @@ intrinsics:
     attr:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
       - *neon-unstable-feat-lrcpc3
     types:
       - ['*const u64', uint64x1_t,'static_assert!', 'LANE == 0','']
@@ -4471,7 +4471,7 @@ intrinsics:
     safety: safe
     attr:
       - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-unstable-feat-lrcpc3
     types:
@@ -4499,7 +4499,7 @@ intrinsics:
     safety: safe
     attr:
       - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-unstable-feat-lrcpc3
     types:
@@ -13973,7 +13973,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famax]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [famax]]}]]
       - FnCall: [unstable, ['feature = "faminmax"', 'issue = "137933"']]
     safety: safe
     types:
@@ -13995,7 +13995,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famin]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [famin]]}]]
       - FnCall: [unstable, ['feature = "faminmax"', 'issue = "137933"']]
     safety: safe
     types:
@@ -14351,7 +14351,7 @@ intrinsics:
     attr:
       - *neon-unstable-fp8
       - FnCall: [target_feature, ['enable = "neon,fp8"']]
-    assert_instr: [fscale]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [fscale]]}]]
     safety: safe
     types:
       - [float16x4_t, int16x4_t]
