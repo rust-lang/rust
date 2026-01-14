@@ -1,0 +1,11 @@
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/kw-in-const-item-pos-recovery-149692.rs:8:14
+   |
+LL |     (const $id:item()) => {}
+   |            -------- while parsing argument for this `item` macro fragment
+...
+LL | m!(const Self());
+   |              ^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
