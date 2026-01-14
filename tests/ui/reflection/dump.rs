@@ -1,6 +1,11 @@
-#![feature(type_info)]
+// Some types whose length depends on the target pointer length will be dumped.
+//@ revisions: bit32 bit64
+//@[bit32] only-32bit
+//@[bit64] only-64bit
 //@ run-pass
 //@ check-run-results
+
+#![feature(type_info)]
 #![allow(dead_code)]
 
 use std::mem::type_info::Type;
@@ -20,14 +25,20 @@ struct Unsized {
     s: str,
 }
 
+macro_rules! dump_types {
+    ($($ty:ty),+ $(,)?) => {
+        $(println!("{:#?}", const { Type::of::<$ty>() });)+
+    };
+}
+
 fn main() {
-    println!("{:#?}", const { Type::of::<(u8, u8, ())>() }.kind);
-    println!("{:#?}", const { Type::of::<[u8; 2]>() }.kind);
-    println!("{:#?}", const { Type::of::<Foo>() }.kind);
-    println!("{:#?}", const { Type::of::<Bar>() }.kind);
-    println!("{:#?}", const { Type::of::<&Unsized>() }.kind);
-    println!("{:#?}", const { Type::of::<&str>() }.kind);
-    println!("{:#?}", const { Type::of::<&[u8]>() }.kind);
-    println!("{:#?}", const { Type::of::<str>() }.kind);
-    println!("{:#?}", const { Type::of::<[u8]>() }.kind);
+    dump_types! {
+        (u8, u8, ()),
+        [u8; 2],
+        i8, i32, i64, i128, isize,
+        u8, u32, u64, u128, usize,
+        Foo, Bar,
+        &Unsized, &str, &[u8],
+        str, [u8],
+    }
 }

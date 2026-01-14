@@ -35,6 +35,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                 interp_ok((variant_id, self.project_downcast(&field_dest, variant_id)?))
             };
+            let ptr_bit_width = || self.tcx.data_layout.pointer_size().bits();
             match field.name {
                 sym::kind => {
                     let variant_index = match ty.kind() {
@@ -64,13 +65,60 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
-                        // For now just merge all primitives into one `Leaf` variant with no data
-                        ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Char | ty::Bool => {
-                            downcast(sym::Leaf)?.0
+                        ty::Bool => {
+                            let (variant, variant_place) = downcast(sym::Bool)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(place, ty, None)?;
+                            variant
+                        }
+                        ty::Char => {
+                            let (variant, variant_place) = downcast(sym::Char)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(place, ty, None)?;
+                            variant
+                        }
+                        ty::Int(int_ty) => {
+                            let (variant, variant_place) = downcast(sym::Int)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(
+                                place,
+                                ty,
+                                Some(
+                                    int_ty
+                                        .bit_width()
+                                        .unwrap_or_else(/* isize */ ptr_bit_width),
+                                ),
+                            )?;
+                            variant
+                        }
+                        ty::Uint(uint_ty) => {
+                            let (variant, variant_place) = downcast(sym::Uint)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(
+                                place,
+                                ty,
+                                Some(
+                                    uint_ty
+                                        .bit_width()
+                                        .unwrap_or_else(/* usize */ ptr_bit_width),
+                                ),
+                            )?;
+                            variant
+                        }
+                        ty::Float(float_ty) => {
+                            let (variant, variant_place) = downcast(sym::Float)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(place, ty, Some(float_ty.bit_width()))?;
+                            variant
+                        }
+                        ty::Str => {
+                            let (variant, variant_place) = downcast(sym::Str)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_primitive_type_info(place, ty, None)?;
+                            variant
                         }
                         ty::Adt(_, _)
                         | ty::Foreign(_)
-                        | ty::Str
                         | ty::Pat(_, _)
                         | ty::Slice(_)
                         | ty::RawPtr(..)
@@ -201,6 +249,34 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
+        interp_ok(())
+    }
+
+    // This method always writes to field `ty`.
+    // If field `bit_width` is present, it also writes to it (in which case parameter `write_bit_width` must be `Some`).
+    fn write_primitive_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+        write_bit_width: Option<u64>,
+    ) -> InterpResult<'tcx> {
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+            match field.name {
+                sym::ty => self.write_type_id(ty, &field_place)?,
+                sym::bit_width => {
+                    let bit_width = write_bit_width
+                        .expect("type info struct needs a `bit_width` but none was provided");
+                    self.write_scalar(
+                        ScalarInt::try_from_target_usize(bit_width, self.tcx.tcx).unwrap(),
+                        &field_place,
+                    )?
+                }
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
         interp_ok(())
     }
 }

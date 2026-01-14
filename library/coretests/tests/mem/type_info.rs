@@ -46,11 +46,48 @@ fn test_tuples() {
                 assert!(b.offset == 1);
 
                 match (a.ty.info().kind, b.ty.info().kind) {
-                    (TypeKind::Leaf, TypeKind::Leaf) => {}
+                    (TypeKind::Uint(a), TypeKind::Uint(b)) => {
+                        assert!(a.bit_width == 8);
+                        assert!(b.bit_width == 8);
+                    }
                     _ => unreachable!(),
                 }
             }
             _ => unreachable!(),
         }
     }
+}
+
+#[test]
+fn test_primitives() {
+    use TypeKind::*;
+
+    let Type { kind: Bool(_ty), size, .. } = (const { Type::of::<bool>() }) else { panic!() };
+    assert_eq!(size, Some(1));
+
+    let Type { kind: Char(_ty), size, .. } = (const { Type::of::<char>() }) else { panic!() };
+    assert_eq!(size, Some(4));
+
+    let Type { kind: Int(ty), size, .. } = (const { Type::of::<i32>() }) else { panic!() };
+    assert_eq!(size, Some(4));
+    assert_eq!(ty.bit_width, 32);
+
+    let Type { kind: Int(ty), size, .. } = (const { Type::of::<isize>() }) else { panic!() };
+    assert_eq!(size, Some(size_of::<isize>()));
+    assert_eq!(ty.bit_width, size_of::<isize>() * 8);
+
+    let Type { kind: Uint(ty), size, .. } = (const { Type::of::<u32>() }) else { panic!() };
+    assert_eq!(size, Some(4));
+    assert_eq!(ty.bit_width, 32);
+
+    let Type { kind: Uint(ty), size, .. } = (const { Type::of::<usize>() }) else { panic!() };
+    assert_eq!(size, Some(size_of::<usize>()));
+    assert_eq!(ty.bit_width, size_of::<usize>() * 8);
+
+    let Type { kind: Float(ty), size, .. } = (const { Type::of::<f32>() }) else { panic!() };
+    assert_eq!(size, Some(4));
+    assert_eq!(ty.bit_width, 32);
+
+    let Type { kind: Str(_ty), size, .. } = (const { Type::of::<str>() }) else { panic!() };
+    assert_eq!(size, None);
 }

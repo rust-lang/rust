@@ -45,9 +45,18 @@ pub enum TypeKind {
     Tuple(Tuple),
     /// Arrays.
     Array(Array),
-    /// Primitives
-    /// FIXME(#146922): disambiguate further
-    Leaf,
+    /// Primitive boolean type.
+    Bool(Bool),
+    /// Primitive character type.
+    Char(Char),
+    /// Primitive signed integer type.
+    Int(Int),
+    /// Primitive unsigned integer type.
+    Uint(Uint),
+    /// Primitive floating-point type.
+    Float(Float),
+    /// String slice type.
+    Str(Str),
     /// FIXME(#146922): add all the common types
     Other,
 }
@@ -81,4 +90,64 @@ pub struct Array {
     pub element_ty: TypeId,
     /// The length of the array.
     pub len: usize,
+}
+
+/// Compile-time type information about `bool`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Bool {
+    /// The type id of `bool`.
+    pub ty: TypeId,
+}
+
+/// Compile-time type information about `char`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Char {
+    /// The type id of `char`.
+    pub ty: TypeId,
+}
+
+/// Compile-time type information about signed integer types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Int {
+    /// The type id of signed integer type.
+    pub ty: TypeId,
+    /// The bit width of the signed integer type.
+    pub bit_width: usize,
+}
+
+/// Compile-time type information about unsigned integer types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Uint {
+    /// The type id of unsigned integer type.
+    pub ty: TypeId,
+    /// The bit width of the unsigned integer type.
+    pub bit_width: usize,
+}
+
+/// Compile-time type information about floating-point types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Float {
+    /// The type id of floating-point type.
+    pub ty: TypeId,
+    /// The bit width of the floating-point type.
+    pub bit_width: usize,
+}
+
+/// Compile-time type information about string slice types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Str {
+    /// The type id of `str`.
+    pub ty: TypeId,
 }
