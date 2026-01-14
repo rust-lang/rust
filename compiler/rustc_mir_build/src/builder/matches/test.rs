@@ -9,10 +9,10 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -39,7 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::SwitchInt
             }
             TestableCase::Constant { value, kind: PatConstKind::String } => {
-                TestKind::StringEq { value, pat_ty: match_pair.pattern_ty }
+                TestKind::StringEq { value }
             }
             TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
                 TestKind::ScalarEq { value, pat_ty: match_pair.pattern_ty }
@@ -141,47 +141,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::StringEq { value, pat_ty } => {
+            TestKind::StringEq { value } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let expected_value_ty = value.ty;
+                let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_);
+                assert!(ref_str_ty.is_imm_ref_str(), "{ref_str_ty:?}");
+
+                // The string constant we're testing against has type `str`, but
+                // calling `<str as PartialEq>::eq` requires `&str` operands.
+                //
+                // Because `str` and `&str` have the same valtree representation,
+                // we can "cast" to the desired type by just replacing the type.
+                assert!(value.ty.is_str(), "unexpected value type for StringEq test: {value:?}");
+                let expected_value = ty::Value { ty: ref_str_ty, valtree: value.valtree };
                 let expected_value_operand =
-                    self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, expected_value));
 
-                let mut actual_value_ty = pat_ty;
-                let mut actual_value_place = place;
-
-                match pat_ty.kind() {
-                    ty::Str => {
-                        // String literal patterns may have type `str` if `deref_patterns` is
-                        // enabled, in order to allow `deref!("..."): String`. In this case, `value`
-                        // is of type `&str`, so we compare it to `&place`.
-                        if !tcx.features().deref_patterns() {
-                            span_bug!(
-                                test.span,
-                                "matching on `str` went through without enabling deref_patterns"
-                            );
-                        }
-                        let re_erased = tcx.lifetimes.re_erased;
-                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                        let ref_place = self.temp(ref_str_ty, test.span);
-                        // `let ref_place: &str = &place;`
-                        self.cfg.push_assign(
-                            block,
-                            self.source_info(test.span),
-                            ref_place,
-                            Rvalue::Ref(re_erased, BorrowKind::Shared, place),
-                        );
-                        actual_value_place = ref_place;
-                        actual_value_ty = ref_str_ty;
-                    }
-                    _ => {}
-                }
-
-                assert_eq!(expected_value_ty, actual_value_ty);
-                assert!(actual_value_ty.is_imm_ref_str());
+                // Similarly, the scrutinized place has type `str`, but we need `&str`.
+                // Get a reference by doing `let actual_value_ref_place: &str = &place`.
+                let actual_value_ref_place = self.temp(ref_str_ty, test.span);
+                self.cfg.push_assign(
+                    block,
+                    self.source_info(test.span),
+                    actual_value_ref_place,
+                    Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+                );
 
                 // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
                 // (Interestingly this means that exhaustiveness analysis relies, for soundness,
@@ -192,7 +178,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     fail_block,
                     source_info,
                     expected_value_operand,
-                    Operand::Copy(actual_value_place),
+                    Operand::Copy(actual_value_ref_place),
                 );
             }
 

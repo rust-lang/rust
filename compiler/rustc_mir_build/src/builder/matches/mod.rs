@@ -1339,11 +1339,9 @@ enum TestKind<'tcx> {
 
     /// Tests the place against a string constant using string equality.
     StringEq {
-        /// Constant `&str` value to test against.
+        /// Constant string value to test against.
+        /// Note that this value has type `str` (not `&str`).
         value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node. Usually `&str`, but could
-        /// be `str` for patterns like `deref!("..."): String`.
-        pat_ty: Ty<'tcx>,
     },
 
     /// Tests the place against a constant using scalar equality.
