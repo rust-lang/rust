@@ -28,8 +28,10 @@ extern "C" {
 
 // CHECK-LABEL: sym_fn:
 // CHECK: #APP
-// CHECK: pcalau12i $t0, %got_pc_hi20(extern_func)
-// CHECK: ld.{{[wd]}} $t0, $t0, %got_pc_lo12(extern_func)
+// loongarch64: pcalau12i $t0, %got_pc_hi20(extern_func)
+// loongarch64: ld.d $t0, $t0, %got_pc_lo12(extern_func)
+// loongarch32: pca{{(lau|ddu)}}12i $t0, %got_pc{{(add)?}}_hi20(extern_func)
+// loongarch32: ld.w $t0, $t0, %got_pc{{(add)?}}_lo12({{(extern_func|\.Lpcadd_hi0)}})
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_fn() {
@@ -38,8 +40,10 @@ pub unsafe fn sym_fn() {
 
 // CHECK-LABEL: sym_static:
 // CHECK: #APP
-// CHECK: pcalau12i $t0, %got_pc_hi20(extern_static)
-// CHECK: ld.{{[wd]}} $t0, $t0, %got_pc_lo12(extern_static)
+// loongarch64: pcalau12i $t0, %got_pc_hi20(extern_static)
+// loongarch64: ld.d $t0, $t0, %got_pc_lo12(extern_static)
+// loongarch32: pca{{(lau|ddu)}}12i $t0, %got_pc{{(add)?}}_hi20(extern_static)
+// loongarch32: ld.w $t0, $t0, %got_pc{{(add)?}}_lo12({{(extern_static|\.Lpcadd_hi1)}})
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_static() {
