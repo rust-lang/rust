@@ -58,9 +58,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None => (prefix_len + suffix_len, false),
         };
 
-        for (idx, subpattern) in prefix.iter().enumerate() {
-            let elem =
-                ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
+        for (offset, subpattern) in (0u64..).zip(prefix) {
+            let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
             let place = place.clone_project(elem);
             MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
         }
@@ -74,8 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs, extra_data);
         }
 
-        for (idx, subpattern) in suffix.iter().rev().enumerate() {
-            let end_offset = (idx + 1) as u64;
+        for (end_offset, subpattern) in (1u64..).zip(suffix.iter().rev()) {
             let elem = ProjectionElem::ConstantIndex {
                 offset: if is_array { min_length - end_offset } else { end_offset },
                 min_length,
