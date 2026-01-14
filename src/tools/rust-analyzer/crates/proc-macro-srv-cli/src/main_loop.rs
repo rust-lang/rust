@@ -41,7 +41,6 @@ pub fn run(
 ) -> io::Result<()> {
     match format {
         ProtocolFormat::JsonLegacy => run_old::<JsonProtocol>(stdin, stdout),
-        ProtocolFormat::PostcardLegacy => run_old::<PostcardProtocol>(stdin, stdout),
         ProtocolFormat::BidirectionalPostcardPrototype => {
             run_new::<PostcardProtocol>(stdin, stdout)
         }

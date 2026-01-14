@@ -67,7 +67,6 @@ impl ValueEnum for ProtocolFormatArg {
     fn value_variants<'a>() -> &'a [Self] {
         &[
             ProtocolFormatArg(ProtocolFormat::JsonLegacy),
-            ProtocolFormatArg(ProtocolFormat::PostcardLegacy),
             ProtocolFormatArg(ProtocolFormat::BidirectionalPostcardPrototype),
         ]
     }
@@ -75,9 +74,6 @@ impl ValueEnum for ProtocolFormatArg {
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         match self.0 {
             ProtocolFormat::JsonLegacy => Some(clap::builder::PossibleValue::new("json-legacy")),
-            ProtocolFormat::PostcardLegacy => {
-                Some(clap::builder::PossibleValue::new("postcard-legacy"))
-            }
             ProtocolFormat::BidirectionalPostcardPrototype => {
                 Some(clap::builder::PossibleValue::new("bidirectional-postcard-prototype"))
             }
@@ -87,7 +83,6 @@ impl ValueEnum for ProtocolFormatArg {
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
             "json-legacy" => Ok(ProtocolFormatArg(ProtocolFormat::JsonLegacy)),
-            "postcard-legacy" => Ok(ProtocolFormatArg(ProtocolFormat::PostcardLegacy)),
             "bidirectional-postcard-prototype" => {
                 Ok(ProtocolFormatArg(ProtocolFormat::BidirectionalPostcardPrototype))
             }

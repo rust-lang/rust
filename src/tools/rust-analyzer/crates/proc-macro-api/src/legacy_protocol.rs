@@ -19,7 +19,7 @@ use crate::{
     },
     process::ProcMacroServerProcess,
     transport::codec::Codec,
-    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
+    transport::codec::json::JsonProtocol,
     version,
 };
 
@@ -148,11 +148,7 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
         return Err(server_error.clone());
     }
 
-    if srv.use_postcard() {
-        srv.send_task::<_, _, PostcardProtocol>(send_request::<PostcardProtocol>, req)
-    } else {
-        srv.send_task::<_, _, JsonProtocol>(send_request::<JsonProtocol>, req)
-    }
+    srv.send_task::<_, _, JsonProtocol>(send_request::<JsonProtocol>, req)
 }
 
 /// Sends a request to the server and reads the response.

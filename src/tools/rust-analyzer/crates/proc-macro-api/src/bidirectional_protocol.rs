@@ -212,14 +212,7 @@ fn run_request(
     if let Some(err) = srv.exited() {
         return Err(err.clone());
     }
-
-    match srv.use_postcard() {
-        true => srv.run_bidirectional::<PostcardProtocol>(msg, callback),
-        false => Err(ServerError {
-            message: "bidirectional messaging does not support JSON".to_owned(),
-            io: None,
-        }),
-    }
+    srv.run_bidirectional::<PostcardProtocol>(msg, callback)
 }
 
 pub fn reject_subrequests(req: SubRequest) -> Result<SubResponse, ServerError> {
