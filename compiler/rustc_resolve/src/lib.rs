@@ -1330,6 +1330,12 @@ pub struct Resolver<'ra, 'tcx> {
     impl_trait_names: FxHashMap<NodeId, Symbol>,
 }
 
+impl std::fmt::Debug for Resolver<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Resolver").finish_non_exhaustive()
+    }
+}
+
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
 /// used by many types in this crate is an abbreviation of `ResolverArenas`.
 #[derive(Default)]

@@ -149,6 +149,7 @@ fn configure_and_expand(
         crate_name,
     );
     rustc_builtin_macros::register_builtin_macros(resolver);
+    tcx.after_register_builtin_macros(resolver);
 
     let num_standard_library_imports = sess.time("crate_injection", || {
         rustc_builtin_macros::standard_library_imports::inject(
