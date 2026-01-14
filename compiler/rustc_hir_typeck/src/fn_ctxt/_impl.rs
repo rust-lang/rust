@@ -14,8 +14,8 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    ExplicitLateBound, FeedConstTy, GenericArgCountMismatch, GenericArgCountResult,
-    GenericArgsLowerer, GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
+    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
+    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
@@ -525,9 +525,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy<'tcx>,
+        ty: Ty<'tcx>,
     ) -> ty::Const<'tcx> {
-        let ct = self.lowerer().lower_const_arg(const_arg, feed);
+        let ct = self.lowerer().lower_const_arg(const_arg, ty);
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir_span(const_arg.hir_id),
@@ -1228,7 +1228,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::with_type_of(self.fcx.tcx, param.def_id, preceding_args),
+                            self.fcx
+                                .tcx
+                                .type_of(param.def_id)
+                                .instantiate(self.fcx.tcx, preceding_args),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
