@@ -1147,6 +1147,8 @@ class RustBuild(object):
             args += ["-Zwarnings"]
             env["CARGO_BUILD_WARNINGS"] = "deny"
 
+        env["RUSTFLAGS"] += " -Zbinary-dep-depinfo"
+
         # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.
         # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
         # RUSTFLAGS, since that causes RUSTFLAGS_BOOTSTRAP to override RUSTFLAGS.
