@@ -7,7 +7,6 @@
 // neither want to deal with the creation or destruction of handles that those require since it's
 // just noise. We do however test that we can combine host pointer (like alpha, beta) with device
 // pointers (A, x, y). We also test std support while already at it.
-// FIXME(offload): We should be able remove the no_mangle from the wrapper if we mark it as used.
 
 #![allow(internal_features, non_camel_case_types, non_snake_case)]
 #![feature(rustc_attrs)]
@@ -40,7 +39,6 @@ unsafe extern "C" {
     ) -> i32;
 }
 
-#[unsafe(no_mangle)]
 #[inline(never)]
 pub fn rocblas_sgemv_wrapper(A: &mut [f32; 6], x: &mut [f32; 3], y: &mut [f32; 2]) -> () {
     let m: i32 = 2;
