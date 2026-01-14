@@ -1630,24 +1630,33 @@ impl GccDylibSet {
                 "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
                 compiler.host
             );
-            let libgccjit = libgccjit.libgccjit();
-            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+            let libgccjit_path = libgccjit.libgccjit();
 
             // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a
             // symlink, which wouldn't work.
-            let actual_libgccjit_path = t!(
-                libgccjit.canonicalize(),
-                format!("Cannot find libgccjit at {}", libgccjit.display())
+            let libgccjit_path = t!(
+                libgccjit_path.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit_path.display())
             );
 
-            // <cg-sysroot>/lib/<target>/libgccjit.so
-            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
-            t!(fs::create_dir_all(&dest_dir));
-            let dst = dest_dir.join(target_filename);
-            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+            let dst = cg_sysroot.join(libgccjit_path_relative_to_cg_dir(target_pair, libgccjit));
+            t!(std::fs::create_dir_all(dst.parent().unwrap()));
+            builder.copy_link(&libgccjit_path, &dst, FileType::NativeLibrary);
         }
     }
+}
+
+/// Returns a path where libgccjit.so should be stored, **relative** to the
+/// **codegen backend directory**.
+pub fn libgccjit_path_relative_to_cg_dir(
+    target_pair: &GccTargetPair,
+    libgccjit: &GccOutput,
+) -> PathBuf {
+    let target_filename = libgccjit.libgccjit().file_name().unwrap().to_str().unwrap();
+
+    // <cg-dir>/lib/<target>/libgccjit.so
+    Path::new("lib").join(target_pair.target()).join(target_filename)
 }
 
 /// Output of the `compile::GccCodegenBackend` step.
