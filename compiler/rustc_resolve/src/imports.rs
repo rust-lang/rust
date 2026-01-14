@@ -300,13 +300,16 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
     if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
         && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
         && import1 == import2
-        && d1.warn_ambiguity.get() == d2.warn_ambiguity.get()
     {
-        assert_eq!(d1.ambiguity.get(), d2.ambiguity.get());
-        assert!(!d1.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
-        assert_eq!(d1.vis(), d2.vis());
+        if d1.ambiguity.get() != d2.ambiguity.get() {
+            assert!(d1.ambiguity.get().is_some());
+            assert!(d2.ambiguity.get().is_none());
+        }
+        // Visibility of the new import declaration may be different,
+        // because it already incorporates the visibility of the source binding.
+        // `warn_ambiguity` of a re-fetched glob can also change in both directions.
         remove_same_import(d1_next, d2_next)
     } else {
         (d1, d2)
@@ -348,8 +351,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// decide which one to keep.
     fn select_glob_decl(
         &self,
-        glob_decl: Decl<'ra>,
         old_glob_decl: Decl<'ra>,
+        glob_decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Decl<'ra> {
         assert!(glob_decl.is_glob_import());
@@ -369,7 +372,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // with the re-fetched decls.
         // This is probably incorrect in corner cases, and the outdated decls still get
         // propagated to other places and get stuck there, but that's what we have at the moment.
-        let (deep_decl, old_deep_decl) = remove_same_import(glob_decl, old_glob_decl);
+        let (old_deep_decl, deep_decl) = remove_same_import(old_glob_decl, glob_decl);
         if deep_decl != glob_decl {
             // Some import layers have been removed, need to overwrite.
             assert_ne!(old_deep_decl, old_glob_decl);
@@ -377,6 +380,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
             assert!(!deep_decl.is_glob_import());
+            if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
+                // Do not lose glob ambiguities when re-fetching the glob.
+                glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
+            }
             if glob_decl.is_ambiguity_recursive() {
                 glob_decl.warn_ambiguity.set_unchecked(true);
             }
@@ -436,7 +443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 match (old_decl.is_glob_import(), decl.is_glob_import()) {
                     (true, true) => {
                         resolution.glob_decl =
-                            Some(this.select_glob_decl(decl, old_decl, warn_ambiguity));
+                            Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_decl, non_glob_decl) =
@@ -446,7 +453,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && old_glob_decl != glob_decl
                         {
                             resolution.glob_decl =
-                                Some(this.select_glob_decl(glob_decl, old_glob_decl, false));
+                                Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
                         } else {
                             resolution.glob_decl = Some(glob_decl);
                         }
