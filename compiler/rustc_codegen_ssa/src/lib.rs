@@ -266,9 +266,9 @@ pub enum CodegenErrors {
 
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
-    crate::base::provide(providers);
-    crate::target_features::provide(providers);
-    crate::codegen_attrs::provide(providers);
+    crate::base::provide(&mut providers.queries);
+    crate::target_features::provide(&mut providers.queries);
+    crate::codegen_attrs::provide(&mut providers.queries);
     providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }
 

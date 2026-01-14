@@ -585,6 +585,6 @@ const SYMBOL_OFFSET: u8 = 1;
 const SYMBOL_PREDEFINED: u8 = 2;
 
 pub fn provide(providers: &mut Providers) {
-    encoder::provide(providers);
+    encoder::provide(&mut providers.queries);
     decoder::provide(providers);
 }
