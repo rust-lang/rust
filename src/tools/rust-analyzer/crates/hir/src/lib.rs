@@ -610,6 +610,23 @@ impl Module {
         res
     }
 
+    pub fn modules_in_scope(&self, db: &dyn HirDatabase, pub_only: bool) -> Vec<(Name, Module)> {
+        let def_map = self.id.def_map(db);
+        let scope = &def_map[self.id].scope;
+
+        let mut res = Vec::new();
+
+        for (name, item) in scope.types() {
+            if let ModuleDefId::ModuleId(m) = item.def
+                && (!pub_only || item.vis == Visibility::Public)
+            {
+                res.push((name.clone(), Module { id: m }));
+            }
+        }
+
+        res
+    }
+
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(
         self,

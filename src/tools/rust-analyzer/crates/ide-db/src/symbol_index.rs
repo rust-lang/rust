@@ -35,6 +35,7 @@ use hir::{
     import_map::{AssocSearchMode, SearchMode},
     symbols::{FileSymbol, SymbolCollector},
 };
+use itertools::Itertools;
 use rayon::prelude::*;
 use salsa::Update;
 
@@ -224,12 +225,10 @@ pub fn world_symbols(db: &RootDatabase, mut query: Query) -> Vec<FileSymbol<'_>>
     // Search for crates by name (handles "::" and "::foo" queries)
     let indices: Vec<_> = if query.is_crate_search() {
         query.only_types = false;
-        query.libs = true;
         vec![SymbolIndex::extern_prelude_symbols(db)]
         // If we have a path filter, resolve it to target modules
     } else if !query.path_filter.is_empty() {
         query.only_types = false;
-        query.libs = true;
         let target_modules = resolve_path_to_modules(
             db,
             &query.path_filter,
@@ -313,11 +312,11 @@ fn resolve_path_to_modules(
 
     // If anchor_to_crate is true, first segment MUST be a crate name
     // If anchor_to_crate is false, first segment could be a crate OR a module in local crates
-    let mut candidate_modules: Vec<Module> = vec![];
+    let mut candidate_modules: Vec<(Module, bool)> = vec![];
 
     // Add crate root modules for matching crates
     for krate in matching_crates {
-        candidate_modules.push(krate.root_module(db));
+        candidate_modules.push((krate.root_module(db), krate.origin(db).is_local()));
     }
 
     // If not anchored to crate, also search for modules matching first segment in local crates
@@ -329,7 +328,7 @@ fn resolve_path_to_modules(
                     if let Some(name) = child.name(db)
                         && names_match(name.as_str(), first_segment)
                     {
-                        candidate_modules.push(child);
+                        candidate_modules.push((child, true));
                     }
                 }
             }
@@ -340,11 +339,14 @@ fn resolve_path_to_modules(
     for segment in rest_segments {
         candidate_modules = candidate_modules
             .into_iter()
-            .flat_map(|module| {
-                module.children(db).filter(|child| {
-                    child.name(db).is_some_and(|name| names_match(name.as_str(), segment))
-                })
+            .flat_map(|(module, local)| {
+                module
+                    .modules_in_scope(db, !local)
+                    .into_iter()
+                    .filter(|(name, _)| names_match(name.as_str(), segment))
+                    .map(move |(_, module)| (module, local))
             })
+            .unique()
             .collect();
 
         if candidate_modules.is_empty() {
@@ -352,7 +354,7 @@ fn resolve_path_to_modules(
         }
     }
 
-    candidate_modules
+    candidate_modules.into_iter().map(|(module, _)| module).collect()
 }
 
 #[derive(Default)]
@@ -839,7 +841,7 @@ pub struct Foo;
         assert_eq!(item, "foo");
         assert!(anchor);
 
-        // Trailing :: (module browsing)
+        // Trailing ::
         let (path, item, anchor) = Query::parse_path_query("foo::");
         assert_eq!(path, vec!["foo"]);
         assert_eq!(item, "");
@@ -909,7 +911,7 @@ pub mod nested {
     }
 
     #[test]
-    fn test_module_browsing() {
+    fn test_path_search_module() {
         let (mut db, _) = RootDatabase::with_many_files(
             r#"
 //- /lib.rs crate:main
@@ -1066,20 +1068,11 @@ pub fn root_fn() {}
         let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
         assert!(names.contains(&"RootItem"), "Expected RootItem at crate root in {:?}", names);
 
-        // Browse crate root
         let query = Query::new("mylib::".to_owned());
         let symbols = world_symbols(&db, query);
         let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
-        assert!(
-            names.contains(&"RootItem"),
-            "Expected RootItem when browsing crate root in {:?}",
-            names
-        );
-        assert!(
-            names.contains(&"root_fn"),
-            "Expected root_fn when browsing crate root in {:?}",
-            names
-        );
+        assert!(names.contains(&"RootItem"), "Expected RootItem {:?}", names);
+        assert!(names.contains(&"root_fn"), "Expected root_fn {:?}", names);
     }
 
     #[test]
@@ -1162,5 +1155,63 @@ pub struct FooStruct;
         let query = Query::new("::nonexistent".to_owned());
         let symbols = world_symbols(&db, query);
         assert!(symbols.is_empty(), "Expected empty results for non-matching crate pattern");
+    }
+
+    #[test]
+    fn test_path_search_with_use_reexport() {
+        // Test that module resolution works for `use` items (re-exports), not just `mod` items
+        let (mut db, _) = RootDatabase::with_many_files(
+            r#"
+//- /lib.rs crate:main
+mod inner;
+pub use inner::nested;
+
+//- /inner.rs
+pub mod nested {
+    pub struct NestedStruct;
+    pub fn nested_fn() {}
+}
+"#,
+        );
+
+        let mut local_roots = FxHashSet::default();
+        local_roots.insert(WORKSPACE);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
+
+        // Search via the re-exported path (main::nested::NestedStruct)
+        // This should work because `nested` is in scope via `pub use inner::nested`
+        let query = Query::new("main::nested::NestedStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"NestedStruct"),
+            "Expected NestedStruct via re-exported path in {:?}",
+            names
+        );
+
+        // Also verify the original path still works
+        let query = Query::new("main::inner::nested::NestedStruct".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"NestedStruct"),
+            "Expected NestedStruct via original path in {:?}",
+            names
+        );
+
+        // Browse the re-exported module
+        let query = Query::new("main::nested::".to_owned());
+        let symbols = world_symbols(&db, query);
+        let names: Vec<_> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"NestedStruct"),
+            "Expected NestedStruct when browsing re-exported module in {:?}",
+            names
+        );
+        assert!(
+            names.contains(&"nested_fn"),
+            "Expected nested_fn when browsing re-exported module in {:?}",
+            names
+        );
     }
 }
