@@ -20,10 +20,10 @@ use super::errors::{
 };
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt, fluent_generated as fluent,
+    fluent_generated as fluent,
 };
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(crate) fn lower_inline_asm(
         &mut self,
         sp: Span,
@@ -209,7 +209,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
-                            .resolver
                             .get_partial_res(sym.id)
                             .and_then(|res| res.full_res())
                             .and_then(|res| match res {

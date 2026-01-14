@@ -82,7 +82,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
+use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -197,10 +197,17 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx (ty::ResolverAstLowering, Steal<ast::Crate>), &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
+    }
+
+    query index_ast(_: ()) -> &'tcx (IndexVec<LocalDefId, Steal<ast::AstOwner>>, ast::NodeId) {
+        arena_cache
+        eval_always
+        no_hash
+        desc { "getting the AST for lowering" }
     }
 
     /// Return the span for a definition.
@@ -214,17 +221,9 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
-    /// Represents crate as a whole (as distinct from the top-level crate module).
-    ///
-    /// If you call `tcx.hir_crate(())` we will have to assume that any change
-    /// means that you need to be recompiled. This is because the `hir_crate`
-    /// query gives you access to all other items. To avoid this fate, do not
-    /// call `tcx.hir_crate(())`; instead, prefer wrappers like
-    /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
-        arena_cache
+    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { "getting the crate HIR" }
+        desc { |tcx| "lower HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// All items in the crate.
@@ -1889,8 +1888,7 @@ rustc_queries! {
     query specializes(_: (DefId, DefId)) -> bool {
         desc { "computing whether impls specialize one another" }
     }
-    query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
+    query in_scope_traits_map(_: hir::OwnerId) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate]>> {
         desc { "getting traits in scope at a block" }
     }
 
