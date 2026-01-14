@@ -6,7 +6,8 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::TyCtxt;
@@ -114,4 +115,33 @@ impl Linker {
         let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
         codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
     }
+}
+
+/// Checks if the given `DefId` refers to an item that is unnamable, such as one defined in a const block.
+///
+/// # Example
+///
+/// ```
+/// pub fn f() {
+///     // In here, `X` is not reachable outside of `f`, making it unnamable.
+///     pub struct X;
+/// }
+/// ```
+pub(crate) fn is_unnamable(tcx: TyCtxt<'_>, did: DefId) -> bool {
+    let mut cur_did = did;
+    while let Some(parent) = tcx.opt_parent(cur_did) {
+        match tcx.def_kind(parent) {
+            // items defined in these can be linked to, as long as they are visible
+            DefKind::Mod | DefKind::ForeignMod => cur_did = parent,
+            // items in impls can be linked to,
+            // as long as we can link to the item the impl is on.
+            // since associated traits are not yet a thing,
+            // it should not be possible to refer to an impl item if
+            // the base type is not namable.
+            DefKind::Impl { .. } => return false,
+            // everything else does not have docs generated for it
+            _ => return true,
+        }
+    }
+    return false;
 }

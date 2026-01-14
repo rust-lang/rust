@@ -1583,6 +1583,22 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Checks if the given `DefId` refers to an item that is unnamable, such as one defined in a const block.
+    ///
+    /// Used by rustdoc.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// pub fn f() {
+    ///     // In here, `X` is not reachable outside of `f`, making it unnamable.
+    ///     pub struct X;
+    /// }
+    /// ```
+    query is_unnamable(def_id: DefId) -> bool {
+        desc { |tcx| "checking if `{}` is unnamable", tcx.def_path_str(def_id) }
+    }
+
     query impl_parent(def_id: DefId) -> Option<DefId> {
         desc { |tcx| "computing specialization parent impl of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
