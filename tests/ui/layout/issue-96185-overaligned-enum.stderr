@@ -43,7 +43,6 @@ error: layout_of(Aligned1) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -53,7 +52,6 @@ error: layout_of(Aligned1) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -120,7 +118,6 @@ error: layout_of(Aligned2) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -130,7 +127,6 @@ error: layout_of(Aligned2) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],

@@ -59,7 +59,6 @@ error: layout_of(Univariant) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: true,
                    },
                ],
@@ -146,7 +145,6 @@ error: layout_of(TwoVariants) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: true,
                    },
                    VariantLayout {
@@ -172,7 +170,6 @@ error: layout_of(TwoVariants) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -237,7 +234,6 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            0,
                            1,
                        ],
-                       largest_niche: None,
                        uninhabited: true,
                    },
                    VariantLayout {
@@ -251,7 +247,6 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],

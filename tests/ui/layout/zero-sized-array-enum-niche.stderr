@@ -47,7 +47,6 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -61,16 +60,6 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
@@ -133,7 +122,6 @@ error: layout_of(MultipleAlignments) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -147,7 +135,6 @@ error: layout_of(MultipleAlignments) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -161,16 +148,6 @@ error: layout_of(MultipleAlignments) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
@@ -233,7 +210,6 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -247,16 +223,6 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 1..=65535,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
@@ -323,7 +289,6 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -337,16 +302,6 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 0..=0,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],

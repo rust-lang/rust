@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_abi::{FieldIdx, TagEncoding, VariantIdx, Variants};
+use rustc_abi::{FieldIdx, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_codegen_ssa::debuginfo::type_names::{compute_debuginfo_type_name, cpp_like_debuginfo};
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
@@ -399,16 +399,36 @@ fn compute_discriminant_value<'ll, 'tcx>(
         ),
         &Variants::Multiple {
             tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant },
+            tag_field,
             tag,
             ..
         } => {
             if variant_index == untagged_variant {
-                let valid_range = enum_type_and_layout
-                    .for_variant(cx, variant_index)
-                    .largest_niche
-                    .as_ref()
-                    .unwrap()
-                    .valid_range;
+                let niche_end = niche_start
+                    .wrapping_sub(niche_variants.start().as_u32() as u128)
+                    .wrapping_add(niche_variants.end().as_u32() as u128);
+
+                // Remove discriminant values of the other variants from the largest niche. This assumes
+                // that the largest niche, when it exists, always corresponds to the enum discriminant.
+                let mut valid_range = WrappingRange {
+                    start: niche_end.wrapping_add(1),
+                    end: niche_start.wrapping_sub(1),
+                };
+                if let Some(niche) = &enum_type_and_layout.largest_niche {
+                    assert_eq!(enum_type_and_layout.fields.offset(tag_field.into()), niche.offset);
+
+                    if niche.valid_range.start == niche_start {
+                        valid_range.end = niche.valid_range.end;
+                    } else if niche.valid_range.end == niche_end {
+                        valid_range.start = niche.valid_range.start;
+                    } else {
+                        bug!(
+                            "largest niche (range: {:?}) doesn't match with niched tag encoding (range: {:?})",
+                            niche.valid_range,
+                            &WrappingRange { start: niche_start, end: niche_end },
+                        )
+                    }
+                }
 
                 let min = valid_range.start.min(valid_range.end);
                 let min = tag.size(cx).truncate(min);

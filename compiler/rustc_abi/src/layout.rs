@@ -592,13 +592,23 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut unadjusted_abi_align = align;
             let mut combined_seed = repr.field_shuffle_seed;
 
+            let mut largest_variant_size = Size::ZERO;
+            let mut largest_variant_index = VariantIdx::new(0);
+            let mut largest_variant_niche = None;
+
             let mut variants_info = IndexVec::<VariantIdx, _>::with_capacity(variants.len());
             let mut variant_layouts = variants
-                .iter()
-                .map(|v| {
+                .iter_enumerated()
+                .map(|(i, v)| {
                     let st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
 
                     variants_info.push(VariantLayoutInfo { align_abi: st.align.abi });
+
+                    if st.size > largest_variant_size {
+                        largest_variant_index = i;
+                        largest_variant_size = st.size;
+                        largest_variant_niche = st.largest_niche;
+                    }
 
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -608,11 +618,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     Some(VariantLayout::from_layout(st))
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
-
-            let largest_variant_index = variant_layouts
-                .iter_enumerated()
-                .max_by_key(|(_i, layout)| layout.size.bytes())
-                .map(|(i, _layout)| i)?;
 
             let all_indices = variants.indices();
             let needs_disc =
@@ -624,18 +629,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
 
             // Use the largest niche in the largest variant.
-            let niche = variant_layouts[largest_variant_index].largest_niche?;
+            let niche = largest_variant_niche?;
             let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
             let niche_offset = niche.offset;
             let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align);
+            let size = largest_variant_size.align_to(align);
 
             let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
                 if i == largest_variant_index {
                     return true;
                 }
-
-                layout.largest_niche = None;
 
                 if layout.size <= niche_offset {
                     // This variant will fit before the niche.

@@ -71,7 +71,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -81,7 +80,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -170,7 +168,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -197,7 +194,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -284,7 +280,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -310,7 +305,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -404,16 +398,6 @@ error: layout_of(NicheFirst) = Layout {
                            0,
                            1,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                       ),
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -423,7 +407,6 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -433,7 +416,6 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
@@ -527,16 +509,6 @@ error: layout_of(NicheSecond) = Layout {
                            1,
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                       ),
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -546,7 +518,6 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -556,7 +527,6 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                ],
