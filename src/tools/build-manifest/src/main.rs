@@ -32,7 +32,7 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
 static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
 
 static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
-    &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift];
+    &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift, PkgType::RustcCodegenGcc];
 
 macro_rules! t {
     ($e:expr) => {
@@ -302,6 +302,7 @@ impl Builder {
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs
                 | PkgType::RustcCodegenCranelift
+                | PkgType::RustcCodegenGcc
                 | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
