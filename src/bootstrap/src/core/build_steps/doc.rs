@@ -812,7 +812,8 @@ fn doc_std(
         .rustdocflag("std_detect=https://docs.rs/std_detect/latest/")
         .rustdocflag("--extern-html-root-takes-precedence")
         .rustdocflag("--resource-suffix")
-        .rustdocflag(&builder.version);
+        .rustdocflag(&builder.version)
+        .rustdocflag("--generate-link-to-definition");
     for arg in extra_args {
         cargo.rustdocflag(arg);
     }
