@@ -264,7 +264,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features =
+        providers.queries.global_backend_features =
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, false)
     }
 
