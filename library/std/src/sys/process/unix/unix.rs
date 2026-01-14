@@ -1,7 +1,7 @@
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, pid_t};
+use libc::{c_char, c_int, pid_t};
 #[cfg(not(any(
     target_os = "vxworks",
     target_os = "l4re",
@@ -405,7 +405,10 @@ impl Command {
             *sys::env::environ() = envp.as_ptr();
         }
 
-        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
+        libc::execvp(
+            self.get_program_cstr().as_ptr(),
+            self.get_argv().as_ptr() as *const *const c_char,
+        );
         Err(io::Error::last_os_error())
     }
 

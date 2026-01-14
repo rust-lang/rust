@@ -116,7 +116,6 @@ pub trait MetadataExt {
     /// ```no_run
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -328,7 +327,7 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        unsafe { &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat) }
+        panic!("as_raw_stat not supported for L4Re");
     }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
@@ -355,22 +354,22 @@ impl MetadataExt for Metadata {
         self.as_inner().as_inner().st_size as u64
     }
     fn st_atime(&self) -> i64 {
-        self.as_inner().as_inner().st_atime as i64
+        self.as_inner().as_inner().st_atim.tv_sec as i64
     }
     fn st_atime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_atime_nsec as i64
+        self.as_inner().as_inner().st_atim.tv_nsec as i64
     }
     fn st_mtime(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime as i64
+        self.as_inner().as_inner().st_mtim.tv_sec as i64
     }
     fn st_mtime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime_nsec as i64
+        self.as_inner().as_inner().st_mtim.tv_nsec as i64
     }
     fn st_ctime(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime as i64
+        self.as_inner().as_inner().st_ctim.tv_sec as i64
     }
     fn st_ctime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime_nsec as i64
+        self.as_inner().as_inner().st_ctim.tv_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64
