@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&dyn for<'a> Subtrait<'a, 'a>: CoerceUnsized<&dyn
   --> $DIR/higher-ranked-upcasting-ub.rs:22:5
    |
 LL |     x
-   |     ^ the trait `Unsize<dyn for<'a, 'b> Supertrait<'a, 'b>>` is not implemented for `dyn for<'a> Subtrait<'a, 'a>`
+   |     ^ the nightly-only, unstable trait `Unsize<dyn for<'a, 'b> Supertrait<'a, 'b>>` is not implemented for `dyn for<'a> Subtrait<'a, 'a>`
    |
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
    = note: required for `&dyn for<'a> Subtrait<'a, 'a>` to implement `CoerceUnsized<&dyn for<'a, 'b> Supertrait<'a, 'b>>`
