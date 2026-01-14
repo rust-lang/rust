@@ -18,7 +18,7 @@ use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, token_descr};
 use rustc_session::errors::{create_lit_error, report_lit_error};
 use rustc_session::parse::ParseSess;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
@@ -192,7 +192,6 @@ impl ArgParser {
 pub enum MetaItemOrLitParser {
     MetaItemParser(MetaItemParser),
     Lit(MetaItemLit),
-    Err(Span, ErrorGuaranteed),
 }
 
 impl MetaItemOrLitParser {
@@ -210,21 +209,20 @@ impl MetaItemOrLitParser {
                 generic_meta_item_parser.span()
             }
             MetaItemOrLitParser::Lit(meta_item_lit) => meta_item_lit.span,
-            MetaItemOrLitParser::Err(span, _) => *span,
         }
     }
 
     pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
             MetaItemOrLitParser::Lit(meta_item_lit) => Some(meta_item_lit),
-            _ => None,
+            MetaItemOrLitParser::MetaItemParser(_) => None,
         }
     }
 
     pub fn meta_item(&self) -> Option<&MetaItemParser> {
         match self {
             MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
-            _ => None,
+            MetaItemOrLitParser::Lit(_) => None,
         }
     }
 }

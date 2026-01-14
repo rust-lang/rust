@@ -94,7 +94,6 @@ pub fn parse_cfg_entry<S: Stage>(
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
             _ => return Err(cx.expected_identifier(lit.span)),
         },
-        MetaItemOrLitParser::Err(_, err) => return Err(*err),
     })
 }
 
