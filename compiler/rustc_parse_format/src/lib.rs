@@ -187,6 +187,9 @@ pub enum Suggestion {
     /// Add missing colon:
     /// `format!("{foo?}")` -> `format!("{foo:?}")`
     AddMissingColon(Range<usize>),
+    /// Use Rust format string:
+    /// `format!("{x=}")` -> `dbg!(x)`
+    UseRustDebugPrintingMacro(),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -462,6 +465,7 @@ impl<'input> Parser<'input> {
                 ('?', _) => self.suggest_format_debug(),
                 ('<' | '^' | '>', _) => self.suggest_format_align(c),
                 (',', _) => self.suggest_unsupported_python_numeric_grouping(),
+                ('=', '}') => self.suggest_rust_debug_printing_macro(),
                 _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
             }
         }
@@ -866,6 +870,27 @@ impl<'input> Parser<'input> {
                     span: range,
                     secondary_label: None,
                     suggestion: Suggestion::AddMissingColon(span),
+                },
+            );
+        }
+    }
+
+    fn suggest_rust_debug_printing_macro(&mut self) {
+        if let Some((range, _)) = self.consume_pos('=') {
+            self.errors.insert(
+                0,
+                ParseError {
+                    description:
+                        "python's f-string debug `=` is not supported in rust, use `dbg(x)` instead"
+                            .to_owned(),
+                    note: Some(format!("to print `{{`, you can escape it using `{{{{`",)),
+                    label: "expected `}`".to_owned(),
+                    span: range,
+                    secondary_label: self
+                        .last_open_brace
+                        .clone()
+                        .map(|sp| ("because of this opening brace".to_owned(), sp)),
+                    suggestion: Suggestion::UseRustDebugPrintingMacro(),
                 },
             );
         }
