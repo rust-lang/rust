@@ -14,6 +14,13 @@ struct Foo {
     a: u32,
 }
 
+#[non_exhaustive]
+struct NonExhaustiveStruct {
+    a: u32,
+}
+
+struct TupleStruct(u32, u64);
+
 enum Bar {
     Some(u32),
     None,
@@ -37,7 +44,7 @@ fn main() {
         [u8; 2],
         i8, i32, i64, i128, isize,
         u8, u32, u64, u128, usize,
-        Foo, Bar,
+        Foo, Bar, NonExhaustiveStruct, TupleStruct,
         &Unsized, &str, &[u8],
         str, [u8],
         &u8, &mut u8,
