@@ -7,7 +7,6 @@
 // neither want to deal with the creation or destruction of handles that those require since it's
 // just noise. We do however test that we can combine host pointer (like alpha, beta) with device
 // pointers (A, x, y). We also test std support while already at it.
-// FIXME(offload): We should be able remove the no_mangle from the wrapper if we mark it as used.
 
 #![allow(internal_features, non_camel_case_types, non_snake_case)]
 #![feature(rustc_attrs)]
@@ -24,7 +23,8 @@ fn main() {
         // CHECK-NEXT: [[A:%.*]] = call ptr @omp_get_mapped_ptr(ptr nonnull %A, i32 0)
         // CHECK-NEXT: [[X:%.*]] = call ptr @omp_get_mapped_ptr(ptr nonnull %x, i32 0)
         // CHECK-NEXT: [[Y:%.*]] = call ptr @omp_get_mapped_ptr(ptr nonnull %y, i32 0)
-        // CHECK-NEXT: call {{.*}}void @rocblas_sgemv_wrapper(ptr [[A]], ptr [[X]], ptr [[Y]])
+        // CHECK-NEXT: ; call offload_args::rocblas_sgemv_wrapper
+        // CHECK-NEXT: call {{.*}}void {{@_RNv.*rocblas_sgemv_wrapper.*}}(ptr [[A]], ptr [[X]], ptr [[Y]])
         // CHECK-NEXT: call void @__tgt_target_data_end_mapper(
     }
     println!("{:?}", y);
@@ -45,7 +45,6 @@ unsafe extern "C" {
     ) -> i32;
 }
 
-#[unsafe(no_mangle)]
 #[inline(never)]
 pub fn rocblas_sgemv_wrapper(A: &mut [f32; 6], x: &mut [f32; 3], y: &mut [f32; 2]) -> () {
     let m: i32 = 2;
@@ -57,7 +56,8 @@ pub fn rocblas_sgemv_wrapper(A: &mut [f32; 6], x: &mut [f32; 3], y: &mut [f32; 2
     let alpha: f32 = 1.0;
     let beta: f32 = 1.0;
 
-    // CHECK-LABEL: define {{.*}}void @rocblas_sgemv_wrapper(ptr{{.*}} %A, ptr{{.*}} %x, ptr{{.*}} %y)
+    // CHECK-LABEL: ; offload_args::rocblas_sgemv_wrapper
+    // CHECK: define {{.*}}void {{.*}}rocblas_sgemv_wrapper{{.*}}(ptr{{.*}} %A, ptr{{.*}} %x, ptr{{.*}} %y)
     // CHECK-DAG: %alpha = alloca [4 x i8]
     // CHECK-DAG: %beta  = alloca [4 x i8]
     // CHECK-DAG: store float 1.000000e+00, ptr %alpha
