@@ -1723,7 +1723,6 @@ symbols! {
         postfix_match,
         powerpc,
         powerpc64,
-        powerpc64le,
         powerpc_target_feature,
         powf16,
         powf32,
