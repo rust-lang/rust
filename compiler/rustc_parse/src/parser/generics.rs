@@ -109,7 +109,31 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(exp!(Const))?;
         let ident = self.parse_ident()?;
-        self.expect(exp!(Colon))?;
+        if let Err(mut err) = self.expect(exp!(Colon)) {
+            return if self.token.kind == token::Comma || self.token.kind == token::Gt {
+                // Recover parse from `<const N>` where the type is missing.
+                let span = const_span.to(ident.span);
+                err.span_suggestion_verbose(
+                    ident.span.shrink_to_hi(),
+                    "you likely meant to write the type of the const parameter here",
+                    ": /* Type */".to_string(),
+                    Applicability::HasPlaceholders,
+                );
+                let kind = TyKind::Err(err.emit());
+                let ty = self.mk_ty(span, kind);
+                Ok(GenericParam {
+                    ident,
+                    id: ast::DUMMY_NODE_ID,
+                    attrs: preceding_attrs,
+                    bounds: Vec::new(),
+                    kind: GenericParamKind::Const { ty, span, default: None },
+                    is_placeholder: false,
+                    colon_span: None,
+                })
+            } else {
+                Err(err)
+            };
+        }
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
