@@ -93,7 +93,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -114,17 +113,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Pointer(
-                                   AddressSpace(
-                                       0,
-                                   ),
-                               ),
-                               valid_range: 1..=18446744073709551615,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],

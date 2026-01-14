@@ -134,7 +134,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -154,16 +153,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 1..=4294967295,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],
@@ -223,7 +212,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        },
                        field_offsets: [],
                        fields_in_memory_order: [],
-                       largest_niche: None,
                        uninhabited: false,
                    },
                    VariantLayout {
@@ -243,16 +231,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        fields_in_memory_order: [
                            0,
                        ],
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 1..=4294967295,
-                           },
-                       ),
                        uninhabited: false,
                    },
                ],

@@ -161,7 +161,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             },
             variants: Variants::Single { index },
             backend_repr: layout.backend_repr,
-            largest_niche: layout.largest_niche,
+            largest_niche: None,
             uninhabited: layout.uninhabited,
             size: layout.size,
             align: parent.align,
