@@ -340,6 +340,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             span: import.span,
             vis: CmCell::new(vis),
             expansion: import.parent_scope.expansion,
+            parent_module: Some(import.parent_scope.module),
         })
     }
 
@@ -409,15 +410,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// and return existing declaration if there is a collision.
     pub(crate) fn try_plant_decl_into_local_module(
         &mut self,
-        module: Module<'ra>,
         ident: Macros20NormalizedIdent,
         ns: Namespace,
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
+        let module = decl.parent_module.unwrap();
         let res = decl.res();
         self.check_reserved_macro_name(ident.0, res);
-        self.set_decl_parent_module(decl, module);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
@@ -511,7 +511,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, *import);
                 let _ = self.try_plant_decl_into_local_module(
-                    import.parent_scope.module,
                     ident,
                     key.ns,
                     import_decl,
@@ -535,7 +534,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
                 let ident = Macros20NormalizedIdent::new(target);
-                let _ = this.try_plant_decl_into_local_module(module, ident, ns, dummy_decl, false);
+                let _ = this.try_plant_decl_into_local_module(ident, ns, dummy_decl, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(ident, ns);
@@ -916,7 +915,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We need the `target`, `source` can be extracted.
                         let import_decl = this.new_import_decl(binding, import);
                         this.get_mut_unchecked().plant_decl_into_local_module(
-                            parent,
                             Macros20NormalizedIdent::new(target),
                             ns,
                             import_decl,
@@ -1542,7 +1540,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_plant_decl_into_local_module(
-                    import.parent_scope.module,
                     key.ident,
                     key.ns,
                     import_decl,

@@ -67,7 +67,6 @@ use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RegisteredTools,
     ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
@@ -812,6 +811,7 @@ struct DeclData<'ra> {
     expansion: LocalExpnId,
     span: Span,
     vis: CmCell<Visibility<DefId>>,
+    parent_module: Option<Module<'ra>>,
 }
 
 /// All name declarations are unique and allocated on a same arena,
@@ -922,7 +922,6 @@ struct AmbiguityError<'ra> {
     ident: Ident,
     b1: Decl<'ra>,
     b2: Decl<'ra>,
-    // `empty_module` in module scope serves as an unknown module here.
     scope1: Scope<'ra>,
     scope2: Scope<'ra>,
     warning: Option<AmbiguityWarning>,
@@ -1186,7 +1185,6 @@ pub struct Resolver<'ra, 'tcx> {
     local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
     extern_module_map: CacheRefCell<FxIndexMap<DefId, Module<'ra>>>,
-    decl_parent_modules: FxHashMap<Decl<'ra>, Module<'ra>>,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
@@ -1349,6 +1347,7 @@ impl<'ra> ResolverArenas<'ra> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
+        parent_module: Option<Module<'ra>>,
     ) -> Decl<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
@@ -1357,11 +1356,12 @@ impl<'ra> ResolverArenas<'ra> {
             vis: CmCell::new(vis),
             span,
             expansion,
+            parent_module,
         })
     }
 
     fn new_pub_def_decl(&'ra self, res: Res, span: Span, expn_id: LocalExpnId) -> Decl<'ra> {
-        self.new_def_decl(res, Visibility::Public, span, expn_id)
+        self.new_def_decl(res, Visibility::Public, span, expn_id, None)
     }
 
     fn new_module(
@@ -1616,7 +1616,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             local_module_map,
             extern_module_map: Default::default(),
             block_map: Default::default(),
-            decl_parent_modules: FxHashMap::default(),
             ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
@@ -2071,8 +2070,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 b1: used_decl,
                 b2,
-                scope1: Scope::ModuleGlobs(self.empty_module, None),
-                scope2: Scope::ModuleGlobs(self.empty_module, None),
+                scope1: Scope::ModuleGlobs(used_decl.parent_module.unwrap(), None),
+                scope2: Scope::ModuleGlobs(b2.parent_module.unwrap(), None),
                 warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
@@ -2237,14 +2236,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
-    fn set_decl_parent_module(&mut self, decl: Decl<'ra>, module: Module<'ra>) {
-        if let Some(old_module) = self.decl_parent_modules.insert(decl, module) {
-            if module != old_module {
-                span_bug!(decl.span, "parent module is reset for a name declaration");
-            }
-        }
-    }
-
     fn disambiguate_macro_rules_vs_modularized(
         &self,
         macro_rules: Decl<'ra>,
@@ -2254,13 +2245,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         //
-        // panic on index should be impossible, the only name_bindings passed in should be from
+        // Panic on unwrap should be impossible, the only name_bindings passed in should be from
         // `resolve_ident_in_scope_set` which will always refer to a local binding from an
-        // import or macro definition
-        let macro_rules = &self.decl_parent_modules[&macro_rules];
-        let modularized = &self.decl_parent_modules[&modularized];
+        // import or macro definition.
+        let macro_rules = macro_rules.parent_module.unwrap();
+        let modularized = modularized.parent_module.unwrap();
         macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
-            && modularized.is_ancestor_of(*macro_rules)
+            && modularized.is_ancestor_of(macro_rules)
     }
 
     fn extern_prelude_get_item<'r>(

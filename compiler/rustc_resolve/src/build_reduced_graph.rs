@@ -48,14 +48,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// and report an error in case of a collision.
     pub(crate) fn plant_decl_into_local_module(
         &mut self,
-        parent: Module<'ra>,
         ident: Macros20NormalizedIdent,
         ns: Namespace,
         decl: Decl<'ra>,
     ) {
-        if let Err(old_decl) = self.try_plant_decl_into_local_module(parent, ident, ns, decl, false)
-        {
-            self.report_conflict(parent, ident.0, ns, old_decl, decl);
+        if let Err(old_decl) = self.try_plant_decl_into_local_module(ident, ns, decl, false) {
+            self.report_conflict(ident.0, ns, old_decl, decl);
         }
     }
 
@@ -70,9 +68,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         expn_id: LocalExpnId,
     ) {
-        let decl = self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id);
+        let decl = self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id, Some(parent));
         let ident = Macros20NormalizedIdent::new(ident);
-        self.plant_decl_into_local_module(parent, ident, ns, decl);
+        self.plant_decl_into_local_module(ident, ns, decl);
     }
 
     /// Create a name definitinon from the given components, and put it into the extern module.
@@ -96,6 +94,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             vis: CmCell::new(vis),
             span,
             expansion,
+            parent_module: Some(parent),
         });
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
@@ -289,7 +288,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            self.arenas.new_def_decl(res, vis, span, expansion)
+            self.arenas.new_def_decl(res, vis, span, expansion, Some(parent))
         });
 
         // Record primary definitions.
@@ -844,7 +843,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     ident,
                     local_def_id,
                     vis,
-                    parent,
                 );
             }
 
@@ -976,10 +974,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         ident: Ident,
         local_def_id: LocalDefId,
         vis: Visibility,
-        parent: Module<'ra>,
     ) {
         let sp = item.span;
         let parent_scope = self.parent_scope;
+        let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
 
         let (used, module, decl) = if orig_name.is_none() && ident.name == kw::SelfLower {
@@ -1009,7 +1007,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let import = self.r.arenas.alloc_import(ImportData {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
-            parent_scope: self.parent_scope,
+            parent_scope,
             imported_module: CmCell::new(module),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
@@ -1057,7 +1055,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }),
             };
         }
-        self.r.plant_decl_into_local_module(parent, ident, TypeNS, import_decl);
+        self.r.plant_decl_into_local_module(ident, TypeNS, import_decl);
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -1300,14 +1298,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             } else {
                 Visibility::Restricted(CRATE_DEF_ID)
             };
-            let decl = self.r.arenas.new_def_decl(res, vis.to_def_id(), span, expansion);
-            self.r.set_decl_parent_module(decl, parent_scope.module);
+            let decl = self.r.arenas.new_def_decl(
+                res,
+                vis.to_def_id(),
+                span,
+                expansion,
+                Some(parent_scope.module),
+            );
             self.r.all_macro_rules.insert(ident.name);
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,
                     root_id: item.id,
-                    parent_scope: self.parent_scope,
+                    parent_scope: ParentScope { module: self.r.graph_root, ..parent_scope },
                     imported_module: CmCell::new(None),
                     has_attributes: false,
                     use_span_with_attributes: span,
@@ -1320,7 +1323,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
-                self.r.plant_decl_into_local_module(self.r.graph_root, ident, MacroNS, import_decl);
+                self.r.plant_decl_into_local_module(ident, MacroNS, import_decl);
             } else {
                 self.r.check_reserved_macro_name(ident.0, res);
                 self.insert_unused_macro(ident.0, def_id, item.id);
