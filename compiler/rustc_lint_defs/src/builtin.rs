@@ -3197,8 +3197,12 @@ declare_lint! {
     /// `bar::X` would cause compilation errors in downstream crates because `X` is defined
     /// multiple times in the same namespace of `this_crate`.
     pub AMBIGUOUS_GLOB_REEXPORTS,
-    Warn,
+    Deny,
     "ambiguous glob re-exports",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #107880), // TODO.
+        report_in_deps: true,
+    };
 }
 
 declare_lint! {
