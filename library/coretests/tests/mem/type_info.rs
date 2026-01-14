@@ -23,6 +23,14 @@ fn test_arrays() {
 }
 
 #[test]
+fn test_slices() {
+    match const { Type::of::<[usize]>() }.kind {
+        TypeKind::Slice(slice) => assert_eq!(slice.element_ty, TypeId::of::<usize>()),
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn test_tuples() {
     fn assert_tuple_arity<T: 'static, const N: usize>() {
         match const { Type::of::<T>() }.kind {
