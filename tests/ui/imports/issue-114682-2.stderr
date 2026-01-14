@@ -1,4 +1,4 @@
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
@@ -17,9 +17,9 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
@@ -39,10 +39,10 @@ note: `max` could also refer to the module defined here
 LL | pub use self::d::*;
    |         ^^^^^^^
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
@@ -61,10 +61,10 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
@@ -83,5 +83,5 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
