@@ -1064,15 +1064,6 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::Yes,
         ),
-        Arch::PowerPC64LE => emit_ptr_va_arg(
-            bx,
-            addr,
-            target_ty,
-            PassMode::Direct,
-            SlotSize::Bytes8,
-            AllowHigherAlign::Yes,
-            ForceRightAdjust::No,
-        ),
         Arch::LoongArch32 => emit_ptr_va_arg(
             bx,
             addr,
