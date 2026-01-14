@@ -1,4 +1,4 @@
-error: `panic` is ambiguous
+warning: `panic` is ambiguous
   --> $DIR/ambiguous-panic-globvsglob.rs:18:5
    |
 LL |     panic!();
@@ -19,7 +19,7 @@ note: `panic` could also refer to the macro imported here
 LL |     use m2::*;
    |         ^^^^^
    = help: consider adding an explicit import of `panic` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: `panic` is ambiguous
   --> $DIR/ambiguous-panic-globvsglob.rs:18:5
@@ -40,10 +40,10 @@ note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    = note: `#[warn(ambiguous_panic_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 1 previous error; 1 warning emitted
+warning: 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `panic` is ambiguous
+warning: `panic` is ambiguous
   --> $DIR/ambiguous-panic-globvsglob.rs:18:5
    |
 LL |     panic!();
@@ -64,5 +64,5 @@ note: `panic` could also refer to the macro imported here
 LL |     use m2::*;
    |         ^^^^^
    = help: consider adding an explicit import of `panic` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
