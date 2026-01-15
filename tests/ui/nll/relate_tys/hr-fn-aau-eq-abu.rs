@@ -17,7 +17,6 @@ fn make_cell_aa() -> Cell<for<'a> fn(&'a u32, &'a u32)> {
 fn aa_eq_ab() {
     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
     //~^ ERROR mismatched types [E0308]
-    //~| ERROR mismatched types [E0308]
     drop(a);
 }
 
