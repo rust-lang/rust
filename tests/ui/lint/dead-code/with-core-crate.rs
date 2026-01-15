@@ -1,7 +1,6 @@
 #![deny(dead_code)]
 #![allow(unreachable_code)]
 
-#[macro_use]
 extern crate core;
 
 fn foo() { //~ ERROR function `foo` is never used

@@ -4,12 +4,14 @@ error[E0308]: mismatched types
 LL |     let _ = 0u32..10i32;
    |                   ^^^^^ expected `u32`, found `i32`
 
-error[E0277]: the trait bound `bool: Step` is not satisfied
+error[E0277]: `std::ops::Range<bool>` is not an iterator
   --> $DIR/range-1.rs:9:14
    |
 LL |     for i in false..true {}
-   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
+   |              ^^^^^^^^^^^ `Range<bool>` is not an iterator
    |
+   = help: the nightly-only, unstable trait `Step` is not implemented for `bool`
+   = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
    = note: required for `std::ops::Range<bool>` to implement `Iterator`
    = note: required for `std::ops::Range<bool>` to implement `IntoIterator`
 

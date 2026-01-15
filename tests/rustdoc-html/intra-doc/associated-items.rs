@@ -13,7 +13,9 @@ pub fn foo() {}
 //@ has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from struct'
 //@ has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.clone"]' 'MyStruct::clone'
 //@ has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#associatedtype.Input"]' 'MyStruct::Input'
-pub struct MyStruct { foo: () }
+pub struct MyStruct {
+    foo: (),
+}
 
 impl Clone for MyStruct {
     fn clone(&self) -> Self {
@@ -31,8 +33,7 @@ impl T for MyStruct {
 
     /// [link from method][MyStruct::method] on method
     //@ has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from method'
-    fn method(i: usize) {
-    }
+    fn method(i: usize) {}
 }
 
 /// Ambiguity between which trait to use
@@ -57,7 +58,7 @@ impl T2 for S {
     fn ambiguous_method() {}
 }
 
-//@ has associated_items/enum.MyEnum.html '//a/@href' 'enum.MyEnum.html#variant.MyVariant'
+//@ has associated_items/enum.MyEnum.html '//a/@href' 'type.MyEnumAlias.html#variant.MyVariant'
 /// Link to [MyEnumAlias::MyVariant]
 pub enum MyEnum {
     MyVariant,

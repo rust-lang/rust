@@ -27,7 +27,7 @@ static REGEX_SPLIT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
+    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -80,6 +80,7 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
     in_code_block
         || line.to_lowercase().contains("e.g.")
         || line.to_lowercase().contains("n.b.")
+        || line.contains(" etc.")
         || line.contains("i.e.")
         || line.contains("et. al")
         || line.contains('|')
@@ -189,9 +190,11 @@ must! be. split?
 ignore | tables
 ignore e.g. and
 ignore i.e. and
+ignore etc. and
 ignore E.g. too
 - list. entry
  * list. entry
+  1) list. entry
 ```
 some code. block
 ```
@@ -212,11 +215,14 @@ split?
 ignore | tables
 ignore e.g. and
 ignore i.e. and
+ignore etc. and
 ignore E.g. too
 - list.
   entry
  * list.
    entry
+  1) list.
+     entry
 ```
 some code. block
 ```

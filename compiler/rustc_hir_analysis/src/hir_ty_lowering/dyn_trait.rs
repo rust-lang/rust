@@ -503,8 +503,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // FIXME: point at the type params that don't have appropriate lifetimes:
         // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
         //                         ----  ----     ^^^^^^^
-        // NOTE(associated_const_equality): This error should be impossible to trigger
-        //                                  with associated const equality constraints.
+        // NOTE(mgca): This error should be impossible to trigger with assoc const bindings.
         self.validate_late_bound_regions(
             late_bound_in_projection_term,
             late_bound_in_term,

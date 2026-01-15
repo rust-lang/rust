@@ -16,6 +16,14 @@ Tuple(
         ],
     },
 )
+Array(
+    Array {
+        element_ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+        len: 2,
+    },
+)
+Other
+Other
 Other
 Other
 Other

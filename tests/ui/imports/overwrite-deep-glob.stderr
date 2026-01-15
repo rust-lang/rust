@@ -1,0 +1,12 @@
+warning: ambiguous glob re-exports
+  --> $DIR/overwrite-deep-glob.rs:15:17
+   |
+LL |         pub use self::m1::*;
+   |                 ^^^^^^^^^^^ the name `S` in the type namespace is first re-exported here
+LL |         pub use self::m2::*;
+   |                 ----------- but the name `S` in the type namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: 1 warning emitted
+

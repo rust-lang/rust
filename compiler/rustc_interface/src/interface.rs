@@ -435,6 +435,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         &early_dcx,
         &config.opts.target_triple,
         config.opts.sysroot.path(),
+        config.opts.unstable_opts.unstable_options,
     );
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();

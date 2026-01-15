@@ -305,7 +305,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
         config.override_queries = Some(|_, local_providers| {
             // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
             // FIXME handle this somehow in rustc itself to avoid this hack.
-            local_providers.exported_non_generic_symbols = |tcx, LocalCrate| {
+            local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
                 let reachable_set = tcx
                     .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
                 tcx.arena.alloc_from_iter(

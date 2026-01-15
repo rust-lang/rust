@@ -119,7 +119,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
         eii: eii::eii,
-        eii_extern_target: eii::eii_extern_target,
+        eii_declaration: eii::eii_declaration,
         eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         test: test::expand_test,

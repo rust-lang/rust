@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Unstable` is not satisfied
   --> $DIR/unstable-trait-suggestion.rs:13:9
    |
 LL |     foo(t)
-   |     --- ^ the trait `Unstable` is not implemented for `T`
+   |     --- ^ the nightly-only, unstable trait `Unstable` is not implemented for `T`
    |     |
    |     required by a bound introduced by this call
    |
@@ -16,12 +16,13 @@ help: consider restricting type parameter `T` with unstable trait `Unstable`
 LL | pub fn bar<T: Unstable>(t: T) {
    |             ++++++++++
 
-error[E0277]: the trait bound `T: Step` is not satisfied
+error[E0277]: `std::ops::Range<T>` is not an iterator
   --> $DIR/unstable-trait-suggestion.rs:17:14
    |
 LL |     for _ in t {}
-   |              ^ the trait `Step` is not implemented for `T`
+   |              ^ `Range<T>` is not an iterator
    |
+   = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
    = note: required for `std::ops::Range<T>` to implement `Iterator`
    = note: required for `std::ops::Range<T>` to implement `IntoIterator`
 help: consider restricting type parameter `T` with unstable trait `Step`

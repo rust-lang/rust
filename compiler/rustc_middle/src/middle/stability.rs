@@ -185,7 +185,7 @@ pub fn early_report_macro_deprecation(
     let diag = BuiltinLintDiag::DeprecatedMacro {
         suggestion: depr.suggestion,
         suggestion_span: span,
-        note: depr.note,
+        note: depr.note.map(|ident| ident.name),
         path,
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
@@ -228,7 +228,7 @@ fn late_report_deprecation(
         }),
         kind: def_kind.to_owned(),
         path: def_path,
-        note: depr.note,
+        note: depr.note.map(|ident| ident.name),
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
     tcx.emit_node_span_lint(lint, hir_id, method_span, diag);
