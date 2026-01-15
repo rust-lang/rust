@@ -6,12 +6,6 @@ use std::ops::{Add, Div, Mul, Sub};
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
-/// Default tolerances. Works for values that should be near precise but not exact. Roughly
-/// the precision carried by `100 * 100`.
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-const TOL: f128 = 1e-12;
-
 /// For operations that are near exact, usually not involving math of different
 /// signs.
 const TOL_PRECISE: f128 = 1e-28;
