@@ -495,6 +495,14 @@ command to check it out locally. See <https://cli.github.com/> for more info.
 
 ![`gh` suggestion](./img/github-cli.png)
 
+### Using GitHub dev
+
+As an alternative to the GitHub web UI, GitHub Dev provides a web-based editor for browsing
+repository and PRs. It can be opened by replacing `github.com` with `github.dev` in the URL
+or by pressing `.` on a GitHub page.
+See [the docs for github.dev editor](https://docs.github.com/en/codespaces/the-githubdev-web-based-editor)
+for more details.
+
 ### Moving large sections of code
 
 Git and Github's default diff view for large moves *within* a file is quite poor; it will show each
