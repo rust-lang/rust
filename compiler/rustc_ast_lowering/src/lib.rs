@@ -51,7 +51,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
-use rustc_hir::lints::DelayedLint;
+use rustc_hir::lints::{AttributeLint, DelayedLint};
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
     LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
@@ -1022,12 +1022,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
-            target_hir_id,
             target,
             OmitDoc::Lower,
             |s| l.lower(s),
-            |l| {
-                self.delayed_lints.push(DelayedLint::AttributeParsing(l));
+            |lint_id, span, kind| {
+                self.delayed_lints.push(DelayedLint::AttributeParsing(AttributeLint {
+                    lint_id,
+                    id: target_hir_id,
+                    span,
+                    kind,
+                }));
             },
         )
     }
