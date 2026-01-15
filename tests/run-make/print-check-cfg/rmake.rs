@@ -14,51 +14,55 @@ struct CheckCfg {
 
 enum Contains {
     Some { contains: &'static [&'static str], doesnt_contain: &'static [&'static str] },
-    Only(&'static str),
+    Nothing,
 }
 
 fn main() {
-    check(CheckCfg { args: &[], contains: Contains::Only("any()=any()") });
+    check(CheckCfg { args: &[], contains: Contains::Nothing });
     check(CheckCfg {
         args: &["--check-cfg=cfg()"],
         contains: Contains::Some {
-            contains: &["unix", "miri"],
-            doesnt_contain: &["any()", "any()=any()"],
+            contains: &["cfg(unix, values(none()))", "cfg(miri, values(none()))"],
+            doesnt_contain: &["cfg(any())"],
         },
     });
     check(CheckCfg {
         args: &["--check-cfg=cfg(any())"],
         contains: Contains::Some {
-            contains: &["any()", "unix", r#"target_feature="crt-static""#],
+            contains: &["cfg(any())", "cfg(unix, values(none()))"],
             doesnt_contain: &["any()=any()"],
         },
     });
     check(CheckCfg {
         args: &["--check-cfg=cfg(feature)"],
         contains: Contains::Some {
-            contains: &["unix", "miri", "feature"],
-            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+            contains: &[
+                "cfg(unix, values(none()))",
+                "cfg(miri, values(none()))",
+                "cfg(feature, values(none()))",
+            ],
+            doesnt_contain: &["cfg(any())", "cfg(feature)"],
         },
     });
     check(CheckCfg {
         args: &[r#"--check-cfg=cfg(feature, values(none(), "", "test", "lol"))"#],
         contains: Contains::Some {
-            contains: &["feature", "feature=\"\"", "feature=\"test\"", "feature=\"lol\""],
-            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+            contains: &[r#"cfg(feature, values("", "lol", "test", none()))"#],
+            doesnt_contain: &["cfg(any())", "cfg(feature, values(none()))", "cfg(feature)"],
         },
     });
     check(CheckCfg {
         args: &["--check-cfg=cfg(feature, values())"],
         contains: Contains::Some {
-            contains: &["feature="],
-            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature"],
+            contains: &["cfg(feature, values())"],
+            doesnt_contain: &["cfg(any())", "cfg(feature, values(none()))", "cfg(feature)"],
         },
     });
     check(CheckCfg {
         args: &["--check-cfg=cfg(feature, values())", "--check-cfg=cfg(feature, values(none()))"],
         contains: Contains::Some {
-            contains: &["feature"],
-            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+            contains: &["cfg(feature, values(none()))"],
+            doesnt_contain: &["cfg(any())", "cfg(feature, values())"],
         },
     });
     check(CheckCfg {
@@ -67,8 +71,8 @@ fn main() {
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
         contains: Contains::Some {
-            contains: &["unix", "miri", "feature=any()"],
-            doesnt_contain: &["any()", "any()=any()", "feature", "feature=", "feature=\"tmp\""],
+            contains: &["cfg(feature, values(any()))"],
+            doesnt_contain: &["cfg(any())", r#"cfg(feature, values("tmp"))"#],
         },
     });
     check(CheckCfg {
@@ -78,8 +82,12 @@ fn main() {
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
         contains: Contains::Some {
-            contains: &["has_foo", "has_bar", "feature=\"tmp\""],
-            doesnt_contain: &["any()", "any()=any()", "feature"],
+            contains: &[
+                "cfg(has_foo, values(none()))",
+                "cfg(has_bar, values(none()))",
+                r#"cfg(feature, values("tmp"))"#,
+            ],
+            doesnt_contain: &["cfg(any())", "cfg(feature)"],
         },
     });
 }
@@ -94,16 +102,15 @@ fn check(CheckCfg { args, contains }: CheckCfg) {
 
     for l in stdout.lines() {
         assert!(l == l.trim());
-        if let Some((left, right)) = l.split_once('=') {
-            if right != "any()" && right != "" {
-                assert!(right.starts_with("\""));
-                assert!(right.ends_with("\""));
-            }
-            assert!(!left.contains("\""));
-        } else {
-            assert!(!l.contains("\""));
-        }
-        assert!(found.insert(l.to_string()), "{}", &l);
+        assert!(l.starts_with("cfg("), "{l}");
+        assert!(l.ends_with(")"), "{l}");
+        assert_eq!(
+            l.chars().filter(|c| *c == '(').count(),
+            l.chars().filter(|c| *c == ')').count(),
+            "{l}"
+        );
+        assert!(l.chars().filter(|c| *c == '"').count() % 2 == 0, "{l}");
+        assert!(found.insert(l.to_string()), "{l}");
     }
 
     match contains {
@@ -131,9 +138,8 @@ fn check(CheckCfg { args, contains }: CheckCfg) {
                 );
             }
         }
-        Contains::Only(only) => {
-            assert!(found.contains(&only.to_string()), "{:?} != {:?}", &only, &found);
-            assert!(found.len() == 1, "len: {}, instead of 1", found.len());
+        Contains::Nothing => {
+            assert!(found.len() == 0, "len: {}, instead of 0", found.len());
         }
     }
 }

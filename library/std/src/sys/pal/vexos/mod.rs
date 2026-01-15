@@ -5,9 +5,7 @@ pub mod time;
 #[path = "../unsupported/common.rs"]
 mod unsupported_common;
 
-pub use unsupported_common::{
-    decode_error_kind, init, is_interrupted, unsupported, unsupported_err,
-};
+pub use unsupported_common::{init, unsupported, unsupported_err};
 
 use crate::arch::global_asm;
 use crate::ptr;

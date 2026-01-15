@@ -24,7 +24,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
@@ -44,10 +44,11 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingError, BindingKey, Decl, DeclKind, Finalize,
-    ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module, ModuleKind,
-    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError, Resolver, Scope,
-    ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs, path_names_to_string,
+    AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
+    Finalize, ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module,
+    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError,
+    Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs,
+    path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -146,17 +147,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for ambiguity_error in &self.ambiguity_errors {
             let diag = self.ambiguity_diagnostic(ambiguity_error);
 
-            if ambiguity_error.warning {
+            if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
                     DeclKind::Import { import, .. } => import.root_id,
                     DeclKind::Def(_) => CRATE_NODE_ID,
                 };
-                self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
-                    node_id,
-                    diag.ident.span,
-                    diag,
-                );
+
+                let lint = match ambiguity_warning {
+                    AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
+                    AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
+                };
+
+                self.lint_buffer.buffer_lint(lint, node_id, diag.ident.span, diag);
             } else {
                 self.dcx().emit_err(diag);
             }
@@ -208,21 +210,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn report_conflict(
         &mut self,
-        parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: Decl<'ra>,
         old_binding: Decl<'ra>,
+        new_binding: Decl<'ra>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
-            return self.report_conflict(parent, ident, ns, old_binding, new_binding);
+            return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
-        let container = match parent.kind {
+        let container = match old_binding.parent_module.unwrap().kind {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
+            ModuleKind::Def(kind, def_id, _) => kind.descr(def_id),
             ModuleKind::Block => "block",
         };
 
@@ -2032,15 +2033,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
 
-            if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
-                if module == self.graph_root {
-                    help_msgs.push(format!(
-                        "use `crate::{ident}` to refer to this {thing} unambiguously"
-                    ));
-                } else if module != self.empty_module && module.is_normal() {
-                    help_msgs.push(format!(
-                        "use `self::{ident}` to refer to this {thing} unambiguously"
-                    ));
+            if kind != AmbiguityKind::GlobVsGlob {
+                if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
+                    if module == self.graph_root {
+                        help_msgs.push(format!(
+                            "use `crate::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    } else if module.is_normal() {
+                        help_msgs.push(format!(
+                            "use `self::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    }
                 }
             }
 

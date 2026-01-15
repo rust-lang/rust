@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `Device` cannot be known
 LL | unsafe fn make_device() -> Box<Device> {
    |                            ^^^^^^^^^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `Device`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `Device`
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
@@ -32,7 +32,7 @@ error[E0277]: the size for values of type `Device` cannot be known
 LL |     Box::from_raw(0 as *mut _)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `Device`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `Device`
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
@@ -55,7 +55,7 @@ error[E0277]: the size for values of type `Device` cannot be known
 LL |     let d: Device = unsafe { *make_device() };
    |                               ^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `Device`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `Device`
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 

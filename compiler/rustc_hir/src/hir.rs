@@ -513,6 +513,8 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
     /// Tuple constructor variant
     TupleCall(QPath<'hir>, &'hir [&'hir ConstArg<'hir>]),
+    /// Array literal argument
+    Array(&'hir ConstArgArrayExpr<'hir>),
     /// Error const
     Error(ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
@@ -527,6 +529,12 @@ pub struct ConstArgExprField<'hir> {
     pub span: Span,
     pub field: Ident,
     pub expr: &'hir ConstArg<'hir>,
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct ConstArgArrayExpr<'hir> {
+    pub span: Span,
+    pub elems: &'hir [&'hir ConstArg<'hir>],
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -1402,7 +1410,7 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn deprecation_note(&self) -> Option<Symbol> {
+    fn deprecation_note(&self) -> Option<Ident> {
         match &self {
             Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
             _ => None,
@@ -3304,7 +3312,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct AssocItemConstraint<'hir> {

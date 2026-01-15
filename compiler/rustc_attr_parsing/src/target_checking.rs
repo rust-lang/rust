@@ -10,6 +10,7 @@ use rustc_span::sym;
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::session_diagnostics::InvalidTarget;
+use crate::target_checking::Policy::Allow;
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
@@ -88,7 +89,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
-        if allowed_targets.allowed_targets() == &[Target::Crate] {
+        // For crate-level attributes we emit a specific set of lints to warn
+        // people about accidentally not using them on the crate.
+        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
             Self::check_crate_level(target, cx);
             return;
         }
@@ -146,8 +149,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
     }
 
     pub(crate) fn check_crate_level(target: Target, cx: &mut AcceptContext<'_, 'sess, S>) {
-        // For crate-level attributes we emit a specific set of lints to warn
-        // people about accidentally not using them on the crate.
         if target == Target::Crate {
             return;
         }

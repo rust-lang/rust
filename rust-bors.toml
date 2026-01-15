@@ -55,7 +55,8 @@ try_failed = [
     "-S-waiting-on-crater"
 ]
 auto_build_succeeded = [
-    "+merged-by-bors"
+    "+merged-by-bors",
+    "-S-waiting-on-bors"
 ]
 auto_build_failed = [
     "+S-waiting-on-review",

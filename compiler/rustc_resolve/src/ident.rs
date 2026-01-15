@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRe
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
 use smallvec::SmallVec;
@@ -20,9 +21,10 @@ use crate::late::{
 };
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Decl, DeclKind, Determinacy, Finalize,
-    ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
-    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
+    AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
+    Determinacy, Finalize, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
+    Segment, Stage, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -841,6 +843,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if issue_145575_hack || issue_149681_hack {
                 self.issue_145575_hack_applied = true;
             } else {
+                // Turn ambiguity errors for core vs std panic into warnings.
+                // FIXME: Remove with lang team approval.
+                let is_issue_147319_hack = orig_ident.span.edition() <= Edition::Edition2024
+                    && matches!(orig_ident.name, sym::panic)
+                    && matches!(scope, Scope::StdLibPrelude)
+                    && matches!(innermost_scope, Scope::ModuleGlobs(_, _))
+                    && ((self.is_specific_builtin_macro(res, sym::std_panic)
+                        && self.is_specific_builtin_macro(innermost_res, sym::core_panic))
+                        || (self.is_specific_builtin_macro(res, sym::core_panic)
+                            && self.is_specific_builtin_macro(innermost_res, sym::std_panic)));
+
+                let warning = is_issue_147319_hack.then_some(AmbiguityWarning::PanicImport);
+
                 self.ambiguity_errors.push(AmbiguityError {
                     kind,
                     ident: orig_ident,
@@ -848,7 +863,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     b2: decl,
                     scope1: innermost_scope,
                     scope2: scope,
-                    warning: false,
+                    warning,
                 });
                 return true;
             }

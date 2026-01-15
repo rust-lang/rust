@@ -39,15 +39,6 @@ pub fn unsupported_err() -> io::Error {
 }
 
 #[inline]
-pub fn is_interrupted(code: i32) -> bool {
-    crate::sys::net::is_interrupted(code)
-}
-
-pub fn decode_error_kind(code: i32) -> io::ErrorKind {
-    error::decode_error_kind(code)
-}
-
-#[inline]
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }

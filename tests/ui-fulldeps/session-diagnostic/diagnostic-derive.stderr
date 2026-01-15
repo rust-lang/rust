@@ -657,7 +657,7 @@ LL | #[derive(Diagnostic)]
 LL |     other: Hello,
    |            ^^^^^ unsatisfied trait bound
    |
-help: the trait `IntoDiagArg` is not implemented for `Hello`
+help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `Hello`
   --> $DIR/diagnostic-derive.rs:40:1
    |
 LL | struct Hello {}

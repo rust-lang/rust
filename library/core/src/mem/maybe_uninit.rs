@@ -256,7 +256,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// # Validity
 ///
-/// `MaybeUninit<T>` has no validity requirements –- any sequence of [bytes] of
+/// `MaybeUninit<T>` has no validity requirements – any sequence of [bytes] of
 /// the appropriate length, initialized or uninitialized, are a valid
 /// representation.
 ///

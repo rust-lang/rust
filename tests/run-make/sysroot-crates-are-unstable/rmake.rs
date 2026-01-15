@@ -28,13 +28,17 @@ fn check_crate_is_unstable(cr: &Crate) {
 
     print!("- Verifying that sysroot crate '{name}' is an unstable crate ...");
 
-    // Trying to use this crate from a user program should fail.
-    let output = rustc()
-        .crate_type("rlib")
-        .extern_(name, path)
-        .input("-")
-        .stdin_buf(format!("extern crate {name};"))
-        .run_fail();
+    // Checking if rmeta path exists
+    let rmeta_path = path.with_extension("rmeta");
+
+    let mut cmd = rustc();
+    cmd.crate_type("rlib").extern_(name, path); // Pass the rlib
+
+    if rmeta_path.exists() {
+        cmd.extern_(name, &rmeta_path);
+    }
+
+    let output = cmd.input("-").stdin_buf(format!("extern crate {name};")).run_fail();
 
     // Make sure it failed for the intended reason, not some other reason.
     // (The actual feature required varies between crates.)

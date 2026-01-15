@@ -489,7 +489,7 @@ macro_rules! common_visitor_and_walkers {
             WhereEqPredicate,
             WhereRegionPredicate,
             YieldKind,
-            EiiExternTarget,
+            EiiDecl,
             EiiImpl,
         );
 
