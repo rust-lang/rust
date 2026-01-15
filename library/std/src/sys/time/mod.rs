@@ -24,6 +24,10 @@ cfg_select! {
             pub use super::unsupported::{SystemTime, UNIX_EPOCH};
         }
     }
+    target_os = "windows" => {
+        mod windows;
+        use windows as imp;
+    }
     target_os = "xous" => {
         mod xous;
         use xous as imp;
