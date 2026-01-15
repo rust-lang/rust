@@ -212,6 +212,8 @@ pub struct Parser<'a> {
     /// See the comments in the `parse_path_segment` function for more details.
     unmatched_angle_bracket_count: u16,
     angle_bracket_nesting: u16,
+    /// Keep track of when we're within `<...>` for proper error recovery.
+    parsing_generics: bool = false,
 
     last_unexpected_token_span: Option<Span>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
@@ -372,6 +374,7 @@ impl<'a> Parser<'a> {
             },
             current_closure: None,
             recovery: Recovery::Allowed,
+            ..
         };
 
         // Make parser point to the first token.
