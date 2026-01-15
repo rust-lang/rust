@@ -6,6 +6,16 @@ cfg_select! {
         mod sgx;
         use sgx as imp;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        #[expect(unused)]
+        mod unsupported;
+
+        mod imp {
+            pub use super::vexos::Instant;
+            pub use super::unsupported::{SystemTime, UNIX_EPOCH};
+        }
+    }
     target_os = "xous" => {
         mod xous;
         use xous as imp;
