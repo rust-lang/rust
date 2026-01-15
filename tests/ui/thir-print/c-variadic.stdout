@@ -39,7 +39,7 @@ body:
         kind: 
             Scope {
                 region_scope: Node(6)
-                lint_level: Explicit(HirId(DefId(0:3 ~ c_variadic[a5de]::foo).6))
+                hir_id: HirId(DefId(0:3 ~ c_variadic[a5de]::foo).6)
                 value:
                     Expr {
                         ty: ()

@@ -26,7 +26,7 @@ LL | use issue_114682_5_extern_2::p::*;
    = help: consider adding an explicit import of `issue_114682_5_extern_1` to disambiguate
    = help: or use `crate::issue_114682_5_extern_1` to refer to this module unambiguously
 
-error: `issue_114682_5_extern_1` is ambiguous
+warning: `issue_114682_5_extern_1` is ambiguous
   --> $DIR/issue-114682-5.rs:10:5
    |
 LL | use issue_114682_5_extern_1::Url;
@@ -46,14 +46,14 @@ note: `issue_114682_5_extern_1` could also refer to the crate defined here
 LL |     pub use crate::*;
    |             ^^^^^
    = help: use `::issue_114682_5_extern_1` to refer to this crate unambiguously
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0432, E0659.
 For more information about an error, try `rustc --explain E0432`.
 Future incompatibility report: Future breakage diagnostic:
-error: `issue_114682_5_extern_1` is ambiguous
+warning: `issue_114682_5_extern_1` is ambiguous
   --> $DIR/issue-114682-5.rs:10:5
    |
 LL | use issue_114682_5_extern_1::Url;
@@ -73,5 +73,5 @@ note: `issue_114682_5_extern_1` could also refer to the crate defined here
 LL |     pub use crate::*;
    |             ^^^^^
    = help: use `::issue_114682_5_extern_1` to refer to this crate unambiguously
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
