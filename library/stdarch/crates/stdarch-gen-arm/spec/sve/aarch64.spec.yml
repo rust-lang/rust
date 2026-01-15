@@ -1,0 +1,5199 @@
+arch_cfgs:
+  - arch_name: aarch64
+    target_feature: [sve]
+    llvm_prefix: llvm.aarch64.sve
+
+uses_neon_types: true
+auto_llvm_sign_conversion: true
+generate_load_store_tests: true
+
+# `#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]`
+sve-unstable: &sve-unstable
+  FnCall: [unstable, ['feature = "stdarch_aarch64_sve"', 'issue= "145052"']]
+
+intrinsics:
+  - name: svacge[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Absolute compare greater than or equal to
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64]
+    assert_instr: [facge]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "facge.{sve_type}" }
+
+  - name: svacgt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Absolute compare greater than
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64]
+    assert_instr: [facgt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "facgt.{sve_type}" }
+
+  - name: svacle[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Absolute compare less than or equal to
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64]
+    assert_instr: [facge]
+    n_variant_op: op2
+    compose:
+      - FnCall: ["svacge_{type}", [$pg, $op2, $op1]]
+
+  - name: svaclt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Absolute compare less than
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64]
+    assert_instr: [facgt]
+    n_variant_op: op2
+    compose:
+      - FnCall: ["svacgt_{type}", [$pg, $op2, $op1]]
+
+  - name: svcadd[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Complex add with rotate
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [90, 270] }]
+    assert_instr: [[fcadd, "IMM_ROTATION = 90"]]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink:
+          name: fcadd.{sve_type}
+          arguments:
+            - "pg: {predicate}"
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$pg, $op1, $op2, $IMM_ROTATION]]
+
+  - name: svcmla[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Complex multiply-add with rotate
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }]
+    assert_instr: [[fcmla, "IMM_ROTATION = 90"]]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink:
+          name: fcmla.{sve_type}
+          arguments:
+            - "pg: {predicate}"
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$pg, $op1, $op2, $op3, $IMM_ROTATION]]
+
+  - name: svcmla_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Complex multiply-add with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32]
+    static_defs: ["const IMM_INDEX: i32", "const IMM_ROTATION: i32"]
+    constraints:
+      - variable: IMM_INDEX
+        range: { match_size: "{type}", default: [0, 1], halfword: [0, 3] }
+      - { variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }
+    assert_instr: [[fcmla, "IMM_INDEX = 0, IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: fcmla.lane.x.{sve_type}
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_index: i32"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX, $IMM_ROTATION]]
+
+  - name: svadd[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Add
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.f}add"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}add.{sve_type}" }
+
+  - name: svqsub[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating subtract
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.su}qsub"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qsub.x.{sve_type}" }
+
+  - name: svcnt[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Count nonzero bits
+    arguments:
+      ["inactive: {sve_type[1]}", "pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    zeroing_method: { drop: inactive }
+    assert_instr: [cnt]
+    compose:
+      - LLVMLink: { name: "cnt.{sve_type[0]}" }
+
+  - name: svcls[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Count leading sign bits
+    arguments:
+      ["inactive: {sve_type[1]}", "pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[i8, u8], [i16, u16], [i32, u32], [i64, u64]]
+    zeroing_method: { drop: inactive }
+    assert_instr: [cls]
+    compose:
+      - LLVMLink: { name: "cls.{sve_type[0]}" }
+
+  - name: svclz[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Count leading zero bits
+    arguments:
+      ["inactive: {sve_type[1]}", "pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    zeroing_method: { drop: inactive }
+    assert_instr: [clz]
+    compose:
+      - LLVMLink: { name: "clz.{sve_type[0]}" }
+
+  - name: svext{size_literal[1]}[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    substitutions:
+      sign_or_zero:
+        match_kind: "{type[0]}"
+        default: Sign
+        unsigned: Zero
+      kind_literal: { match_kind: "{type[0]}", default: s, unsigned: u }
+    doc: "{sign_or_zero}-extend the low {size[1]} bits"
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    zeroing_method: { drop: inactive }
+    assert_instr: ["{type_kind[0].su}xt{size_literal[1]}"]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}xt{size_literal[1]}.{sve_type[0]}"
+
+  - name: svsqrt[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Square root
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { drop: inactive }
+    assert_instr: [fsqrt]
+    compose:
+      - LLVMLink: { name: "fsqrt.{sve_type}" }
+
+  - name: svcmpeq[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare equal to
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmeq, default: cmpeq }]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}cmpeq.{sve_type}" }
+
+  - name: svcmpeq_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare equal to
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    types:
+      - [[i8, i16, i32], i64]
+    assert_instr: [cmpeq]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "cmpeq.wide.{sve_type[0]}" }
+
+  - name: svcmpge[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare greater than or equal to
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmge, default: cmpge, unsigned: cmphs }]
+    n_variant_op: op2
+    compose:
+      - MatchKind:
+          - "{type}"
+          - default:
+              LLVMLink: { name: "{type_kind.f}cmpge.{sve_type}" }
+            unsigned:
+              LLVMLink: { name: "cmphs.{sve_type}" }
+
+  - name: svcmpge_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare greater than or equal to
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    n_variant_op: op2
+    types:
+      - [[i8, i16, i32], i64]
+      - [[u8, u16, u32], u64]
+    assert_instr: [{ default: cmpge, unsigned: cmphs }]
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default:
+              LLVMLink: { name: "cmpge.wide.{sve_type[0]}" }
+            unsigned:
+              LLVMLink: { name: "cmphs.wide.{sve_type[0]}" }
+
+  - name: svcmpgt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare greater than
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmgt, default: cmpgt, unsigned: cmphi }]
+    n_variant_op: op2
+    compose:
+      - MatchKind:
+          - "{type}"
+          - default:
+              LLVMLink: { name: "{type_kind.f}cmpgt.{sve_type}" }
+            unsigned:
+              LLVMLink: { name: "cmphi.{sve_type}" }
+
+  - name: svcmpgt_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare greater than
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    types:
+      - [[i8, i16, i32], i64]
+      - [[u8, u16, u32], u64]
+    assert_instr: [{ default: cmpgt, unsigned: cmphi }]
+    n_variant_op: op2
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default:
+              LLVMLink: { name: "cmpgt.wide.{sve_type[0]}" }
+            unsigned:
+              LLVMLink: { name: "cmphi.wide.{sve_type[0]}" }
+
+  - name: svcmple[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare less than or equal to
+    arguments: ["pg: svbool_t", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "svbool_t"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmge, default: cmpge, unsigned: cmphs }]
+    n_variant_op: op2
+    compose:
+      - FnCall: ["svcmpge_{type}", [$pg, $op2, $op1]]
+
+  - name: svcmple_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare less than or equal to
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    types:
+      - [[i8, i16, i32], i64]
+      - [[u8, u16, u32], u64]
+    assert_instr: [{ default: cmple, unsigned: cmpls }]
+    n_variant_op: op2
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default:
+              LLVMLink: { name: "cmple.wide.{sve_type[0]}" }
+            unsigned:
+              LLVMLink: { name: "cmpls.wide.{sve_type[0]}" }
+
+  - name: svcmplt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare less than
+    arguments: ["pg: svbool_t", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "svbool_t"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmgt, default: cmpgt, unsigned: cmphi }]
+    n_variant_op: op2
+    compose:
+      - FnCall: ["svcmpgt_{type}", [$pg, $op2, $op1]]
+
+  - name: svcmplt_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare less than
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    types:
+      - [[i8, i16, i32], i64]
+      - [[u8, u16, u32], u64]
+    assert_instr: [{ default: cmplt, unsigned: cmplo }]
+    n_variant_op: op2
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default:
+              LLVMLink: { name: "cmplt.wide.{sve_type[0]}" }
+            unsigned:
+              LLVMLink: { name: "cmplo.wide.{sve_type[0]}" }
+
+  - name: svcmpne[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare not equal to
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [{ float: fcmne, default: cmpne }]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}cmpne.{sve_type}" }
+
+  - name: svcmpne_wide[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Compare not equal to
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{predicate[0]}"
+    types: [[[i8, i16, i32], i64]]
+    assert_instr: [cmpne]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "cmpne.wide.{sve_type[0]}" }
+
+  - name: svcmpuo[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Compare unordered with
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [f32, f64]
+    assert_instr: [fcmuo]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "fcmpuo.{sve_type}" }
+
+  - name: svcnt{size_literal}
+    attr: [*sve-unstable]
+    doc: Count the number of {size}-bit elements in a vector
+    arguments: []
+    return_type: u64
+    types: [i8, i16, i32, i64]
+    assert_instr:
+      - default: { byte: rdvl, halfword: cnth, default: cntw, doubleword: cntd }
+    compose:
+      - FnCall: ["svcnt{size_literal}_pat", [], ["{{ svpattern::SV_ALL }}"]]
+
+  - name: svcnt{size_literal}_pat
+    attr: [*sve-unstable]
+    doc: Count the number of {size}-bit elements in a vector
+    arguments: []
+    static_defs: ["const PATTERN: svpattern"]
+    return_type: u64
+    assert_instr:
+      - [rdvl, "PATTERN = {{ svpattern::SV_ALL }}"]
+      - ["cnt{size_literal}", "PATTERN = {{ svpattern::SV_MUL4 }}"]
+    types: [i8]
+    compose:
+      - LLVMLink:
+          name: cnt{size_literal}
+          arguments: ["pattern: svpattern"]
+      - FnCall: ["{llvm_link}", [$PATTERN]]
+
+  - name: svcnt{size_literal}_pat
+    attr: [*sve-unstable]
+    doc: Count the number of {size}-bit elements in a vector
+    arguments: []
+    static_defs: ["const PATTERN: svpattern"]
+    return_type: u64
+    assert_instr: [["cnt{size_literal}", "PATTERN = {{ svpattern::SV_ALL }}"]]
+    types: [i16, i32, i64]
+    compose:
+      - LLVMLink:
+          name: cnt{size_literal}
+          arguments: ["pattern: svpattern"]
+      - FnCall: ["{llvm_link}", [$PATTERN]]
+
+  - name: svlen[_{type}]
+    attr: [*sve-unstable]
+    doc: Count the number of elements in a full vector
+    arguments: ["_op: {sve_type}"]
+    return_type: "u64"
+    types: [i8, u8, i16, u16, i32, u32, f32, i64, u64, f64]
+    assert_instr: [{ default: { default: "cnt{size_literal}", byte: rdvl } }]
+    compose:
+      - FnCall: ["svcnt{size_literal}", []]
+
+  - name: svdup[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a scalar value
+    arguments: ["op: {type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [mov]
+    compose:
+      - LLVMLink: { name: "dup.x.{sve_type}" }
+
+  - name: svdup[_n]_{type}{_mxz}
+    attr: [*sve-unstable]
+    doc: Broadcast a scalar value
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { drop: inactive }
+    assert_instr: [mov]
+    compose:
+      - LLVMLink: { name: "dup.{sve_type}" }
+
+  - name: svdup[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a scalar value
+    arguments: ["op: bool"]
+    return_type: "{predicate}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [sbfx, whilelo]
+    compose:
+      - LLVMLink: { name: "dup.x.{sve_type}" }
+
+  - name: svdup_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Broadcast a scalar value
+    arguments: ["data: {sve_type[0]}", "index: {type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    assert_instr: [tbl]
+    compose:
+      - FnCall:
+          - svtbl_{type[0]}
+          - - $data
+            - FnCall: ["svdup_n_{type[1]}", [$index]]
+
+  - name: svdupq_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    arguments: ["data: {sve_type}", "index: u64"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [tbl]
+    compose:
+      - LLVMLink: { name: "dupq.lane.{sve_type}" }
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    arguments:
+      - "x0: {type}"
+      - "x1: {type}"
+      - "x2: {type}"
+      - "x3: {type}"
+      - "x4: {type}"
+      - "x5: {type}"
+      - "x6: {type}"
+      - "x7: {type}"
+      - "x8: {type}"
+      - "x9: {type}"
+      - "x10: {type}"
+      - "x11: {type}"
+      - "x12: {type}"
+      - "x13: {type}"
+      - "x14: {type}"
+      - "x15: {type}"
+    return_type: "{sve_type}"
+    types: [i8, u8]
+    assert_instr: []
+    compose:
+      - LLVMLink:
+          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
+      - Let:
+          - op
+          - FnCall:
+              - "{llvm_link}"
+              - - FnCall: ["svundef_{type}", [], [], true]
+                - FnCall:
+                    - "crate::mem::transmute"
+                    - - - $x0
+                        - $x1
+                        - $x2
+                        - $x3
+                        - $x4
+                        - $x5
+                        - $x6
+                        - $x7
+                        - $x8
+                        - $x9
+                        - $x10
+                        - $x11
+                        - $x12
+                        - $x13
+                        - $x14
+                        - $x15
+                - 0
+      - FnCall: ["svdupq_lane_{type}", [$op, 0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    types: [b8]
+    arguments:
+      - "x0: bool"
+      - "x1: bool"
+      - "x2: bool"
+      - "x3: bool"
+      - "x4: bool"
+      - "x5: bool"
+      - "x6: bool"
+      - "x7: bool"
+      - "x8: bool"
+      - "x9: bool"
+      - "x10: bool"
+      - "x11: bool"
+      - "x12: bool"
+      - "x13: bool"
+      - "x14: bool"
+      - "x15: bool"
+    return_type: "svbool_t"
+    assert_instr: []
+    compose:
+      - Let:
+          - op1
+          - FnCall:
+              - svdupq_n_s8
+              - - CastAs: [$x0, i8]
+                - CastAs: [$x1, i8]
+                - CastAs: [$x2, i8]
+                - CastAs: [$x3, i8]
+                - CastAs: [$x4, i8]
+                - CastAs: [$x5, i8]
+                - CastAs: [$x6, i8]
+                - CastAs: [$x7, i8]
+                - CastAs: [$x8, i8]
+                - CastAs: [$x9, i8]
+                - CastAs: [$x10, i8]
+                - CastAs: [$x11, i8]
+                - CastAs: [$x12, i8]
+                - CastAs: [$x13, i8]
+                - CastAs: [$x14, i8]
+                - CastAs: [$x15, i8]
+      - FnCall:
+          - svcmpne_wide_s8
+          - - FnCall: [svptrue_b8, []]
+            - $op1
+            - FnCall: [svdup_n_s64, [0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    arguments:
+      - "x0: {type}"
+      - "x1: {type}"
+      - "x2: {type}"
+      - "x3: {type}"
+      - "x4: {type}"
+      - "x5: {type}"
+      - "x6: {type}"
+      - "x7: {type}"
+    return_type: "{sve_type}"
+    types: [i16, u16]
+    assert_instr: []
+    compose:
+      - LLVMLink:
+          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
+      - Let:
+          - op
+          - FnCall:
+              - "{llvm_link}"
+              - - FnCall: ["svundef_{type}", [], [], true]
+                - FnCall:
+                    - "crate::mem::transmute"
+                    - - [$x0, $x1, $x2, $x3, $x4, $x5, $x6, $x7]
+                - 0
+      - FnCall: ["svdupq_lane_{type}", [$op, 0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    types: [b16]
+    arguments:
+      - "x0: bool"
+      - "x1: bool"
+      - "x2: bool"
+      - "x3: bool"
+      - "x4: bool"
+      - "x5: bool"
+      - "x6: bool"
+      - "x7: bool"
+    return_type: svbool_t
+    assert_instr: []
+    compose:
+      - Let:
+          - op1
+          - FnCall:
+              - svdupq_n_s16
+              - - CastAs: [$x0, i16]
+                - CastAs: [$x1, i16]
+                - CastAs: [$x2, i16]
+                - CastAs: [$x3, i16]
+                - CastAs: [$x4, i16]
+                - CastAs: [$x5, i16]
+                - CastAs: [$x6, i16]
+                - CastAs: [$x7, i16]
+      - FnCall:
+          - svcmpne_wide_s16
+          - - FnCall: [svptrue_b16, []]
+            - $op1
+            - FnCall: [svdup_n_s64, [0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    arguments: ["x0: {type}", "x1: {type}", "x2: {type}", "x3: {type}"]
+    return_type: "{sve_type}"
+    types: [f32, i32, u32]
+    assert_instr: []
+    compose:
+      - LLVMLink:
+          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
+      - Let:
+          - op
+          - FnCall:
+              - "{llvm_link}"
+              - - FnCall: ["svundef_{type}", [], [], true]
+                - FnCall: ["crate::mem::transmute", [[$x0, $x1, $x2, $x3]]]
+                - 0
+      - FnCall: ["svdupq_lane_{type}", [$op, 0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    types: [b32]
+    arguments: ["x0: bool", "x1: bool", "x2: bool", "x3: bool"]
+    return_type: "svbool_t"
+    assert_instr: []
+    compose:
+      - Let:
+          - op1
+          - FnCall:
+              - svdupq_n_s32
+              - - CastAs: [$x0, i32]
+                - CastAs: [$x1, i32]
+                - CastAs: [$x2, i32]
+                - CastAs: [$x3, i32]
+      - FnCall:
+          - svcmpne_wide_s32
+          - - FnCall: [svptrue_b32, []]
+            - $op1
+            - FnCall: [svdup_n_s64, [0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    arguments: ["x0: {type}", "x1: {type}"]
+    return_type: "{sve_type}"
+    types: [f64, i64, u64]
+    assert_instr: []
+    compose:
+      - LLVMLink:
+          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
+      - Let:
+          - op
+          - FnCall:
+              - "{llvm_link}"
+              - - FnCall: ["svundef_{type}", [], [], true]
+                - FnCall: ["crate::mem::transmute", [[$x0, $x1]]]
+                - 0
+      - FnCall: ["svdupq_lane_{type}", [$op, 0]]
+
+  - name: svdupq[_n]_{type}
+    attr: [*sve-unstable]
+    doc: Broadcast a quadword of scalars
+    types: [b64]
+    arguments: ["x0: bool", "x1: bool"]
+    return_type: "svbool_t"
+    assert_instr: []
+    compose:
+      - Let:
+          - op1
+          - FnCall: [svdupq_n_s64, [CastAs: [$x0, i64], CastAs: [$x1, i64]]]
+      - FnCall:
+          - svcmpne_s64
+          - - FnCall: [svptrue_b64, []]
+            - $op1
+            - FnCall: [svdup_n_s64, [0]]
+
+  - name: svcreate2[_{type}]
+    attr: [*sve-unstable]
+    doc: Create a tuple of two vectors
+    arguments: ["x0: {sve_type}", "x1: {sve_type}"]
+    return_type: "{sve_type_x2}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_create2", [$x0, $x1], [], true]
+
+  - name: svcreate3[_{type}]
+    attr: [*sve-unstable]
+    doc: Create a tuple of three vectors
+    arguments: ["x0: {sve_type}", "x1: {sve_type}", "x2: {sve_type}"]
+    return_type: "{sve_type_x3}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_create3", [$x0, $x1, $x2], [], true]
+
+  - name: svcreate4[_{type}]
+    attr: [*sve-unstable]
+    doc: Create a tuple of four vectors
+    arguments:
+      ["x0: {sve_type}", "x1: {sve_type}", "x2: {sve_type}", "x3: {sve_type}"]
+    return_type: "{sve_type_x4}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_create4", [$x0, $x1, $x2, $x3], [], true]
+
+  - name: svundef_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized vector
+    arguments: []
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["svdup_n_{type}", ["0"]]
+
+  - name: svundef_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized vector
+    arguments: []
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: []
+    compose:
+      - FnCall: ["svdup_n_{type}", ["0{type}"]]
+
+  - name: svundef2_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of two vectors
+    arguments: []
+    return_type: "{sve_type_x2}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate2_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+
+  - name: svundef2_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of two vectors
+    arguments: []
+    return_type: "{sve_type_x2}"
+    types: [f32, f64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate2_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+
+  - name: svundef3_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of three vectors
+    arguments: []
+    return_type: "{sve_type_x3}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate3_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+
+  - name: svundef3_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of three vectors
+    arguments: []
+    return_type: "{sve_type_x3}"
+    types: [f32, f64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate3_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+
+  - name: svundef4_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of four vectors
+    arguments: []
+    return_type: "{sve_type_x4}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate4_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+          - FnCall: ["svdup_n_{type}", ["0"]]
+
+  - name: svundef4_{type}
+    attr: [*sve-unstable]
+    safety:
+      unsafe: [uninitialized]
+    doc: Create an uninitialized tuple of four vectors
+    arguments: []
+    return_type: "{sve_type_x4}"
+    types: [f32, f64]
+    assert_instr: []
+    compose:
+      - FnCall:
+        - "svcreate4_{type}"
+        - - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+          - FnCall: ["svdup_n_{type}", ["0{type}"]]
+
+  - name: svindex_{type}
+    attr: [*sve-unstable]
+    doc: Create linear series
+    arguments: ["base: {type}", "step: {type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [index]
+    compose:
+      - LLVMLink: { name: "index.{sve_type}" }
+
+  - name: svget2[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract one vector from a tuple of two vectors
+    arguments: ["tuple: {sve_type_x2}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 1] }]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_get", [$tuple], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svget3[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract one vector from a tuple of three vectors
+    arguments: ["tuple: {sve_type_x3}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 2] }]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_get", [$tuple], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svget4[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract one vector from a tuple of four vectors
+    arguments: ["tuple: {sve_type_x4}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 3] }]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_get", [$tuple], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svset2[_{type}]
+    attr: [*sve-unstable]
+    doc: Change one vector in a tuple of two vectors
+    arguments: ["tuple: {sve_type_x2}", "x: {sve_type}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 1] }]
+    return_type: "{sve_type_x2}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_set", [$tuple, $x], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svset3[_{type}]
+    attr: [*sve-unstable]
+    doc: Change one vector in a tuple of three vectors
+    arguments: ["tuple: {sve_type_x3}", "x: {sve_type}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 2] }]
+    return_type: "{sve_type_x3}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_set", [$tuple, $x], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svset4[_{type}]
+    attr: [*sve-unstable]
+    doc: Change one vector in a tuple of four vectors
+    arguments: ["tuple: {sve_type_x4}", "x: {sve_type}"]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, range: [0, 3] }]
+    return_type: "{sve_type_x4}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: []
+    compose:
+      - FnCall: ["crate::intrinsics::simd::scalable::sve_tuple_set", [$tuple, $x], ["_", "_", "{{IMM_INDEX}}"], true]
+
+  - name: svzip1[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave elements from low halves of two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [zip1]
+    compose:
+      - LLVMLink: { name: "zip1.{sve_type}" }
+
+  - name: svzip1_{type}
+    attr: [*sve-unstable]
+    doc: Interleave elements from low halves of two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [zip1]
+    compose:
+      - LLVMLink: { name: "zip1.{sve_type}" }
+
+  - name: svzip1q[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave quadwords from low halves of two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [zip1]
+    compose:
+      - LLVMLink: { name: "zip1q.{sve_type}" }
+
+  - name: svzip2[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave elements from high halves of two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [zip2]
+    compose:
+      - LLVMLink: { name: "zip2.{sve_type}" }
+
+  - name: svzip2_{type}
+    attr: [*sve-unstable]
+    doc: Interleave elements from high halves of two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [zip2]
+    compose:
+      - LLVMLink: { name: "zip2.{sve_type}" }
+
+  - name: svzip2q[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave quadwords from high halves of two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [zip2]
+    compose:
+      - LLVMLink: { name: "zip2q.{sve_type}" }
+
+  - name: svuzp1[_{type}]
+    attr: [*sve-unstable]
+    doc: Concatenate even elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [uzp1]
+    compose:
+      - LLVMLink: { name: "uzp1.{sve_type}" }
+
+  - name: svuzp1_{type}
+    attr: [*sve-unstable]
+    doc: Concatenate even elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [uzp1]
+    compose:
+      - LLVMLink: { name: "uzp1.{sve_type}" }
+
+  - name: svuzp1q[_{type}]
+    attr: [*sve-unstable]
+    doc: Concatenate even quadwords from two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [uzp1]
+    compose:
+      - LLVMLink: { name: "uzp1q.{sve_type}" }
+
+  - name: svuzp2[_{type}]
+    attr: [*sve-unstable]
+    doc: Concatenate odd elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [uzp2]
+    compose:
+      - LLVMLink: { name: "uzp2.{sve_type}" }
+
+  - name: svuzp2_{type}
+    attr: [*sve-unstable]
+    doc: Concatenate odd elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [uzp2]
+    compose:
+      - LLVMLink: { name: "uzp2.{sve_type}" }
+
+  - name: svuzp2q[_{type}]
+    attr: [*sve-unstable]
+    doc: Concatenate odd quadwords from two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [uzp2]
+    compose:
+      - LLVMLink: { name: "uzp2q.{sve_type}" }
+
+  - name: svtrn1[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave even elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [trn1]
+    compose:
+      - LLVMLink: { name: "trn1.{sve_type}" }
+
+  - name: svtrn1_{type}
+    attr: [*sve-unstable]
+    doc: Interleave even elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [trn1]
+    compose:
+      - LLVMLink: { name: "trn1.{sve_type}" }
+
+  - name: svtrn1q[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave even quadwords from two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [trn1]
+    compose:
+      - LLVMLink: { name: "trn1q.{sve_type}" }
+
+  - name: svtrn2[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave odd elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [trn2]
+    compose:
+      - LLVMLink: { name: "trn2.{sve_type}" }
+
+  - name: svtrn2_{type}
+    attr: [*sve-unstable]
+    doc: Interleave odd elements from two inputs
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [trn2]
+    compose:
+      - LLVMLink: { name: "trn2.{sve_type}" }
+
+  - name: svtrn2q[_{type}]
+    attr: [*sve-unstable]
+    doc: Interleave odd quadwords from two inputs
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [trn2]
+    compose:
+      - LLVMLink: { name: "trn2q.{sve_type}" }
+
+  - name: svrev[_{type}]
+    attr: [*sve-unstable]
+    doc: Reverse all elements
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [rev]
+    compose:
+      - LLVMLink: { name: "rev.{sve_type}" }
+
+  - name: svrev_{type}
+    attr: [*sve-unstable]
+    doc: Reverse all elements
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [rev]
+    compose:
+      - LLVMLink: { name: "rev.{sve_type}" }
+
+  - name: svrevb[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reverse bytes within elements
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i16, i32, i64, u16, u32, u64]
+    zeroing_method: { drop: "inactive" }
+    assert_instr: [revb]
+    compose:
+      - LLVMLink: { name: "revb.{sve_type}" }
+
+  - name: svrevh[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reverse halfwords within elements
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i32, i64, u32, u64]
+    zeroing_method: { drop: "inactive" }
+    assert_instr: [revh]
+    compose:
+      - LLVMLink: { name: "revh.{sve_type}" }
+
+  - name: svrevw[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reverse words within elements
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i64, u64]
+    zeroing_method: { drop: "inactive" }
+    assert_instr: [revw]
+    compose:
+      - LLVMLink: { name: "revw.{sve_type}" }
+
+  - name: svrbit[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reverse bits
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { drop: "inactive" }
+    assert_instr: [rbit]
+    compose:
+      - LLVMLink: { name: "rbit.{sve_type}" }
+
+  - name: svext[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract vector from pair of vectors
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, sve_max_elems_type: "{type}" }]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [[ext, "IMM3 = 1"]]
+    compose:
+      - LLVMLink:
+          name: ext.{sve_type}
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svsplice[_{type}]
+    attr: [*sve-unstable]
+    doc: Splice two vectors under predicate control
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [splice]
+    compose:
+      - LLVMLink: { name: "splice.{sve_type}" }
+
+  - name: svinsr[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Insert scalar in shifted vector
+    arguments: ["op1: {sve_type}", "op2: {type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [insr]
+    compose:
+      - LLVMLink: { name: "insr.{sve_type}" }
+
+  - name: svld1[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld1.{sve_type}" }
+
+  - name: svld1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svld1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld1_gather_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ld1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.index.{sve_type[1]}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.index.{sve_type[1]}"
+
+  - name: svld1_gather_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ld1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.{sve_type[1]}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.{sve_type[1]}"
+
+  - name: svld1_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ld1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ld1.gather.scalar.offset.{sve_type[1]}.{sve_type[0]}"
+
+  - name: svld1_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ld1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svld1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svld1_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ld1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svld1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[0]}"]]
+
+  - name: svld1s{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [i32, u32], i16]
+      - [[i64, u64], [i64, u64], [i16, i32]]
+    assert_instr: ["ld1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+
+  - name: svld1u{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [u32, i32], u16]
+      - [[i64, u64], [u64, i64], [u16, u32]]
+    assert_instr: ["ld1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svld1s{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [i32, u32], [i8, i16]]
+      - [[i64, u64], [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ld1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+
+  - name: svld1u{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [u32, i32], [u8, u16]]
+      - [[i64, u64], [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ld1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ld1.gather.{type_kind[0].su}xtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ld1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svld1s{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ld1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ld1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+
+  - name: svld1u{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [u32, i32], [u8, u16]]
+      - [u64, [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ld1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ld1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svld1s{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ld1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svld1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svld1u{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [u8, u16]]
+      - [u64, [i64, u64], [u8, u16, u32]]
+    assert_instr: ["ld1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svld1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svld1s{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], i16]
+      - [u64, [i64, u64], [i16, i32]]
+    assert_instr: ["ld1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svld1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svld1u{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], u16]
+      - [u64, [i64, u64], [u16, u32]]
+    assert_instr: ["ld1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svld1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svldnt1[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldnt1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ldnt1.{sve_type}" }
+
+  - name: svldnt1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldnt1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svldnt1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld1s{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ld1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ld1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+
+  - name: svld1u{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ld1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ld1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+          - [Type: "{sve_type[0] as {type[1]}}", _]
+
+  - name: svld1s{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ld1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svld1s{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld1u{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ld1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svld1u{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld2[_{type}]
+    attr: [*sve-unstable]
+    doc: Load two-element tuples into two vectors
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type_x2}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld2{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld2.sret.{sve_type}" }
+
+  - name: svld2_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Load two-element tuples into two vectors
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type_x2}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld2{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svld2_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld3[_{type}]
+    attr: [*sve-unstable]
+    doc: Load three-element tuples into three vectors
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type_x3}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld3{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld3.sret.{sve_type}" }
+
+  - name: svld3_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Load three-element tuples into three vectors
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type_x3}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld3{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svld3_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld4[_{type}]
+    attr: [*sve-unstable]
+    doc: Load four-element tuples into four vectors
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type_x4}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld4{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld4.sret.{sve_type}" }
+
+  - name: svld4_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Load four-element tuples into four vectors
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type_x4}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld4{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svld4_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svld1rq[_{type}]
+    attr: [*sve-unstable]
+    doc: Load and replicate 128 bits of data
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld1rq{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld1rq.{sve_type}" }
+
+  - name: svld1ro[_{type}]
+    attr: [*sve-unstable]
+    doc: Load and replicate 256 bits of data
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    target_features: [f64mm]
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ld1ro{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ld1ro.{sve_type}" }
+
+  - name: svldnf1[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldnf1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ldnf1.{sve_type}" }
+
+  - name: svldnf1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldnf1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svldnf1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldnf1s{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ldnf1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldnf1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+
+  - name: svldnf1u{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ldnf1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldnf1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+          - [Type: "{sve_type[0] as {type[1]}}", _]
+
+  - name: svldnf1s{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ldnf1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldnf1s{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldnf1u{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend, non-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_non_faulting
+        - dereference: predicated_non_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ldnf1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldnf1u{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldff1[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate}", "base: *{type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldff1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink: { name: "ldff1.{sve_type}" }
+
+  - name: svldff1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate}", "base: *{type}", "vnum: i64"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["ldff1{size_literal}"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svldff1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldff1s{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ldff1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldff1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+
+  - name: svldff1u{size_literal[1]}_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ldff1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldff1.{sve_type[0] as {type[1]}}"
+          arguments: ["pg: {predicate[0]}", "base: *{type[1]}"]
+          return_type: "{sve_type[0] as {type[1]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base]]
+          - [Type: "{sve_type[0] as {type[1]}}", _]
+
+  - name: svldff1s{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], i8]
+      - [[i32, i64, u32, u64], i16]
+      - [[i64, u64], i32]
+    assert_instr: ["ldff1s{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldff1s{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldff1u{size_literal[1]}_vnum_{type[0]}
+    attr: [*sve-unstable]
+    doc: Load {size[1]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments: ["pg: {predicate[0]}", "base: *{type[1]}", "vnum: i64"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i16, i32, i64, u16, u32, u64], u8]
+      - [[i32, i64, u32, u64], u16]
+      - [[i64, u64], u32]
+    assert_instr: ["ldff1{size_literal[1]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldff1u{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+
+  - name: svldff1_gather_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ldff1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.index.{sve_type[1]}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.index.{sve_type[1]}"
+
+  - name: svldff1_gather_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ldff1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.{sve_type[1]}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.{sve_type[1]}"
+
+  - name: svldff1_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldff1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldff1.gather.scalar.offset.{sve_type[1]}.{sve_type[0]}"
+
+  - name: svldff1_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldff1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldff1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldff1_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldff1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldff1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[0]}"]]
+
+  - name: svldff1s{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [i32, u32], i16]
+      - [[i64, u64], [i64, u64], [i16, i32]]
+    assert_instr: ["ldff1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+
+  - name: svldff1u{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [u32, i32], u16]
+      - [[i64, u64], [u64, i64], [u16, u32]]
+    assert_instr: ["ldff1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.index.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldff1s{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [i32, u32], [i8, i16]]
+      - [[i64, u64], [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldff1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+
+  - name: svldff1u{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i32, u32], [u32, i32], [u8, u16]]
+      - [[i64, u64], [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ldff1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldff1.gather.{type_kind[0].su}xtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldff1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldff1s{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldff1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldff1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+
+  - name: svldff1u{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [u32, i32], [u8, u16]]
+      - [u64, [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ldff1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldff1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - crate::intrinsics::simd::simd_cast
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldff1s{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    doc: Load {size[2]}-bit data and sign-extend, first-faulting
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldff1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldff1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldff1u{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [u8, u16]]
+      - [u64, [i64, u64], [u8, u16, u32]]
+    assert_instr: ["ldff1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldff1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldff1s{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], i16]
+      - [u64, [i64, u64], [i16, i32]]
+    assert_instr: ["ldff1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldff1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svldff1u{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, first-faulting
+    safety:
+      unsafe:
+        - pointer_offset: predicated_first_faulting
+        - dereference: predicated_first_faulting
+        - unpredictable_on_fault
+        - no_provenance: bases
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], u16]
+      - [u64, [i64, u64], [u16, u32]]
+    assert_instr: ["ldff1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldff1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svrdffr_z
+    attr: [*sve-unstable]
+    doc: Read FFR, returning predicate of succesfully loaded elements
+    arguments: ["pg: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [rdffr]
+    compose:
+      - LLVMLink: { name: "rdffr.z" }
+
+  - name: svrdffr
+    attr: [*sve-unstable]
+    doc: Read FFR, returning predicate of succesfully loaded elements
+    arguments: []
+    return_type: svbool_t
+    assert_instr: [rdffr]
+    compose:
+      - FnCall: [svrdffr_z, [FnCall: [svptrue_b8, []]]]
+
+  - name: svsetffr
+    attr: [*sve-unstable]
+    doc: Initialize the first-fault register to all-true
+    arguments: []
+    assert_instr: [setffr]
+    compose:
+      - LLVMLink: { name: "setffr" }
+
+  - name: svwrffr
+    attr: [*sve-unstable]
+    doc: Write to the first-fault register
+    arguments: ["op: svbool_t"]
+    assert_instr: [wrffr]
+    compose:
+      - LLVMLink: { name: "wrffr" }
+
+  - name: svqinc{size_literal[1]}[_n_{type[0]}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type[1]}"
+        default: word
+        byte: byte
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating increment by number of {textual_size} elements
+    arguments: ["op: {type[0]}"]
+    static_defs: ["const IMM_FACTOR: i32"]
+    return_type: "{type[0]}"
+    types:
+      - [[i32, i64, u32, u64], [i8, i16, i32, i64]]
+    assert_instr:
+      - ["{type_kind[0].su}qinc{size_literal[1]}", "IMM_FACTOR = 1"]
+    compose:
+      - FnCall:
+          - "svqinc{size_literal[1]}_pat_n_{type[0]}"
+          - [$op]
+          - ["{{svpattern::SV_ALL}}", $IMM_FACTOR]
+
+  - name: svqinc{size_literal[1]}_pat[_n_{type[0]}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type[1]}"
+        default: word
+        byte: byte
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating increment by number of {textual_size} elements
+    arguments: ["op: {type[0]}"]
+    static_defs: ["const PATTERN: svpattern", "const IMM_FACTOR: i32"]
+    constraints: [{ variable: IMM_FACTOR, range: [1, 16] }]
+    return_type: "{type[0]}"
+    types:
+      - [[i32, i64, u32, u64], [i8, i16, i32, i64]]
+    assert_instr:
+      - - "{type_kind[0].su}qinc{size_literal[1]}"
+        - "PATTERN = {{svpattern::SV_ALL}}, IMM_FACTOR = 1"
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qinc{size_literal[1]}.n{size[0]}"
+          arguments: ["op: {type[0]}", "pattern: svpattern", "imm_factor: i32"]
+          return_type: "{type[0]}"
+      - FnCall: ["{llvm_link}", [$op, $PATTERN, $IMM_FACTOR]]
+
+  - name: svqinc{size_literal}[_{type}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: word
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating increment by number of {textual_size} elements
+    arguments: ["op: {sve_type}"]
+    static_defs: ["const IMM_FACTOR: i32"]
+    return_type: "{sve_type}"
+    types: [i16, u16, i32, u32, i64, u64]
+    assert_instr: [["{type_kind.su}qinc{size_literal}", "IMM_FACTOR = 1"]]
+    compose:
+      - FnCall:
+          - "svqinc{size_literal}_pat_{type}"
+          - [$op]
+          - ["{{svpattern::SV_ALL}}", $IMM_FACTOR]
+
+  - name: svqinc{size_literal}_pat[_{type}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: word
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating increment by number of {textual_size} elements
+    arguments: ["op: {sve_type}"]
+    static_defs: ["const PATTERN: svpattern", "const IMM_FACTOR: i32"]
+    constraints: [{ variable: IMM_FACTOR, range: [1, 16] }]
+    return_type: "{sve_type}"
+    types: [i16, u16, i32, u32, i64, u64]
+    assert_instr:
+      - - "{type_kind.su}qinc{size_literal}"
+        - "PATTERN = {{svpattern::SV_ALL}}, IMM_FACTOR = 1"
+    compose:
+      - LLVMLink:
+          name: "{type_kind.su}qinc{size_literal}.{sve_type}"
+          arguments: ["op: {sve_type}", "pattern: svpattern", "imm_factor: i32"]
+          return_type: "{sve_type}"
+      - FnCall: ["{llvm_link}", [$op, $PATTERN, $IMM_FACTOR]]
+
+  - name: svqdec{size_literal[1]}[_n_{type[0]}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type[1]}"
+        default: word
+        byte: byte
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating decrement by number of {textual_size} elements
+    arguments: ["op: {type[0]}"]
+    static_defs: ["const IMM_FACTOR: i32"]
+    return_type: "{type[0]}"
+    types:
+      - [[i32, i64, u32, u64], [i8, i16, i32, i64]]
+    assert_instr:
+      - ["{type_kind[0].su}qdec{size_literal[1]}", "IMM_FACTOR = 1"]
+    compose:
+      - FnCall:
+          - "svqdec{size_literal[1]}_pat_n_{type[0]}"
+          - [$op]
+          - ["{{svpattern::SV_ALL}}", $IMM_FACTOR]
+
+  - name: svqdec{size_literal[1]}_pat[_n_{type[0]}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type[1]}"
+        default: word
+        byte: byte
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating decrement by number of {textual_size} elements
+    arguments: ["op: {type[0]}"]
+    static_defs: ["const PATTERN: svpattern", "const IMM_FACTOR: i32"]
+    constraints: [{ variable: IMM_FACTOR, range: [1, 16] }]
+    return_type: "{type[0]}"
+    types:
+      - [[i32, i64, u32, u64], [i8, i16, i32, i64]]
+    assert_instr:
+      - - "{type_kind[0].su}qdec{size_literal[1]}"
+        - "PATTERN = {{svpattern::SV_ALL}}, IMM_FACTOR = 1"
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qdec{size_literal[1]}.n{size[0]}"
+          arguments: ["op: {type[0]}", "pattern: svpattern", "imm_factor: i32"]
+          return_type: "{type[0]}"
+      - FnCall: ["{llvm_link}", [$op, $PATTERN, $IMM_FACTOR]]
+
+  - name: svqdec{size_literal}[_{type}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: word
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating decrement by number of {textual_size} elements
+    arguments: ["op: {sve_type}"]
+    static_defs: ["const IMM_FACTOR: i32"]
+    return_type: "{sve_type}"
+    types: [i16, u16, i32, u32, i64, u64]
+    assert_instr: [["{type_kind.su}qdec{size_literal}", "IMM_FACTOR = 1"]]
+    compose:
+      - FnCall:
+          - "svqdec{size_literal}_pat_{type}"
+          - [$op]
+          - ["{{svpattern::SV_ALL}}", $IMM_FACTOR]
+
+  - name: svqdec{size_literal}_pat[_{type}]
+    attr: [*sve-unstable]
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: word
+        halfword: halfword
+        doubleword: doubleword
+    doc: Saturating decrement by number of {textual_size} elements
+    arguments: ["op: {sve_type}"]
+    static_defs: ["const PATTERN: svpattern", "const IMM_FACTOR: i32"]
+    constraints: [{ variable: IMM_FACTOR, range: [1, 16] }]
+    return_type: "{sve_type}"
+    types: [i16, u16, i32, u32, i64, u64]
+    assert_instr:
+      - - "{type_kind.su}qdec{size_literal}"
+        - "PATTERN = {{svpattern::SV_ALL}}, IMM_FACTOR = 1"
+    compose:
+      - LLVMLink:
+          name: "{type_kind.su}qdec{size_literal}.{sve_type}"
+          arguments: ["op: {sve_type}", "pattern: svpattern", "imm_factor: i32"]
+          return_type: "{sve_type}"
+      - FnCall: ["{llvm_link}", [$op, $PATTERN, $IMM_FACTOR]]
+
+  - name: svst1[_{type}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *mut {type}", "data: {sve_type}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st1{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - LLVMLink:
+          name: "st1.{sve_type}"
+          arguments:
+            - "data: {sve_type}"
+            - "pg: {predicate}"
+            - "ptr: *mut {type}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base]]
+
+  - name: svst1_scatter_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[1]}"
+      - "indices: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["st1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "st1.scatter.{type_kind[0].su}xtw.index.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "indices: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "st1.scatter.index.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "indices: {sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base, $indices]]
+
+  - name: svst1_scatter_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[1]}"
+      - "offsets: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i32, u32], [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["st1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "st1.scatter.{type_kind[0].su}xtw.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "offsets: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "st1.scatter.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "offsets: {sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base, $offsets]]
+
+  - name: svst1_scatter[_{type[0]}base]_offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "offset: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["st1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - LLVMLink:
+          arguments:
+            - "data: {sve_type[1]}"
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "offset: i64"
+          name: "st1.scatter.scalar.offset.{sve_type[1]}.{sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $bases, $offset]]
+
+  - name: svst1_scatter[_{type[0]}base_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      ["pg: {predicate[0]}", "bases: {sve_type[0]}", "data: {sve_type[1]}"]
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["st1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - FnCall:
+          - "svst1_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+            - $data
+
+  - name: svst1_scatter[_{type[0]}base]_index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "index: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["st1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - FnCall:
+          - "svst1_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[0]}"]]
+            - $data
+
+  - name: svst1{size_literal[2]}_scatter_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[2]}"
+      - "indices: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i32, u32], i32, i16]
+      - [[i32, u32], u32, u16]
+      - [[i64, u64], i64, [i16, i32]]
+      - [[i64, u64], u64, [u16, u32]]
+    assert_instr: ["st1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "st1.scatter.{type_kind[0].su}xtw.index.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "indices: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "st1.scatter.index.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "indices: {sve_type[0]}"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $base, $indices]
+
+  - name: svst1{size_literal[2]}_scatter_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[2]}"
+      - "offsets: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i32, u32], i32, [i8, i16]]
+      - [[i32, u32], u32, [u8, u16]]
+      - [[i64, u64], i64, [i8, i16, i32]]
+      - [[i64, u64], u64, [u8, u16, u32]]
+    assert_instr: ["st1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "st1.scatter.{type_kind[0].su}xtw.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "offsets: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "st1.scatter.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "offsets: {sve_type[0]}"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $base, $offsets]
+
+  - name: svst1{size_literal[2]}_scatter[_{type[0]}base]_offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "offset: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["st1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - LLVMLink:
+          name: "st1.scatter.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          arguments:
+            - "data: {sve_type[1] as {type[2]}}"
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "offset: i64"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $bases, $offset]
+
+  - name: svst1{size_literal[2]}_scatter[_{type[0]}base_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      ["pg: {predicate[0]}", "bases: {sve_type[0]}", "data: {sve_type[1]}"]
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["st1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - FnCall:
+          - "svst1{size_literal[2]}_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+            - $data
+
+  - name: svst1{size_literal[2]}_scatter[_{type[0]}base]_index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "index: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [i32, u32], i16]
+      - [u64, [i64, u64], [i16, i32]]
+    assert_instr: ["st1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - FnCall:
+          - "svst1{size_literal[2]}_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+            - $data
+
+  - name: svstnt1[_{type}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments: ["pg: {predicate}", "base: *mut {type}", "data: {sve_type}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["stnt1{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - LLVMLink:
+          name: "stnt1.{sve_type}"
+          arguments:
+            - "data: {sve_type}"
+            - "pg: {predicate}"
+            - "ptr: *mut {type}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base]]
+
+  - name: svstnt1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate}", "base: *mut {type}", "vnum: i64", "data: {sve_type}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["stnt1{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - FnCall:
+          - "svstnt1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svst1{size_literal[1]}[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[1]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate[0]}", "base: *mut {type[1]}", "data: {sve_type[0]}"]
+    types:
+      - [[i16, i32, i64], i8]
+      - [[u16, u32, u64], u8]
+      - [[i32, i64], i16]
+      - [[u32, u64], u16]
+      - [i64, i32]
+      - [u64, u32]
+    assert_instr: ["st1{size_literal[1]}"]
+    test: { store: 1 }
+    compose:
+      - LLVMLink:
+          name: "st1.{sve_type[0] as {type[1]}}"
+          arguments:
+            - "data: {sve_type[0] as {type[1]}}"
+            - "pg: {predicate[0]}"
+            - "ptr: *mut {type[1]}"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $base]
+
+  - name: svst1{size_literal[1]}_vnum[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[1]} bits and store
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[1]}"
+      - "vnum: i64"
+      - "data: {sve_type[0]}"
+    types:
+      - [[i16, i32, i64], i8]
+      - [[u16, u32, u64], u8]
+      - [[i32, i64], i16]
+      - [[u32, u64], u16]
+      - [i64, i32]
+      - [u64, u32]
+    assert_instr: ["st1{size_literal[1]}"]
+    test: { store: 1 }
+    compose:
+      - FnCall:
+          - "svst1{size_literal[1]}_{type[0]}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs:
+                          [{ FnCall: ["svcnt{size_literal[0]}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svst1_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      ["pg: {predicate}", "base: *mut {type}", "vnum: i64", "data: {sve_type}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st1{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - FnCall:
+          - "svst1_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svst2[_{type}]
+    attr: [*sve-unstable]
+    doc: Store two vectors into two-element tuples
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *mut {type}", "data: {sve_type_x2}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st2{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - LLVMLink:
+          name: "st2.{sve_type}"
+          arguments:
+            - "data0: {sve_type}"
+            - "data1: {sve_type}"
+            - "pg: {predicate}"
+            - "ptr: *mut {type}"
+      - FnCall:
+          - "{llvm_link}"
+          - - FnCall: ["svget2_{type}", ["$data"], [0]]
+            - FnCall: ["svget2_{type}", ["$data"], [1]]
+            - "$pg"
+            - "$base"
+
+  - name: svst2_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Store two vectors into two-element tuples
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate}"
+      - "base: *mut {type}"
+      - "vnum: i64"
+      - "data: {sve_type_x2}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st2{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - FnCall:
+          - "svst2_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svst3[_{type}]
+    attr: [*sve-unstable]
+    doc: Store three vectors into three-element tuples
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *mut {type}", "data: {sve_type_x3}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st3{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - LLVMLink:
+          name: "st3.{sve_type}"
+          arguments:
+            - "data0: {sve_type}"
+            - "data1: {sve_type}"
+            - "data2: {sve_type}"
+            - "pg: {predicate}"
+            - "ptr: *mut {type}"
+      - FnCall:
+          - "{llvm_link}"
+          - - FnCall: ["svget3_{type}", ["$data"], [0]]
+            - FnCall: ["svget3_{type}", ["$data"], [1]]
+            - FnCall: ["svget3_{type}", ["$data"], [2]]
+            - "$pg"
+            - "$base"
+
+  - name: svst3_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Store three vectors into three-element tuples
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate}"
+      - "base: *mut {type}"
+      - "vnum: i64"
+      - "data: {sve_type_x3}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st3{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - FnCall:
+          - "svst3_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svst4[_{type}]
+    attr: [*sve-unstable]
+    doc: Store four vectors into four-element tuples
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+    arguments: ["pg: {predicate}", "base: *mut {type}", "data: {sve_type_x4}"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st4{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - LLVMLink:
+          name: "st4.{sve_type}"
+          arguments:
+            - "data0: {sve_type}"
+            - "data1: {sve_type}"
+            - "data2: {sve_type}"
+            - "data3: {sve_type}"
+            - "pg: {predicate}"
+            - "ptr: *mut {type}"
+      - FnCall:
+          - "{llvm_link}"
+          - - FnCall: ["svget4_{type}", ["$data"], [0]]
+            - FnCall: ["svget4_{type}", ["$data"], [1]]
+            - FnCall: ["svget4_{type}", ["$data"], [2]]
+            - FnCall: ["svget4_{type}", ["$data"], [3]]
+            - "$pg"
+            - "$base"
+
+  - name: svst4_vnum[_{type}]
+    attr: [*sve-unstable]
+    doc: Store four vectors into four-element tuples
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+        - dereference: predicated
+    arguments:
+      - "pg: {predicate}"
+      - "base: *mut {type}"
+      - "vnum: i64"
+      - "data: {sve_type_x4}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["st4{size_literal}"]
+    test: { store: 0 }
+    compose:
+      - FnCall:
+          - "svst4_{type}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+            - $data
+
+  - name: svtbl[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Table lookup in single-vector table
+    arguments: ["data: {sve_type[0]}", "indices: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    assert_instr: [tbl]
+    types:
+      - [f32, u32]
+      - [f64, u64]
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    compose:
+      - LLVMLink: { name: "tbl.{sve_type[0]}" }
+
+  - name: svwhilele_{type[1]}[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: While incrementing scalar is less than or equal to
+    arguments: ["op1: {type[0]}", "op2: {type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: [{ default: whilele, unsigned: whilels }]
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default: { LLVMLink: { name: "whilele.{sve_type[1]}.{type[0]}" } }
+            unsigned: { LLVMLink: { name: "whilels.{sve_type[1]}.{type[0]}" } }
+
+  - name: svwhilelt_{type[1]}[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: While incrementing scalar is less than
+    arguments: ["op1: {type[0]}", "op2: {type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: [{ default: whilelt, unsigned: whilelo }]
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default: { LLVMLink: { name: "whilelt.{sve_type[1]}.{type[0]}" } }
+            unsigned: { LLVMLink: { name: "whilelo.{sve_type[1]}.{type[0]}" } }
+
+  - name: svmax[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Maximum
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64, f32, f64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind}max"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}max.{sve_type}" }
+
+  - name: svmaxnm[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Maximum number
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    assert_instr: [fmaxnm]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}maxnm.{sve_type}" }
+
+  - name: svpfalse[_b]
+    attr: [*sve-unstable]
+    doc: Set all predicate elements to false
+    arguments: []
+    return_type: "svbool_t"
+    assert_instr: [pfalse]
+    compose:
+      - FnCall:
+          - "svdupq_n_b8"
+          - - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+            - false
+
+  - name: svptrue_pat_{type}
+    attr: [*sve-unstable]
+    doc: Set predicate elements to true
+    arguments: []
+    static_defs: ["const PATTERN: svpattern"]
+    return_type: "{predicate}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [[ptrue, "PATTERN = {{svpattern::SV_ALL}}"]]
+    compose:
+      - LLVMLink:
+          name: ptrue.{sve_type}
+          arguments: ["pattern: svpattern"]
+      - FnCall: ["{llvm_link}", [$PATTERN]]
+
+  - name: svptrue_{type}
+    attr: [*sve-unstable]
+    doc: Set predicate elements to true
+    arguments: []
+    return_type: "svbool_t"
+    types: [b8, b16, b32, b64]
+    assert_instr: [ptrue]
+    compose:
+      - FnCall: ["svptrue_pat_{type}", [], ["{{svpattern::SV_ALL}}"]]
+
+  - name: svptest_any
+    attr: [*sve-unstable]
+    doc: Test whether any active element is true
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "bool"
+    assert_instr: [ptest]
+    compose:
+      - LLVMLink: { name: "ptest.any.nxv16i1" }
+
+  - name: svptest_first
+    attr: [*sve-unstable]
+    doc: Test whether first active element is true
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "bool"
+    assert_instr: [ptest]
+    compose:
+      - LLVMLink: { name: "ptest.first.nxv16i1" }
+
+  - name: svptest_last
+    attr: [*sve-unstable]
+    doc: Test whether last active element is true
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "bool"
+    assert_instr: [ptest]
+    compose:
+      - LLVMLink: { name: "ptest.last.nxv16i1" }
+
+  - name: svpfirst[_b]
+    attr: [*sve-unstable]
+    doc: Set the first active predicate element to true
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [pfirst]
+    compose:
+      - LLVMLink: { name: "pfirst.nxv16i1" }
+
+  - name: svpnext_{type}
+    attr: [*sve-unstable]
+    doc: Find next active predicate
+    arguments: ["pg: {predicate}", "op: {predicate}"]
+    return_type: "{predicate}"
+    types: [b8, b16, b32, b64]
+    assert_instr: [pnext]
+    compose:
+      - LLVMLink: { name: "pnext.{sve_type}" }
+
+  - name: svbrkn[_b]_z
+    attr: [*sve-unstable]
+    doc: Propagate break to next partition
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brkn]
+    compose:
+      - LLVMLink: { name: "brkn.z.nxv16i1" }
+
+  - name: svbrkb[_b]_z
+    attr: [*sve-unstable]
+    doc: Break before first true condition
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brkb]
+    compose:
+      - LLVMLink: { name: "brkb.z.nxv16i1" }
+
+  - name: svbrkb[_b]_m
+    attr: [*sve-unstable]
+    doc: Break before first true condition
+    arguments: ["inactive: svbool_t", "pg: svbool_t", "op: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brkb]
+    compose:
+      - LLVMLink: { name: "brkb.nxv16i1" }
+
+  - name: svbrkpb[_b]_z
+    attr: [*sve-unstable]
+    doc: Break before first true condition, propagating from previous partition
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brkpb]
+    compose:
+      - LLVMLink: { name: "brkpb.z.nxv16i1" }
+
+  - name: svbrka[_b]_z
+    attr: [*sve-unstable]
+    doc: Break after first true condition
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brka]
+    compose:
+      - LLVMLink: { name: "brka.z.nxv16i1" }
+
+  - name: svbrka[_b]_m
+    attr: [*sve-unstable]
+    doc: Break after first true condition
+    arguments: ["inactive: svbool_t", "pg: svbool_t", "op: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brka]
+    compose:
+      - LLVMLink: { name: "brka.nxv16i1" }
+
+  - name: svbrkpa[_b]_z
+    attr: [*sve-unstable]
+    doc: Break after first true condition, propagating from previous partition
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [brkpa]
+    compose:
+      - LLVMLink: { name: "brkpa.z.nxv16i1" }
+
+  - name: svsel[_b]
+    attr: [*sve-unstable]
+    doc: Conditionally select elements
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: "svbool_t"
+    assert_instr: [sel]
+    compose:
+      - FnCall: ["simd_select", [$pg, $op1, $op2]]
+
+  - name: svsel[_{type}]
+    attr: [*sve-unstable]
+    doc: Conditionally select elements
+    arguments: ["pg: svbool_t", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [sel]
+    compose:
+      - FnCall:
+          - "simd_select"
+          - - MatchSize:
+                - "{type}"
+                - { default: { MethodCall: [$pg, sve_into, []] }, byte: $pg }
+            - $op1
+            - $op2
+          - - MatchSize:
+                - "{type}"
+                - byte: svbool_t
+                  halfword: svbool8_t
+                  default: svbool4_t
+                  doubleword: svbool2_t
+            - _
+
+  - name: svsub[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Subtract
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64, f32, f64]
+    assert_instr: ["{type_kind.f}sub"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}sub.{sve_type}" }
+
+  - name: svsubr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Subtract reversed
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64, f32, f64]
+    assert_instr: ["{type_kind.f}subr"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}subr.{sve_type}" }
+
+  - name: svcntp_{predicate}
+    attr: [*sve-unstable]
+    doc: Count set predicate bits
+    arguments: ["pg: {predicate}", "op: {predicate}"]
+    types: [b8, b16, b32, b64]
+    return_type: u64
+    assert_instr: [cntp]
+    compose:
+      - LLVMLink: { name: "cntp.{predicate}" }
+
+  - name: svcompact[_{type}]
+    attr: [*sve-unstable]
+    doc: Shuffle active elements of vector to the right and fill with zero
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i32, i64, u32, u64]
+    assert_instr: [compact]
+    compose:
+      - LLVMLink: { name: "compact.{sve_type}" }
+
+  - name: svlasta[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract element after last
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [lasta]
+    compose:
+      - LLVMLink: { name: "lasta.{sve_type}" }
+
+  - name: svclasta[_{type}]
+    attr: [*sve-unstable]
+    doc: Conditionally extract element after last
+    arguments: ["pg: {predicate}", "fallback: {sve_type}", "data: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [clasta]
+    compose:
+      - LLVMLink: { name: "clasta.{sve_type}" }
+
+  - name: svclasta[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Conditionally extract element after last
+    arguments: ["pg: {predicate}", "fallback: {type}", "data: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [clasta]
+    compose:
+      - LLVMLink: { name: "clasta.n.{sve_type}" }
+
+  - name: svlastb[_{type}]
+    attr: [*sve-unstable]
+    doc: Extract last element
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [lastb]
+    compose:
+      - LLVMLink: { name: "lastb.{sve_type}" }
+
+  - name: svclastb[_{type}]
+    attr: [*sve-unstable]
+    doc: Conditionally extract last element
+    arguments: ["pg: {predicate}", "fallback: {sve_type}", "data: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [clastb]
+    compose:
+      - LLVMLink: { name: "clastb.{sve_type}" }
+
+  - name: svclastb[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Conditionally extract last element
+    arguments: ["pg: {predicate}", "fallback: {type}", "data: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [clastb]
+    compose:
+      - LLVMLink: { name: "clastb.n.{sve_type}" }
+
+  - name: svqdecp[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating decrement by active element count
+    arguments: ["op: {sve_type}", "pg: {predicate}"]
+    return_type: "{sve_type}"
+    types: [i16, i32, i64, u16, u32, u64]
+    assert_instr: ["{type_kind.su}qdecp"]
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qdecp.{sve_type}" }
+
+  - name: svqdecp[_n_{type[0]}]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Saturating decrement by active element count
+    arguments: ["op: {type[0]}", "pg: {sve_type[1]}"]
+    return_type: "{type[0]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: ["{type_kind[0].su}qdecp"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qdecp.n{size[0]}.{sve_type[1]}" }
+
+  - name: svqincp[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating increment by active element count
+    arguments: ["op: {sve_type}", "pg: {predicate}"]
+    return_type: "{sve_type}"
+    types: [i16, i32, i64, u16, u32, u64]
+    assert_instr: ["{type_kind.su}qincp"]
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qincp.{sve_type}" }
+
+  - name: svqincp[_n_{type[0]}]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Saturating increment by active element count
+    arguments: ["op: {type[0]}", "pg: {sve_type[1]}"]
+    return_type: "{type[0]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: ["{type_kind[0].su}qincp"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qincp.n{size[0]}.{sve_type[1]}" }
+
+  - name: svtmad[_{type}]
+    attr: [*sve-unstable]
+    doc: Trigonometric multiply-add coefficient
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: [0, 7] }]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [[ftmad, "IMM3 = 0"]]
+    compose:
+      - LLVMLink:
+          name: "ftmad.x.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall:
+          - "{llvm_link}"
+          - [op1, op2, IMM3]
+
+  - name: svtsmul[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Trigonometric starting value
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+    assert_instr: [ftsmul]
+    compose:
+      - LLVMLink:
+          name: "ftsmul.x.{sve_type[0]}"
+
+  - name: svtssel[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Trigonometric select coefficient
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+    assert_instr: [ftssel]
+    compose:
+      - LLVMLink:
+          name: "ftssel.x.{sve_type[0]}"
+
+  - name: svprf{size_literal}
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: words
+        byte: bytes
+        halfword: halfwords
+        doubleword: doublewords
+    doc: Prefetch {textual_size}
+    arguments: ["pg: {predicate}", "base: *T"]
+    static_defs: ["const OP: svprfop", T]
+    types: [b8, b16, b32, b64]
+    assert_instr:
+      - ["prf{size_literal}", "OP = {{svprfop::SV_PLDL1KEEP}}, T = i64"]
+    test: { load: 0 }
+    compose:
+      - LLVMLink:
+          name: "prf.{sve_type}"
+          arguments:
+            ["pg: {predicate}", "base: *crate::ffi::c_void", "op: svprfop"]
+      - FnCall:
+          - "{llvm_link}"
+          - - $pg
+            - CastAs: [$base, "*const crate::ffi::c_void"]
+            - $OP
+
+  - name: svprf{size_literal}_vnum
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset_vnum: predicated
+    substitutions:
+      textual_size:
+        match_size: "{type}"
+        default: words
+        byte: bytes
+        halfword: halfwords
+        doubleword: doublewords
+    doc: Prefetch {textual_size}
+    arguments: ["pg: {predicate}", "base: *T", "vnum: i64"]
+    static_defs: ["const OP: svprfop", T]
+    types: [b8, b16, b32, b64]
+    assert_instr:
+      - ["prf{size_literal}", "OP = {{svprfop::SV_PLDL1KEEP}}, T = i64"]
+    test: { load: 0 }
+    compose:
+      - FnCall:
+          - "svprf{size_literal}"
+          - - $pg
+            - MethodCall:
+                - $base
+                - offset
+                - - Multiply:
+                      - CastAs: [{ FnCall: ["svcnt{size_literal}", []] }, isize]
+                      - CastAs: [$vnum, isize]
+          - - $OP
+            - _
+
+  - name: svprf{size_literal[1]}_gather_[{type[0]}]{index_or_offset}
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+    substitutions:
+      index_or_offset:
+        { match_size: "{type[1]}", default: "index", byte: "offset" }
+      indices_or_offsets:
+        { match_size: "{type[1]}", default: "indices", byte: "offsets" }
+      textual_size:
+        match_size: "{type[1]}"
+        default: words
+        byte: bytes
+        halfword: halfwords
+        doubleword: doublewords
+    doc: Prefetch {textual_size}
+    types:
+      - [[i32, u32, i64, u64], [i8, i16, i32, i64]]
+    arguments:
+      ["pg: {predicate[0]}", "base: *T", "{indices_or_offsets}: {sve_type[0]}"]
+    static_defs: ["const OP: svprfop", T]
+    assert_instr:
+      [["prf{size_literal[1]}", "OP = {{svprfop::SV_PLDL1KEEP}}, T = i64"]]
+    test: { load: 0 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "prf{size_literal[1]}.gather.{type_kind[0].su}xtw.index.{sve_type[0]}"
+                arguments:
+                  - "pg: {predicate[0]}"
+                  - "base: *crate::ffi::c_void"
+                  - "{indices_or_offsets}: {sve_type[0]}"
+                  - "op: svprfop"
+            doubleword:
+              LLVMLink:
+                name: "prf{size_literal[1]}.gather.index.{sve_type[0]}"
+                arguments:
+                  - "pg: {predicate[0]}"
+                  - "base: *crate::ffi::c_void"
+                  - "{indices_or_offsets}: {sve_type[0]}"
+                  - "op: svprfop"
+      - FnCall:
+          - "{llvm_link}"
+          - - $pg
+            - CastAs: [$base, "*const crate::ffi::c_void"]
+            - "${indices_or_offsets}"
+            - $OP
+
+  - name: svprf{size_literal[1]}_gather[_{type[0]}base]
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - no_provenance: bases
+    substitutions:
+      textual_size:
+        match_size: "{type[1]}"
+        default: words
+        byte: bytes
+        halfword: halfwords
+        doubleword: doublewords
+    doc: Prefetch {textual_size}
+    types:
+      - [[u32, u64], [i8, i16, i32, i64]]
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    static_defs: ["const OP: svprfop"]
+    assert_instr: [["prf{size_literal[1]}", "OP = {{svprfop::SV_PLDL1KEEP}}"]]
+    test: { load: 0 }
+    compose:
+      - LLVMLink:
+          name: "prf{size_literal[1]}.gather.scalar.offset.{sve_type[0]}"
+          arguments:
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "index: i64"
+            - "op: svprfop"
+      - FnCall: ["{llvm_link}", [$pg, $bases, 0, $OP]]
+
+  - name: svprf{size_literal[1]}_gather[_{type[0]}base]_{index_or_offset}
+    attr: [*sve-unstable]
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - no_provenance: bases
+    substitutions:
+      index_or_offset:
+        { match_size: "{type[1]}", default: "index", byte: "offset" }
+      textual_size:
+        match_size: "{type[1]}"
+        default: words
+        byte: bytes
+        halfword: halfwords
+        doubleword: doublewords
+    doc: Prefetch {textual_size}
+    types:
+      - [[u32, u64], [i8, i16, i32, i64]]
+    arguments:
+      ["pg: {predicate[0]}", "bases: {sve_type[0]}", "{index_or_offset}: i64"]
+    static_defs: ["const OP: svprfop"]
+    assert_instr: [["prfb", "OP = {{svprfop::SV_PLDL1KEEP}}"]]
+    test: { load: 0 }
+    compose:
+      - LLVMLink:
+          name: "prf{size_literal[1]}.gather.scalar.offset.{sve_type[0]}"
+          arguments:
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "{index_or_offset}: i64"
+            - "op: svprfop"
+      - FnCall:
+          - "{llvm_link}"
+          - - $pg
+            - $bases
+            - MatchSize:
+                - "{type[1]}"
+                - byte: $offset
+                  halfword: { MethodCall: [$index, unchecked_shl, [1]] }
+                  default: { MethodCall: [$index, unchecked_shl, [2]] }
+                  doubleword: { MethodCall: [$index, unchecked_shl, [3]] }
+            - $OP
+
+  - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Floating-point convert
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[f32, f64], [i32, u32, i64, u64]]
+    zeroing_method: { drop: inactive }
+    substitutions:
+      convert_from: { match_kind: "{type[1]}", default: s, unsigned: u }
+    assert_instr: ["{convert_from}cvtf"]
+    compose:
+      - LLVMLink:
+          name: "{convert_from}cvtf.{type[0]}{type[1]}"
+
+  - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Floating-point convert
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i32, u32, i64, u64], [f32, f64]]
+    zeroing_method: { drop: inactive }
+    substitutions:
+      convert_to: { match_kind: "{type[0]}", default: s, unsigned: u }
+    assert_instr: ["fcvtz{convert_to}"]
+    compose:
+      - LLVMLink: { name: "fcvtz{convert_to}.{type[0]}{type[1]}" }
+
+  - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Floating-point convert
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, f64], [f64, f32]]
+    zeroing_method: { drop: inactive }
+    assert_instr: [fcvt]
+    compose:
+      - LLVMLink: { name: "fcvt.{type[0]}{type[1]}" }
+
+  - name: svreinterpret_{type[0]}[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Reinterpret vector contents
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    assert_instr: []
+    types:
+      - - [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+        - [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    compose:
+      - FnCall: ["crate::intrinsics::transmute_unchecked", [$op], [], true]
+
+  - name: svrinta[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round to nearest, ties away from zero
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frinta]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frinta.{sve_type}" }
+
+  - name: svrinti[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round using current rounding mode (inexact)
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frinti]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frinti.{sve_type}" }
+
+  - name: svrintm[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round towards -∞
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frintm]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frintm.{sve_type}" }
+
+  - name: svrintn[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round to nearest, ties to even
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frintn]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frintn.{sve_type}" }
+
+  - name: svrintp[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round towards +∞
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frintp]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frintp.{sve_type}" }
+
+  - name: svrintx[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round using current rounding mode (exact)
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frintx]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frintx.{sve_type}" }
+
+  - name: svrintz[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Round towards zero
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frintz]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frintz.{sve_type}" }
+
+  - name: svabd[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Absolute difference
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f64, f32, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind}abd"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind}abd.{sve_type}" }
+
+  - name: svabs[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Absolute value
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64]
+    assert_instr: ["{type_kind.f}abs"]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "{type_kind.f}abs.{sve_type}" }
+
+  - name: svand[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Bitwise AND
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [and]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink: { name: "and.{sve_type}" }
+
+  - name: svandv[_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise AND reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    assert_instr: [andv]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    compose:
+      - LLVMLink: { name: "andv.{sve_type}" }
+
+  - name: svand[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise AND
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [and]
+    compose:
+      - LLVMLink: { name: "and.z.nvx16i1" }
+
+  - name: svmov[_b]_z
+    attr: [*sve-unstable]
+    doc: Move
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [mov]
+    compose:
+      - FnCall: ["svand_b_z", [$pg, $op, $op]]
+
+  - name: svbic[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Bitwise clear
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [bic]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink: { name: "bic.{sve_type}" }
+
+  - name: svbic[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise clear
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [bic]
+    compose:
+      - LLVMLink: { name: "bic.z.nvx16i1" }
+
+  - name: sveor[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Bitwise exclusive OR
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [eor]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink: { name: "eor.{sve_type}" }
+
+  - name: sveorv[_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise exclusive OR reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    assert_instr: [eorv]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    compose:
+      - LLVMLink: { name: "eorv.{sve_type}" }
+
+  - name: sveor[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise exclusive OR
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [eor]
+    compose:
+      - LLVMLink: { name: "eor.z.nvx16i1" }
+
+  - name: svnot[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Bitwise invert
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [not]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "not.{sve_type}" }
+
+  - name: svnot[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise invert
+    arguments: ["pg: svbool_t", "op: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [not]
+    compose:
+      - FnCall: ["sveor_b_z", [$pg, $op, $pg]]
+
+  - name: svcnot[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Logically invert boolean condition
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [cnot]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "cnot.{sve_type}" }
+
+  - name: svnand[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise NAND
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [nand]
+    compose:
+      - LLVMLink: { name: "nand.z.nxv16i1" }
+
+  - name: svnor[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise NOR
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [nor]
+    compose:
+      - LLVMLink: { name: "nor.z.nxv16i1" }
+
+  - name: svorr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Bitwise inclusive OR
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [orr]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink: { name: "orr.{sve_type}" }
+
+  - name: svorv[_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise inclusive OR reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    assert_instr: [orv]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    compose:
+      - LLVMLink: { name: "orv.{sve_type}" }
+
+  - name: svorr[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise inclusive OR
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [orr]
+    compose:
+      - LLVMLink: { name: "orr.z.nvx16i1" }
+
+  - name: svorn[_b]_z
+    attr: [*sve-unstable]
+    doc: Bitwise inclusive OR, inverting second argument
+    arguments: ["pg: svbool_t", "op1: svbool_t", "op2: svbool_t"]
+    return_type: svbool_t
+    assert_instr: [orn]
+    compose:
+      - LLVMLink: { name: "orn.z.nvx16i1" }
+
+  - name: svlsl[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Logical shift left
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, u8], u8]
+      - [[i16, u16], u16]
+      - [[i32, u32], u32]
+      - [[i64, u64], u64]
+    assert_instr: [lsl]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "lsl.{sve_type[0]}" }
+
+  - name: svlsl_wide[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Logical shift left
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, i16, i32, u8, u16, u32], u64]
+    assert_instr: [lsl]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "lsl.wide.{sve_type[0]}" }
+
+  - name: svasr[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Arithmetic shift right
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+    assert_instr: [asr]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "asr.{sve_type[0]}" }
+
+  - name: svasr_wide[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Arithmetic shift right
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, i16, i32], u64]
+    assert_instr: [asr]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "asr.wide.{sve_type[0]}" }
+
+  - name: svasrd[_n_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Arithmetic shift right for divide by immediate
+    arguments: ["pg: {predicate}", "op1: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size}"] }]
+    types: [i8, i16, i32, i64]
+    assert_instr: [[asrd, "IMM2 = 1"]]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink:
+          name: "asrd.{sve_type}"
+          arguments: ["pg: {predicate}", "op1: {sve_type}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$pg, $op1, $IMM2]]
+
+  - name: svlsr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Logical shift right
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u16, u32, u64]
+    assert_instr: [lsr]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "lsr.{sve_type}" }
+
+  - name: svlsr_wide[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Logical shift right
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[u8, u16, u32], u64]
+    assert_instr: [lsr]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "lsr.wide.{sve_type[0]}" }
+
+  - name: svadda[_{type}]
+    attr: [*sve-unstable]
+    doc: Add reduction (strictly-ordered)
+    arguments: ["pg: {predicate}", "initial: {type}", "op: {sve_type}"]
+    return_type: "{type}"
+    assert_instr: [fadda]
+    types: [f32, f64]
+    compose:
+      - LLVMLink: { name: "fadda.{sve_type}" }
+
+  - name: svaddv[_{type}]
+    attr: [*sve-unstable]
+    doc: Add reduction
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i64, u64]
+    assert_instr: [{ float: faddv, default: uaddv }]
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}addv.{sve_type}" }
+
+  - name: svaddv[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add reduction
+    arguments: ["pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{type[1]}"
+    types:
+      - [[i8, i16, i32], i64]
+      - [[u8, u16, u32], u64]
+    assert_instr: ["{type_kind[0].su}addv"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addv.{sve_type[0]}" }
+
+  - name: svmaxv[_{type}]
+    attr: [*sve-unstable]
+    doc: Maximum reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.fsu}maxv"]
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}maxv.{sve_type}" }
+
+  - name: svmaxnmv[_{type}]
+    attr: [*sve-unstable]
+    doc: Maximum number reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64]
+    assert_instr: [fmaxnmv]
+    compose:
+      - LLVMLink: { name: "fmaxnmv.{sve_type}" }
+
+  - name: svminv[_{type}]
+    attr: [*sve-unstable]
+    doc: Minimum reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.fsu}minv"]
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}minv.{sve_type}" }
+
+  - name: svminnmv[_{type}]
+    attr: [*sve-unstable]
+    doc: Minimum number reduction to scalar
+    arguments: ["pg: {predicate}", "op: {sve_type}"]
+    return_type: "{type}"
+    types: [f32, f64]
+    assert_instr: [fminnmv]
+    compose:
+      - LLVMLink: { name: "fminnmv.{sve_type}" }
+
+  - name: svmul[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: ["{type_kind.f}mul"]
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.f}mul.{sve_type}" }
+
+  - name: svmulh[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply, returning high-half
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: ["{type_kind.su}mulh"]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}mulh.{sve_type}" }
+
+  - name: svmulx[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply extended (∞×0=2)
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: ["fmulx"]
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "fmulx.{sve_type}" }
+
+  - name: svrecpe[_{type}]
+    attr: [*sve-unstable]
+    doc: Reciprocal estimate
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frecpe]
+    compose:
+      - LLVMLink: { name: "frecpe.x.{sve_type}" }
+
+  - name: svrecps[_{type}]
+    attr: [*sve-unstable]
+    doc: Reciprocal step
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frecps]
+    compose:
+      - LLVMLink: { name: "frecps.x.{sve_type}" }
+
+  - name: svrecpx[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reciprocal exponent
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frecpx]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "frecpx.x.{sve_type}" }
+
+  - name: svrsqrte[_{type}]
+    attr: [*sve-unstable]
+    doc: Reciprocal square root estimate
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frsqrte]
+    compose:
+      - LLVMLink: { name: "frsqrte.x.{sve_type}" }
+
+  - name: svrsqrts[_{type}]
+    attr: [*sve-unstable]
+    doc: Reciprocal square root step
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: [frsqrts]
+    compose:
+      - LLVMLink: { name: "frsqrts.x.{sve_type}" }
+
+  - name: svmad[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply-add, multiplicand first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: ["{type_kind.f}mad"]
+    compose:
+      - LLVMLink: { name: "{type_kind.f}mad.{sve_type}" }
+
+  - name: svmla[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply-add, addend first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: ["{type_kind.f}mla"]
+    compose:
+      - LLVMLink: { name: "{type_kind.f}mla.{sve_type}" }
+
+  - name: svmla_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Multiply-add, addend first
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [f32, f64]
+    assert_instr: [[fmla, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "fmla.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmls[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply-subtract, minuend first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: ["{type_kind.f}mls"]
+    compose:
+      - LLVMLink: { name: "{type_kind.f}mls.{sve_type}" }
+
+  - name: svmls_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract, minuend first
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [f32, f64]
+    assert_instr: [[fmls, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "fmls.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmsb[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Multiply-subtract, multiplicand first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: ["{type_kind.f}msb"]
+    compose:
+      - LLVMLink: { name: "{type_kind.f}msb.{sve_type}" }
+
+  - name: svnmad[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Negated multiply-add, multiplicand first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: [fnmad]
+    compose:
+      - LLVMLink: { name: "fnmad.{sve_type}" }
+
+  - name: svnmla[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Negated multiply-add, addend first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: [fnmla]
+    compose:
+      - LLVMLink: { name: "fnmla.{sve_type}" }
+
+  - name: svnmls[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Negated multiply-subtract, minuend first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: [fnmls]
+    compose:
+      - LLVMLink: { name: "fnmls.{sve_type}" }
+
+  - name: svnmsb[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Negated multiply-subtract, multiplicand first
+    arguments:
+      - "pg: {predicate}"
+      - "op1: {sve_type}"
+      - "op2: {sve_type}"
+      - "op3: {sve_type}"
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    n_variant_op: op3
+    assert_instr: [fnmsb]
+    compose:
+      - LLVMLink: { name: "fnmsb.{sve_type}" }
+
+  - name: svneg[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Negate
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64]
+    assert_instr: ["{type_kind.f}neg"]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "{type_kind.f}neg.{sve_type}" }
+
+  - name: svqadd[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating add
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.su}qadd"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qadd.x.{sve_type}" }
+
+  - name: svadr{size_literal[2]}[_{type[0]}base]_[{type[1]}]{index_or_offset}
+    attr: [*sve-unstable]
+    substitutions:
+      index_or_offset: { match_size: "{type[2]}", default: index, byte: offset }
+      indices_or_offsets:
+        { match_size: "{type[2]}", default: indices, byte: offsets }
+    doc: Compute vector addresses for {size[2]}-bit data
+    arguments: ["bases: {sve_type[0]}", "{indices_or_offsets}: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [u32, [i32, u32], [i8, i16, i32, i64]]
+      - [u64, [i64, u64], [i8, i16, i32, i64]]
+    assert_instr: [adr]
+    compose:
+      - LLVMLink: { name: "adr{size_literal[2]}.{sve_type[0]}" }
+
+  - name: svdot[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i32, i8]
+      - [i64, i16]
+      - [u32, u8]
+      - [u64, u16]
+    assert_instr: ["{type_kind[0].su}dot"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}dot.{sve_type[0]}" }
+
+  - name: svdot_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[0]}" }]
+    types:
+      - [i32, i8]
+      - [i64, i16]
+      - [u32, u8]
+      - [u64, u16]
+    assert_instr: [["{type_kind[0].su}dot", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}dot.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "imm_index: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svusdot[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product (unsigned × signed)
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[2]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, u8, i8]]
+    assert_instr: [usdot]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "usdot.{sve_type[0]}" }
+
+  - name: svusdot_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product (unsigned × signed)
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[2]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[0]}" }]
+    types: [[i32, u8, i8]]
+    assert_instr: [[usdot, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "usdot.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[2]}"
+            - "imm_index: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svsudot[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product (signed × unsigned)
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[2]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, i8, u8]]
+    assert_instr: [usdot]
+    n_variant_op: op3
+    compose:
+      - FnCall: ["svusdot_{type[0]}", [$op1, $op3, $op2]]
+
+  - name: svsudot_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Dot product (signed × unsigned)
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[2]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[0]}" }]
+    types: [[i32, i8, u8]]
+    assert_instr: [[sudot, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sudot.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[2]}"
+            - "imm_index: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svdiv[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Divide
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i32, i64, u32, u64]
+    assert_instr: ["{type_kind.fsu}div"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}div.{sve_type}" }
+
+  - name: svdivr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Divide reversed
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i32, i64, u32, u64]
+    assert_instr: ["{type_kind.fsu}divr"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}divr.{sve_type}" }
+
+  - name: svexpa[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Floating-point exponential accelerator
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, u32], [f64, u64]]
+    assert_instr: [fexpa]
+    compose:
+      - LLVMLink: { name: "fexpa.x.{sve_type[0]} " }
+
+  - name: svscale[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Adjust exponent
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, i32], [f64, i64]]
+    assert_instr: [fscale]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "fscale.{sve_type[0]}" }
+
+  - name: svmmla[_{type}]
+    attr: [*sve-unstable]
+    doc: Matrix multiply-accumulate
+    target_features: [f32mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32]
+    assert_instr: [fmmla]
+    compose:
+      - LLVMLink: { name: "fmmla.{sve_type}" }
+
+  - name: svmmla[_{type}]
+    attr: [*sve-unstable]
+    doc: Matrix multiply-accumulate
+    target_features: [f64mm]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f64]
+    assert_instr: [fmmla]
+    compose:
+      - LLVMLink: { name: "fmmla.{sve_type}" }
+
+  - name: svmmla[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Matrix multiply-accumulate
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, i8], [u32, u8]]
+    assert_instr: ["{type_kind[0].su}mmla"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mmla.{sve_type[0]}" }
+
+  - name: svusmmla[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Matrix multiply-accumulate (unsigned × signed)
+    target_features: [i8mm]
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[2]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, u8, i8]]
+    assert_instr: [usmmla]
+    compose:
+      - LLVMLink: { name: "usmmla.{sve_type[0]}" }
+
+  - name: svmin[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Minimum
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.fsu}min"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}min.{sve_type}" }
+
+  - name: svminnm[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Minimum number
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    zeroing_method: { select: op1 }
+    assert_instr: [fminnm]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "fminnm.{sve_type}" }
