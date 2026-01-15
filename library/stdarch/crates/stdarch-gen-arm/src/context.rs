@@ -222,7 +222,7 @@ impl LocalContext {
             } => Ok(Expression::MacroCall(
                 "static_assert_range".to_string(),
                 format!(
-                    "{variable}, {min}, {max}",
+                    "{variable}, {min}..={max}",
                     min = range.start(),
                     max = range.end()
                 ),
@@ -250,7 +250,7 @@ impl LocalContext {
                             |bitsize| Ok(higher_limit / bitsize - 1))?;
                     Ok(Expression::MacroCall(
                         "static_assert_range".to_string(),
-                        format!("{variable}, 0, {max}"),
+                        format!("{variable}, 0..={max}"),
                     ))
                 } else {
                     Err(format!(
