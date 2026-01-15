@@ -10,6 +10,10 @@ cfg_select! {
         mod solid;
         use solid as imp;
     }
+    target_os = "uefi" => {
+        mod uefi;
+        use uefi as imp;
+    }
     target_os = "vexos" => {
         mod vexos;
         #[expect(unused)]
