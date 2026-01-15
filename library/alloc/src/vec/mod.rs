@@ -2818,11 +2818,7 @@ impl<T, A: Allocator> Vec<T, A> {
         let count = other.len();
         self.reserve(count);
         let len = self.len();
-        if count > 0 {
-            unsafe {
-                ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count)
-            };
-        }
+        unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
         self.len += count;
     }
 
