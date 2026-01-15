@@ -14,6 +14,10 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
+    target_family = "unix" => {
+        mod unix;
+        use unix as imp;
+    }
     target_os = "vexos" => {
         mod vexos;
         #[expect(unused)]
