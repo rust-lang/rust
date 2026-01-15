@@ -6,6 +6,10 @@ cfg_select! {
         mod sgx;
         use sgx as imp;
     }
+    target_os = "solid_asp3" => {
+        mod solid;
+        use solid as imp;
+    }
     target_os = "vexos" => {
         mod vexos;
         #[expect(unused)]
