@@ -135,9 +135,6 @@ fn build_generics<'tcx>(
     // }
     own_params.sort_by_key(|key| key.kind.is_ty_or_const());
 
-    let param_def_id_to_index =
-        own_params.iter().map(|param| (param.def_id, param.index)).collect();
-
     let (parent_count, has_self) = if let Some(def_id) = parent {
         let parent_generics = tcx.generics_of(def_id);
         let parent_kind = tcx.def_kind(def_id);
@@ -161,6 +158,9 @@ fn build_generics<'tcx>(
             *has_default = false;
         }
     }
+
+    let param_def_id_to_index =
+        own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
     ty::Generics {
         parent,

@@ -19,7 +19,9 @@ use object::read::archive::ArchiveFile;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
+use crate::core::build_steps::compile::{
+    get_codegen_backend_file, libgccjit_path_relative_to_cg_dir, normalize_codegen_backend_name,
+};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::tool::{
@@ -2990,5 +2992,85 @@ impl Step for GccDev {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(StepMetadata::dist("gcc-dev", self.target))
+    }
+}
+
+/// Tarball containing a libgccjit dylib,
+/// needed as a dependency for the GCC codegen backend (similarly to the LLVM
+/// backend needing a prebuilt libLLVM).
+///
+/// This component is used for distribution through rustup.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Gcc {
+    host: TargetSelection,
+    target: TargetSelection,
+}
+
+impl Step for Gcc {
+    type Output = Option<GeneratedTarball>;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // GCC is always built for a target pair, (host, target).
+        // We do not yet support cross-compilation here, so the host target is always inferred to
+        // be the bootstrap host target.
+        run.builder.ensure(Gcc { host: run.builder.host_target, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // This prevents gcc from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let host = self.host;
+        let target = self.target;
+        if host != "x86_64-unknown-linux-gnu" {
+            builder.info(&format!("host target `{host}` not supported by gcc. skipping"));
+            return None;
+        }
+
+        // We need the GCC sources to build GCC and also to add its license and README
+        // files to the tarball
+        builder.require_submodule(
+            "src/gcc",
+            Some("The src/gcc submodule is required for disting libgccjit"),
+        );
+
+        let target_pair = GccTargetPair::for_target_pair(host, target);
+        let libgccjit = builder.ensure(super::gcc::Gcc { target_pair });
+
+        // We have to include the target name in the component name, so that rustup can somehow
+        // distinguish that there are multiple gcc components on a given host target.
+        // So the tarball includes the target name.
+        let mut tarball = Tarball::new(builder, &format!("gcc-{target}"), &host.triple);
+        tarball.set_overlay(OverlayKind::Gcc);
+        tarball.is_preview(true);
+        tarball.add_legal_and_readme_to("share/doc/gcc");
+
+        // The path where to put libgccjit is determined by GccDylibSet.
+        // However, it requires a Compiler to figure out the path to the codegen backend sysroot.
+        // We don't really have any compiler here, because we just build libgccjit.
+        // So we duplicate the logic for determining the CG sysroot here.
+        let cg_dir = PathBuf::from(format!("lib/rustlib/{host}/codegen-backends"));
+
+        // This returns the path to the actual file, but here we need its parent
+        let rel_libgccjit_path = libgccjit_path_relative_to_cg_dir(&target_pair, &libgccjit);
+        let path = cg_dir.join(rel_libgccjit_path.parent().unwrap());
+
+        tarball.add_file(libgccjit.libgccjit(), path, FileType::NativeLibrary);
+        Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist(
+            "gcc",
+            TargetSelection::from_user(&format!("({}, {})", self.host, self.target)),
+        ))
     }
 }

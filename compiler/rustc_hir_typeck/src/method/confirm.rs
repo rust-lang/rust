@@ -7,7 +7,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    FeedConstTy, GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
+    GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
@@ -447,7 +447,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         // We handle the ambig portions of `ConstArg` in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::with_type_of(self.cfcx.tcx, param.def_id, preceding_args),
+                            self.cfcx
+                                .tcx
+                                .type_of(param.def_id)
+                                .instantiate(self.cfcx.tcx, preceding_args),
                         )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {

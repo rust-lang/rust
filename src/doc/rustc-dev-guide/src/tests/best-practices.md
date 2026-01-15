@@ -7,8 +7,8 @@ a bunch of git archeology.
 
 It's good practice to review the test that you authored by pretending that you
 are a different contributor who is looking at the test that failed several years
-later without much context (this also helps yourself even a few days or months
-later!). Then ask yourself: how can I make my life and their lives easier?
+later without much context (this also helps yourself even a few days or months later!).
+Then ask yourself: how can I make my life and their lives easier?
 
 To help put this into perspective, let's start with an aside on how to write a
 test that makes the life of another contributor as hard as possible.
@@ -35,15 +35,14 @@ test that makes the life of another contributor as hard as possible.
 
 Make it easy for the reader to immediately understand what the test is
 exercising, instead of having to type in the issue number and dig through github
-search for what the test is trying to exercise. This has an additional benefit
-of making the test possible to be filtered via `--test-args` as a collection of
-related tests.
+search for what the test is trying to exercise.
+This has an additional benefit
+of making the test possible to be filtered via `--test-args` as a collection of related tests.
 
 - Name the test after what it's trying to exercise or prevent regressions of.
 - Keep it concise.
 - Avoid using issue numbers alone as test names.
-- Avoid starting the test name with `issue-xxxxx` prefix as it degrades
-  auto-completion.
+- Avoid starting the test name with `issue-xxxxx` prefix as it degrades auto-completion.
 
 > **Avoid using only issue numbers as test names**
 >
@@ -78,22 +77,22 @@ related tests.
 
 ## Test organization
 
-- For most test suites, try to find a semantically meaningful subdirectory to
-  home the test.
+- For most test suites, try to find a semantically meaningful subdirectory to home the test.
     - E.g. for an implementation of RFC 2093 specifically, we can group a
-      collection of tests under `tests/ui/rfc-2093-infer-outlives/`. For the
-      directory name, include what the RFC is about.
+      collection of tests under `tests/ui/rfc-2093-infer-outlives/`.
+      For the directory name, include what the RFC is about.
 - For the [`run-make`]/`run-make-support` test suites, each `rmake.rs` must
   be contained within an immediate subdirectory under `tests/run-make/` or
-  `tests/run-make-cargo/` respectively. Further nesting is not presently
-  supported. Avoid using _only_ an issue number for the test name as well.
+  `tests/run-make-cargo/` respectively.
+  Further nesting is not presently supported.
+  Avoid using _only_ an issue number for the test name as well.
 
 ## Test descriptions
 
 To help other contributors understand what the test is about if their changes
 lead to the test failing, we should make sure a test has sufficient docs about
-its intent/purpose, links to relevant context (incl. issue numbers or other
-discussions) and possibly relevant resources (e.g. can be helpful to link to
+its intent/purpose, links to relevant context (including issue numbers or other discussions)
+and possibly relevant resources (e.g. it can be helpful to link to
 Win32 APIs for specific behavior).
 
 **Synopsis of a test with good comments**
@@ -136,8 +135,8 @@ fn main() {
 }
 ```
 
-For how much context/explanation is needed, it is up to the author and
-reviewer's discretion. A good rule of thumb is non-trivial things exercised in
+For how much context/explanation is needed, it is up to the author and reviewer's discretion.
+A good rule of thumb is non-trivial things exercised in
 the test deserves some explanation to help other contributors to understand.
 This may include remarks on:
 
@@ -146,7 +145,7 @@ This may include remarks on:
   separate because...).
 - Platform-specific behaviors.
 - Behavior of external dependencies and APIs: syscalls, linkers, tools,
-  environments and the likes.
+  environments and the like.
 
 ## Test content
 
@@ -159,17 +158,17 @@ This may include remarks on:
 
 ## Flaky tests
 
-All tests need to strive to be reproducible and reliable. Flaky tests are the
-worst kind of tests, arguably even worse than not having the test in the first
+All tests need to strive to be reproducible and reliable.
+Flaky tests are the worst kind of tests, arguably even worse than not having the test in the first
 place.
 
 - Flaky tests can fail in completely unrelated PRs which can confuse other
-  contributors and waste their time trying to figure out if test failure is
-  related.
+  contributors and waste their time trying to figure out if test failure is related.
 - Flaky tests provide no useful information from its test results other than
-  it's flaky and not reliable: if a test passed but it's flakey, did I just get
-  lucky? if a test is flakey but it failed, was it just spurious?
-- Flaky tests degrade confidence in the whole test suite. If a test suite can
+  it's flaky and not reliable: if a test passed but it's flakey, did I just get lucky?
+  If a test is flakey but it failed, was it just spurious?
+- Flaky tests degrade confidence in the whole test suite.
+  If a test suite can
   randomly spuriously fail due to flaky tests, did the whole test suite pass or
   did I just get lucky/unlucky?
 - Flaky tests can randomly fail in full CI, wasting previous full CI resources.
@@ -189,8 +188,8 @@ See [compiletest directives] for a listing of directives.
 See [LLVM FileCheck guide][FileCheck] for details.
 
 - Avoid matching on specific register numbers or basic block numbers unless
-  they're special or critical for the test. Consider using patterns to match
-  them where suitable.
+  they're special or critical for the test.
+  Consider using patterns to match them where suitable.
 
 > **TODO**
 >

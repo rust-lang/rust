@@ -89,7 +89,7 @@ use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
-use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind, LintLevel};
+use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
@@ -520,6 +520,14 @@ impl<'tcx> Scopes<'tcx> {
     fn topmost(&self) -> region::Scope {
         self.scopes.last().expect("topmost_scope: no scopes present").region_scope
     }
+}
+
+/// Used by [`Builder::in_scope`] to create source scopes mapping from MIR back to HIR at points
+/// where lint levels change.
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum LintLevel {
+    Inherited,
+    Explicit(HirId),
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

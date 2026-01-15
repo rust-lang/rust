@@ -152,7 +152,10 @@ pub fn has_changed_since(git_dir: &Path, base: &str, paths: &[&str]) -> bool {
     })
 }
 
-const LEGACY_BORS_EMAIL: &str = "bors@rust-lang.org";
+// Temporary e-mail used by new bors for merge commits for a few days, until it learned how to reuse
+// the original homu e-mail
+// FIXME: remove in Q2 2026
+const TEMPORARY_BORS_EMAIL: &str = "122020455+rust-bors[bot]@users.noreply.github.com";
 
 /// Escape characters from the git user e-mail, so that git commands do not interpret it as regex
 /// special characters.
@@ -193,10 +196,9 @@ fn get_latest_upstream_commit_that_modified_files(
         &escape_email_git_regex(git_config.git_merge_commit_email),
     ]);
 
-    // Also search for legacy bors account, before we accrue enough commits to
-    // have changes to all relevant file paths done by new bors.
-    if git_config.git_merge_commit_email != LEGACY_BORS_EMAIL {
-        git.args(["--author", LEGACY_BORS_EMAIL]);
+    // Also search for temporary bors account
+    if git_config.git_merge_commit_email != TEMPORARY_BORS_EMAIL {
+        git.args(["--author", &escape_email_git_regex(TEMPORARY_BORS_EMAIL)]);
     }
 
     if !target_paths.is_empty() {
@@ -248,10 +250,9 @@ pub fn get_closest_upstream_commit(
         base,
     ]);
 
-    // Also search for legacy bors account, before we accrue enough commits to
-    // have changes to all relevant file paths done by new bors.
-    if config.git_merge_commit_email != LEGACY_BORS_EMAIL {
-        git.args(["--author", LEGACY_BORS_EMAIL]);
+    // Also search for temporary bors account
+    if config.git_merge_commit_email != TEMPORARY_BORS_EMAIL {
+        git.args(["--author", &escape_email_git_regex(TEMPORARY_BORS_EMAIL)]);
     }
 
     let output = output_result(&mut git)?.trim().to_owned();

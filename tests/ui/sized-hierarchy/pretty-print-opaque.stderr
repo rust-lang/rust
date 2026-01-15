@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be kno
 LL | pub fn pointeesized() -> Box<impl Tr + PointeeSized> {
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
@@ -32,7 +32,7 @@ error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be kno
 LL |         let x = pointeesized();
    |                 ^^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
@@ -51,7 +51,7 @@ error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be kno
 LL |         let y: Box<dyn Tr> = x;
    |                              ^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
    = note: required for the cast from `Box<impl Tr + PointeeSized>` to `Box<dyn Tr>`
 
 error: aborting due to 6 previous errors

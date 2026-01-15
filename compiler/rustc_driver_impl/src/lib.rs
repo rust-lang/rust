@@ -765,30 +765,35 @@ fn print_crate_info(
                 for (name, expected_values) in &sess.psess.check_config.expecteds {
                     use crate::config::ExpectedValues;
                     match expected_values {
-                        ExpectedValues::Any => check_cfgs.push(format!("{name}=any()")),
+                        ExpectedValues::Any => {
+                            check_cfgs.push(format!("cfg({name}, values(any()))"))
+                        }
                         ExpectedValues::Some(values) => {
-                            if !values.is_empty() {
-                                check_cfgs.extend(values.iter().map(|value| {
+                            let mut values: Vec<_> = values
+                                .iter()
+                                .map(|value| {
                                     if let Some(value) = value {
-                                        format!("{name}=\"{value}\"")
+                                        format!("\"{value}\"")
                                     } else {
-                                        name.to_string()
+                                        "none()".to_string()
                                     }
-                                }))
-                            } else {
-                                check_cfgs.push(format!("{name}="))
-                            }
+                                })
+                                .collect();
+
+                            values.sort_unstable();
+
+                            let values = values.join(", ");
+
+                            check_cfgs.push(format!("cfg({name}, values({values}))"))
                         }
                     }
                 }
 
                 check_cfgs.sort_unstable();
-                if !sess.psess.check_config.exhaustive_names {
-                    if !sess.psess.check_config.exhaustive_values {
-                        println_info!("any()=any()");
-                    } else {
-                        println_info!("any()");
-                    }
+                if !sess.psess.check_config.exhaustive_names
+                    && sess.psess.check_config.exhaustive_values
+                {
+                    println_info!("cfg(any())");
                 }
                 for check_cfg in check_cfgs {
                     println_info!("{check_cfg}");
@@ -1124,9 +1129,10 @@ fn get_backend_from_raw_matches(
     let backend_name = debug_flags
         .iter()
         .find_map(|x| x.strip_prefix("codegen-backend=").or(x.strip_prefix("codegen_backend=")));
+    let unstable_options = debug_flags.iter().find(|x| *x == "unstable-options").is_some();
     let target = parse_target_triple(early_dcx, matches);
     let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
-    let target = config::build_target_config(early_dcx, &target, sysroot.path());
+    let target = config::build_target_config(early_dcx, &target, sysroot.path(), unstable_options);
 
     get_codegen_backend(early_dcx, &sysroot, backend_name, &target)
 }

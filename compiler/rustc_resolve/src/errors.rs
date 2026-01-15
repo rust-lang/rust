@@ -868,6 +868,19 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
 }
 
 #[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_unexpected_res_change_ty_to_const_param_sugg,
+    applicability = "has-placeholders",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResChangeTyParamToConstParamSugg {
+    #[suggestion_part(code = "const ")]
+    pub before: Span,
+    #[suggestion_part(code = ": /* Type */")]
+    pub after: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[suggestion(
     resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg,
     code = "{snippet}",

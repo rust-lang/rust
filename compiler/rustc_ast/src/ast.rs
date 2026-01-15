@@ -2109,16 +2109,18 @@ pub struct MacroDef {
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
 
-    /// If this is a macro used for externally implementable items,
-    /// it refers to an extern item which is its "target". This requires
-    /// name resolution so can't just be an attribute, so we store it in this field.
-    pub eii_extern_target: Option<EiiExternTarget>,
+    /// Corresponds to `#[eii_declaration(...)]`.
+    /// `#[eii_declaration(...)]` is a built-in attribute macro, not a built-in attribute,
+    /// because we require some name resolution to occur in the parameters of this attribute.
+    /// Name resolution isn't possible in attributes otherwise, so we encode it in the AST.
+    /// During ast lowering, we turn it back into an attribute again
+    pub eii_declaration: Option<EiiDecl>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
-pub struct EiiExternTarget {
+pub struct EiiDecl {
     /// path to the extern item we're targeting
-    pub extern_item_path: Path,
+    pub foreign_item: Path,
     pub impl_unsafe: bool,
 }
 
@@ -2394,7 +2396,7 @@ impl FnSig {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AssocItemConstraint {
@@ -3824,7 +3826,7 @@ pub struct EiiImpl {
     ///
     /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
     /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
-    pub known_eii_macro_resolution: Option<EiiExternTarget>,
+    pub known_eii_macro_resolution: Option<EiiDecl>,
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,

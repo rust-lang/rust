@@ -21,7 +21,7 @@ use crate::attributes::allow_unstable::{
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::cfi_encoding::CfiEncodingParser;
 use crate::attributes::codegen_attrs::{
-    ColdParser, CoverageParser, EiiExternItemParser, ExportNameParser, ForceTargetFeatureParser,
+    ColdParser, CoverageParser, EiiForeignItemParser, ExportNameParser, ForceTargetFeatureParser,
     NakedParser, NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser,
     RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser, TargetFeatureParser,
     ThreadLocalParser, TrackCallerParser, UsedParser,
@@ -48,8 +48,10 @@ use crate::attributes::lint_helpers::{
 };
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::macro_attrs::{
-    AllowInternalUnsafeParser, MacroEscapeParser, MacroExportParser, MacroUseParser,
+    AllowInternalUnsafeParser, CollapseDebugInfoParser, MacroEscapeParser, MacroExportParser,
+    MacroUseParser,
 };
+use crate::attributes::must_not_suspend::MustNotSuspendParser;
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::no_link::NoLinkParser;
@@ -61,6 +63,10 @@ use crate::attributes::proc_macro_attrs::{
 };
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
+use crate::attributes::rustc_dump::{
+    RustcDumpDefParents, RustcDumpItemBounds, RustcDumpPredicates, RustcDumpUserArgs,
+    RustcDumpVtable,
+};
 use crate::attributes::rustc_internal::{
     RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
     RustcLayoutScalarValidRangeStartParser, RustcLegacyConstGenericsParser,
@@ -88,7 +94,6 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
-
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
@@ -191,6 +196,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CfiEncodingParser>,
+        Single<CollapseDebugInfoParser>,
         Single<CoverageParser>,
         Single<CrateNameParser>,
         Single<CustomMirParser>,
@@ -206,6 +212,7 @@ attribute_parsers!(
         Single<LinkageParser>,
         Single<MacroExportParser>,
         Single<MoveSizeLimitParser>,
+        Single<MustNotSuspendParser>,
         Single<MustUseParser>,
         Single<ObjcClassParser>,
         Single<ObjcSelectorParser>,
@@ -241,7 +248,7 @@ attribute_parsers!(
         Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
         Single<WithoutArgs<DoNotImplementViaObjectParser>>,
-        Single<WithoutArgs<EiiExternItemParser>>,
+        Single<WithoutArgs<EiiForeignItemParser>>,
         Single<WithoutArgs<ExportStableParser>>,
         Single<WithoutArgs<FfiConstParser>>,
         Single<WithoutArgs<FfiPureParser>>,
@@ -264,6 +271,11 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
+        Single<WithoutArgs<RustcDumpDefParents>>,
+        Single<WithoutArgs<RustcDumpItemBounds>>,
+        Single<WithoutArgs<RustcDumpPredicates>>,
+        Single<WithoutArgs<RustcDumpUserArgs>>,
+        Single<WithoutArgs<RustcDumpVtable>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
         Single<WithoutArgs<RustcLintDiagnosticsParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
@@ -653,6 +665,7 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
     pub(crate) target_span: Span,
     /// The id ([`NodeId`] if `S` is `Early`, [`HirId`] if `S` is `Late`) of the syntactical component this attribute was applied to
     pub(crate) target_id: S::Id,
+    pub(crate) target: Option<rustc_hir::Target>,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(AttributeLint<S::Id>),
 }

@@ -4,7 +4,6 @@
 #![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 #![allow(dead_code)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;

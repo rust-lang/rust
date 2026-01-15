@@ -7,6 +7,7 @@ use tracing::debug;
 
 use crate::builder::ForGuard::OutsideGuard;
 use crate::builder::matches::{DeclareLetBindings, ScheduleDrops};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -83,7 +84,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     init_scope,
                     pattern,
                     initializer: Some(initializer),
-                    lint_level,
+                    hir_id,
                     else_block: Some(else_block),
                     span: _,
                 } => {
@@ -191,7 +192,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let initializer_span = this.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
-                    let failure_and_block = this.in_scope(scope, *lint_level, |this| {
+                    let lint_level = LintLevel::Explicit(*hir_id);
+                    let failure_and_block = this.in_scope(scope, lint_level, |this| {
                         this.declare_bindings(
                             visibility_scope,
                             remainder_span,
@@ -232,7 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     init_scope,
                     pattern,
                     initializer,
-                    lint_level,
+                    hir_id,
                     else_block: None,
                     span: _,
                 } => {
@@ -250,12 +252,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited));
 
                     // Evaluate the initializer, if present.
+                    let lint_level = LintLevel::Explicit(*hir_id);
                     if let Some(init) = *initializer {
                         let initializer_span = this.thir[init].span;
                         let scope = (*init_scope, source_info);
 
                         block = this
-                            .in_scope(scope, *lint_level, |this| {
+                            .in_scope(scope, lint_level, |this| {
                                 this.declare_bindings(
                                     visibility_scope,
                                     remainder_span,
@@ -269,7 +272,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             .into_block();
                     } else {
                         let scope = (*init_scope, source_info);
-                        let _: BlockAnd<()> = this.in_scope(scope, *lint_level, |this| {
+                        let _: BlockAnd<()> = this.in_scope(scope, lint_level, |this| {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,

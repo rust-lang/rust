@@ -1170,8 +1170,8 @@ where
 
     pub(super) fn is_transmutable(
         &mut self,
-        dst: I::Ty,
         src: I::Ty,
+        dst: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)

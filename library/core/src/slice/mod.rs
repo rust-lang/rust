@@ -9,6 +9,7 @@
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -4036,9 +4037,10 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     #[track_caller]
-    pub fn clone_from_slice(&mut self, src: &[T])
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    pub const fn clone_from_slice(&mut self, src: &[T])
     where
-        T: Clone,
+        T: [const] Clone + [const] Destruct,
     {
         self.spec_clone_from(src);
     }
@@ -5367,13 +5369,17 @@ const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
     }
 }
 
-trait CloneFromSpec<T> {
-    fn spec_clone_from(&mut self, src: &[T]);
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+const trait CloneFromSpec<T> {
+    fn spec_clone_from(&mut self, src: &[T])
+    where
+        T: [const] Destruct;
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: Clone,
+    T: [const] Clone + [const] Destruct,
 {
     #[track_caller]
     default fn spec_clone_from(&mut self, src: &[T]) {
@@ -5383,15 +5389,19 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
+            self[idx].clone_from(&src[idx]);
+            idx += 1;
         }
     }
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: TrivialClone,
+    T: [const] TrivialClone + [const] Destruct,
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {

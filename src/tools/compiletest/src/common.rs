@@ -1070,9 +1070,25 @@ fn builtin_cfg_names(config: &Config) -> HashSet<String> {
         Default::default(),
     )
     .lines()
-    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .map(|l| extract_cfg_name(&l).unwrap().to_string())
     .chain(std::iter::once(String::from("test")))
     .collect()
+}
+
+/// Extract the cfg name from `cfg(name, values(...))` lines
+fn extract_cfg_name(check_cfg_line: &str) -> Result<&str, &'static str> {
+    let trimmed = check_cfg_line.trim();
+
+    #[rustfmt::skip]
+    let inner = trimmed
+        .strip_prefix("cfg(")
+        .ok_or("missing cfg(")?
+        .strip_suffix(")")
+        .ok_or("missing )")?;
+
+    let first_comma = inner.find(',').ok_or("no comma found")?;
+
+    Ok(inner[..first_comma].trim())
 }
 
 pub const KNOWN_CRATE_TYPES: &[&str] =

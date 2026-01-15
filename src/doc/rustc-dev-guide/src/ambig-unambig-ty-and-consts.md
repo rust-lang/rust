@@ -6,7 +6,7 @@ parse.
 
 ```rust
 fn func<T, const N: usize>(arg: T) {
-    //                           ^ Unambig type position
+    //                          ^ Unambig type position
     let a: _ = arg; 
     //     ^ Unambig type position
 

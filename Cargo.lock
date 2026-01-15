@@ -4360,7 +4360,6 @@ dependencies = [
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
- "rustc_mir_build",
  "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
