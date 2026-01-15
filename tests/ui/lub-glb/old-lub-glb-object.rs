@@ -8,7 +8,6 @@ fn foo(x: &dyn for<'a, 'b> Foo<&'a u8, &'b u8>, y: &dyn for<'a> Foo<&'a u8, &'a 
         0 => x,
         _ => y,
         //~^ ERROR mismatched types
-        //~| ERROR mismatched types
     };
 }
 
