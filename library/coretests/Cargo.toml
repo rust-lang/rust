@@ -36,4 +36,6 @@ check-cfg = [
     'cfg(target_has_reliable_f16_math)',
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
+    # Set by Cranelift codegen tests; f16/f128 math functions are not supported there.
+    'cfg(randomized_layouts)',
 ]
