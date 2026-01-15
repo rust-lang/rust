@@ -440,7 +440,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*, QueryStackDeferred<'tcx>>,
+                pub $name: QueryState<'tcx, $($K)*>,
             )*
         }
 

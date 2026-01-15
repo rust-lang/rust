@@ -60,9 +60,7 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     }
 }
 
-impl<'tcx> QueryContext for QueryCtxt<'tcx> {
-    type QueryInfo = QueryStackDeferred<'tcx>;
-
+impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
     #[inline]
     fn jobserver_proxy(&self) -> &Proxy {
         &self.tcx.jobserver_proxy
@@ -93,10 +91,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
     /// especially when called from within a deadlock handler, unless a
     /// complete map is needed and no deadlock is possible at this call site.
-    fn collect_active_jobs(
-        self,
-        require_complete: bool,
-    ) -> Result<QueryMap<QueryStackDeferred<'tcx>>, QueryMap<QueryStackDeferred<'tcx>>> {
+    fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
         let mut jobs = QueryMap::default();
         let mut complete = true;
 
@@ -415,7 +410,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
 }
 
 pub(crate) fn query_key_hash_verify<'tcx>(
-    query: impl QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
+    query: impl QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>,
     qcx: QueryCtxt<'tcx>,
 ) {
     let _timer = qcx.tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name());
@@ -443,7 +438,7 @@ pub(crate) fn query_key_hash_verify<'tcx>(
 
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
 where
-    Q: QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
+    Q: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>,
 {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
@@ -489,7 +484,7 @@ where
 
 fn force_from_dep_node<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
-    Q: QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
+    Q: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>,
 {
     // We must avoid ever having to call `force_from_dep_node()` for a
     // `DepNode::codegen_unit`:
@@ -732,14 +727,14 @@ macro_rules! define_queries {
                 }
 
                 #[inline(always)]
-                fn restore_val(value: <Self::Dispatcher as QueryDispatcher>::Value) -> Self::UnerasedValue {
+                fn restore_val(value: <Self::Dispatcher as QueryDispatcher<'tcx>>::Value) -> Self::UnerasedValue {
                     erase::restore_val::<queries::$name::Value<'tcx>>(value)
                 }
             }
 
             pub(crate) fn collect_active_jobs<'tcx>(
                 tcx: TyCtxt<'tcx>,
-                qmap: &mut QueryMap<QueryStackDeferred<'tcx>>,
+                qmap: &mut QueryMap<'tcx>,
                 require_complete: bool,
             ) -> Option<()> {
                 let make_query = |tcx, key| {
@@ -823,7 +818,7 @@ macro_rules! define_queries {
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
         const COLLECT_ACTIVE_JOBS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<QueryStackDeferred<'tcx>>, bool) -> Option<()>
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<'tcx>, bool) -> Option<()>
         ] =
             &[$(query_impl::$name::collect_active_jobs),*];
 
