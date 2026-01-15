@@ -168,9 +168,9 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             {
                 let mut chain_refutabilities = Vec::new();
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
-                // If at least one of the operands is a `let ... = ...`.
-                if chain_refutabilities.iter().any(|x| x.is_some()) {
-                    self.check_let_chain(chain_refutabilities, ex.span);
+                // Lint only single irrefutable let binding.
+                if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
+                    self.lint_single_let(ex.span);
                 }
                 return;
             }
@@ -442,18 +442,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
-            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span))
-        } else {
-            let Ok(refutability) = self.is_let_irrefutable(pat, scrut) else { return };
-            if matches!(refutability, Irrefutable) {
-                report_irrefutable_let_patterns(
-                    self.tcx,
-                    self.lint_level,
-                    self.let_source,
-                    1,
-                    span,
-                );
-            }
+            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
+        } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
+            self.lint_single_let(span);
         }
     }
 
@@ -561,74 +552,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let_chain(
-        &mut self,
-        chain_refutabilities: Vec<Option<(Span, RefutableFlag)>>,
-        whole_chain_span: Span,
-    ) {
-        assert!(self.let_source != LetSource::None);
-
-        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, Irrefutable)))) {
-            // The entire chain is made up of irrefutable `let` statements
-            report_irrefutable_let_patterns(
-                self.tcx,
-                self.lint_level,
-                self.let_source,
-                chain_refutabilities.len(),
-                whole_chain_span,
-            );
-            return;
-        }
-
-        if let Some(until) =
-            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, Irrefutable))))
-            && until > 0
-        {
-            // The chain has a non-zero prefix of irrefutable `let` statements.
-
-            // Check if the let source is while, for there is no alternative place to put a prefix,
-            // and we shouldn't lint.
-            // For let guards inside a match, prefixes might use bindings of the match pattern,
-            // so can't always be moved out.
-            // For `else if let`, an extra indentation level would be required to move the bindings.
-            // FIXME: Add checking whether the bindings are actually used in the prefix,
-            // and lint if they are not.
-            if !matches!(
-                self.let_source,
-                LetSource::WhileLet | LetSource::IfLetGuard | LetSource::ElseIfLet
-            ) {
-                // Emit the lint
-                let prefix = &chain_refutabilities[..until];
-                let span_start = prefix[0].unwrap().0;
-                let span_end = prefix.last().unwrap().unwrap().0;
-                let span = span_start.to(span_end);
-                let count = prefix.len();
-                self.tcx.emit_node_span_lint(
-                    IRREFUTABLE_LET_PATTERNS,
-                    self.lint_level,
-                    span,
-                    LeadingIrrefutableLetPatterns { count },
-                );
-            }
-        }
-
-        if let Some(from) =
-            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, Irrefutable))))
-            && from != (chain_refutabilities.len() - 1)
-        {
-            // The chain has a non-empty suffix of irrefutable `let` statements
-            let suffix = &chain_refutabilities[from + 1..];
-            let span_start = suffix[0].unwrap().0;
-            let span_end = suffix.last().unwrap().unwrap().0;
-            let span = span_start.to(span_end);
-            let count = suffix.len();
-            self.tcx.emit_node_span_lint(
-                IRREFUTABLE_LET_PATTERNS,
-                self.lint_level,
-                span,
-                TrailingIrrefutableLetPatterns { count },
-            );
-        }
+    fn lint_single_let(&mut self, let_span: Span) {
+        report_irrefutable_let_patterns(self.tcx, self.lint_level, self.let_source, 1, let_span);
     }
 
     fn analyze_binding(

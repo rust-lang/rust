@@ -208,19 +208,6 @@ mir_build_irrefutable_let_patterns_while_let = irrefutable `while let` {$count -
     } will always match, so the loop will never exit
     .help = consider instead using a `loop {"{"} ... {"}"}` with a `let` inside it
 
-mir_build_leading_irrefutable_let_patterns = leading irrefutable {$count ->
-        [one] pattern
-        *[other] patterns
-    } in let chain
-    .note = {$count ->
-        [one] this pattern
-        *[other] these patterns
-    } will always match
-    .help = consider moving {$count ->
-        [one] it
-        *[other] them
-    } outside of the construct
-
 mir_build_literal_in_range_out_of_bounds =
     literal out of range for `{$ty}`
     .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
@@ -338,19 +325,6 @@ mir_build_suggest_let_else = you might want to use `let...else` to handle the {$
         [one] variant that isn't
         *[other] variants that aren't
     } matched
-
-mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
-        [one] pattern
-        *[other] patterns
-    } in let chain
-    .note = {$count ->
-        [one] this pattern
-        *[other] these patterns
-    } will always match
-    .help = consider moving {$count ->
-        [one] it
-        *[other] them
-    } into the body
 
 mir_build_type_not_structural = constant of non-structural type `{$ty}` in a pattern
     .label = constant of non-structural type
