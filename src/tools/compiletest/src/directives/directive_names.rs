@@ -266,6 +266,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "pretty-compare-only",
     "pretty-mode",
     "proc-macro",
+    "proc-macro-priv",
     "reference",
     "regex-error-pattern",
     "remap-src-base",

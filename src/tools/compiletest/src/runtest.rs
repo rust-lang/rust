@@ -98,7 +98,7 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
-        AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
+        AuxType::Dylib | AuxType::ProcMacro { .. } => Some(dylib_name(name)),
     }
 }
 
@@ -1277,13 +1277,19 @@ impl<'test> TestCx<'test> {
                 .replace('-', "_")
         };
 
-        let add_extern =
-            |rustc: &mut Command, aux_name: &str, aux_path: &str, aux_type: AuxType| {
-                let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
-                if let Some(lib_name) = lib_name {
-                    rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir, lib_name));
-                }
-            };
+        let add_extern = |rustc: &mut Command,
+                          aux_name: &str,
+                          aux_path: &str,
+                          aux_type: AuxType| {
+            let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+            let priv_ =
+                if matches!(aux_type, AuxType::ProcMacro { priv_: true }) { "priv:" } else { "" };
+            if let Some(lib_name) = lib_name {
+                rustc
+                    .arg("--extern")
+                    .arg(format!("{}{}={}/{}", priv_, aux_name, aux_dir, lib_name));
+            }
+        };
 
         for (aux_name, aux_path) in &self.props.aux.crates {
             let aux_type = self.build_auxiliary(&aux_path, &aux_dir, None);
@@ -1291,9 +1297,18 @@ impl<'test> TestCx<'test> {
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
-            let crate_name = path_to_crate_name(proc_macro);
-            add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
+            self.build_auxiliary(
+                &proc_macro.name,
+                &aux_dir,
+                Some(AuxType::ProcMacro { priv_: proc_macro.priv_ }),
+            );
+            let crate_name = path_to_crate_name(&proc_macro.name);
+            add_extern(
+                rustc,
+                &crate_name,
+                &proc_macro.name,
+                AuxType::ProcMacro { priv_: proc_macro.priv_ },
+            );
         }
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
@@ -1369,7 +1384,7 @@ impl<'test> TestCx<'test> {
     ) -> AuxType {
         let aux_path = self.resolve_aux_path(source_path);
         let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
-        if aux_type == Some(AuxType::ProcMacro) {
+        if matches!(aux_type, Some(AuxType::ProcMacro { .. })) {
             aux_props.force_host = true;
         }
         let mut aux_dir = aux_dir.to_path_buf();
@@ -1407,8 +1422,8 @@ impl<'test> TestCx<'test> {
 
         let (aux_type, crate_type) = if aux_type == Some(AuxType::Bin) {
             (AuxType::Bin, Some("bin"))
-        } else if aux_type == Some(AuxType::ProcMacro) {
-            (AuxType::ProcMacro, Some("proc-macro"))
+        } else if let Some(AuxType::ProcMacro { priv_ }) = aux_type.as_ref() {
+            (AuxType::ProcMacro { priv_: *priv_ }, Some("proc-macro"))
         } else if aux_type.is_some() {
             panic!("aux_type {aux_type:?} not expected");
         } else if aux_props.no_prefer_dynamic {
@@ -1446,7 +1461,7 @@ impl<'test> TestCx<'test> {
             aux_rustc.args(&["--crate-type", crate_type]);
         }
 
-        if aux_type == AuxType::ProcMacro {
+        if matches!(aux_type, AuxType::ProcMacro { .. }) {
             // For convenience, but this only works on 2018.
             aux_rustc.args(&["--extern", "proc_macro"]);
         }
@@ -2944,12 +2959,12 @@ enum LinkToAux {
     No,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum AuxType {
     Bin,
     Lib,
     Dylib,
-    ProcMacro,
+    ProcMacro { priv_: bool },
 }
 
 /// Outcome of comparing a stream to a blessed file,
