@@ -807,8 +807,8 @@ float_test! {
     attrs: {
         const: #[cfg(false)],
         // FIXME(f16_f128): `powi` does not work in Miri for these types
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
     },
     test<Float> {
         // test if large differences in magnitude are still correctly computed.
@@ -1448,8 +1448,8 @@ float_test! {
     attrs: {
         const: #[cfg(false)],
         // FIXME(f16_f128): `powi` does not work in Miri for these types
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
     },
     test<Float> {
         let nan: Float = Float::NAN;
@@ -1587,9 +1587,9 @@ float_test! {
     name: exp,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1609,9 +1609,9 @@ float_test! {
     name: exp2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1630,9 +1630,9 @@ float_test! {
     name: ln,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1654,9 +1654,9 @@ float_test! {
     name: log,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1681,9 +1681,9 @@ float_test! {
     name: log2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1706,9 +1706,9 @@ float_test! {
     name: log10,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1732,9 +1732,9 @@ float_test! {
     name: asinh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1757,9 +1757,9 @@ float_test! {
     name: acosh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1780,9 +1780,9 @@ float_test! {
     name: atanh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1807,9 +1807,9 @@ float_test! {
     name: gamma,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
@@ -1838,9 +1838,9 @@ float_test! {
     name: ln_gamma,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f16_math))],
         const f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f128: #[cfg(all(not(miri), not(randomized_layouts), target_has_reliable_f128_math))],
         const f128: #[cfg(false)],
     },
     test<Float> {
