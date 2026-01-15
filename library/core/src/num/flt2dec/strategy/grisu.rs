@@ -7,9 +7,10 @@
 
 use crate::mem::MaybeUninit;
 use crate::num::diy_float::Fp;
-use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
+use crate::num::flt2dec::decoder::Decoded64;
+use crate::num::flt2dec::{SHORT_DIGITS_MAX, round_up};
 
-// see the comments in `format_shortest_opt` for the rationale.
+// see the comments in `format_short` for the rationale.
 #[doc(hidden)]
 pub const ALPHA: i16 = -60;
 #[doc(hidden)]
@@ -117,19 +118,19 @@ pub const CACHED_POW10_FIRST_E: i16 = -1087;
 pub const CACHED_POW10_LAST_E: i16 = 1039;
 
 #[doc(hidden)]
-pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
+pub fn cached_power(alpha: i16, gamma: i16) -> (isize, Fp) {
     let offset = CACHED_POW10_FIRST_E as i32;
     let range = (CACHED_POW10.len() as i32) - 1;
     let domain = (CACHED_POW10_LAST_E - CACHED_POW10_FIRST_E) as i32;
     let idx = ((gamma as i32) - offset) * range / domain;
     let (f, e, k) = CACHED_POW10[idx as usize];
     debug_assert!(alpha <= e && e <= gamma);
-    (k, Fp { f, e })
+    (k as isize, Fp { f, e })
 }
 
 /// Given `x > 0`, returns `(k, 10^k)` such that `10^k <= x < 10^(k+1)`.
 #[doc(hidden)]
-pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
+pub fn max_pow10_no_more_than(x: u32) -> (isize, u32) {
     debug_assert!(x > 0);
 
     const X9: u32 = 10_0000_0000;
@@ -159,25 +160,23 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
     }
 }
 
-/// The shortest mode implementation for Grisu.
-///
+/// Implementation of the short mode for Grisu.
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_shortest_opt<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+pub fn format_short<'a>(
+    d: &Decoded64,
+    buf: &'a mut [MaybeUninit<u8>; SHORT_DIGITS_MAX],
+) -> Option<(/*digits*/ &'a str, /*pow10*/ isize)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
     assert!(d.mant.checked_add(d.plus).is_some());
     assert!(d.mant.checked_sub(d.minus).is_some());
-    assert!(buf.len() >= MAX_SIG_DIGITS);
     assert!(d.mant + d.plus < (1 << 61)); // we need at least three bits of additional precision
 
-    // start with the normalized values with the shared exponent
-    let plus = Fp { f: d.mant + d.plus, e: d.exp }.normalize();
-    let minus = Fp { f: d.mant - d.minus, e: d.exp }.normalize_to(plus.e);
-    let v = Fp { f: d.mant, e: d.exp }.normalize_to(plus.e);
+    // Normalize the value with its boundaries all on the same exponent.
+    let plus = Fp { f: d.mant + d.plus, e: d.exp as i16 }.normalize();
+    let minus = Fp { f: d.mant - d.minus, e: d.exp as i16 }.normalize_to(plus.e);
+    let v = Fp { f: d.mant, e: d.exp as i16 }.normalize_to(plus.e);
 
     // find any `cached = 10^minusk` such that `ALPHA <= minusk + plus.e + 64 <= GAMMA`.
     // since `plus` is normalized, this means `2^(62 + ALPHA) <= plus * cached < 2^(64 + GAMMA)`;
@@ -238,7 +237,7 @@ pub fn format_shortest_opt<'a>(
     let (max_kappa, max_ten_kappa) = max_pow10_no_more_than(plus1int);
 
     let mut i = 0;
-    let exp = max_kappa as i16 - minusk + 1;
+    let pow10 = max_kappa - minusk + 1;
 
     // Theorem 6.2: if `k` is the greatest integer s.t. `0 <= y mod 10^k <= y - x`,
     //              then `V = floor(y / 10^k) * 10^k` is in `[x, y]` and one of the shortest
@@ -273,16 +272,18 @@ pub fn format_shortest_opt<'a>(
         if plus1rem < delta1 {
             // `plus1 % 10^kappa < delta1 = plus1 - minus1`; we've found the correct `kappa`.
             let ten_kappa = (ten_kappa as u64) << e; // scale 10^kappa back to the shared exponent
-            return round_and_weed(
-                // SAFETY: we initialized that memory above.
-                unsafe { buf[..i].assume_init_mut() },
-                exp,
-                plus1rem,
-                delta1,
-                plus1 - v.f,
-                ten_kappa,
-                1,
-            );
+            // SAFETY: Wrote only ASCII digits up until i.
+            return unsafe {
+                round_and_weed(
+                    buf[..i].assume_init_mut(),
+                    pow10,
+                    plus1rem,
+                    delta1,
+                    plus1 - v.f,
+                    ten_kappa,
+                    1,
+                )
+            };
         }
 
         // break the loop when we have rendered all integral digits.
@@ -322,16 +323,18 @@ pub fn format_shortest_opt<'a>(
 
         if r < threshold {
             let ten_kappa = 1 << e; // implicit divisor
-            return round_and_weed(
-                // SAFETY: we initialized that memory above.
-                unsafe { buf[..i].assume_init_mut() },
-                exp,
-                r,
-                threshold,
-                (plus1 - v.f) * ulp,
-                ten_kappa,
-                ulp,
-            );
+            // SAFETY: Wrote only ASCII digits up until i.
+            return unsafe {
+                round_and_weed(
+                    buf[..i].assume_init_mut(),
+                    pow10,
+                    r,
+                    threshold,
+                    (plus1 - v.f) * ulp,
+                    ten_kappa,
+                    ulp,
+                )
+            };
         }
 
         // restore invariants
@@ -354,15 +357,17 @@ pub fn format_shortest_opt<'a>(
     // - `plus1v = (plus1 - v) * k` (and also, `threshold > plus1v` from prior invariants)
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn round_and_weed(
+    //
+    // SAFETY: The `buf` must contain ASCII exclusively.
+    unsafe fn round_and_weed(
         buf: &mut [u8],
-        exp: i16,
+        pow10: isize,
         remainder: u64,
         threshold: u64,
         plus1v: u64,
         ten_kappa: u64,
         ulp: u64,
-    ) -> Option<(&[u8], i16)> {
+    ) -> Option<(&str, isize)> {
         assert!(!buf.is_empty());
 
         // produce two approximations to `v` (actually `plus1 - v`) within 1.5 ulps.
@@ -444,41 +449,29 @@ pub fn format_shortest_opt<'a>(
         // this is too liberal, though, so we reject any `w(n)` not between `plus0` and `minus0`,
         // i.e., `plus1 - plus1w(n) <= minus0` or `plus1 - plus1w(n) >= plus0`. we utilize the facts
         // that `threshold = plus1 - minus1` and `plus1 - plus0 = minus0 - minus1 = 2 ulp`.
-        if 2 * ulp <= plus1w && plus1w <= threshold - 4 * ulp { Some((buf, exp)) } else { None }
+        if 2 * ulp <= plus1w && plus1w <= threshold - 4 * ulp {
+            // SAFETY: Caller guarantees all ASCII.
+            let digits = unsafe { str::from_utf8_unchecked(buf) };
+            Some((digits, pow10))
+        } else {
+            None
+        }
     }
 }
 
-/// The shortest mode implementation for Grisu with Dragon fallback.
-///
-/// This should be used for most cases.
-pub fn format_shortest<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    // SAFETY: The borrow checker is not smart enough to let us use `buf`
-    // in the second branch, so we launder the lifetime here. But we only re-use
-    // `buf` if `format_shortest_opt` returned `None` so this is okay.
-    match format_shortest_opt(d, unsafe { &mut *(buf as *mut _) }) {
-        Some(ret) => ret,
-        None => fallback(d, buf),
-    }
-}
-
-/// The exact and fixed mode implementation for Grisu.
-///
+/// Implementation of the fixed mode for Grisu.
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_exact_opt<'a>(
-    d: &Decoded,
+pub fn format_fixed<'a>(
+    d: &Decoded64,
     buf: &'a mut [MaybeUninit<u8>],
-    limit: i16,
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+    resolution: isize,
+) -> Option<(/*digits*/ &'a str, /*pow10*/ isize)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
 
     // normalize and scale `v`.
-    let v = Fp { f: d.mant, e: d.exp }.normalize();
+    let v = Fp { f: d.mant, e: d.exp as i16 }.normalize();
     let (minusk, cached) = cached_power(ALPHA - v.e - 64, GAMMA - v.e - 64);
     let v = v.mul(cached);
 
@@ -521,12 +514,9 @@ pub fn format_exact_opt<'a>(
     let (max_kappa, max_ten_kappa) = max_pow10_no_more_than(vint);
 
     let mut i = 0;
-    let exp = max_kappa as i16 - minusk + 1;
+    let pow10 = max_kappa - minusk + 1;
 
-    // if we are working with the last-digit limitation, we need to shorten the buffer
-    // before the actual rendering in order to avoid double rounding.
-    // note that we have to enlarge the buffer again when rounding up happens!
-    let len = if exp <= limit {
+    if pow10 <= resolution {
         // oops, we cannot even produce *one* digit.
         // this is possible when, say, we've got something like 9.5 and it's being rounded to 10.
         //
@@ -538,18 +528,25 @@ pub fn format_exact_opt<'a>(
         //
         // SAFETY: `len=0`, so the obligation of having initialized this memory is trivial.
         return unsafe {
-            possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e)
+            possibly_round(
+                buf,
+                0,
+                pow10,
+                resolution,
+                v.f / 10,
+                (max_ten_kappa as u64) << e,
+                err << e,
+            )
         };
-    } else if ((exp as i32 - limit as i32) as usize) < buf.len() {
-        (exp - limit) as usize
-    } else {
-        buf.len()
-    };
-    debug_assert!(len > 0);
+    }
+    let digit_max = pow10.wrapping_sub(resolution) as usize;
+    // Directly apply the resolution when buffering digits to prevent double
+    // rounding. Note how len may gain one digit later when rounding up occurs.
+    let len = buf.len().min(digit_max);
 
     // render integral parts.
     // the error is entirely fractional, so we don't need to check it in this part.
-    let mut kappa = max_kappa as i16;
+    let mut kappa = max_kappa;
     let mut ten_kappa = max_ten_kappa; // 10^kappa
     let mut remainder = vint; // digits yet to be rendered
     loop {
@@ -571,7 +568,7 @@ pub fn format_exact_opt<'a>(
             let vrem = ((r as u64) << e) + vfrac; // == (v % 10^kappa) * 2^e
             // SAFETY: we have initialized `len` many bytes.
             return unsafe {
-                possibly_round(buf, len, exp, limit, vrem, (ten_kappa as u64) << e, err << e)
+                possibly_round(buf, len, pow10, resolution, vrem, (ten_kappa as u64) << e, err << e)
             };
         }
 
@@ -623,7 +620,7 @@ pub fn format_exact_opt<'a>(
         // is the buffer full? run the rounding pass with the remainder.
         if i == len {
             // SAFETY: we have initialized `len` many bytes.
-            return unsafe { possibly_round(buf, len, exp, limit, r, 1 << e, err) };
+            return unsafe { possibly_round(buf, len, pow10, resolution, r, 1 << e, err) };
         }
 
         // restore invariants
@@ -644,16 +641,16 @@ pub fn format_exact_opt<'a>(
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
     //
-    // SAFETY: the first `len` bytes of `buf` must be initialized.
+    // SAFETY: The first `len` bytes of `buf` must be initialized with ASCII exclusively.
     unsafe fn possibly_round(
         buf: &mut [MaybeUninit<u8>],
         mut len: usize,
-        mut exp: i16,
-        limit: i16,
+        mut pow10: isize,
+        resolution: isize,
         remainder: u64,
         ten_kappa: u64,
         ulp: u64,
-    ) -> Option<(&[u8], i16)> {
+    ) -> Option<(&str, isize)> {
         debug_assert!(remainder < ten_kappa);
 
         //           10^kappa
@@ -712,8 +709,11 @@ pub fn format_exact_opt<'a>(
         // we've already verified that `ulp < 10^kappa / 2`, so as long as
         // `10^kappa` did not overflow after all, the second check is fine.
         if ten_kappa - remainder > remainder && ten_kappa - 2 * remainder >= 2 * ulp {
-            // SAFETY: our caller initialized that memory.
-            return Some((unsafe { buf[..len].assume_init_ref() }, exp));
+            // SAFETY: Caller guarantees write up to len.
+            let written = unsafe { buf[..len].assume_init_ref() };
+            // SAFETY: Caller guarantees all ASCII.
+            let digits = unsafe { str::from_utf8_unchecked(written) };
+            return Some((digits, pow10));
         }
 
         //   :<------- remainder ------>|   :
@@ -734,43 +734,28 @@ pub fn format_exact_opt<'a>(
         // as `10^kappa` is never zero). also note that `remainder - ulp <= 10^kappa`,
         // so the second check does not overflow.
         if remainder > ulp && ten_kappa - (remainder - ulp) <= remainder - ulp {
-            if let Some(c) =
-                // SAFETY: our caller must have initialized that memory.
-                round_up(unsafe { buf[..len].assume_init_mut() })
-            {
+            // SAFETY: Caller guarantees write up to len.
+            let written = unsafe { buf[..len].assume_init_mut() };
+            if let Some(c) = round_up(written) {
                 // only add an additional digit when we've been requested the fixed precision.
                 // we also need to check that, if the original buffer was empty,
-                // the additional digit can only be added when `exp == limit` (edge case).
-                exp += 1;
-                if exp > limit && len < buf.len() {
+                // the additional digit can only be added when `pow10 == resolution` (edge case).
+                pow10 += 1;
+                if pow10 > resolution && len < buf.len() {
                     buf[len] = MaybeUninit::new(c);
                     len += 1;
                 }
             }
-            // SAFETY: we and our caller initialized that memory.
-            return Some((unsafe { buf[..len].assume_init_ref() }, exp));
+            // SAFETY: Any `len` addition by `round_up` is written too.
+            let total = unsafe { buf[..len].assume_init_ref() };
+            // SAFETY: Caller guarantees all ASCII.
+            // Any addition from `round_up` is an ASCII digit.
+            let digits = unsafe { str::from_utf8_unchecked(total) };
+            return Some((digits, pow10));
         }
 
         // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are
         // rounding down and others are rounding up) and give up.
         None
-    }
-}
-
-/// The exact and fixed mode implementation for Grisu with Dragon fallback.
-///
-/// This should be used for most cases.
-pub fn format_exact<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-    limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
-    // SAFETY: The borrow checker is not smart enough to let us use `buf`
-    // in the second branch, so we launder the lifetime here. But we only re-use
-    // `buf` if `format_exact_opt` returned `None` so this is okay.
-    match format_exact_opt(d, unsafe { &mut *(buf as *mut _) }, limit) {
-        Some(ret) => ret,
-        None => fallback(d, buf, limit),
     }
 }

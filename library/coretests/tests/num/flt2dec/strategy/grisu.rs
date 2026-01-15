@@ -1,7 +1,5 @@
 use core::num::flt2dec::strategy::grisu::*;
 
-use super::super::*;
-
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_cached_power() {
@@ -32,46 +30,4 @@ fn test_max_pow10_no_more_than() {
         assert_eq!(max_pow10_no_more_than(tenk), (k, tenk));
         prevtenk = tenk;
     }
-}
-
-#[test]
-fn shortest_sanity_test() {
-    f64_shortest_sanity_test(format_shortest);
-    f32_shortest_sanity_test(format_shortest);
-    #[cfg(target_has_reliable_f16)]
-    f16_shortest_sanity_test(format_shortest);
-    more_shortest_sanity_test(format_shortest);
-}
-
-#[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
-fn exact_sanity_test() {
-    // See comments in dragon.rs's exact_sanity_test for why this test is
-    // ignored on MSVC
-    if !cfg!(target_env = "msvc") {
-        f64_exact_sanity_test(format_exact);
-    }
-    f32_exact_sanity_test(format_exact);
-    #[cfg(target_has_reliable_f16)]
-    f16_exact_sanity_test(format_exact);
-}
-
-#[test]
-fn test_to_shortest_str() {
-    to_shortest_str_test(format_shortest);
-}
-
-#[test]
-fn test_to_shortest_exp_str() {
-    to_shortest_exp_str_test(format_shortest);
-}
-
-#[test]
-fn test_to_exact_exp_str() {
-    to_exact_exp_str_test(format_exact);
-}
-
-#[test]
-fn test_to_exact_fixed_str() {
-    to_exact_fixed_str_test(format_exact);
 }

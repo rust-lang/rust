@@ -7,8 +7,9 @@
 use crate::cmp::Ordering;
 use crate::mem::MaybeUninit;
 use crate::num::bignum::{Big32x40 as Big, Digit32 as Digit};
+use crate::num::flt2dec::decoder::Decoded64;
 use crate::num::flt2dec::estimator::estimate_scaling_factor;
-use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
+use crate::num::flt2dec::{SHORT_DIGITS_MAX, round_up};
 
 static POW10: [Digit; 10] =
     [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
@@ -98,11 +99,11 @@ fn div_rem_upto_16<'a>(
     (d, x)
 }
 
-/// The shortest mode implementation for Dragon.
-pub fn format_shortest<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+/// Implementation of the short mode for Dragon.
+pub fn format_short<'a>(
+    d: &Decoded64,
+    buf: &'a mut [MaybeUninit<u8>; SHORT_DIGITS_MAX],
+) -> (/*digits*/ &'a str, /*pow10*/ isize) {
     // the number `v` to format is known to be:
     // - equal to `mant * 2^exp`;
     // - preceded by `(mant - 2 * minus) * 2^exp` in the original type; and
@@ -120,10 +121,6 @@ pub fn format_shortest<'a>(
     assert!(d.plus > 0);
     assert!(d.mant.checked_add(d.plus).is_some());
     assert!(d.mant.checked_sub(d.minus).is_some());
-    assert!(buf.len() >= MAX_SIG_DIGITS);
-
-    // `a.cmp(&b) < rounding` is `if d.inclusive {a <= b} else {a < b}`
-    let rounding = if d.inclusive { Ordering::Greater } else { Ordering::Equal };
 
     // estimate `k_0` from original inputs satisfying `10^(k_0-1) < high <= 10^(k_0+1)`.
     // the tight bound `k` satisfying `10^(k-1) < high <= 10^k` is calculated later.
@@ -160,6 +157,7 @@ pub fn format_shortest<'a>(
     //
     // note that `d[0]` *can* be zero, when `scale - plus < mant < scale`.
     // in this case rounding-up condition (`up` below) will be triggered immediately.
+    let rounding = if d.tie_to_even { Ordering::Greater } else { Ordering::Equal };
     if scale.cmp(mant.clone().add(&plus)) < rounding {
         // equivalent to scaling `scale` by 10
         k += 1;
@@ -254,16 +252,19 @@ pub fn format_shortest<'a>(
         }
     }
 
-    // SAFETY: we initialized that memory above.
-    (unsafe { buf[..i].assume_init_ref() }, k)
+    // SAFETY: We initialized the memory above.
+    let written = unsafe { buf[..i].assume_init_ref() };
+    // SAFETY: Only ASCII digits were written.
+    let digits = unsafe { str::from_utf8_unchecked(written) };
+    (digits, k)
 }
 
-/// The exact and fixed mode implementation for Dragon.
-pub fn format_exact<'a>(
-    d: &Decoded,
+/// Implementation of the fixed mode for Dragon.
+pub fn format_fixed<'a>(
+    d: &Decoded64,
     buf: &'a mut [MaybeUninit<u8>],
-    limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+    resolution: isize,
+) -> (/*digits*/ &'a str, /*pow10*/ isize) {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -300,20 +301,10 @@ pub fn format_exact<'a>(
         mant.mul_small(10);
     }
 
-    // if we are working with the last-digit limitation, we need to shorten the buffer
-    // before the actual rendering in order to avoid double rounding.
-    // note that we have to enlarge the buffer again when rounding up happens!
-    let mut len = if k < limit {
-        // oops, we cannot even produce *one* digit.
-        // this is possible when, say, we've got something like 9.5 and it's being rounded to 10.
-        // we return an empty buffer, with an exception of the later rounding-up case
-        // which occurs when `k == limit` and has to produce exactly one digit.
-        0
-    } else if ((k as i32 - limit as i32) as usize) < buf.len() {
-        (k - limit) as usize
-    } else {
-        buf.len()
-    };
+    // Directly apply the resolution when buffering digits to prevent double
+    // rounding. Note how len may gain one digit later when rounding up occurs.
+    let digit_max = k.saturating_sub(resolution).max(0);
+    let mut len = buf.len().min(digit_max as usize);
 
     if len > 0 {
         // cache `(2, 4, 8) * scale` for digit generation.
@@ -332,8 +323,11 @@ pub fn format_exact<'a>(
                 for c in &mut buf[i..len] {
                     *c = MaybeUninit::new(b'0');
                 }
-                // SAFETY: we initialized that memory above.
-                return (unsafe { buf[..len].assume_init_ref() }, k);
+                // SAFETY: We initialized the memory above.
+                let written = unsafe { buf[..len].assume_init_ref() };
+                // SAFETY: Only ASCII digits were written.
+                let digits = unsafe { str::from_utf8_unchecked(written) };
+                return (digits, k);
             }
 
             let mut d = 0;
@@ -375,15 +369,18 @@ pub fn format_exact<'a>(
         if let Some(c) = round_up(unsafe { buf[..len].assume_init_mut() }) {
             // ...unless we've been requested the fixed precision instead.
             // we also need to check that, if the original buffer was empty,
-            // the additional digit can only be added when `k == limit` (edge case).
+            // the additional digit can only be added when `k == resolution` (edge case).
             k += 1;
-            if k > limit && len < buf.len() {
+            if k > resolution && len < buf.len() {
                 buf[len] = MaybeUninit::new(c);
                 len += 1;
             }
         }
     }
 
-    // SAFETY: we initialized that memory above.
-    (unsafe { buf[..len].assume_init_ref() }, k)
+    // SAFETY: We initialized the memory above.
+    let written = unsafe { buf[..len].assume_init_ref() };
+    // SAFETY: Only ASCII digits were written.
+    let digits = unsafe { str::from_utf8_unchecked(written) };
+    (digits, k)
 }

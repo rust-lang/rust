@@ -36,7 +36,6 @@ pub mod dec2flt;
 pub mod diy_float;
 #[cfg(not(no_fp_fmt_parse))]
 pub mod flt2dec;
-pub mod fmt;
 
 #[macro_use]
 mod int_macros; // import int_impl!
