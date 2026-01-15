@@ -297,14 +297,15 @@ pub(crate) fn create_config(
         override_queries: Some(|_sess, providers| {
             // We do not register late module lints, so this only runs `MissingDoc`.
             // Most lints will require typechecking, so just don't run them.
-            providers.lint_mod = |tcx, module_def_id| late_lint_mod(tcx, module_def_id, MissingDoc);
+            providers.queries.lint_mod =
+                |tcx, module_def_id| late_lint_mod(tcx, module_def_id, MissingDoc);
             // hack so that `used_trait_imports` won't try to call typeck
-            providers.used_trait_imports = |_, _| {
+            providers.queries.used_trait_imports = |_, _| {
                 static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
-            providers.typeck = move |tcx, def_id| {
+            providers.queries.typeck = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
                 // This avoids emitting errors for the parent twice (see similar code in `typeck_with_fallback`)
@@ -316,7 +317,7 @@ pub(crate) fn create_config(
                 let body = tcx.hir_body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.queries.typeck)(tcx, def_id)
             };
         }),
         extra_symbols: Vec::new(),

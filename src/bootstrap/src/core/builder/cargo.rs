@@ -1095,6 +1095,10 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
+        if matches!(mode, Mode::Std) {
+            cargo.arg("-Zno-embed-metadata");
+        }
+
         if self.config.dump_bootstrap_shims {
             prepare_behaviour_dump_dir(self.build);
 

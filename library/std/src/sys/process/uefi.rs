@@ -8,8 +8,8 @@ use crate::num::{NonZero, NonZeroI32};
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
+use crate::sys::io::error_string;
 use crate::sys::pal::helpers;
-use crate::sys::pal::os::error_string;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 

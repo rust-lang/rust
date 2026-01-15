@@ -282,6 +282,14 @@ impl Builder {
                 PkgType::RustMingw => {
                     if host.contains("pc-windows-gnu") {
                         components.push(host_component(pkg));
+                        extensions.extend(
+                            TARGETS
+                                .iter()
+                                .filter(|&&target| {
+                                    target.contains("pc-windows-gnu") && target != host
+                                })
+                                .map(|target| Component::from_pkg(pkg, target)),
+                        );
                     }
                 }
                 // Tools are always present in the manifest,

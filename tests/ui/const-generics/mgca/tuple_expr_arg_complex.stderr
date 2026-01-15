@@ -1,0 +1,26 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/tuple_expr_arg_complex.rs:13:25
+   |
+LL |     takes_tuple::<{ (N, N + 1) }>();
+   |                         ^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/tuple_expr_arg_complex.rs:14:25
+   |
+LL |     takes_tuple::<{ (N, T::ASSOC + 1) }>();
+   |                         ^^^^^^^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/tuple_expr_arg_complex.rs:16:36
+   |
+LL |     takes_nested_tuple::<{ (N, (N, N + 1)) }>();
+   |                                    ^^^^^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/tuple_expr_arg_complex.rs:17:44
+   |
+LL |     takes_nested_tuple::<{ (N, (N, const { N + 1 })) }>();
+   |                                            ^
+
+error: aborting due to 4 previous errors
+

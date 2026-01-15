@@ -286,7 +286,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
+        providers.queries.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {

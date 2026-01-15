@@ -1912,7 +1912,7 @@ pub(crate) mod builtin {
     /// Impl detail of EII
     #[unstable(feature = "eii_internals", issue = "none")]
     #[rustc_builtin_macro]
-    pub macro eii_extern_target($item:item) {
+    pub macro eii_declaration($item:item) {
         /* compiler built-in */
     }
 }

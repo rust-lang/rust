@@ -52,7 +52,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | Arch::Bpf
             | Arch::Msp430
             | Arch::Nvptx64
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Other(_)) => bug!("unsupported target architecture for malloc: `{arch}`"),
         };
