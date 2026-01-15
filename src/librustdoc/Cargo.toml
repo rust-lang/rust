@@ -22,7 +22,7 @@ rustdoc-json-types = { path = "../rustdoc-json-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smallvec = "1.8.1"
-stringdex = "=0.0.5"
+stringdex = { git = "https://gitlab.com/notriddle/stringdex.git", rev = "152e06387edff94c5c4e88889f5579ad30c2ab2d" }
 tempfile = "3"
 threadpool = "1.8.1"
 tracing = "0.1"
