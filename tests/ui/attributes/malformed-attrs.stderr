@@ -729,14 +729,6 @@ help: use `#[rustc_align(...)]` instead
 LL | #[repr]
    | ^^^^^^^
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/malformed-attrs.rs:155:1
-   |
-LL | #[diagnostic::do_not_recommend()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
-
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:144:1
    |
@@ -744,6 +736,7 @@ LL | #[diagnostic::on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: at least one of the `message`, `note` and `label` options are expected
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: malformed `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:146:1
@@ -822,6 +815,12 @@ LL | #[no_implicit_prelude = 23]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+
+warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
+  --> $DIR/malformed-attrs.rs:155:1
+   |
+LL | #[diagnostic::do_not_recommend()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[automatically_derived]` attribute cannot be used on modules
   --> $DIR/malformed-attrs.rs:196:1

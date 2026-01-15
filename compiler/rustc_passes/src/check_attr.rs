@@ -43,8 +43,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -223,6 +223,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
+                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -318,9 +319,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::do_not_recommend, ..] => {
-                            self.check_do_not_recommend(attr.span(), hir_id, target, attr, item)
-                        }
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
@@ -568,14 +566,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
-    /// arguments.
+    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
     fn check_do_not_recommend(
         &self,
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
         if !matches!(target, Target::Impl { .. })
@@ -590,14 +586,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir_id,
                 attr_span,
                 errors::IncorrectDoNotRecommendLocation,
-            );
-        }
-        if !attr.is_word() {
-            self.tcx.emit_node_span_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::DoNotRecommendDoesNotExpectArgs,
             );
         }
     }
