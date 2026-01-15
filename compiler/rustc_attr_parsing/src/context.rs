@@ -665,7 +665,7 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
     pub(crate) target_span: Span,
     /// The id ([`NodeId`] if `S` is `Early`, [`HirId`] if `S` is `Late`) of the syntactical component this attribute was applied to
     pub(crate) target_id: S::Id,
-    pub(crate) target: Option<rustc_hir::Target>,
+    pub(crate) target: rustc_hir::Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(AttributeLint<S::Id>),
 }

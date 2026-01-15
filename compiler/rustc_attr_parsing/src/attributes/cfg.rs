@@ -9,7 +9,7 @@ use rustc_feature::{
 };
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, RustcVersion};
+use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -374,6 +374,7 @@ fn parse_cfg_attr_internal<'a>(
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
+        Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints,
         &meta,
