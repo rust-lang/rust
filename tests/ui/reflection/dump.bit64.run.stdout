@@ -35,7 +35,6 @@ Type {
 Type {
     kind: Int(
         Int {
-            ty: TypeId(0x12427c993eca190c841e0d92c5b7a45d),
             bit_width: 8,
         },
     ),
@@ -46,7 +45,6 @@ Type {
 Type {
     kind: Int(
         Int {
-            ty: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
             bit_width: 32,
         },
     ),
@@ -57,7 +55,6 @@ Type {
 Type {
     kind: Int(
         Int {
-            ty: TypeId(0xae6c4318bb07632e00428affbea41961),
             bit_width: 64,
         },
     ),
@@ -68,7 +65,6 @@ Type {
 Type {
     kind: Int(
         Int {
-            ty: TypeId(0xc7164498f3902dde0d8194a7b9733e79),
             bit_width: 128,
         },
     ),
@@ -79,7 +75,6 @@ Type {
 Type {
     kind: Int(
         Int {
-            ty: TypeId(0x1e5f92831c560aac8658b980a22e60b0),
             bit_width: 64,
         },
     ),
@@ -90,7 +85,6 @@ Type {
 Type {
     kind: Uint(
         Uint {
-            ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
             bit_width: 8,
         },
     ),
@@ -101,7 +95,6 @@ Type {
 Type {
     kind: Uint(
         Uint {
-            ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
             bit_width: 32,
         },
     ),
@@ -112,7 +105,6 @@ Type {
 Type {
     kind: Uint(
         Uint {
-            ty: TypeId(0x9ed91be891e304132cb86891e578f4a5),
             bit_width: 64,
         },
     ),
@@ -123,7 +115,6 @@ Type {
 Type {
     kind: Uint(
         Uint {
-            ty: TypeId(0x7bf7411d57d603e9fb393892a9c3f362),
             bit_width: 128,
         },
     ),
@@ -134,7 +125,6 @@ Type {
 Type {
     kind: Uint(
         Uint {
-            ty: TypeId(0x763d199bccd319899208909ed1a860c6),
             bit_width: 64,
         },
     ),
@@ -174,9 +164,7 @@ Type {
 }
 Type {
     kind: Str(
-        Str {
-            ty: TypeId(0x474ccf3b5db264ef53916706f7d7bb2c),
-        },
+        Str,
     ),
     size: None,
 }
