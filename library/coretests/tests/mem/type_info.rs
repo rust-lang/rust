@@ -38,7 +38,7 @@ fn test_tuples() {
     assert_tuple_arity::<(u8, u8), 2>();
 
     const {
-        match Type::of::<(u8, u8)>().kind {
+        match Type::of::<(i8, u8)>().kind {
             TypeKind::Tuple(tup) => {
                 let [a, b] = tup.fields else { unreachable!() };
 
@@ -46,9 +46,9 @@ fn test_tuples() {
                 assert!(b.offset == 1);
 
                 match (a.ty.info().kind, b.ty.info().kind) {
-                    (TypeKind::Uint(a), TypeKind::Uint(b)) => {
-                        assert!(a.bit_width == 8);
-                        assert!(b.bit_width == 8);
+                    (TypeKind::Int(a), TypeKind::Int(b)) => {
+                        assert!(a.bit_width == 8 && a.signed);
+                        assert!(b.bit_width == 8 && !b.signed);
                     }
                     _ => unreachable!(),
                 }
@@ -71,18 +71,22 @@ fn test_primitives() {
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<i32>() }) else { panic!() };
     assert_eq!(size, Some(4));
     assert_eq!(ty.bit_width, 32);
+    assert!(ty.signed);
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<isize>() }) else { panic!() };
     assert_eq!(size, Some(size_of::<isize>()));
     assert_eq!(ty.bit_width, size_of::<isize>() * 8);
+    assert!(ty.signed);
 
-    let Type { kind: Uint(ty), size, .. } = (const { Type::of::<u32>() }) else { panic!() };
+    let Type { kind: Int(ty), size, .. } = (const { Type::of::<u32>() }) else { panic!() };
     assert_eq!(size, Some(4));
     assert_eq!(ty.bit_width, 32);
+    assert!(!ty.signed);
 
-    let Type { kind: Uint(ty), size, .. } = (const { Type::of::<usize>() }) else { panic!() };
+    let Type { kind: Int(ty), size, .. } = (const { Type::of::<usize>() }) else { panic!() };
     assert_eq!(size, Some(size_of::<usize>()));
     assert_eq!(ty.bit_width, size_of::<usize>() * 8);
+    assert!(!ty.signed);
 
     let Type { kind: Float(ty), size, .. } = (const { Type::of::<f32>() }) else { panic!() };
     assert_eq!(size, Some(4));

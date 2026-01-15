@@ -1,6 +1,6 @@
 use rustc_abi::FieldIdx;
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::CtfeProvenance;
+use rustc_middle::mir::interpret::{CtfeProvenance, Scalar};
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Const, ScalarInt, Ty};
@@ -76,25 +76,27 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         ty::Int(int_ty) => {
                             let (variant, variant_place) = downcast(sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_int_float_type_info(
+                            self.write_int_type_info(
                                 place,
                                 int_ty.bit_width().unwrap_or_else(/* isize */ ptr_bit_width),
+                                true,
                             )?;
                             variant
                         }
                         ty::Uint(uint_ty) => {
-                            let (variant, variant_place) = downcast(sym::Uint)?;
+                            let (variant, variant_place) = downcast(sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_int_float_type_info(
+                            self.write_int_type_info(
                                 place,
                                 uint_ty.bit_width().unwrap_or_else(/* usize */ ptr_bit_width),
+                                false,
                             )?;
                             variant
                         }
                         ty::Float(float_ty) => {
                             let (variant, variant_place) = downcast(sym::Float)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_int_float_type_info(place, float_ty.bit_width())?;
+                            self.write_float_type_info(place, float_ty.bit_width())?;
                             variant
                         }
                         ty::Str => {
@@ -236,7 +238,29 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         interp_ok(())
     }
 
-    fn write_int_float_type_info(
+    fn write_int_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        bit_width: u64,
+        signed: bool,
+    ) -> InterpResult<'tcx> {
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+            match field.name {
+                sym::bit_width => self.write_scalar(
+                    ScalarInt::try_from_target_usize(bit_width, self.tcx.tcx).unwrap(),
+                    &field_place,
+                )?,
+                sym::signed => self.write_scalar(Scalar::from_bool(signed), &field_place)?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+        interp_ok(())
+    }
+
+    fn write_float_type_info(
         &mut self,
         place: impl Writeable<'tcx, CtfeProvenance>,
         bit_width: u64,

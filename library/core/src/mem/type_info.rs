@@ -49,10 +49,8 @@ pub enum TypeKind {
     Bool(Bool),
     /// Primitive character type.
     Char(Char),
-    /// Primitive signed integer type.
+    /// Primitive signed and unsigned integer type.
     Int(Int),
-    /// Primitive unsigned integer type.
-    Uint(Uint),
     /// Primitive floating-point type.
     Float(Float),
     /// String slice type.
@@ -108,22 +106,15 @@ pub struct Char {
     // No additional information to provide for now.
 }
 
-/// Compile-time type information about signed integer types.
+/// Compile-time type information about signed and unsigned integer types.
 #[derive(Debug)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct Int {
     /// The bit width of the signed integer type.
     pub bit_width: usize,
-}
-
-/// Compile-time type information about unsigned integer types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Uint {
-    /// The bit width of the unsigned integer type.
-    pub bit_width: usize,
+    /// Whether the integer type is signed.
+    pub signed: bool,
 }
 
 /// Compile-time type information about floating-point types.
