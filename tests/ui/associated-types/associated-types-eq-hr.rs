@@ -96,15 +96,11 @@ pub fn call_tuple_one() {
     tuple_one::<Tuple>();
     //~^ ERROR not general enough
     //~| ERROR not general enough
-    //~| ERROR not general enough
-    //~| ERROR not general enough
 }
 
 pub fn call_tuple_two() {
     tuple_two::<Tuple>();
     //~^ ERROR not general enough
-    //~| ERROR not general enough
-    //~| ERROR mismatched types
     //~| ERROR mismatched types
 }
 
@@ -115,7 +111,6 @@ pub fn call_tuple_three() {
 pub fn call_tuple_four() {
     tuple_four::<Tuple>();
     //~^ ERROR not general enough
-    //~| ERROR not general enough
 }
 
 fn main() {}

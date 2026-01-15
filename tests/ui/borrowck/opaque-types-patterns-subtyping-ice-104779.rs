@@ -14,10 +14,8 @@ fn foo() -> impl Sized {
     loop {
         match foo() {
         //~^ ERROR higher-ranked subtype error
-        //~^^ ERROR higher-ranked subtype error
             Subtype::Bar => (),
             //~^ ERROR higher-ranked subtype error
-            //~^^ ERROR higher-ranked subtype error
             Supertype::Var(x) => {}
         }
     }
