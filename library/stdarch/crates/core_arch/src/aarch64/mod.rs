@@ -25,6 +25,14 @@ mod neon;
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::neon::*;
 
+mod sve;
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve::*;
+
+mod sve2;
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve2::*;
+
 mod prefetch;
 #[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
 pub use self::prefetch::*;
