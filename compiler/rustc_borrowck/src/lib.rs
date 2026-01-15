@@ -1610,7 +1610,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     location,
                     (place, span),
                     access_kind,
-                    LocalMutationIsAllowed::No,
+                    LocalMutationIsAllowed::Yes,
                     state,
                 );
 

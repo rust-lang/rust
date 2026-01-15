@@ -1691,7 +1691,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::Reborrow(_) => {}
+            | Rvalue::Reborrow(..) => {}
         }
     }
 

@@ -325,7 +325,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::Adt(_, _) if self.tcx.features().reborrow() => {
                 let reborrow_coerce = self.commit_if_ok(|_| self.coerce_shared_reborrow(a, b));
-                if reborrow_coerce.is_ok() { reborrow_coerce } else { self.unify(a, b) }
+                if reborrow_coerce.is_ok() { reborrow_coerce } else { self.unify(a, b, ForceLeakCheck::No) }
             }
             _ => {
                 // Otherwise, just use unification rules.
