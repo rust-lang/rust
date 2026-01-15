@@ -18,8 +18,6 @@
 
 #[path = "../unsupported/os.rs"]
 pub mod os;
-#[path = "../unsupported/time.rs"]
-pub mod time;
 
 #[cfg(target_feature = "atomics")]
 #[path = "atomics/futex.rs"]
