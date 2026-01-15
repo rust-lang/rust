@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
 };
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCause, ObligationCtxt};
 use tracing::debug;
 
 use crate::errors;
@@ -463,14 +463,11 @@ pub(crate) fn reborrow_info<'tcx>(
     let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
-    let _cause = ObligationCause::misc(span, impl_did);
     let (def, args) = match source.kind() {
-        &ty::Adt(def, args) if def.is_struct() =>
-        {
-            (def, args)
-        }
+        &ty::Adt(def, args) if def.is_struct() => (def, args),
         _ => {
-            return Err(tcx.dcx().emit_err(errors::CoerceSharedNonStruct { span, trait_name }));
+            // Note: reusing error here as it takes trait_name as argument.
+            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
         }
     };
 
@@ -481,43 +478,23 @@ pub(crate) fn reborrow_info<'tcx>(
         .iter()
         .filter_map(|f| {
             // Ignore PhantomData fields
-            let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
-            if tcx
-                .try_normalize_erasing_regions(
-                    ty::TypingEnv::non_body_analysis(tcx, def.did()),
-                    unnormalized_ty,
-                )
-                .unwrap_or(unnormalized_ty)
-                .is_phantom_data()
-            {
+            let ty = f.ty(tcx, args);
+            if ty.is_phantom_data() {
                 return None;
             }
-
-            let ty = f.ty(tcx, args);
-
-            // Collect up all fields that were significantly changed.
             Some((ty, tcx.def_span(f.did)))
         })
         .collect::<Vec<_>>();
 
     if lifetimes_count != 1 {
         let item = tcx.hir_expect_item(impl_did);
-        let _span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
-            &item.kind
-        {
+        let _span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) = &item.kind {
             of_trait.trait_ref.path.span
         } else {
             tcx.def_span(impl_did)
         };
 
-        todo!();
-        // let mut lifetimes = args.iter().filter_map(|arg| arg.as_region()).collect::<Vec<_>>();
-        // return Err(tcx.dcx().emit_err(errors::CoerceMulti {
-        //     span,
-        //     trait_name,
-        //     number: lifetimes_count,
-        //     fields: todo!(),
-        // }));
+        return Err(tcx.dcx().emit_err(errors::CoerceSharedMulti { span, trait_name }));
     }
 
     if data_fields.is_empty() {
@@ -526,9 +503,23 @@ pub(crate) fn reborrow_info<'tcx>(
 
     // We've found some data fields. They must all be either be Copy or Reborrow.
     for (field, span) in data_fields {
-        assert_field_type_is_reborrow(tcx, &infcx, reborrow_trait, impl_did, param_env, field, span).or_else(|err| {
-            assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field, span)?;
-        })
+        if assert_field_type_is_reborrow(
+            tcx,
+            &infcx,
+            reborrow_trait,
+            impl_did,
+            param_env,
+            field,
+            span,
+        )
+        .is_ok()
+        {
+            // Field implements Reborrow.
+            return Ok(());
+        }
+
+        // Field does not implement Reborrow: it must be Copy.
+        assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field, span)?;
     }
 
     Ok(())
@@ -542,23 +533,15 @@ fn assert_field_type_is_reborrow<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-) -> Result<(), ErrorGuaranteed> {
+) -> Result<(), Vec<FulfillmentError<'tcx>>> {
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
-    let obligation = Obligation::new(
-        tcx,
-        cause,
-        param_env,
-        ty::TraitRef::new(tcx, reborrow_trait, [ty]),
-    );
+    let obligation =
+        Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, reborrow_trait, [ty]));
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    if !errors.is_empty() {
-        Err(errors)
-    } else {
-        Ok(())
-    }
+    if !errors.is_empty() { Err(errors) } else { Ok(()) }
 }
 
 pub(crate) fn coerce_shared_info<'tcx>(
@@ -591,49 +574,33 @@ pub(crate) fn coerce_shared_info<'tcx>(
     let Some((target, _obligations)) =
         structurally_normalize_ty(tcx, &infcx, impl_did, span, trait_ref.args.type_at(1))
     else {
-        // return Err(tcx.dcx().emit_err(todo!()));
-        todo!();
+        todo!("something went wrong with structurally_normalize_ty");
     };
-    debug!("visit_implementation_of_coerce_shared: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
-    debug!("visit_implementation_of_coerce_shared: {:?} -> {:?} (free)", source, target);
-
-    let _cause = ObligationCause::misc(span, impl_did);
     let data = match (source.kind(), target.kind()) {
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
-            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()> } -> struct FooRef<'a> { a: u32, b: PhantomData<&'a ()> }
-            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()>, c: u32 } -> struct FooRef<'a> { a: u32, b: PhantomData<&'a ()> }
-            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()>, c: u32 } -> struct FooRef<'a> { c: u32, a: u32, b: PhantomData<&'a ()> }
-
-            // Parent { Child, u32, i32 }, Child { u64, u32 } => ParentRef { ChildRef, u32 }, ChildRef { u64 }
-
+            // Check that both A and B have exactly one lifetime argument, and that they have the
+            // same number of data fields that is not more than 1. The eventual intention is to
+            // support multiple lifetime arguments (with the reborrowed lifetimes inferred from
+            // usage one way or another) and multiple data fields with B allowed to leave out fields
+            // from A. The current state is just the simplest choice.
             let a_lifetimes_count = args_a.iter().filter(|arg| arg.as_region().is_some()).count();
             let a_data_fields = def_a
                 .non_enum_variant()
                 .fields
                 .iter_enumerated()
                 .filter_map(|(i, f)| {
-                    // Ignore PhantomData fields
-                    let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
-                    if tcx
-                        .try_normalize_erasing_regions(
-                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
-                            unnormalized_ty,
-                        )
-                        .unwrap_or(unnormalized_ty)
-                        .is_phantom_data()
-                    {
+                    let a = f.ty(tcx, args_b);
+
+                    if a.is_phantom_data() {
                         return None;
                     }
 
-                    let a = f.ty(tcx, args_a);
-
-                    // Collect up all fields that were significantly changed.
                     Some((i, a, tcx.def_span(f.did)))
                 })
                 .collect::<Vec<_>>();
@@ -649,7 +616,6 @@ pub(crate) fn coerce_shared_info<'tcx>(
                         return None;
                     }
 
-                    // Collect up all fields that were significantly changed.
                     Some((i, b, tcx.def_span(f.did)))
                 })
                 .collect::<Vec<_>>();
@@ -669,29 +635,27 @@ pub(crate) fn coerce_shared_info<'tcx>(
                     tcx.def_span(impl_did)
                 };
 
-                let mut fields = a_data_fields.iter().map(|(_, _, s)| *s).collect::<Vec<_>>();
-                fields.extend(b_data_fields.iter().map(|(_, _, s)| *s));
-                return Err(tcx.dcx().emit_err(errors::CoerceMulti {
-                    span,
-                    trait_name,
-                    number: a_data_fields.len() + b_data_fields.len(),
-                    fields: fields.into(),
-                }));
+                return Err(tcx.dcx().emit_err(errors::CoerceSharedMulti { span, trait_name }));
             }
 
             let kind = ty::adjustment::CoerceSharedInfo {};
             if a_data_fields.len() == 1 {
+                // We found one data field for both: we'll attempt to perform CoerceShared between
+                // them below.
                 let (_a_i, a, span_a) = a_data_fields[0];
                 let (_b_i, b, span_b) = b_data_fields[0];
 
                 Some((a, b, coerce_shared_trait, kind, span_a, span_b))
             } else {
+                // We found no data fields in either: this is a reborrowable marker type being
+                // coerced into a shared marker. That is fine too.
                 None
             }
         }
 
         _ => {
-            return Err(tcx.dcx().emit_err(errors::CoerceSharedNonStruct { span, trait_name }));
+            // Note: reusing CoerceUnsizedNonStruct error as it takes trait_name as argument.
+            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
         }
     };
 
@@ -746,12 +710,8 @@ fn assert_field_type_is_copy<'tcx>(
     let copy_trait = tcx.require_lang_item(LangItem::Copy, span);
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
-    let obligation = Obligation::new(
-        tcx,
-        cause,
-        param_env,
-        ty::TraitRef::new(tcx, copy_trait, [ty]),
-    );
+    let obligation =
+        Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, copy_trait, [ty]));
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
