@@ -669,7 +669,7 @@ impl [u8] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Helper trait for [`[T]::concat`](slice::concat).
+/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat).
 ///
 /// Note: the `Item` type parameter is not used in this trait,
 /// but it allows impls to be more generic.
@@ -704,19 +704,19 @@ pub trait Concat<Item: ?Sized> {
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::concat`](slice::concat)
+    /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn concat(slice: &Self) -> Self::Output;
 }
 
-/// Helper trait for [`[T]::join`](slice::join)
+/// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
 pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::join`](slice::join)
+    /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
