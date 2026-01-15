@@ -6653,6 +6653,7 @@ Released 2018-09-13
 [`manual_string_new`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_string_new
 [`manual_strip`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_strip
 [`manual_swap`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_swap
+[`manual_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_take
 [`manual_try_fold`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold
 [`manual_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or
 [`manual_unwrap_or_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or_default

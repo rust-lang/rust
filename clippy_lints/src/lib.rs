@@ -219,6 +219,7 @@ mod manual_rotate;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
+mod manual_take;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -861,6 +862,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
         Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),
+        Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
