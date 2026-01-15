@@ -15,7 +15,7 @@ impl SystemTime {
 
     pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
 
-    #[cfg_attr(any(target_os = "horizon", target_os = "hurd"), allow(unused))]
+    #[cfg_attr(any(target_os = "horizon", target_os = "hurd", target_os = "teeos"), expect(unused))]
     pub fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
         Ok(SystemTime { t: Timespec::new(tv_sec, tv_nsec)? })
     }

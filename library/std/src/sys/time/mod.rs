@@ -1,4 +1,8 @@
 cfg_select! {
+    target_os = "hermit" => {
+        mod hermit;
+        use hermit as imp;
+    }
     target_os = "motor" => {
         use moto_rt::time as imp;
     }
@@ -14,7 +18,11 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
-    target_family = "unix" => {
+    any(
+        target_os = "teeos",
+        target_family = "unix",
+        target_os = "wasi",
+    ) => {
         mod unix;
         use unix as imp;
     }
