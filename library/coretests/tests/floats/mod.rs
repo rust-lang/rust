@@ -1582,3 +1582,275 @@ float_test! {
         assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
     }
 }
+
+float_test! {
+    name: exp,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).exp(), 1.0);
+        assert_approx_eq!((1.0 as Float).exp(), 2.718281828459045235360287471352662497759);
+        assert_approx_eq!((5.0 as Float).exp(), 148.4131591025766034211155800405522796234);
+        assert_biteq!(inf.exp(), inf);
+        assert_biteq!(neg_inf.exp(), 0.0);
+        assert!(nan.exp().is_nan());
+    }
+}
+
+float_test! {
+    name: exp2,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).exp2(), 1.0);
+        assert_biteq!((5.0 as Float).exp2(), 32.0);
+        assert_biteq!(inf.exp2(), inf);
+        assert_biteq!(neg_inf.exp2(), 0.0);
+        assert!(nan.exp2().is_nan());
+    }
+}
+
+float_test! {
+    name: ln,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_approx_eq!((1.0 as Float).exp().ln(), 1.0);
+        assert!(nan.ln().is_nan());
+        assert_biteq!(inf.ln(), inf);
+        assert!(neg_inf.ln().is_nan());
+        assert!((-2.3 as Float).ln().is_nan());
+        assert_biteq!((-0.0 as Float).ln(), neg_inf);
+        assert_biteq!((0.0 as Float).ln(), neg_inf);
+        assert_approx_eq!((4.0 as Float).ln(), 1.386294361119890618834464242916353136);
+    }
+}
+
+float_test! {
+    name: log,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((10.0 as Float).log(10.0), 1.0);
+        assert_approx_eq!((2.3 as Float).log(3.5), 0.664857711361478710036766645911922010272);
+        assert_biteq!((1.0 as Float).exp().log((1.0 as Float).exp()), 1.0);
+        assert!((1.0 as Float).log(1.0).is_nan());
+        assert!((1.0 as Float).log(-13.9).is_nan());
+        assert!(nan.log(2.3).is_nan());
+        assert_biteq!(inf.log(10.0), inf);
+        assert!(neg_inf.log(8.8).is_nan());
+        assert!((-2.3 as Float).log(0.1).is_nan());
+        assert_biteq!((-0.0 as Float).log(2.0), neg_inf);
+        assert_biteq!((0.0 as Float).log(7.0), neg_inf);
+    }
+}
+
+float_test! {
+    name: log2,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_approx_eq!((10.0 as Float).log2(), 3.32192809488736234787031942948939017);
+        assert_approx_eq!((2.3 as Float).log2(), 1.2016338611696504130002982471978765921);
+        assert_approx_eq!((1.0 as Float).exp().log2(), 1.4426950408889634073599246810018921381);
+        assert!(nan.log2().is_nan());
+        assert_biteq!(inf.log2(), inf);
+        assert!(neg_inf.log2().is_nan());
+        assert!((-2.3 as Float).log2().is_nan());
+        assert_biteq!((-0.0 as Float).log2(), neg_inf);
+        assert_biteq!((0.0 as Float).log2(), neg_inf);
+    }
+}
+
+float_test! {
+    name: log10,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((10.0 as Float).log10(), 1.0);
+        assert_approx_eq!((2.3 as Float).log10(), 0.36172783601759284532595218865859309898);
+        assert_approx_eq!((1.0 as Float).exp().log10(), 0.43429448190325182765112891891660508222);
+        assert_biteq!((1.0 as Float).log10(), 0.0);
+        assert!(nan.log10().is_nan());
+        assert_biteq!(inf.log10(), inf);
+        assert!(neg_inf.log10().is_nan());
+        assert!((-2.3 as Float).log10().is_nan());
+        assert_biteq!((-0.0 as Float).log10(), neg_inf);
+        assert_biteq!((0.0 as Float).log10(), neg_inf);
+    }
+}
+
+float_test! {
+    name: asinh,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).asinh(), 0.0);
+        assert_biteq!((-0.0 as Float).asinh(), -0.0);
+        assert_biteq!(inf.asinh(), inf);
+        assert_biteq!(neg_inf.asinh(), neg_inf);
+        assert!(nan.asinh().is_nan());
+        assert!((-0.0 as Float).asinh().is_sign_negative());
+        // issue 63271
+        assert_approx_eq!((2.0 as Float).asinh(), 1.443635475178810342493276740273105);
+        assert_approx_eq!((-2.0 as Float).asinh(), -1.443635475178810342493276740273105);
+    }
+}
+
+float_test! {
+    name: acosh,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((1.0 as Float).acosh(), 0.0);
+        assert!((0.999 as Float).acosh().is_nan());
+        assert_biteq!(inf.acosh(), inf);
+        assert!(neg_inf.acosh().is_nan());
+        assert!(nan.acosh().is_nan());
+        assert_approx_eq!((2.0 as Float).acosh(), 1.31695789692481670862504634730796844);
+        assert_approx_eq!((3.0 as Float).acosh(), 1.76274717403908605046521864995958461);
+    }
+}
+
+float_test! {
+    name: atanh,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).atanh(), 0.0);
+        assert_biteq!((-0.0 as Float).atanh(), -0.0);
+        assert_biteq!((1.0 as Float).atanh(), inf);
+        assert_biteq!((-1.0 as Float).atanh(), neg_inf);
+        assert!((2.0 as Float).atanh().is_nan());
+        assert!((-2.0 as Float).atanh().is_nan());
+        assert!(inf.atanh().is_nan());
+        assert!(neg_inf.atanh().is_nan());
+        assert!(nan.atanh().is_nan());
+        assert_approx_eq!((0.5 as Float).atanh(), 0.54930614433405484569762261846126285);
+        assert_approx_eq!((-0.5 as Float).atanh(), -0.54930614433405484569762261846126285);
+    }
+}
+
+float_test! {
+    name: gamma,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        // precision can differ among platforms
+        assert_approx_eq!((1.0 as Float).gamma(), 1.0);
+        assert_approx_eq!((2.0 as Float).gamma(), 1.0);
+        assert_approx_eq!((3.0 as Float).gamma(), 2.0);
+        assert_approx_eq!((4.0 as Float).gamma(), 6.0);
+        assert_approx_eq!((5.0 as Float).gamma(), 24.0);
+        assert_approx_eq!((0.5 as Float).gamma(), Float::PI.sqrt());
+        assert_approx_eq!((-0.5 as Float).gamma(), -2.0 * Float::PI.sqrt());
+        assert_biteq!((0.0 as Float).gamma(), inf);
+        assert_biteq!((-0.0 as Float).gamma(), neg_inf);
+        assert!((-1.0 as Float).gamma().is_nan());
+        assert!((-2.0 as Float).gamma().is_nan());
+        assert!(nan.gamma().is_nan());
+        assert!(neg_inf.gamma().is_nan());
+        assert_biteq!(inf.gamma(), inf);
+    }
+}
+
+float_test! {
+    name: ln_gamma,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        const f16: #[cfg(false)],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        const f128: #[cfg(false)],
+    },
+    test<Float> {
+        assert_approx_eq!((1.0 as Float).ln_gamma().0, 0.0);
+        assert_eq!((1.0 as Float).ln_gamma().1, 1);
+        assert_approx_eq!((2.0 as Float).ln_gamma().0, 0.0);
+        assert_eq!((2.0 as Float).ln_gamma().1, 1);
+        assert_approx_eq!((3.0 as Float).ln_gamma().0, (2.0 as Float).ln());
+        assert_eq!((3.0 as Float).ln_gamma().1, 1);
+        assert_approx_eq!((-0.5 as Float).ln_gamma().0, (2.0 * Float::PI.sqrt()).ln());
+        assert_eq!((-0.5 as Float).ln_gamma().1, -1);
+    }
+}
