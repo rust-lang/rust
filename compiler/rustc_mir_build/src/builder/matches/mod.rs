@@ -1345,11 +1345,7 @@ enum TestKind<'tcx> {
     },
 
     /// Tests the place against a constant using scalar equality.
-    ScalarEq {
-        value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node.
-        pat_ty: Ty<'tcx>,
-    },
+    ScalarEq { value: ty::Value<'tcx> },
 
     /// Test whether the value falls within an inclusive or exclusive range.
     Range(Arc<PatRange<'tcx>>),

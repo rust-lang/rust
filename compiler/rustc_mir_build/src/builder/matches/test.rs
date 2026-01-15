@@ -42,7 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::StringEq { value }
             }
             TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
-                TestKind::ScalarEq { value, pat_ty: match_pair.pattern_ty }
+                TestKind::ScalarEq { value }
             }
 
             TestableCase::Range(ref range) => {
@@ -182,7 +182,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::ScalarEq { value, pat_ty } => {
+            TestKind::ScalarEq { value } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
@@ -191,12 +191,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut expected_value_operand =
                     self.literal_operand(test.span, Const::from_ty_value(tcx, value));
 
-                let mut actual_value_ty = pat_ty;
                 let mut actual_value_place = place;
 
-                match pat_ty.kind() {
+                match value.ty.kind() {
                     &ty::Pat(base, _) => {
-                        assert_eq!(pat_ty, value.ty);
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);
@@ -220,15 +218,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
 
                         actual_value_place = transmuted_place;
-                        actual_value_ty = base;
                         expected_value_operand = Operand::Copy(transmuted_expect);
                         expected_value_ty = base;
                     }
                     _ => {}
                 }
 
-                assert_eq!(expected_value_ty, actual_value_ty);
-                assert!(actual_value_ty.is_scalar());
+                assert!(expected_value_ty.is_scalar());
 
                 self.compare(
                     block,
