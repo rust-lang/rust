@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::trait_ref_of_method;
+use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -149,16 +149,22 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
+            if is_from_proc_macro(cx, item) {
+                return;
+            }
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
         } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
+            && !is_from_proc_macro(cx, item)
         {
             report_extra_impl_lifetimes(cx, impl_);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Fn(ref sig, id) = item.kind {
+        if let ImplItemKind::Fn(ref sig, id) = item.kind
+            && !is_from_proc_macro(cx, item)
+        {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id).is_none();
             check_fn_inner(
                 cx,
@@ -174,7 +180,9 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
+        if let TraitItemKind::Fn(ref sig, ref body) = item.kind
+            && !is_from_proc_macro(cx, item)
+        {
             let (body, trait_sig) = match *body {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
