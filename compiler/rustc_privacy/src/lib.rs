@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(associated_type_defaults)]
+#![feature(default_field_values)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -29,8 +30,8 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AssocContainer, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -1353,9 +1354,9 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     /// The visitor checks that each component type is at least this visible.
     required_visibility: ty::Visibility,
     required_effective_vis: Option<EffectiveVisibility>,
-    in_assoc_ty: bool,
-    in_primary_interface: bool,
-    skip_assoc_tys: bool,
+    hard_error: bool = false,
+    in_primary_interface: bool = true,
+    skip_assoc_tys: bool = false,
 }
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
@@ -1427,7 +1428,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         };
 
         let vis = self.tcx.local_visibility(local_def_id);
-        if self.in_assoc_ty && !vis.is_at_least(self.required_visibility, self.tcx) {
+        if self.hard_error && !vis.is_at_least(self.required_visibility, self.tcx) {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
                 ty::Visibility::Restricted(vis_def_id) => {
@@ -1544,9 +1545,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             item_def_id: def_id,
             required_visibility,
             required_effective_vis,
-            in_assoc_ty: false,
-            in_primary_interface: true,
-            skip_assoc_tys: false,
+            ..
         }
     }
 
@@ -1589,10 +1588,14 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             ty::AssocKind::Type { .. } => (item.defaultness(self.tcx).has_value(), true),
         };
 
-        check.in_assoc_ty = is_assoc_ty;
+        check.hard_error = is_assoc_ty && !item.is_impl_trait_in_trait();
         check.generics().predicates();
         if check_ty {
             check.ty();
+        }
+        if is_assoc_ty && item.container == AssocContainer::Trait {
+            check.hard_error = false;
+            check.bounds();
         }
     }
 
@@ -1625,20 +1628,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 self.check(def_id, item_visibility, effective_vis).generics().predicates();
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
-                    if assoc_item.is_impl_trait_in_trait() {
-                        continue;
-                    }
-
                     self.check_assoc_item(assoc_item, item_visibility, effective_vis);
-
-                    if assoc_item.is_type() {
-                        self.check(
-                            assoc_item.def_id.expect_local(),
-                            item_visibility,
-                            effective_vis,
-                        )
-                        .bounds();
-                    }
                 }
             }
             DefKind::TraitAlias => {
@@ -1712,10 +1702,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 }
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
-                    if assoc_item.is_impl_trait_in_trait() {
-                        continue;
-                    }
-
                     let impl_item_vis = if !of_trait {
                         min(tcx.local_visibility(assoc_item.def_id.expect_local()), impl_vis, tcx)
                     } else {
