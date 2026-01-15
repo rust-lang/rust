@@ -60,6 +60,7 @@ use crate::{mem, ptr};
 
 mod bounds;
 pub mod fallback;
+pub mod gpu;
 pub mod mir;
 pub mod simd;
 
