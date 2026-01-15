@@ -902,7 +902,7 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rmw", Unstable(sym::avr_target_feature), &[]),
     ("spm", Unstable(sym::avr_target_feature), &[]),
     ("spmx", Unstable(sym::avr_target_feature), &[]),
-    ("sram", Unstable(sym::avr_target_feature), &[]),
+    ("sram", Forbidden { reason: "devices that have no SRAM are unsupported" }, &[]),
     ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
     // tidy-alphabetical-end
 ];
@@ -1007,11 +1007,7 @@ impl Target {
             Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES,
             Arch::M68k => M68K_FEATURES,
             Arch::Avr => AVR_FEATURES,
-            Arch::AmdGpu
-            | Arch::Msp430
-            | Arch::SpirV
-            | Arch::Xtensa
-            | Arch::Other(_) => &[],
+            Arch::AmdGpu | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
         }
     }
 
@@ -1233,6 +1229,12 @@ impl Target {
                 // The "vector" target feature does not affect the ABI for floats
                 // because the vector and float registers overlap.
                 FeatureConstraints { required: &[], incompatible: &["soft-float"] }
+            }
+            Arch::Avr => {
+                // SRAM is minimum requirement for C/C++ in both avr-gcc and Clang,
+                // and backends of them only support assembly for devices have no SRAM.
+                // See the discussion in https://github.com/rust-lang/rust/pull/146900 for more.
+                FeatureConstraints { required: &["sram"], incompatible: &[] }
             }
             _ => NOTHING,
         }

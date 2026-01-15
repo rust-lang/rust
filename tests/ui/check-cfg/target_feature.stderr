@@ -309,7 +309,6 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `spe`
 `spm`
 `spmx`
-`sram`
 `ssbs`
 `sse`
 `sse2`
