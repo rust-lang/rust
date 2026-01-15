@@ -1,5 +1,5 @@
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:6:13
+  --> $DIR/return-in-array-len.rs:7:13
    |
 LL | / fn main() {
 ...  |
@@ -10,7 +10,7 @@ LL | | }
    | |_- ...not the enclosing function body
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:10:10
+  --> $DIR/return-in-array-len.rs:11:10
    |
 LL | / fn main() {
 ...  |
@@ -21,7 +21,7 @@ LL | | }
    | |_- ...not the enclosing function body
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:14:10
+  --> $DIR/return-in-array-len.rs:15:10
    |
 LL | / fn main() {
 ...  |
@@ -32,7 +32,7 @@ LL | | }
    | |_- ...not the enclosing function body
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:18:10
+  --> $DIR/return-in-array-len.rs:19:10
    |
 LL | / fn main() {
 ...  |

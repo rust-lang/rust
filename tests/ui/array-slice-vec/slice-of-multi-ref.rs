@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17503>
 //@ run-pass
 fn main() {
     let s: &[isize] = &[0, 1, 2, 3, 4];
