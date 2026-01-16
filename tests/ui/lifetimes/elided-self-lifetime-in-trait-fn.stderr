@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/elided-self-lifetime-in-trait-fn.rs:4:9
+  --> $DIR/elided-self-lifetime-in-trait-fn.rs:5:9
    |
 LL | trait T<'a> {
    |         -- lifetime `'a` defined here

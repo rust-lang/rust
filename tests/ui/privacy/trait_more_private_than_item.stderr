@@ -1,5 +1,5 @@
 warning: trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
-  --> $DIR/trait_more_private_than_item.rs:9:1
+  --> $DIR/trait_more_private_than_item.rs:10:1
    |
 LL | / pub trait Public: Private<
 LL | |
@@ -9,7 +9,7 @@ LL | | > {
    | |_^ trait `Public` is reachable at visibility `pub`
    |
 note: but trait `Private<<Self as Public>::P, <Self as Public>::R>` is only usable at visibility `pub(crate)`
-  --> $DIR/trait_more_private_than_item.rs:6:1
+  --> $DIR/trait_more_private_than_item.rs:7:1
    |
 LL | trait Private<P, R> {
    | ^^^^^^^^^^^^^^^^^^^

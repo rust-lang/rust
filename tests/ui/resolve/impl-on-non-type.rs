@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/18119>
 const X: u8 = 1;
 static Y: u8 = 1;
 fn foo() {}
