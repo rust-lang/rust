@@ -71,6 +71,8 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::CrateRoot,
     crate::rmeta::IncoherentImpls,
     crate::rmeta::RawDefId,
+    crate::rmeta::SpanFileHeader,
+    crate::rmeta::SpanFileRoot,
     crate::rmeta::TraitImpls,
     crate::rmeta::VariantData,
     rustc_abi::ReprOptions,

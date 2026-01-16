@@ -12,7 +12,7 @@ use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
-use crate::{EncodedMetadata, encode_metadata};
+use crate::{EncodedMetadata, encode_metadata, encode_spans};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
@@ -70,10 +70,12 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         None
     };
 
-    if let (Some(spans_tmp_filename), Some(required_source_files)) =
-        (spans_tmp_filename.as_ref(), required_source_files)
+    // When -Z separate-spans is enabled, encode spans to a separate .spans file
+    if let Some(required_source_files) = required_source_files
+        && tcx.sess.opts.unstable_opts.separate_spans
     {
-        encode_spans(tcx, spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
+        let spans_tmp_filename = metadata_tmpdir.as_ref().join("lib.spans");
+        encode_spans(tcx, &spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
     }
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");

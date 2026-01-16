@@ -2674,7 +2674,7 @@ fn with_encode_span_header(
     }
 
     let file = ecx.opaque.file();
-    if let Err(err) = encode_span_root_position(file, root_position) {
+    if let Err(err) = encode_root_position(file, root_position) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 }

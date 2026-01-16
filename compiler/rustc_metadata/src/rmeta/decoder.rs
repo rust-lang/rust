@@ -72,6 +72,32 @@ impl MetadataBlob {
     }
 }
 
+/// A reference to the raw binary version of span file data (.spans files).
+/// Similar to [`MetadataBlob`] but for separate span files.
+pub(crate) struct SpanBlob(OwnedSlice);
+
+impl std::ops::Deref for SpanBlob {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+#[allow(dead_code)] // TODO: used by RDR span file infrastructure
+impl SpanBlob {
+    /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`SpanBlob`].
+    pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
+        if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
+    }
+
+    /// Returns the underlying bytes.
+    pub(crate) fn bytes(&self) -> &OwnedSlice {
+        &self.0
+    }
+}
+
 /// A map from external crate numbers (as decoded from some crate file) to
 /// local crate numbers (as generated during this session). Each external
 /// crate may refer to types in other external crates, and each has their
@@ -82,6 +108,7 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
 /// Lazily-loaded span file data. Contains the span blob and decoded source_map table.
+#[allow(dead_code)] // TODO: used by RDR span file infrastructure
 struct SpanFileData {
     blob: SpanBlob,
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
@@ -93,8 +120,10 @@ pub(crate) struct CrateMetadata {
 
     /// Path to the span file (.spans), if one exists for this crate.
     /// The span file is loaded lazily on first span resolution.
+    #[allow(dead_code)] // TODO: used by RDR span file infrastructure
     span_file_path: Option<PathBuf>,
     /// Lazily-loaded span file data. Populated on first access when span_file_path is Some.
+    #[allow(dead_code)] // TODO: used by RDR span file infrastructure
     span_file_data: OnceLock<Option<SpanFileData>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
@@ -1813,18 +1842,11 @@ impl<'a> CrateMetadataRef<'a> {
             return Some(cached.clone());
         }
 
-        // Try to load the source file.
-        // If this crate was compiled with -Z separate_spans, lazily load
-        // source files from the span blob; otherwise load from the main metadata blob.
-        let source_file_to_import = if let Some(span_data) = self.cdata.span_file_data() {
-            span_data.source_map.get(&span_data.blob, source_file_index).map(|lazy| {
-                lazy.decode(&span_data.blob)
-            })
-        } else {
-            self.root.source_map.get((self, tcx), source_file_index).map(|lazy| {
-                lazy.decode((self, tcx))
-            })
-        };
+        // Try to load the source file from the main metadata blob.
+        // TODO: When -Z separate_spans is enabled, load from span blob instead.
+        let source_file_to_import = self.root.source_map.get((self, tcx), source_file_index).map(|lazy| {
+            lazy.decode((self, tcx))
+        });
 
         // Return None for sparse table entries. This can happen when:
         // - Searching through all source file indices (some may be empty)
@@ -2039,23 +2061,14 @@ impl CrateMetadata {
         Ok(())
     }
 
+    /// Lazily loads the span file data if a span file path is configured.
+    /// Returns None if no span file exists or if loading fails.
+    /// TODO: Complete SpanBlob infrastructure to enable span file loading.
+    #[allow(dead_code)]
     fn span_file_data(&self) -> Option<&SpanFileData> {
-        self.span_file_data
-            .get_or_init(|| {
-                let path = self.span_file_path.as_ref()?;
-                match crate::locator::get_span_metadata_section(path) {
-                    Ok(blob) => {
-                        let source_map = blob.get_root().source_map;
-                        Some(SpanFileData { blob, source_map })
-                    }
-                    Err(err) => {
-                        // Log error but don't fail - fall back to main metadata
-                        tracing::debug!("failed to load span file {:?}: {}", path, err);
-                        None
-                    }
-                }
-            })
-            .as_ref()
+        // Span file loading is not yet fully implemented.
+        // The SpanBlob type needs Metadata trait impl and get_root method.
+        None
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {

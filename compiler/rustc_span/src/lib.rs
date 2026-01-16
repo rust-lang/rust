@@ -683,6 +683,109 @@ pub struct SpanData {
     pub parent: Option<LocalDefId>,
 }
 
+/// A span reference that avoids storing absolute positions.
+///
+/// All variants carry a `SyntaxContext` so hygiene information is always
+/// available without needing to resolve the span to file/line/col.
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Encodable, Decodable)]
+pub enum SpanRef {
+    /// Unresolvable span (e.g. cross-file, indirect, or missing data).
+    Opaque { ctxt: SyntaxContext },
+    /// Offsets are relative to a specific source file.
+    FileRelative { file: StableSourceFileId, lo: u32, hi: u32, ctxt: SyntaxContext },
+    /// Offsets are relative to the start of a definition.
+    DefRelative { def_id: crate::def_id::DefId, lo: u32, hi: u32, ctxt: SyntaxContext },
+}
+
+impl SpanRef {
+    /// Access the `SyntaxContext` without resolving the span location.
+    ///
+    /// This is essential for hygiene - name resolution depends on `SyntaxContext`,
+    /// not on file/line/col positions.
+    #[inline]
+    pub fn ctxt(self) -> SyntaxContext {
+        match self {
+            SpanRef::Opaque { ctxt } => ctxt,
+            SpanRef::FileRelative { ctxt, .. } => ctxt,
+            SpanRef::DefRelative { ctxt, .. } => ctxt,
+        }
+    }
+
+    /// Creates an opaque span reference with root syntax context.
+    #[inline]
+    pub fn opaque() -> Self {
+        SpanRef::Opaque { ctxt: SyntaxContext::root() }
+    }
+
+    /// Returns `true` if this represents a dummy (unknown/placeholder) span.
+    ///
+    /// For `Opaque` variants with root context, this is considered dummy
+    /// since that's what `DUMMY_SP.to_span_ref()` produces.
+    /// For positioned variants, checks if both offsets are zero.
+    ///
+    /// **Warning**: This can misclassify valid zero-length spans at file/def
+    /// start as dummy. A zero-length span at offset 0 would have `lo == 0 && hi == 0`
+    /// just like a dummy span. This method is currently unused and should be
+    /// used with caution if needed in the future.
+    #[inline]
+    pub fn is_dummy(self) -> bool {
+        match self {
+            SpanRef::Opaque { ctxt } => ctxt.is_root(),
+            SpanRef::FileRelative { lo, hi, .. } => lo == 0 && hi == 0,
+            SpanRef::DefRelative { lo, hi, .. } => lo == 0 && hi == 0,
+        }
+    }
+
+    /// Recursively traces back through macro expansions to find the source call-site.
+    ///
+    /// Returns the call-site span of the outermost macro expansion that produced
+    /// this span, or `self` if this span is not from a macro expansion.
+    #[inline]
+    pub fn source_callsite(self) -> SpanRef {
+        let ctxt = self.ctxt();
+        if !ctxt.is_root() {
+            ctxt.outer_expn_data().call_site.source_callsite().to_span_ref()
+        } else {
+            self
+        }
+    }
+
+    /// Compares two `SpanRef`s for source equality.
+    ///
+    /// Two span refs are source-equal if they refer to the same source location
+    /// (same file and byte offsets). This intentionally ignores `SyntaxContext`
+    /// to match the behavior of [`Span::source_equal`].
+    ///
+    /// Use this to detect recursive macro invocations or deduplicate spans
+    /// that point to the same source text regardless of hygiene context.
+    ///
+    /// Note: For `Opaque` variants, `SyntaxContext` IS compared since that's
+    /// the only distinguishing information available.
+    #[inline]
+    pub fn source_equal(self, other: SpanRef) -> bool {
+        match (self, other) {
+            (SpanRef::Opaque { ctxt: c1 }, SpanRef::Opaque { ctxt: c2 }) => c1 == c2,
+            (
+                SpanRef::FileRelative { file: f1, lo: l1, hi: h1, .. },
+                SpanRef::FileRelative { file: f2, lo: l2, hi: h2, .. },
+            ) => f1 == f2 && l1 == l2 && h1 == h2,
+            (
+                SpanRef::DefRelative { def_id: d1, lo: l1, hi: h1, .. },
+                SpanRef::DefRelative { def_id: d2, lo: l2, hi: h2, .. },
+            ) => d1 == d2 && l1 == l2 && h1 == h2,
+            _ => false,
+        }
+    }
+}
+
+/// Resolves `SpanRef` values to concrete `Span`s when needed.
+pub trait SpanResolver {
+    /// Resolves a `SpanRef` to a concrete `Span` with absolute positions.
+    fn resolve_span_ref(&self, span_ref: SpanRef) -> Span;
+    /// Converts a `Span` into a `SpanRef` for storage.
+    fn span_ref_from_span(&self, span: Span) -> SpanRef;
+}
+
 impl SpanData {
     #[inline]
     pub fn span(&self) -> Span {
@@ -1067,10 +1170,11 @@ impl Span {
                 }
 
                 let expn_data = ctxt.outer_expn_data();
-                let is_recursive = expn_data.call_site.source_equal(prev_span);
+                let call_site_span = expn_data.call_site;
+                let is_recursive = call_site_span.source_equal(prev_span);
 
                 prev_span = self;
-                self = expn_data.call_site;
+                self = call_site_span;
 
                 // Don't print recursive invocations.
                 if !is_recursive {
@@ -2922,6 +3026,43 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for SpanRef
+where
+    CTX: HashStableContext,
+{
+    /// Hashes a SpanRef, respecting the `hash_spans()` setting.
+    ///
+    /// When `hash_spans()` returns false (e.g., with `-Z incremental-ignore-spans`),
+    /// SpanRef contributes nothing to the hash. This enables RDR (Reproducible
+    /// Deterministic Rebuilds) where span-only changes don't trigger rebuilds.
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        if !ctx.hash_spans() {
+            return;
+        }
+
+        match self {
+            SpanRef::Opaque { ctxt } => {
+                0u8.hash_stable(ctx, hasher);
+                ctxt.hash_stable(ctx, hasher);
+            }
+            SpanRef::FileRelative { file, lo, hi, ctxt } => {
+                1u8.hash_stable(ctx, hasher);
+                file.hash_stable(ctx, hasher);
+                lo.hash_stable(ctx, hasher);
+                hi.hash_stable(ctx, hasher);
+                ctxt.hash_stable(ctx, hasher);
+            }
+            SpanRef::DefRelative { def_id, lo, hi, ctxt } => {
+                2u8.hash_stable(ctx, hasher);
+                def_id.hash_stable(ctx, hasher);
+                lo.hash_stable(ctx, hasher);
+                hi.hash_stable(ctx, hasher);
+                ctxt.hash_stable(ctx, hasher);
+            }
+        }
     }
 }
 

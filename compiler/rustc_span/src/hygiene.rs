@@ -43,7 +43,7 @@ use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
-use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, SpanRef, with_session_globals};
+use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 ///
@@ -1005,7 +1005,7 @@ pub struct ExpnData {
     ///
     /// For a desugaring expansion, this is the span of the expression or node that was
     /// desugared.
-    pub call_site: SpanRef,
+    pub call_site: Span,
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s
     /// that have identical `ExpnData`s. This violates the contract of `HashStable`
@@ -1024,7 +1024,7 @@ pub struct ExpnData {
     // --- noticeable perf improvements (PR #62898).
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
-    pub def_site: SpanRef,
+    pub def_site: Span,
     /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
@@ -1068,8 +1068,8 @@ impl ExpnData {
         ExpnData {
             kind,
             parent,
-            call_site: call_site.to_span_ref(),
-            def_site: def_site.to_span_ref(),
+            call_site,
+            def_site,
             allow_internal_unstable,
             edition,
             macro_def_id,
@@ -1093,8 +1093,8 @@ impl ExpnData {
         ExpnData {
             kind,
             parent: ExpnId::root(),
-            call_site: call_site.to_span_ref(),
-            def_site: DUMMY_SP.to_span_ref(),
+            call_site,
+            def_site: DUMMY_SP,
             allow_internal_unstable: None,
             edition,
             macro_def_id,

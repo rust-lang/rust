@@ -5,7 +5,7 @@ use rustc_serialize::int_overflow::DebugStrictAdd;
 
 use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
-use crate::{BytePos, SPAN_TRACK, SpanData};
+use crate::{BytePos, SPAN_TRACK, SpanData, SpanRef};
 
 /// A compressed span.
 ///
@@ -440,6 +440,12 @@ impl Span {
             PartiallyInterned(span) => interned_parent(span.index),
             Interned(span) => interned_parent(span.index),
         }
+    }
+
+    /// Converts to a `SpanRef` for metadata, preserving only `SyntaxContext` for hygiene.
+    #[inline]
+    pub fn to_span_ref(self) -> SpanRef {
+        SpanRef::Opaque { ctxt: self.ctxt() }
     }
 }
 

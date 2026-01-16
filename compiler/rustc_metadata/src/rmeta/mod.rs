@@ -5,7 +5,7 @@ use decoder::LazyDecoder;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, SpanBlob, TargetModifiers};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
-pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
+pub use encoder::{EncodedMetadata, encode_metadata, encode_spans, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
@@ -34,6 +34,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
+use rustc_serialize::{Decoder, Encoder};
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
@@ -86,6 +87,7 @@ pub(crate) struct SpanFileRoot {
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
 }
 
+#[allow(dead_code)] // FIXME: used by RDR span file infrastructure
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum DefIdEncoding {
     Direct,
