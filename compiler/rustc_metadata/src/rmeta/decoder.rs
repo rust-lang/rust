@@ -1005,7 +1005,8 @@ impl<'a> CrateMetadataRef<'a> {
             .def_ident_span
             .get((self, tcx), item_index)
             .unwrap_or_else(|| self.missing("def_ident_span", item_index))
-            .decode((self, tcx));
+            .decode((self, tcx))
+            .span();
         Some(Ident::new(name, span))
     }
 
@@ -1033,6 +1034,7 @@ impl<'a> CrateMetadataRef<'a> {
             .get((self, tcx), index)
             .unwrap_or_else(|| self.missing("def_span", index))
             .decode((self, tcx))
+            .span()
     }
 
     fn load_proc_macro<'tcx>(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
@@ -1466,6 +1468,7 @@ impl<'a> CrateMetadataRef<'a> {
             .get((self, tcx), index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
             .decode((self, tcx))
+            .span()
     }
 
     fn get_foreign_modules(self, tcx: TyCtxt<'_>) -> impl Iterator<Item = ForeignModule> {

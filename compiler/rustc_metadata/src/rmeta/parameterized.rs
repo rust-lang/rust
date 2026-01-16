@@ -129,6 +129,7 @@ trivially_parameterized_over_tcx! {
     rustc_span::Ident,
     rustc_span::SourceFile,
     rustc_span::Span,
+    rustc_span::SpanRef,
     rustc_span::Symbol,
     rustc_span::hygiene::SyntaxContextKey,
     // tidy-alphabetical-end

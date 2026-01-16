@@ -19,7 +19,7 @@ use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::hygiene::ExpnId;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, SpanRef, Symbol, kw};
 
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
@@ -91,6 +91,27 @@ impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
     }
 }
 
+impl ProcessQueryValue<'_, Span> for SpanRef {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Span {
+        self.span()
+    }
+}
+
+impl ProcessQueryValue<'_, Span> for Option<SpanRef> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, err: impl Fn() -> !) -> Span {
+        if let Some(span_ref) = self { span_ref.span() } else { err() }
+    }
+}
+
+impl ProcessQueryValue<'_, Option<Span>> for Option<SpanRef> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<Span> {
+        self.map(|span_ref| span_ref.span())
+    }
+}
+
 macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
         provide_one! {
@@ -115,6 +136,36 @@ macro_rules! provide_one {
                     $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)))
                 };
                 value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
+    // Like table_defaulted_array, but for defaulted tables storing (T, SpanRef) tuples that need
+    // conversion to (T, Span) at decode time.
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array_spanref }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                let lazy = $cdata.root.tables.$name.get(($cdata, $tcx), $def_id.index);
+                let value = if lazy.is_default() {
+                    &[] as &[_]
+                } else {
+                    $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|(item, span_ref)| (item, span_ref.span())))
+                };
+                value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
+    // Like table, but for optional array tables storing (T, SpanRef) tuples that need
+    // conversion to (T, Span) at decode time.
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_array_spanref }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                $cdata
+                    .root
+                    .tables
+                    .$name
+                    .get(($cdata, $tcx), $def_id.index)
+                    .map(|lazy| $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|(item, span_ref)| (item, span_ref.span()))) as &[_])
+                    .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
     };
@@ -223,13 +274,13 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { table_defaulted_array }
-    explicit_item_self_bounds => { table_defaulted_array }
+    explicit_item_bounds => { table_defaulted_array_spanref }
+    explicit_item_self_bounds => { table_defaulted_array_spanref }
     explicit_predicates_of => { table }
     generics_of => { table }
-    inferred_outlives_of => { table_defaulted_array }
-    explicit_super_predicates_of => { table_defaulted_array }
-    explicit_implied_predicates_of => { table_defaulted_array }
+    inferred_outlives_of => { table_defaulted_array_spanref }
+    explicit_super_predicates_of => { table_defaulted_array_spanref }
+    explicit_implied_predicates_of => { table_defaulted_array_spanref }
     type_of => { table }
     type_alias_is_lazy => { table_direct }
     variances_of => { table }
@@ -257,7 +308,7 @@ provide! { tcx, def_id, other, cdata,
     defaultness => { table_direct }
     constness => { table_direct }
     const_conditions => { table }
-    explicit_implied_const_bounds => { table_defaulted_array }
+    explicit_implied_const_bounds => { table_defaulted_array_spanref }
     coerce_unsized_info => {
         Ok(cdata
             .root
@@ -299,7 +350,7 @@ provide! { tcx, def_id, other, cdata,
             .unwrap_or_default()
     }
     opaque_ty_origin => { table }
-    assumed_wf_types_for_rpitit => { table }
+    assumed_wf_types_for_rpitit => { table_array_spanref }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root

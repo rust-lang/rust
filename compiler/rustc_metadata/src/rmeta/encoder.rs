@@ -1466,7 +1466,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
-                record!(self.tables.def_span[def_id] <- def_span);
+                record!(self.tables.def_span[def_id] <- def_span.to_span_ref());
             }
             if should_encode_attrs(def_kind) {
                 self.encode_attrs(local_id);
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_span(def_kind)
                 && let Some(ident_span) = tcx.def_ident_span(def_id)
             {
-                record!(self.tables.def_ident_span[def_id] <- ident_span);
+                record!(self.tables.def_ident_span[def_id] <- ident_span.to_span_ref());
             }
             if def_kind.has_codegen_attrs() {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
@@ -1505,7 +1505,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
+                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <-
+                    inferred_outlives.iter().map(|&(c, s)| (c, s.to_span_ref())));
 
                 for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
@@ -1539,23 +1540,28 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
                 record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
+                    self.tcx.explicit_super_predicates_of(def_id).skip_binder()
+                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder()
+                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                        <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                        <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder()
+                            .iter().map(|&(c, s)| (c, s.to_span_ref())));
                 }
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
                 record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
+                    self.tcx.explicit_super_predicates_of(def_id).skip_binder()
+                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder()
+                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1617,7 +1623,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                        <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                        <- tcx.explicit_implied_const_bounds(def_id).skip_binder()
+                            .iter().map(|&(c, s)| (c, s.to_span_ref())));
                 }
             }
             if let DefKind::AnonConst = def_kind {
@@ -1758,13 +1765,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
+        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <-
+            bounds.iter().map(|&(c, s)| (c, s.to_span_ref())));
     }
 
     fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds);
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <-
+            bounds.iter().map(|&(c, s)| (c, s.to_span_ref())));
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1785,7 +1794,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.encode_explicit_item_self_bounds(def_id);
             if tcx.is_conditionally_const(def_id) {
                 record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder()
+                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
@@ -1794,6 +1804,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_array!(
                     self.tables.assumed_wf_types_for_rpitit[def_id]
                         <- self.tcx.assumed_wf_types_for_rpitit(def_id)
+                            .iter().map(|&(ty, s)| (ty, s.to_span_ref()))
                 );
                 self.encode_precise_capturing_args(def_id);
             }
@@ -1986,12 +1997,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let macros =
                 self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             for (i, span) in self.tcx.sess.psess.proc_macro_quoted_spans() {
-                let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set_some(i, span);
+                let span_ref = self.lazy(span.to_span_ref());
+                self.tables.proc_macro_quoted_spans.set_some(i, span_ref);
             }
 
             self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
-            record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
+            record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()).to_span_ref());
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- vis);
@@ -2037,8 +2048,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
-                record!(self.tables.def_ident_span[def_id] <- span);
-                record!(self.tables.def_span[def_id] <- span);
+                record!(self.tables.def_ident_span[def_id] <- span.to_span_ref());
+                record!(self.tables.def_span[def_id] <- span.to_span_ref());
                 record!(self.tables.visibility[def_id] <- ty::Visibility::Public);
                 if let Some(stability) = stability {
                     record!(self.tables.lookup_stability[def_id] <- stability);
