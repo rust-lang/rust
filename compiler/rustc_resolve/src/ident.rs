@@ -1072,6 +1072,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
+        // Fast path: external module decoding only creates non-glob declarations.
+        if let ModuleKind::Def(_, def_id, _) = module.kind
+            && !def_id.is_local()
+        {
+            return Err(ControlFlow::Continue(Determined));
+        }
+
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
