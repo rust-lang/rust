@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `field_of!(MyStruct, 0): Field` is not satisfied
+error[E0277]: the trait bound `field_of!(MyStruct, 0): std::field::Field` is not satisfied
   --> $DIR/not-field-if-packed.rs:14:20
    |
 LL |     assert_field::<field_of!(MyStruct, 0)>();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ the trait `Field` is not implemented for `field_of!(MyStruct, 0)`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `std::field::Field` is not implemented for `field_of!(MyStruct, 0)`
    |
 note: required by a bound in `assert_field`
   --> $DIR/not-field-if-packed.rs:11:20
