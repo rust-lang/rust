@@ -112,6 +112,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::unreachable
                 | sym::cold_path
                 | sym::breakpoint
+                | sym::amdgpu_dispatch_ptr
                 | sym::assert_zero_valid
                 | sym::assert_mem_uninitialized_valid
                 | sym::assert_inhabited
