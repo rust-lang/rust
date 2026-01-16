@@ -1141,26 +1141,26 @@ pub struct Resolver<'ra, 'tcx> {
 
     // Spans for local variables found during pattern resolution.
     // Used for suggestions during error reporting.
-    pat_span_map: NodeMap<Span>,
+    pat_span_map: NodeMap<Span> = Default::default(),
 
     /// Resolutions for nodes that have a single resolution.
-    partial_res_map: NodeMap<PartialRes>,
+    partial_res_map: NodeMap<PartialRes> = Default::default(),
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    import_res_map: NodeMap<PerNS<Option<Res>>>,
+    import_res_map: NodeMap<PerNS<Option<Res>>> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    label_res_map: NodeMap<NodeId>,
+    label_res_map: NodeMap<NodeId> = Default::default(),
     /// Resolutions for lifetimes.
-    lifetimes_res_map: NodeMap<LifetimeRes>,
+    lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<Vec<TraitCandidate>>,
+    trait_map: NodeMap<Vec<TraitCandidate>> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1176,7 +1176,7 @@ pub struct Resolver<'ra, 'tcx> {
     ///
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
-    block_map: NodeMap<Module<'ra>>,
+    block_map: NodeMap<Module<'ra>> = Default::default(),
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
@@ -1596,18 +1596,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            pat_span_map: Default::default(),
-            partial_res_map: Default::default(),
-            import_res_map: Default::default(),
-            label_res_map: Default::default(),
-            lifetimes_res_map: Default::default(),
-            extra_lifetime_params_map: Default::default(),
-            trait_map: NodeMap::default(),
             empty_module,
             local_modules,
             local_module_map,
             extern_module_map: Default::default(),
-            block_map: Default::default(),
 
             glob_map: Default::default(),
             maybe_unused_trait_imports: Default::default(),
