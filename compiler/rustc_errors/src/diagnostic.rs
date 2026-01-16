@@ -11,8 +11,9 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, SpanRef, Symbol};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -234,8 +235,9 @@ impl StringPart {
 /// used for most operations, and should be used instead whenever possible.
 /// This type should only be used when `Diag`'s lifetime causes difficulties,
 /// e.g. when storing diagnostics within `DiagCtxt`.
+// Manual impls serialize `sort_span` as `SpanRef` for RDR.
 #[must_use]
-#[derive(Clone, Debug, Encodable, Decodable)]
+#[derive(Clone, Debug)]
 pub struct DiagInner {
     // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
     // outside of what methods in this crate themselves allow.
@@ -263,6 +265,46 @@ pub struct DiagInner {
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
     pub(crate) emitted_at: DiagLocation,
+}
+
+impl<E: SpanEncoder> Encodable<E> for DiagInner {
+    fn encode(&self, e: &mut E) {
+        self.level.encode(e);
+        self.messages.encode(e);
+        self.code.encode(e);
+        self.lint_id.encode(e);
+        self.span.encode(e);
+        self.children.encode(e);
+        self.suggestions.encode(e);
+        self.args.encode(e);
+        self.reserved_args.encode(e);
+        // Encode sort_span as SpanRef to avoid absolute byte positions
+        self.sort_span.to_span_ref().encode(e);
+        self.is_lint.encode(e);
+        self.long_ty_path.encode(e);
+        self.emitted_at.encode(e);
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for DiagInner {
+    fn decode(d: &mut D) -> Self {
+        DiagInner {
+            level: Decodable::decode(d),
+            messages: Decodable::decode(d),
+            code: Decodable::decode(d),
+            lint_id: Decodable::decode(d),
+            span: Decodable::decode(d),
+            children: Decodable::decode(d),
+            suggestions: Decodable::decode(d),
+            args: Decodable::decode(d),
+            reserved_args: Decodable::decode(d),
+            // Decode SpanRef and convert back to Span
+            sort_span: { let sr: SpanRef = Decodable::decode(d); sr.span() },
+            is_lint: Decodable::decode(d),
+            long_ty_path: Decodable::decode(d),
+            emitted_at: Decodable::decode(d),
+        }
+    }
 }
 
 impl DiagInner {

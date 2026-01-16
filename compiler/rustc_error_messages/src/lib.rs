@@ -16,7 +16,8 @@ use fluent_syntax::parser::ParserError;
 use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::Span;
+use rustc_serialize::{Decodable, Encodable};
+use rustc_span::{Span, SpanDecoder, SpanEncoder, SpanRef};
 use tracing::{instrument, trace};
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -391,7 +392,10 @@ pub struct SpanLabel {
 ///   the error, and would be rendered with `^^^`.
 /// - They can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable)]
+// Manual `Encodable`/`Decodable` impls serialize spans as `SpanRef` to support
+// RDR (Relink, Don't Rebuild). We keep `Span` internally for performance since
+// `primary_spans()` returns `&[Span]` directly.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, DiagMessage)>,
@@ -505,6 +509,40 @@ impl From<Span> for MultiSpan {
 impl From<Vec<Span>> for MultiSpan {
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for MultiSpan {
+    fn encode(&self, e: &mut E) {
+        self.primary_spans.len().encode(e);
+        for span in &self.primary_spans {
+            e.encode_span_as_span_ref(*span);
+        }
+        self.span_labels.len().encode(e);
+        for (span, msg) in &self.span_labels {
+            e.encode_span_as_span_ref(*span);
+            msg.encode(e);
+        }
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for MultiSpan {
+    fn decode(d: &mut D) -> Self {
+        // Decode primary spans
+        let primary_len: usize = Decodable::decode(d);
+        let mut primary_spans = Vec::with_capacity(primary_len);
+        for _ in 0..primary_len {
+            primary_spans.push(d.decode_span_ref_as_span());
+        }
+        // Decode span labels
+        let labels_len: usize = Decodable::decode(d);
+        let mut span_labels = Vec::with_capacity(labels_len);
+        for _ in 0..labels_len {
+            let span = d.decode_span_ref_as_span();
+            let msg = Decodable::decode(d);
+            span_labels.push((span, msg));
+        }
+        MultiSpan { primary_spans, span_labels }
     }
 }
 

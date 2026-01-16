@@ -68,10 +68,11 @@ use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
+use rustc_span::{BytePos, DUMMY_SP, Loc, Span, SpanDecoder, SpanEncoder, SpanRef};
 pub use snippet::Style;
 use tracing::debug;
 
@@ -205,17 +206,55 @@ pub struct Substitution {
     pub parts: Vec<SubstitutionPart>,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+// Manual impls serialize spans as `SpanRef` for RDR.
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct SubstitutionPart {
     pub span: Span,
     pub snippet: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+impl<E: SpanEncoder> Encodable<E> for SubstitutionPart {
+    fn encode(&self, e: &mut E) {
+        self.span.to_span_ref().encode(e);
+        self.snippet.encode(e);
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for SubstitutionPart {
+    fn decode(d: &mut D) -> Self {
+        let span_ref: SpanRef = Decodable::decode(d);
+        let snippet: String = Decodable::decode(d);
+        SubstitutionPart { span: span_ref.span(), snippet }
+    }
+}
+
+// Manual impls serialize spans as `SpanRef` for RDR.
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct TrimmedSubstitutionPart {
     pub original_span: Span,
     pub span: Span,
     pub snippet: String,
+}
+
+impl<E: SpanEncoder> Encodable<E> for TrimmedSubstitutionPart {
+    fn encode(&self, e: &mut E) {
+        self.original_span.to_span_ref().encode(e);
+        self.span.to_span_ref().encode(e);
+        self.snippet.encode(e);
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for TrimmedSubstitutionPart {
+    fn decode(d: &mut D) -> Self {
+        let original_span_ref: SpanRef = Decodable::decode(d);
+        let span_ref: SpanRef = Decodable::decode(d);
+        let snippet: String = Decodable::decode(d);
+        TrimmedSubstitutionPart {
+            original_span: original_span_ref.span(),
+            span: span_ref.span(),
+            snippet,
+        }
+    }
 }
 
 /// Used to translate between `Span`s and byte positions within a single output line in highlighted
