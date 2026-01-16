@@ -8,7 +8,7 @@ use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
@@ -419,8 +419,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         ) {
             return;
         }
-        let id = self.target_id;
-        (self.emit_lint)(AttributeLint { lint_id: LintId::of(lint), id, span, kind });
+        (self.emit_lint)(LintId::of(lint), span, kind);
     }
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
@@ -665,11 +664,11 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
     pub(crate) cx: &'p mut AttributeParser<'sess, S>,
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
-    /// The id ([`NodeId`] if `S` is `Early`, [`HirId`] if `S` is `Late`) of the syntactical component this attribute was applied to
-    pub(crate) target_id: S::Id,
-    pub(crate) target: Option<rustc_hir::Target>,
+    pub(crate) target: rustc_hir::Target,
 
-    pub(crate) emit_lint: &'p mut dyn FnMut(AttributeLint<S::Id>),
+    /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
+    /// is `Late` and is the ID of the syntactical component this attribute was applied to.
+    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, Span, AttributeLintKind),
 }
 
 /// Context given to every attribute parser during finalization.

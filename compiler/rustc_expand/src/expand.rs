@@ -2218,6 +2218,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             &attr,
             attr.span,
             self.cfg().lint_node_id,
+            // Target doesn't matter for `cfg` parsing.
+            Target::Crate,
             self.cfg().features,
             ShouldEmit::ErrorsAndLints,
             parse_cfg,

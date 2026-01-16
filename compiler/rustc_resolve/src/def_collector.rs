@@ -148,11 +148,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,
                     i.span,
-                    i.id,
                     Target::MacroDef,
                     OmitDoc::Skip,
                     std::convert::identity,
-                    |_l| {
+                    |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
                         // NOTE that before new attribute parsing, they didn't happen either
                         // but it would be nice if we could change that.
