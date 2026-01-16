@@ -2177,7 +2177,7 @@ pub trait Iterator {
     /// assert_eq!(vec, vec![1, 2, 3, 1, 2, 3]);
     /// ```
     #[inline]
-    #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
+    #[unstable(feature = "iter_collect_into", issue = "94780")]
     fn collect_into<E: Extend<Self::Item>>(self, collection: &mut E) -> &mut E
     where
         Self: Sized,
@@ -2271,7 +2271,7 @@ pub trait Iterator {
     /// assert!(a[..i].iter().all(|n| n % 2 == 0)); // evens
     /// assert!(a[i..].iter().all(|n| n % 2 == 1)); // odds
     /// ```
-    #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
+    #[unstable(feature = "iter_partition_in_place", issue = "62543")]
     fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
     where
         Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
@@ -2328,7 +2328,7 @@ pub trait Iterator {
     /// assert!("Iterator".chars().is_partitioned(char::is_uppercase));
     /// assert!(!"IntoIterator".chars().is_partitioned(char::is_uppercase));
     /// ```
-    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "62544")]
+    #[unstable(feature = "iter_is_partitioned", issue = "62544")]
     fn is_partitioned<P>(mut self, mut predicate: P) -> bool
     where
         Self: Sized,
@@ -2707,7 +2707,7 @@ pub trait Iterator {
     /// assert_eq!(max, Ok(Some("5")));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_reduce", reason = "new API", issue = "87053")]
+    #[unstable(feature = "iterator_try_reduce", issue = "87053")]
     fn try_reduce<R>(
         &mut self,
         f: impl FnMut(Self::Item, Self::Item) -> R,
@@ -2980,7 +2980,7 @@ pub trait Iterator {
     /// assert_eq!(result, None);
     /// ```
     #[inline]
-    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[unstable(feature = "try_find", issue = "63178")]
     fn try_find<R>(
         &mut self,
         f: impl FnMut(&Self::Item) -> R,
