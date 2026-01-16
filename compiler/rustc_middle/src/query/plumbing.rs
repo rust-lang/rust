@@ -278,7 +278,7 @@ macro_rules! define_callbacks {
                     ($V)
                 );
 
-                /// This function takes `ProvidedValue` and coverts it to an erased `Value` by
+                /// This function takes `ProvidedValue` and converts it to an erased `Value` by
                 /// allocating it on an arena if the query has the `arena_cache` modifier. The
                 /// value is then erased and returned. This will happen when computing the query
                 /// using a provider or decoding a stored result.
