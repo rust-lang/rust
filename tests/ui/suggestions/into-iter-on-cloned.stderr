@@ -1,0 +1,23 @@
+error[E0599]: `Option<i32>` is not an iterator
+  --> $DIR/into-iter-on-cloned.rs:2:20
+   |
+LL |     let _: i32 = x.cloned().unwrap();
+   |                    ^^^^^^ `Option<i32>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `Option<i32>: Iterator`
+           which is required by `&mut Option<i32>: Iterator`
+
+error[E0599]: `Option<i32>` is not an iterator
+  --> $DIR/into-iter-on-cloned.rs:7:20
+   |
+LL |     let _: i32 = x.copied().unwrap();
+   |                    ^^^^^^ `Option<i32>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `Option<i32>: Iterator`
+           which is required by `&mut Option<i32>: Iterator`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -57,11 +57,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
+    fn into_iterator_item_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        let into_iter = self.tcx.get_diagnostic_item(sym::IntoIterator)?;
+
+        let item_def_id =
+            self.tcx.associated_item_def_ids(into_iter).into_iter().find(|&def_id| {
+                let item = self.tcx.associated_item(def_id);
+                matches!(item.kind, ty::AssocKind::Type { .. }) && item.name() == sym::Item
+            })?;
+
+        let projection = ty::AliasTy::new(self.tcx, *item_def_id, [ty]);
+        return Some(projection.to_ty(self.tcx));
+    }
+
     fn impl_into_iterator_should_be_iterator(
         &self,
         ty: Ty<'tcx>,
         span: Span,
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
+        method_name: Symbol,
     ) -> bool {
         fn predicate_bounds_generic_param<'tcx>(
             predicate: ty::Predicate<'_>,
@@ -109,6 +123,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let obligation = Obligation::new(self.tcx, self.misc(span), self.param_env, trait_ref);
         if !self.predicate_must_hold_modulo_regions(&obligation) {
             return false;
+        }
+
+        // Don't suggest .into_iter() for .cloned() or .copied() if the items are not already references.
+        if matches!(method_name.as_str(), "cloned" | "copied") {
+            if let Some(item_ty) = self.into_iterator_item_ty(ty)
+                && !item_ty.is_ref()
+            {
+                return false;
+            }
         }
 
         match *ty.peel_refs().kind() {
@@ -803,8 +826,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
-        } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
-        {
+        } else if self.impl_into_iterator_should_be_iterator(
+            rcvr_ty,
+            span,
+            unsatisfied_predicates,
+            item_ident.name,
+        ) {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
             if !span.in_external_macro(self.tcx.sess.source_map()) {
                 err.multipart_suggestion_verbose(
