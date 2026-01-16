@@ -95,8 +95,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
-use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
@@ -122,7 +122,9 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+    providers.symbol_name = symbol_name_provider;
+    providers.fallback_queries.symbol_name =
+        |tcx, _key, _cycle_error, _guar| ty::SymbolName::new(tcx, "<error>");
 }
 
 // The `symbol_name` query provides the symbol name for calling a given

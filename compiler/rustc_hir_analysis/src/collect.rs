@@ -32,11 +32,12 @@ use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
-use rustc_middle::query::Providers;
+use rustc_middle::query::plumbing::{CyclePlaceholder, default_fallback_query};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
 };
+use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
@@ -61,10 +62,35 @@ mod type_of;
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(crate) fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
-    *providers = Providers {
-        type_of: type_of::type_of,
-        type_of_opaque: type_of::type_of_opaque,
-        type_of_opaque_hir_typeck: type_of::type_of_opaque_hir_typeck,
+    providers.type_of = type_of::type_of;
+    providers.fallback_queries.type_of =
+        |tcx, _key, _cycle_error, guar| ty::EarlyBinder::bind(Ty::new_error(tcx, guar));
+    providers.type_of_opaque = type_of::type_of_opaque;
+    providers.fallback_queries.type_of_opaque =
+        |_tcx, _key, _cycle_error, guar| Err(CyclePlaceholder(guar));
+    providers.type_of_opaque_hir_typeck = type_of::type_of_opaque_hir_typeck;
+    providers.fallback_queries.type_of_opaque_hir_typeck =
+        |tcx, _key, _cycle_error, guar| ty::EarlyBinder::bind(Ty::new_error(tcx, guar));
+    providers.fn_sig = fn_sig;
+    providers.fallback_queries.fn_sig = |tcx, def_id, cycle_error, guar| {
+        let arity = tcx
+            .hir_node_by_def_id(def_id)
+            .fn_sig()
+            .unwrap_or_else(|| default_fallback_query(tcx, "fn_sig", &def_id, cycle_error, guar))
+            .decl
+            .inputs
+            .len();
+
+        ty::EarlyBinder::bind(ty::Binder::dummy(tcx.mk_fn_sig(
+            std::iter::repeat_n(Ty::new_error(tcx, guar), arity),
+            Ty::new_error(tcx, guar),
+            false,
+            rustc_hir::Safety::Safe,
+            rustc_abi::ExternAbi::Rust,
+        )))
+    };
+
+    providers.queries = rustc_middle::query::Providers {
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
@@ -85,7 +111,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
-        fn_sig,
         impl_trait_header,
         coroutine_kind,
         coroutine_for_closure,
@@ -94,7 +119,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         const_param_default,
         anon_const_kind,
         const_of_item,
-        ..*providers
+        ..providers.queries
     };
 }
 

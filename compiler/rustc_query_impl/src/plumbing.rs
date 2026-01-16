@@ -309,6 +309,34 @@ macro_rules! call_provider {
     };
 }
 
+macro_rules! if_fatal_cycle {
+    ([] $if:block else $else:block) => {
+        $else
+    };
+    ([(fatal_cycle) $($modifiers:tt)*] $if:block else $else:block) => {
+        $if
+    };
+    ([$other:tt $($modifiers:tt)*] $if:block else $else:block) => {
+        if_fatal_cycle!([$($modifiers)*] $if else $else)
+    };
+}
+
+macro_rules! call_fallback_provider {
+    ([][$tcx:expr, $name:ident, $key:expr, $cycle:expr, $guar:expr]) => {{
+        ($tcx.query_system.fns.fallback_providers.$name)($tcx, $key, $cycle, $guar)
+    }};
+    ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr, $cycle:expr, $guar:expr]) => {{
+        if let Some(key) = $key.as_local_key() {
+            ($tcx.query_system.fns.fallback_providers.$name)($tcx, key, $cycle, $guar)
+        } else {
+            rustc_middle::bug!("tried to call fallback for an extern query: {}({:?})", stringify!($name), $key)
+        }
+    }};
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
+        call_fallback_provider!([$($modifiers)*][$($args)*])
+    };
+}
+
 macro_rules! should_ever_cache_on_disk {
     ([]$yes:tt $no:tt) => {{
         $no
@@ -688,9 +716,16 @@ macro_rules! define_queries {
                     } {
                         |_tcx, _key, _prev_index, _index| None
                     }),
-                    value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
-                        erase(result)
+                    execute_fallback: |_tcx, key, _cycle, _guar| {
+                        if_fatal_cycle!([$($modifiers)*] {
+                            rustc_middle::bug!("tried to call fallback for a query marked with `fatal_cycle`: {}({:?})", stringify!($name), key)
+                        } else {
+                            queries::$name::provided_to_erased(
+                                _tcx,
+                                call_fallback_provider!([$($modifiers)*][_tcx, $name, key, _cycle, _guar])
+                            )
+                        })
+
                     },
                     loadable_from_disk: |_tcx, _key, _index| {
                         should_ever_cache_on_disk!([$($modifiers)*] {

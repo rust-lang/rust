@@ -55,9 +55,10 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
 
     /// Synthesize an error value to let compilation continue after a cycle.
-    fn value_from_cycle_error(
+    fn execute_fallback(
         self,
         tcx: Qcx::DepContext,
+        key: Self::Key,
         cycle_error: &CycleError<QueryStackFrameExtra>,
         guar: ErrorGuaranteed,
     ) -> Self::Value;

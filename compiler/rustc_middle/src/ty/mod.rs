@@ -114,7 +114,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::IntoQueryParam;
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
@@ -122,6 +122,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::LayoutError;
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
+use crate::util::Providers;
 
 pub mod abstract_const;
 pub mod adjustment;
@@ -2253,13 +2254,13 @@ pub fn provide(providers: &mut Providers) {
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
-    *providers = Providers {
+    providers.queries = crate::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
         trait_impls_in_crate: trait_def::trait_impls_in_crate_provider,
         traits: trait_def::traits_provider,
         vtable_allocation: vtable::vtable_allocation_provider,
-        ..*providers
+        ..providers.queries
     };
 }
 
