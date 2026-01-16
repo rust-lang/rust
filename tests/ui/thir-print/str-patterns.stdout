@@ -1,0 +1,324 @@
+DefId(0:3 ~ str_patterns[fc71]::hello_world):
+Thir {
+    body_type: Fn(
+        fn(&'{erased} str),
+    ),
+    arms: [
+        Arm {
+            pattern: Pat {
+                ty: &'{erased} str,
+                span: $DIR/str-patterns.rs:11:9: 11:16 (#0),
+                extra: None,
+                kind: Deref {
+                    subpattern: Pat {
+                        ty: str,
+                        span: $DIR/str-patterns.rs:11:9: 11:16 (#0),
+                        extra: None,
+                        kind: Constant {
+                            value: Value {
+                                ty: str,
+                                valtree: Branch(
+                                    [
+                                        104_u8,
+                                        101_u8,
+                                        108_u8,
+                                        108_u8,
+                                        111_u8,
+                                    ],
+                                ),
+                            },
+                        },
+                    },
+                },
+            },
+            guard: None,
+            body: e3,
+            hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).9),
+            scope: Node(9),
+            span: $DIR/str-patterns.rs:11:9: 11:22 (#0),
+        },
+        Arm {
+            pattern: Pat {
+                ty: &'{erased} str,
+                span: $DIR/str-patterns.rs:12:9: 12:17 (#0),
+                extra: Some(
+                    PatExtra {
+                        expanded_const: Some(
+                            DefId(0:4 ~ str_patterns[fc71]::CONSTANT),
+                        ),
+                        ascriptions: [],
+                    },
+                ),
+                kind: Deref {
+                    subpattern: Pat {
+                        ty: str,
+                        span: $DIR/str-patterns.rs:12:9: 12:17 (#0),
+                        extra: None,
+                        kind: Constant {
+                            value: Value {
+                                ty: str,
+                                valtree: Branch(
+                                    [
+                                        99_u8,
+                                        111_u8,
+                                        110_u8,
+                                        115_u8,
+                                        116_u8,
+                                        97_u8,
+                                        110_u8,
+                                        116_u8,
+                                    ],
+                                ),
+                            },
+                        },
+                    },
+                },
+            },
+            guard: None,
+            body: e5,
+            hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).15),
+            scope: Node(15),
+            span: $DIR/str-patterns.rs:12:9: 12:23 (#0),
+        },
+        Arm {
+            pattern: Pat {
+                ty: &'{erased} str,
+                span: $DIR/str-patterns.rs:13:9: 13:10 (#0),
+                extra: None,
+                kind: Wild,
+            },
+            guard: None,
+            body: e7,
+            hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).19),
+            scope: Node(19),
+            span: $DIR/str-patterns.rs:13:9: 13:16 (#0),
+        },
+    ],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(11),
+            span: $DIR/str-patterns.rs:11:20: 11:22 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(17),
+            span: $DIR/str-patterns.rs:12:21: 12:23 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(21),
+            span: $DIR/str-patterns.rs:13:14: 13:16 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(3),
+            span: $DIR/str-patterns.rs:9:29: 15:2 (#0),
+            stmts: [],
+            expr: Some(
+                e9,
+            ),
+            safety_mode: Safe,
+        },
+    ],
+    exprs: [
+        Expr {
+            kind: VarRef {
+                id: LocalVarId(
+                    HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).2),
+                ),
+            },
+            ty: &'{erased} str,
+            temp_scope_id: 5,
+            span: $DIR/str-patterns.rs:10:11: 10:12 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(5),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).5),
+                value: e0,
+            },
+            ty: &'{erased} str,
+            temp_scope_id: 5,
+            span: $DIR/str-patterns.rs:10:11: 10:12 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b0,
+            },
+            ty: (),
+            temp_scope_id: 10,
+            span: $DIR/str-patterns.rs:11:20: 11:22 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(10),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).10),
+                value: e2,
+            },
+            ty: (),
+            temp_scope_id: 10,
+            span: $DIR/str-patterns.rs:11:20: 11:22 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b1,
+            },
+            ty: (),
+            temp_scope_id: 16,
+            span: $DIR/str-patterns.rs:12:21: 12:23 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(16),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).16),
+                value: e4,
+            },
+            ty: (),
+            temp_scope_id: 16,
+            span: $DIR/str-patterns.rs:12:21: 12:23 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b2,
+            },
+            ty: (),
+            temp_scope_id: 20,
+            span: $DIR/str-patterns.rs:13:14: 13:16 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(20),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).20),
+                value: e6,
+            },
+            ty: (),
+            temp_scope_id: 20,
+            span: $DIR/str-patterns.rs:13:14: 13:16 (#0),
+        },
+        Expr {
+            kind: Match {
+                scrutinee: e1,
+                arms: [
+                    a0,
+                    a1,
+                    a2,
+                ],
+                match_source: Normal,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/str-patterns.rs:10:5: 14:6 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(4),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).4),
+                value: e8,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/str-patterns.rs:10:5: 14:6 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b3,
+            },
+            ty: (),
+            temp_scope_id: 22,
+            span: $DIR/str-patterns.rs:9:29: 15:2 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(22),
+                hir_id: HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).22),
+                value: e10,
+            },
+            ty: (),
+            temp_scope_id: 22,
+            span: $DIR/str-patterns.rs:9:29: 15:2 (#0),
+        },
+    ],
+    stmts: [],
+    params: [
+        Param {
+            pat: Some(
+                Pat {
+                    ty: &'{erased} str,
+                    span: $DIR/str-patterns.rs:9:20: 9:21 (#0),
+                    extra: None,
+                    kind: Binding {
+                        name: "x",
+                        mode: BindingMode(
+                            No,
+                            Not,
+                        ),
+                        var: LocalVarId(
+                            HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).2),
+                        ),
+                        ty: &'{erased} str,
+                        subpattern: None,
+                        is_primary: true,
+                        is_shorthand: false,
+                    },
+                },
+            ),
+            ty: &'{erased} str,
+            ty_span: Some(
+                $DIR/str-patterns.rs:9:23: 9:27 (#0),
+            ),
+            self_kind: None,
+            hir_id: Some(
+                HirId(DefId(0:3 ~ str_patterns[fc71]::hello_world).1),
+            ),
+        },
+    ],
+}
+
+DefId(0:4 ~ str_patterns[fc71]::CONSTANT):
+Thir {
+    body_type: Const(
+        &'{erased} str,
+    ),
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Str(
+                        "constant",
+                        Cooked,
+                    ),
+                    span: $DIR/str-patterns.rs:17:24: 17:34 (#0),
+                },
+                neg: false,
+            },
+            ty: &'{erased} str,
+            temp_scope_id: 5,
+            span: $DIR/str-patterns.rs:17:24: 17:34 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(5),
+                hir_id: HirId(DefId(0:4 ~ str_patterns[fc71]::CONSTANT).5),
+                value: e0,
+            },
+            ty: &'{erased} str,
+            temp_scope_id: 5,
+            span: $DIR/str-patterns.rs:17:24: 17:34 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
