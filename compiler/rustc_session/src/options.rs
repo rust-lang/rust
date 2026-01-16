@@ -2278,6 +2278,8 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
+    cache_proc_macros: bool = (false, parse_bool, [TRACKED],
+        "cache the results of derive proc macro invocations (potentially unsound!) (default: no"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
