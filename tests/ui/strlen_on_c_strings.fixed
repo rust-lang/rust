@@ -7,40 +7,62 @@ use std::ffi::{CStr, CString};
 fn main() {
     // CString
     let cstring = CString::new("foo").expect("CString::new failed");
-    let _ = cstring.to_bytes().len();
+    let _ = cstring.count_bytes();
     //~^ ERROR: using `libc::strlen` on a `CString` value
 
     // CStr
     let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    let _ = cstr.to_bytes().len();
+    let _ = cstr.count_bytes();
     //~^ ERROR: using `libc::strlen` on a `CStr` value
 
-    let _ = cstr.to_bytes().len();
+    let _ = cstr.count_bytes();
     //~^ ERROR: using `libc::strlen` on a `CStr` value
 
     let pcstr: *const &CStr = &cstr;
-    let _ = unsafe { (*pcstr).to_bytes().len() };
+    let _ = unsafe { (*pcstr).count_bytes() };
     //~^ ERROR: using `libc::strlen` on a `CStr` value
 
     unsafe fn unsafe_identity<T>(x: T) -> T {
         x
     }
-    let _ = unsafe { unsafe_identity(cstr).to_bytes().len() };
+    let _ = unsafe { unsafe_identity(cstr).count_bytes() };
     //~^ ERROR: using `libc::strlen` on a `CStr` value
-    let _ = unsafe { unsafe_identity(cstr) }.to_bytes().len();
+    let _ = unsafe { unsafe_identity(cstr) }.count_bytes();
     //~^ ERROR: using `libc::strlen` on a `CStr` value
 
     let f: unsafe fn(_) -> _ = unsafe_identity;
-    let _ = unsafe { f(cstr).to_bytes().len() };
+    let _ = unsafe { f(cstr).count_bytes() };
     //~^ ERROR: using `libc::strlen` on a `CStr` value
 }
 
 // make sure we lint types that _adjust_ to `CStr`
 fn adjusted(box_cstring: Box<CString>, box_cstr: Box<CStr>, arc_cstring: std::sync::Arc<CStr>) {
-    let _ = box_cstring.to_bytes().len();
+    let _ = box_cstring.count_bytes();
     //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
-    let _ = box_cstr.to_bytes().len();
+    let _ = box_cstr.count_bytes();
     //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
-    let _ = arc_cstring.to_bytes().len();
+    let _ = arc_cstring.count_bytes();
     //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
+}
+
+#[clippy::msrv = "1.78"]
+fn msrv_1_78() {
+    let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    let _ = cstr.to_bytes().len();
+    //~^ strlen_on_c_strings
+
+    let cstring = CString::new("foo").expect("CString::new failed");
+    let _ = cstring.to_bytes().len();
+    //~^ strlen_on_c_strings
+}
+
+#[clippy::msrv = "1.79"]
+fn msrv_1_79() {
+    let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    let _ = cstr.count_bytes();
+    //~^ strlen_on_c_strings
+
+    let cstring = CString::new("foo").expect("CString::new failed");
+    let _ = cstring.count_bytes();
+    //~^ strlen_on_c_strings
 }

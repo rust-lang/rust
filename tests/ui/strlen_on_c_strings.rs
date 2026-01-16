@@ -44,3 +44,25 @@ fn adjusted(box_cstring: Box<CString>, box_cstr: Box<CStr>, arc_cstring: std::sy
     let _ = unsafe { libc::strlen(arc_cstring.as_ptr()) };
     //~^ ERROR: using `libc::strlen` on a type that dereferences to `CStr`
 }
+
+#[clippy::msrv = "1.78"]
+fn msrv_1_78() {
+    let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    let _ = unsafe { libc::strlen(cstr.as_ptr()) };
+    //~^ strlen_on_c_strings
+
+    let cstring = CString::new("foo").expect("CString::new failed");
+    let _ = unsafe { libc::strlen(cstring.as_ptr()) };
+    //~^ strlen_on_c_strings
+}
+
+#[clippy::msrv = "1.79"]
+fn msrv_1_79() {
+    let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    let _ = unsafe { libc::strlen(cstr.as_ptr()) };
+    //~^ strlen_on_c_strings
+
+    let cstring = CString::new("foo").expect("CString::new failed");
+    let _ = unsafe { libc::strlen(cstring.as_ptr()) };
+    //~^ strlen_on_c_strings
+}
