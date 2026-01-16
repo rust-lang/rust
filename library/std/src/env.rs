@@ -699,7 +699,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// On Linux, Android, Cygwin, GNU Nurd, NuttX, and Emscripten, this function
 /// returns the target of the `/proc/self/exe` symlink. If the executable has
-/// been deleted, Linux returns the previous path with the string `" deleted()"`
+/// been deleted, Linux returns the previous path with the string `" (deleted)"`
 /// appended.
 ///
 /// On Apple operating systems, this function calls `_NSGetExecutablePath`.
