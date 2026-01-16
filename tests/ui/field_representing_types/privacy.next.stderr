@@ -1,0 +1,15 @@
+error[E0616]: field `a` of struct `Struct` is private
+  --> $DIR/privacy.rs:28:30
+   |
+LL |     let _: field_of!(Struct, a);
+   |                              ^ private field
+
+error[E0616]: field `a` of union `foo::Union` is private
+  --> $DIR/privacy.rs:30:29
+   |
+LL |     let _: field_of!(Union, a);
+   |                             ^ private field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0616`.

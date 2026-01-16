@@ -1,0 +1,52 @@
+error[E0609]: no field `other` on struct `Struct`
+  --> $DIR/nonexistent.rs:21:30
+   |
+LL |     let _: field_of!(Struct, other);
+   |                              ^^^^^ unknown field
+
+error[E0609]: no field `0` on struct `Struct`
+  --> $DIR/nonexistent.rs:22:30
+   |
+LL |     let _: field_of!(Struct, 0);
+   |                              ^ unknown field
+
+error[E0609]: no field `other` on union `Union`
+  --> $DIR/nonexistent.rs:23:29
+   |
+LL |     let _: field_of!(Union, other);
+   |                             ^^^^^ unknown field
+
+error[E0609]: no field `0` on union `Union`
+  --> $DIR/nonexistent.rs:24:29
+   |
+LL |     let _: field_of!(Union, 0);
+   |                             ^ unknown field
+
+error[E0609]: no field `other` on enum `Enum`
+  --> $DIR/nonexistent.rs:26:36
+   |
+LL |     let _: field_of!(Enum, Variant.other);
+   |                                    ^^^^^ unknown field
+
+error[E0609]: no field `0` on enum `Enum`
+  --> $DIR/nonexistent.rs:27:36
+   |
+LL |     let _: field_of!(Enum, Variant.0);
+   |                                    ^ unknown field
+
+error[E0001]: no variant `OtherVariant` on enum `Enum`
+  --> $DIR/nonexistent.rs:29:28
+   |
+LL |     let _: field_of!(Enum, OtherVariant.field);
+   |                            ^^^^^^^^^^^^ unknown variant
+
+error[E0001]: no variant `OtherVariant` on enum `Enum`
+  --> $DIR/nonexistent.rs:30:28
+   |
+LL |     let _: field_of!(Enum, OtherVariant.0);
+   |                            ^^^^^^^^^^^^ unknown variant
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0001, E0609.
+For more information about an error, try `rustc --explain E0001`.
