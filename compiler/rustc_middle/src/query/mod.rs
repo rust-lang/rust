@@ -71,6 +71,7 @@ use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -2049,6 +2050,12 @@ rustc_queries! {
     /// Finds the `rustc_proc_macro_decls` item of a crate.
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the proc macro declarations for a crate" }
+    }
+
+    /// Computes a hash of only the publicly-reachable API.
+    /// This hash is stable when private items change.
+    query public_api_hash(_: ()) -> Fingerprint {
+        desc { "computing public API hash" }
     }
 
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
