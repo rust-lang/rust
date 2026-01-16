@@ -2301,7 +2301,7 @@ impl CrateMetadata {
             ));
         }
 
-        Ok(SpanFileData { blob, source_map: root.source_map() })
+        Ok(SpanFileData { blob, source_map: root.source_map })
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
