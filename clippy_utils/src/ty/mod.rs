@@ -824,7 +824,7 @@ impl AdtVariantInfo {
                 }
             })
             .collect::<Vec<_>>();
-        variants_size.sort_by(|a, b| b.size.cmp(&a.size));
+        variants_size.sort_by_key(|b| std::cmp::Reverse(b.size));
         variants_size
     }
 }
