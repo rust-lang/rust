@@ -36,13 +36,11 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const PHI: f16 = 1.618033988749894848204586834365638118_f16;
+    pub const GOLDEN_RATIO: f16 = 1.618033988749894848204586834365638118_f16;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const EGAMMA: f16 = 0.577215664901532860606512090082402431_f16;
+    pub const EULER_GAMMA: f16 = 0.577215664901532860606512090082402431_f16;
 
     /// π/2
     #[unstable(feature = "f16", issue = "116909")]
