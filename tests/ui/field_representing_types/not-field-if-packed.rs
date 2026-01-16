@@ -12,5 +12,5 @@ fn assert_field<F: Field>() {}
 
 fn main() {
     assert_field::<field_of!(MyStruct, 0)>();
-    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): std::field::Field` is not satisfied [E0277]
 }
