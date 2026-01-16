@@ -373,14 +373,12 @@ pub(crate) fn create_query_frame<
 ) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
     let def_id = key.key_as_def_id();
 
-    let hash = || {
-        tcx.with_stable_hashing_context(|mut hcx| {
-            let mut hasher = StableHasher::new();
-            kind.as_usize().hash_stable(&mut hcx, &mut hasher);
-            key.hash_stable(&mut hcx, &mut hasher);
-            hasher.finish::<Hash64>()
-        })
-    };
+    let hash = tcx.with_stable_hashing_context(|mut hcx| {
+        let mut hasher = StableHasher::new();
+        kind.as_usize().hash_stable(&mut hcx, &mut hasher);
+        key.hash_stable(&mut hcx, &mut hasher);
+        hasher.finish::<Hash64>()
+    });
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
 
     let info =
