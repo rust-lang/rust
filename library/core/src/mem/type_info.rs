@@ -45,9 +45,16 @@ pub enum TypeKind {
     Tuple(Tuple),
     /// Arrays.
     Array(Array),
-    /// Primitives
-    /// FIXME(#146922): disambiguate further
-    Leaf,
+    /// Primitive boolean type.
+    Bool(Bool),
+    /// Primitive character type.
+    Char(Char),
+    /// Primitive signed and unsigned integer type.
+    Int(Int),
+    /// Primitive floating-point type.
+    Float(Float),
+    /// String slice type.
+    Str(Str),
     /// FIXME(#146922): add all the common types
     Other,
 }
@@ -81,4 +88,48 @@ pub struct Array {
     pub element_ty: TypeId,
     /// The length of the array.
     pub len: usize,
+}
+
+/// Compile-time type information about `bool`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Bool {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about `char`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Char {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about signed and unsigned integer types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Int {
+    /// The bit width of the signed integer type.
+    pub bit_width: usize,
+    /// Whether the integer type is signed.
+    pub signed: bool,
+}
+
+/// Compile-time type information about floating-point types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Float {
+    /// The bit width of the floating-point type.
+    pub bit_width: usize,
+}
+
+/// Compile-time type information about string slice types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Str {
+    // No additional information to provide for now.
 }
