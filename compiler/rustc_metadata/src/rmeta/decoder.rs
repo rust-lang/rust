@@ -81,16 +81,21 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 /// Target modifiers - abi or exploit mitigations flags
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
+/// Lazily-loaded span file data. Contains the span blob and decoded source_map table.
+struct SpanFileData {
+    blob: SpanBlob,
+    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+}
+
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
 
-    /// Optional span file blob, used when crate was compiled with `-Z separate_spans`.
-    /// Contains source_map data needed for span resolution.
-    span_blob: Option<SpanBlob>,
-    /// Source map table from the span file. When present, source files are decoded
-    /// from span_blob instead of from the main blob.
-    span_source_map: Option<LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>>,
+    /// Path to the span file (.spans), if one exists for this crate.
+    /// The span file is loaded lazily on first span resolution.
+    span_file_path: Option<PathBuf>,
+    /// Lazily-loaded span file data. Populated on first access when span_file_path is Some.
+    span_file_data: OnceLock<Option<SpanFileData>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Data about the top-level items in a crate, as well as various crate-level metadata.
@@ -1779,15 +1784,15 @@ impl<'a> CrateMetadataRef<'a> {
         }
         import_info[source_file_index as usize]
             .get_or_insert_with(|| {
-                // If this crate was compiled with -Z separate_spans, load source files
-                // from the span blob; otherwise load from the main metadata blob.
+                // If this crate was compiled with -Z separate_spans, lazily load
+                // source files from the span blob; otherwise load from the main metadata blob.
                 let source_file_to_import =
-                    if let Some(span_source_map) = &self.cdata.span_source_map {
-                        let span_blob = self.cdata.span_blob.as_ref().unwrap();
-                        span_source_map
-                            .get(span_blob, source_file_index)
+                    if let Some(span_data) = self.cdata.span_file_data() {
+                        span_data
+                            .source_map
+                            .get(&span_data.blob, source_file_index)
                             .expect("missing source file in span file")
-                            .decode(span_blob)
+                            .decode(&span_data.blob)
                     } else {
                         self.root
                             .source_map
@@ -1930,7 +1935,7 @@ impl CrateMetadata {
         cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot,
-        span_blob: Option<SpanBlob>,
+        span_file_path: Option<PathBuf>,
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
@@ -1951,13 +1956,10 @@ impl CrateMetadata {
         // that does not copy any data. It just does some data verification.
         let def_path_hash_map = root.def_path_hash_map.decode(&blob);
 
-        // If we have a span blob, decode the SpanFileRoot to get the source_map table.
-        let span_source_map = span_blob.as_ref().map(|sb| sb.get_root().source_map);
-
         let mut cdata = CrateMetadata {
             blob,
-            span_blob,
-            span_source_map,
+            span_file_path,
+            span_file_data: OnceLock::new(),
             root,
             trait_impls,
             incoherent_impls: Default::default(),
@@ -1990,6 +1992,35 @@ impl CrateMetadata {
             .collect();
 
         cdata
+    }
+
+    /// Loads the span file, returning an error on failure.
+    pub(crate) fn ensure_span_file_loaded(&self) -> Result<(), String> {
+        let Some(path) = self.span_file_path.as_ref() else {
+            return Err(format!("span file path not set for crate '{}'", self.root.header.name));
+        };
+        let data = self.load_span_file(path)?;
+        let _ = self.span_file_data.set(Some(data));
+        Ok(())
+    }
+
+    fn span_file_data(&self) -> Option<&SpanFileData> {
+        self.span_file_data
+            .get_or_init(|| {
+                let path = self.span_file_path.as_ref()?;
+                match crate::locator::get_span_metadata_section(path) {
+                    Ok(blob) => {
+                        let source_map = blob.get_root().source_map;
+                        Some(SpanFileData { blob, source_map })
+                    }
+                    Err(err) => {
+                        // Log error but don't fail - fall back to main metadata
+                        tracing::debug!("failed to load span file {:?}: {}", path, err);
+                        None
+                    }
+                }
+            })
+            .as_ref()
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {

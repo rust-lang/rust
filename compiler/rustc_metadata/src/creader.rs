@@ -622,20 +622,11 @@ impl CStore {
             None
         };
 
-        // Load the separate span file if it exists (for crates compiled with -Z separate_spans).
-        let span_blob = source.rmeta.as_ref().and_then(|rmeta_path| {
+        // Check if a separate span file exists (for crates compiled with -Z separate_spans).
+        // The span file will be loaded lazily on first span resolution.
+        let span_file_path = source.rmeta.as_ref().and_then(|rmeta_path| {
             let span_path = rmeta_path.with_extension("spans");
-            if span_path.exists() {
-                match crate::locator::get_span_metadata_section(&span_path) {
-                    Ok(blob) => Some(blob),
-                    Err(err) => {
-                        debug!("failed to load span file {:?}: {}", span_path, err);
-                        None
-                    }
-                }
-            } else {
-                None
-            }
+            if span_path.exists() { Some(span_path) } else { None }
         });
 
         let crate_metadata = CrateMetadata::new(
@@ -643,7 +634,7 @@ impl CStore {
             self,
             metadata,
             crate_root,
-            span_blob,
+            span_file_path,
             raw_proc_macros,
             cnum,
             cnum_map,
