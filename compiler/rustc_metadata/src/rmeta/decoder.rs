@@ -33,7 +33,7 @@ use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
-    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
+    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, IdentRef, Pos, RemapPathScopeComponents, SpanData,
     SpanDecoder, Symbol, SyntaxContext, kw,
 };
 use tracing::debug;
@@ -1316,7 +1316,7 @@ impl<'a> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, tcx))
             .nth(0)
-            .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))
+            .is_some_and(|ident| matches!(ident, Some(IdentRef { name: kw::SelfLower, .. })))
     }
 
     fn get_associated_item_or_field_def_ids(

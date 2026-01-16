@@ -127,6 +127,7 @@ trivially_parameterized_over_tcx! {
     rustc_span::ExpnHash,
     rustc_span::ExpnId,
     rustc_span::Ident,
+    rustc_span::IdentRef,
     rustc_span::SourceFile,
     rustc_span::Span,
     rustc_span::SpanRef,

@@ -1528,7 +1528,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
                 self.tables.asyncness.set(def_id.index, asyncness);
-                record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
+                record_array!(self.tables.fn_arg_idents[def_id] <-
+                    tcx.fn_arg_idents(def_id).iter().map(|opt| opt.map(|id| id.to_ident_ref())));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);

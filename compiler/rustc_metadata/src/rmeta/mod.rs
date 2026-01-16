@@ -38,7 +38,7 @@ use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, SpanRef, Symbol};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, IdentRef, Span, SpanRef, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -445,7 +445,7 @@ define_tables! {
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
+    fn_arg_idents: Table<DefIndex, LazyArray<Option<IdentRef>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,

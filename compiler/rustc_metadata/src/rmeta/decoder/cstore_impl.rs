@@ -169,6 +169,21 @@ macro_rules! provide_one {
             }
         }
     };
+    // Like table, but for optional array tables storing Option<IdentRef> that need
+    // conversion to Option<Ident> at decode time.
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_array_identref }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                $cdata
+                    .root
+                    .tables
+                    .$name
+                    .get(($cdata, $tcx), $def_id.index)
+                    .map(|lazy| $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|opt| opt.map(|ir| ir.ident()))) as &[_])
+                    .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
@@ -321,7 +336,7 @@ provide! { tcx, def_id, other, cdata,
     rendered_const => { table }
     rendered_precise_capturing_args => { table }
     asyncness => { table_direct }
-    fn_arg_idents => { table }
+    fn_arg_idents => { table_array_identref }
     coroutine_kind => { table_direct }
     coroutine_for_closure => { table }
     coroutine_by_move_body_def_id => { table }
