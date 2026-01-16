@@ -1512,6 +1512,13 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
             } else if tcx.features().opaque_generic_const_args() {
+                // Only anon consts that are the RHS of a const item can be OGCA.
+                // Note: We can't just check tcx.parent because it needs to be EXACTLY
+                // the RHS, not just part of the RHS.
+                if !is_anon_const_rhs_of_const_item(tcx, def) {
+                    return ty::AnonConstKind::MCG;
+                }
+
                 let body = tcx.hir_body_owned_by(def);
                 let mut visitor = OGCAParamVisitor(tcx);
                 match visitor.visit_body(body) {
@@ -1535,6 +1542,26 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     }
 }
 
+fn is_anon_const_rhs_of_const_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let Some((_, grandparent_node)) = tcx.hir_parent_iter(hir_id).nth(1) else { return false };
+    let (Node::Item(hir::Item { kind: hir::ItemKind::Const(_, _, _, ct_rhs), .. })
+    | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(_, ct_rhs), .. })
+    | Node::TraitItem(hir::TraitItem {
+        kind: hir::TraitItemKind::Const(_, Some(ct_rhs)), ..
+    })) = grandparent_node
+    else {
+        return false;
+    };
+    let hir::ConstItemRhs::TypeConst(hir::ConstArg {
+        kind: hir::ConstArgKind::Anon(rhs_anon), ..
+    }) = ct_rhs
+    else {
+        return false;
+    };
+    def_id == rhs_anon.def_id
+}
+
 struct OGCAParamVisitor<'tcx>(TyCtxt<'tcx>);
 
 struct UsesParam;
@@ -1547,7 +1574,7 @@ impl<'tcx> Visitor<'tcx> for OGCAParamVisitor<'tcx> {
         self.0
     }
 
-    fn visit_path(&mut self, path: &crate::hir::Path<'tcx>, _id: HirId) -> ControlFlow<UsesParam> {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: HirId) -> ControlFlow<UsesParam> {
         if let Res::Def(DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam, _) =
             path.res
         {
