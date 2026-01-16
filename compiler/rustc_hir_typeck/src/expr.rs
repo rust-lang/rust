@@ -434,14 +434,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::UnOp::Not | hir::UnOp::Neg => expected,
             hir::UnOp::Deref => NoExpectation,
         };
-        let mut oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
+        let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
-        if !oprnd_t.references_error() {
-            oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        if let Err(guar) = oprnd_t.error_reported() {
+            Ty::new_error(tcx, guar)
+        } else {
+            let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
             match unop {
                 hir::UnOp::Deref => {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
-                        oprnd_t = ty;
+                        ty
                     } else {
                         let mut err =
                             self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
@@ -451,26 +453,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        oprnd_t = Ty::new_error(tcx, err.emit());
+                        Ty::new_error(tcx, err.emit())
                     }
                 }
                 hir::UnOp::Not => {
                     let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
-                        oprnd_t = result;
+                    if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool {
+                        oprnd_t
+                    } else {
+                        result
                     }
                 }
                 hir::UnOp::Neg => {
                     let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !oprnd_t.is_numeric() {
-                        oprnd_t = result;
-                    }
+                    if oprnd_t.is_numeric() { oprnd_t } else { result }
                 }
             }
         }
-        oprnd_t
     }
 
     fn check_expr_addr_of(
