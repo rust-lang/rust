@@ -9,6 +9,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::kw;
+use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -535,9 +536,26 @@ pub(crate) fn check_generic_arg_count(
                     .map(|param| param.name)
                     .collect();
                 if constraint_names == param_names {
+                    let has_assoc_ty_with_same_name =
+                        if let DefKind::Trait = cx.tcx().def_kind(def_id) {
+                            gen_args.constraints.iter().any(|constraint| {
+                                traits::supertrait_def_ids(cx.tcx(), def_id).any(|trait_did| {
+                                    cx.probe_trait_that_defines_assoc_item(
+                                        trait_did,
+                                        ty::AssocTag::Type,
+                                        constraint.ident,
+                                    )
+                                })
+                            })
+                        } else {
+                            false
+                        };
                     // We set this to true and delay emitting `WrongNumberOfGenericArgs`
-                    // to provide a succinct error for cases like issue #113073
-                    all_params_are_binded = true;
+                    // to provide a succinct error for cases like issue #113073,
+                    // but only if when we don't have any assoc type with the same name with a
+                    // generic arg. Otherwise it will cause an ICE due to a delayed error because we
+                    // don't have any error other than `WrongNumberOfGenericArgs`.
+                    all_params_are_binded = !has_assoc_ty_with_same_name;
                 };
             }
 
