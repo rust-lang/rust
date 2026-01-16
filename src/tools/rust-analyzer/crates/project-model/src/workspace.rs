@@ -1161,6 +1161,8 @@ fn project_json_to_crate_graph(
                                 name: Some(name.canonical_name().to_owned()),
                             }
                         }
+                    } else if is_sysroot {
+                        CrateOrigin::Lang(LangCrateOrigin::Dependency)
                     } else {
                         CrateOrigin::Local { repo: None, name: None }
                     },
@@ -1294,6 +1296,8 @@ fn cargo_to_crate_graph(
                             name: Some(Symbol::intern(&pkg_data.name)),
                         }
                     }
+                } else if cargo.is_sysroot() {
+                    CrateOrigin::Lang(LangCrateOrigin::Dependency)
                 } else {
                     CrateOrigin::Library {
                         repo: pkg_data.repository.clone(),
@@ -1717,7 +1721,7 @@ fn extend_crate_graph_with_sysroot(
                     !matches!(lang_crate, LangCrateOrigin::Test | LangCrateOrigin::Alloc),
                 )),
                 LangCrateOrigin::ProcMacro => libproc_macro = Some(cid),
-                LangCrateOrigin::Other => (),
+                LangCrateOrigin::Other | LangCrateOrigin::Dependency => (),
             }
         }
     }
