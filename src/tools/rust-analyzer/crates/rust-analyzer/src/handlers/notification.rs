@@ -387,14 +387,21 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                                         } => false,
                                     });
                                 if let Some(idx) = package_workspace_idx {
-                                    let workspace_deps =
-                                        world.all_workspace_dependencies_for_package(&package);
-                                    world.flycheck[idx].restart_for_package(
-                                        package,
-                                        target,
-                                        workspace_deps,
-                                        saved_file.clone(),
-                                    );
+                                    // flycheck handles are indexed by their ID (which is the workspace index),
+                                    // but not all workspaces have flycheck enabled (e.g., JSON projects without
+                                    // a flycheck template). Find the flycheck handle by its ID.
+                                    if let Some(flycheck) =
+                                        world.flycheck.iter().find(|fc| fc.id() == idx)
+                                    {
+                                        let workspace_deps =
+                                            world.all_workspace_dependencies_for_package(&package);
+                                        flycheck.restart_for_package(
+                                            package,
+                                            target,
+                                            workspace_deps,
+                                            saved_file.clone(),
+                                        );
+                                    }
                                 }
                             }
                         }
