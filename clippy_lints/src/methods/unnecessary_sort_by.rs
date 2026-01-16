@@ -343,7 +343,7 @@ fn expr_is_field_access(expr: &Expr<'_>) -> bool {
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
-    recv: &'tcx Expr<'_>,
+    call_span: Span,
     arg: &'tcx Expr<'_>,
     is_unstable: bool,
 ) {
@@ -367,17 +367,16 @@ pub(super) fn check<'tcx>(
                 format!("consider using `{method}`"),
                 |diag| {
                     let mut app = trigger.applicability;
-                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
                     let closure_body = if trigger.reverse {
                         format!("{std_or_core}::cmp::Reverse({})", trigger.closure_body)
                     } else {
                         trigger.closure_body
                     };
                     let closure_arg = snippet_with_applicability(cx, trigger.closure_arg, "_", &mut app);
-                    diag.span_suggestion(
-                        expr.span,
+                    diag.span_suggestion_verbose(
+                        call_span,
                         "try",
-                        format!("{recv}.{method}(|{closure_arg}| {closure_body})"),
+                        format!("{method}(|{closure_arg}| {closure_body})"),
                         app,
                     );
                 },
@@ -391,9 +390,12 @@ pub(super) fn check<'tcx>(
                 expr.span,
                 format!("consider using `{method}`"),
                 |diag| {
-                    let mut app = Applicability::MachineApplicable;
-                    let recv = Sugg::hir_with_applicability(cx, recv, "(_)", &mut app);
-                    diag.span_suggestion(expr.span, "try", format!("{recv}.{method}()"), app);
+                    diag.span_suggestion_verbose(
+                        call_span,
+                        "try",
+                        format!("{method}()"),
+                        Applicability::MachineApplicable,
+                    );
                 },
             );
         },

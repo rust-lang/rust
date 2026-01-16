@@ -5532,10 +5532,10 @@ impl Methods {
                     stable_sort_primitive::check(cx, expr, recv);
                 },
                 (sym::sort_by, [arg]) => {
-                    unnecessary_sort_by::check(cx, expr, recv, arg, false);
+                    unnecessary_sort_by::check(cx, expr, call_span, arg, false);
                 },
                 (sym::sort_unstable_by, [arg]) => {
-                    unnecessary_sort_by::check(cx, expr, recv, arg, true);
+                    unnecessary_sort_by::check(cx, expr, call_span, arg, true);
                 },
                 (sym::split, [arg]) => {
                     str_split::check(cx, expr, recv, arg);
