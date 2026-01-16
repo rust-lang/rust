@@ -1504,7 +1504,7 @@ fn regression_20952() {
         r#"
 //- minicore: fmt
 fn main() {
-    format_args!("{} {}, {} (подозрение на спам: {:.2}%)"б);
+    format_args!("{} {}, {} (подозрение на спам: {:.2}%)");
 }
 "#,
         expect_file!["./test_data/regression_20952.html"],
