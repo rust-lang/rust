@@ -12,6 +12,8 @@ note: `Result` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `Result` could also refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-4-extern.rs:10:9
    |
@@ -51,6 +53,8 @@ note: `Result` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `Result` could also refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-4-extern.rs:10:9
    |

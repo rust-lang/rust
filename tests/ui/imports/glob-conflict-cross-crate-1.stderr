@@ -12,6 +12,8 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
@@ -33,6 +35,8 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
@@ -56,6 +60,8 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
@@ -78,6 +84,8 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
