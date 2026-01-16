@@ -1,52 +1,112 @@
+error[E0573]: expected type, found function `main`
+  --> $DIR/nonexistent.rs:41:22
+   |
+LL |     let _: field_of!(main, field);
+   |                      ^^^^ not a type
+
 error[E0609]: no field `other` on struct `Struct`
-  --> $DIR/nonexistent.rs:21:30
+  --> $DIR/nonexistent.rs:23:30
    |
 LL |     let _: field_of!(Struct, other);
    |                              ^^^^^ unknown field
 
 error[E0609]: no field `0` on struct `Struct`
-  --> $DIR/nonexistent.rs:22:30
+  --> $DIR/nonexistent.rs:24:30
    |
 LL |     let _: field_of!(Struct, 0);
    |                              ^ unknown field
 
 error[E0609]: no field `other` on union `Union`
-  --> $DIR/nonexistent.rs:23:29
+  --> $DIR/nonexistent.rs:25:29
    |
 LL |     let _: field_of!(Union, other);
    |                             ^^^^^ unknown field
 
 error[E0609]: no field `0` on union `Union`
-  --> $DIR/nonexistent.rs:24:29
+  --> $DIR/nonexistent.rs:26:29
    |
 LL |     let _: field_of!(Union, 0);
    |                             ^ unknown field
 
 error[E0609]: no field `other` on enum `Enum`
-  --> $DIR/nonexistent.rs:26:36
+  --> $DIR/nonexistent.rs:28:36
    |
 LL |     let _: field_of!(Enum, Variant.other);
    |                                    ^^^^^ unknown field
 
 error[E0609]: no field `0` on enum `Enum`
-  --> $DIR/nonexistent.rs:27:36
+  --> $DIR/nonexistent.rs:29:36
    |
 LL |     let _: field_of!(Enum, Variant.0);
    |                                    ^ unknown field
 
 error[E0001]: no variant `OtherVariant` on enum `Enum`
-  --> $DIR/nonexistent.rs:29:28
+  --> $DIR/nonexistent.rs:31:28
    |
 LL |     let _: field_of!(Enum, OtherVariant.field);
    |                            ^^^^^^^^^^^^ unknown variant
 
 error[E0001]: no variant `OtherVariant` on enum `Enum`
-  --> $DIR/nonexistent.rs:30:28
+  --> $DIR/nonexistent.rs:32:28
    |
 LL |     let _: field_of!(Enum, OtherVariant.0);
    |                            ^^^^^^^^^^^^ unknown variant
 
-error: aborting due to 8 previous errors
+error: type `i32` doesn't have fields
+  --> $DIR/nonexistent.rs:34:22
+   |
+LL |     let _: field_of!(i32, field);
+   |                      ^^^
 
-Some errors have detailed explanations: E0001, E0609.
+error: type `[Struct]` doesn't have fields
+  --> $DIR/nonexistent.rs:35:22
+   |
+LL |     let _: field_of!([Struct], field);
+   |                      ^^^^^^^^
+
+error: type `[Struct; 42]` is not yet supported in `field_of!`
+  --> $DIR/nonexistent.rs:36:22
+   |
+LL |     let _: field_of!([Struct; 42], field);
+   |                      ^^^^^^^^^^^^
+
+error: type `&'static Struct` doesn't have fields
+  --> $DIR/nonexistent.rs:37:22
+   |
+LL |     let _: field_of!(&'static Struct, field);
+   |                      ^^^^^^^^^^^^^^^
+
+error: type `*const Struct` doesn't have fields
+  --> $DIR/nonexistent.rs:38:22
+   |
+LL |     let _: field_of!(*const Struct, field);
+   |                      ^^^^^^^^^^^^^
+
+error: type `fn() -> Struct` doesn't have fields
+  --> $DIR/nonexistent.rs:39:22
+   |
+LL |     let _: field_of!(fn() -> Struct, field);
+   |                      ^^^^^^^^^^^^^^
+
+error: type `dyn Trait` doesn't have fields
+  --> $DIR/nonexistent.rs:40:22
+   |
+LL |     let _: field_of!(dyn Trait, field);
+   |                      ^^^^^^^^^
+
+error: cannot use `_` in this position
+  --> $DIR/nonexistent.rs:42:22
+   |
+LL |     let _: field_of!(_, field);
+   |                      ^
+
+error: type `T` doesn't have fields
+  --> $DIR/nonexistent.rs:46:22
+   |
+LL |     let _: field_of!(T, field);
+   |                      ^
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0001, E0573, E0609.
 For more information about an error, try `rustc --explain E0001`.
