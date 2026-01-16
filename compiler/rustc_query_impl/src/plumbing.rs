@@ -322,7 +322,7 @@ macro_rules! should_ever_cache_on_disk {
     };
 }
 
-fn create_query_frame_extra<'tcx, K: Key + Copy + 'tcx>(
+fn mk_query_stack_frame_extra<'tcx, K: Key + Copy + 'tcx>(
     (tcx, key, kind, name, do_describe): (
         TyCtxt<'tcx>,
         K,
@@ -382,7 +382,7 @@ pub(crate) fn create_query_frame<
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
 
     let info =
-        QueryStackDeferred::new((tcx, key, kind, name, do_describe), create_query_frame_extra);
+        QueryStackDeferred::new((tcx, key, kind, name, do_describe), mk_query_stack_frame_extra);
 
     QueryStackFrame::new(info, kind, hash, def_id, def_id_for_ty_in_cycle)
 }
