@@ -112,6 +112,7 @@ pub(crate) struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
+    /// `None` means not yet loaded; `Some(imported)` means successfully loaded.
     source_map_import_info: Lock<Vec<Option<ImportedSourceFile>>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
@@ -165,6 +166,15 @@ struct ImportedSourceFile {
     /// The imported SourceFile's representation within the local source_map
     translated_source_file: Arc<rustc_span::SourceFile>,
 }
+
+/// Cached result of importing a source file.
+/// We use `Option<ImportedSourceFile>` in the cache Vec, where:
+/// - `None` means not yet attempted
+/// - `Some(imported)` means successfully imported
+///
+/// Note: Import failures now indicate a bug (either corrupted metadata or
+/// the crate was compiled with `-Z separate-spans` but the `.spans` file
+/// is missing, which should have been caught at crate load time).
 
 /// Decode context used when we just have a blob of metadata from which we have to decode a header
 /// and [`CrateRoot`]. After that, [`MetadataDecodeContext`] can be used.
@@ -674,6 +684,10 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
             let foreign_data = decoder.cdata.cstore.get_crate_data(cnum);
             foreign_data.imported_source_file(tcx, metadata_index)
         };
+
+        // Source file should always be available - missing files are caught at crate load time
+        // for crates compiled with -Z separate-spans, and should never happen otherwise.
+        let source_file = source_file.expect("source file should be available");
 
         // Make sure our span is well-formed.
         debug_assert!(
@@ -1679,7 +1693,18 @@ impl<'a> CrateMetadataRef<'a> {
     ///
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
-    fn imported_source_file(self, tcx: TyCtxt<'_>, source_file_index: u32) -> ImportedSourceFile {
+    /// Imports a source file from this crate's metadata.
+    ///
+    /// Returns `None` if the source file index doesn't exist in the source map table
+    /// (sparse table entry). This can happen when iterating through all indices.
+    ///
+    /// Note: For crates compiled with `-Z separate-spans`, missing `.spans` files
+    /// are detected and errored at crate load time, before this function is called.
+    fn imported_source_file(
+        self,
+        tcx: TyCtxt<'_>,
+        source_file_index: u32,
+    ) -> Option<ImportedSourceFile> {
         fn filter<'a>(
             tcx: TyCtxt<'_>,
             real_source_base_dir: &Option<PathBuf>,
@@ -1782,120 +1807,130 @@ impl<'a> CrateMetadataRef<'a> {
         for _ in import_info.len()..=(source_file_index as usize) {
             import_info.push(None);
         }
-        import_info[source_file_index as usize]
-            .get_or_insert_with(|| {
-                // If this crate was compiled with -Z separate_spans, lazily load
-                // source files from the span blob; otherwise load from the main metadata blob.
-                let source_file_to_import =
-                    if let Some(span_data) = self.cdata.span_file_data() {
-                        span_data
-                            .source_map
-                            .get(&span_data.blob, source_file_index)
-                            .expect("missing source file in span file")
-                            .decode(&span_data.blob)
-                    } else {
-                        self.root
-                            .source_map
-                            .get((self, tcx), source_file_index)
-                            .expect("missing source file")
-                            .decode((self, tcx))
-                    };
 
-                // We can't reuse an existing SourceFile, so allocate a new one
-                // containing the information we need.
-                let original_end_pos = source_file_to_import.end_position();
-                let rustc_span::SourceFile {
-                    mut name,
-                    src_hash,
-                    checksum_hash,
-                    start_pos: original_start_pos,
-                    normalized_source_len,
-                    unnormalized_source_len,
-                    lines,
-                    multibyte_chars,
-                    normalized_pos,
-                    stable_id,
-                    ..
-                } = source_file_to_import;
+        // Check if we already have a cached result for this source file index.
+        if let Some(cached) = &import_info[source_file_index as usize] {
+            return Some(cached.clone());
+        }
 
-                // If this file is under $sysroot/lib/rustlib/src/
-                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
-                // then we change `name` to a similar state as if the rust was bootstrapped
-                // with `remap-debuginfo = true`.
-                // This is useful for testing so that tests about the effects of
-                // `try_to_translate_virtual_to_real` don't have to worry about how the
-                // compiler is bootstrapped.
-                try_to_translate_real_to_virtual(
-                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rust_source_base_dir,
-                    "library",
-                    &mut name,
-                );
-
-                // If this file is under $sysroot/lib/rustlib/rustc-src/
-                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
-                // then we change `name` to a similar state as if the rust was bootstrapped
-                // with `remap-debuginfo = true`.
-                try_to_translate_real_to_virtual(
-                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rustc_dev_source_base_dir,
-                    "compiler",
-                    &mut name,
-                );
-
-                // If this file's path has been remapped to `/rustc/$hash`,
-                // we might be able to reverse that.
-                //
-                // NOTE: if you update this, you might need to also update bootstrap's code for generating
-                // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-                try_to_translate_virtual_to_real(
-                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rust_source_base_dir,
-                    &mut name,
-                );
-
-                // If this file's path has been remapped to `/rustc-dev/$hash`,
-                // we might be able to reverse that.
-                //
-                // NOTE: if you update this, you might need to also update bootstrap's code for generating
-                // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
-                try_to_translate_virtual_to_real(
-                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rustc_dev_source_base_dir,
-                    &mut name,
-                );
-
-                let local_version = tcx.sess.source_map().new_imported_source_file(
-                    name,
-                    src_hash,
-                    checksum_hash,
-                    stable_id,
-                    normalized_source_len.to_u32(),
-                    unnormalized_source_len,
-                    self.cnum,
-                    lines,
-                    multibyte_chars,
-                    normalized_pos,
-                    source_file_index,
-                );
-                debug!(
-                    "CrateMetaData::imported_source_files alloc \
-                         source_file {:?} original (start_pos {:?} source_len {:?}) \
-                         translated (start_pos {:?} source_len {:?})",
-                    local_version.name,
-                    original_start_pos,
-                    normalized_source_len,
-                    local_version.start_pos,
-                    local_version.normalized_source_len
-                );
-
-                ImportedSourceFile {
-                    original_start_pos,
-                    original_end_pos,
-                    translated_source_file: local_version,
-                }
+        // Try to load the source file.
+        // If this crate was compiled with -Z separate_spans, lazily load
+        // source files from the span blob; otherwise load from the main metadata blob.
+        let source_file_to_import = if let Some(span_data) = self.cdata.span_file_data() {
+            span_data.source_map.get(&span_data.blob, source_file_index).map(|lazy| {
+                lazy.decode(&span_data.blob)
             })
-            .clone()
+        } else {
+            self.root.source_map.get((self, tcx), source_file_index).map(|lazy| {
+                lazy.decode((self, tcx))
+            })
+        };
+
+        // Return None for sparse table entries. This can happen when:
+        // - Searching through all source file indices (some may be empty)
+        //
+        // Note: For crates compiled with -Z separate-spans, missing .spans files
+        // are now detected and errored at crate load time, so that case no longer
+        // reaches here.
+        let Some(source_file_to_import) = source_file_to_import else {
+            return None;
+        };
+
+        // We can't reuse an existing SourceFile, so allocate a new one
+        // containing the information we need.
+        let original_end_pos = source_file_to_import.end_position();
+        let rustc_span::SourceFile {
+            mut name,
+            src_hash,
+            checksum_hash,
+            start_pos: original_start_pos,
+            normalized_source_len,
+            unnormalized_source_len,
+            lines,
+            multibyte_chars,
+            normalized_pos,
+            stable_id,
+            ..
+        } = source_file_to_import;
+
+        // If this file is under $sysroot/lib/rustlib/src/
+        // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+        // then we change `name` to a similar state as if the rust was bootstrapped
+        // with `remap-debuginfo = true`.
+        // This is useful for testing so that tests about the effects of
+        // `try_to_translate_virtual_to_real` don't have to worry about how the
+        // compiler is bootstrapped.
+        try_to_translate_real_to_virtual(
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rust_source_base_dir,
+            "library",
+            &mut name,
+        );
+
+        // If this file is under $sysroot/lib/rustlib/rustc-src/
+        // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+        // then we change `name` to a similar state as if the rust was bootstrapped
+        // with `remap-debuginfo = true`.
+        try_to_translate_real_to_virtual(
+            option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rustc_dev_source_base_dir,
+            "compiler",
+            &mut name,
+        );
+
+        // If this file's path has been remapped to `/rustc/$hash`,
+        // we might be able to reverse that.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
+        try_to_translate_virtual_to_real(
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rust_source_base_dir,
+            &mut name,
+        );
+
+        // If this file's path has been remapped to `/rustc-dev/$hash`,
+        // we might be able to reverse that.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
+        try_to_translate_virtual_to_real(
+            option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rustc_dev_source_base_dir,
+            &mut name,
+        );
+
+        let local_version = tcx.sess.source_map().new_imported_source_file(
+            name,
+            src_hash,
+            checksum_hash,
+            stable_id,
+            normalized_source_len.to_u32(),
+            unnormalized_source_len,
+            self.cnum,
+            lines,
+            multibyte_chars,
+            normalized_pos,
+            source_file_index,
+        );
+        debug!(
+            "CrateMetaData::imported_source_files alloc \
+                 source_file {:?} original (start_pos {:?} source_len {:?}) \
+                 translated (start_pos {:?} source_len {:?})",
+            local_version.name,
+            original_start_pos,
+            normalized_source_len,
+            local_version.start_pos,
+            local_version.normalized_source_len
+        );
+
+        let imported = ImportedSourceFile {
+            original_start_pos,
+            original_end_pos,
+            translated_source_file: local_version,
+        };
+        import_info[source_file_index as usize] = Some(imported.clone());
+        Some(imported)
     }
 
     fn get_attr_flags(self, tcx: TyCtxt<'_>, index: DefIndex) -> AttrFlags {
