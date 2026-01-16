@@ -49,6 +49,29 @@ For custom-built toolchains or environments not using rustup, additional configu
    ```
 3. **Check version compatibility**: Ensure your LLVM version is compatible with your Rust toolchain
 
+### Configuring `rust-analyzer` for Out-of-Tree Projects
+
+When developing out-of-tree projects that use `rustc_private` crates, you can configure `rust-analyzer` to recognize these crates.
+
+#### Configuration Steps
+
+1. **Set rust-analyzer configuration**
+   Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.  
+   For VS Code, add to `rust_analyzer_settings.json`:
+   ```json
+   {
+       "rust-analyzer.rustc.source": "discover"
+   }
+   ```
+2. **Add metadata to Cargo.toml**  
+   Add the following to the `Cargo.toml` of every crate that uses `rustc_private`:
+   ```toml
+   [package.metadata.rust-analyzer]
+   rustc_private = true
+   ```
+
+This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects. 
+
 ### Additional Resources
 
 - [GitHub Issue #137421](https://github.com/rust-lang/rust/issues/137421): Explains that `rustc_private` linker failures often occur because `llvm-tools` is not installed
