@@ -32,10 +32,9 @@ use rustc_span::symbol::Symbol;
 
 use std::env;
 use std::fs::read_to_string;
+use std::io::Write as _;
 use std::path::Path;
 use std::process::exit;
-
-use anstream::println;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -186,7 +185,9 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 }
 
 fn display_help() {
-    println!("{}", help_message());
+    if writeln!(&mut anstream::stdout().lock(), "{}", help_message()).is_err() {
+        exit(rustc_driver::EXIT_FAILURE);
+    }
 }
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
@@ -253,8 +254,10 @@ pub fn main() {
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
             let version_info = rustc_tools_util::get_version_info!();
 
-            println!("{version_info}");
-            exit(0);
+            match writeln!(&mut anstream::stdout().lock(), "{version_info}") {
+                Ok(()) => exit(rustc_driver::EXIT_SUCCESS),
+                Err(_) => exit(rustc_driver::EXIT_FAILURE),
+            }
         }
 
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
