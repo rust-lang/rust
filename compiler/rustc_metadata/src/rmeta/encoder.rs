@@ -30,8 +30,8 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
-    Symbol, SyntaxContext, sym,
+    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, SpanRef,
+    StableSourceFileId, Symbol, SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -211,6 +211,67 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         self.encode_symbol_or_byte_symbol(byte_sym.as_u32(), |this| {
             this.emit_byte_str(byte_sym.as_byte_str())
         });
+    }
+
+    fn encode_span_as_span_ref(&mut self, span: Span) {
+        let span_data = span.data();
+        let ctxt = if self.is_proc_macro { SyntaxContext::root() } else { span_data.ctxt };
+
+        // For dummy spans, encode as Opaque
+        if span_data.is_dummy() {
+            let span_ref = SpanRef::Opaque { ctxt };
+            span_ref.encode(self);
+            return;
+        }
+
+        // Look up the source file for this span
+        if !self.source_file_cache.0.contains(span_data.lo) {
+            let source_map = self.tcx.sess.source_map();
+            let source_file_index = source_map.lookup_source_file_idx(span_data.lo);
+            self.source_file_cache =
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
+        }
+        let (ref source_file, source_file_index) = self.source_file_cache;
+
+        // Check if hi is in the same file
+        if !source_file.contains(span_data.hi) {
+            // Cross-file span - encode as Opaque
+            let span_ref = SpanRef::Opaque { ctxt };
+            span_ref.encode(self);
+            return;
+        }
+
+        if (!source_file.is_imported() || self.is_proc_macro)
+            && let Some(required_source_files) = self.required_source_files.as_mut()
+        {
+            required_source_files.insert(source_file_index);
+        }
+
+        // Create FileRelative with stable source file ID and source crate ID
+        let lo = (span_data.lo - source_file.start_pos).0;
+        let hi = (span_data.hi - source_file.start_pos).0;
+        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
+        let file_stable_id = if source_file.cnum == LOCAL_CRATE {
+            let mut adapted_name = source_file.name.clone();
+            if let FileName::Real(ref mut real_name) = adapted_name {
+                real_name.update_for_crate_metadata();
+            }
+            StableSourceFileId::from_filename_for_export(&adapted_name, source_crate)
+        } else {
+            source_file.stable_id
+        };
+        debug!(
+            cnum = ?source_file.cnum,
+            ?source_crate,
+            file_name = ?source_file.name,
+            original_stable_id = ?source_file.stable_id,
+            export_stable_id = ?file_stable_id,
+            lo,
+            hi,
+            "encode_span_as_span_ref: FileRelative"
+        );
+        let span_ref = SpanRef::FileRelative { source_crate, file: file_stable_id, lo, hi, ctxt };
+        span_ref.encode(self);
     }
 }
 
@@ -425,6 +486,76 @@ macro_rules! record_defaulted_array {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    /// Converts a `Span` to a `SpanRef`, preserving file-relative position when possible.
+    ///
+    /// This method creates `SpanRef::FileRelative` for spans that fit within a single
+    /// source file, allowing stable span references that survive recompilation.
+    /// Falls back to `SpanRef::Opaque` for dummy spans or spans that cross file boundaries.
+    fn span_to_span_ref(&mut self, span: Span) -> SpanRef {
+        let span_data = span.data();
+        let ctxt = if self.is_proc_macro { SyntaxContext::root() } else { span_data.ctxt };
+
+        // For dummy spans, return Opaque
+        if span_data.is_dummy() {
+            return SpanRef::Opaque { ctxt };
+        }
+
+        // Look up the source file for this span
+        if !self.source_file_cache.0.contains(span_data.lo) {
+            let source_map = self.tcx.sess.source_map();
+            let source_file_index = source_map.lookup_source_file_idx(span_data.lo);
+            self.source_file_cache =
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
+        }
+        let (ref source_file, source_file_index) = self.source_file_cache;
+
+        // Check if hi is in the same file
+        if !source_file.contains(span_data.hi) {
+            // Cross-file span - return Opaque
+            return SpanRef::Opaque { ctxt };
+        }
+
+        if (!source_file.is_imported() || self.is_proc_macro)
+            && let Some(required_source_files) = self.required_source_files.as_mut()
+        {
+            required_source_files.insert(source_file_index);
+        }
+
+        // Create FileRelative with stable source file ID and source crate ID
+        let lo = (span_data.lo - source_file.start_pos).0;
+        let hi = (span_data.hi - source_file.start_pos).0;
+        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
+
+        // For local source files, we need to compute the export version of the stable_id,
+        // because when source files are written to metadata their stable_id is recalculated
+        // to include the crate's stable ID. We also need to adapt the filename the same way
+        // as encode_source_map_with does (via update_for_crate_metadata) to ensure the hash
+        // matches.
+        // For imported source files, the stable_id is already in the correct form (it was
+        // read from that crate's metadata).
+        let file_stable_id = if source_file.cnum == LOCAL_CRATE {
+            let mut adapted_name = source_file.name.clone();
+            if let FileName::Real(ref mut real_name) = adapted_name {
+                real_name.update_for_crate_metadata();
+            }
+            StableSourceFileId::from_filename_for_export(&adapted_name, source_crate)
+        } else {
+            source_file.stable_id
+        };
+
+        debug!(
+            cnum = ?source_file.cnum,
+            ?source_crate,
+            file_name = ?source_file.name,
+            original_stable_id = ?source_file.stable_id,
+            export_stable_id = ?file_stable_id,
+            lo,
+            hi,
+            "span_to_span_ref: FileRelative"
+        );
+        SpanRef::FileRelative { source_crate, file: file_stable_id, lo, hi, ctxt }
+    }
+
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
@@ -793,6 +924,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+                has_separate_spans: tcx.sess.opts.unstable_opts.separate_spans,
             })
         });
 
@@ -1484,7 +1616,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
-                record!(self.tables.def_span[def_id] <- def_span.to_span_ref());
+                let span_ref = self.span_to_span_ref(def_span);
+                record!(self.tables.def_span[def_id] <- span_ref);
             }
             if should_encode_attrs(def_kind) {
                 self.encode_attrs(local_id);
@@ -1495,7 +1628,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_span(def_kind)
                 && let Some(ident_span) = tcx.def_ident_span(def_id)
             {
-                record!(self.tables.def_ident_span[def_id] <- ident_span.to_span_ref());
+                let span_ref = self.span_to_span_ref(ident_span);
+                record!(self.tables.def_ident_span[def_id] <- span_ref);
             }
             if def_kind.has_codegen_attrs() {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
@@ -1523,8 +1657,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <-
-                    inferred_outlives.iter().map(|&(c, s)| (c, s.to_span_ref())));
+                let inferred_outlives_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(inferred_outlives.len());
+                    for &(c, s) in inferred_outlives.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives_converted);
 
                 for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
@@ -1558,29 +1698,61 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder()
-                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder()
-                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
+                let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
+                let super_predicates_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(super_predicates.len());
+                    for &(c, s) in super_predicates.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates_converted);
+                let implied_predicates =
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                let implied_predicates_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(implied_predicates.len());
+                    for &(c, s) in implied_predicates.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates_converted);
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
-                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                        <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder()
-                            .iter().map(|&(c, s)| (c, s.to_span_ref())));
+                    let const_bounds = self.tcx.explicit_implied_const_bounds(def_id).skip_binder();
+                    let const_bounds_converted: Vec<_> = {
+                        let mut result = Vec::with_capacity(const_bounds.len());
+                        for &(c, s) in const_bounds.iter() {
+                            result.push((c, self.span_to_span_ref(s)));
+                        }
+                        result
+                    };
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
                 }
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder()
-                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder()
-                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
+                let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
+                let super_predicates_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(super_predicates.len());
+                    for &(c, s) in super_predicates.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates_converted);
+                let implied_predicates =
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                let implied_predicates_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(implied_predicates.len());
+                    for &(c, s) in implied_predicates.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates_converted);
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1641,9 +1813,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
-                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                        <- tcx.explicit_implied_const_bounds(def_id).skip_binder()
-                            .iter().map(|&(c, s)| (c, s.to_span_ref())));
+                    let const_bounds = tcx.explicit_implied_const_bounds(def_id).skip_binder();
+                    let const_bounds_converted: Vec<_> = {
+                        let mut result = Vec::with_capacity(const_bounds.len());
+                        for &(c, s) in const_bounds.iter() {
+                            result.push((c, self.span_to_span_ref(s)));
+                        }
+                        result
+                    };
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
                 }
             }
             if let DefKind::AnonConst = def_kind {
@@ -1784,15 +1962,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <-
-            bounds.iter().map(|&(c, s)| (c, s.to_span_ref())));
+        let bounds_converted: Vec<_> = {
+            let mut result = Vec::with_capacity(bounds.len());
+            for &(c, s) in bounds.iter() {
+                result.push((c, self.span_to_span_ref(s)));
+            }
+            result
+        };
+        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds_converted);
     }
 
     fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <-
-            bounds.iter().map(|&(c, s)| (c, s.to_span_ref())));
+        let bounds_converted: Vec<_> = {
+            let mut result = Vec::with_capacity(bounds.len());
+            for &(c, s) in bounds.iter() {
+                result.push((c, self.span_to_span_ref(s)));
+            }
+            result
+        };
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds_converted);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1812,19 +2002,29 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.encode_explicit_item_bounds(def_id);
             self.encode_explicit_item_self_bounds(def_id);
             if tcx.is_conditionally_const(def_id) {
-                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder()
-                        .iter().map(|&(c, s)| (c, s.to_span_ref())));
+                let const_bounds = self.tcx.explicit_implied_const_bounds(def_id).skip_binder();
+                let const_bounds_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(const_bounds.len());
+                    for &(c, s) in const_bounds.iter() {
+                        result.push((c, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
-                record_array!(
-                    self.tables.assumed_wf_types_for_rpitit[def_id]
-                        <- self.tcx.assumed_wf_types_for_rpitit(def_id)
-                            .iter().map(|&(ty, s)| (ty, s.to_span_ref()))
-                );
+                let wf_types = self.tcx.assumed_wf_types_for_rpitit(def_id);
+                let wf_types_converted: Vec<_> = {
+                    let mut result = Vec::with_capacity(wf_types.len());
+                    for &(ty, s) in wf_types.iter() {
+                        result.push((ty, self.span_to_span_ref(s)));
+                    }
+                    result
+                };
+                record_array!(self.tables.assumed_wf_types_for_rpitit[def_id] <- wf_types_converted);
                 self.encode_precise_capturing_args(def_id);
             }
         }
@@ -2016,12 +2216,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let macros =
                 self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             for (i, span) in self.tcx.sess.psess.proc_macro_quoted_spans() {
-                let span_ref = self.lazy(span.to_span_ref());
+                let converted = self.span_to_span_ref(span);
+                let span_ref = self.lazy(converted);
                 self.tables.proc_macro_quoted_spans.set_some(i, span_ref);
             }
 
             self.tables.def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
-            record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()).to_span_ref());
+            let crate_span_ref = self.span_to_span_ref(tcx.def_span(LOCAL_CRATE.as_def_id()));
+            record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- crate_span_ref);
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- vis);
@@ -2067,8 +2269,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
-                record!(self.tables.def_ident_span[def_id] <- span.to_span_ref());
-                record!(self.tables.def_span[def_id] <- span.to_span_ref());
+                let span_ref = self.span_to_span_ref(span);
+                record!(self.tables.def_ident_span[def_id] <- span_ref);
+                record!(self.tables.def_span[def_id] <- span_ref);
                 record!(self.tables.visibility[def_id] <- ty::Visibility::Public);
                 if let Some(stability) = stability {
                     record!(self.tables.lookup_stability[def_id] <- stability);
@@ -2494,9 +2697,19 @@ pub fn encode_metadata(
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
+        if tcx.sess.opts.unstable_opts.separate_spans
+            && let Some(saved_spans) = work_product.saved_files.get("spans")
+        {
+            let span_source =
+                rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_spans);
+            let span_dest = path.with_extension("spans");
+            debug!("copying preexisting spans from {span_source:?} to {span_dest:?}");
+            match rustc_fs_util::link_or_copy(&span_source, &span_dest) {
+                Ok(_) => {}
+                Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
+            };
+        }
         // When reusing work product, we don't have required_source_files.
-        // The span file would also need to be reused from the work product.
-        // TODO: Handle span file work product reuse
         return None;
     };
 

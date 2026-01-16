@@ -220,7 +220,13 @@ impl CStore {
         root: &CrateRoot,
     ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateError> {
         assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
-        let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
+        let stable_crate_id = root.stable_crate_id();
+        debug!(
+            crate_name = ?root.name(),
+            ?stable_crate_id,
+            "intern_stable_crate_id: registering crate"
+        );
+        let num = tcx.create_crate_num(stable_crate_id).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
                 CrateError::SymbolConflictsCurrent(root.name())
@@ -624,10 +630,22 @@ impl CStore {
 
         // Check if a separate span file exists (for crates compiled with -Z separate_spans).
         // The span file will be loaded lazily on first span resolution.
-        let span_file_path = source.rmeta.as_ref().and_then(|rmeta_path| {
-            let span_path = rmeta_path.with_extension("spans");
-            if span_path.exists() { Some(span_path) } else { None }
-        });
+        // Look for .spans file adjacent to rmeta first, then rlib if rmeta is not available.
+        let span_file_path = source
+            .rmeta
+            .as_ref()
+            .or(source.rlib.as_ref())
+            .and_then(|path| {
+                let span_path = path.with_extension("spans");
+                if span_path.exists() { Some(span_path) } else { None }
+            });
+
+        let has_separate_spans = crate_root.has_separate_spans();
+        let crate_name = crate_root.name();
+
+        if has_separate_spans && span_file_path.is_none() {
+            return Err(CrateError::MissingSpanFile(crate_name, "file not found".to_string()));
+        }
 
         let crate_metadata = CrateMetadata::new(
             tcx,
@@ -643,6 +661,12 @@ impl CStore {
             private_dep,
             host_hash,
         );
+
+        if has_separate_spans {
+            crate_metadata
+                .ensure_span_file_loaded()
+                .map_err(|err| CrateError::MissingSpanFile(crate_name, err))?;
+        }
 
         self.set_crate_data(cnum, crate_metadata);
 

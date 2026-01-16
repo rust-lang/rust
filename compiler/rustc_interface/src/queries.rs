@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_codegen_ssa::CodegenResults;
@@ -60,15 +61,22 @@ impl Linker {
 
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()
-            && let Some((id, product)) =
+        {
+            let spans_path = path.with_extension("spans");
+            let mut files: Vec<(&'static str, &Path)> = vec![("rmeta", path)];
+            if sess.opts.unstable_opts.separate_spans && spans_path.exists() {
+                files.push(("spans", &spans_path));
+            }
+            if let Some((id, product)) =
                 rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                     sess,
                     "metadata",
-                    &[("rmeta", path)],
+                    &files,
                     &[],
                 )
-        {
-            work_products.insert(id, product);
+            {
+                work_products.insert(id, product);
+            }
         }
 
         sess.dcx().abort_if_errors();

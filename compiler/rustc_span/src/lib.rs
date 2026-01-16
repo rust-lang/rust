@@ -687,12 +687,20 @@ pub struct SpanData {
 ///
 /// All variants carry a `SyntaxContext` so hygiene information is always
 /// available without needing to resolve the span to file/line/col.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Encodable, Decodable)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Encodable)]
 pub enum SpanRef {
     /// Unresolvable span (e.g. cross-file, indirect, or missing data).
     Opaque { ctxt: SyntaxContext },
-    /// Offsets are relative to a specific source file.
-    FileRelative { file: StableSourceFileId, lo: u32, hi: u32, ctxt: SyntaxContext },
+    /// Offsets are relative to a specific source file from a specific crate.
+    /// The `source_crate` identifies which crate's metadata contains the source file,
+    /// allowing cross-crate span resolution by looking up the file in the correct crate.
+    FileRelative {
+        source_crate: StableCrateId,
+        file: StableSourceFileId,
+        lo: u32,
+        hi: u32,
+        ctxt: SyntaxContext,
+    },
     /// Offsets are relative to the start of a definition.
     DefRelative { def_id: crate::def_id::DefId, lo: u32, hi: u32, ctxt: SyntaxContext },
 }
@@ -766,9 +774,9 @@ impl SpanRef {
         match (self, other) {
             (SpanRef::Opaque { ctxt: c1 }, SpanRef::Opaque { ctxt: c2 }) => c1 == c2,
             (
-                SpanRef::FileRelative { file: f1, lo: l1, hi: h1, .. },
-                SpanRef::FileRelative { file: f2, lo: l2, hi: h2, .. },
-            ) => f1 == f2 && l1 == l2 && h1 == h2,
+                SpanRef::FileRelative { source_crate: sc1, file: f1, lo: l1, hi: h1, .. },
+                SpanRef::FileRelative { source_crate: sc2, file: f2, lo: l2, hi: h2, .. },
+            ) => sc1 == sc2 && f1 == f2 && l1 == l2 && h1 == h2,
             (
                 SpanRef::DefRelative { def_id: d1, lo: l1, hi: h1, .. },
                 SpanRef::DefRelative { def_id: d2, lo: l2, hi: h2, .. },
@@ -1475,6 +1483,18 @@ pub trait SpanEncoder: Encoder {
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
+
+    /// Encodes a span as a `SpanRef` for RDR (Relink, Don't Rebuild).
+    ///
+    /// This encodes the span using a stable format (`StableSourceFileId` + relative offsets)
+    /// that doesn't change when source files are reordered. On decode, the `SpanRef` is
+    /// resolved back to an absolute `Span`.
+    ///
+    /// Default implementation falls back to regular span encoding.
+    fn encode_span_as_span_ref(&mut self, span: Span) {
+        // Default: just encode as a regular span
+        self.encode_span(span);
+    }
 }
 
 impl SpanEncoder for FileEncoder {
@@ -1597,6 +1617,17 @@ pub trait SpanDecoder: BlobDecoder {
     fn decode_crate_num(&mut self) -> CrateNum;
     fn decode_def_id(&mut self) -> DefId;
     fn decode_attr_id(&mut self) -> AttrId;
+
+    /// Decodes a span that was encoded as `SpanRef` for RDR (Relink, Don't Rebuild).
+    ///
+    /// This decodes a `SpanRef` and resolves it to an absolute `Span` using source file
+    /// information from the compilation context.
+    ///
+    /// Default implementation falls back to regular span decoding.
+    fn decode_span_ref_as_span(&mut self) -> Span {
+        // Default: just decode as a regular span
+        self.decode_span()
+    }
 }
 
 impl BlobDecoder for MemDecoder<'_> {
@@ -1669,6 +1700,34 @@ impl<D: SpanDecoder> Decodable<D> for ExpnId {
 impl<D: SpanDecoder> Decodable<D> for SyntaxContext {
     fn decode(s: &mut D) -> SyntaxContext {
         s.decode_syntax_context()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for SpanRef {
+    fn decode(d: &mut D) -> SpanRef {
+        let variant = d.read_usize();
+        match variant {
+            0 => {
+                let ctxt = Decodable::decode(d);
+                SpanRef::Opaque { ctxt }
+            }
+            1 => {
+                let source_crate = Decodable::decode(d);
+                let file = Decodable::decode(d);
+                let lo = Decodable::decode(d);
+                let hi = Decodable::decode(d);
+                let ctxt = Decodable::decode(d);
+                SpanRef::FileRelative { source_crate, file, lo, hi, ctxt }
+            }
+            2 => {
+                let def_id = Decodable::decode(d);
+                let lo = Decodable::decode(d);
+                let hi = Decodable::decode(d);
+                let ctxt = Decodable::decode(d);
+                SpanRef::DefRelative { def_id, lo, hi, ctxt }
+            }
+            _ => panic!("invalid SpanRef variant {variant}"),
+        }
     }
 }
 
@@ -3036,8 +3095,8 @@ where
     /// Hashes a SpanRef, respecting the `hash_spans()` setting.
     ///
     /// When `hash_spans()` returns false (e.g., with `-Z incremental-ignore-spans`),
-    /// SpanRef contributes nothing to the hash. This enables RDR (Reproducible
-    /// Deterministic Rebuilds) where span-only changes don't trigger rebuilds.
+    /// SpanRef contributes nothing to the hash. This enables RDR (Relink, Don't
+    /// Rebuild) where span-only changes don't trigger rebuilds.
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         if !ctx.hash_spans() {
             return;
@@ -3048,8 +3107,9 @@ where
                 0u8.hash_stable(ctx, hasher);
                 ctxt.hash_stable(ctx, hasher);
             }
-            SpanRef::FileRelative { file, lo, hi, ctxt } => {
+            SpanRef::FileRelative { source_crate, file, lo, hi, ctxt } => {
                 1u8.hash_stable(ctx, hasher);
+                source_crate.hash_stable(ctx, hasher);
                 file.hash_stable(ctx, hasher);
                 lo.hash_stable(ctx, hasher);
                 hi.hash_stable(ctx, hasher);

@@ -343,6 +343,10 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+
+    /// Whether this crate was compiled with `-Z separate-spans`.
+    /// If true, span data is in a separate `.spans` file, not in this rmeta.
+    has_separate_spans: bool,
 }
 
 /// On-disk representation of `DefId`.

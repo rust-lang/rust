@@ -72,7 +72,7 @@ use rustc_serialize::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, Loc, Span, SpanDecoder, SpanEncoder, SpanRef};
+use rustc_span::{BytePos, DUMMY_SP, Loc, Span, SpanDecoder, SpanEncoder};
 pub use snippet::Style;
 use tracing::debug;
 
@@ -215,16 +215,16 @@ pub struct SubstitutionPart {
 
 impl<E: SpanEncoder> Encodable<E> for SubstitutionPart {
     fn encode(&self, e: &mut E) {
-        self.span.to_span_ref().encode(e);
+        e.encode_span_as_span_ref(self.span);
         self.snippet.encode(e);
     }
 }
 
 impl<D: SpanDecoder> Decodable<D> for SubstitutionPart {
     fn decode(d: &mut D) -> Self {
-        let span_ref: SpanRef = Decodable::decode(d);
+        let span = d.decode_span_ref_as_span();
         let snippet: String = Decodable::decode(d);
-        SubstitutionPart { span: span_ref.span(), snippet }
+        SubstitutionPart { span, snippet }
     }
 }
 
@@ -238,22 +238,18 @@ pub struct TrimmedSubstitutionPart {
 
 impl<E: SpanEncoder> Encodable<E> for TrimmedSubstitutionPart {
     fn encode(&self, e: &mut E) {
-        self.original_span.to_span_ref().encode(e);
-        self.span.to_span_ref().encode(e);
+        e.encode_span_as_span_ref(self.original_span);
+        e.encode_span_as_span_ref(self.span);
         self.snippet.encode(e);
     }
 }
 
 impl<D: SpanDecoder> Decodable<D> for TrimmedSubstitutionPart {
     fn decode(d: &mut D) -> Self {
-        let original_span_ref: SpanRef = Decodable::decode(d);
-        let span_ref: SpanRef = Decodable::decode(d);
+        let original_span = d.decode_span_ref_as_span();
+        let span = d.decode_span_ref_as_span();
         let snippet: String = Decodable::decode(d);
-        TrimmedSubstitutionPart {
-            original_span: original_span_ref.span(),
-            span: span_ref.span(),
-            snippet,
-        }
+        TrimmedSubstitutionPart { original_span, span, snippet }
     }
 }
 

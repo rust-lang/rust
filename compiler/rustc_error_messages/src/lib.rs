@@ -17,7 +17,7 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{Span, SpanDecoder, SpanEncoder, SpanRef};
+use rustc_span::{Span, SpanDecoder, SpanEncoder};
 use tracing::{instrument, trace};
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -528,13 +528,11 @@ impl<E: SpanEncoder> Encodable<E> for MultiSpan {
 
 impl<D: SpanDecoder> Decodable<D> for MultiSpan {
     fn decode(d: &mut D) -> Self {
-        // Decode primary spans
         let primary_len: usize = Decodable::decode(d);
         let mut primary_spans = Vec::with_capacity(primary_len);
         for _ in 0..primary_len {
             primary_spans.push(d.decode_span_ref_as_span());
         }
-        // Decode span labels
         let labels_len: usize = Decodable::decode(d);
         let mut span_labels = Vec::with_capacity(labels_len);
         for _ in 0..labels_len {

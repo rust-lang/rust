@@ -34,7 +34,8 @@ use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
     AttrId, BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, ExpnId, IdentRef, Pos,
-    RemapPathScopeComponents, SpanData, SpanDecoder, Symbol, SyntaxContext, kw,
+    RemapPathScopeComponents, Span, SpanData, SpanDecoder, SpanRef, SpanResolver, Symbol,
+    SyntaxContext, kw,
 };
 use tracing::debug;
 
@@ -85,7 +86,7 @@ impl std::ops::Deref for SpanBlob {
     }
 }
 
-#[allow(dead_code)] // TODO: used by RDR span file infrastructure
+#[allow(dead_code)] // Infrastructure for RDR span file loading
 impl SpanBlob {
     /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`SpanBlob`].
     pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
@@ -95,6 +96,41 @@ impl SpanBlob {
     /// Returns the underlying bytes.
     pub(crate) fn bytes(&self) -> &OwnedSlice {
         &self.0
+    }
+
+    /// Checks if this span blob has a valid header.
+    pub(crate) fn check_header(&self) -> bool {
+        self.starts_with(SPAN_HEADER)
+    }
+
+    /// Parses the root position from the blob header.
+    fn root_pos(&self) -> Result<NonZero<usize>, &'static str> {
+        // Check minimum length: header + root position (8 bytes)
+        let min_len = SPAN_HEADER.len() + 8;
+        if self.len() < min_len {
+            return Err("span file too short to contain header and root position");
+        }
+
+        let offset = SPAN_HEADER.len();
+        let pos_bytes: [u8; 8] = match self[offset..].get(..8) {
+            Some(bytes) => bytes.try_into().unwrap(),
+            None => return Err("span file too short to read root position"),
+        };
+        let pos = u64::from_le_bytes(pos_bytes) as usize;
+
+        let pos = NonZero::new(pos).ok_or("span file has zero root position")?;
+
+        if pos.get() >= self.len() {
+            return Err("span file root position points past end of file");
+        }
+
+        Ok(pos)
+    }
+
+    /// Parses and returns the SpanFileRoot from the blob.
+    pub(crate) fn get_root(&self) -> Result<SpanFileRoot, &'static str> {
+        let pos = self.root_pos()?;
+        Ok(LazyValue::<SpanFileRoot>::from_position(pos).decode_span(self))
     }
 }
 
@@ -108,7 +144,7 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
 /// Lazily-loaded span file data. Contains the span blob and decoded source_map table.
-#[allow(dead_code)] // TODO: used by RDR span file infrastructure
+#[allow(dead_code)] // Infrastructure for RDR span file loading
 struct SpanFileData {
     blob: SpanBlob,
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
@@ -120,10 +156,10 @@ pub(crate) struct CrateMetadata {
 
     /// Path to the span file (.spans), if one exists for this crate.
     /// The span file is loaded lazily on first span resolution.
-    #[allow(dead_code)] // TODO: used by RDR span file infrastructure
+    #[allow(dead_code)] // Infrastructure for RDR span file loading
     span_file_path: Option<PathBuf>,
     /// Lazily-loaded span file data. Populated on first access when span_file_path is Some.
-    #[allow(dead_code)] // TODO: used by RDR span file infrastructure
+    #[allow(dead_code)] // Infrastructure for RDR span file loading
     span_file_data: OnceLock<Option<SpanFileData>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
@@ -346,9 +382,75 @@ impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
+/// Decode context for span files (.spans).
+/// Similar to [`BlobDecodeContext`] but works with [`SpanBlob`] instead of [`MetadataBlob`].
+#[allow(dead_code)] // Infrastructure for RDR span file loading
+pub(super) struct SpanBlobDecodeContext<'a> {
+    opaque: MemDecoder<'a>,
+    blob: &'a SpanBlob,
+    lazy_state: LazyState,
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span file loading
+impl<'a> LazyDecoder for SpanBlobDecodeContext<'a> {
+    fn set_lazy_state(&mut self, state: LazyState) {
+        self.lazy_state = state;
+    }
+
+    fn get_lazy_state(&self) -> LazyState {
+        self.lazy_state
+    }
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span file loading
+impl<'a> SpanBlobDecodeContext<'a> {
+    #[inline]
+    pub(crate) fn blob(&self) -> &'a SpanBlob {
+        self.blob
+    }
+}
+
+/// Trait for decoding from span file blobs.
+/// Similar to [`Metadata`] but for [`SpanBlob`].
+#[allow(dead_code)] // Infrastructure for RDR span file loading
+pub(super) trait SpanMetadata<'a>: Copy {
+    type Context: BlobDecoder + LazyDecoder;
+
+    fn blob(self) -> &'a SpanBlob;
+    fn decoder(self, pos: usize) -> Self::Context;
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span file loading
+impl<'a> SpanMetadata<'a> for &'a SpanBlob {
+    type Context = SpanBlobDecodeContext<'a>;
+
+    fn blob(self) -> &'a SpanBlob {
+        self
+    }
+
+    fn decoder(self, pos: usize) -> Self::Context {
+        SpanBlobDecodeContext {
+            opaque: MemDecoder::new(self, pos).unwrap(),
+            lazy_state: LazyState::NoNode,
+            blob: self,
+        }
+    }
+}
+
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
     fn decode<'a, 'tcx, M: Metadata<'a>>(self, metadata: M) -> T::Value<'tcx>
+    where
+        T::Value<'tcx>: Decodable<M::Context>,
+    {
+        let mut dcx = metadata.decoder(self.position.get());
+        dcx.set_lazy_state(LazyState::NodeStart(self.position));
+        T::Value::decode(&mut dcx)
+    }
+
+    /// Decode from a span file blob using SpanMetadata.
+    #[inline]
+    fn decode_span<'a, 'tcx, M: SpanMetadata<'a>>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -574,6 +676,14 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
         };
         data.span()
     }
+
+    fn decode_span_ref_as_span(&mut self) -> Span {
+        // Decode the SpanRef from metadata
+        let span_ref = SpanRef::decode(self);
+        // Resolve it to an absolute Span using the TyCtxt resolver
+        let resolver = TyCtxtSpanResolver::new(self.tcx);
+        resolver.resolve_span_ref(span_ref)
+    }
 }
 
 impl<'a, 'tcx> BlobDecoder for MetadataDecodeContext<'a, 'tcx> {
@@ -607,6 +717,53 @@ impl<'a> BlobDecoder for BlobDecodeContext<'a> {
             |this| ByteSymbol::intern(this.read_byte_str()),
             |opaque| ByteSymbol::intern(opaque.read_byte_str()),
         )
+    }
+}
+
+/// BlobDecoder impl for SpanBlobDecodeContext.
+/// Symbols in span files use simple string encoding (no offset tables).
+impl<'a> BlobDecoder for SpanBlobDecodeContext<'a> {
+    fn decode_def_index(&mut self) -> DefIndex {
+        DefIndex::from_u32(self.read_u32())
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        // Span files use simple string encoding
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        ByteSymbol::intern(self.read_byte_str())
+    }
+}
+
+/// Minimal SpanDecoder impl for SpanBlobDecodeContext.
+/// Similar to BlobDecodeContext's SpanDecoder impl - methods requiring hygiene will panic.
+impl<'a> SpanDecoder for SpanBlobDecodeContext<'a> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
+        Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `SpanBlobDecodeContext`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `SpanBlobDecodeContext`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `SpanBlobDecodeContext`");
     }
 }
 
@@ -779,6 +936,10 @@ mod meta {
 mod blob {
     use super::*;
     implement_ty_decoder!(BlobDecodeContext<'a>);
+}
+mod span_blob {
+    use super::*;
+    implement_ty_decoder!(SpanBlobDecodeContext<'a>);
 }
 
 impl MetadataBlob {
@@ -1045,6 +1206,10 @@ impl CrateRoot {
     ) -> impl ExactSizeIterator<Item = TargetModifier> {
         self.target_modifiers.decode(metadata)
     }
+
+    pub(crate) fn has_separate_spans(&self) -> bool {
+        self.has_separate_spans
+    }
 }
 
 impl<'a> CrateMetadataRef<'a> {
@@ -1085,14 +1250,15 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn opt_item_ident(self, tcx: TyCtxt<'_>, item_index: DefIndex) -> Option<Ident> {
         let name = self.opt_item_name(item_index)?;
-        let span = self
+        let span_ref = self
             .root
             .tables
             .def_ident_span
             .get((self, tcx), item_index)
             .unwrap_or_else(|| self.missing("def_ident_span", item_index))
-            .decode((self, tcx))
-            .span();
+            .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        let span = resolver.resolve_span_ref(span_ref);
         Some(Ident::new(name, span))
     }
 
@@ -1114,13 +1280,15 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_span(self, tcx: TyCtxt<'_>, index: DefIndex) -> Span {
-        self.root
+        let span_ref = self
+            .root
             .tables
             .def_span
             .get((self, tcx), index)
             .unwrap_or_else(|| self.missing("def_span", index))
-            .decode((self, tcx))
-            .span()
+            .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        resolver.resolve_span_ref(span_ref)
     }
 
     fn load_proc_macro<'tcx>(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
@@ -1548,13 +1716,15 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_proc_macro_quoted_span(self, tcx: TyCtxt<'_>, index: usize) -> Span {
-        self.root
+        let span_ref = self
+            .root
             .tables
             .proc_macro_quoted_spans
             .get((self, tcx), index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
-            .decode((self, tcx))
-            .span()
+            .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        resolver.resolve_span_ref(span_ref)
     }
 
     fn get_foreign_modules(self, tcx: TyCtxt<'_>) -> impl Iterator<Item = ForeignModule> {
@@ -1955,6 +2125,53 @@ impl<'a> CrateMetadataRef<'a> {
         Some(imported)
     }
 
+    /// Finds a source file by its `StableSourceFileId` and imports it into the local source map.
+    ///
+    /// This is used by `SpanResolver` to lazily load source files from external crates
+    /// when resolving `SpanRef::FileRelative` spans.
+    ///
+    /// Returns the imported source file if found, or `None` if the file doesn't belong
+    /// to this crate or couldn't be loaded.
+    fn find_and_import_source_file_by_stable_id(
+        self,
+        tcx: TyCtxt<'_>,
+        target_stable_id: rustc_span::StableSourceFileId,
+    ) -> Option<ImportedSourceFile> {
+        // Iterate through all source files in this crate's metadata
+        let num_files = self.root.source_map.size();
+        debug!(
+            ?target_stable_id,
+            crate_name = ?self.cdata.root.header.name,
+            num_files,
+            "find_and_import_source_file_by_stable_id: searching"
+        );
+
+        for file_index in 0..num_files {
+            // Try to get the source file - it may already be cached
+            if let Some(imported) = self.imported_source_file(tcx, file_index as u32) {
+                let file_stable_id = imported.translated_source_file.stable_id;
+                debug!(
+                    file_index,
+                    name = ?imported.translated_source_file.name,
+                    ?file_stable_id,
+                    "find_and_import_source_file_by_stable_id: checking file"
+                );
+
+                if file_stable_id == target_stable_id {
+                    debug!("find_and_import_source_file_by_stable_id: FOUND");
+                    return Some(imported);
+                }
+            }
+        }
+
+        debug!(
+            ?target_stable_id,
+            crate_name = ?self.cdata.root.header.name,
+            "find_and_import_source_file_by_stable_id: NOT FOUND"
+        );
+        None
+    }
+
     fn get_attr_flags(self, tcx: TyCtxt<'_>, index: DefIndex) -> AttrFlags {
         self.root.tables.attr_flags.get((self, tcx), index)
     }
@@ -2063,12 +2280,42 @@ impl CrateMetadata {
 
     /// Lazily loads the span file data if a span file path is configured.
     /// Returns None if no span file exists or if loading fails.
-    /// TODO: Complete SpanBlob infrastructure to enable span file loading.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Infrastructure for RDR span resolution
     fn span_file_data(&self) -> Option<&SpanFileData> {
-        // Span file loading is not yet fully implemented.
-        // The SpanBlob type needs Metadata trait impl and get_root method.
-        None
+        self.span_file_data
+            .get_or_init(|| {
+                let path = self.span_file_path.as_ref()?;
+                self.load_span_file(path).ok()
+            })
+            .as_ref()
+    }
+
+    /// Loads and parses the span file from disk.
+    #[allow(dead_code)] // Called by span_file_data()
+    fn load_span_file(&self, path: &Path) -> Result<SpanFileData, String> {
+        use crate::locator::get_span_metadata_section;
+
+        let blob = get_span_metadata_section(path)?;
+
+        if !blob.check_header() {
+            return Err(format!("invalid span file header in '{}'", path.display()));
+        }
+
+        let root = blob
+            .get_root()
+            .map_err(|e| format!("failed to parse span file '{}': {}", path.display(), e))?;
+
+        // Verify the rmeta hash matches
+        if root.header.rmeta_hash != self.root.header.hash {
+            return Err(format!(
+                "span file hash mismatch: expected {:?}, found {:?} in '{}'",
+                self.root.header.hash,
+                root.header.rmeta_hash,
+                path.display()
+            ));
+        }
+
+        Ok(SpanFileData { blob, source_map: root.source_map() })
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
@@ -2203,5 +2450,131 @@ impl CrateMetadata {
         }
 
         None
+    }
+}
+
+// =============================================================================
+// SpanResolver implementation
+// =============================================================================
+
+/// Resolves `SpanRef` values to concrete `Span`s using the compilation context.
+///
+/// This is the core infrastructure for RDR (Relink, Don't Rebuild).
+/// When metadata stores spans as `SpanRef` with relative positions, this resolver
+/// converts them back to absolute `Span` positions for diagnostics and debugging.
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+pub(crate) struct TyCtxtSpanResolver<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+impl<'tcx> TyCtxtSpanResolver<'tcx> {
+    /// Creates a new span resolver using the given type context.
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        TyCtxtSpanResolver { tcx }
+    }
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+impl SpanResolver for TyCtxtSpanResolver<'_> {
+    fn resolve_span_ref(&self, span_ref: SpanRef) -> Span {
+        match span_ref {
+            SpanRef::Opaque { ctxt } => {
+                // Opaque spans have no position info - return dummy with context
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::FileRelative { source_crate, file, lo, hi, ctxt } => {
+                debug!(?source_crate, ?file, lo, hi, "resolve_span_ref: FileRelative");
+
+                // First, try to look up the source file by its stable ID in the current source map.
+                // This works when the file has already been imported from the source crate.
+                let source_map = self.tcx.sess.source_map();
+                if let Some(source_file) = source_map.source_file_by_stable_id(file) {
+                    debug!(
+                        name = ?source_file.name,
+                        start_pos = ?source_file.start_pos,
+                        "resolve_span_ref: found file in source map"
+                    );
+                    let abs_lo = source_file.start_pos + BytePos(lo);
+                    let abs_hi = source_file.start_pos + BytePos(hi);
+                    return Span::new(abs_lo, abs_hi, ctxt, None);
+                }
+
+                debug!("resolve_span_ref: file not in source map, trying to import from crate");
+
+                // File not in source map - find the source crate and import from its metadata.
+                // This mirrors how the original span encoding works: we know exactly which
+                // crate's metadata contains the source file.
+                let cstore = CStore::from_tcx(self.tcx);
+                debug!(?source_crate, ?source_cnum, "resolve_span_ref: converted stable crate id");
+                let cref = cstore.get_crate_data(source_cnum);
+
+                // Try to import the source file from that crate's metadata
+                if let Some(imported) =
+                    cref.find_and_import_source_file_by_stable_id(self.tcx, file)
+                {
+                    debug!(
+                        name = ?imported.translated_source_file.name,
+                        start_pos = ?imported.translated_source_file.start_pos,
+                        "resolve_span_ref: imported file"
+                    );
+                    let abs_lo = imported.translated_source_file.start_pos + BytePos(lo);
+                    let abs_hi = imported.translated_source_file.start_pos + BytePos(hi);
+                    return Span::new(abs_lo, abs_hi, ctxt, None);
+                }
+
+                // File not found in source crate - fall back to dummy span
+                debug!(
+                    ?file,
+                    ?source_crate,
+                    ?source_cnum,
+                    "resolve_span_ref: source file not found in crate"
+                );
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::DefRelative { def_id, lo, hi, ctxt } => {
+                // Look up the definition's span and add relative offsets
+                let def_span = self.tcx.def_span(def_id);
+                let def_data = def_span.data();
+                let abs_lo = def_data.lo + BytePos(lo);
+                let abs_hi = def_data.lo + BytePos(hi);
+                Span::new(abs_lo, abs_hi, ctxt, None)
+            }
+        }
+    }
+
+    fn span_ref_from_span(&self, span: Span) -> SpanRef {
+        let data = span.data();
+
+        // Dummy spans become opaque
+        if span.is_dummy() {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        let source_map = self.tcx.sess.source_map();
+
+        // Look up the source file containing this span
+        let source_file = source_map.lookup_source_file(data.lo);
+
+        // If the span crosses file boundaries, make it opaque
+        let end_file = source_map.lookup_source_file(data.hi);
+        if source_file.start_pos != end_file.start_pos {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        // Compute relative offsets from the file's start position
+        let rel_lo = (data.lo - source_file.start_pos).0;
+        let rel_hi = (data.hi - source_file.start_pos).0;
+
+        // Get the source crate's stable ID
+        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
+
+        SpanRef::FileRelative {
+            source_crate,
+            file: source_file.stable_id,
+            lo: rel_lo,
+            hi: rel_hi,
+            ctxt: data.ctxt,
+        }
     }
 }

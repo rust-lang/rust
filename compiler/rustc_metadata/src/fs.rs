@@ -71,12 +71,15 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     };
 
     // When -Z separate-spans is enabled, encode spans to a separate .spans file
-    if let Some(required_source_files) = required_source_files
+    let spans_tmp_filename = if let Some(required_source_files) = required_source_files
         && tcx.sess.opts.unstable_opts.separate_spans
     {
         let spans_tmp_filename = metadata_tmpdir.as_ref().join("lib.spans");
         encode_spans(tcx, &spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
-    }
+        Some(spans_tmp_filename)
+    } else {
+        None
+    };
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
@@ -109,6 +112,21 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     } else {
         (metadata_filename, Some(metadata_tmpdir))
     };
+
+    // Write spans file adjacent to where the rmeta would be output.
+    // This uses out_filename (the intended rmeta output path) rather than metadata_filename
+    // because metadata_filename may be a temp path when not producing standalone metadata.
+    if let Some(spans_tmp_filename) = spans_tmp_filename {
+        let spans_filename = match &out_filename {
+            OutFileName::Real(path) => path.with_extension("spans"),
+            OutFileName::Stdout => spans_tmp_filename.clone(),
+        };
+        if spans_tmp_filename != spans_filename {
+            if let Err(err) = non_durable_rename(&spans_tmp_filename, &spans_filename) {
+                tcx.dcx().emit_fatal(FailedWriteError { filename: spans_filename, err });
+            }
+        }
+    }
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =

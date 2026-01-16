@@ -19,9 +19,10 @@ use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::hygiene::ExpnId;
-use rustc_span::{Span, SpanRef, Symbol, kw};
+use rustc_span::{Ident, Span, SpanRef, SpanResolver, Symbol, kw};
 
 use super::{Decodable, DecodeIterator};
+use super::TyCtxtSpanResolver;
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
 use crate::rmeta::table::IsDefault;
@@ -29,6 +30,11 @@ use crate::{eii, foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
+}
+
+#[inline]
+fn resolve_span_ref(tcx: TyCtxt<'_>, span_ref: SpanRef) -> Span {
+    TyCtxtSpanResolver::new(tcx).resolve_span_ref(span_ref)
 }
 
 impl<T> ProcessQueryValue<'_, T> for T {
@@ -93,22 +99,22 @@ impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
 
 impl ProcessQueryValue<'_, Span> for SpanRef {
     #[inline(always)]
-    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Span {
-        self.span()
+    fn process_decoded(self, tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Span {
+        resolve_span_ref(tcx, self)
     }
 }
 
 impl ProcessQueryValue<'_, Span> for Option<SpanRef> {
     #[inline(always)]
-    fn process_decoded(self, _tcx: TyCtxt<'_>, err: impl Fn() -> !) -> Span {
-        if let Some(span_ref) = self { span_ref.span() } else { err() }
+    fn process_decoded(self, tcx: TyCtxt<'_>, err: impl Fn() -> !) -> Span {
+        if let Some(span_ref) = self { resolve_span_ref(tcx, span_ref) } else { err() }
     }
 }
 
 impl ProcessQueryValue<'_, Option<Span>> for Option<SpanRef> {
     #[inline(always)]
-    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<Span> {
-        self.map(|span_ref| span_ref.span())
+    fn process_decoded(self, tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<Span> {
+        self.map(|span_ref| resolve_span_ref(tcx, span_ref))
     }
 }
 
@@ -148,7 +154,10 @@ macro_rules! provide_one {
                 let value = if lazy.is_default() {
                     &[] as &[_]
                 } else {
-                    $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|(item, span_ref)| (item, span_ref.span())))
+                    $tcx.arena.alloc_from_iter(
+                        lazy.decode(($cdata, $tcx))
+                            .map(|(item, span_ref)| (item, resolve_span_ref($tcx, span_ref)))
+                    )
                 };
                 value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -164,7 +173,12 @@ macro_rules! provide_one {
                     .tables
                     .$name
                     .get(($cdata, $tcx), $def_id.index)
-                    .map(|lazy| $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|(item, span_ref)| (item, span_ref.span()))) as &[_])
+                    .map(|lazy| {
+                        $tcx.arena.alloc_from_iter(
+                            lazy.decode(($cdata, $tcx))
+                                .map(|(item, span_ref)| (item, resolve_span_ref($tcx, span_ref))),
+                        ) as &[_]
+                    })
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
@@ -179,7 +193,13 @@ macro_rules! provide_one {
                     .tables
                     .$name
                     .get(($cdata, $tcx), $def_id.index)
-                    .map(|lazy| $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)).map(|opt| opt.map(|ir| ir.ident()))) as &[_])
+                    .map(|lazy| {
+                        $tcx.arena.alloc_from_iter(
+                            lazy.decode(($cdata, $tcx)).map(|opt| {
+                                opt.map(|ir| Ident::new(ir.name, resolve_span_ref($tcx, ir.span)))
+                            }),
+                        ) as &[_]
+                    })
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }

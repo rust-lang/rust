@@ -13,7 +13,7 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, SpanRef, Symbol};
+use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -278,8 +278,7 @@ impl<E: SpanEncoder> Encodable<E> for DiagInner {
         self.suggestions.encode(e);
         self.args.encode(e);
         self.reserved_args.encode(e);
-        // Encode sort_span as SpanRef to avoid absolute byte positions
-        self.sort_span.to_span_ref().encode(e);
+        e.encode_span_as_span_ref(self.sort_span);
         self.is_lint.encode(e);
         self.long_ty_path.encode(e);
         self.emitted_at.encode(e);
@@ -298,8 +297,7 @@ impl<D: SpanDecoder> Decodable<D> for DiagInner {
             suggestions: Decodable::decode(d),
             args: Decodable::decode(d),
             reserved_args: Decodable::decode(d),
-            // Decode SpanRef and convert back to Span
-            sort_span: { let sr: SpanRef = Decodable::decode(d); sr.span() },
+            sort_span: d.decode_span_ref_as_span(),
             is_lint: Decodable::decode(d),
             long_ty_path: Decodable::decode(d),
             emitted_at: Decodable::decode(d),
