@@ -1,5 +1,5 @@
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:95:13
+  --> $DIR/use-path-segment-kw.rs:97:13
    |
 LL |         use crate;
    |             ^^^^^
@@ -10,127 +10,127 @@ LL |         use crate as name;
    |                   +++++++
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:99:15
+  --> $DIR/use-path-segment-kw.rs:101:15
    |
 LL |         use ::crate;
    |               ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:100:15
+  --> $DIR/use-path-segment-kw.rs:102:15
    |
 LL |         use ::crate as _crate2;
    |               ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:101:16
+  --> $DIR/use-path-segment-kw.rs:103:16
    |
 LL |         use ::{crate};
    |                ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:102:16
+  --> $DIR/use-path-segment-kw.rs:104:16
    |
 LL |         use ::{crate as _nested_crate2};
    |                ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:105:21
+  --> $DIR/use-path-segment-kw.rs:107:21
    |
 LL |         use foobar::crate;
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:106:21
+  --> $DIR/use-path-segment-kw.rs:108:21
    |
 LL |         use foobar::crate as _crate3;
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:107:22
+  --> $DIR/use-path-segment-kw.rs:109:22
    |
 LL |         use foobar::{crate};
    |                      ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:108:22
+  --> $DIR/use-path-segment-kw.rs:110:22
    |
 LL |         use foobar::{crate as _nested_crate3};
    |                      ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:111:20
+  --> $DIR/use-path-segment-kw.rs:113:20
    |
 LL |         use crate::crate;
    |                    ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:112:20
+  --> $DIR/use-path-segment-kw.rs:114:20
    |
 LL |         use crate::crate as _crate4;
    |                    ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:113:21
+  --> $DIR/use-path-segment-kw.rs:115:21
    |
 LL |         use crate::{crate};
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:114:21
+  --> $DIR/use-path-segment-kw.rs:116:21
    |
 LL |         use crate::{crate as _nested_crate4};
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:117:20
+  --> $DIR/use-path-segment-kw.rs:119:20
    |
 LL |         use super::crate;
    |                    ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:118:20
+  --> $DIR/use-path-segment-kw.rs:120:20
    |
 LL |         use super::crate as _crate5;
    |                    ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:119:21
+  --> $DIR/use-path-segment-kw.rs:121:21
    |
 LL |         use super::{crate};
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:120:21
+  --> $DIR/use-path-segment-kw.rs:122:21
    |
 LL |         use super::{crate as _nested_crate5};
    |                     ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:123:19
+  --> $DIR/use-path-segment-kw.rs:125:19
    |
 LL |         use self::crate;
    |                   ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:124:19
+  --> $DIR/use-path-segment-kw.rs:126:19
    |
 LL |         use self::crate as _crate6;
    |                   ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:125:20
+  --> $DIR/use-path-segment-kw.rs:127:20
    |
 LL |         use self::{crate};
    |                    ^^^^^
 
 error: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:126:20
+  --> $DIR/use-path-segment-kw.rs:128:20
    |
 LL |         use self::{crate as _nested_crate6};
    |                    ^^^^^
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:133:13
+  --> $DIR/use-path-segment-kw.rs:135:13
    |
 LL |         use super;
    |             ^^^^^
@@ -141,79 +141,79 @@ LL |         use super as name;
    |                   +++++++
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:137:15
+  --> $DIR/use-path-segment-kw.rs:139:15
    |
 LL |         use ::super;
    |               ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:138:15
+  --> $DIR/use-path-segment-kw.rs:140:15
    |
 LL |         use ::super as _super2;
    |               ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:139:16
+  --> $DIR/use-path-segment-kw.rs:141:16
    |
 LL |         use ::{super};
    |                ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:140:16
+  --> $DIR/use-path-segment-kw.rs:142:16
    |
 LL |         use ::{super as _nested_super2};
    |                ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:143:21
+  --> $DIR/use-path-segment-kw.rs:145:21
    |
 LL |         use foobar::super;
    |                     ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:144:21
+  --> $DIR/use-path-segment-kw.rs:146:21
    |
 LL |         use foobar::super as _super3;
    |                     ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:145:22
+  --> $DIR/use-path-segment-kw.rs:147:22
    |
 LL |         use foobar::{super};
    |                      ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:146:22
+  --> $DIR/use-path-segment-kw.rs:148:22
    |
 LL |         use foobar::{super as _nested_super3};
    |                      ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:149:20
+  --> $DIR/use-path-segment-kw.rs:151:20
    |
 LL |         use crate::super;
    |                    ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:150:20
+  --> $DIR/use-path-segment-kw.rs:152:20
    |
 LL |         use crate::super as _super4;
    |                    ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:151:21
+  --> $DIR/use-path-segment-kw.rs:153:21
    |
 LL |         use crate::{super};
    |                     ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:152:21
+  --> $DIR/use-path-segment-kw.rs:154:21
    |
 LL |         use crate::{super as _nested_super4};
    |                     ^^^^^
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:155:20
+  --> $DIR/use-path-segment-kw.rs:157:20
    |
 LL |         use super::super;
    |                    ^^^^^
@@ -224,7 +224,7 @@ LL |         use super::super as name;
    |                          +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:157:21
+  --> $DIR/use-path-segment-kw.rs:159:21
    |
 LL |         use super::{super};
    |                     ^^^^^
@@ -235,61 +235,61 @@ LL |         use super::{super as name};
    |                           +++++++
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:161:19
+  --> $DIR/use-path-segment-kw.rs:163:19
    |
 LL |         use self::super;
    |                   ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:162:19
+  --> $DIR/use-path-segment-kw.rs:164:19
    |
 LL |         use self::super as _super6;
    |                   ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:163:20
+  --> $DIR/use-path-segment-kw.rs:165:20
    |
 LL |         use self::{super};
    |                    ^^^^^
 
 error: `super` in paths can only be used in start position or after another `super`
-  --> $DIR/use-path-segment-kw.rs:164:20
+  --> $DIR/use-path-segment-kw.rs:166:20
    |
 LL |         use self::{super as _nested_super6};
    |                    ^^^^^
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:171:13
+  --> $DIR/use-path-segment-kw.rs:173:13
    |
 LL |         use self;
    |             ^^^^
 
 error: extern prelude cannot be imported
-  --> $DIR/use-path-segment-kw.rs:175:13
+  --> $DIR/use-path-segment-kw.rs:177:13
    |
 LL |         use ::self;
    |             ^^^^^^
 
 error: extern prelude cannot be imported
-  --> $DIR/use-path-segment-kw.rs:178:13
+  --> $DIR/use-path-segment-kw.rs:180:13
    |
 LL |         use ::self as _self2;
    |             ^^^^^^^^^^^^^^^^
 
 error: extern prelude cannot be imported
-  --> $DIR/use-path-segment-kw.rs:180:16
+  --> $DIR/use-path-segment-kw.rs:182:16
    |
 LL |         use ::{self};
    |                ^^^^
 
 error: extern prelude cannot be imported
-  --> $DIR/use-path-segment-kw.rs:182:20
+  --> $DIR/use-path-segment-kw.rs:184:20
    |
 LL |         pub use ::{self as _nested_self2};
    |                    ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:185:28
+  --> $DIR/use-path-segment-kw.rs:187:28
    |
 LL |         pub use foobar::qux::self;
    |                            ^^^^^^
@@ -305,7 +305,7 @@ LL |         pub use foobar::qux::{self};
    |                              +    +
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:187:23
+  --> $DIR/use-path-segment-kw.rs:189:23
    |
 LL |         pub use foobar::self as _self3;
    |                       ^^^^^^
@@ -321,7 +321,7 @@ LL |         pub use foobar::{self as _self3};
    |                         +              +
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:193:18
+  --> $DIR/use-path-segment-kw.rs:195:18
    |
 LL |         use crate::self;
    |                  ^^^^^^
@@ -337,13 +337,13 @@ LL |         use crate::{self};
    |                    +    +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:193:20
+  --> $DIR/use-path-segment-kw.rs:195:20
    |
 LL |         use crate::self;
    |                    ^^^^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:195:22
+  --> $DIR/use-path-segment-kw.rs:197:22
    |
 LL |         pub use crate::self as _self4;
    |                      ^^^^^^
@@ -359,7 +359,7 @@ LL |         pub use crate::{self as _self4};
    |                        +              +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:196:21
+  --> $DIR/use-path-segment-kw.rs:198:21
    |
 LL |         use crate::{self};
    |                     ^^^^
@@ -370,7 +370,7 @@ LL |         use crate::{self as name};
    |                          +++++++
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:200:18
+  --> $DIR/use-path-segment-kw.rs:202:18
    |
 LL |         use super::self;
    |                  ^^^^^^
@@ -386,13 +386,13 @@ LL |         use super::{self};
    |                    +    +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:200:20
+  --> $DIR/use-path-segment-kw.rs:202:20
    |
 LL |         use super::self;
    |                    ^^^^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:202:22
+  --> $DIR/use-path-segment-kw.rs:204:22
    |
 LL |         pub use super::self as _self5;
    |                      ^^^^^^
@@ -408,7 +408,7 @@ LL |         pub use super::{self as _self5};
    |                        +              +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:203:21
+  --> $DIR/use-path-segment-kw.rs:205:21
    |
 LL |         use super::{self};
    |                     ^^^^
@@ -419,7 +419,7 @@ LL |         use super::{self as name};
    |                          +++++++
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:207:17
+  --> $DIR/use-path-segment-kw.rs:209:17
    |
 LL |         use self::self;
    |                 ^^^^^^
@@ -435,13 +435,13 @@ LL |         use self::{self};
    |                   +    +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:207:19
+  --> $DIR/use-path-segment-kw.rs:209:19
    |
 LL |         use self::self;
    |                   ^^^^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-path-segment-kw.rs:209:21
+  --> $DIR/use-path-segment-kw.rs:211:21
    |
 LL |         pub use self::self as _self6;
    |                     ^^^^^^
@@ -457,7 +457,7 @@ LL |         pub use self::{self as _self6};
    |                       +              +
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:210:20
+  --> $DIR/use-path-segment-kw.rs:212:20
    |
 LL |         use self::{self};
    |                    ^^^^
@@ -466,6 +466,38 @@ help: try renaming it with a name
    |
 LL |         use self::{self as name};
    |                         +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:216:28
+   |
+LL |         use crate::foo::bar::self;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use crate::foo::bar::self;
+LL +         use crate::foo::bar;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use crate::foo::bar::{self};
+   |                              +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:217:28
+   |
+LL |         use crate::foo::bar::self as _self7;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use crate::foo::bar::self as _self7;
+LL +         use crate::foo::bar as _self7;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use crate::foo::bar::{self as _self7};
+   |                              +              +
 
 error: imports need to be explicitly named
   --> $DIR/use-path-segment-kw.rs:11:13
@@ -900,8 +932,14 @@ help: try renaming it with a name
 LL |         use $crate::{self as name};
    |                           +++++++
 
+error[E0433]: failed to resolve: `self` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:215:36
+   |
+LL |         type D7 = crate::foo::bar::self;
+   |                                    ^^^^ `self` in paths can only be used in start position
+
 error[E0433]: failed to resolve: could not find `_nested_self2` in `bar`
-  --> $DIR/use-path-segment-kw.rs:231:15
+  --> $DIR/use-path-segment-kw.rs:239:15
    |
 LL |     foo::bar::_nested_self2::outer();
    |               ^^^^^^^^^^^^^ could not find `_nested_self2` in `bar`
@@ -918,31 +956,31 @@ LL |         macro_dollar_crate!();
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0573]: expected type, found module `crate`
-  --> $DIR/use-path-segment-kw.rs:94:19
+  --> $DIR/use-path-segment-kw.rs:96:19
    |
 LL |         type B1 = crate;
    |                   ^^^^^ not a type
 
 error[E0573]: expected type, found module `super`
-  --> $DIR/use-path-segment-kw.rs:132:19
+  --> $DIR/use-path-segment-kw.rs:134:19
    |
 LL |         type C1 = super;
    |                   ^^^^^ not a type
 
 error[E0573]: expected type, found module `super::super`
-  --> $DIR/use-path-segment-kw.rs:154:19
+  --> $DIR/use-path-segment-kw.rs:156:19
    |
 LL |         type C5 = super::super;
    |                   ^^^^^^^^^^^^ not a type
 
 error[E0573]: expected type, found module `self::super`
-  --> $DIR/use-path-segment-kw.rs:160:19
+  --> $DIR/use-path-segment-kw.rs:162:19
    |
 LL |         type C6 = self::super;
    |                   ^^^^^^^^^^^ not a type
 
 error[E0573]: expected type, found module `self`
-  --> $DIR/use-path-segment-kw.rs:170:19
+  --> $DIR/use-path-segment-kw.rs:172:19
    |
 LL |         type D1 = self;
    |                   ^^^^ not a type
@@ -1047,84 +1085,84 @@ LL |         macro_dollar_crate!();
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: global paths cannot start with `crate`
-  --> $DIR/use-path-segment-kw.rs:98:21
+  --> $DIR/use-path-segment-kw.rs:100:21
    |
 LL |         type B2 = ::crate;
    |                     ^^^^^ global paths cannot start with `crate`
 
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:104:27
+  --> $DIR/use-path-segment-kw.rs:106:27
    |
 LL |         type B3 = foobar::crate;
    |                           ^^^^^ `crate` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:110:26
+  --> $DIR/use-path-segment-kw.rs:112:26
    |
 LL |         type B4 = crate::crate;
    |                          ^^^^^ `crate` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:116:26
+  --> $DIR/use-path-segment-kw.rs:118:26
    |
 LL |         type B5 = super::crate;
    |                          ^^^^^ `crate` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:122:25
+  --> $DIR/use-path-segment-kw.rs:124:25
    |
 LL |         type B6 = self::crate;
    |                         ^^^^^ `crate` in paths can only be used in start position
 
 error[E0433]: failed to resolve: global paths cannot start with `super`
-  --> $DIR/use-path-segment-kw.rs:136:21
+  --> $DIR/use-path-segment-kw.rs:138:21
    |
 LL |         type C2 = ::super;
    |                     ^^^^^ global paths cannot start with `super`
 
 error[E0433]: failed to resolve: `super` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:142:27
+  --> $DIR/use-path-segment-kw.rs:144:27
    |
 LL |         type C3 = foobar::super;
    |                           ^^^^^ `super` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `super` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:148:26
+  --> $DIR/use-path-segment-kw.rs:150:26
    |
 LL |         type C4 = crate::super;
    |                          ^^^^^ `super` in paths can only be used in start position
 
 error[E0433]: failed to resolve: global paths cannot start with `self`
-  --> $DIR/use-path-segment-kw.rs:174:21
+  --> $DIR/use-path-segment-kw.rs:176:21
    |
 LL |         type D2 = ::self;
    |                     ^^^^ global paths cannot start with `self`
 
 error[E0433]: failed to resolve: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:184:27
+  --> $DIR/use-path-segment-kw.rs:186:27
    |
 LL |         type D3 = foobar::self;
    |                           ^^^^ `self` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:192:26
+  --> $DIR/use-path-segment-kw.rs:194:26
    |
 LL |         type D4 = crate::self;
    |                          ^^^^ `self` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:199:26
+  --> $DIR/use-path-segment-kw.rs:201:26
    |
 LL |         type D5 = super::self;
    |                          ^^^^ `self` in paths can only be used in start position
 
 error[E0433]: failed to resolve: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:206:25
+  --> $DIR/use-path-segment-kw.rs:208:25
    |
 LL |         type D6 = self::self;
    |                         ^^^^ `self` in paths can only be used in start position
 
-error: aborting due to 125 previous errors
+error: aborting due to 128 previous errors
 
 Some errors have detailed explanations: E0429, E0433, E0573.
 For more information about an error, try `rustc --explain E0429`.

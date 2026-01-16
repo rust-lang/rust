@@ -621,9 +621,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 let mut source = module_path.pop().unwrap();
 
                 // `true` for `...::{self [as target]}` imports, `false` otherwise.
-                let type_ns_only = nested
-                    && source.ident.name == kw::SelfLower
-                    && use_tree.prefix.segments.len() == 1;
+                let type_ns_only = nested && source.ident.name == kw::SelfLower;
 
                 match source.ident.name {
                     kw::DollarCrate => {
