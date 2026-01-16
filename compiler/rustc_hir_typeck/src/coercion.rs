@@ -119,6 +119,7 @@ fn success<'tcx>(
 /// FIXME: We may want to change type relations to always leak-check
 /// after exiting a binder, at which point we will always do so and
 /// no longer need to handle this explicitly
+#[derive(Debug)]
 enum ForceLeakCheck {
     Yes,
     No,
@@ -191,6 +192,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     /// Unify two types (using sub or lub).
+    #[tracing::instrument(skip(self), ret)]
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>, leak_check: ForceLeakCheck) -> CoerceResult<'tcx> {
         self.unify_raw(a, b, leak_check)
             .and_then(|InferOk { value: ty, obligations }| success(vec![], ty, obligations))
@@ -379,7 +381,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             });
         }
 
-        let coerce_inner = |a: Ty<'tcx>, b: Ty<'tcx>| -> CoerceResult<'tcx> {
+        let coerce_inner = |a: Ty<'tcx>, b: Ty<'tcx>, unify_fallback: bool| -> CoerceResult<'tcx> {
+            let span = tracing::debug_span!("coerce_inner", ?a, ?b);
+            let _span = span.enter();
+
             // Consider coercing the subtype to a DST
             //
             // NOTE: this is wrapped in a `commit_if_ok` because it creates
@@ -438,18 +443,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.coerce_closure_to_fn(a, b)
                 }
                 _ => {
-                    // Otherwise, just use unification rules.
-                    self.unify(a, b, ForceLeakCheck::No)
+                    // Typically, we would fallback to unification rules, but we
+                    // delay this on the *reverse* because it would succeed in
+                    // more cases than we want (for example, opaques).
+                    if unify_fallback {
+                        self.unify(a, b, ForceLeakCheck::No)
+                    } else {
+                        Err(TypeError::Mismatch)
+                    }
                 }
             }
         };
 
-        let result = self.commit_if_ok(|_| coerce_inner(new_ty, prev_ty));
+        let result = self.commit_if_ok(|_| coerce_inner(new_ty, prev_ty, true));
         let first_error = match result {
             Ok(forwd_result) => {
                 let prev_ty = self.resolve_vars_if_possible(prev_ty);
                 let new_ty = self.resolve_vars_if_possible(new_ty);
-                let rev_result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty));
+                let rev_result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty, false));
                 if let Ok(rev_result) = rev_result {
                     let forwd_ty = self.resolve_vars_if_possible(forwd_result.value.1);
                     let rev_ty = self.resolve_vars_if_possible(rev_result.value.1);
@@ -467,7 +478,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Err(e) => e,
         };
 
-        let result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty));
+        let result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty, true));
         if let Ok(_) = result {
             return result.map(|r| InferOk {
                 obligations: r.obligations,
