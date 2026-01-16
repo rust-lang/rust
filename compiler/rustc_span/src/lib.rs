@@ -3019,13 +3019,17 @@ where
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
+        let span = self.data_untracked();
+
+        // Always hash the syntax context and parent - they carry semantic information
+        // (hygiene/macro expansion context) that distinguishes identifiers even when
+        // span positions are ignored with `-Z incremental-ignore-spans`.
+        span.ctxt.hash_stable(ctx, hasher);
+        span.parent.hash_stable(ctx, hasher);
+
         if !ctx.hash_spans() {
             return;
         }
-
-        let span = self.data_untracked();
-        span.ctxt.hash_stable(ctx, hasher);
-        span.parent.hash_stable(ctx, hasher);
 
         if span.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
@@ -3095,32 +3099,39 @@ where
     /// Hashes a SpanRef, respecting the `hash_spans()` setting.
     ///
     /// When `hash_spans()` returns false (e.g., with `-Z incremental-ignore-spans`),
-    /// SpanRef contributes nothing to the hash. This enables RDR (Relink, Don't
-    /// Rebuild) where span-only changes don't trigger rebuilds.
+    /// only the syntax context is hashed - positions are skipped. This enables RDR
+    /// (Relink, Don't Rebuild) where span position changes don't trigger rebuilds,
+    /// while still distinguishing spans with different hygiene contexts.
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        // Always hash the syntax context - it carries semantic information
+        // (hygiene/macro expansion context) that distinguishes identifiers.
+        let ctxt = match self {
+            SpanRef::Opaque { ctxt } => ctxt,
+            SpanRef::FileRelative { ctxt, .. } => ctxt,
+            SpanRef::DefRelative { ctxt, .. } => ctxt,
+        };
+        ctxt.hash_stable(ctx, hasher);
+
         if !ctx.hash_spans() {
             return;
         }
 
         match self {
-            SpanRef::Opaque { ctxt } => {
+            SpanRef::Opaque { .. } => {
                 0u8.hash_stable(ctx, hasher);
-                ctxt.hash_stable(ctx, hasher);
             }
-            SpanRef::FileRelative { source_crate, file, lo, hi, ctxt } => {
+            SpanRef::FileRelative { source_crate, file, lo, hi, .. } => {
                 1u8.hash_stable(ctx, hasher);
                 source_crate.hash_stable(ctx, hasher);
                 file.hash_stable(ctx, hasher);
                 lo.hash_stable(ctx, hasher);
                 hi.hash_stable(ctx, hasher);
-                ctxt.hash_stable(ctx, hasher);
             }
-            SpanRef::DefRelative { def_id, lo, hi, ctxt } => {
+            SpanRef::DefRelative { def_id, lo, hi, .. } => {
                 2u8.hash_stable(ctx, hasher);
                 def_id.hash_stable(ctx, hasher);
                 lo.hash_stable(ctx, hasher);
                 hi.hash_stable(ctx, hasher);
-                ctxt.hash_stable(ctx, hasher);
             }
         }
     }

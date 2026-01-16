@@ -153,6 +153,11 @@ metadata_link_ordinal_raw_dylib =
 metadata_missing_native_library =
     could not find native static library `{$libname}`, perhaps an -L flag is missing?
 
+metadata_missing_span_file =
+    cannot load span data for crate `{$crate_name}`: {$reason}
+    .note = the incremental compilation cache may be corrupted
+    .help = try running `cargo clean` and recompiling
+
 metadata_multiple_candidates =
     multiple candidates for `{$flavor}` dependency `{$crate_name}` found
 

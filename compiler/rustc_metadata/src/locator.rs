@@ -951,7 +951,6 @@ fn get_rmeta_metadata_section<'a, 'p>(filename: &'p Path) -> Result<OwnedSlice, 
 }
 
 /// Loads a span metadata file (.spans) that accompanies rmeta files compiled with -Z separate_spans.
-#[allow(dead_code)] // TODO: used by RDR span file infrastructure
 pub(crate) fn get_span_metadata_section(filename: &Path) -> Result<SpanBlob, String> {
     // mmap the file, because only a small fraction of it is read.
     let file = std::fs::File::open(filename)
@@ -1036,6 +1035,7 @@ pub(crate) enum CrateError {
     DlSym(String, String),
     LocatorCombined(Box<CombinedLocatorError>),
     NotFound(Symbol),
+    MissingSpanFile(Symbol, String),
 }
 
 enum MetadataError<'a> {
@@ -1244,6 +1244,9 @@ impl CrateError {
                 } else {
                     dcx.emit_err(error);
                 }
+            }
+            CrateError::MissingSpanFile(crate_name, reason) => {
+                dcx.emit_err(errors::MissingSpanFile { span, crate_name, reason });
             }
         }
     }

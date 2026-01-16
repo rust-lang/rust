@@ -618,3 +618,14 @@ pub struct RawDylibMalformed {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(metadata_missing_span_file)]
+#[note]
+#[help]
+pub struct MissingSpanFile {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: Symbol,
+    pub reason: String,
+}

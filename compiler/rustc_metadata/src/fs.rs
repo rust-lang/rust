@@ -1,21 +1,37 @@
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::TempDirBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
+use tracing::debug;
 
 use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
+use crate::rmeta::MetadataBlob;
 use crate::{EncodedMetadata, encode_metadata, encode_spans};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
+
+/// Reads the SVH (Strict Version Hash) from an existing .rmeta file.
+/// Returns `None` if the file doesn't exist or can't be read.
+fn read_existing_metadata_hash(path: &Path) -> Option<Svh> {
+    let file = fs::File::open(path).ok()?;
+    let mmap = unsafe { Mmap::map(file) }.ok()?;
+    let owned: OwnedSlice = slice_owned(mmap, Deref::deref);
+    let blob = MetadataBlob::new(owned).ok()?;
+    Some(blob.get_header().hash)
+}
 
 /// We use a temp directory here to avoid races between concurrent rustc processes,
 /// such as builds in the same directory using the same filename for metadata while
@@ -90,7 +106,24 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {
-                if let Err(err) = non_durable_rename(&metadata_filename, path) {
+                // RDR optimization: when -Z separate-spans is enabled, skip writing
+                // the .rmeta file if its content hash (SVH) hasn't changed. This
+                // preserves the file's mtime, preventing cargo from rebuilding
+                // dependent crates when only span positions changed.
+                let new_hash = tcx.crate_hash(LOCAL_CRATE);
+                let skip_write = tcx.sess.opts.unstable_opts.separate_spans
+                    && read_existing_metadata_hash(path).is_some_and(|old_hash| {
+                        let matches = old_hash == new_hash;
+                        if matches {
+                            debug!("skipping .rmeta write: SVH unchanged ({:?})", new_hash);
+                        }
+                        matches
+                    });
+
+                if skip_write {
+                    // Remove the temp file since we're keeping the existing one
+                    let _ = fs::remove_file(&metadata_filename);
+                } else if let Err(err) = non_durable_rename(&metadata_filename, path) {
                     tcx.dcx().emit_fatal(FailedWriteError { filename: path.to_path_buf(), err });
                 }
                 path.clone()

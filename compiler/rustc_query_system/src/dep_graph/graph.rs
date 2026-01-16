@@ -27,7 +27,7 @@ use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex
 use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffect};
+use crate::query::{DiagnosticSideEffect, QueryContext, QuerySideEffect};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {
@@ -676,7 +676,11 @@ impl<D: Deps> DepGraphData<D> {
             // diagnostic.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        let side_effect = QuerySideEffect::Diagnostic(diagnostic.clone());
+        let spans_hash = qcx.dep_context().sess().diagnostic_spans_hash();
+        let side_effect = QuerySideEffect::Diagnostic(DiagnosticSideEffect {
+            diagnostic: diagnostic.clone(),
+            spans_hash,
+        });
         qcx.store_side_effect(dep_node_index, side_effect);
         dep_node_index
     }
@@ -693,8 +697,18 @@ impl<D: Deps> DepGraphData<D> {
             let side_effect = qcx.load_side_effect(prev_index).unwrap();
 
             match &side_effect {
-                QuerySideEffect::Diagnostic(diagnostic) => {
-                    qcx.dep_context().sess().dcx().emit_diagnostic(diagnostic.clone());
+                QuerySideEffect::Diagnostic(side_effect) => {
+                    let current_hash = qcx.dep_context().sess().diagnostic_spans_hash();
+                    let should_emit = match (side_effect.spans_hash, current_hash) {
+                        (Some(prev), Some(current)) => prev == current,
+                        _ => true,
+                    };
+                    if should_emit {
+                        qcx.dep_context()
+                            .sess()
+                            .dcx()
+                            .emit_diagnostic(side_effect.diagnostic.clone());
+                    }
                 }
             }
 

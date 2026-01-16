@@ -86,16 +86,10 @@ impl std::ops::Deref for SpanBlob {
     }
 }
 
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 impl SpanBlob {
     /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`SpanBlob`].
     pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
         if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
-    }
-
-    /// Returns the underlying bytes.
-    pub(crate) fn bytes(&self) -> &OwnedSlice {
-        &self.0
     }
 
     /// Checks if this span blob has a valid header.
@@ -144,7 +138,6 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
 /// Lazily-loaded span file data. Contains the span blob and decoded source_map table.
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 struct SpanFileData {
     blob: SpanBlob,
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
@@ -156,10 +149,8 @@ pub(crate) struct CrateMetadata {
 
     /// Path to the span file (.spans), if one exists for this crate.
     /// The span file is loaded lazily on first span resolution.
-    #[allow(dead_code)] // Infrastructure for RDR span file loading
     span_file_path: Option<PathBuf>,
     /// Lazily-loaded span file data. Populated on first access when span_file_path is Some.
-    #[allow(dead_code)] // Infrastructure for RDR span file loading
     span_file_data: OnceLock<Option<SpanFileData>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
@@ -384,14 +375,12 @@ impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
 
 /// Decode context for span files (.spans).
 /// Similar to [`BlobDecodeContext`] but works with [`SpanBlob`] instead of [`MetadataBlob`].
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 pub(super) struct SpanBlobDecodeContext<'a> {
     opaque: MemDecoder<'a>,
-    blob: &'a SpanBlob,
     lazy_state: LazyState,
+    _marker: PhantomData<&'a ()>,
 }
 
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 impl<'a> LazyDecoder for SpanBlobDecodeContext<'a> {
     fn set_lazy_state(&mut self, state: LazyState) {
         self.lazy_state = state;
@@ -402,37 +391,22 @@ impl<'a> LazyDecoder for SpanBlobDecodeContext<'a> {
     }
 }
 
-#[allow(dead_code)] // Infrastructure for RDR span file loading
-impl<'a> SpanBlobDecodeContext<'a> {
-    #[inline]
-    pub(crate) fn blob(&self) -> &'a SpanBlob {
-        self.blob
-    }
-}
-
 /// Trait for decoding from span file blobs.
 /// Similar to [`Metadata`] but for [`SpanBlob`].
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 pub(super) trait SpanMetadata<'a>: Copy {
     type Context: BlobDecoder + LazyDecoder;
 
-    fn blob(self) -> &'a SpanBlob;
     fn decoder(self, pos: usize) -> Self::Context;
 }
 
-#[allow(dead_code)] // Infrastructure for RDR span file loading
 impl<'a> SpanMetadata<'a> for &'a SpanBlob {
     type Context = SpanBlobDecodeContext<'a>;
-
-    fn blob(self) -> &'a SpanBlob {
-        self
-    }
 
     fn decoder(self, pos: usize) -> Self::Context {
         SpanBlobDecodeContext {
             opaque: MemDecoder::new(self, pos).unwrap(),
             lazy_state: LazyState::NoNode,
-            blob: self,
+            _marker: PhantomData,
         }
     }
 }
@@ -2012,11 +1986,25 @@ impl<'a> CrateMetadataRef<'a> {
             return Some(cached.clone());
         }
 
-        // Try to load the source file from the main metadata blob.
-        // TODO: When -Z separate_spans is enabled, load from span blob instead.
-        let source_file_to_import = self.root.source_map.get((self, tcx), source_file_index).map(|lazy| {
-            lazy.decode((self, tcx))
-        });
+        let source_file_to_import = if self.root.has_separate_spans() {
+            let span_data = self.cdata.span_file_data().expect(
+                "span file should be loaded for crate compiled with -Z separate-spans",
+            );
+            span_data
+                .source_map
+                .get_from_span_blob(&span_data.blob, source_file_index)
+                .map(|lazy| lazy.decode_span(&span_data.blob))
+        } else if let Some(span_data) = self.cdata.span_file_data() {
+            span_data
+                .source_map
+                .get_from_span_blob(&span_data.blob, source_file_index)
+                .map(|lazy| lazy.decode_span(&span_data.blob))
+        } else {
+            self.root
+                .source_map
+                .get((self, tcx), source_file_index)
+                .map(|lazy| lazy.decode((self, tcx)))
+        };
 
         // Return None for sparse table entries. This can happen when:
         // - Searching through all source file indices (some may be empty)
@@ -2280,7 +2268,6 @@ impl CrateMetadata {
 
     /// Lazily loads the span file data if a span file path is configured.
     /// Returns None if no span file exists or if loading fails.
-    #[allow(dead_code)] // Infrastructure for RDR span resolution
     fn span_file_data(&self) -> Option<&SpanFileData> {
         self.span_file_data
             .get_or_init(|| {
@@ -2291,7 +2278,6 @@ impl CrateMetadata {
     }
 
     /// Loads and parses the span file from disk.
-    #[allow(dead_code)] // Called by span_file_data()
     fn load_span_file(&self, path: &Path) -> Result<SpanFileData, String> {
         use crate::locator::get_span_metadata_section;
 
@@ -2505,6 +2491,25 @@ impl SpanResolver for TyCtxtSpanResolver<'_> {
                 // File not in source map - find the source crate and import from its metadata.
                 // This mirrors how the original span encoding works: we know exactly which
                 // crate's metadata contains the source file.
+
+                // Safely look up the crate - it may not exist in stale incremental state
+                // or if a dependency was removed.
+                let source_cnum = if source_crate == self.tcx.stable_crate_id(LOCAL_CRATE) {
+                    LOCAL_CRATE
+                } else {
+                    match self.tcx.untracked().stable_crate_ids.read().get(&source_crate).copied() {
+                        Some(cnum) => cnum,
+                        None => {
+                            debug!(
+                                ?source_crate,
+                                ?file,
+                                "resolve_span_ref: unknown crate, falling back to dummy span"
+                            );
+                            return DUMMY_SP.with_ctxt(ctxt);
+                        }
+                    }
+                };
+
                 let cstore = CStore::from_tcx(self.tcx);
                 debug!(?source_crate, ?source_cnum, "resolve_span_ref: converted stable crate id");
                 let cref = cstore.get_crate_data(source_cnum);

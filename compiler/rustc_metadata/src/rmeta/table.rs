@@ -1,7 +1,7 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
-use crate::rmeta::decoder::Metadata;
+use crate::rmeta::decoder::{Metadata, SpanBlob};
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -546,5 +546,27 @@ where
     /// Size of the table in entries, including possible gaps.
     pub(super) fn size(&self) -> usize {
         self.len
+    }
+
+    /// Given a span blob, extract out the value at a particular index (if any).
+    /// This is similar to `get` but works with span blobs for RDR span file loading.
+    pub(super) fn get_from_span_blob<'a, 'tcx>(&self, blob: &'a SpanBlob, i: I) -> T::Value<'tcx> {
+        // Access past the end of the table returns a Default
+        if i.index() >= self.len {
+            return Default::default();
+        }
+
+        let width = self.width;
+        let start = self.position.get() + (width * i.index());
+        let end = start + width;
+        let bytes = &blob[start..end];
+
+        if let Ok(fixed) = bytes.try_into() {
+            FixedSizeEncoding::from_bytes(fixed)
+        } else {
+            let mut fixed = [0u8; N];
+            fixed[..width].copy_from_slice(bytes);
+            FixedSizeEncoding::from_bytes(&fixed)
+        }
     }
 }
