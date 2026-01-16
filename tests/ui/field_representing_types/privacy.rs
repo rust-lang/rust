@@ -1,6 +1,6 @@
 //@ revisions: old next
 //@ [next] compile-flags: -Znext-solver
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(field_projections)]
 
 use std::field::field_of;
