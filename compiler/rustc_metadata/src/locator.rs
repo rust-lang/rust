@@ -236,7 +236,7 @@ use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
 use crate::errors;
-use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, SpanBlob, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -948,6 +948,19 @@ fn get_rmeta_metadata_section<'a, 'p>(filename: &'p Path) -> Result<OwnedSlice, 
     })?;
 
     Ok(slice_owned(mmap, Deref::deref))
+}
+
+/// Loads a span metadata file (.spans) that accompanies rmeta files compiled with -Z separate_spans.
+pub(crate) fn get_span_metadata_section(filename: &Path) -> Result<SpanBlob, String> {
+    // mmap the file, because only a small fraction of it is read.
+    let file = std::fs::File::open(filename)
+        .map_err(|e| format!("failed to open span metadata '{}': {}", filename.display(), e))?;
+    let mmap = unsafe { Mmap::map(file) }
+        .map_err(|e| format!("failed to mmap span metadata '{}': {}", filename.display(), e))?;
+
+    let raw_bytes = slice_owned(mmap, Deref::deref);
+    SpanBlob::new(raw_bytes)
+        .map_err(|()| format!("corrupt span metadata in '{}'", filename.display()))
 }
 
 /// A diagnostic function for dumping crate metadata to an output stream.

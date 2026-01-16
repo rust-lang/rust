@@ -17,7 +17,7 @@ use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
@@ -33,8 +33,8 @@ use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
-    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, IdentRef, Pos, RemapPathScopeComponents, SpanData,
-    SpanDecoder, Symbol, SyntaxContext, kw,
+    AttrId, BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, ExpnId, IdentRef, Pos,
+    RemapPathScopeComponents, SpanData, SpanDecoder, Symbol, SyntaxContext, kw,
 };
 use tracing::debug;
 
@@ -84,6 +84,13 @@ pub(crate) type TargetModifiers = Vec<TargetModifier>;
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
+
+    /// Optional span file blob, used when crate was compiled with `-Z separate_spans`.
+    /// Contains source_map data needed for span resolution.
+    span_blob: Option<SpanBlob>,
+    /// Source map table from the span file. When present, source files are decoded
+    /// from span_blob instead of from the main blob.
+    span_source_map: Option<LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Data about the top-level items in a crate, as well as various crate-level metadata.
@@ -556,6 +563,37 @@ impl<'a> BlobDecoder for BlobDecodeContext<'a> {
             |this| ByteSymbol::intern(this.read_byte_str()),
             |opaque| ByteSymbol::intern(opaque.read_byte_str()),
         )
+    }
+}
+
+/// Minimal SpanDecoder impl for BlobDecodeContext to support decoding types like SourceFile
+/// from the span blob. This is only used for span file decoding where full hygiene context
+/// is not available. Methods that require hygiene context will panic.
+impl<'a> SpanDecoder for BlobDecodeContext<'a> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
+        Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `BlobDecodeContext`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `BlobDecodeContext`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `BlobDecodeContext`");
     }
 }
 
@@ -1741,12 +1779,22 @@ impl<'a> CrateMetadataRef<'a> {
         }
         import_info[source_file_index as usize]
             .get_or_insert_with(|| {
-                let source_file_to_import = self
-                    .root
-                    .source_map
-                    .get((self, tcx), source_file_index)
-                    .expect("missing source file")
-                    .decode((self, tcx));
+                // If this crate was compiled with -Z separate_spans, load source files
+                // from the span blob; otherwise load from the main metadata blob.
+                let source_file_to_import =
+                    if let Some(span_source_map) = &self.cdata.span_source_map {
+                        let span_blob = self.cdata.span_blob.as_ref().unwrap();
+                        span_source_map
+                            .get(span_blob, source_file_index)
+                            .expect("missing source file in span file")
+                            .decode(span_blob)
+                    } else {
+                        self.root
+                            .source_map
+                            .get((self, tcx), source_file_index)
+                            .expect("missing source file")
+                            .decode((self, tcx))
+                    };
 
                 // We can't reuse an existing SourceFile, so allocate a new one
                 // containing the information we need.
@@ -1882,6 +1930,7 @@ impl CrateMetadata {
         cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot,
+        span_blob: Option<SpanBlob>,
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
@@ -1902,8 +1951,13 @@ impl CrateMetadata {
         // that does not copy any data. It just does some data verification.
         let def_path_hash_map = root.def_path_hash_map.decode(&blob);
 
+        // If we have a span blob, decode the SpanFileRoot to get the source_map table.
+        let span_source_map = span_blob.as_ref().map(|sb| sb.get_root().source_map);
+
         let mut cdata = CrateMetadata {
             blob,
+            span_blob,
+            span_source_map,
             root,
             trait_impls,
             incoherent_impls: Default::default(),

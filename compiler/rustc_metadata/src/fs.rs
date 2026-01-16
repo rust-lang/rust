@@ -54,8 +54,8 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         None
     };
 
-    if tcx.needs_metadata() {
-        encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref());
+    let required_source_files = if tcx.needs_metadata() {
+        encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref())
     } else {
         // Always create a file at `metadata_filename`, even if we have nothing to write to it.
         // This simplifies the creation of the output `out_filename` when requested.
@@ -67,6 +67,13 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
                 tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
             });
         }
+        None
+    };
+
+    if let (Some(spans_tmp_filename), Some(required_source_files)) =
+        (spans_tmp_filename.as_ref(), required_source_files)
+    {
+        encode_spans(tcx, spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
     }
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");

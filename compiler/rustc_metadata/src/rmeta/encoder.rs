@@ -534,13 +534,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_source_map(&mut self) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
-        let source_map = self.tcx.sess.source_map();
-        let all_source_files = source_map.files();
-
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
         let required_source_files = self.required_source_files.take().unwrap();
+        self.encode_source_map_with(required_source_files)
+    }
+
+    /// Encode source map using the provided set of required source files.
+    /// This is used both for rmeta (when separate_spans is disabled) and
+    /// for the span file (when separate_spans is enabled).
+    fn encode_source_map_with(
+        &mut self,
+        required_source_files: FxIndexSet<usize>,
+    ) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
+        let source_map = self.tcx.sess.source_map();
+        let all_source_files = source_map.files();
 
         let mut adapted = TableBuilder::default();
 
@@ -713,7 +722,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
-        let source_map = stat!("source-map", || self.encode_source_map());
+        // When separate_spans is enabled, source_map goes in the span file instead.
+        let source_map = stat!("source-map", || {
+            if self.tcx.sess.opts.unstable_opts.separate_spans {
+                // Don't encode source_map in rmeta; it will be in the .spans file.
+                // Keep required_source_files for the span file encoding.
+                TableBuilder::default().encode(&mut self.opaque)
+            } else {
+                self.encode_source_map()
+            }
+        });
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
@@ -2428,8 +2446,15 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
+/// Encodes crate metadata to the given path.
+/// Returns the set of required source files if `-Z separate_spans` is enabled,
+/// which is needed for encoding the span file.
 #[instrument(level = "trace", skip(tcx))]
-pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
+pub fn encode_metadata(
+    tcx: TyCtxt<'_>,
+    path: &Path,
+    ref_path: Option<&Path>,
+) -> Option<FxIndexSet<usize>> {
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
@@ -2438,7 +2463,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
+        // Stub encoding doesn't need required_source_files
+        let _ = with_encode_metadata_header(tcx, ref_path, |ecx| {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
@@ -2447,7 +2473,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 is_stub: true,
             });
             header.position.get()
-        })
+        });
     }
 
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
@@ -2468,7 +2494,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
-        return;
+        // When reusing work product, we don't have required_source_files.
+        // The span file would also need to be reused from the work product.
+        // TODO: Handle span file work product reuse
+        return None;
     };
 
     if tcx.sess.threads() != 1 {
@@ -2486,7 +2515,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
-    tcx.dep_graph.with_task(
+    let (required_source_files, _dep_node_index) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
         path,
@@ -2510,13 +2539,38 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         },
         None,
     );
+
+    required_source_files
 }
 
+/// Encodes the span file (.spans) with source map information.
+/// The `required_source_files` parameter comes from `encode_metadata` and indicates
+/// which source files were actually referenced during metadata encoding.
+#[instrument(level = "trace", skip(tcx, required_source_files))]
+pub fn encode_spans(
+    tcx: TyCtxt<'_>,
+    path: &Path,
+    rmeta_hash: Svh,
+    required_source_files: FxIndexSet<usize>,
+) {
+    tcx.dep_graph.assert_ignored();
+
+    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_spans");
+
+    with_encode_span_header(tcx, path, required_source_files, |ecx, source_map| {
+        let root: LazyValue<SpanFileRoot> =
+            ecx.lazy(SpanFileRoot { header: SpanFileHeader { rmeta_hash }, source_map });
+        root.position.get()
+    });
+}
+
+/// Encodes metadata with standard header.
+/// Returns the required_source_files if separate_spans is enabled (for span file encoding).
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
     f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
-) {
+) -> Option<FxIndexSet<usize>> {
     let mut encoder = opaque::FileEncoder::new(path)
         .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
@@ -2562,6 +2616,65 @@ fn with_encode_metadata_header(
 
     let file = ecx.opaque.file();
     if let Err(err) = encode_root_position(file, root_position) {
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    // Return required_source_files if separate_spans is enabled (for span file encoding)
+    if tcx.sess.opts.unstable_opts.separate_spans { ecx.required_source_files.take() } else { None }
+}
+
+fn with_encode_span_header(
+    tcx: TyCtxt<'_>,
+    path: &Path,
+    required_source_files: FxIndexSet<usize>,
+    f: impl FnOnce(
+        &mut EncodeContext<'_, '_>,
+        LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    ) -> usize,
+) {
+    let mut encoder = opaque::FileEncoder::new(path)
+        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
+    encoder.emit_raw_bytes(SPAN_HEADER);
+
+    encoder.emit_raw_bytes(&0u64.to_le_bytes());
+
+    let source_map_files = tcx.sess.source_map().files();
+    let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
+    drop(source_map_files);
+
+    let hygiene_ctxt = HygieneEncodeContext::default();
+
+    let mut ecx = EncodeContext {
+        opaque: encoder,
+        tcx,
+        feat: tcx.features(),
+        tables: Default::default(),
+        lazy_state: LazyState::NoNode,
+        span_shorthands: Default::default(),
+        type_shorthands: Default::default(),
+        predicate_shorthands: Default::default(),
+        source_file_cache,
+        interpret_allocs: Default::default(),
+        // Not used for span file encoding, but required by EncodeContext
+        required_source_files: None,
+        is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
+        hygiene_ctxt: &hygiene_ctxt,
+        symbol_index_table: Default::default(),
+    };
+
+    rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
+
+    // Encode source_map first, then pass it to the closure for inclusion in SpanFileRoot
+    let source_map = ecx.encode_source_map_with(required_source_files);
+
+    let root_position = f(&mut ecx, source_map);
+
+    if let Err((path, err)) = ecx.opaque.finish() {
+        tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
+    }
+
+    let file = ecx.opaque.file();
+    if let Err(err) = encode_span_root_position(file, root_position) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 }

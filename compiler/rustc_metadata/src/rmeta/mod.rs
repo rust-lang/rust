@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::num::NonZero;
 
 use decoder::LazyDecoder;
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, SpanBlob, TargetModifiers};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
@@ -67,6 +67,52 @@ const METADATA_VERSION: u8 = 10;
 /// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+
+pub(crate) const SPAN_FILE_VERSION: u8 = 0;
+pub(crate) const SPAN_HEADER: &[u8] =
+    &[b'r', b'u', b's', b't', b's', b'p', b'a', b'n', 0, 0, 0, SPAN_FILE_VERSION];
+
+#[derive(MetadataEncodable, BlobDecodable)]
+pub(crate) struct SpanFileHeader {
+    rmeta_hash: Svh,
+}
+
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct SpanFileRoot {
+    header: SpanFileHeader,
+    /// Source file information needed to resolve SpanRef to Span.
+    /// This is the same data as CrateRoot::source_map, but stored separately
+    /// so that .rmeta can remain stable when only span positions change.
+    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum DefIdEncoding {
+    Direct,
+    PathHash,
+}
+
+impl<'a, 'tcx> rustc_serialize::Encodable<encoder::EncodeContext<'a, 'tcx>> for DefIdEncoding {
+    fn encode(&self, e: &mut encoder::EncodeContext<'a, 'tcx>) {
+        let tag = match self {
+            DefIdEncoding::Direct => 0,
+            DefIdEncoding::PathHash => 1,
+        };
+        e.emit_u8(tag);
+    }
+}
+
+impl<'a, 'tcx> rustc_serialize::Decodable<decoder::MetadataDecodeContext<'a, 'tcx>>
+    for DefIdEncoding
+{
+    fn decode(d: &mut decoder::MetadataDecodeContext<'a, 'tcx>) -> Self {
+        match d.read_u8() {
+            0 => DefIdEncoding::Direct,
+            1 => DefIdEncoding::PathHash,
+            tag => panic!("invalid DefIdEncoding tag {tag}"),
+        }
+    }
+}
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
