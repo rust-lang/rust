@@ -1,22 +1,18 @@
-error[E0599]: `Option<i32>` is not an iterator
+error[E0599]: no method named `cloned` found for enum `Option<i32>` in the current scope
   --> $DIR/into-iter-on-cloned.rs:2:20
    |
 LL |     let _: i32 = x.cloned().unwrap();
-   |                    ^^^^^^ `Option<i32>` is not an iterator
+   |                    ^^^^^^ help: delete the call to `cloned`
    |
-   = note: the following trait bounds were not satisfied:
-           `Option<i32>: Iterator`
-           which is required by `&mut Option<i32>: Iterator`
+   = note: this is already an `Option<i32>`
 
-error[E0599]: `Option<i32>` is not an iterator
-  --> $DIR/into-iter-on-cloned.rs:7:20
+error[E0599]: no method named `copied` found for enum `Option<i32>` in the current scope
+  --> $DIR/into-iter-on-cloned.rs:8:20
    |
 LL |     let _: i32 = x.copied().unwrap();
-   |                    ^^^^^^ `Option<i32>` is not an iterator
+   |                    ^^^^^^ help: delete the call to `copied`
    |
-   = note: the following trait bounds were not satisfied:
-           `Option<i32>: Iterator`
-           which is required by `&mut Option<i32>: Iterator`
+   = note: this is already an `Option<i32>`
 
 error: aborting due to 2 previous errors
 
