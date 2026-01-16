@@ -327,21 +327,23 @@ pub(crate) fn create_query_frame<
         description
     };
 
-    let span = if kind == dep_graph::dep_kinds::def_span || reduce_queries {
+    let span = if reduce_queries {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
         None
     } else {
-        Some(key.default_span(tcx))
+        Some(tcx.with_reduced_queries(|| key.default_span(tcx)))
     };
 
     let def_id = key.key_as_def_id();
 
-    let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
+    let def_kind = if reduce_queries {
         // Try to avoid infinite recursion.
         None
     } else {
-        def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
+        def_id
+            .and_then(|def_id| def_id.as_local())
+            .map(|def_id| tcx.with_reduced_queries(|| tcx.def_kind(def_id)))
     };
 
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
