@@ -438,6 +438,21 @@ pub fn peel_and_count_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize, Option<Mutabili
     (ty, count, mutbl)
 }
 
+/// Peels off `n` references on the type. Returns the underlying type and, if any references
+/// were removed, whether the pointer is ultimately mutable or not.
+pub fn peel_n_ty_refs(mut ty: Ty<'_>, n: usize) -> (Ty<'_>, Option<Mutability>) {
+    let mut mutbl = None;
+    for _ in 0..n {
+        if let ty::Ref(_, dest_ty, m) = ty.kind() {
+            ty = *dest_ty;
+            mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
+        } else {
+            break;
+        }
+    }
+    (ty, mutbl)
+}
+
 /// Checks whether `a` and `b` are same types having same `Const` generic args, but ignores
 /// lifetimes.
 ///
