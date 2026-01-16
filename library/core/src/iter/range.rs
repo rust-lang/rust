@@ -254,7 +254,7 @@ macro_rules! step_integer_impls {
     } => {
         $(
             #[allow(unreachable_patterns)]
-            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[unstable(feature = "step_trait", issue = "42168")]
             impl Step for $u_narrower {
                 step_identical_methods!();
                 step_unsigned_methods!();
@@ -288,7 +288,7 @@ macro_rules! step_integer_impls {
             }
 
             #[allow(unreachable_patterns)]
-            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[unstable(feature = "step_trait", issue = "42168")]
             impl Step for $i_narrower {
                 step_identical_methods!();
                 step_signed_methods!($u_narrower);
@@ -354,7 +354,7 @@ macro_rules! step_integer_impls {
 
         $(
             #[allow(unreachable_patterns)]
-            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[unstable(feature = "step_trait", issue = "42168")]
             impl Step for $u_wider {
                 step_identical_methods!();
                 step_unsigned_methods!();
@@ -384,7 +384,7 @@ macro_rules! step_integer_impls {
             }
 
             #[allow(unreachable_patterns)]
-            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[unstable(feature = "step_trait", issue = "42168")]
             impl Step for $i_wider {
                 step_identical_methods!();
                 step_signed_methods!($u_wider);
@@ -441,7 +441,7 @@ step_integer_impls! {
     wider than usize: [u32 i32], [u64 i64], [u128 i128];
 }
 
-#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+#[unstable(feature = "step_trait", issue = "42168")]
 impl Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> (usize, Option<usize>) {
@@ -528,7 +528,7 @@ impl Step for char {
     }
 }
 
-#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+#[unstable(feature = "step_trait", issue = "42168")]
 impl Step for AsciiChar {
     #[inline]
     fn steps_between(&start: &AsciiChar, &end: &AsciiChar) -> (usize, Option<usize>) {
@@ -570,7 +570,7 @@ impl Step for AsciiChar {
     }
 }
 
-#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+#[unstable(feature = "step_trait", issue = "42168")]
 impl Step for Ipv4Addr {
     #[inline]
     fn steps_between(&start: &Ipv4Addr, &end: &Ipv4Addr) -> (usize, Option<usize>) {
@@ -602,7 +602,7 @@ impl Step for Ipv4Addr {
     }
 }
 
-#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+#[unstable(feature = "step_trait", issue = "42168")]
 impl Step for Ipv6Addr {
     #[inline]
     fn steps_between(&start: &Ipv6Addr, &end: &Ipv6Addr) -> (usize, Option<usize>) {
