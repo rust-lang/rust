@@ -63,11 +63,11 @@ impl<I> QueryStackFrame<I> {
     pub fn new(
         info: I,
         dep_kind: DepKind,
-        hash: impl FnOnce() -> Hash64,
+        hash: Hash64,
         def_id: Option<DefId>,
         def_id_for_ty_in_cycle: Option<DefId>,
     ) -> Self {
-        Self { info, def_id, dep_kind, hash: hash(), def_id_for_ty_in_cycle }
+        Self { info, def_id, dep_kind, hash, def_id_for_ty_in_cycle }
     }
 
     fn lift<Qcx: QueryContext<QueryInfo = I>>(
