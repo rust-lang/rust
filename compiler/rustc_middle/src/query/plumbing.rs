@@ -532,7 +532,7 @@ macro_rules! define_feedable {
 // The result type of each query must implement `Clone`, and additionally
 // `ty::query::values::Value`, which produces an appropriate placeholder
 // (error) value if the query resulted in a query cycle.
-// Queries marked with `fatal_cycle` do not need the latter implementation,
+// Queries marked with `cycle_fatal` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
 mod sealed {

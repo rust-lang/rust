@@ -219,7 +219,7 @@ macro_rules! handle_cycle_error {
     ([]) => {{
         rustc_query_system::HandleCycleError::Error
     }};
-    ([(fatal_cycle) $($rest:tt)*]) => {{
+    ([(cycle_fatal) $($rest:tt)*]) => {{
         rustc_query_system::HandleCycleError::Fatal
     }};
     ([(cycle_stash) $($rest:tt)*]) => {{
