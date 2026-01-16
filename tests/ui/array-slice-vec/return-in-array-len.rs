@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/51714>
 fn main() {
     //~^ NOTE: not the enclosing function body
     //~| NOTE: not the enclosing function body

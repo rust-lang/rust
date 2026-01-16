@@ -1,11 +1,11 @@
 error[E0603]: function `bar` is private
-  --> $DIR/issue-16725.rs:6:19
+  --> $DIR/private-extern-fn-visibility.rs:8:14
    |
-LL |     unsafe { foo::bar(); }
-   |                   ^^^ private function
+LL |         foo::bar();
+   |              ^^^ private function
    |
 note: the function `bar` is defined here
-  --> $DIR/auxiliary/issue-16725.rs:2:5
+  --> $DIR/auxiliary/private-extern-fn.rs:2:5
    |
 LL |     fn bar();
    |     ^^^^^^^^^
