@@ -59,6 +59,7 @@ This API is completely unstable and subject to change.
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
+#![feature(default_field_values)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]

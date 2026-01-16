@@ -2312,12 +2312,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             tcx: TyCtxt<'hir>,
             issue_span: Span,
             expr_span: Span,
-            body_expr: Option<&'hir hir::Expr<'hir>>,
-            loop_bind: Option<&'hir Ident>,
-            loop_span: Option<Span>,
-            head_span: Option<Span>,
-            pat_span: Option<Span>,
-            head: Option<&'hir hir::Expr<'hir>>,
+            body_expr: Option<&'hir hir::Expr<'hir>> = None,
+            loop_bind: Option<&'hir Ident> = None,
+            loop_span: Option<Span> = None,
+            head_span: Option<Span> = None,
+            pat_span: Option<Span> = None,
+            head: Option<&'hir hir::Expr<'hir>> = None,
         }
         impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
             fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
@@ -2383,17 +2383,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        let mut finder = ExprFinder {
-            tcx,
-            expr_span: span,
-            issue_span,
-            loop_bind: None,
-            body_expr: None,
-            head_span: None,
-            loop_span: None,
-            pat_span: None,
-            head: None,
-        };
+        let mut finder = ExprFinder { tcx, expr_span: span, issue_span, .. };
         finder.visit_expr(tcx.hir_body(body_id).value);
 
         if let Some(body_expr) = finder.body_expr
@@ -2628,13 +2618,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         struct ExpressionFinder<'tcx> {
             capture_span: Span,
-            closure_change_spans: Vec<Span>,
-            closure_arg_span: Option<Span>,
-            in_closure: bool,
-            suggest_arg: String,
+            closure_change_spans: Vec<Span> = vec![],
+            closure_arg_span: Option<Span> = None,
+            in_closure: bool = false,
+            suggest_arg: String = String::new(),
             tcx: TyCtxt<'tcx>,
-            closure_local_id: Option<hir::HirId>,
-            closure_call_changes: Vec<(Span, String)>,
+            closure_local_id: Option<hir::HirId> = None,
+            closure_call_changes: Vec<(Span, String)> = vec![],
         }
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
@@ -2715,16 +2705,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }) = self.infcx.tcx.hir_node(self.mir_hir_id())
             && let hir::Node::Expr(expr) = self.infcx.tcx.hir_node(body_id.hir_id)
         {
-            let mut finder = ExpressionFinder {
-                capture_span: *capture_kind_span,
-                closure_change_spans: vec![],
-                closure_arg_span: None,
-                in_closure: false,
-                suggest_arg: String::new(),
-                closure_local_id: None,
-                closure_call_changes: vec![],
-                tcx: self.infcx.tcx,
-            };
+            let mut finder =
+                ExpressionFinder { capture_span: *capture_kind_span, tcx: self.infcx.tcx, .. };
             finder.visit_expr(expr);
 
             if finder.closure_change_spans.is_empty() || finder.closure_call_changes.is_empty() {
