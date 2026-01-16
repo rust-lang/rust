@@ -21,8 +21,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryStackDeferred,
-    QueryState, get_query_incr, get_query_non_incr,
+    CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryState,
+    get_query_incr, get_query_non_incr,
 };
 use rustc_query_system::{HandleCycleError, Value};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -79,10 +79,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(
-        self,
-        qcx: QueryCtxt<'tcx>,
-    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -91,7 +88,7 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.dynamic.query_state)
-                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
+                .cast::<QueryState<Self::Key>>()
         }
     }
 
