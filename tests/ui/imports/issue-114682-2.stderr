@@ -12,6 +12,8 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
@@ -33,6 +35,8 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
@@ -56,6 +60,8 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
@@ -78,6 +84,8 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
