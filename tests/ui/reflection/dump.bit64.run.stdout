@@ -11,7 +11,7 @@ Type {
                     offset: 1,
                 },
                 Field {
-                    ty: TypeId(0x41223169ff28813ba79b7268a2a968d9),
+                    ty: TypeId(0x76973a66f24df6db7173e51528fa5bec),
                     offset: 2,
                 },
             ],
@@ -179,7 +179,7 @@ Type {
 Type {
     kind: Reference(
         Reference {
-            pointee: TypeId(0x641e3def269c37acc6dcb92bf8c5f196),
+            pointee: TypeId(0x2a675f7e9d3320493042d9e4b41ba9eb),
             mutable: false,
         },
     ),
