@@ -149,10 +149,9 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            if is_from_proc_macro(cx, item) {
-                return;
-            }
-            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
+            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv, || {
+                is_from_proc_macro(cx, item)
+            });
         } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
             && !is_from_proc_macro(cx, item)
@@ -162,9 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Fn(ref sig, id) = item.kind
-            && !is_from_proc_macro(cx, item)
-        {
+        if let ImplItemKind::Fn(ref sig, id) = item.kind {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id).is_none();
             check_fn_inner(
                 cx,
@@ -175,19 +172,28 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 item.span,
                 report_extra_lifetimes,
                 self.msrv,
+                || is_from_proc_macro(cx, item),
             );
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Fn(ref sig, ref body) = item.kind
-            && !is_from_proc_macro(cx, item)
-        {
+        if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
             let (body, trait_sig) = match *body {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true, self.msrv);
+            check_fn_inner(
+                cx,
+                sig,
+                body,
+                trait_sig,
+                item.generics,
+                item.span,
+                true,
+                self.msrv,
+                || is_from_proc_macro(cx, item),
+            );
         }
     }
 }
@@ -202,6 +208,7 @@ fn check_fn_inner<'tcx>(
     span: Span,
     report_extra_lifetimes: bool,
     msrv: Msrv,
+    is_from_proc_macro: impl FnOnce() -> bool,
 ) {
     if span.in_external_macro(cx.sess().source_map()) || has_where_lifetimes(cx, generics) {
         return;
@@ -253,10 +260,19 @@ fn check_fn_inner<'tcx>(
         }
     }
 
-    if let Some((elidable_lts, usages)) = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv) {
-        if usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)) {
-            return;
-        }
+    let elidable = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv);
+    let has_elidable_lts = elidable
+        .as_ref()
+        .is_some_and(|(_, usages)| !usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)));
+
+    // Only check is_from_proc_macro if we're about to emit a lint (it's an expensive check)
+    if (has_elidable_lts || report_extra_lifetimes) && is_from_proc_macro() {
+        return;
+    }
+
+    if let Some((elidable_lts, usages)) = elidable
+        && has_elidable_lts
+    {
         // async functions have usages whose spans point at the lifetime declaration which messes up
         // suggestions
         let include_suggestions = !sig.header.is_async();
