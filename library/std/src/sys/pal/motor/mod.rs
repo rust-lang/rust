@@ -30,7 +30,7 @@ pub extern "C" fn motor_start() -> ! {
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: Motor OS uses moto_rt::start() to initialize runtime (see above).
-pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.

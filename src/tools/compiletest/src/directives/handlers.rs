@@ -159,7 +159,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             config.set_name_directive(ln, PRETTY_COMPARE_ONLY, &mut props.pretty_compare_only);
         }),
         multi_handler(
-            &[AUX_BUILD, AUX_BIN, AUX_CRATE, PROC_MACRO, AUX_CODEGEN_BACKEND],
+            &[AUX_BUILD, AUX_BIN, AUX_CRATE, PROC_MACRO, PROC_MACRO_PRIV, AUX_CODEGEN_BACKEND],
             |config, ln, props| {
                 // Call a helper method to deal with aux-related directives.
                 parse_and_update_aux(config, ln, &mut props.aux);

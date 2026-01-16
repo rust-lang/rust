@@ -15,9 +15,9 @@ use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
-    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
-    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
-    TargetTuple, TlsModel,
+    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel,
+    RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
+    TlsModel,
 };
 
 use crate::config::*;
@@ -806,7 +806,6 @@ mod desc {
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
-    pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -1202,17 +1201,6 @@ pub mod parse {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
             Some("immediate-abort") => *slot = PanicStrategy::ImmediateAbort,
-            _ => return false,
-        }
-        true
-    }
-
-    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
-        match v {
-            // OnBrokenPipe::Default can't be explicitly specified
-            Some("kill") => *slot = OnBrokenPipe::Kill,
-            Some("error") => *slot = OnBrokenPipe::Error,
-            Some("inherit") => *slot = OnBrokenPipe::Inherit,
             _ => return false,
         }
         true
@@ -2548,8 +2536,6 @@ options! {
         Mandatory setting:
         `=Enable`
         Currently the only option available"),
-    on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
-        "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],

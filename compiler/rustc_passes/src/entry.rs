@@ -6,7 +6,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, ItemId, Node, find_attr};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, EntryFnType, sigpipe};
+use rustc_session::config::{CrateType, EntryFnType};
 use rustc_span::{RemapPathScopeComponents, Span, sym};
 
 use crate::errors::{ExternMain, MultipleRustcMain, NoMainErr};
@@ -76,7 +76,7 @@ fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId, EntryFnType)> {
     if let Some((local_def_id, _)) = visitor.rustc_main_fn {
         let def_id = local_def_id.to_def_id();
-        Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx) }))
+        Some((def_id, EntryFnType::Main))
     } else {
         // The actual resolution of main happens in the resolver, this here
         if let Some(main_def) = tcx.resolutions(()).main_def
@@ -90,19 +90,10 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
                 return None;
             }
 
-            return Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx) }));
+            return Some((def_id, EntryFnType::Main));
         }
         no_main_err(tcx, visitor);
         None
-    }
-}
-
-fn sigpipe(tcx: TyCtxt<'_>) -> u8 {
-    match tcx.sess.opts.unstable_opts.on_broken_pipe {
-        rustc_target::spec::OnBrokenPipe::Default => sigpipe::DEFAULT,
-        rustc_target::spec::OnBrokenPipe::Kill => sigpipe::SIG_DFL,
-        rustc_target::spec::OnBrokenPipe::Error => sigpipe::SIG_IGN,
-        rustc_target::spec::OnBrokenPipe::Inherit => sigpipe::INHERIT,
     }
 }
 

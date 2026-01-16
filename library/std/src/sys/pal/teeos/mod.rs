@@ -27,7 +27,7 @@ pub fn abort_internal() -> ! {
 
 // Trusted Applications are loaded as dynamic libraries on Teeos,
 // so this should never be called.
-pub fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {}
+pub fn init(argc: isize, argv: *const *const u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // this is not guaranteed to run, for example when the program aborts.

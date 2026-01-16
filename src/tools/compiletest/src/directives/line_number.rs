@@ -1,7 +1,7 @@
 /// A line number in a file. Internally the first line has index 1.
 /// If it is 0 it means "no specific line" (used e.g. for implied directives).
 /// When `Display`:ed, the first line is `1`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct LineNumber(usize);
 
 impl LineNumber {

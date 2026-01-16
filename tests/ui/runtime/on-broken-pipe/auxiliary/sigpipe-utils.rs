@@ -1,3 +1,7 @@
+// FIXME: Should not be needed  Create specific issue!!
+//@ no-prefer-dynamic
+#![crate_type = "lib"]
+
 #![feature(rustc_private)]
 extern crate libc;
 
@@ -28,6 +32,9 @@ pub fn assert_sigpipe_handler(expected_handler: SignalHandler) {
             SignalHandler::Default => libc::SIG_DFL,
         };
 
-        assert_eq!(actual, expected, "actual and expected SIGPIPE disposition differs");
+        assert_eq!(
+            actual, expected,
+            "actual {actual} and expected {expected} SIGPIPE disposition differs"
+        );
     }
 }
