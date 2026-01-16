@@ -55,6 +55,8 @@ pub enum TypeKind {
     Float(Float),
     /// String slice type.
     Str(Str),
+    /// References.
+    Reference(Reference),
     /// FIXME(#146922): add all the common types
     Other,
 }
@@ -132,4 +134,15 @@ pub struct Float {
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct Str {
     // No additional information to provide for now.
+}
+
+/// Compile-time type information about references.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Reference {
+    /// The type of the value being referred to.
+    pub pointee: TypeId,
+    /// Whether this reference is mutable or not.
+    pub mutable: bool,
 }
