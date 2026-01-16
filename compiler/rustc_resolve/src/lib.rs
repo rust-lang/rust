@@ -13,6 +13,8 @@
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 #![feature(control_flow_into_value)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
@@ -1113,7 +1115,7 @@ pub struct Resolver<'ra, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expn_that_defined: UnordMap<LocalDefId, ExpnId>,
+    expn_that_defined: UnordMap<LocalDefId, ExpnId> = Default::default(),
 
     graph_root: Module<'ra>,
 
@@ -1124,8 +1126,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    field_names: LocalDefIdMap<Vec<Ident>>,
-    field_defaults: LocalDefIdMap<Vec<Symbol>>,
+    field_names: LocalDefIdMap<Vec<Ident>> = Default::default(),
+    field_defaults: LocalDefIdMap<Vec<Symbol>> = Default::default(),
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1155,9 +1157,9 @@ pub struct Resolver<'ra, 'tcx> {
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: UnordMap<LocalDefId, CrateNum>,
-    module_children: LocalDefIdMap<Vec<ModChild>>,
-    ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>>,
+    extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
+    module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
+    ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1264,7 +1266,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)>,
+    struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)> = Default::default(),
 
     lint_buffer: LintBuffer,
 
@@ -1283,8 +1285,8 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize> = default::fx_hash_map(),
-    delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
-    delegation_infos: LocalDefIdMap<DelegationInfo>,
+    delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
+    delegation_infos: LocalDefIdMap<DelegationInfo> = Default::default(),
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1301,7 +1303,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: UnordSet<Symbol>,
+    all_macro_rules: UnordSet<Symbol> = Default::default(),
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId> = default::fx_hash_set(),
@@ -1587,8 +1589,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut resolver = Resolver {
             tcx,
 
-            expn_that_defined: Default::default(),
-
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root,
@@ -1596,18 +1596,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            field_names: Default::default(),
-            field_defaults: Default::default(),
-
             pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
-            extern_crate_map: Default::default(),
-            module_children: Default::default(),
-            ambig_module_children: Default::default(),
             trait_map: NodeMap::default(),
             empty_module,
             local_modules,
@@ -1651,7 +1645,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),
             non_macro_attr: arenas
                 .alloc_macro(MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition)))),
-            struct_constructors: Default::default(),
             unused_macros: Default::default(),
             unused_macro_rules: Default::default(),
             single_segment_macro_resolutions: Default::default(),
@@ -1667,10 +1660,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
-            all_macro_rules: Default::default(),
-            delegation_fn_sigs: Default::default(),
             current_crate_outer_attr_insert_span,
-            delegation_infos: Default::default(),
             ..
         };
 
