@@ -1593,7 +1593,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // AST.
             graph_root,
             assert_speculative: false, // Only set/cleared in Resolver::resolve_imports for now
-            prelude: None,
             extern_prelude,
 
             empty_module,
