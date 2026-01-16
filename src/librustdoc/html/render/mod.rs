@@ -1050,14 +1050,11 @@ fn assoc_const(
             ty = print_type(ty, cx),
         )?;
         if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
-            // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
-            //        hood which adds noisy underscores and a type suffix to number literals.
-            //        This hurts readability in this context especially when more complex expressions
-            //        are involved and it doesn't add much of value.
-            //        Find a way to print constants here without all that jazz.
-            let repr = konst.value(tcx).unwrap_or_else(|| konst.expr(tcx));
+            let repr = konst.expr(tcx);
             if match value {
                 AssocConstValue::TraitDefault(_) => true, // always show
+                // FIXME: Comparing against the special string "_" denoting overly complex const exprs
+                //        is rather hacky; `ConstKind::expr` should have a richer return type.
                 AssocConstValue::Impl(_) => repr != "_", // show if there is a meaningful value to show
                 AssocConstValue::None => unreachable!(),
             } {
