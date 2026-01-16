@@ -1,3 +1,11 @@
+error: `unsized_const_params` requires `adt_const_params` to be enabled
+  --> $DIR/ambiguity.rs:4:36
+   |
+LL | #![feature(min_generic_const_args, unsized_const_params)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable all of these features
+
 error[E0222]: ambiguous associated constant `K` in bounds of `Trait0`
   --> $DIR/ambiguity.rs:13:25
    |
@@ -34,6 +42,6 @@ LL | fn take1(_: impl Trait1<C = "?">) {}
                    T: Parent2::C = "?",
                    T: Parent1::C = "?"
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0222`.

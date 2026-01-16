@@ -1,3 +1,11 @@
+error: `unsized_const_params` requires `adt_const_params` to be enabled
+  --> $DIR/esc-bound-var-in-ty.rs:5:5
+   |
+LL |     unsized_const_params,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable all of these features
+
 error: the type of the associated constant `K` cannot capture late-bound generic parameters
   --> $DIR/esc-bound-var-in-ty.rs:15:35
    |
@@ -8,5 +16,5 @@ LL | fn take(_: impl for<'r> Trait<'r, K = const { &() }>) {}
    |
    = note: `K` has type `&'r ()`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 

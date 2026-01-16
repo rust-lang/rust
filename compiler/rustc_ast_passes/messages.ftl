@@ -218,9 +218,6 @@ ast_passes_impl_fn_const =
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
-ast_passes_missing_dependent_features = `{$parent}` requires {$missing} to be enabled
-    .help = enable all of these features
-
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item
 
@@ -230,6 +227,9 @@ ast_passes_item_underscore = `{$kind}` items in this context need a name
 ast_passes_match_arm_with_no_body =
     `match` arm with no body
     .suggestion = add a body after the pattern
+
+ast_passes_missing_dependent_features = `{$parent}` requires {$missing} to be enabled
+    .help = enable all of these features
 
 ast_passes_missing_unsafe_on_extern = extern blocks must be unsafe
     .suggestion = needs `unsafe` before the extern keyword

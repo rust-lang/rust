@@ -9,6 +9,8 @@ error: generic parameters may not be used in const operations
    |
 LL |     with_point::<{ Point(const { N + 1 }, N) }>();
    |                                  ^
+   |
+   = help: add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items
 
 error: aborting due to 2 previous errors
 
