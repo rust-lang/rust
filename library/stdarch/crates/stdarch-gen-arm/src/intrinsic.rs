@@ -630,7 +630,7 @@ impl LLVMLink {
 
                     match (scope, kind.base_type()) {
                         (Argument, Some(Sized(Bool, bitsize))) if *bitsize != 8 => {
-                            Ok(convert("into", arg))
+                            Ok(convert("sve_into", arg))
                         }
                         (Argument, Some(Sized(UInt, _) | Unsized(UInt))) => {
                             if ctx.global.auto_llvm_sign_conversion {
@@ -663,7 +663,7 @@ impl LLVMLink {
 
         let fn_call = Expression::FnCall(fn_call);
         match return_type_conversion {
-            Some(Bool) => Ok(convert("into", fn_call)),
+            Some(Bool) => Ok(convert("sve_into", fn_call)),
             Some(UInt) if ctx.global.auto_llvm_sign_conversion => {
                 Ok(convert("as_unsigned", fn_call))
             }
