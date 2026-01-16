@@ -30,6 +30,8 @@ fn main() {
     // FIXME(FRTs): select correct error code
     let _: field_of!(Enum, OtherVariant.field); //~ ERROR: no variant `OtherVariant` on enum `Enum`
     let _: field_of!(Enum, OtherVariant.0); //~ ERROR: no variant `OtherVariant` on enum `Enum`
+    let _: field_of!(((), ()), 2); //~ ERROR: no field `2` on type `((), ())` [E0609]
+    let _: field_of!(((), ()), field); //~ ERROR: no field `field` on type `((), ())` [E0609]
 
     let _: field_of!(i32, field); //~ ERROR: type `i32` doesn't have fields
     let _: field_of!([Struct], field); //~ ERROR: type `[Struct]` doesn't have fields
