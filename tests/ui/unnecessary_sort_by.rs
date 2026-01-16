@@ -111,3 +111,33 @@ fn main() {
     issue_5754::test();
     issue_6001::test();
 }
+
+fn issue16405() {
+    let mut v: Vec<(i32, &str)> = vec![(1, "foo"), (2, "bar")];
+
+    v.sort_by(|a, b| a.0.cmp(&b.0));
+    //~^ unnecessary_sort_by
+
+    struct Item {
+        key: i32,
+        value: String,
+    }
+
+    let mut items = vec![
+        Item {
+            key: 2,
+            value: "b".to_string(),
+        },
+        Item {
+            key: 1,
+            value: "a".to_string(),
+        },
+    ];
+    items.sort_by(|item1, item2| item1.key.cmp(&item2.key));
+    //~^ unnecessary_sort_by
+
+    items.sort_by(|item1, item2| item1.value.cmp(&item2.value));
+
+    items.sort_by(|item1, item2| item1.value.clone().cmp(&item2.value.clone()));
+    //~^ unnecessary_sort_by
+}

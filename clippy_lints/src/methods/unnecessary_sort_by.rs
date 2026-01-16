@@ -2,12 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::std_or_core;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::GenericArgKind;
+use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use std::iter;
@@ -70,7 +69,7 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: Ident, b_expr: &Expr<'_>, b_ident:
             mirrored_exprs(left_block, a_ident, right_block, b_ident)
         },
         (ExprKind::Field(left_expr, left_ident), ExprKind::Field(right_expr, right_ident)) => {
-            left_ident.name == right_ident.name && mirrored_exprs(left_expr, a_ident, right_expr, right_ident)
+            left_ident.name == right_ident.name && mirrored_exprs(left_expr, a_ident, right_expr, b_ident)
         },
         // Two paths: either one is a and the other is b, or they're identical to each other
         (
@@ -159,7 +158,11 @@ fn detect_lint<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, arg: &Expr<'_>) ->
             return Some(LintTrigger::Sort);
         }
 
-        if !expr_borrows(cx, left_expr) {
+        let left_expr_ty = cx.typeck_results().expr_ty(left_expr);
+        if !expr_borrows(left_expr_ty)
+            // Don't lint if the closure is accessing non-Copy fields
+            && (!expr_is_field_access(left_expr) || is_copy(cx, left_expr_ty))
+        {
             return Some(LintTrigger::SortByKey(SortByKeyDetection {
                 closure_arg,
                 closure_body,
@@ -171,9 +174,16 @@ fn detect_lint<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, arg: &Expr<'_>) ->
     None
 }
 
-fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+fn expr_borrows(ty: Ty<'_>) -> bool {
     matches!(ty.kind(), ty::Ref(..)) || ty.walk().any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(_)))
+}
+
+fn expr_is_field_access(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Field(_, _) => true,
+        ExprKind::AddrOf(_, Mutability::Not, inner) => expr_is_field_access(inner),
+        _ => false,
+    }
 }
 
 pub(super) fn check<'tcx>(
