@@ -286,7 +286,8 @@ pub fn break_query_cycles<I: Clone + Debug>(
         let Some(latch) = query.job.latch.upgrade() else {
             continue;
         };
-        let lock = latch.info.try_lock().unwrap();
+        // Latch mutexes should be at least about to unlock as we do not hold it anywhere too long
+        let lock = latch.info.lock();
         assert!(!lock.complete);
         for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
             let inclusion = waiter.query.expect("cannot wait on a root query");
