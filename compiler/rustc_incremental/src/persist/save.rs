@@ -2,10 +2,10 @@ use std::fs;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{
     DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
 };
+use rustc_middle::sync::join;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};

@@ -9,7 +9,6 @@ pub mod place;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
@@ -18,6 +17,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
+use crate::sync::{DynSend, DynSync, try_par_for_each_in};
 use crate::ty::TyCtxt;
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within

@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
@@ -21,6 +20,7 @@ use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
+use rustc_middle::sync::{join, par_for_each_in};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;

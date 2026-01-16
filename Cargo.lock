@@ -4266,6 +4266,7 @@ dependencies = [
  "bitflags",
  "either",
  "gsgdt",
+ "parking_lot",
  "polonius-engine",
  "rustc_abi",
  "rustc_apfloat",

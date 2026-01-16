@@ -7,10 +7,10 @@ use std::any::Any;
 use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::join;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::sync::join;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::LintPass;

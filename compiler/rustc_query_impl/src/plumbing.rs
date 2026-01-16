@@ -20,6 +20,7 @@ use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
+use rustc_middle::sync::BranchKey;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -27,7 +28,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect,
+    QueryCache, QueryConfig, QueryContext, QueryInclusion, QueryJobId, QueryMap, QuerySideEffect,
     QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, force_query,
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
@@ -84,7 +85,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     }
 
     #[inline]
-    fn current_query_job(self) -> Option<QueryJobId> {
+    fn current_query_inclusion(self) -> Option<QueryInclusion> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
@@ -160,7 +161,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: self.tcx,
-                query: Some(token),
+                query: Some(QueryInclusion { id: token, branch: BranchKey::root() }),
                 query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,
             };

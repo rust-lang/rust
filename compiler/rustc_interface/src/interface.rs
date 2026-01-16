@@ -598,7 +598,7 @@ pub fn try_print_query_stack(
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
                 QueryCtxt::new(icx.tcx),
-                icx.query,
+                icx.query.map(|i| i.id),
                 dcx,
                 limit_frames,
                 file,
