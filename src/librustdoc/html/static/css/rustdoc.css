@@ -20,6 +20,7 @@
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
 	--sidebar-elems-left-padding: 24px;
+	--popover-top-margin: 7px;
 	/* clipboard <https://github.com/rust-lang/crates.io/commits/main/public/assets/copy.svg> */
 	--clipboard-image: url('data:image/svg+xml,<svg width="19" height="18" viewBox="0 0 24 25" \
 xmlns="http://www.w3.org/2000/svg" aria-label="Copy to clipboard">\
@@ -1435,7 +1436,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	top: 100%;
 	right: 0;
 	z-index: calc(var(--desktop-sidebar-z-index) + 1);
-	margin-top: 7px;
+	margin-top: var(--popover-top-margin);
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
 	background-color: var(--main-background-color);
@@ -2650,6 +2651,7 @@ in src-script.js and main.js
 @media (max-width: 700px) {
 	:root {
 		--impl-items-indent: 0.7em;
+		--topbar-height: 45px;
 	}
 
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -2657,7 +2659,7 @@ in src-script.js and main.js
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to rustdoc-topbar's size.
 	*/
 	*[id] {
-		scroll-margin-top: 45px;
+		scroll-margin-top: var(--topbar-height);
 	}
 
 	/* We don't display this button on mobile devices. */
@@ -2689,13 +2691,22 @@ in src-script.js and main.js
 		background: var(--main-background-color);
 		border-radius: 0;
 	}
-	#settings.popover {
+	#settings.popover, #help.popover {
 		top: 32px;
+		/* The `+ 1px` part is for the bottom border to be visible. */
+		height: calc(100vh - var(--topbar-height) + var(--popover-top-margin) - 1px);
+	}
+	#settings.popover {
 		--popover-arrow-offset: 48px;
 	}
 	#help.popover {
-		top: 32px;
 		--popover-arrow-offset: 12px;
+	}
+	/* The `overflow-y` property is used on an internal content instead of the top one otherwise the
+	   little arrow at the top can't be displayed. */
+	#settings.popover .settings, #help.popover .content {
+		overflow-y: scroll;
+		height: 100%;
 	}
 
 	.rustdoc {
@@ -2719,13 +2730,13 @@ in src-script.js and main.js
 
 	.sidebar {
 		position: fixed;
-		top: 45px;
+		top: var(--topbar-height);
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
-		height: calc(100vh - 45px);
+		height: calc(100vh - var(--topbar-height));
 		/* resize indicator: hide this when on touch or mobile */
 		border-right: none;
 		width: 100%;
@@ -2790,7 +2801,7 @@ in src-script.js and main.js
 		flex-direction: row;
 		position: sticky;
 		z-index: 10;
-		height: 45px;
+		height: var(--topbar-height);
 		width: 100%;
 		left: 0;
 		top: 0;
