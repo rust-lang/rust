@@ -81,6 +81,8 @@ mod foo {
                 pub use super::inner;
             }
 
+            pub mod quxbaz {}
+
             pub fn inner() {}
         }
 
@@ -209,6 +211,12 @@ mod foo {
         pub use self::self as _self6; //~ ERROR `self` imports are only allowed within a { } list
         use self::{self}; //~ ERROR imports need to be explicitly named
         pub use self::{self as _nested_self6};
+
+        type D7 = crate::foo::bar::self; //~ ERROR failed to resolve: `self` in paths can only be used in start position
+        use crate::foo::bar::self; //~ ERROR `self` imports are only allowed within a { } list
+        use crate::foo::bar::self as _self7; //~ ERROR `self` imports are only allowed within a { } list
+        use crate::foo::{bar::foobar::quxbaz::self};
+        use crate::foo::{bar::foobar::quxbaz::self as _nested_self7};
     }
 }
 
