@@ -1,7 +1,7 @@
 //@ revisions: old next
 //@ [next] compile-flags: -Znext-solver
 //@ aux-build:extern-crate.rs
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(field_projections)]
 extern crate extern_crate;
 

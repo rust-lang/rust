@@ -2,7 +2,7 @@
 //@ [next] compile-flags: -Znext-solver
 //@ run-pass
 #![feature(field_projections, freeze)]
-#![allow(incomplete_features, dead_code)]
+#![expect(incomplete_features, dead_code)]
 use std::field::field_of;
 use std::marker::{Freeze, Unpin};
 
