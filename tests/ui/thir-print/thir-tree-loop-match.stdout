@@ -6,7 +6,7 @@ params: [
         self_kind: None
         hir_id: Some(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).1))
         param: Some( 
-            Pat: {
+            Pat {
                 ty: bool
                 span: $DIR/thir-tree-loop-match.rs:7:12: 7:21 (#0)
                 kind: PatKind {
@@ -117,7 +117,7 @@ body:
                                                                                         arms: [
                                                                                             Arm {
                                                                                                 pattern: 
-                                                                                                    Pat: {
+                                                                                                    Pat {
                                                                                                         ty: bool
                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:17: 12:21 (#0)
                                                                                                         kind: PatKind {
@@ -215,7 +215,7 @@ body:
                                                                                             }
                                                                                             Arm {
                                                                                                 pattern: 
-                                                                                                    Pat: {
+                                                                                                    Pat {
                                                                                                         ty: bool
                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:17: 16:22 (#0)
                                                                                                         kind: PatKind {
