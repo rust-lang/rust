@@ -1237,7 +1237,7 @@ pub struct Resolver<'ra, 'tcx> {
         CmRefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<Decl<'ra>>, Option<Span>)>>,
     multi_segment_macro_resolutions:
         CmRefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
-    builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
+    builtin_attrs: Vec<(Ident, ParentScope<'ra>)> = Vec::new(),
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
@@ -1274,7 +1274,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     node_id_to_def_id: NodeMap<Feed<'tcx, LocalDefId>>,
 
-    disambiguator: DisambiguatorState,
+    disambiguator: DisambiguatorState = DisambiguatorState::new(),
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize> = default::fx_hash_map(),
@@ -1641,10 +1641,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             unused_macro_rules: Default::default(),
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
-            builtin_attrs: Default::default(),
             lint_buffer: LintBuffer::default(),
             node_id_to_def_id,
-            disambiguator: DisambiguatorState::new(),
             invocation_parents,
             trait_impls: Default::default(),
             confused_type_with_std_module: Default::default(),
