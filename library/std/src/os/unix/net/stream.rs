@@ -185,6 +185,13 @@ impl UnixStream {
     /// data, and options set on one stream will be propagated to the other
     /// stream.
     ///
+    /// This method uses `F_DUPFD_CLOEXEC` to duplicate the file descriptor
+    /// atomically with the close-on-exec flag set. This means the duplicated socket
+    /// will be automatically closed when calling `exec()`, and thus will not be
+    /// available in child processes created via [`Command`].
+    ///
+    /// [`Command`]: crate::process::Command
+    ///
     /// # Examples
     ///
     /// ```no_run
