@@ -1,4 +1,96 @@
 error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:14:21
+   |
+LL |     let _: i8 = !!{ infer_me() };
+   |                     ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = !!{ infer_me::</* Type */>() };
+   |                             ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:17:22
+   |
+LL |     let _: i8 = -(-{ infer_me() });
+   |                      ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = -(-{ infer_me::</* Type */>() });
+   |                              ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:20:24
+   |
+LL |     let _: i8 = !match infer_me() { x => !{ x } };
+   |                        ^^^^^^^^          ------ type must be known at this point
+   |                        |
+   |                        cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = !match infer_me::</* Type */>() { x => !{ x } };
+   |                                ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:23:24
+   |
+LL |     let _: i8 = -match infer_me() { x => -{ x } };
+   |                        ^^^^^^^^          ------ type must be known at this point
+   |                        |
+   |                        cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = -match infer_me::</* Type */>() { x => -{ x } };
+   |                                ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:29:28
+   |
+LL |     let _: i8 = !if true { infer_me() } else { infer_me() };
+   |                            ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = !if true { infer_me::</* Type */>() } else { infer_me() };
+   |                                    ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:32:28
+   |
+LL |     let _: i8 = -if true { infer_me() } else { infer_me() };
+   |                            ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = -if true { infer_me::</* Type */>() } else { infer_me() };
+   |                                    ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:35:38
+   |
+LL |     let _: i8 = !'l: loop { break 'l infer_me() };
+   |                                      ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = !'l: loop { break 'l infer_me::</* Type */>() };
+   |                                              ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:38:38
+   |
+LL |     let _: i8 = -'l: loop { break 'l infer_me() };
+   |                                      ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: i8 = -'l: loop { break 'l infer_me::</* Type */>() };
+   |                                              ++++++++++++++
+
+error[E0282]: type annotations needed
   --> $DIR/inference-hack-for-unop-operand-fail.rs:47:24
    |
 LL |     let _: () = !match infer_me() { x => x };
@@ -54,19 +146,25 @@ help: consider specifying a concrete type for the type parameter `T`
 LL |                 infer_me::</* Type */>()
    |                         ++++++++++++++
 
-error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/inference-hack-for-unop-operand-fail.rs:91:22
+error[E0600]: cannot apply unary operator `!` to type `Box<_>`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:92:9
    |
-LL |     let y = Box::new(x);
-   |                      ^
-
-error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/inference-hack-for-unop-operand-fail.rs:100:26
+LL |     x = !{ y };
+   |         ^^^^^^ cannot apply unary operator `!`
    |
-LL |     let mut y = Box::new(x);
-   |                          ^
+note: `Box<_>` does not implement `Not`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: `Box<_>` is defined in another crate
 
-error: aborting due to 8 previous errors
+error[E0275]: overflow assigning `_` to `Box<_>`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:101:12
+   |
+LL |     y = !{ x };
+   |            ^
+
+error: aborting due to 16 previous errors
 
 Some errors have detailed explanations: E0275, E0282, E0600.
 For more information about an error, try `rustc --explain E0275`.

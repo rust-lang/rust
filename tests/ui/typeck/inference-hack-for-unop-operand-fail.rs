@@ -11,31 +11,31 @@ fn infer_me<T>() -> T { panic!() }
 // These used to propagate the `i8` expectation to the inner block, through both operators. Since
 // we don't propagate it anymore, the inner negations now have no expectations on them.
 fn not_not_block_inference_failure() {
-    let _: i8 = !!{ infer_me() };
+    let _: i8 = !!{ infer_me() }; //~ ERROR type annotations needed
 }
 fn neg_neg_block_inference_failure() {
-    let _: i8 = -(-{ infer_me() });
+    let _: i8 = -(-{ infer_me() }); //~ ERROR type annotations needed
 }
 fn not_match_not_block_inference_failure() {
-    let _: i8 = !match infer_me() { x => !{ x } };
+    let _: i8 = !match infer_me() { x => !{ x } }; //~ ERROR type annotations needed
 }
 fn neg_match_neg_block_inference_failure() {
-    let _: i8 = -match infer_me() { x => -{ x } };
+    let _: i8 = -match infer_me() { x => -{ x } }; //~ ERROR type annotations needed
 }
 
 // We're not applying the hack for negated blocks and `match`es to negated `if`s or `loop`s, since
 // they seemed much less common in practice.
 fn not_if_inference_failure() {
-    let _: i8 = !if true { infer_me() } else { infer_me() };
+    let _: i8 = !if true { infer_me() } else { infer_me() }; //~ ERROR type annotations needed
 }
 fn neg_if_inference_failure() {
-    let _: i8 = -if true { infer_me() } else { infer_me() };
+    let _: i8 = -if true { infer_me() } else { infer_me() }; //~ ERROR type annotations needed
 }
 fn not_loop_inference_failure() {
-    let _: i8 = !'l: loop { break 'l infer_me() };
+    let _: i8 = !'l: loop { break 'l infer_me() }; //~ ERROR type annotations needed
 }
 fn neg_loop_inference_failure() {
-    let _: i8 = -'l: loop { break 'l infer_me() };
+    let _: i8 = -'l: loop { break 'l infer_me() }; //~ ERROR type annotations needed
 }
 
 // The following tests are for code that failed to type-check before #151539, to make sure they still
@@ -88,8 +88,8 @@ fn initially_uninferred_neg_match_inference_failure() {
 // `x`'s type as its expected type, but now we don't apply the hack because we know `y` is a `Box`
 fn we_got_rid_of_this_occurs_check_failure_because_y_is_known_to_be_a_box() {
     let x;
-    let y = Box::new(x); //~ ERROR overflow assigning `Box<_>` to `_`
-    x = !{ y };
+    let y = Box::new(x);
+    x = !{ y }; //~ ERROR cannot apply unary operator `!` to type `Box<_>`
 }
 
 // TODO: funny test: we keep this occurs check failure around, but report it differently. we don't
@@ -97,8 +97,8 @@ fn we_got_rid_of_this_occurs_check_failure_because_y_is_known_to_be_a_box() {
 // roll back and prevent the hack from firing here? if we let it through, do we keep the fcw on it?
 fn we_keep_this_occurs_check_failure_around() {
     let x;
-    let mut y = Box::new(x); //~ ERROR overflow assigning `Box<_>` to `_`
-    y = !{ x };
+    let mut y = Box::new(x);
+    y = !{ x }; //~ ERROR overflow assigning `_` to `Box<_>`
 }
 
 fn main() {}
