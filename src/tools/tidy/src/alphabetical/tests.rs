@@ -5,7 +5,7 @@ use crate::diagnostics::{TidyCtx, TidyFlags};
 
 #[track_caller]
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
-    let mut tidy_flags = TidyFlags::new(&["--bless".to_owned()]);
+    let mut tidy_flags = TidyFlags::new(&[]);
     tidy_flags.root_path = PathBuf::from("/");
     let tidy_ctx = TidyCtx::new(tidy_flags);
     let mut check = tidy_ctx.start_check("alphabetical-test");
