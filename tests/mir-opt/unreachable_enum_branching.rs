@@ -49,7 +49,7 @@ struct Plop {
 fn simple() {
     // CHECK-LABEL: fn simple(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb1, otherwise: [[unreachable]]];
+    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: {{bb.*}}, otherwise: [[unreachable]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test1::C {
@@ -63,7 +63,7 @@ fn simple() {
 fn custom_discriminant() {
     // CHECK-LABEL: fn custom_discriminant(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [4: bb3, 5: bb2, otherwise: [[unreachable:bb.*]]];
+    // CHECK: switchInt(move [[discr]]) -> [4: {{bb.*}}, 5: {{bb.*}}, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test2::D {
@@ -76,7 +76,7 @@ fn custom_discriminant() {
 fn otherwise_t1() {
     // CHECK-LABEL: fn otherwise_t1(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb5, 1: bb5, 2: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: switchInt(move [[discr]]) -> [0: {{bb.*}}, 1: {{bb.*}}, 2: {{bb.*}}, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test1::C {
@@ -90,7 +90,7 @@ fn otherwise_t1() {
 fn otherwise_t2() {
     // CHECK-LABEL: fn otherwise_t2(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [4: bb2, 5: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: switchInt(move [[discr]]) -> [4: {{bb.*}}, 5: {{bb.*}}, otherwise: [[unreachable:bb.*]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test2::D {

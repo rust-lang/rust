@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use std::mem::type_info::{Type, TypeKind};
 
 #[test]
@@ -94,4 +94,34 @@ fn test_primitives() {
 
     let Type { kind: Str(_ty), size, .. } = (const { Type::of::<str>() }) else { panic!() };
     assert_eq!(size, None);
+}
+
+#[test]
+fn test_references() {
+    // Immutable reference.
+    match const { Type::of::<&u8>() }.kind {
+        TypeKind::Reference(reference) => {
+            assert_eq!(reference.pointee, TypeId::of::<u8>());
+            assert!(!reference.mutable);
+        }
+        _ => unreachable!(),
+    }
+
+    // Mutable pointer.
+    match const { Type::of::<&mut u64>() }.kind {
+        TypeKind::Reference(reference) => {
+            assert_eq!(reference.pointee, TypeId::of::<u64>());
+            assert!(reference.mutable);
+        }
+        _ => unreachable!(),
+    }
+
+    // Wide pointer.
+    match const { Type::of::<&dyn Any>() }.kind {
+        TypeKind::Reference(reference) => {
+            assert_eq!(reference.pointee, TypeId::of::<dyn Any>());
+            assert!(!reference.mutable);
+        }
+        _ => unreachable!(),
+    }
 }

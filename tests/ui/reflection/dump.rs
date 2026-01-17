@@ -40,5 +40,6 @@ fn main() {
         Foo, Bar,
         &Unsized, &str, &[u8],
         str, [u8],
+        &u8, &mut u8,
     }
 }
