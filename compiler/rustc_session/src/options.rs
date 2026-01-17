@@ -2365,6 +2365,8 @@ options! {
         "enable default bounds for experimental group of auto traits"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
+    export_llvm_symbols: bool = (false, parse_bool, [TRACKED],
+        "export LLVM symbols from rustc_driver on darwin"),
     external_clangrt: bool = (false, parse_bool, [UNTRACKED],
         "rely on user specified linker commands to find clangrt"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],

@@ -1261,6 +1261,10 @@ pub fn rustc_cargo(
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
+    if builder.config.llvm_enzyme && target.contains("apple") && build_compiler.stage != 0 {
+        cargo.rustflag("-Zexport-llvm-symbols");
+    }
+
     if is_lto_stage(build_compiler) {
         match builder.config.rust_lto {
             RustcLto::Thin | RustcLto::Fat => {
