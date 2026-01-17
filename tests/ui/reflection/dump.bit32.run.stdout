@@ -155,19 +155,34 @@ Type {
     ),
 }
 Type {
-    kind: Other,
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0xda1b6da9bd297bb2900de9303aadea79),
+            mutable: false,
+        },
+    ),
     size: Some(
         8,
     ),
 }
 Type {
-    kind: Other,
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x474ccf3b5db264ef53916706f7d7bb2c),
+            mutable: false,
+        },
+    ),
     size: Some(
         8,
     ),
 }
 Type {
-    kind: Other,
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x641e3def269c37acc6dcb92bf8c5f196),
+            mutable: false,
+        },
+    ),
     size: Some(
         8,
     ),
@@ -181,4 +196,26 @@ Type {
 Type {
     kind: Other,
     size: None,
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+            mutable: false,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+            mutable: true,
+        },
+    ),
+    size: Some(
+        4,
+    ),
 }

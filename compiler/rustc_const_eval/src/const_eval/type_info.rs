@@ -1,4 +1,5 @@
 use rustc_abi::FieldIdx;
+use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CtfeProvenance, Scalar};
 use rustc_middle::span_bug;
@@ -103,12 +104,19 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             let (variant, _variant_place) = downcast(sym::Str)?;
                             variant
                         }
+                        ty::Ref(_, ty, mutability) => {
+                            let (variant, variant_place) = downcast(sym::Reference)?;
+                            let reference_place =
+                                self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_reference_type_info(reference_place, *ty, *mutability)?;
+
+                            variant
+                        }
                         ty::Adt(_, _)
                         | ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::Slice(_)
                         | ty::RawPtr(..)
-                        | ty::Ref(..)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)
                         | ty::UnsafeBinder(..)
@@ -274,6 +282,31 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     ScalarInt::try_from_target_usize(bit_width, self.tcx.tcx).unwrap(),
                     &field_place,
                 )?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+        interp_ok(())
+    }
+
+    pub(crate) fn write_reference_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+        mutability: Mutability,
+    ) -> InterpResult<'tcx> {
+        // Iterate over all fields of `type_info::Reference`.
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                // Write the `TypeId` of the reference's inner type to the `ty` field.
+                sym::pointee => self.write_type_id(ty, &field_place)?,
+                // Write the boolean representing the reference's mutability to the `mutable` field.
+                sym::mutable => {
+                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
+                }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }
