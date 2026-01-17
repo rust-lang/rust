@@ -281,6 +281,12 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vfenezbs"] fn vfenezbs(a: i8x16, b: i8x16) -> PackedTuple<i8x16, i32>;
     #[link_name = "llvm.s390.vfenezhs"] fn vfenezhs(a: i16x8, b: i16x8) -> PackedTuple<i16x8, i32>;
     #[link_name = "llvm.s390.vfenezfs"] fn vfenezfs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
+
+    #[link_name = "llvm.s390.vclfnhs"] fn vclfnhs(a: vector_signed_short, immarg: i32) -> vector_float;
+    #[link_name = "llvm.s390.vclfnls"] fn vclfnls(a: vector_signed_short, immarg: i32) -> vector_float;
+    #[link_name = "llvm.s390.vcfn"] fn vcfn(a: vector_signed_short, immarg: i32) -> vector_signed_short;
+    #[link_name = "llvm.s390.vcnf"] fn vcnf(a: vector_signed_short, immarg: i32) -> vector_signed_short;
+    #[link_name = "llvm.s390.vcrnfs"] fn vcrnfs(a: vector_float, b: vector_float, immarg: i32) -> vector_signed_short;
 }
 
 #[repr(simd)]
@@ -5909,6 +5915,74 @@ pub unsafe fn vec_insert_and_zero<T: sealed::VectorInsertAndZero>(a: *const T::E
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_promote<T: sealed::VectorPromote>(a: T::ElementType, b: i32) -> MaybeUninit<T> {
     T::vec_promote(a, b)
+}
+
+/// Converts the left-most half of `a` to a vector of single-precision numbers.
+/// The format of the source vector elements is specified by `B`.
+#[inline]
+#[target_feature(enable = "nnp-assist")]
+#[cfg_attr(test, assert_instr(vclfnh, B = 0))]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_extend_to_fp32_hi<const B: i32>(a: vector_signed_short) -> vector_float {
+    // On processors implementing the IBM z16 architecture, only the value 0 is supported.
+    static_assert_uimm_bits!(B, 4);
+
+    vclfnhs(a, B)
+}
+
+/// Converts the right-most half of `a` to a vector of single-precision numbers.
+/// The format of the source vector elements is specified by `B`.
+#[inline]
+#[target_feature(enable = "nnp-assist")]
+#[cfg_attr(test, assert_instr(vclfnl, B = 0))]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_extend_to_fp32_lo<const B: i32>(a: vector_signed_short) -> vector_float {
+    // On processors implementing the IBM z16 architecture, only the value 0 is supported.
+    static_assert_uimm_bits!(B, 4);
+
+    vclfnls(a, B)
+}
+
+/// Converts the elements of vector `a` to the 16-bit IEEE floating point format.
+/// The format of the source vector elements is specified by `B`.
+#[inline]
+#[target_feature(enable = "nnp-assist")]
+#[cfg_attr(test, assert_instr(vcfn, B = 0))]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_convert_to_fp16<const B: i32>(a: vector_signed_short) -> vector_signed_short {
+    // On processors implementing the IBM z16 architecture, only the value 0 is supported.
+    static_assert_uimm_bits!(B, 4);
+
+    vcfn(a, B)
+}
+
+/// Converts the elements of vector `a` to an internal floating point format.
+/// The format of the target vector elements is specified by `B`.
+#[inline]
+#[target_feature(enable = "nnp-assist")]
+#[cfg_attr(test, assert_instr(vcnf, B = 0))]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_convert_from_fp16<const B: i32>(a: vector_signed_short) -> vector_signed_short {
+    // On processors implementing the IBM z16 architecture, only the value 0 is supported.
+    static_assert_uimm_bits!(B, 4);
+
+    vcnf(a, B)
+}
+
+/// Converts the elements of single-precision vectors `a` and `b` to an internal floating point
+/// format with 16-bit sized elements. The format of the target vector elements is specified by `C`.
+#[inline]
+#[target_feature(enable = "nnp-assist")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vcrnf, C = 0))]
+pub unsafe fn vec_round_from_fp32<const C: i32>(
+    a: vector_float,
+    b: vector_float,
+) -> vector_signed_short {
+    // On processors implementing the IBM z16 architecture, only the value 0 is supported.
+    static_assert_uimm_bits!(C, 4);
+
+    vcrnfs(a, b, C)
 }
 
 #[cfg(test)]
