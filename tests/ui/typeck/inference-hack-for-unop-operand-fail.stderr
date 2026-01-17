@@ -1,0 +1,72 @@
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:47:24
+   |
+LL |     let _: () = !match infer_me() { x => x };
+   |                        ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: () = !match infer_me::</* Type */>() { x => x };
+   |                                ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:50:24
+   |
+LL |     let _: () = -match infer_me() { x => x };
+   |                        ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: () = -match infer_me::</* Type */>() { x => x };
+   |                                ++++++++++++++
+
+error[E0600]: cannot apply unary operator `!` to type `()`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:55:17
+   |
+LL |     let _: () = !{ infer_me() };
+   |                 ^^^^^^^^^^^^^^^ cannot apply unary operator `!`
+
+error[E0600]: cannot apply unary operator `-` to type `()`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:56:17
+   |
+LL |     let _: () = -{ infer_me() };
+   |                 ^^^^^^^^^^^^^^^ cannot apply unary operator `-`
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:71:17
+   |
+LL |                 infer_me()
+   |                 ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |                 infer_me::</* Type */>()
+   |                         ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:81:17
+   |
+LL |                 infer_me()
+   |                 ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `infer_me`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |                 infer_me::</* Type */>()
+   |                         ++++++++++++++
+
+error[E0275]: overflow assigning `Box<_>` to `_`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:91:22
+   |
+LL |     let y = Box::new(x);
+   |                      ^
+
+error[E0275]: overflow assigning `Box<_>` to `_`
+  --> $DIR/inference-hack-for-unop-operand-fail.rs:100:26
+   |
+LL |     let mut y = Box::new(x);
+   |                          ^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0275, E0282, E0600.
+For more information about an error, try `rustc --explain E0275`.
