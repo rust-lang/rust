@@ -319,7 +319,10 @@ pub fn change_return_impl_trait() -> impl Clone {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
+// typeck is now correctly dirty even with -Zincremental-ignore-spans because
+// we now always hash syntax context (for hygiene correctness), and the trait
+// bounds (Clone vs Copy) are semantic differences that should invalidate typeck.
+#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes, typeck")]
 #[rustc_clean(cfg = "cfail6")]
