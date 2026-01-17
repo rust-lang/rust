@@ -99,8 +99,6 @@ fn check_impl(
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
         Some(s) => s
-            .strip_prefix("--extra-checks=")
-            .unwrap()
             .split(',')
             .map(|s| {
                 if s == "spellcheck:fix" {
