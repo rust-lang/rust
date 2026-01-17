@@ -5,24 +5,22 @@ use std::hash::Hash;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::{Pointer, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, PolyExistentialPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
-use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
+use crate::interpret::util::{ensure_monomorphic_enough, type_implements_predicates};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
@@ -599,9 +597,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let type_from_type_id = ecx.read_type_id(&args[0])?;
                 let trait_from_type_id = ecx.read_type_id(&args[1])?;
 
-                // TODO: Not quite sure how best to get this into scope... I'm not actually sure what it is meant to do. Please inform me.
-                // ensure_monomorphic_enough(tcx, result_ty)?;
-
+                ensure_monomorphic_enough(ecx.tcx.tcx, trait_from_type_id)?;
                 let ty::Dynamic(predicates, _) = trait_from_type_id.kind() else {
                     span_bug!(
                         ecx.find_closest_untracked_caller_location(),
@@ -609,29 +605,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     );
                 };
 
-                let (infcx, param_env) =
-                    ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env());
+                let implements = type_implements_predicates(ecx, type_from_type_id, predicates)?;
 
-                let ocx = ObligationCtxt::new(&infcx);
-                ocx.register_obligations(predicates.iter().map(
-                    |predicate: PolyExistentialPredicate<'_>| {
-                        let predicate = predicate.with_self_ty(ecx.tcx.tcx, type_from_type_id);
-                        // Lifetimes can only be 'static because of the bound on T
-                        let predicate = ty::fold_regions(ecx.tcx.tcx, predicate, |r, _| {
-                            if r == ecx.tcx.tcx.lifetimes.re_erased {
-                                ecx.tcx.tcx.lifetimes.re_static
-                            } else {
-                                r
-                            }
-                        });
-                        Obligation::new(ecx.tcx.tcx, ObligationCause::dummy(), param_env, predicate)
-                    },
-                ));
-                let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
-                // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
-                let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
-
-                ecx.write_scalar(Scalar::from_bool(type_impls_trait && regions_are_valid), dest)?;
+                ecx.write_scalar(Scalar::from_bool(implements), dest)?;
             }
 
             sym::type_of => {
