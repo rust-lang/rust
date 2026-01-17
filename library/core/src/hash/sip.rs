@@ -166,16 +166,18 @@ impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    pub fn new() -> SipHasher13 {
+    pub const fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
+    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }
 }
@@ -338,7 +340,8 @@ impl<S: Sip> Clone for Hasher<S> {
     }
 }
 
-impl<S: Sip> Default for Hasher<S> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<S: Sip> const Default for Hasher<S> {
     /// Creates a `Hasher<S>` with the two initial keys set to 0.
     #[inline]
     fn default() -> Hasher<S> {

@@ -1053,4 +1053,7 @@ fn const_with_hasher() {
     assert_eq!(y.len(), 0);
     y.insert((), ());
     assert_eq!(y.len(), 1);
+
+    const Z: HashMap<(), (), BuildHasherDefault<DefaultHasher>> = Default::default();
+    assert_eq!(X, Z);
 }
