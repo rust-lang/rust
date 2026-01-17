@@ -1,10 +1,17 @@
+// ignore-tidy-linelength
+//
 //@ add-minicore
-//@ revisions: linux win_x86_msvc win_x86_gnu win_i686_gnu macos thumb
+//@ revisions: linux linux_no_function_sections  macos thumb
+//@ revisions: win_x86_msvc win_x86_gnu win_i686_gnu win_x86_gnu_function_sections
 //
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
+//@[linux_no_function_sections] compile-flags: --target x86_64-unknown-linux-gnu -Zfunction-sections=false
+//@[linux_no_function_sections] needs-llvm-components: x86
 //@[win_x86_gnu] compile-flags: --target x86_64-pc-windows-gnu
 //@[win_x86_gnu] needs-llvm-components: x86
+//@[win_x86_gnu_function_sections] compile-flags: --target x86_64-pc-windows-gnu -Zfunction-sections
+//@[win_x86_gnu_function_sections] needs-llvm-components: x86
 //@[win_x86_msvc] compile-flags: --target x86_64-pc-windows-msvc
 //@[win_x86_msvc] needs-llvm-components: x86
 //@[win_i686_gnu] compile-flags: --target i686-pc-windows-gnu
@@ -21,20 +28,22 @@
 extern crate minicore;
 use minicore::*;
 
-// linux,win_x86,win_i686: .intel_syntax
+// linux,win_x86_gnu,win_i686_gnu: .intel_syntax
 //
 // linux:    .pushsection .text.naked_empty,\22ax\22, @progbits
+// linux_no_function_sections: .text
 // macos-NOT: .pushsection
 //
-// win_x86_msvc:     .pushsection .text$naked_empty,\22xr\22
-// win_x86_gnu-NOT:  .pushsection
-// win_i686_gnu-NOT: .pushsection
+// win_x86_msvc:     .section .text,\22xr\22,one_only,naked_empty
+// win_x86_gnu_function_sections: .section .text$naked_empty,\22xr\22,one_only,naked_empty
+// win_x86_gnu-NOT:  .section
+// win_i686_gnu-NOT: .section
 //
 // thumb:    .pushsection .text.naked_empty,\22ax\22, %progbits
 //
 // linux, macos, thumb: .balign 4
 //
-// linux,thumb: .globl naked_empty
+// linux,win_x86_gnu,thumb: .globl naked_empty
 // macos: .globl _naked_empty
 //
 // CHECK-NOT: .private_extern
@@ -63,7 +72,7 @@ use minicore::*;
 //
 // CHECK-LABEL: naked_empty:
 //
-// linux,macos,win_x86,win_x86: ret
+// linux,macos,win_x86_msvc,win_x86_gnu,win_i686_gnu: ret
 // thumb: bx lr
 //
 // linux,windows,win_x86_msvc,thumb: .popsection
@@ -86,20 +95,22 @@ pub extern "C" fn naked_empty() {
     }
 }
 
-// linux,win_x86,win_i686: .intel_syntax
+// linux,win_x86_gnu,win_i686_gnu,win_x86_msvc: .intel_syntax
 //
 // linux:    .pushsection .text.naked_with_args_and_return,\22ax\22, @progbits
+// linux_no_function_sections: .text
 // macos-NOT: .pushsection
 //
-// win_x86_msvc:     .pushsection .text$naked_with_args_and_return,\22xr\22
-// win_x86_gnu-NOT:  .pushsection
-// win_i686_gnu-NOT: .pushsection
+// win_x86_msvc:     .section .text,\22xr\22,one_only,naked_with_args_and_return
+// win_x86_gnu_function_sections: .section .text$naked_with_args_and_return,\22xr\22,one_only,naked_with_args_and_return
+// win_x86_gnu-NOT:  .section
+// win_i686_gnu-NOT: .section
 //
 // thumb:    .pushsection .text.naked_with_args_and_return,\22ax\22, %progbits
 //
 // linux, macos, thumb: .balign 4
 //
-// linux,thumb: .globl naked_with_args_and_return
+// linux,win_x86_gnu,win_x86_msvc,win_i686_gnu,thumb: .globl naked_with_args_and_return
 // macos: .globl _naked_with_args_and_return
 //
 // CHECK-NOT: .private_extern
@@ -132,7 +143,7 @@ pub extern "C" fn naked_empty() {
 // macos: add x0, x0, x1
 // thumb: adds r0, r0, r1
 //
-// linux,macos,win_x86,win_i686: ret
+// linux,macos,win_x86_msvc,win_x86_gnu,win_i686_gnu: ret
 // thumb: bx lr
 //
 // linux,windows,win_x86_msvc,thumb: .popsection
@@ -158,9 +169,10 @@ pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
     }
 }
 
-// linux:            .pushsection .text.some_different_name,\22ax\22, @progbits
+// linux,linux_no_function_sections: .pushsection .text.some_different_name,\22ax\22, @progbits
 // macos:            .pushsection .text.some_different_name,regular,pure_instructions
-// win_x86_msvc,win_x86_gnu,win_i686_gnu: .pushsection .text.some_different_name,\22xr\22
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .section .text.some_different_name,\22xr\22
+// win_x86_gnu_function_sections: .section .text.some_different_name,\22xr\22
 // thumb:            .pushsection .text.some_different_name,\22ax\22, %progbits
 // CHECK-LABEL: test_link_section:
 #[no_mangle]

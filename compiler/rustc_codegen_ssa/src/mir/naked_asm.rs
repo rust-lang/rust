@@ -8,7 +8,7 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::{Arch, BinaryFormat};
+use rustc_target::spec::{Arch, BinaryFormat, Env};
 
 use crate::common;
 use crate::mir::AsmCodegenMethods;
@@ -234,6 +234,8 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
             } else if function_sections {
                 writeln!(begin, ".pushsection .text.{asm_name},\"ax\", {progbits}").unwrap();
+            } else {
+                writeln!(begin, ".text").unwrap();
             }
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
@@ -261,7 +263,9 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::MachO => {
-            // NOTE: LLVM ignores `-Zfunction-sections` on macos.
+            // NOTE: LLVM ignores `-Zfunction-sections` on macos. Instead the Mach-O symbol
+            // subsection splitting feature is used, which can be enabled with the
+            // `.subsections_via_symbols` global directive. LLVM already enables this directive.
             if let Some(section) = &link_section {
                 writeln!(begin, ".pushsection {section},regular,pure_instructions").unwrap();
             }
@@ -289,9 +293,27 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".endef").unwrap();
 
             if let Some(section) = &link_section {
-                writeln!(begin, ".pushsection {section},\"xr\"").unwrap()
-            } else if function_sections {
-                writeln!(begin, ".pushsection .text${asm_name},\"xr\"").unwrap()
+                writeln!(begin, ".section {section},\"xr\"").unwrap()
+            } else if !function_sections {
+                // Function sections are enabled by default on MSVC, but disabled by default on GNU.
+                writeln!(begin, ".text").unwrap();
+            } else {
+                // LLVM uses an extension to the section directive to support defining multiple
+                // sections with the same name and comdat. It adds `unique,<id>` at the end of the
+                // `.section` directive. We have no way of generating that unique ID here, so don't
+                // emit it.
+                //
+                // See https://llvm.org/docs/Extensions.html#id2.
+                match &tcx.sess.target.options.env {
+                    Env::Gnu => {
+                        writeln!(begin, ".section .text${asm_name},\"xr\",one_only,{asm_name}")
+                            .unwrap();
+                    }
+                    Env::Msvc => {
+                        writeln!(begin, ".section .text,\"xr\",one_only,{asm_name}").unwrap();
+                    }
+                    other => bug!("invalid coff env {other:?}"),
+                }
             }
             write_linkage(&mut begin).unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
