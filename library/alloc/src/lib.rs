@@ -63,7 +63,10 @@
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-    test(no_crate_inject, attr(allow(unused_variables, duplicate_features), deny(warnings)))
+    test(
+        no_crate_inject,
+        attr(allow(unused_variables, duplicate_features, dead_code), deny(warnings))
+    )
 )]
 #![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
 #![doc(rust_logo)]
@@ -86,6 +89,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(not(no_global_oom_handling), feature(io_const_error))]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
@@ -111,6 +115,8 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_internals)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(diagnostic_on_move)]
@@ -128,6 +134,7 @@
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(io_error_uncategorized)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
@@ -228,6 +235,9 @@ pub mod collections;
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
+#[unstable(feature = "alloc_io", issue = "154046")]
+#[cfg(not(no_global_oom_handling))]
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;
