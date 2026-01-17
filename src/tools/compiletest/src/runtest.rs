@@ -1277,23 +1277,36 @@ impl<'test> TestCx<'test> {
                 .replace('-', "_")
         };
 
-        let add_extern =
-            |rustc: &mut Command, aux_name: &str, aux_path: &str, aux_type: AuxType| {
-                let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
-                if let Some(lib_name) = lib_name {
-                    rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir, lib_name));
-                }
-            };
+        let add_extern = |rustc: &mut Command,
+                          extern_opts: Option<&str>,
+                          aux_name: &str,
+                          aux_path: &str,
+                          aux_type: AuxType| {
+            let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+            if let Some(lib_name) = lib_name {
+                let opts_and_name = match extern_opts {
+                    Some(opts) => format!("{opts}:{aux_name}"),
+                    None => aux_name.to_string(),
+                };
+                rustc.arg("--extern").arg(format!("{opts_and_name}={aux_dir}/{lib_name}"));
+            }
+        };
 
-        for AuxCrate { name, path } in &self.props.aux.crates {
+        for AuxCrate { extern_opts, name, path } in &self.props.aux.crates {
             let aux_type = self.build_auxiliary(&path, &aux_dir, None);
-            add_extern(rustc, name, path, aux_type);
+            add_extern(rustc, extern_opts.as_deref(), name, path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
-            let crate_name = path_to_crate_name(proc_macro);
-            add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
+            self.build_auxiliary(&proc_macro.path, &aux_dir, Some(AuxType::ProcMacro));
+            let crate_name = path_to_crate_name(&proc_macro.path);
+            add_extern(
+                rustc,
+                proc_macro.extern_opts.as_deref(),
+                &crate_name,
+                &proc_macro.path,
+                AuxType::ProcMacro,
+            );
         }
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
