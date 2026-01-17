@@ -6,6 +6,7 @@ use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
+use rustc_ast::util::classify;
 use rustc_ast::{
     attr, {self as ast},
 };
@@ -1571,6 +1572,9 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = where_clause;
 
+        if let Some(recovered_rhs) = self.try_recover_const_missing_semi(&rhs) {
+            return Ok((ident, generics, ty, Some(ConstItemRhs::Body(recovered_rhs))));
+        }
         self.expect_semi()?;
 
         Ok((ident, generics, ty, rhs))
@@ -3406,6 +3410,45 @@ impl<'a> Parser<'a> {
                 .map_err(|e| e.cancel()),
             Ok(Some(_))
         )
+    }
+
+    /// Try to recover from over-parsing in const item when a semicolon is missing.
+    ///
+    /// This detects cases where we parsed too much because a semicolon was missing
+    /// and the next line started an expression that the parser treated as a continuation
+    /// (e.g., `foo() \n &bar` was parsed as `foo() & bar`).
+    ///
+    /// Returns a corrected expression if recovery is successful.
+    fn try_recover_const_missing_semi(&mut self, rhs: &Option<ConstItemRhs>) -> Option<Box<Expr>> {
+        if self.token == TokenKind::Semi {
+            return None;
+        }
+        let Some(ConstItemRhs::Body(rhs)) = rhs else {
+            return None;
+        };
+        if !self.may_recover() || rhs.span.from_expansion() {
+            return None;
+        }
+        let sm = self.psess.source_map();
+        // Check if this is a binary expression that spans multiple lines
+        // and the RHS looks like it could be an independent expression.
+        if let ExprKind::Binary(op, lhs, rhs_inner) = &rhs.kind
+            && sm.is_multiline(lhs.span.shrink_to_hi().until(rhs_inner.span.shrink_to_lo()))
+            && matches!(op.node, BinOpKind::Mul | BinOpKind::BitAnd)
+            && classify::expr_requires_semi_to_be_stmt(rhs_inner)
+        {
+            let lhs_end_span = lhs.span.shrink_to_hi();
+            let guar = self.dcx().emit_err(errors::ExpectedSemi {
+                span: lhs_end_span,
+                token: self.token,
+                unexpected_token_label: Some(self.token.span),
+                sugg: errors::ExpectedSemiSugg::AddSemi(lhs_end_span),
+            });
+
+            Some(self.mk_expr(lhs.span, ExprKind::Err(guar)))
+        } else {
+            None
+        }
     }
 }
 
