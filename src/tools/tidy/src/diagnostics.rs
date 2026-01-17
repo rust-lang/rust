@@ -21,8 +21,8 @@ pub struct TidyFlags {
     /// Applies style and formatting changes during a tidy run.
     #[arg(long)]
     pub bless: bool,
-    #[arg(long)]
-    pub extra_checks: Option<String>,
+    #[arg(long, value_delimiter=',', num_args=1..)]
+    pub extra_checks: Option<Vec<String>>,
     #[arg(last = true)]
     pub pos: Vec<String>,
 }

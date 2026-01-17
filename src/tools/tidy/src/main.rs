@@ -25,6 +25,8 @@ fn main() {
     if tidy_flags.concurrency == 0 {
         panic!("concurrency should not be zero");
     }
+    println!("TidyFlags: {:#?}", tidy_flags);
+
     let concurrency = NonZeroUsize::new(tidy_flags.concurrency).unwrap();
 
     let root_path = tidy_flags.root_path.clone();
@@ -160,7 +162,7 @@ fn main() {
             &tools_path,
             &npm,
             &cargo,
-            tidy_flags.extra_checks.as_deref(),
+            tidy_flags.extra_checks,
             tidy_flags.pos.as_slice()
         );
     });

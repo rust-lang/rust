@@ -58,7 +58,7 @@ pub fn check(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    extra_checks: Option<&str>,
+    extra_checks: Option<Vec<String>>,
     pos_args: &[String],
     tidy_ctx: TidyCtx,
 ) {
@@ -88,7 +88,7 @@ fn check_impl(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    extra_checks: Option<&str>,
+    extra_checks: Option<Vec<String>>,
     pos_args: &[String],
     tidy_ctx: &TidyCtx,
 ) -> Result<(), Error> {
@@ -99,7 +99,7 @@ fn check_impl(
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
         Some(s) => s
-            .split(',')
+            .iter()
             .map(|s| {
                 if s == "spellcheck:fix" {
                     eprintln!("warning: `spellcheck:fix` is no longer valid, use `--extra-checks=spellcheck --bless`");
@@ -119,6 +119,8 @@ fn check_impl(
             .collect(),
         None => vec![],
     };
+    println!("lint_args: {:#?}", lint_args);
+
     lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
