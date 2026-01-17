@@ -3,10 +3,7 @@
 use core::ascii::EscapeDefault;
 
 use crate::fmt::{self, Write};
-#[cfg(not(any(
-    all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "loongarch64", target_feature = "lsx")
-)))]
+#[cfg(not(all(target_arch = "loongarch64", target_feature = "lsx")))]
 use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, ops};
 
@@ -463,19 +460,84 @@ const fn is_ascii(s: &[u8]) -> bool {
     )
 }
 
-/// ASCII test optimized to use the `pmovmskb` instruction on `x86-64` and the
-/// `vmskltz.b` instruction on `loongarch64`.
+/// SSE2 implementation using `_mm_movemask_epi8` (compiles to `pmovmskb`) to
+/// avoid LLVM's broken AVX-512 auto-vectorization of counting loops.
+///
+/// # Safety
+/// Requires SSE2 support (guaranteed on x86_64).
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+#[target_feature(enable = "sse2")]
+unsafe fn is_ascii_sse2(bytes: &[u8]) -> bool {
+    use crate::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128};
+
+    const CHUNK_SIZE: usize = 32;
+
+    let mut i = 0;
+
+    while i + CHUNK_SIZE <= bytes.len() {
+        // SAFETY: We have verified that `i + CHUNK_SIZE <= bytes.len()`.
+        let ptr = unsafe { bytes.as_ptr().add(i) };
+
+        // Load two 16-byte chunks and combine them.
+        // SAFETY: We verified `i + 32 <= len`, so ptr is valid for 32 bytes.
+        // `_mm_loadu_si128` allows unaligned loads.
+        let chunk1 = unsafe { _mm_loadu_si128(ptr as *const __m128i) };
+        // SAFETY: Same as above - ptr.add(16) is within the valid 32-byte range.
+        let chunk2 = unsafe { _mm_loadu_si128(ptr.add(16) as *const __m128i) };
+
+        // OR them together - if any byte has the high bit set, the result will too
+        let combined = _mm_or_si128(chunk1, chunk2);
+
+        // Create a mask from the MSBs of each byte.
+        // If any byte is >= 128, its MSB is 1, so the mask will be non-zero.
+        let mask = _mm_movemask_epi8(combined);
+
+        if mask != 0 {
+            return false;
+        }
+
+        i += CHUNK_SIZE;
+    }
+
+    // Handle remaining bytes with simple loop
+    while i < bytes.len() {
+        if !bytes[i].is_ascii() {
+            return false;
+        }
+        i += 1;
+    }
+
+    true
+}
+
+/// ASCII test optimized to use the `pmovmskb` instruction on `x86-64`.
+///
+/// Uses explicit SSE2 intrinsics to prevent LLVM from auto-vectorizing with
+/// broken AVX-512 code that extracts mask bits one-by-one.
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+#[inline]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+const fn is_ascii(bytes: &[u8]) -> bool {
+    const_eval_select!(
+        @capture { bytes: &[u8] } -> bool:
+        if const {
+            is_ascii_simple(bytes)
+        } else {
+            // SAFETY: SSE2 is guaranteed available on x86_64
+            unsafe { is_ascii_sse2(bytes) }
+        }
+    )
+}
+
+/// ASCII test optimized to use the `vmskltz.b` instruction on `loongarch64`.
 ///
 /// Other platforms are not likely to benefit from this code structure, so they
 /// use SWAR techniques to test for ASCII in `usize`-sized chunks.
-#[cfg(any(
-    all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "loongarch64", target_feature = "lsx")
-))]
+#[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
 #[inline]
 const fn is_ascii(bytes: &[u8]) -> bool {
     // Process chunks of 32 bytes at a time in the fast path to enable
-    // auto-vectorization and use of `pmovmskb`. Two 128-bit vector registers
+    // auto-vectorization and use of `vmskltz.b`. Two 128-bit vector registers
     // can be OR'd together and then the resulting vector can be tested for
     // non-ASCII bytes.
     const CHUNK_SIZE: usize = 32;
@@ -485,7 +547,7 @@ const fn is_ascii(bytes: &[u8]) -> bool {
     while i + CHUNK_SIZE <= bytes.len() {
         let chunk_end = i + CHUNK_SIZE;
 
-        // Get LLVM to produce a `pmovmskb` instruction on x86-64 which
+        // Get LLVM to produce a `vmskltz.b` instruction on loongarch64 which
         // creates a mask from the most significant bit of each byte.
         // ASCII bytes are less than 128 (0x80), so their most significant
         // bit is unset.
