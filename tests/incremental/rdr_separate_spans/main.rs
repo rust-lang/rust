@@ -1,14 +1,14 @@
-// This test verifies that the -Z separate-spans flag works correctly
+// This test verifies that the -Z stable-crate-hash flag works correctly
 // with incremental compilation.
 //
-// The separate-spans flag causes span data to be stored in a separate
+// The stable-crate-hash flag causes span data to be stored in a separate
 // .spans file rather than inline in the .rmeta file. This is important
 // for Relink, Don't Rebuild (RDR) because span data often
 // contains absolute file paths that break reproducibility.
 //
-// rpass1: Initial compilation without separate-spans
+// rpass1: Initial compilation without stable-crate-hash
 // rpass2: Recompile without changes - should reuse everything
-// rpass3: Recompile auxiliary with separate-spans - tests span loading
+// rpass3: Recompile auxiliary with stable-crate-hash - tests span loading
 
 //@ revisions: rpass1 rpass2 rpass3
 //@ compile-flags: -Z query-dep-graph -g

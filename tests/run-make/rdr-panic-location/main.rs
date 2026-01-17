@@ -1,5 +1,5 @@
 // Main crate that triggers panics in the dependency.
-// Used to verify panic locations are correct with -Z separate-spans.
+// Used to verify panic locations are correct with -Z stable-crate-hash.
 
 extern crate dep;
 

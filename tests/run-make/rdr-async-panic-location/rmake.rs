@@ -1,5 +1,5 @@
 // Test that panic locations inside async functions are correct
-// when using -Z separate-spans.
+// when using -Z stable-crate-hash.
 
 //@ ignore-cross-compile
 
@@ -12,7 +12,7 @@ fn main() {
             .crate_name("rdr_async_lib")
             .crate_type("rlib")
             .edition("2024")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         rustc()
@@ -20,15 +20,12 @@ fn main() {
             .crate_type("bin")
             .extern_("rdr_async_lib", "librdr_async_lib.rlib")
             .edition("2024")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         let output = cmd("./main").arg("async").run_fail();
         let stderr = output.stderr_utf8();
-        assert!(
-            stderr.contains("lib.rs:6"),
-            "async panic should show lib.rs:6, got:\n{stderr}"
-        );
+        assert!(stderr.contains("lib.rs:6"), "async panic should show lib.rs:6, got:\n{stderr}");
 
         let output = cmd("./main").arg("nested").run_fail();
         let stderr = output.stderr_utf8();

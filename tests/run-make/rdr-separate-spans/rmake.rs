@@ -1,7 +1,7 @@
-// Test that -Z separate-spans flag produces reproducible metadata.
+// Test that -Z stable-crate-hash flag produces reproducible metadata.
 //
 // This test verifies:
-// 1. The -Z separate-spans flag is accepted by the compiler
+// 1. The -Z stable-crate-hash flag is accepted by the compiler
 // 2. Compilation produces a .spans file alongside the .rmeta file (when implemented)
 // 3. The resulting rlib is reproducible across builds from different directories
 //
@@ -12,14 +12,14 @@
 use run_make_support::{cwd, rfs, run_in_tmpdir, rust_lib_name, rustc};
 
 fn main() {
-    // Test 1: Basic compilation with -Z separate-spans succeeds
+    // Test 1: Basic compilation with -Z stable-crate-hash succeeds
     run_in_tmpdir(|| {
-        rustc().input("lib.rs").crate_type("rlib").arg("-Zseparate-spans").run();
+        rustc().input("lib.rs").crate_type("rlib").arg("-Zstable-crate-hash").run();
 
         // Verify the rlib was created
         assert!(
             std::path::Path::new(&rust_lib_name("rdr_test_lib")).exists(),
-            "rlib should be created with -Z separate-spans"
+            "rlib should be created with -Z stable-crate-hash"
         );
     });
 
@@ -29,7 +29,7 @@ fn main() {
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg(&format!("--remap-path-prefix={}=/src", cwd().display()))
             .run();
 
@@ -40,7 +40,7 @@ fn main() {
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg(&format!("--remap-path-prefix={}=/src", cwd().display()))
             .run();
 
@@ -48,7 +48,7 @@ fn main() {
 
         assert_eq!(
             first_rlib, second_rlib,
-            "Two identical compilations with -Z separate-spans should produce identical rlibs"
+            "Two identical compilations with -Z stable-crate-hash should produce identical rlibs"
         );
     });
 
@@ -65,7 +65,7 @@ fn main() {
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg(&format!("--remap-path-prefix={}=/src", base_dir.display()))
             .run();
 
@@ -77,7 +77,7 @@ fn main() {
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg(&format!("--remap-path-prefix={}=/src", base_dir.join("subdir").display()))
             .out_dir(&base_dir)
             .run();

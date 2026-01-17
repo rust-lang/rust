@@ -1,10 +1,10 @@
-// Auxiliary crate for testing -Z separate-spans flag.
-// When separate-spans is enabled, span data is stored in a separate .spans file
+// Auxiliary crate for testing -Z stable-crate-hash flag.
+// When stable-crate-hash is enabled, span data is stored in a separate .spans file
 // instead of being embedded directly in the .rmeta file.
 
 //@[rpass1] compile-flags: -Z query-dep-graph
 //@[rpass2] compile-flags: -Z query-dep-graph
-//@[rpass3] compile-flags: -Z query-dep-graph -Z separate-spans
+//@[rpass3] compile-flags: -Z query-dep-graph -Z stable-crate-hash
 
 #![crate_type = "rlib"]
 

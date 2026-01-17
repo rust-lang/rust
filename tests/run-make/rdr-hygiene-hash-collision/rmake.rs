@@ -84,7 +84,7 @@ make_fn!(baz);
         .input("lib.rs")
         .crate_type("lib")
         .incremental("incr")
-        .arg("-Zseparate-spans")
+        .arg("-Zstable-crate-hash")
         .arg("-Zincremental-ignore-spans")
         .run();
 
@@ -93,7 +93,7 @@ make_fn!(baz);
         .input("lib.rs")
         .crate_type("lib")
         .incremental("incr")
-        .arg("-Zseparate-spans")
+        .arg("-Zstable-crate-hash")
         .arg("-Zincremental-ignore-spans")
         .run();
 }

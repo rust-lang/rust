@@ -1,6 +1,6 @@
 // Test that missing .spans file is treated as a hard error.
 //
-// This verifies that when a crate was compiled with `-Z separate-spans` and
+// This verifies that when a crate was compiled with `-Z stable-crate-hash` and
 // the `.spans` file is later deleted (simulating a corrupted incremental cache),
 // the compiler produces a clear error message rather than silently degrading.
 //
@@ -11,17 +11,17 @@ use run_make_support::{rfs, run_in_tmpdir, rustc};
 
 fn main() {
     run_in_tmpdir(|| {
-        // First, create a dependency crate compiled with -Z separate-spans
+        // First, create a dependency crate compiled with -Z stable-crate-hash
         // Use --emit=metadata to produce a standalone .rmeta file
         let dep_source = "pub fn dep_fn() -> i32 { 42 }\n";
         rfs::write("dep.rs", dep_source);
 
-        // Compile the dependency with -Z separate-spans and emit both rlib and metadata
+        // Compile the dependency with -Z stable-crate-hash and emit both rlib and metadata
         rustc()
             .input("dep.rs")
             .crate_type("rlib")
             .emit("metadata,link")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         // Verify .spans file was created alongside .rmeta

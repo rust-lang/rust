@@ -1,4 +1,4 @@
-// Test that panic locations are correct when using -Z separate-spans.
+// Test that panic locations are correct when using -Z stable-crate-hash.
 //
 // This verifies that span information is correctly preserved/resolved
 // so that panic messages show accurate file:line:col locations.
@@ -14,15 +14,15 @@ use run_make_support::{cmd, run_in_tmpdir, rustc};
 
 fn main() {
     run_in_tmpdir(|| {
-        // Build dependency with -Z separate-spans
-        rustc().input("dep.rs").crate_type("rlib").arg("-Zseparate-spans").run();
+        // Build dependency with -Z stable-crate-hash
+        rustc().input("dep.rs").crate_type("rlib").arg("-Zstable-crate-hash").run();
 
         // Build main crate linking to the dependency
         rustc()
             .input("main.rs")
             .crate_type("bin")
             .extern_("dep", "libdep.rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         // Test 1: Public function panic location

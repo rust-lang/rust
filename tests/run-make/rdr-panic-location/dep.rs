@@ -1,12 +1,12 @@
 // Dependency crate that can panic at known locations.
-// The panic locations are used to verify that -Z separate-spans
+// The panic locations are used to verify that -Z stable-crate-hash
 // preserves correct file:line:col information.
 
 #![crate_type = "rlib"]
 #![crate_name = "dep"]
 
 /// Public function that panics. The panic location should be
-/// correctly reported even when compiled with -Z separate-spans.
+/// correctly reported even when compiled with -Z stable-crate-hash.
 #[inline(never)]
 pub fn will_panic(trigger: bool) {
     if trigger {

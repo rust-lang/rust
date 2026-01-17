@@ -64,7 +64,7 @@ impl Linker {
         {
             let spans_path = path.with_extension("spans");
             let mut files: Vec<(&'static str, &Path)> = vec![("rmeta", path)];
-            if sess.opts.unstable_opts.separate_spans && spans_path.exists() {
+            if sess.opts.unstable_opts.stable_crate_hash && spans_path.exists() {
                 files.push(("spans", &spans_path));
             }
             if let Some((id, product)) =

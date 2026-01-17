@@ -1,4 +1,4 @@
-// Test that debuginfo line numbers are correct when using -Z separate-spans.
+// Test that debuginfo line numbers are correct when using -Z stable-crate-hash.
 //
 // This verifies that DWARF debug information contains accurate file:line
 // information even when spans are stored separately from metadata.
@@ -13,12 +13,12 @@ use run_make_support::{llvm_dwarfdump, run_in_tmpdir, rustc};
 
 fn main() {
     run_in_tmpdir(|| {
-        // Build with debuginfo and -Z separate-spans
+        // Build with debuginfo and -Z stable-crate-hash
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
             .arg("-Cdebuginfo=2")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         // Use llvm-dwarfdump to extract debug info
@@ -34,7 +34,7 @@ fn main() {
             .input("lib.rs")
             .crate_type("rlib")
             .arg("-Cdebuginfo=2")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .out_dir("second")
             .run();
 

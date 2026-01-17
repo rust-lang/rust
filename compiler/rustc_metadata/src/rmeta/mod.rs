@@ -344,9 +344,9 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
 
-    /// Whether this crate was compiled with `-Z separate-spans`.
+    /// Whether this crate was compiled with `-Z stable-crate-hash`.
     /// If true, span data is in a separate `.spans` file, not in this rmeta.
-    has_separate_spans: bool,
+    has_stable_crate_hash: bool,
 }
 
 /// On-disk representation of `DefId`.

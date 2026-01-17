@@ -1,4 +1,4 @@
-// Test that LTO builds work correctly with -Z separate-spans,
+// Test that LTO builds work correctly with -Z stable-crate-hash,
 // including correct panic locations for cross-crate inlined functions.
 
 //@ ignore-cross-compile
@@ -11,7 +11,7 @@ fn main() {
             .input("lib.rs")
             .crate_type("rlib")
             .crate_name("rdr_lto_lib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg("-Clto=thin")
             .run();
 
@@ -19,7 +19,7 @@ fn main() {
             .input("main.rs")
             .crate_type("bin")
             .extern_("rdr_lto_lib", "librdr_lto_lib.rlib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg("-Clto=thin")
             .output("main")
             .run();

@@ -1,4 +1,4 @@
-// Check that diagnostic replay is gated by the spans hash when using -Z separate-spans.
+// Check that diagnostic replay is gated by the spans hash when using -Z stable-crate-hash.
 //@ ignore-cross-compile
 // Reason: uses incremental directory tied to host toolchain paths
 
@@ -12,7 +12,7 @@ fn main() {
         let output1 = rustc()
             .input("main.rs")
             .incremental("incr")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg("-Zincremental-ignore-spans")
             .run();
         output1.assert_stderr_contains("unused variable");
@@ -20,7 +20,7 @@ fn main() {
         let output2 = rustc()
             .input("main.rs")
             .incremental("incr")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg("-Zincremental-ignore-spans")
             .run();
         output2.assert_stderr_contains("unused variable");
@@ -31,7 +31,7 @@ fn main() {
         let output3 = rustc()
             .input("main.rs")
             .incremental("incr")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .arg("-Zincremental-ignore-spans")
             .run();
         output3.assert_stderr_not_contains("unused variable");

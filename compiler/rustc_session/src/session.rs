@@ -286,7 +286,7 @@ impl Session {
     }
 
     pub fn diagnostic_spans_hash(&self) -> Option<u64> {
-        if !self.opts.unstable_opts.separate_spans {
+        if !self.opts.unstable_opts.stable_crate_hash {
             return None;
         }
 

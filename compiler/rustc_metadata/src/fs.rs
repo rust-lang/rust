@@ -87,9 +87,9 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         None
     };
 
-    // When -Z separate-spans is enabled, encode spans to a separate .spans file
+    // When -Z stable-crate-hash is enabled, encode spans to a separate .spans file
     let spans_tmp_filename = if let Some(required_source_files) = required_source_files
-        && tcx.sess.opts.unstable_opts.separate_spans
+        && tcx.sess.opts.unstable_opts.stable_crate_hash
     {
         let spans_tmp_filename = metadata_tmpdir.as_ref().join("lib.spans");
         encode_spans(tcx, &spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
@@ -107,12 +107,12 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {
-                // RDR optimization: when -Z separate-spans is enabled, skip writing
+                // RDR optimization: when -Z stable-crate-hash is enabled, skip writing
                 // the .rmeta file if its content hash (SVH) hasn't changed. This
                 // preserves the file's mtime, preventing cargo from rebuilding
                 // dependent crates when only span positions changed.
                 let new_hash = tcx.crate_hash(LOCAL_CRATE);
-                let skip_write = tcx.sess.opts.unstable_opts.separate_spans
+                let skip_write = tcx.sess.opts.unstable_opts.stable_crate_hash
                     && read_existing_metadata_hash(path).is_some_and(|old_hash| {
                         let matches = old_hash == new_hash;
                         if matches {

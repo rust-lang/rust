@@ -961,7 +961,7 @@ fn get_rmeta_metadata_section<'a, 'p>(filename: &'p Path) -> Result<OwnedSlice, 
     Ok(slice_owned(mmap, Deref::deref))
 }
 
-/// Loads a span metadata file (.spans) that accompanies rmeta files compiled with -Z separate_spans.
+/// Loads a span metadata file (.spans) that accompanies rmeta files compiled with -Z stable-crate-hash.
 pub(crate) fn get_span_metadata_section(filename: &Path) -> Result<SpanBlob, String> {
     // mmap the file, because only a small fraction of it is read.
     let file = std::fs::File::open(filename)

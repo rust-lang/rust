@@ -631,10 +631,10 @@ impl CStore {
             None
         };
 
-        let has_separate_spans = crate_root.has_separate_spans();
+        let has_stable_crate_hash = crate_root.has_stable_crate_hash();
         let crate_name = crate_root.name();
 
-        if has_separate_spans && source.spans.is_none() {
+        if has_stable_crate_hash && source.spans.is_none() {
             return Err(CrateError::MissingSpanFile(crate_name, "file not found".to_string()));
         }
 
@@ -652,7 +652,7 @@ impl CStore {
             host_hash,
         );
 
-        if has_separate_spans {
+        if has_stable_crate_hash {
             crate_metadata
                 .ensure_span_file_loaded()
                 .map_err(|err| CrateError::MissingSpanFile(crate_name, err))?;

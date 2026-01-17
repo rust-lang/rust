@@ -2658,8 +2658,8 @@ written to standard error output)"),
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
                      query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes"),
-    separate_spans: bool = (false, parse_bool, [TRACKED],
-        "store span data in a separate .spans file for Relink, Don't Rebuild (RDR) (default: no)"),
+    stable_crate_hash: bool = (false, parse_bool, [TRACKED],
+        "stabilize the crate hash by storing spans separately, enabling relink-don't-rebuild (default: no)"),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     shell_argfiles: bool = (false, parse_bool, [UNTRACKED],

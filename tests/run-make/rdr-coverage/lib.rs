@@ -1,4 +1,4 @@
-// Library crate for testing coverage instrumentation with -Z separate-spans.
+// Library crate for testing coverage instrumentation with -Z stable-crate-hash.
 // Contains functions with various control flow for coverage testing.
 
 #![crate_type = "rlib"]

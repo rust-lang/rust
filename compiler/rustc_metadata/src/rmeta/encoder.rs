@@ -673,8 +673,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     /// Encode source map using the provided set of required source files.
-    /// This is used both for rmeta (when separate_spans is disabled) and
-    /// for the span file (when separate_spans is enabled).
+    /// This is used both for rmeta (when stable_crate_hash is disabled) and
+    /// for the span file (when stable_crate_hash is enabled).
     fn encode_source_map_with(
         &mut self,
         required_source_files: FxIndexSet<usize>,
@@ -853,9 +853,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
-        // When separate_spans is enabled, source_map goes in the span file instead.
+        // When stable_crate_hash is enabled, source_map goes in the span file instead.
         let source_map = stat!("source-map", || {
-            if self.tcx.sess.opts.unstable_opts.separate_spans {
+            if self.tcx.sess.opts.unstable_opts.stable_crate_hash {
                 // Don't encode source_map in rmeta; it will be in the .spans file.
                 // Keep required_source_files for the span file encoding.
                 TableBuilder::default().encode(&mut self.opaque)
@@ -924,7 +924,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
-                has_separate_spans: tcx.sess.opts.unstable_opts.separate_spans,
+                has_stable_crate_hash: tcx.sess.opts.unstable_opts.stable_crate_hash,
             })
         });
 
@@ -2650,7 +2650,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
 }
 
 /// Encodes crate metadata to the given path.
-/// Returns the set of required source files if `-Z separate_spans` is enabled,
+/// Returns the set of required source files if `-Z stable-crate-hash` is enabled,
 /// which is needed for encoding the span file.
 #[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(
@@ -2697,7 +2697,7 @@ pub fn encode_metadata(
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
-        if tcx.sess.opts.unstable_opts.separate_spans
+        if tcx.sess.opts.unstable_opts.stable_crate_hash
             && let Some(saved_spans) = work_product.saved_files.get("spans")
         {
             let span_source =
@@ -2778,7 +2778,7 @@ pub fn encode_spans(
 }
 
 /// Encodes metadata with standard header.
-/// Returns the required_source_files if separate_spans is enabled (for span file encoding).
+/// Returns the required_source_files if stable_crate_hash is enabled (for span file encoding).
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
@@ -2832,8 +2832,12 @@ fn with_encode_metadata_header(
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
-    // Return required_source_files if separate_spans is enabled (for span file encoding)
-    if tcx.sess.opts.unstable_opts.separate_spans { ecx.required_source_files.take() } else { None }
+    // Return required_source_files if stable_crate_hash is enabled (for span file encoding)
+    if tcx.sess.opts.unstable_opts.stable_crate_hash {
+        ecx.required_source_files.take()
+    } else {
+        None
+    }
 }
 
 fn with_encode_span_header(

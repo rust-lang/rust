@@ -1,4 +1,4 @@
-// Test that cdylib builds work correctly with -Z separate-spans.
+// Test that cdylib builds work correctly with -Z stable-crate-hash.
 
 //@ ignore-cross-compile
 
@@ -10,13 +10,10 @@ fn main() {
             .input("lib.rs")
             .crate_type("cdylib")
             .crate_name("rdr_cdylib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         let lib_name = dynamic_lib_name("rdr_cdylib");
-        assert!(
-            std::path::Path::new(&lib_name).exists(),
-            "cdylib should be created: {lib_name}"
-        );
+        assert!(std::path::Path::new(&lib_name).exists(), "cdylib should be created: {lib_name}");
     });
 }

@@ -1,7 +1,7 @@
-// Test that coverage instrumentation works correctly with -Z separate-spans.
+// Test that coverage instrumentation works correctly with -Z stable-crate-hash.
 //
 // This verifies that:
-// 1. Coverage instrumentation compiles successfully with -Z separate-spans
+// 1. Coverage instrumentation compiles successfully with -Z stable-crate-hash
 // 2. Coverage profraw data is generated when running the instrumented binary
 // 3. Coverage data can be converted to a report format
 //
@@ -15,12 +15,12 @@ use run_make_support::{cmd, cwd, llvm_profdata, rfs, run_in_tmpdir, rustc};
 
 fn main() {
     run_in_tmpdir(|| {
-        // Build library with coverage instrumentation and -Z separate-spans
+        // Build library with coverage instrumentation and -Z stable-crate-hash
         rustc()
             .input("lib.rs")
             .crate_type("rlib")
             .arg("-Cinstrument-coverage")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         // Build main binary with coverage instrumentation
@@ -29,7 +29,7 @@ fn main() {
             .crate_type("bin")
             .extern_("rdr_coverage_lib", "librdr_coverage_lib.rlib")
             .arg("-Cinstrument-coverage")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         // Run the binary to generate coverage data

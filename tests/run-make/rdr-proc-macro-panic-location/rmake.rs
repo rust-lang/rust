@@ -1,5 +1,5 @@
 // Test that panic locations in proc-macro-generated code are correct
-// when using -Z separate-spans.
+// when using -Z stable-crate-hash.
 
 //@ ignore-cross-compile
 
@@ -10,14 +10,14 @@ fn main() {
         rustc()
             .input("proc_macro_lib.rs")
             .crate_type("proc-macro")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         rustc()
             .input("main.rs")
             .crate_type("bin")
             .extern_("proc_macro_lib", "libproc_macro_lib.dylib")
-            .arg("-Zseparate-spans")
+            .arg("-Zstable-crate-hash")
             .run();
 
         let output = cmd("./main").arg("derive").run_fail();

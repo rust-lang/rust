@@ -229,7 +229,7 @@ struct ImportedSourceFile {
 /// - `Some(imported)` means successfully imported
 ///
 /// Note: Import failures now indicate a bug (either corrupted metadata or
-/// the crate was compiled with `-Z separate-spans` but the `.spans` file
+/// the crate was compiled with `-Z stable-crate-hash` but the `.spans` file
 /// is missing, which should have been caught at crate load time).
 
 /// Decode context used when we just have a blob of metadata from which we have to decode a header
@@ -846,7 +846,7 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
         };
 
         // Source file should always be available - missing files are caught at crate load time
-        // for crates compiled with -Z separate-spans, and should never happen otherwise.
+        // for crates compiled with -Z stable-crate-hash, and should never happen otherwise.
         let source_file = source_file.expect("source file should be available");
 
         // Make sure our span is well-formed.
@@ -1181,8 +1181,8 @@ impl CrateRoot {
         self.target_modifiers.decode(metadata)
     }
 
-    pub(crate) fn has_separate_spans(&self) -> bool {
-        self.has_separate_spans
+    pub(crate) fn has_stable_crate_hash(&self) -> bool {
+        self.has_stable_crate_hash
     }
 }
 
@@ -1871,7 +1871,7 @@ impl<'a> CrateMetadataRef<'a> {
     /// Returns `None` if the source file index doesn't exist in the source map table
     /// (sparse table entry). This can happen when iterating through all indices.
     ///
-    /// Note: For crates compiled with `-Z separate-spans`, missing `.spans` files
+    /// Note: For crates compiled with `-Z stable-crate-hash`, missing `.spans` files
     /// are detected and errored at crate load time, before this function is called.
     fn imported_source_file(
         self,
@@ -1986,10 +1986,11 @@ impl<'a> CrateMetadataRef<'a> {
             return Some(cached.clone());
         }
 
-        let source_file_to_import = if self.root.has_separate_spans() {
-            let span_data = self.cdata.span_file_data().expect(
-                "span file should be loaded for crate compiled with -Z separate-spans",
-            );
+        let source_file_to_import = if self.root.has_stable_crate_hash() {
+            let span_data = self
+                .cdata
+                .span_file_data()
+                .expect("span file should be loaded for crate compiled with -Z stable-crate-hash");
             span_data
                 .source_map
                 .get_from_span_blob(&span_data.blob, source_file_index)
@@ -2009,7 +2010,7 @@ impl<'a> CrateMetadataRef<'a> {
         // Return None for sparse table entries. This can happen when:
         // - Searching through all source file indices (some may be empty)
         //
-        // Note: For crates compiled with -Z separate-spans, missing .spans files
+        // Note: For crates compiled with -Z stable-crate-hash, missing .spans files
         // are now detected and errored at crate load time, so that case no longer
         // reaches here.
         let Some(source_file_to_import) = source_file_to_import else {

@@ -1,4 +1,4 @@
-// Library crate for testing debuginfo with -Z separate-spans.
+// Library crate for testing debuginfo with -Z stable-crate-hash.
 // Contains functions at known line numbers for DWARF verification.
 
 #![crate_type = "rlib"]

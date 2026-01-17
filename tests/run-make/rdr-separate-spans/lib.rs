@@ -1,4 +1,4 @@
-// Test library for RDR separate-spans testing.
+// Test library for RDR stable-crate-hash testing.
 // This crate exports various items that embed spans in metadata.
 
 #![crate_name = "rdr_test_lib"]
