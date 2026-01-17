@@ -1782,6 +1782,15 @@ impl<'tcx> Pick<'tcx> {
             return;
         }
         let def_kind = self.item.as_def_kind();
+
+        // Try to get the full expression span for better suggestions.
+        // If this is a method call expression, we want to suggest replacing
+        // the entire call, not just the method name.
+        let expr_span = match tcx.hir_node(scope_expr_id) {
+            Node::Expr(expr) => expr.span,
+            _ => span,
+        };
+
         tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
             lint.primary_message(format!(
                 "{} {} with this name may be added to the standard library in the future",
@@ -1791,15 +1800,12 @@ impl<'tcx> Pick<'tcx> {
 
             match (self.item.kind, self.item.container) {
                 (ty::AssocKind::Fn { .. }, _) => {
-                    // FIXME: This should be a `span_suggestion` instead of `help`
-                    // However `self.span` only
-                    // highlights the method name, so we can't use it. Also consider reusing
-                    // the code from `report_method_error()`.
-                    lint.help(format!(
-                        "call with fully qualified syntax `{}(...)` to keep using the current \
-                             method",
-                        tcx.def_path_str(self.item.def_id),
-                    ));
+                    lint.span_suggestion(
+                        expr_span,
+                        "call with fully qualified syntax to keep using the current method",
+                        format!("{}(...)", tcx.def_path_str(self.item.def_id)),
+                        Applicability::HasPlaceholders,
+                    );
                 }
                 (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
