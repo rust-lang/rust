@@ -20,7 +20,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
     SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
@@ -101,6 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(?t);
             return t;
         }
+        tracing::debug!(?t);
 
         // If not, try resolving pending obligations as much as
         // possible. This can help substantially when there are
@@ -250,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self, expr), level = "debug")]
     pub(crate) fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
-        debug!("expr = {:#?}", expr);
+        debug!(expr = ?expr.hir_id);
 
         if adj.is_empty() {
             return;
@@ -336,6 +337,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // A reborrow has no effect before a dereference, so we can safely replace adjustments.
                         *entry.get_mut() = adj;
                     }
+                    (
+                        &mut [Adjustment { kind: Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_safety)), target: _a_ty }],
+                        &[Adjustment { kind: Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_safety)), target: _b_ty }],
+                    ) if a_safety == b_safety => {
+                        // HACK: See `std::sys::thread::unix::cgroups::quota_v1` for example of what breaks.
+                        // In brief, because we have multiple paths that can re-adjust previously coerced exprs,
+                        // these should all be calling `set_adjustments`, but `try_find_coercion_lub` doesn't
+                        // for fn ptr reification. This started coming up after adding a `coerce.complete()` call
+                        // in `check_expr_array` to maintain backwards compatibility, not really sure if this can
+                        // come up elsewhere.
+
+                        // TODO: should probably be comparing `a_ty` and `b_ty`, but I'm *assuming* that this is
+                        // "just valid". Unfortunately, a strict equality doesn't work because of potential inference in
+                        // between.
+                        *entry.get_mut() = adj;
+                    }
 
                     _ => {
                         // FIXME: currently we never try to compose autoderefs
@@ -366,7 +383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self, expr), level = "debug")]
     pub(crate) fn set_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
-        debug!("expr = {:#?}", expr);
+        debug!(expr = ?expr.hir_id);
 
         if adj.is_empty() {
             return;

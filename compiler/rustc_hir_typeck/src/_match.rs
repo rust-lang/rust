@@ -174,7 +174,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        coercion.complete(self)
+        let cause = ObligationCause::dummy();
+        //let coerce_never = self.tcx.expr_guaranteed_to_constitute_read_for_never(expr);
+        let coerce_never = true;
+        tracing::debug!("calling complete in check_expr_match");
+        coercion.complete(self, &cause, coerce_never)
     }
 
     fn explain_never_type_coerced_to_unit(

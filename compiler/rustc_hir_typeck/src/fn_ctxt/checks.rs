@@ -1192,7 +1192,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(prev_diverges);
         }
 
-        let ty = ctxt.coerce.unwrap().complete(self);
+        let cause = self.cause(
+            blk.span,
+            ObligationCauseCode::BlockTailExpression(blk.hir_id, hir::MatchSource::Normal),
+        );
+        let coerce_never = true;
+        tracing::debug!("calling complete in check_expr_block");
+        let ty = ctxt.coerce.unwrap().complete(self, &cause, coerce_never);
 
         self.write_ty(blk.hir_id, ty);
 
