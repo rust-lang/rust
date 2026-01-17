@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/18389>
 //@ check-pass
 
 use std::any::Any;
