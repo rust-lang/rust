@@ -51,6 +51,8 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
     ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("alloc/io/struct.IoSlice.html", &["#method.sort_by_key"]),
+    ("alloc/io/struct.IoSliceMut.html", &["#method.sort_by_key"]),
     ("alloc/bstr/struct.ByteStr.html", &[
         "#method.to_ascii_uppercase",
         "#method.to_ascii_lowercase",

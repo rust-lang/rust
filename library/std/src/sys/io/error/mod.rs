@@ -48,8 +48,3 @@ cfg_select! {
         pub use generic::*;
     }
 }
-
-pub type RawOsError = cfg_select! {
-    target_os = "uefi" => usize,
-    _ => i32,
-};

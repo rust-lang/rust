@@ -3,6 +3,7 @@
 //! would have no benefit.
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
+use crate::boxed::Box;
 
 type Inner = ErrorData<Box<Custom>>;
 
