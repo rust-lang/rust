@@ -1,12 +1,10 @@
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
-#[allow(rustc::direct_use_of_rustc_type_ir)]
-use rustc_infer::infer::canonical::ir::Interner;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::{mir, ty};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
@@ -19,7 +17,7 @@ use crate::interpret::Machine;
 pub(crate) fn type_implements_predicates<'tcx, M: Machine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     ty: Ty<'tcx>,
-    preds: <TyCtxt<'tcx> as Interner>::BoundExistentialPredicates,
+    preds: &ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> InterpResult<'tcx, bool> {
     ensure_monomorphic_enough(ecx.tcx.tcx, ty)?;
 
