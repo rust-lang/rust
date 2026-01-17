@@ -119,8 +119,6 @@ fn check_impl(
             .collect(),
         None => vec![],
     };
-    println!("lint_args: {:#?}", lint_args);
-
     lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {

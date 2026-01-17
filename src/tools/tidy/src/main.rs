@@ -25,7 +25,6 @@ fn main() {
     if tidy_flags.concurrency == 0 {
         panic!("concurrency should not be zero");
     }
-    println!("TidyFlags: {:#?}", tidy_flags);
 
     let concurrency = NonZeroUsize::new(tidy_flags.concurrency).unwrap();
 

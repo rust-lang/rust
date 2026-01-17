@@ -7,6 +7,9 @@ use std::sync::{Arc, Mutex};
 use clap::Parser;
 use termcolor::Color;
 
+#[cfg(test)]
+mod tests;
+
 /// CLI flags used by tidy.
 #[derive(Parser, Debug, Clone, Default)]
 #[command(version, about, long_about = None)]
@@ -17,10 +20,10 @@ pub struct TidyFlags {
     pub concurrency: usize,
     pub npm: PathBuf,
     #[arg(long)]
-    pub verbose: bool,
+    verbose: bool,
     /// Applies style and formatting changes during a tidy run.
     #[arg(long)]
-    pub bless: bool,
+    bless: bool,
     #[arg(long, value_delimiter=',', num_args=1..)]
     pub extra_checks: Option<Vec<String>>,
     #[arg(last = true)]
