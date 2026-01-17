@@ -2828,7 +2828,7 @@ fn with_encode_metadata_header(
     }
 
     let file = ecx.opaque.file();
-    if let Err(err) = encode_root_position(file, root_position) {
+    if let Err(err) = encode_root_position(file, root_position, METADATA_HEADER.len()) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
@@ -2887,21 +2887,21 @@ fn with_encode_span_header(
     }
 
     let file = ecx.opaque.file();
-    if let Err(err) = encode_root_position(file, root_position) {
+    if let Err(err) = encode_root_position(file, root_position, SPAN_HEADER.len()) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 }
 
-fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
-    // We will return to this position after writing the root position.
+fn encode_root_position(
+    mut file: &File,
+    pos: usize,
+    header_len: usize,
+) -> Result<(), std::io::Error> {
     let pos_before_seek = file.stream_position().unwrap();
 
-    // Encode the root position.
-    let header = METADATA_HEADER.len();
-    file.seek(std::io::SeekFrom::Start(header as u64))?;
+    file.seek(std::io::SeekFrom::Start(header_len as u64))?;
     file.write_all(&pos.to_le_bytes())?;
 
-    // Return to the position where we are before writing the root position.
     file.seek(std::io::SeekFrom::Start(pos_before_seek))?;
     Ok(())
 }

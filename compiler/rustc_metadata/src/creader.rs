@@ -133,7 +133,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
+            let CrateSource { dylib, rlib, rmeta, sdylib_interface, spans } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.display())?;
             }
@@ -145,6 +145,9 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             }
             if let Some(sdylib_interface) = sdylib_interface {
                 writeln!(fmt, "   sdylib interface: {}", sdylib_interface.display())?;
+            }
+            if let Some(spans) = spans {
+                writeln!(fmt, "   spans: {}", spans.display())?;
             }
         }
         Ok(())
@@ -628,22 +631,10 @@ impl CStore {
             None
         };
 
-        // Check if a separate span file exists (for crates compiled with -Z separate_spans).
-        // The span file will be loaded lazily on first span resolution.
-        // Look for .spans file adjacent to rmeta first, then rlib if rmeta is not available.
-        let span_file_path = source
-            .rmeta
-            .as_ref()
-            .or(source.rlib.as_ref())
-            .and_then(|path| {
-                let span_path = path.with_extension("spans");
-                if span_path.exists() { Some(span_path) } else { None }
-            });
-
         let has_separate_spans = crate_root.has_separate_spans();
         let crate_name = crate_root.name();
 
-        if has_separate_spans && span_file_path.is_none() {
+        if has_separate_spans && source.spans.is_none() {
             return Err(CrateError::MissingSpanFile(crate_name, "file not found".to_string()));
         }
 
@@ -652,7 +643,6 @@ impl CStore {
             self,
             metadata,
             crate_root,
-            span_file_path,
             raw_proc_macros,
             cnum,
             cnum_map,

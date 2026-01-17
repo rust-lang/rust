@@ -2197,7 +2197,6 @@ impl CrateMetadata {
         cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot,
-        span_file_path: Option<PathBuf>,
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
@@ -2220,7 +2219,7 @@ impl CrateMetadata {
 
         let mut cdata = CrateMetadata {
             blob,
-            span_file_path,
+            span_file_path: source.spans.clone(),
             span_file_data: OnceLock::new(),
             root,
             trait_impls,

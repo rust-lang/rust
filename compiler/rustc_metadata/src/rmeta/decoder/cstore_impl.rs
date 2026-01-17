@@ -21,8 +21,7 @@ use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Ident, Span, SpanRef, SpanResolver, Symbol, kw};
 
-use super::{Decodable, DecodeIterator};
-use super::TyCtxtSpanResolver;
+use super::{Decodable, DecodeIterator, TyCtxtSpanResolver};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
 use crate::rmeta::table::IsDefault;

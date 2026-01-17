@@ -543,7 +543,18 @@ impl<'a> CrateLocator<'a> {
             return Err(CrateError::FullMetadataNotFound(self.crate_name, CrateFlavor::SDylib));
         }
 
-        let source = CrateSource { rmeta, rlib, dylib, sdylib_interface };
+        // Look for .spans file adjacent to rmeta/rlib/dylib (in priority order).
+        let mut spans = None;
+        for candidate in [&rmeta, &rlib, &dylib] {
+            let Some(path) = candidate else { continue };
+            let span_path = path.with_extension("spans");
+            if span_path.exists() {
+                spans = Some(span_path);
+                break;
+            }
+        }
+
+        let source = CrateSource { rmeta, rlib, dylib, sdylib_interface, spans };
         Ok(slot.map(|(svh, metadata, _, _)| (svh, Library { source, metadata })))
     }
 

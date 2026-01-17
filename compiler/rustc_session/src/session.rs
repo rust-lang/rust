@@ -1,9 +1,9 @@
 use std::any::Any;
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, OnceLock};
-use std::sync::atomic::AtomicBool;
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -23,6 +23,7 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_hashes::Hash64;
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::{LOCAL_CRATE, StableCrateId};
