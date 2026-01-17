@@ -3,10 +3,9 @@
 //! uses of `Not` and `Neg` impls where the operand and result types don't match. In particular,
 //! when the operand is a block, setting an expected type for it means we require the block's result
 //! to coerce to that expected type.
+//@ check-pass
 
 fn main() {
     let _: i8 = -{&0i8};
-    //~^ ERROR mismatched types
     let _: i8 = !{&0i8};
-    //~^ ERROR mismatched types
 }

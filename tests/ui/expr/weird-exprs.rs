@@ -241,17 +241,17 @@ fn return_already() -> impl std::fmt::Debug {
 
 fn fake_macros() -> impl std::fmt::Debug {
     loop {
-        if! {
+        if! (
             match! (
-                break! {
-                    return! {
+                break! (
+                    return! (
                         1337
-                    }
-                }
+                    )
+                )
             )
 
             {}
-        }
+        )
 
         {}
     }

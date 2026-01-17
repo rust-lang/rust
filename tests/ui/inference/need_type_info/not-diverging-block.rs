@@ -11,6 +11,7 @@ fn if_not_diverging_block() {
     // This was previously accepted. Since the logical negation here is expected to be of type
     // `bool`, its operand was as well due to #151202, which guided inference.
     if !{ return } {}
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}
