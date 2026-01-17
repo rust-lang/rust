@@ -630,44 +630,6 @@ pub mod white_space {
 
 #[rustfmt::skip]
 pub mod conversions {
-    const INDEX_MASK: u32 = 0x400000;
-
-    pub fn to_lower(c: char) -> [char; 3] {
-        if c.is_ascii() {
-            [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
-        } else {
-            LOWERCASE_TABLE
-                .binary_search_by(|&(key, _)| key.cmp(&c))
-                .map(|i| {
-                    // SAFETY: i is the result of the binary search
-                    let u = unsafe { LOWERCASE_TABLE.get_unchecked(i) }.1;
-                    char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                        // SAFETY: Index comes from statically generated table
-                        unsafe { *LOWERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                    })
-                })
-                .unwrap_or([c, '\0', '\0'])
-        }
-    }
-
-    pub fn to_upper(c: char) -> [char; 3] {
-        if c.is_ascii() {
-            [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
-        } else {
-            UPPERCASE_TABLE
-                .binary_search_by(|&(key, _)| key.cmp(&c))
-                .map(|i| {
-                    // SAFETY: i is the result of the binary search
-                    let u = unsafe { UPPERCASE_TABLE.get_unchecked(i) }.1;
-                    char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                        // SAFETY: Index comes from statically generated table
-                        unsafe { *UPPERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                    })
-                })
-                .unwrap_or([c, '\0', '\0'])
-        }
-    }
-
     static LOWERCASE_TABLE: &[(char, u32); 1462] = &[
         ('\u{c0}', 224), ('\u{c1}', 225), ('\u{c2}', 226), ('\u{c3}', 227), ('\u{c4}', 228),
         ('\u{c5}', 229), ('\u{c6}', 230), ('\u{c7}', 231), ('\u{c8}', 232), ('\u{c9}', 233),
@@ -1028,6 +990,34 @@ pub mod conversions {
     static LOWERCASE_TABLE_MULTI: &[[char; 3]; 1] = &[
         ['i', '\u{307}', '\u{0}'],
     ];
+
+    #[inline]
+    pub fn to_lower(c: char) -> [char; 3] {
+        const {
+            let mut i = 0;
+            while i < LOWERCASE_TABLE.len() {
+                let (_, val) = LOWERCASE_TABLE[i];
+                if val & (1 << 22) == 0 {
+                    assert!(char::from_u32(val).is_some());
+                } else {
+                    let index = val & ((1 << 22) - 1);
+                    assert!((index as usize) < LOWERCASE_TABLE_MULTI.len());
+                }
+                i += 1;
+            }
+        }
+
+        // SAFETY: Just checked that the tables are valid
+        unsafe {
+            super::case_conversion(
+                c,
+                |c| c.to_ascii_lowercase(),
+                LOWERCASE_TABLE,
+                LOWERCASE_TABLE_MULTI,
+            )
+        }
+    }
+
 
     static UPPERCASE_TABLE: &[(char, u32); 1554] = &[
         ('\u{b5}', 924), ('\u{df}', 4194304), ('\u{e0}', 192), ('\u{e1}', 193), ('\u{e2}', 194),
@@ -1459,4 +1449,31 @@ pub mod conversions {
         ['\u{544}', '\u{53b}', '\u{0}'], ['\u{54e}', '\u{546}', '\u{0}'],
         ['\u{544}', '\u{53d}', '\u{0}'],
     ];
+
+    #[inline]
+    pub fn to_upper(c: char) -> [char; 3] {
+        const {
+            let mut i = 0;
+            while i < UPPERCASE_TABLE.len() {
+                let (_, val) = UPPERCASE_TABLE[i];
+                if val & (1 << 22) == 0 {
+                    assert!(char::from_u32(val).is_some());
+                } else {
+                    let index = val & ((1 << 22) - 1);
+                    assert!((index as usize) < UPPERCASE_TABLE_MULTI.len());
+                }
+                i += 1;
+            }
+        }
+
+        // SAFETY: Just checked that the tables are valid
+        unsafe {
+            super::case_conversion(
+                c,
+                |c| c.to_ascii_uppercase(),
+                UPPERCASE_TABLE,
+                UPPERCASE_TABLE_MULTI,
+            )
+        }
+    }
 }

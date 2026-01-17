@@ -128,3 +128,35 @@ pub(super) unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
     }
     offset_idx % 2 == 1
 }
+
+/// # Safety
+/// The second component of each tuple in `table` must either be:
+/// - A valid `char`
+/// - A value with the high bit (1 << 22) set, and the lower 22 bits
+///   being a valid index into `multi`.
+#[inline(always)]
+pub(super) unsafe fn case_conversion(
+    c: char,
+    ascii_fn: fn(char) -> char,
+    table: &[(char, u32)],
+    multi: &[[char; 3]],
+) -> [char; 3] {
+    const INDEX_MASK: u32 = 1 << 22;
+
+    if c.is_ascii() {
+        return [ascii_fn(c), '\0', '\0'];
+    }
+
+    let Ok(i) = table.binary_search_by(|&(key, _)| key.cmp(&c)) else {
+        return [c, '\0', '\0'];
+    };
+
+    let u = table[i].1;
+    match char::from_u32(u) {
+        Some(c) => [c, '\0', '\0'],
+        None => {
+            // SAFETY: Index comes from statically generated table
+            unsafe { *multi.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
+        }
+    }
+}

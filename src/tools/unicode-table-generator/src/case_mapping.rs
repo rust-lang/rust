@@ -8,11 +8,6 @@ const INDEX_MASK: u32 = 1 << 22;
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) {
     let mut file = String::new();
-
-    write!(file, "const INDEX_MASK: u32 = 0x{INDEX_MASK:x};").unwrap();
-    file.push_str("\n\n");
-    file.push_str(HEADER.trim_start());
-    file.push('\n');
     let (lower_tables, lower_size) = generate_tables("LOWER", &data.to_lower);
     file.push_str(&lower_tables);
     file.push_str("\n\n");
@@ -22,6 +17,11 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) 
 }
 
 fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize) {
+    let snake_case_name = case.to_lowercase();
+    let screaming_case_name = case.to_uppercase();
+    let table_name = format!("{screaming_case_name}CASE_TABLE");
+    let multi_table_name = format!("{screaming_case_name}CASE_TABLE_MULTI");
+
     let mut mappings = Vec::with_capacity(data.len());
     let mut multis = Vec::new();
 
@@ -53,8 +53,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
     size += size_of_val(mappings.as_slice());
     write!(
         tables,
-        "static {}CASE_TABLE: &[(char, u32); {}] = &[{}];",
-        case,
+        "static {table_name}: &[(char, u32); {}] = &[{}];",
         mappings.len(),
         fmt_list(mappings),
     )
@@ -65,10 +64,41 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
     size += size_of_val(multis.as_slice());
     write!(
         tables,
-        "static {}CASE_TABLE_MULTI: &[[char; 3]; {}] = &[{}];",
-        case,
+        "static {multi_table_name}: &[[char; 3]; {}] = &[{}];",
         multis.len(),
         fmt_list(multis),
+    )
+    .unwrap();
+
+    writeln!(
+        tables,
+        "\n
+#[inline]
+pub fn to_{snake_case_name}(c: char) -> [char; 3] {{
+    const {{
+        let mut i = 0;
+        while i < {table_name}.len() {{
+            let (_, val) = {table_name}[i];
+            if val & (1 << 22) == 0 {{
+                assert!(char::from_u32(val).is_some());
+            }} else {{
+                let index = val & ((1 << 22) - 1);
+                assert!((index as usize) < {multi_table_name}.len());
+            }}
+            i += 1;
+        }}
+    }}
+
+    // SAFETY: Just checked that the tables are valid
+    unsafe {{
+        super::case_conversion(
+            c,
+            |c| c.to_ascii_{snake_case_name}case(),
+            {table_name},
+            {multi_table_name},
+        )
+    }}
+}}"
     )
     .unwrap();
 
@@ -82,41 +112,3 @@ impl fmt::Debug for CharEscape {
         write!(f, "'{}'", self.0.escape_default())
     }
 }
-
-static HEADER: &str = r"
-pub fn to_lower(c: char) -> [char; 3] {
-    if c.is_ascii() {
-        [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
-    } else {
-        LOWERCASE_TABLE
-            .binary_search_by(|&(key, _)| key.cmp(&c))
-            .map(|i| {
-                // SAFETY: i is the result of the binary search
-                let u = unsafe { LOWERCASE_TABLE.get_unchecked(i) }.1;
-                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                    // SAFETY: Index comes from statically generated table
-                    unsafe { *LOWERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                })
-            })
-            .unwrap_or([c, '\0', '\0'])
-    }
-}
-
-pub fn to_upper(c: char) -> [char; 3] {
-    if c.is_ascii() {
-        [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
-    } else {
-        UPPERCASE_TABLE
-            .binary_search_by(|&(key, _)| key.cmp(&c))
-            .map(|i| {
-                // SAFETY: i is the result of the binary search
-                let u = unsafe { UPPERCASE_TABLE.get_unchecked(i) }.1;
-                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                    // SAFETY: Index comes from statically generated table
-                    unsafe { *UPPERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                })
-            })
-            .unwrap_or([c, '\0', '\0'])
-    }
-}
-";
