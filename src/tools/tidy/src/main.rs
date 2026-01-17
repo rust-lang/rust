@@ -6,11 +6,10 @@
 
 use std::collections::VecDeque;
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::str::FromStr;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
+use clap::Parser;
 use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, TidyCtx, TidyFlags, output_message};
 use tidy::*;
 
@@ -22,14 +21,16 @@ fn main() {
         env::set_var("RUSTC_BOOTSTRAP", "1");
     }
 
-    let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
-    let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
-    let output_directory: PathBuf =
-        env::args_os().nth(3).expect("need path to output directory").into();
-    let concurrency: NonZeroUsize =
-        FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
-            .expect("concurrency must be a number");
-    let npm: PathBuf = env::args_os().nth(5).expect("need name/path of npm command").into();
+    let tidy_flags = TidyFlags::parse();
+    if tidy_flags.concurrency == 0 {
+        panic!("concurrency should not be zero");
+    }
+    let concurrency = NonZeroUsize::new(tidy_flags.concurrency).unwrap();
+
+    let root_path = tidy_flags.root_path.clone();
+    let cargo = tidy_flags.cargo.clone();
+    let output_directory = tidy_flags.output_directory.clone();
+    let npm = tidy_flags.npm.clone();
 
     let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
@@ -40,17 +41,7 @@ fn main() {
     let tools_path = src_path.join("tools");
     let crashes_path = tests_path.join("crashes");
 
-    let args: Vec<String> = env::args().skip(1).collect();
-    let (cfg_args, pos_args) = match args.iter().position(|arg| arg == "--") {
-        Some(pos) => (&args[..pos], &args[pos + 1..]),
-        None => (&args[..], [].as_slice()),
-    };
-    let verbose = cfg_args.iter().any(|s| *s == "--verbose");
-    let extra_checks =
-        cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
-
-    let tidy_flags = TidyFlags::new(cfg_args);
-    let tidy_ctx = TidyCtx::new(&root_path, verbose, tidy_flags);
+    let tidy_ctx = TidyCtx::new(tidy_flags.clone());
     let ci_info = CiInfo::new(tidy_ctx.clone());
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
@@ -169,8 +160,8 @@ fn main() {
             &tools_path,
             &npm,
             &cargo,
-            extra_checks,
-            pos_args
+            tidy_flags.extra_checks.as_deref(),
+            tidy_flags.pos.as_slice()
         );
     });
 

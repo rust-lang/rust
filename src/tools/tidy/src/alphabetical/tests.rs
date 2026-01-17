@@ -1,11 +1,13 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::alphabetical::check_lines;
 use crate::diagnostics::{TidyCtx, TidyFlags};
 
 #[track_caller]
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
+    let mut tidy_flags = TidyFlags::new(&["--bless".to_owned()]);
+    tidy_flags.root_path = PathBuf::from("/");
+    let tidy_ctx = TidyCtx::new(tidy_flags);
     let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(Path::new(name), lines, &tidy_ctx, &mut check);
 
@@ -37,7 +39,9 @@ fn bless_test(before: &str, after: &str) {
     let temp_path = tempfile::Builder::new().tempfile().unwrap().into_temp_path();
     std::fs::write(&temp_path, before).unwrap();
 
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(&["--bless".to_owned()]));
+    let mut tidy_flags = TidyFlags::new(&["--bless".to_owned()]);
+    tidy_flags.root_path = PathBuf::from("/");
+    let tidy_ctx = TidyCtx::new(tidy_flags);
 
     let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(&temp_path, before, &tidy_ctx, &mut check);

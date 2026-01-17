@@ -4,13 +4,27 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use clap::Parser;
 use termcolor::Color;
 
 /// CLI flags used by tidy.
-#[derive(Clone, Default)]
+#[derive(Parser, Debug, Clone, Default)]
+#[command(version, about, long_about = None)]
 pub struct TidyFlags {
+    pub root_path: PathBuf,
+    pub cargo: PathBuf,
+    pub output_directory: PathBuf,
+    pub concurrency: usize,
+    pub npm: PathBuf,
+    #[arg(long)]
+    pub verbose: bool,
     /// Applies style and formatting changes during a tidy run.
-    bless: bool,
+    #[arg(long)]
+    pub bless: bool,
+    #[arg(long)]
+    pub extra_checks: Option<String>,
+    #[arg(last = true)]
+    pub pos: Vec<String>,
 }
 
 impl TidyFlags {
@@ -39,13 +53,13 @@ pub struct TidyCtx {
 }
 
 impl TidyCtx {
-    pub fn new(root_path: &Path, verbose: bool, tidy_flags: TidyFlags) -> Self {
+    pub fn new(tidy_flags: TidyFlags) -> Self {
         Self {
             diag_ctx: Arc::new(Mutex::new(DiagCtxInner {
                 running_checks: Default::default(),
                 finished_checks: Default::default(),
-                root_path: root_path.to_path_buf(),
-                verbose,
+                root_path: tidy_flags.root_path.to_path_buf(),
+                verbose: tidy_flags.verbose,
             })),
             tidy_flags,
         }
@@ -183,7 +197,7 @@ impl RunningCheck {
     /// Useful if you want to run some functions from tidy without configuring
     /// diagnostics.
     pub fn new_noop() -> Self {
-        let ctx = TidyCtx::new(Path::new(""), false, TidyFlags::default());
+        let ctx = TidyCtx::new(TidyFlags::default());
         ctx.start_check("noop")
     }
 
