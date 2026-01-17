@@ -515,8 +515,11 @@ fn save_as_intervals<'tcx>(
     let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
     let append_at =
         |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, twostep| {
-            for (relevant, &original) in relevant.original.iter_enumerated() {
-                if state.contains(original) {
+            // Optimization: Iterate through set bits in state instead of all relevant locals.
+            // This changes the complexity from O(relevant_locals) to O(live_locals) per location.
+            // For functions with many locals but few live at any point, this is a significant win.
+            for local in state.iter() {
+                if let Some(&relevant) = relevant.shrink.get(local) {
                     values.append(relevant, twostep);
                 }
             }

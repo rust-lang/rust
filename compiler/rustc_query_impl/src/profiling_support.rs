@@ -11,11 +11,28 @@ use rustc_query_system::query::QueryCache;
 
 pub(crate) struct QueryKeyStringCache {
     def_id_cache: FxHashMap<DefId, StringId>,
+    /// Tracks which query types have already had their invocation IDs mapped.
+    /// When query_key_recording is disabled, we only need to map each query type once,
+    /// not on every call to `alloc_self_profile_query_strings_for_query_cache`.
+    mapped_query_types: FxHashMap<StringId, ()>,
 }
 
 impl QueryKeyStringCache {
     fn new() -> QueryKeyStringCache {
-        QueryKeyStringCache { def_id_cache: Default::default() }
+        QueryKeyStringCache {
+            def_id_cache: Default::default(),
+            mapped_query_types: Default::default(),
+        }
+    }
+
+    /// Checks if a query type has already been mapped (when query_key_recording is disabled)
+    fn is_query_type_mapped(&self, query_name: StringId) -> bool {
+        self.mapped_query_types.contains_key(&query_name)
+    }
+
+    /// Marks a query type as having been mapped
+    fn mark_query_type_mapped(&mut self, query_name: StringId) {
+        self.mapped_query_types.insert(query_name, ());
     }
 }
 
@@ -227,15 +244,23 @@ pub(crate) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             // FIXME(eddyb) make this O(1) by using a pre-cached query name `EventId`,
             // instead of passing the `DepNodeIndex` to `finish_with_query_invocation_id`,
             // when recording the event in the first place.
-            let mut query_invocation_ids = Vec::new();
-            query_cache.iter(&mut |_, _, i| {
-                query_invocation_ids.push(i.into());
-            });
 
-            profiler.bulk_map_query_invocation_id_to_single_string(
-                query_invocation_ids.into_iter(),
-                event_id,
-            );
+            // Optimization: Skip iteration if this query type has already been mapped.
+            // This avoids re-iterating through the cache for the same query type.
+            if !string_cache.is_query_type_mapped(query_name) {
+                let mut query_invocation_ids = Vec::new();
+                query_cache.iter(&mut |_, _, i| {
+                    query_invocation_ids.push(i.into());
+                });
+
+                profiler.bulk_map_query_invocation_id_to_single_string(
+                    query_invocation_ids.into_iter(),
+                    event_id,
+                );
+
+                // Mark this query type as mapped to avoid future iterations
+                string_cache.mark_query_type_mapped(query_name);
+            }
         }
     });
 }

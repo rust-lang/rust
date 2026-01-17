@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zread__read_file",
+      "mcp__web-reader__webReader",
+      "mcp__zread__search_doc",
+      "mcp__web-search-prime__webSearchPrime",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(./x.py fmt:*)",
+      "Bash(./build/host/rustc/bin/rustfmt:*)",
+      "Bash(git add:*)",
+      "Bash(./x.py build:*)",
+      "Bash(cargo check:*)",
+      "Bash(RUSTC_BOOTSTRAP=1 cargo check:*)"
+    ]
+  }
+}
