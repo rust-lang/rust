@@ -3,6 +3,7 @@
 //! would have no benefit.
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
+use crate::boxed::Box;
 
 type Inner = ErrorData<Box<Custom>>;
 
@@ -13,6 +14,7 @@ impl Repr {
     pub(super) fn new_custom(b: Box<Custom>) -> Self {
         Self(Inner::Custom(b))
     }
+    #[allow(dead_code)]
     #[inline]
     pub(super) fn new_os(code: RawOsError) -> Self {
         Self(Inner::Os(code))
