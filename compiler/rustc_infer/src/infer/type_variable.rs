@@ -160,6 +160,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Records that `a == b`.
     ///
     /// Precondition: neither `a` nor `b` are known.
+    #[tracing::instrument(skip(self))]
     pub(crate) fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
@@ -180,6 +181,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Instantiates `vid` with the type `ty`.
     ///
     /// Precondition: `vid` must not have been previously instantiated.
+    #[tracing::instrument(skip(self))]
     pub(crate) fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
         debug_assert!(!ty.is_ty_var(), "instantiating ty var with var: {vid:?} {ty:?}");
