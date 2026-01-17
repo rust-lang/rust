@@ -5,16 +5,19 @@ use std::hash::Hash;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::{Pointer, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
+use rustc_middle::ty::{self, PolyExistentialPredicate, Ty, TyCtxt};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
+use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use super::error::*;
@@ -584,6 +587,51 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
                 }
+            }
+
+            sym::type_id_is_trait => {
+                let kind = ecx.read_type_id(&args[0])?.kind();
+                let is_trait = matches!(kind, ty::Dynamic(..));
+                ecx.write_scalar(Scalar::from_bool(is_trait), dest)?;
+            }
+
+            sym::type_id_implements_trait => {
+                let type_from_type_id = ecx.read_type_id(&args[0])?;
+                let trait_from_type_id = ecx.read_type_id(&args[1])?;
+
+                // TODO: Not quite sure how best to get this into scope... I'm not actually sure what it is meant to do. Please inform me.
+                // ensure_monomorphic_enough(tcx, result_ty)?;
+
+                let ty::Dynamic(predicates, _) = trait_from_type_id.kind() else {
+                    span_bug!(
+                        ecx.find_closest_untracked_caller_location(),
+                        "Invalid type provided to type_id_implements_trait. The second parameter must represent a dyn Trait, instead you gave us {trait_from_type_id}."
+                    );
+                };
+
+                let (infcx, param_env) =
+                    ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env());
+
+                let ocx = ObligationCtxt::new(&infcx);
+                ocx.register_obligations(predicates.iter().map(
+                    |predicate: PolyExistentialPredicate<'_>| {
+                        let predicate = predicate.with_self_ty(ecx.tcx.tcx, type_from_type_id);
+                        // Lifetimes can only be 'static because of the bound on T
+                        let predicate = ty::fold_regions(ecx.tcx.tcx, predicate, |r, _| {
+                            if r == ecx.tcx.tcx.lifetimes.re_erased {
+                                ecx.tcx.tcx.lifetimes.re_static
+                            } else {
+                                r
+                            }
+                        });
+                        Obligation::new(ecx.tcx.tcx, ObligationCause::dummy(), param_env, predicate)
+                    },
+                ));
+                let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+                // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
+                let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
+
+                ecx.write_scalar(Scalar::from_bool(type_impls_trait && regions_are_valid), dest)?;
             }
 
             sym::type_of => {

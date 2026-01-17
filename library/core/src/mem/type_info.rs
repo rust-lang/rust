@@ -2,7 +2,8 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::intrinsics::type_of;
+use crate::intrinsics::{type_id_implements_trait, type_id_is_trait, type_of};
+use crate::ptr;
 
 /// Compile-time type information.
 #[derive(Debug)]
@@ -23,6 +24,30 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn info(self) -> Type {
         type_of(self)
+    }
+
+    /// Checks if the type represented by the `TypeId` implements the trait.
+    /// It can only be called at compile time.
+    pub const fn implements_trait<
+        T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static,
+    >(
+        self,
+    ) -> bool {
+        type_id_implements_trait(self, TypeId::of::<T>())
+    }
+
+    /// Checks if the type represented by the `TypeId` implements the trait represented by the secondary `TypeId`.
+    /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
+    /// It can only be called at compile time.
+    pub const fn implements_trait_represented_by_type_id(
+        self,
+        trait_represented_by_type_id: Self,
+    ) -> Option<bool> {
+        if type_id_is_trait(trait_represented_by_type_id) {
+            Some(type_id_implements_trait(self, trait_represented_by_type_id))
+        } else {
+            None
+        }
     }
 }
 
