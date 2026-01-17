@@ -1261,6 +1261,9 @@ pub fn rustc_cargo(
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
+    // On Apple, Enzyme can hang if rustc and Enzyme each embed their own LLVM.
+    // Export LLVM symbols from rustc_driver so Enzyme reuses rustc's LLVM.
+    // Related: https://github.com/rust-lang/enzyme/pull/31
     if builder.config.llvm_enzyme && target.contains("apple") && build_compiler.stage != 0 {
         cargo.rustflag("-Zexport-llvm-symbols");
     }

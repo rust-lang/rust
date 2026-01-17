@@ -796,6 +796,9 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
 
+        // On Apple, exporting LLVM symbols from rustc_driver allows the Enzyme
+        // submodule to find LLVM in rustc.
+        // Related: https://github.com/rust-lang/enzyme/pull/31
         if crate_type == CrateType::Dylib
             && self.sess.target.is_like_darwin
             && self.sess.opts.unstable_opts.export_llvm_symbols
