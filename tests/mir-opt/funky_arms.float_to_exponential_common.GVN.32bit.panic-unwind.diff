@@ -29,10 +29,11 @@
                   debug precision => _8;
                   let _8: usize;
                   scope 5 (inlined Formatter::<'_>::precision) {
-                      let mut _22: u32;
+                      let mut _22: bool;
                       let mut _23: u32;
-                      let mut _24: usize;
-                      let mut _25: u16;
+                      let mut _24: u32;
+                      let mut _25: usize;
+                      let mut _26: u16;
                   }
               }
           }
@@ -71,10 +72,12 @@
           StorageLive(_6);
           StorageLive(_22);
           StorageLive(_23);
-          _23 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
-          _22 = BitAnd(move _23, const core::fmt::flags::PRECISION_FLAG);
-          StorageDead(_23);
-          switchInt(move _22) -> [0: bb10, otherwise: bb11];
+          StorageLive(_24);
+          _24 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
+          _23 = BitAnd(move _24, const core::fmt::flags::PRECISION_FLAG);
+          StorageDead(_24);
+          _22 = Eq(move _23, const 0_u32);
+          switchInt(move _22) -> [0: bb10, otherwise: bb9];
       }
   
       bb4: {
@@ -142,26 +145,27 @@
       }
   
       bb9: {
-          _7 = discriminant(_6);
-          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb12];
+          StorageDead(_23);
+          _6 = const Option::<usize>::None;
+          goto -> bb11;
       }
   
       bb10: {
-          StorageDead(_22);
-          _6 = const Option::<usize>::None;
-          goto -> bb9;
+          StorageDead(_23);
+          StorageLive(_25);
+          StorageLive(_26);
+          _26 = copy (((*_1).0: std::fmt::FormattingOptions).2: u16);
+          _25 = move _26 as usize (IntToInt);
+          StorageDead(_26);
+          _6 = Option::<usize>::Some(move _25);
+          StorageDead(_25);
+          goto -> bb11;
       }
   
       bb11: {
           StorageDead(_22);
-          StorageLive(_24);
-          StorageLive(_25);
-          _25 = copy (((*_1).0: std::fmt::FormattingOptions).2: u16);
-          _24 = move _25 as usize (IntToInt);
-          StorageDead(_25);
-          _6 = Option::<usize>::Some(move _24);
-          StorageDead(_24);
-          goto -> bb9;
+          _7 = discriminant(_6);
+          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb12];
       }
   
       bb12: {

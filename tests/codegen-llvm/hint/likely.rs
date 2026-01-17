@@ -70,7 +70,7 @@ pub fn test4(x: u64) {
     }
 
     // CHECK-LABEL: @test4(
-    // CHECK: br i1 %0, label %bb3, label %bb2, !prof ![[NUM2:[0-9]+]]
+    // CHECK: br i1 %_2.not, label %bb3, label %bb2, !prof ![[NUM2:[0-9]+]]
     // CHECK: bb3:
     // CHECK: path_a
     // CHECK: bb2:
