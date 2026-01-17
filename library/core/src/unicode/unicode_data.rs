@@ -137,16 +137,17 @@ pub mod alphabetic {
         (c as u32) >= 0xaa && lookup_slow(c)
     }
 
+    const _: () = {
+        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+        let mut i = 0;
+        while i < SHORT_OFFSET_RUNS.len() {
+            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+            i += 1;
+        }
+    };
+
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
         // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
         // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
         unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
@@ -237,16 +238,17 @@ pub mod case_ignorable {
         (c as u32) >= 0xa8 && lookup_slow(c)
     }
 
+    const _: () = {
+        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+        let mut i = 0;
+        while i < SHORT_OFFSET_RUNS.len() {
+            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+            i += 1;
+        }
+    };
+
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
         // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
         // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
         unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
@@ -301,16 +303,17 @@ pub mod cased {
         (c as u32) >= 0xaa && lookup_slow(c)
     }
 
+    const _: () = {
+        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+        let mut i = 0;
+        while i < SHORT_OFFSET_RUNS.len() {
+            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+            i += 1;
+        }
+    };
+
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
         // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
         // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
         unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
@@ -392,16 +395,17 @@ pub mod grapheme_extend {
         (c as u32) >= 0x300 && lookup_slow(c)
     }
 
+    const _: () = {
+        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+        let mut i = 0;
+        while i < SHORT_OFFSET_RUNS.len() {
+            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+            i += 1;
+        }
+    };
+
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
         // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
         // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
         unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
@@ -605,16 +609,17 @@ pub mod n {
         (c as u32) >= 0xb2 && lookup_slow(c)
     }
 
+    const _: () = {
+        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+        let mut i = 0;
+        while i < SHORT_OFFSET_RUNS.len() {
+            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+            i += 1;
+        }
+    };
+
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
         // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
         // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
         unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
@@ -1161,22 +1166,22 @@ pub mod conversions {
         ['\u{69}', '\u{307}', '\u{0}'],
     ];
 
+    const _: () = {
+        let mut i = 0;
+        while i < LOWERCASE_TABLE.len() {
+            let (_, val) = LOWERCASE_TABLE[i];
+            if val & (1 << 22) == 0 {
+                assert!(char::from_u32(val).is_some());
+            } else {
+                let index = val & ((1 << 22) - 1);
+                assert!((index as usize) < LOWERCASE_TABLE_MULTI.len());
+            }
+            i += 1;
+        }
+    };
+
     #[inline]
     pub fn to_lower(c: char) -> [char; 3] {
-        const {
-            let mut i = 0;
-            while i < LOWERCASE_TABLE.len() {
-                let (_, val) = LOWERCASE_TABLE[i];
-                if val & (1 << 22) == 0 {
-                    assert!(char::from_u32(val).is_some());
-                } else {
-                    let index = val & ((1 << 22) - 1);
-                    assert!((index as usize) < LOWERCASE_TABLE_MULTI.len());
-                }
-                i += 1;
-            }
-        }
-
         // SAFETY: Just checked that the tables are valid
         unsafe {
             super::case_conversion(
@@ -1666,22 +1671,22 @@ pub mod conversions {
         ['\u{544}', '\u{53d}', '\u{0}'],
     ];
 
+    const _: () = {
+        let mut i = 0;
+        while i < UPPERCASE_TABLE.len() {
+            let (_, val) = UPPERCASE_TABLE[i];
+            if val & (1 << 22) == 0 {
+                assert!(char::from_u32(val).is_some());
+            } else {
+                let index = val & ((1 << 22) - 1);
+                assert!((index as usize) < UPPERCASE_TABLE_MULTI.len());
+            }
+            i += 1;
+        }
+    };
+
     #[inline]
     pub fn to_upper(c: char) -> [char; 3] {
-        const {
-            let mut i = 0;
-            while i < UPPERCASE_TABLE.len() {
-                let (_, val) = UPPERCASE_TABLE[i];
-                if val & (1 << 22) == 0 {
-                    assert!(char::from_u32(val).is_some());
-                } else {
-                    let index = val & ((1 << 22) - 1);
-                    assert!((index as usize) < UPPERCASE_TABLE_MULTI.len());
-                }
-                i += 1;
-            }
-        }
-
         // SAFETY: Just checked that the tables are valid
         unsafe {
             super::case_conversion(

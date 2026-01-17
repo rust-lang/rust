@@ -56,22 +56,22 @@ static {table_name}: &[(char, u32); {mappings_len}] = &[{mappings}];
 #[rustfmt::skip]
 static {multi_table_name}: &[[char; 3]; {multis_len}] = &[{multis}];
 
+const _: () = {{
+    let mut i = 0;
+    while i < {table_name}.len() {{
+        let (_, val) = {table_name}[i];
+        if val & (1 << 22) == 0 {{
+            assert!(char::from_u32(val).is_some());
+        }} else {{
+            let index = val & ((1 << 22) - 1);
+            assert!((index as usize) < {multi_table_name}.len());
+        }}
+        i += 1;
+    }}
+}};
+
 #[inline]
 pub fn to_{snake_case_name}(c: char) -> [char; 3] {{
-    const {{
-        let mut i = 0;
-        while i < {table_name}.len() {{
-            let (_, val) = {table_name}[i];
-            if val & (1 << 22) == 0 {{
-                assert!(char::from_u32(val).is_some());
-            }} else {{
-                let index = val & ((1 << 22) - 1);
-                assert!((index as usize) < {multi_table_name}.len());
-            }}
-            i += 1;
-        }}
-    }}
-
     // SAFETY: Just checked that the tables are valid
     unsafe {{
         super::case_conversion(

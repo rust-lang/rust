@@ -91,16 +91,17 @@ impl RawEmitter {
                 (c as u32) >= {first_code_point:#04x} && lookup_slow(c)
             }}
 
+            const _: () = {{
+                assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+                let mut i = 0;
+                while i < SHORT_OFFSET_RUNS.len() {{
+                    assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                    i += 1;
+                }}
+            }};
+
             #[inline(never)]
             fn lookup_slow(c: char) -> bool {{
-                const {{
-                    assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-                    let mut i = 0;
-                    while i < SHORT_OFFSET_RUNS.len() {{
-                        assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                        i += 1;
-                    }}
-                }}
                 // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
                 // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
                 unsafe {{ super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }}
