@@ -283,13 +283,6 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vfenezfs"] fn vfenezfs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
 }
 
-impl_neg! { i8x16 : 0 }
-impl_neg! { i16x8 : 0 }
-impl_neg! { i32x4 : 0 }
-impl_neg! { i64x2 : 0 }
-impl_neg! { f32x4 : 0f32 }
-impl_neg! { f64x2 : 0f64 }
-
 #[repr(simd)]
 struct ShuffleMask<const N: usize>([u32; N]);
 
@@ -436,6 +429,43 @@ enum FindImm {
 #[macro_use]
 mod sealed {
     use super::*;
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorNeg {
+        unsafe fn vec_neg(self) -> Self;
+    }
+
+    macro_rules! impl_neg {
+        ($($v:ty)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorNeg for $v {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_neg(self) -> Self {
+                        simd_neg(self)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_neg! {
+        vector_signed_char
+        vector_unsigned_char
+
+        vector_signed_short
+        vector_unsigned_short
+
+        vector_signed_int
+        vector_unsigned_int
+
+        vector_signed_long_long
+        vector_unsigned_long_long
+
+        vector_float
+        vector_double
+    }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorAdd<Other> {
@@ -759,7 +789,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "vector")]
             unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
-                v.vec_max(-v)
+                v.vec_max(simd_neg(v))
             }
 
             impl_vec_trait! { [VectorAbs vec_abs] $name (s_t_l!($ty)) }
@@ -4051,6 +4081,14 @@ mod sealed {
 #[cfg_attr(test, assert_instr(lcbb, BLOCK_BOUNDARY = 512))]
 unsafe fn __lcbb<const BLOCK_BOUNDARY: u16>(ptr: *const u8) -> u32 {
     lcbb(ptr, const { validate_block_boundary(BLOCK_BOUNDARY) })
+}
+
+/// Vector Negate
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_neg<T: sealed::VectorNeg>(a: T) -> T {
+    a.vec_neg()
 }
 
 /// Vector Add

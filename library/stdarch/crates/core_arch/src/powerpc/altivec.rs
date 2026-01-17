@@ -364,14 +364,45 @@ unsafe extern "C" {
     fn vrfin(a: vector_float) -> vector_float;
 }
 
-impl_neg! { i8x16 : 0 }
-impl_neg! { i16x8 : 0 }
-impl_neg! { i32x4 : 0 }
-impl_neg! { f32x4 : 0f32 }
-
 #[macro_use]
 mod sealed {
     use super::*;
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorNeg {
+        unsafe fn vec_neg(self) -> Self;
+    }
+
+    macro_rules! impl_neg {
+        ($($v:ty)*) => {
+            $(
+                #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+                impl VectorNeg for $v {
+                    #[inline]
+                    #[target_feature(enable = "altivec")]
+                    unsafe fn vec_neg(self) -> Self {
+                        simd_neg(self)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_neg! {
+        vector_signed_char
+        vector_unsigned_char
+        vector_bool_char
+
+        vector_signed_short
+        vector_unsigned_short
+        vector_bool_short
+
+        vector_signed_int
+        vector_unsigned_int
+        vector_bool_int
+
+        vector_float
+    }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorInsert {
@@ -1378,7 +1409,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
-                v.vec_max(-v)
+                v.vec_max(simd_neg(v))
             }
 
             impl_vec_trait! { [VectorAbs vec_abs] $name (s_t_l!($ty)) }
@@ -4028,6 +4059,14 @@ where
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_mfvscr() -> vector_unsigned_short {
     mfvscr()
+}
+
+/// Vector Negate
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_neg<T: sealed::VectorNeg>(a: T) -> T {
+    a.vec_neg()
 }
 
 /// Vector add.
