@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn try_find_coercion_lub(
         &self,
         cause: &ObligationCause<'tcx>,
-        exprs: &[&'tcx hir::Expr<'tcx>],
+        exprs: &[(&'tcx hir::Expr<'tcx>, Ty<'tcx>)],
         prev_ty: Ty<'tcx>,
         new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
-            for expr in exprs.iter() {
+            for (expr, _expr_ty) in exprs.iter() {
                 self.apply_adjustments(
                     expr,
                     vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
@@ -1481,8 +1481,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 new_ty, prev_ty, target
             );
         } else {
-            for expr in exprs {
-                self.apply_adjustments(expr, adjustments.clone());
+            for (expr, expr_ty) in exprs {
+                let ok = self.commit_if_ok(|_| coerce.coerce(*expr_ty, new_ty))?;
+                let (adj, _) = self.register_infer_ok_obligations(ok);
+                debug!(?expr_ty, ?new_ty);
+                self.set_adjustments(*expr, adj);
             }
             debug!(
                 "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
@@ -1575,7 +1578,7 @@ pub fn can_coerce<'tcx>(
 pub(crate) struct CoerceMany<'tcx> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
-    expressions: Vec<&'tcx hir::Expr<'tcx>>,
+    expressions: Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
 }
 
 impl<'tcx> CoerceMany<'tcx> {
@@ -1754,7 +1757,7 @@ impl<'tcx> CoerceMany<'tcx> {
             Ok(v) => {
                 self.final_ty = Some(v);
                 if let Some(e) = expression {
-                    self.expressions.push(e);
+                    self.expressions.push((e, expression_ty));
                 }
             }
             Err(coercion_error) => {
