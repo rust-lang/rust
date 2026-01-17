@@ -8,7 +8,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _11: ();
+            let mut _9: bool;
+            let _12: ();
             scope 3 {
                 let _8: std::ptr::alignment::AlignmentEnum;
                 scope 4 {
@@ -25,13 +26,13 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         }
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                        let mut _9: *mut u8;
+                        let mut _10: *mut u8;
                         scope 19 (inlined Layout::size) {
                         }
                         scope 20 (inlined NonNull::<u8>::as_ptr) {
                         }
                         scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
+                            let mut _11: usize;
                             scope 22 (inlined Layout::size) {
                             }
                             scope 23 (inlined Layout::align) {
@@ -80,20 +81,21 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_4);
-        switchInt(copy _5) -> [0: bb4, otherwise: bb2];
+        _9 = Ne(copy _5, const 0_usize);
+        switchInt(copy _9) -> [0: bb4, otherwise: bb2];
     }
 
     bb2: {
-        StorageLive(_9);
-        _9 = copy _3 as *mut u8 (PtrToPtr);
         StorageLive(_10);
-        _10 = discriminant(_8);
-        _11 = alloc::alloc::__rust_dealloc(move _9, move _5, move _10) -> [return: bb3, unwind unreachable];
+        _10 = copy _3 as *mut u8 (PtrToPtr);
+        StorageLive(_11);
+        _11 = discriminant(_8);
+        _12 = alloc::alloc::__rust_dealloc(move _10, move _5, move _11) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
+        StorageDead(_11);
         StorageDead(_10);
-        StorageDead(_9);
         goto -> bb4;
     }
 
