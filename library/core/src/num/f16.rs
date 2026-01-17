@@ -443,15 +443,12 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
-    /// # }
     /// ```
     #[inline]
     #[must_use]
@@ -472,15 +469,12 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
-    /// # }
     /// ```
     #[inline]
     #[must_use]
@@ -965,12 +959,9 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let bytes = 12.5f16.to_be_bytes();
     /// assert_eq!(bytes, [0x4a, 0x40]);
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -989,12 +980,9 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let bytes = 12.5f16.to_le_bytes();
     /// assert_eq!(bytes, [0x40, 0x4a]);
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -1019,8 +1007,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let bytes = 12.5f16.to_ne_bytes();
     /// assert_eq!(
@@ -1031,7 +1017,6 @@ impl f16 {
     ///         [0x40, 0x4a]
     ///     }
     /// );
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
