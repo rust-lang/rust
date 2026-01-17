@@ -658,3 +658,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
         Some(AttributeKind::Linkage(linkage, cx.attr_span))
     }
 }
+
+pub(crate) struct NeedsAllocatorParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
+    const PATH: &[Symbol] = &[sym::needs_allocator];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
+}

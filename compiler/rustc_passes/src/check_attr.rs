@@ -315,6 +315,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::NeedsAllocator
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -346,7 +347,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::prelude_import
                             | sym::panic_handler
                             | sym::lang
-                            | sym::needs_allocator
                             | sym::default_lib_allocator
                             | sym::rustc_diagnostic_item
                             | sym::rustc_no_mir_inline
