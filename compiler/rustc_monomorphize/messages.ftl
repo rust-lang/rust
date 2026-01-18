@@ -62,7 +62,7 @@ monomorphize_encountered_error_while_instantiating_global_asm =
 monomorphize_large_assignments =
     moving {$size} bytes
     .label = value moved from here
-    .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+    .note = the current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 monomorphize_no_optimized_mir =
     missing optimized MIR for `{$instance}` in the crate `{$crate_name}`
