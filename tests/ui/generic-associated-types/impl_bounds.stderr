@@ -29,13 +29,10 @@ LL |     type C = String where Self: Copy;
    |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
-  --> $DIR/impl_bounds.rs:10:10
+  --> $DIR/impl_bounds.rs:11:8
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
-   |          |
-   |          unsatisfied trait bound introduced in this `derive` macro
-   |          in this derive macro expansion
+   |          ---- in this derive macro expansion
 LL | struct Fooy<T>(T);
    |        ^^^^ - would need to be `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
@@ -59,13 +56,10 @@ LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
-  --> $DIR/impl_bounds.rs:10:10
+  --> $DIR/impl_bounds.rs:11:8
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
-   |          |
-   |          unsatisfied trait bound introduced in this `derive` macro
-   |          in this derive macro expansion
+   |          ---- in this derive macro expansion
 LL | struct Fooy<T>(T);
    |        ^^^^ - would need to be `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds

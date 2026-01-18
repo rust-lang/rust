@@ -3581,7 +3581,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ..
                     })) => {
                         let mut spans = Vec::with_capacity(2);
-                        if let Some(of_trait) = of_trait {
+                        if let Some(of_trait) = of_trait
+                            && !of_trait.trait_ref.path.span.in_derive_expansion()
+                        {
                             spans.push(of_trait.trait_ref.path.span);
                         }
                         spans.push(self_ty.span);
@@ -3596,17 +3598,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ) {
                             derived = true;
                             spans.push_span_label(
-                                data.span.ctxt().outer_expn_data().call_site,
-                                format!(
-                                    "unsatisfied trait bound introduced in this `derive` macro"
-                                ),
-                            );
-                            spans.push_span_label(
                                 data.span,
                                 if data.span.in_derive_expansion() {
                                     format!("would need to be `{trait_name}`")
                                 } else {
-                                    format!("")
+                                    format!("unsatisfied trait bound")
                                 },
                             );
                         } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {

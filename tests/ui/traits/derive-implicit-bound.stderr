@@ -8,13 +8,10 @@ LL |     accept_eq(&node);
    |
    = help: the trait `PartialEq` is not implemented for `SomeNode`
 note: required for `Id<SomeNode>` to implement `PartialEq`
-  --> $DIR/derive-implicit-bound.rs:5:10
+  --> $DIR/derive-implicit-bound.rs:6:12
    |
 LL | #[derive(PartialEq, Eq)]
-   |          ^^^^^^^^^
-   |          |
-   |          unsatisfied trait bound introduced in this `derive` macro
-   |          in this derive macro expansion
+   |          --------- in this derive macro expansion
 LL | pub struct Id<T>(PhantomData<T>);
    |            ^^ - would need to be `PartialEq`
    = help: consider manually implementing `PartialEq` to avoid undesired bounds

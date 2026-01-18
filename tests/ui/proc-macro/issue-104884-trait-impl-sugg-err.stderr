@@ -37,13 +37,10 @@ LL | #[derive(PartialOrd, AddImpl)]
    |                      ^^^^^^^ no implementation for `T < T` and `T > T`
    |
 note: required for `PriorityQueue<T>` to implement `PartialOrd`
-  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:19:8
    |
 LL | #[derive(PartialOrd, AddImpl)]
-   |          ^^^^^^^^^^
-   |          |
-   |          unsatisfied trait bound introduced in this `derive` macro
-   |          in this derive macro expansion
+   |          ---------- in this derive macro expansion
 ...
 LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
    |        ^^^^^^^^^^^^^ - would need to be `PartialOrd`

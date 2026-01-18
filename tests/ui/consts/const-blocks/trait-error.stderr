@@ -5,13 +5,10 @@ LL |     [Foo(String::new()); 4];
    |      ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
 note: required for `Foo<String>` to implement `Copy`
-  --> $DIR/trait-error.rs:1:10
+  --> $DIR/trait-error.rs:2:8
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
-   |          |
-   |          unsatisfied trait bound introduced in this `derive` macro
-   |          in this derive macro expansion
+   |          ---- in this derive macro expansion
 LL | struct Foo<T>(T);
    |        ^^^ - would need to be `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
