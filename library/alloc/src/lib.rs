@@ -115,6 +115,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
+#![feature(drop_guard)]
 #![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
@@ -213,6 +214,8 @@
 #[macro_use]
 mod macros;
 
+#[cfg(not(no_rc))]
+mod raw_rc;
 mod raw_vec;
 
 // Heaps provided for low-level allocation strategies
