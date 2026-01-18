@@ -19,3 +19,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDeallocatorParser {
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDeallocator;
 }
+
+pub(crate) struct RustcReallocatorParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcReallocatorParser {
+    const PATH: &[Symbol] = &[sym::rustc_reallocator];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcReallocator;
+}

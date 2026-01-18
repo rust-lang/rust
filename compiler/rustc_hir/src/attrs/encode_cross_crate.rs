@@ -121,6 +121,7 @@ impl AttributeKind {
             RustcNoImplicitAutorefs => Yes,
             RustcObjectLifetimeDefault => No,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
+            RustcReallocator => No,
             RustcScalableVector { .. } => Yes,
             RustcShouldNotBeCalledOnConstItems(..) => Yes,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate

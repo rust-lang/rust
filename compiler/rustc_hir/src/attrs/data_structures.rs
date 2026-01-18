@@ -978,6 +978,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
+    /// Represents `#[rustc_reallocator]`
+    RustcReallocator,
+
     /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {
         /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`

@@ -64,7 +64,9 @@ use crate::attributes::proc_macro_attrs::{
 };
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
-use crate::attributes::rustc_allocator::{RustcAllocatorParser, RustcDeallocatorParser};
+use crate::attributes::rustc_allocator::{
+    RustcAllocatorParser, RustcDeallocatorParser, RustcReallocatorParser,
+};
 use crate::attributes::rustc_dump::{
     RustcDumpDefParents, RustcDumpItemBounds, RustcDumpPredicates, RustcDumpUserArgs,
     RustcDumpVtable,
@@ -291,6 +293,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNeverReturnsNullPointerParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
+        Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,

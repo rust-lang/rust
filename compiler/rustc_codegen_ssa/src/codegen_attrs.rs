@@ -341,6 +341,9 @@ fn process_builtin_attrs(
                 AttributeKind::RustcDeallocator => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR
                 }
+                AttributeKind::RustcReallocator => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR
+                }
                 _ => {}
             }
         }
@@ -351,7 +354,6 @@ fn process_builtin_attrs(
 
         match name {
             sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
-            sym::rustc_reallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR,
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
