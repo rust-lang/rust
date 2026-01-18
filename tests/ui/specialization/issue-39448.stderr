@@ -14,7 +14,7 @@ error[E0391]: cycle detected when computing whether impls specialize one another
 LL | impl<T: A, U: A + FromA<T>> FromA<T> for U {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which requires evaluating trait selection obligation `u16: FromA<u8>`...
+   = note: ...which requires evaluating trait selection obligation `u16: FromA`...
    = note: ...which again requires computing whether impls specialize one another, completing the cycle
 note: cycle used when building specialization graph of trait `FromA`
   --> $DIR/issue-39448.rs:20:1

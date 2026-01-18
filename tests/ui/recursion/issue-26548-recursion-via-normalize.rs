@@ -1,9 +1,9 @@
-//~ ERROR cycle detected when computing layout of `core::option::Option<S>`
+//~ ERROR cycle detected when computing layout of `core::option::Option`
 //~| NOTE see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 //~| NOTE ...which requires computing layout of `S`...
-//~| NOTE ...which requires computing layout of `core::option::Option<<S as Mirror>::It>`...
-//~| NOTE ...which again requires computing layout of `core::option::Option<S>`, completing the cycle
-//~| NOTE cycle used when computing layout of `core::option::Option<<S as Mirror>::It>`
+//~| NOTE ...which requires computing layout of `core::option::Option`...
+//~| NOTE ...which again requires computing layout of `core::option::Option`, completing the cycle
+//~| NOTE cycle used when computing layout of `core::option::Option`
 
 trait Mirror {
     type It: ?Sized;

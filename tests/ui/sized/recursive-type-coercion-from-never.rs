@@ -1,5 +1,5 @@
 //@ build-fail
-//~^ ERROR cycle detected when computing layout of `Foo<()>`
+//~^ ERROR cycle detected when computing layout of `Foo`
 
 // Regression test for a stack overflow: https://github.com/rust-lang/rust/issues/113197
 

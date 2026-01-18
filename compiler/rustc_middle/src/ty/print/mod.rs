@@ -157,7 +157,9 @@ pub trait Printer<'tcx>: Sized {
 
                 let mut parent_args = args;
                 let mut trait_qualify_parent = false;
-                if !args.is_empty() {
+                if with_reduced_queries() {
+                    // skip over generic args, alas
+                } else if !args.is_empty() {
                     let generics = self.tcx().generics_of(def_id);
                     parent_args = &args[..generics.parent_count.min(args.len())];
 

@@ -5,7 +5,7 @@ LL |     const { foo::<&T>() }
    |           ^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_block`)
-   = note: query depth increased by 1 when computing layout of `foo<&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&i32>`
+   = note: query depth increased by 1 when computing layout of `foo`
 
 error: aborting due to 1 previous error
 

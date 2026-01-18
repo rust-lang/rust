@@ -1,5 +1,5 @@
 //@ build-fail
-//~^ ERROR cycle detected when computing layout of `Foo<()>`
+//~^ ERROR cycle detected when computing layout of `Foo`
 
 trait A { type Assoc: ?Sized; }
 
