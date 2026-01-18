@@ -10,6 +10,16 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAllocatorParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocator;
 }
 
+pub(crate) struct RustcAllocatorZeroedParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcAllocatorZeroedParser {
+    const PATH: &[Symbol] = &[sym::rustc_allocator_zeroed];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocatorZeroed;
+}
+
 pub(crate) struct RustcDeallocatorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDeallocatorParser {

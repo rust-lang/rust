@@ -909,6 +909,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allocator]`
     RustcAllocator,
 
+    /// Represents `#[rustc_allocator_zeroed]`
+    RustcAllocatorZeroed,
+
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 

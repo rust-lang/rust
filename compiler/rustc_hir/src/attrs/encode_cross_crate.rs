@@ -98,6 +98,7 @@ impl AttributeKind {
             RecursionLimit { .. } => No,
             Repr { .. } => No,
             RustcAllocator => No,
+            RustcAllocatorZeroed => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
             RustcDeallocator => No,
