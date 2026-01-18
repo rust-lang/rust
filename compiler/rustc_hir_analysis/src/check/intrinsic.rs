@@ -746,6 +746,7 @@ pub(crate) fn check_intrinsic_type(
         sym::simd_extract | sym::simd_extract_dyn => {
             (2, 0, vec![param(0), tcx.types.u32], param(1))
         }
+        sym::simd_splat => (2, 0, vec![param(1)], param(0)),
         sym::simd_cast
         | sym::simd_as
         | sym::simd_cast_ptr

@@ -1588,6 +1588,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
+    if name == sym::simd_splat {
+        let (_out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
+
+        require!(
+            args[0].layout.ty == out_ty,
+            InvalidMonomorphization::ExpectedVectorElementType {
+                span,
+                name,
+                expected_element: out_ty,
+                vector_type: ret_ty,
+            }
+        );
+
+        // `insertelement <N x elem> poison, elem %x, i32 0`
+        let poison_vec = bx.const_poison(llret_ty);
+        let idx0 = bx.const_i32(0);
+        let v0 = bx.insert_element(poison_vec, args[0].immediate(), idx0);
+
+        // `shufflevector <N x elem> v0, <N x elem> poison, <N x i32> zeroinitializer`
+        // The masks is all zeros, so this splats lane 0 (which has our element in it).
+        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(llret_ty));
+
+        return Ok(splat);
+    }
+
     // every intrinsic below takes a SIMD vector as its first argument
     let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
     let in_ty = args[0].layout.ty;

@@ -59,6 +59,13 @@ pub unsafe fn simd_extract_dyn<T, U>(x: T, idx: u32) -> U {
     unsafe { (&raw const x).cast::<U>().add(idx as usize).read() }
 }
 
+/// Creates a vector where every lane has the provided value.
+///
+/// `T` must be a vector with element type `U`.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_splat<T, U>(value: U) -> T;
+
 /// Adds two simd vectors elementwise.
 ///
 /// `T` must be a vector of integers or floats.

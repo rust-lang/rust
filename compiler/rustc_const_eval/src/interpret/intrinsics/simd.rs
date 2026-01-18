@@ -60,6 +60,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 self.copy_op(&self.project_index(&input, index)?, &dest)?;
             }
+            sym::simd_splat => {
+                let elem = &args[0];
+                let (dest, dest_len) = self.project_to_simd(&dest)?;
+
+                for i in 0..dest_len {
+                    let place = self.project_index(&dest, i)?;
+                    self.copy_op(elem, &place)?;
+                }
+            }
             sym::simd_neg
             | sym::simd_fabs
             | sym::simd_ceil
