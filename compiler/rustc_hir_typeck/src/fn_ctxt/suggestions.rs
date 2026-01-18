@@ -1937,7 +1937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
                     let manually_impl = "consider manually implementing `Clone` to avoid the \
-                        implict type parameter bounds";
+                        implicit type parameter bounds";
                     match &errors[..] {
                         [] => {}
                         [error] => {

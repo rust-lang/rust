@@ -22,7 +22,7 @@ LL | struct ContainsRc<T, K> {
    |                   ^  ^ derive introduces an implicit unsatisfied trait bound `K: Clone`
    |                   |
    |                   derive introduces an implicit unsatisfied trait bound `T: Clone`
-   = help: consider manually implementing `Clone` to avoid the implict type parameter bounds
+   = help: consider manually implementing `Clone` to avoid the implicit type parameter bounds
 
 error[E0308]: mismatched types
   --> $DIR/derive-implicit-bound-on-clone.rs:20:5
@@ -46,7 +46,7 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct ContainsRcSingle<T> {
    |                         ^ derive introduces an implicit `T: Clone` bound
-   = help: consider manually implementing `Clone` to avoid the implict type parameter bounds
+   = help: consider manually implementing `Clone` to avoid the implicit type parameter bounds
 
 error: aborting due to 2 previous errors
 
