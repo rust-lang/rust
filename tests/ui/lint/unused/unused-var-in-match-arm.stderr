@@ -1,11 +1,11 @@
 error: unused variable: `a`
-  --> $DIR/issue-22599.rs:8:19
+  --> $DIR/unused-var-in-match-arm.rs:9:19
    |
 LL |     v = match 0 { a => 0 };
    |                   ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
 note: the lint level is defined here
-  --> $DIR/issue-22599.rs:1:9
+  --> $DIR/unused-var-in-match-arm.rs:2:9
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^

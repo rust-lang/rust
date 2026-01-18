@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/25368>
+
 use std::sync::mpsc::channel;
 use std::thread::spawn;
 use std::marker::PhantomData;

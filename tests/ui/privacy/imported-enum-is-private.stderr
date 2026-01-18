@@ -1,5 +1,5 @@
 error[E0603]: enum `Foo` is private
-  --> $DIR/issue-11680.rs:6:21
+  --> $DIR/imported-enum-is-private.rs:7:21
    |
 LL |     let _b = other::Foo::Bar(1);
    |                     ^^^  --- tuple variant `Bar` is not publicly re-exported
@@ -7,13 +7,13 @@ LL |     let _b = other::Foo::Bar(1);
    |                     private enum
    |
 note: the enum `Foo` is defined here
-  --> $DIR/auxiliary/issue-11680.rs:1:1
+  --> $DIR/auxiliary/imported-enum-is-private.rs:3:1
    |
 LL | enum Foo {
    | ^^^^^^^^
 
 error[E0603]: enum `Foo` is private
-  --> $DIR/issue-11680.rs:9:27
+  --> $DIR/imported-enum-is-private.rs:10:27
    |
 LL |     let _b = other::test::Foo::Bar(1);
    |                           ^^^  --- tuple variant `Bar` is not publicly re-exported
@@ -21,7 +21,7 @@ LL |     let _b = other::test::Foo::Bar(1);
    |                           private enum
    |
 note: the enum `Foo` is defined here
-  --> $DIR/auxiliary/issue-11680.rs:6:5
+  --> $DIR/auxiliary/imported-enum-is-private.rs:8:5
    |
 LL |     enum Foo {
    |     ^^^^^^^^

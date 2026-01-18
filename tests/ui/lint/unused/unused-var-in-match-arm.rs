@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/22599>
 #![deny(unused_variables)]
 
 fn f(_: i32) {}
