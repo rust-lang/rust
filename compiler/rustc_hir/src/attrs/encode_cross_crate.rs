@@ -32,6 +32,7 @@ impl AttributeKind {
             Coinductive(..) => No,
             Cold(..) => No,
             CollapseDebugInfo(..) => Yes,
+            CompilerBuiltins => No,
             Confusables { .. } => Yes,
             ConstContinue(..) => No,
             ConstStability { .. } => Yes,

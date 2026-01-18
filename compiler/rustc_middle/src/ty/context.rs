@@ -3562,7 +3562,7 @@ pub fn provide(providers: &mut Providers) {
     providers.is_panic_runtime =
         |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::panic_runtime);
     providers.is_compiler_builtins =
-        |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::compiler_builtins);
+        |tcx, LocalCrate| find_attr!(tcx.hir_krate_attrs(), AttributeKind::CompilerBuiltins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())

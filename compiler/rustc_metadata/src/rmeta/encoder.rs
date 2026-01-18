@@ -741,7 +741,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
+                compiler_builtins: find_attr!(attrs, AttributeKind::CompilerBuiltins),
                 needs_allocator: find_attr!(attrs, AttributeKind::NeedsAllocator),
                 needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
                 no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),

@@ -687,6 +687,9 @@ pub enum AttributeKind {
     /// Represents `#[collapse_debuginfo]`.
     CollapseDebugInfo(CollapseMacroDebuginfo),
 
+    /// Represents `#[compiler_builtins]`.
+    CompilerBuiltins,
+
     /// Represents `#[rustc_confusables]`.
     Confusables {
         symbols: ThinVec<Symbol>,
