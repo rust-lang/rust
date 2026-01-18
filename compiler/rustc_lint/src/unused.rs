@@ -323,7 +323,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
-                    elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
+                    let bounds = cx
+                        .tcx
+                        .explicit_item_self_bounds(def)
+                        .iter_identity_copied()
+                        .map(|(clause, span)| (clause, cx.tcx.resolve_span_ref(span)));
+                    elaborate(cx.tcx, bounds)
                         // We only care about self bounds for the impl-trait
                         .filter_only_self()
                         .find_map(|(pred, _span)| {

@@ -272,6 +272,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,
+    rustc_span::SpanRef,
     rustc_span::Symbol,
     rustc_target::asm::InlineAsmRegOrRegClass,
     // tidy-alphabetical-end

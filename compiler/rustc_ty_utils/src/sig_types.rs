@@ -61,6 +61,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         }
         DefKind::OpaqueTy => {
             for (pred, span) in tcx.explicit_item_bounds(item).iter_identity_copied() {
+                let span = tcx.resolve_span_ref(span);
                 try_visit!(visitor.visit(span, pred));
             }
         }

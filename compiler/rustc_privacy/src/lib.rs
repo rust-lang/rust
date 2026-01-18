@@ -273,7 +273,13 @@ where
                     // through the trait list (default type visitor doesn't visit those traits).
                     // All traits in the list are considered the "primary" part of the type
                     // and are visited by shallow visitors.
-                    try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
+                    let bounds: Vec<_> = tcx
+                        .explicit_item_bounds(def_id)
+                        .skip_binder()
+                        .iter()
+                        .map(|(clause, span)| (*clause, tcx.resolve_span_ref(*span)))
+                        .collect();
+                    try_visit!(self.visit_clauses(&bounds));
                 }
             }
             // These types don't have their own def-ids (but may have subcomponents
@@ -1392,7 +1398,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn bounds(&mut self) -> &mut Self {
         self.in_primary_interface = false;
-        let _ = self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
+        let bounds: Vec<_> = self
+            .tcx
+            .explicit_item_bounds(self.item_def_id)
+            .skip_binder()
+            .iter()
+            .map(|(clause, span)| (*clause, self.tcx.resolve_span_ref(*span)))
+            .collect();
+        let _ = self.visit_clauses(&bounds);
         self
     }
 

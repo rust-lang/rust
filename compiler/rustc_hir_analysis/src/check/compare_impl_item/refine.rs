@@ -120,7 +120,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         impl_bounds.extend(elaborate(
             tcx,
             tcx.explicit_item_bounds(impl_opaque.def_id)
-                .iter_instantiated_copied(tcx, impl_opaque.args),
+                .iter_instantiated_copied(tcx, impl_opaque.args)
+                .map(|(clause, span)| (clause, tcx.resolve_span_ref(span))),
         ));
 
         pairs.push((trait_projection, impl_opaque));

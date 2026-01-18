@@ -144,9 +144,24 @@ macro_rules! provide_one {
             }
         }
     };
-    // Like table_defaulted_array, but for defaulted tables storing (T, SpanRef) tuples that need
-    // conversion to (T, Span) at decode time.
+    // Like table_defaulted_array, but for defaulted tables storing (T, SpanRef) tuples.
+    // The SpanRef values are preserved without conversion to Span.
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array_spanref }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                let lazy = $cdata.root.tables.$name.get(($cdata, $tcx), $def_id.index);
+                let value: &[_] = if lazy.is_default() {
+                    &[]
+                } else {
+                    $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)))
+                };
+                value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
+    // Like table_defaulted_array_spanref, but converts SpanRef to Span at decode time.
+    // Used for queries that return (T, Span) but are stored with SpanRef in metadata.
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array_spanref_resolve }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
                 let lazy = $cdata.root.tables.$name.get(($cdata, $tcx), $def_id.index);
@@ -162,8 +177,8 @@ macro_rules! provide_one {
             }
         }
     };
-    // Like table, but for optional array tables storing (T, SpanRef) tuples that need
-    // conversion to (T, Span) at decode time.
+    // Like table, but for optional array tables storing (T, SpanRef) tuples.
+    // The SpanRef values are preserved without conversion to Span.
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_array_spanref }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
@@ -173,10 +188,7 @@ macro_rules! provide_one {
                     .$name
                     .get(($cdata, $tcx), $def_id.index)
                     .map(|lazy| {
-                        $tcx.arena.alloc_from_iter(
-                            lazy.decode(($cdata, $tcx))
-                                .map(|(item, span_ref)| (item, resolve_span_ref($tcx, span_ref))),
-                        ) as &[_]
+                        $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx))) as &[_]
                     })
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -342,7 +354,7 @@ provide! { tcx, def_id, other, cdata,
     defaultness => { table_direct }
     constness => { table_direct }
     const_conditions => { table }
-    explicit_implied_const_bounds => { table_defaulted_array_spanref }
+    explicit_implied_const_bounds => { table_defaulted_array_spanref_resolve }
     coerce_unsized_info => {
         Ok(cdata
             .root

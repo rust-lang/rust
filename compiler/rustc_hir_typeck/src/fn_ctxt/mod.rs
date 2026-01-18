@@ -19,7 +19,7 @@ use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
-use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
+use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, SpanRef, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -296,13 +296,14 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _: Span,
         def_id: LocalDefId,
         _: Ident,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         let tcx = self.tcx;
         let item_def_id = tcx.hir_ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
+        let span = tcx.span_ref_from_span(span);
 
         ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
             self.param_env.caller_bounds().iter().filter_map(|predicate| {

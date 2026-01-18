@@ -7,7 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, SpanRef};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -20,7 +20,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
-fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
+fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, SpanRef)] {
     let kind = tcx.def_kind(def_id);
     match kind {
         DefKind::Fn => {
@@ -28,7 +28,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
             tcx.arena.alloc_from_iter(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
-                fn_sig_spans(tcx, def_id),
+                fn_sig_spans(tcx, def_id).map(|sp| tcx.span_ref_from_span(sp)),
             ))
         }
         DefKind::AssocFn => {
@@ -38,7 +38,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 tcx.assumed_wf_types(tcx.local_parent(def_id)).into();
             assumed_wf_types.extend(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
-                fn_sig_spans(tcx, def_id),
+                fn_sig_spans(tcx, def_id).map(|sp| tcx.span_ref_from_span(sp)),
             ));
             tcx.arena.alloc_slice(&assumed_wf_types)
         }
@@ -53,7 +53,9 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);
-            tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
+            tcx.arena.alloc_from_iter(
+                tys.into_iter().map(|ty| (ty, tcx.span_ref_from_span(impl_spans.next().unwrap()))),
+            )
         }
         DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
             match data {

@@ -50,7 +50,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanRef, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
@@ -436,14 +436,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        let preds: Vec<_> = self
+            .explicit_super_predicates_of(def_id)
+            .skip_binder()
+            .iter()
+            .map(|(clause, span_ref)| (*clause, self.resolve_span_ref(*span_ref)))
+            .collect();
+        ty::EarlyBinder::bind(preds)
     }
 
     fn explicit_implied_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        let preds: Vec<_> = self
+            .explicit_implied_predicates_of(def_id)
+            .skip_binder()
+            .iter()
+            .map(|(clause, span_ref)| (*clause, self.resolve_span_ref(*span_ref)))
+            .collect();
+        ty::EarlyBinder::bind(preds)
     }
 
     fn impl_super_outlives(
@@ -2460,6 +2472,86 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
+    }
+
+    /// Resolves a `SpanRef` to a concrete `Span` with absolute byte positions.
+    ///
+    /// `SpanRef` uses stable identifiers (file IDs, DefIds) instead of absolute
+    /// byte positions, making it suitable for incremental compilation caching.
+    /// This method converts back to absolute positions for diagnostics.
+    ///
+    /// Returns `DUMMY_SP` with the appropriate `SyntaxContext` if the span
+    /// cannot be resolved (e.g., stale cache, removed dependency).
+    pub fn resolve_span_ref(self, span_ref: SpanRef) -> Span {
+        match span_ref {
+            SpanRef::Opaque { ctxt } => {
+                // Opaque spans have no position info - return dummy with context
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::FileRelative { source_crate: _, file, lo, hi, ctxt } => {
+                // Look up the source file by its stable ID in the source map.
+                // The file should already be imported when we load metadata from external crates.
+                let source_map = self.sess.source_map();
+                if let Some(source_file) = source_map.source_file_by_stable_id(file) {
+                    let abs_lo = source_file.start_pos + BytePos(lo);
+                    let abs_hi = source_file.start_pos + BytePos(hi);
+                    return Span::new(abs_lo, abs_hi, ctxt, None);
+                }
+
+                // File not found in source map - gracefully degrade to dummy span.
+                // This can happen with stale incremental cache or removed dependencies.
+                debug!(?file, "resolve_span_ref: source file not found, using dummy span");
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::DefRelative { def_id, lo, hi, ctxt } => {
+                // Look up the definition's span and add relative offsets
+                let def_span = self.def_span(def_id);
+                let def_data = def_span.data();
+                let abs_lo = def_data.lo + BytePos(lo);
+                let abs_hi = def_data.lo + BytePos(hi);
+                Span::new(abs_lo, abs_hi, ctxt, None)
+            }
+        }
+    }
+
+    /// Converts a `Span` to a `SpanRef` for stable storage.
+    ///
+    /// `SpanRef` uses file-relative offsets and stable file identifiers,
+    /// making fingerprints stable across compilations even when source
+    /// file positions change due to edits in other files.
+    pub fn span_ref_from_span(self, span: Span) -> SpanRef {
+        let data = span.data();
+
+        // Dummy spans become opaque
+        if span.is_dummy() {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        let source_map = self.sess.source_map();
+
+        // Look up the source file containing this span
+        let source_file = source_map.lookup_source_file(data.lo);
+
+        // If the span crosses file boundaries, make it opaque
+        let end_file = source_map.lookup_source_file(data.hi);
+        if source_file.start_pos != end_file.start_pos {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        // Compute relative offsets from the file's start position
+        let rel_lo = (data.lo - source_file.start_pos).0;
+        let rel_hi = (data.hi - source_file.start_pos).0;
+
+        // Get the source crate's stable ID
+        let source_crate = self.stable_crate_id(source_file.cnum);
+
+        SpanRef::FileRelative {
+            source_crate,
+            file: source_file.stable_id,
+            lo: rel_lo,
+            hi: rel_hi,
+            ctxt: data.ctxt,
         }
     }
 }

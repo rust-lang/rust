@@ -1657,14 +1657,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-                let inferred_outlives_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(inferred_outlives.len());
-                    for &(c, s) in inferred_outlives.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives_converted);
+                // Query already returns SpanRef, no conversion needed
+                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives.to_vec());
 
                 for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
@@ -1698,29 +1692,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
+                // Queries already return SpanRef, no conversion needed
                 let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
-                let super_predicates_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(super_predicates.len());
-                    for &(c, s) in super_predicates.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates_converted);
-                let implied_predicates =
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
-                let implied_predicates_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(implied_predicates.len());
-                    for &(c, s) in implied_predicates.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates_converted);
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates.to_vec());
+                let implied_predicates = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates.to_vec());
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
+                    // explicit_implied_const_bounds still returns Span, needs conversion
                     let const_bounds = self.tcx.explicit_implied_const_bounds(def_id).skip_binder();
                     let const_bounds_converted: Vec<_> = {
                         let mut result = Vec::with_capacity(const_bounds.len());
@@ -1734,25 +1715,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
+                // Queries already return SpanRef, no conversion needed
                 let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
-                let super_predicates_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(super_predicates.len());
-                    for &(c, s) in super_predicates.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates_converted);
-                let implied_predicates =
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
-                let implied_predicates_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(implied_predicates.len());
-                    for &(c, s) in implied_predicates.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates_converted);
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates.to_vec());
+                let implied_predicates = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates.to_vec());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1961,28 +1928,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
+        // Query already returns SpanRef, no conversion needed
         let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
-        let bounds_converted: Vec<_> = {
-            let mut result = Vec::with_capacity(bounds.len());
-            for &(c, s) in bounds.iter() {
-                result.push((c, self.span_to_span_ref(s)));
-            }
-            result
-        };
-        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds_converted);
+        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds.to_vec());
     }
 
     fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
+        // Query already returns SpanRef, no conversion needed
         let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
-        let bounds_converted: Vec<_> = {
-            let mut result = Vec::with_capacity(bounds.len());
-            for &(c, s) in bounds.iter() {
-                result.push((c, self.span_to_span_ref(s)));
-            }
-            result
-        };
-        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds_converted);
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds.to_vec());
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2016,15 +1971,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
+                // Query already returns SpanRef, no conversion needed
                 let wf_types = self.tcx.assumed_wf_types_for_rpitit(def_id);
-                let wf_types_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(wf_types.len());
-                    for &(ty, s) in wf_types.iter() {
-                        result.push((ty, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_array!(self.tables.assumed_wf_types_for_rpitit[def_id] <- wf_types_converted);
+                record_array!(self.tables.assumed_wf_types_for_rpitit[def_id] <- wf_types.iter().copied());
                 self.encode_precise_capturing_args(def_id);
             }
         }

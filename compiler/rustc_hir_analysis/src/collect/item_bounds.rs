@@ -6,8 +6,18 @@ use rustc_middle::ty::{
     Upcast, shift_vars,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, SpanRef};
+use rustc_span::def_id::{DefId, LocalDefId};
+
+fn convert_to_span_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: &[(ty::Clause<'tcx>, Span)],
+) -> &'tcx [(ty::Clause<'tcx>, SpanRef)] {
+    tcx.arena.alloc_from_iter(
+        bounds.iter().map(|(clause, span)| (*clause, tcx.span_ref_from_span(*span))),
+    )
+}
 use tracing::{debug, instrument};
 
 use super::ItemCtxt;
@@ -403,14 +413,14 @@ fn opaque_type_bounds<'tcx>(
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, SpanRef)]> {
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All)
 }
 
 pub(super) fn explicit_item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, SpanRef)]> {
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::SelfOnly)
 }
 
@@ -418,7 +428,7 @@ pub(super) fn explicit_item_bounds_with_filter(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     filter: PredicateFilter,
-) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, SpanRef)]> {
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
@@ -426,7 +436,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             let bounds =
                 associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
-            return ty::EarlyBinder::bind(bounds);
+            return ty::EarlyBinder::bind(convert_to_span_ref(tcx, bounds));
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
@@ -482,7 +492,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         node => bug!("item_bounds called on {def_id:?} => {node:?}"),
     };
 
-    ty::EarlyBinder::bind(bounds)
+    ty::EarlyBinder::bind(convert_to_span_ref(tcx, bounds))
 }
 
 pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {

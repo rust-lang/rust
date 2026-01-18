@@ -45,7 +45,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_session::parse::feature_err;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, SpanRef, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, FulfillmentError};
@@ -167,7 +167,7 @@ pub trait HirTyLowerer<'tcx> {
         span: Span,
         def_id: LocalDefId,
         assoc_ident: Ident,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]>;
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]>;
 
     fn select_inherent_assoc_candidates(
         &self,

@@ -314,7 +314,7 @@ where
         let tcx = self.infcx.tcx;
         let mut implied_bounds = FxIndexSet::default();
         let mut errors = Vec::new();
-        for &(ty, span) in tcx.assumed_wf_types(def_id) {
+        for &(ty, span_ref) in tcx.assumed_wf_types(def_id) {
             // FIXME(@lcnr): rustc currently does not check wf for types
             // pre-normalization, meaning that implied bounds are sometimes
             // incorrect. See #100910 for more details.
@@ -327,6 +327,8 @@ where
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
+            // Resolve SpanRef to Span for diagnostic purposes
+            let span = tcx.resolve_span_ref(span_ref);
             let cause = ObligationCause::misc(span, def_id);
             match self
                 .infcx

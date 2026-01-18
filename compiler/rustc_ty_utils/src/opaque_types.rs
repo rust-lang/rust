@@ -143,6 +143,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 for (pred, span) in
                     self.tcx.explicit_item_bounds(alias_ty.def_id).iter_identity_copied()
                 {
+                    let span = self.tcx.resolve_span_ref(span);
                     trace!(?pred);
                     self.visit_spanned(span, pred);
                 }

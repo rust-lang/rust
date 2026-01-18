@@ -41,7 +41,7 @@ use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, SpanRef, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -1939,7 +1939,7 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, SpanRef)>,
         item: LocalDefId,
         lifetime: LocalDefId,
     ) -> Vec<ty::Region<'tcx>> {
@@ -1961,7 +1961,7 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, SpanRef)>,
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
@@ -2110,7 +2110,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                         // don't warn if the inferred span actually came from the predicate we're looking at
                                         // this happens if the type is recursively defined
                                         inferred_outlives.iter().filter(|(_, span)| {
-                                            !where_predicate.span.contains(*span)
+                                            !where_predicate
+                                                .span
+                                                .contains(cx.tcx.resolve_span_ref(*span))
                                         }),
                                         item.owner_id.def_id,
                                         region_def_id,
@@ -2137,7 +2139,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                             // don't warn if the inferred span actually came from the predicate we're looking at
                                             // this happens if the type is recursively defined
                                             inferred_outlives.iter().filter(|(_, span)| {
-                                                !where_predicate.span.contains(*span)
+                                                !where_predicate
+                                                    .span
+                                                    .contains(cx.tcx.resolve_span_ref(*span))
                                             }),
                                             index,
                                         ),

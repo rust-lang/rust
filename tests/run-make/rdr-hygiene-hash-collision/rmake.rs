@@ -1,14 +1,17 @@
 // Test that identifiers with the same name but different hygiene contexts
-// don't cause dep node hash collisions when using `-Zincremental-ignore-spans`.
+// don't cause dep node hash collisions when using RDR (Relink, Don't Rebuild).
 //
 // This regression test verifies that SyntaxContext (hygiene info) is always
-// hashed even when span positions are ignored. Without this fix, two `Ident`s
-// with the same `Symbol` but different `SyntaxContext` would hash identically,
-// causing ICE: "query key X and key Y mapped to the same dep node".
+// hashed correctly. Without this fix, two `Ident`s with the same `Symbol` but
+// different `SyntaxContext` would hash identically, causing ICE: "query key X
+// and key Y mapped to the same dep node".
 //
 // The issue manifests with macros that generate identifiers - each macro
-// expansion creates identifiers with different hygiene contexts, but when
-// spans are ignored, only the symbol name was being hashed.
+// expansion creates identifiers with different hygiene contexts.
+//
+// With the SpanRef migration, incremental compilation works correctly without
+// needing `-Zincremental-ignore-spans` because SpanRef uses stable identifiers
+// that produce consistent fingerprints.
 //
 //@ ignore-cross-compile
 
@@ -80,12 +83,12 @@ make_fn!(baz);
 
     // Compile with RDR flags - this would ICE before the fix due to
     // hygiene contexts not being hashed when spans are ignored.
+    // With SpanRef migration, -Zincremental-ignore-spans is no longer needed.
     rustc()
         .input("lib.rs")
         .crate_type("lib")
         .incremental("incr")
         .arg("-Zstable-crate-hash")
-        .arg("-Zincremental-ignore-spans")
         .run();
 
     // Second compilation to exercise incremental path
@@ -94,6 +97,5 @@ make_fn!(baz);
         .crate_type("lib")
         .incremental("incr")
         .arg("-Zstable-crate-hash")
-        .arg("-Zincremental-ignore-spans")
         .run();
 }

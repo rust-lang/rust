@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, SpanDecoder, SpanEncoder};
+use rustc_span::{Span, SpanDecoder, SpanEncoder, SpanRef};
 
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
@@ -401,6 +401,24 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for AdtDef<'tcx> {
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [(ty::Clause<'tcx>, Span)] {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        decoder
+            .interner()
+            .arena
+            .alloc_from_iter((0..decoder.read_usize()).map(|_| Decodable::decode(decoder)))
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [(ty::Clause<'tcx>, SpanRef)] {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        decoder
+            .interner()
+            .arena
+            .alloc_from_iter((0..decoder.read_usize()).map(|_| Decodable::decode(decoder)))
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [(Ty<'tcx>, SpanRef)] {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder
             .interner()

@@ -1392,7 +1392,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
             if let ty::AssocContainer::Trait = assoc_item.container {
-                let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
+                let bounds = tcx
+                    .explicit_item_bounds(assoc_item.def_id)
+                    .iter_identity_copied()
+                    .map(|(clause, span)| (clause, tcx.resolve_span_ref(span)));
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
             let mut generics = clean_ty_generics_inner(
