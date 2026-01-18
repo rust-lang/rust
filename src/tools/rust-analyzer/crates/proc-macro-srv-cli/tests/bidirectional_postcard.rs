@@ -4,7 +4,9 @@ mod common {
     pub(crate) mod utils;
 }
 
-use common::utils::{create_empty_token_tree, proc_macro_test_dylib_path, request, with_server};
+use common::utils::{
+    create_empty_token_tree, proc_macro_test_dylib_path, request_bidirectional, with_server,
+};
 use expect_test::expect;
 use proc_macro_api::{
     ProtocolFormat::BidirectionalPostcardPrototype,
@@ -20,7 +22,7 @@ use proc_macro_api::{
 fn test_bidi_version_check_bidirectional() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let response =
-            request(writer, reader, Request::ApiVersionCheck {}, Some(&reject_subrequests)).into();
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
 
         match response {
             Response::ApiVersionCheck(version) => {
@@ -35,9 +37,12 @@ fn test_bidi_version_check_bidirectional() {
 fn test_bidi_list_macros() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
-        let response =
-            request(writer, reader, Request::ListMacros { dylib_path }, Some(&reject_subrequests))
-                .into();
+        let response = request_bidirectional(
+            writer,
+            reader,
+            Request::ListMacros { dylib_path },
+            &reject_subrequests,
+        );
 
         let Response::ListMacros(Ok(macros)) = response else {
             panic!("expected successful ListMacros response");
@@ -72,13 +77,12 @@ fn test_bidi_list_macros() {
 #[test]
 fn test_bidi_list_macros_invalid_path() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
-        let response = request(
+        let response = request_bidirectional(
             writer,
             reader,
             Request::ListMacros { dylib_path: "/nonexistent/path/to/dylib.so".into() },
-            Some(&reject_subrequests),
-        )
-        .into();
+            reject_subrequests,
+        );
 
         match response {
             Response::ListMacros(Err(e)) => assert!(
@@ -95,7 +99,7 @@ fn test_bidi_set_config() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let config = ServerConfig { span_mode: SpanMode::Id };
         let response =
-            request(writer, reader, Request::SetConfig(config), Some(&reject_subrequests)).into();
+            request_bidirectional(writer, reader, Request::SetConfig(config), reject_subrequests);
 
         match response {
             Response::SetConfig(returned_config) => {
@@ -111,7 +115,7 @@ fn test_bidi_set_config_rust_analyzer_mode() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let config = ServerConfig { span_mode: SpanMode::RustAnalyzer };
         let response =
-            request(writer, reader, Request::SetConfig(config), Some(&reject_subrequests)).into();
+            request_bidirectional(writer, reader, Request::SetConfig(config), reject_subrequests);
 
         match response {
             Response::SetConfig(returned_config) => {
@@ -144,7 +148,7 @@ fn test_bidi_expand_macro_panic() {
             },
         }));
 
-        let response = request(writer, reader, request1, Some(&reject_subrequests)).into();
+        let response = request_bidirectional(writer, reader, request1, reject_subrequests);
 
         match response {
             Response::ExpandMacro(Err(PanicMessage(msg))) => {
@@ -161,25 +165,23 @@ fn test_bidi_basic_call_flow() {
         let dylib_path = proc_macro_test_dylib_path();
 
         let response1 =
-            request(writer, reader, Request::ApiVersionCheck {}, Some(&reject_subrequests)).into();
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
         assert!(matches!(response1, Response::ApiVersionCheck(_)));
 
-        let response2 = request(
+        let response2 = request_bidirectional(
             writer,
             reader,
             Request::SetConfig(ServerConfig { span_mode: SpanMode::Id }),
-            Some(&reject_subrequests),
-        )
-        .into();
+            reject_subrequests,
+        );
         assert!(matches!(response2, Response::SetConfig(_)));
 
-        let response3 = request(
+        let response3 = request_bidirectional(
             writer,
             reader,
             Request::ListMacros { dylib_path: dylib_path.clone() },
-            Some(&reject_subrequests),
-        )
-        .into();
+            reject_subrequests,
+        );
         assert!(matches!(response3, Response::ListMacros(Ok(_))));
     });
 }
@@ -190,7 +192,7 @@ fn test_bidi_expand_nonexistent_macro() {
         let dylib_path = proc_macro_test_dylib_path();
 
         let version_response =
-            request(writer, reader, Request::ApiVersionCheck {}, Some(&reject_subrequests)).into();
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
         let Response::ApiVersionCheck(version) = version_response else {
             panic!("expected version check response");
         };
@@ -211,7 +213,7 @@ fn test_bidi_expand_nonexistent_macro() {
             },
         }));
 
-        let response = request(writer, reader, expand_request, Some(&reject_subrequests)).into();
+        let response = request_bidirectional(writer, reader, expand_request, reject_subrequests);
 
         match response {
             Response::ExpandMacro(Err(PanicMessage(msg))) => {

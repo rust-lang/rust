@@ -198,21 +198,22 @@ trait TestProtocol {
     type Request;
     type Response;
 
-    fn send(&self, writer: &mut dyn Write, req: Self::Request);
-    fn drive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> Self::Response;
+    fn request(&self, writer: &mut dyn Write, req: Self::Request);
+    fn receive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> Self::Response;
 }
 
+#[allow(dead_code)]
 struct JsonLegacy;
 
 impl TestProtocol for JsonLegacy {
     type Request = Request;
     type Response = Response;
 
-    fn send(&self, writer: &mut dyn Write, req: Request) {
+    fn request(&self, writer: &mut dyn Write, req: Request) {
         req.write::<JsonProtocol>(writer).expect("failed to write request");
     }
 
-    fn drive(&self, reader: &mut dyn BufRead, _writer: &mut dyn Write) -> Response {
+    fn receive(&self, reader: &mut dyn BufRead, _writer: &mut dyn Write) -> Response {
         let mut buf = String::new();
         Response::read::<JsonProtocol>(reader, &mut buf)
             .expect("failed to read response")
@@ -220,6 +221,7 @@ impl TestProtocol for JsonLegacy {
     }
 }
 
+#[allow(dead_code)]
 struct PostcardBidirectional<F>
 where
     F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
@@ -234,12 +236,12 @@ where
     type Request = BiRequest;
     type Response = BiResponse;
 
-    fn send(&self, writer: &mut dyn Write, req: BiRequest) {
+    fn request(&self, writer: &mut dyn Write, req: BiRequest) {
         let msg = BidirectionalMessage::Request(req);
         msg.write::<PostcardProtocol>(writer).expect("failed to write request");
     }
 
-    fn drive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> BiResponse {
+    fn receive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> BiResponse {
         let mut buf = Vec::new();
 
         loop {
@@ -260,98 +262,28 @@ where
     }
 }
 
-pub(crate) fn request(
+#[allow(dead_code)]
+pub(crate) fn request_legacy(
     writer: &mut dyn Write,
     reader: &mut dyn BufRead,
-    request: impl Into<AutoRequest>,
-    callback: Option<&dyn Fn(SubRequest) -> Result<SubResponse, ServerError>>,
-) -> AutoResponse {
-    let protocol = match callback {
-        None => AutoProtocol::Legacy(JsonLegacy),
-        Some(cb) => AutoProtocol::Bidirectional(PostcardBidirectional { callback: cb }),
-    };
-
-    protocol.send(writer, request.into());
-    protocol.drive(reader, writer)
+    request: Request,
+) -> Response {
+    let protocol = JsonLegacy;
+    protocol.request(writer, request);
+    protocol.receive(reader, writer)
 }
 
-enum AutoProtocol<F>
+#[allow(dead_code)]
+pub(crate) fn request_bidirectional<F>(
+    writer: &mut dyn Write,
+    reader: &mut dyn BufRead,
+    request: BiRequest,
+    callback: F,
+) -> BiResponse
 where
     F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
 {
-    Legacy(JsonLegacy),
-    Bidirectional(PostcardBidirectional<F>),
-}
-
-impl<F> TestProtocol for AutoProtocol<F>
-where
-    F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
-{
-    type Request = AutoRequest;
-    type Response = AutoResponse;
-
-    fn send(&self, writer: &mut dyn Write, req: AutoRequest) {
-        match (self, req) {
-            (AutoProtocol::Legacy(p), AutoRequest::Legacy(r)) => {
-                p.send(writer, r);
-            }
-            (AutoProtocol::Bidirectional(p), AutoRequest::Bidirectional(r)) => {
-                p.send(writer, r);
-            }
-            (AutoProtocol::Legacy(_), AutoRequest::Bidirectional(_)) => {
-                panic!("bidirectional request used with legacy protocol");
-            }
-            (AutoProtocol::Bidirectional(_), AutoRequest::Legacy(_)) => {
-                panic!("legacy request used with bidirectional protocol");
-            }
-        }
-    }
-
-    fn drive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> AutoResponse {
-        match self {
-            AutoProtocol::Legacy(p) => AutoResponse::Legacy(p.drive(reader, writer)),
-            AutoProtocol::Bidirectional(p) => AutoResponse::Bidirectional(p.drive(reader, writer)),
-        }
-    }
-}
-
-pub(crate) enum AutoRequest {
-    Legacy(Request),
-    Bidirectional(BiRequest),
-}
-
-#[derive(Debug)]
-pub(crate) enum AutoResponse {
-    Legacy(Response),
-    Bidirectional(BiResponse),
-}
-
-impl From<Request> for AutoRequest {
-    fn from(req: Request) -> AutoRequest {
-        AutoRequest::Legacy(req)
-    }
-}
-
-impl From<BiRequest> for AutoRequest {
-    fn from(req: BiRequest) -> AutoRequest {
-        AutoRequest::Bidirectional(req)
-    }
-}
-
-impl From<AutoResponse> for Response {
-    fn from(res: AutoResponse) -> Response {
-        match res {
-            AutoResponse::Legacy(res) => res,
-            _ => panic!("Should be legacy response"),
-        }
-    }
-}
-
-impl From<AutoResponse> for BiResponse {
-    fn from(res: AutoResponse) -> BiResponse {
-        match res {
-            AutoResponse::Bidirectional(res) => res,
-            _ => panic!("Should be bidirectional response"),
-        }
-    }
+    let protocol = PostcardBidirectional { callback };
+    protocol.request(writer, request);
+    protocol.receive(reader, writer)
 }
