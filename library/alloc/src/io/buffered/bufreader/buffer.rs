@@ -9,10 +9,13 @@
 //! that user code which wants to do reads from a `BufReader` via `buffer` + `consume` can do so
 //! without encountering any runtime bounds checks.
 
-use crate::cmp;
-use crate::io::{self, BorrowedBuf, ErrorKind, Read};
-use crate::mem::MaybeUninit;
+use core::cmp;
+use core::mem::MaybeUninit;
 
+use crate::boxed::Box;
+use crate::io::{self, BorrowedBuf, ErrorKind, Read};
+
+#[derive(Debug)]
 pub struct Buffer {
     // The buffer.
     buf: Box<[MaybeUninit<u8>]>,

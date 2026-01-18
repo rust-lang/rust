@@ -1,3 +1,5 @@
+use alloc::io::DEFAULT_BUF_SIZE;
+
 use crate::cmp::{max, min};
 use crate::collections::VecDeque;
 use crate::io;

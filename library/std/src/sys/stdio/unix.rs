@@ -93,7 +93,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(EBADF as i32)
 }
 
-pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
+pub const STDIN_BUF_SIZE: usize = alloc::io::DEFAULT_BUF_SIZE;
 
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())

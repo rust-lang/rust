@@ -1,8 +1,10 @@
+use core::mem::{self, ManuallyDrop};
+use core::{error, fmt, ptr};
+
 use crate::io::{
     self, DEFAULT_BUF_SIZE, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write,
 };
-use crate::mem::{self, ManuallyDrop};
-use crate::{error, fmt, ptr};
+use crate::vec::Vec;
 
 /// Wraps a writer and buffers its output.
 ///
@@ -94,13 +96,17 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    pub(crate) fn try_new_buffer() -> io::Result<Vec<u8>> {
+    #[unstable(feature = "io_internals", issue = "none")]
+    #[doc(hidden)]
+    pub fn try_new_buffer() -> io::Result<Vec<u8>> {
         Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
             io::const_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
         })
     }
 
-    pub(crate) fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
+    #[unstable(feature = "io_internals", issue = "none")]
+    #[doc(hidden)]
+    pub fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
         Self { inner, buf, panicked: false }
     }
 

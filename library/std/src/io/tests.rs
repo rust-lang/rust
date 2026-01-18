@@ -1,8 +1,6 @@
 use super::{BorrowedBuf, Cursor, SeekFrom, repeat};
 use crate::cmp::{self, min};
-use crate::io::{
-    self, BufRead, BufReader, DEFAULT_BUF_SIZE, IoSlice, IoSliceMut, Read, Seek, Write,
-};
+use crate::io::{self, BufRead, BufReader, IoSlice, IoSliceMut, Read, Seek, Write};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
@@ -864,7 +862,7 @@ fn read_buf_full_read() {
         }
     }
 
-    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
+    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), alloc::io::DEFAULT_BUF_SIZE);
 }
 
 struct DataAndErrorReader(&'static [u8]);

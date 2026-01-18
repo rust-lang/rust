@@ -7,6 +7,8 @@ use crate::fmt;
 use crate::io::{
     self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
 };
+use crate::string::String;
+use crate::vec::Vec;
 
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].

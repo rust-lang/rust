@@ -1,11 +1,15 @@
 #[cfg(test)]
 mod tests;
 
+use core::{cmp, fmt, mem, str};
+
 use crate::alloc::Allocator;
+use crate::boxed::Box;
 use crate::collections::VecDeque;
 use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::string::String;
 use crate::sync::Arc;
-use crate::{cmp, fmt, mem, str};
+use crate::vec::Vec;
 
 // =============================================================================
 // Forwarding implementations
