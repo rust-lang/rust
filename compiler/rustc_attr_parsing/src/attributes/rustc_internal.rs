@@ -335,3 +335,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
 }
+
+pub(crate) struct RustcOffloadKernelParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
+    const PATH: &[Symbol] = &[sym::rustc_offload_kernel];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
+}

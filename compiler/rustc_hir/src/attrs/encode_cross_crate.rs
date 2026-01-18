@@ -124,6 +124,7 @@ impl AttributeKind {
             RustcNoImplicitAutorefs => Yes,
             RustcNounwind => No,
             RustcObjectLifetimeDefault => No,
+            RustcOffloadKernel => Yes,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
             RustcReallocator => No,
             RustcScalableVector { .. } => Yes,

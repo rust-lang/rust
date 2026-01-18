@@ -79,7 +79,7 @@ use crate::attributes::rustc_internal::{
     RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
     RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
     RustcNoImplicitAutorefsParser, RustcNounwindParser, RustcObjectLifetimeDefaultParser,
-    RustcScalableVectorParser, RustcSimdMonomorphizeLaneLimitParser,
+    RustcOffloadKernelParser, RustcScalableVectorParser, RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -297,6 +297,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNeverReturnsNullPointerParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
+        Single<WithoutArgs<RustcOffloadKernelParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,

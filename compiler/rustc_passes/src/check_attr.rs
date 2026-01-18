@@ -323,6 +323,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDeallocator
                     | AttributeKind::RustcReallocator
                     | AttributeKind::RustcNounwind
+                    | AttributeKind::RustcOffloadKernel
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
