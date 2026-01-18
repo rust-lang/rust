@@ -92,8 +92,6 @@ pub struct ExpandMacroData {
 
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
-    #[serde(default)]
-    pub serialize: bool,
     pub def_site: usize,
     pub call_site: usize,
     pub mixed_site: usize,

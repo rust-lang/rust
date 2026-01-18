@@ -23,7 +23,6 @@ use crate::{
     },
     process::ProcMacroServerProcess,
     transport::codec::postcard::PostcardProtocol,
-    version,
 };
 
 pub mod msg;
@@ -159,12 +158,7 @@ pub(crate) fn expand(
             macro_name: proc_macro.name.to_string(),
             attributes: attr
                 .map(|subtree| FlatTree::from_subtree(subtree, version, &mut span_data_table)),
-            has_global_spans: ExpnGlobals {
-                serialize: version >= version::HAS_GLOBAL_SPANS,
-                def_site,
-                call_site,
-                mixed_site,
-            },
+            has_global_spans: ExpnGlobals { def_site, call_site, mixed_site },
             span_data_table: if process.rust_analyzer_spans() {
                 serialize_span_data_index_map(&span_data_table)
             } else {
