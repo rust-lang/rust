@@ -4,7 +4,7 @@ error: crate-level attribute should be an inner attribute: add an exclamation ma
 LL | #[crate_name = "owo"]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/crate-only-as-outer.rs:5:1
    |
 LL | fn main() {}
