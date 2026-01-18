@@ -390,6 +390,10 @@ pub(crate) struct LinkingFailed<'a> {
     pub escaped_output: String,
     pub verbose: bool,
     pub sysroot_dir: PathBuf,
+    pub unexpected_error: bool,
+    pub link_exe_status_stack_buffer_overrun: bool,
+    pub is_vs_installed: bool,
+    pub has_linker: bool,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
@@ -510,41 +514,28 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
                 diag.note(fluent::codegen_ssa_use_cargo_directive);
             }
         }
+        if self.unexpected_error {
+            diag.note(fluent::codegen_ssa_link_exe_unexpected_error);
+            if self.link_exe_status_stack_buffer_overrun {
+                diag.note(fluent::codegen_ssa_link_exe_status_stack_buffer_overrun);
+                diag.note(fluent::codegen_ssa_abort_note);
+                diag.note(fluent::codegen_ssa_event_log_note);
+            }
+            if self.is_vs_installed && self.has_linker {
+                // the linker is broken
+                diag.note(fluent::codegen_ssa_repair_vs_build_tools);
+                diag.note(fluent::codegen_ssa_missing_cpp_build_tool_component);
+            } else if self.is_vs_installed {
+                // the linker is not installed
+                diag.note(fluent::codegen_ssa_select_cpp_build_tool_workload);
+            } else {
+                // visual studio is not installed
+                diag.note(fluent::codegen_ssa_visual_studio_not_installed);
+            }
+        }
         diag
     }
 }
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_link_exe_unexpected_error)]
-pub(crate) struct LinkExeUnexpectedError;
-
-pub(crate) struct LinkExeStatusStackBufferOverrun;
-
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
-    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag =
-            Diag::new(dcx, level, fluent::codegen_ssa_link_exe_status_stack_buffer_overrun);
-        diag.note(fluent::codegen_ssa_abort_note);
-        diag.note(fluent::codegen_ssa_event_log_note);
-        diag
-    }
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_repair_vs_build_tools)]
-pub(crate) struct RepairVSBuildTools;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_missing_cpp_build_tool_component)]
-pub(crate) struct MissingCppBuildToolComponent;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_select_cpp_build_tool_workload)]
-pub(crate) struct SelectCppBuildToolWorkload;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_visual_studio_not_installed)]
-pub(crate) struct VisualStudioNotInstalled;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_linker_not_found)]
@@ -552,6 +543,11 @@ pub(crate) struct VisualStudioNotInstalled;
 pub(crate) struct LinkerNotFound {
     pub linker_path: PathBuf,
     pub error: Error,
+    #[note(codegen_ssa_msvc_missing_linker)]
+    #[note(codegen_ssa_check_installed_visual_studio)]
+    #[note(codegen_ssa_insufficient_vs_code_product)]
+    #[help(codegen_ssa_visual_studio_build_tools_url)]
+    pub msvc: bool,
 }
 
 #[derive(Diagnostic)]
@@ -565,20 +561,8 @@ pub(crate) struct UnableToExeLinker {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_msvc_missing_linker)]
-pub(crate) struct MsvcMissingLinker;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_self_contained_linker_missing)]
 pub(crate) struct SelfContainedLinkerMissing;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_check_installed_visual_studio)]
-pub(crate) struct CheckInstalledVisualStudio;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_insufficient_vs_code_product)]
-pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_cpu_required)]

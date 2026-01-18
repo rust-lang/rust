@@ -864,15 +864,11 @@ fn link_natively(
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 let escaped_output = escape_linker_output(&output, flavor);
-                let err = errors::LinkingFailed {
-                    linker_path: &linker_path,
-                    exit_status: prog.status,
-                    command: cmd,
-                    escaped_output,
-                    verbose: sess.opts.verbose,
-                    sysroot_dir: sess.opts.sysroot.path().to_owned(),
-                };
-                sess.dcx().emit_err(err);
+
+                let mut unexpected_error = false;
+                let mut link_exe_status_stack_buffer_overrun = false;
+                let mut is_vs_installed = false;
+                let mut has_linker = false;
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
@@ -880,33 +876,32 @@ fn link_natively(
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
-                        let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
-                        let has_linker =
+                        is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
+                        has_linker =
                             find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
                                 .is_some();
-
-                        sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+                        unexpected_error = true;
 
                         // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
                         // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
                         const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
-                        if code == STATUS_STACK_BUFFER_OVERRUN {
-                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
-                        }
-
-                        if is_vs_installed && has_linker {
-                            // the linker is broken
-                            sess.dcx().emit_note(errors::RepairVSBuildTools);
-                            sess.dcx().emit_note(errors::MissingCppBuildToolComponent);
-                        } else if is_vs_installed {
-                            // the linker is not installed
-                            sess.dcx().emit_note(errors::SelectCppBuildToolWorkload);
-                        } else {
-                            // visual studio is not installed
-                            sess.dcx().emit_note(errors::VisualStudioNotInstalled);
-                        }
+                        link_exe_status_stack_buffer_overrun = code == STATUS_STACK_BUFFER_OVERRUN;
                     }
                 }
+
+                let err = errors::LinkingFailed {
+                    linker_path: &linker_path,
+                    exit_status: prog.status,
+                    command: cmd,
+                    escaped_output,
+                    verbose: sess.opts.verbose,
+                    sysroot_dir: sess.opts.sysroot.path().to_owned(),
+                    unexpected_error,
+                    link_exe_status_stack_buffer_overrun,
+                    is_vs_installed,
+                    has_linker,
+                };
+                sess.dcx().emit_err(err);
 
                 sess.dcx().abort_if_errors();
             }
@@ -958,7 +953,11 @@ fn link_natively(
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
             let err = if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
+                sess.dcx().emit_err(errors::LinkerNotFound {
+                    linker_path,
+                    error: e,
+                    msvc: sess.target.is_like_msvc,
+                })
             } else {
                 sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
@@ -966,12 +965,6 @@ fn link_natively(
                     command_formatted: format!("{cmd:?}"),
                 })
             };
-
-            if sess.target.is_like_msvc && linker_not_found {
-                sess.dcx().emit_note(errors::MsvcMissingLinker);
-                sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
-                sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
-            }
             err.raise_fatal();
         }
     }
