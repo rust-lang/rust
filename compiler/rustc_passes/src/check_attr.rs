@@ -224,6 +224,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => {
+                    self.must_be_applied_to_test(attrs, *span, target, sym::should_panic);
+                },
+                Attribute::Parsed(AttributeKind::Ignore { span, .. }) => {
+                    self.must_be_applied_to_test(attrs, *span, target, sym::ignore);
+                }
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -235,7 +241,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::Ignore { .. }
                     | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
@@ -286,7 +291,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PassByValue (..)
                     | AttributeKind::StdInternalSymbol (..)
                     | AttributeKind::Coverage (..)
-                    | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MustUse { .. }
@@ -316,6 +320,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::NeedsAllocator
+                    | AttributeKind::TestTrace
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -482,6 +487,25 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn must_be_applied_to_test(
+        &self,
+        attrs: &[Attribute],
+        attr_span: Span,
+        target: Target,
+        attr_name: Symbol,
+    ) {
+        // The error message only makes sense if it's actually being applied on a function
+        if matches!(target, Target::Fn) {
+            if !find_attr!(attrs, AttributeKind::TestTrace) {
+                self.dcx().emit_warn(errors::MustBeAppliedToTest {
+                    attr_span,
+                    attr_name,
+                    warning: true,
+                });
+            }
+        }
     }
 
     fn check_rustc_must_implement_one_of(

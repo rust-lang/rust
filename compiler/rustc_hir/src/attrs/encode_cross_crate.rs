@@ -129,6 +129,7 @@ impl AttributeKind {
             Stability { .. } => Yes,
             StdInternalSymbol(..) => No,
             TargetFeature { .. } => No,
+            TestTrace => No,
             ThreadLocal => No,
             TrackCaller(..) => Yes,
             TypeConst(..) => Yes,

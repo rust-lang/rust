@@ -29,6 +29,9 @@ passes_attr_application_struct_union =
     attribute should be applied to a struct or union
     .label = not a struct or union
 
+passes_attr_must_be_applied_to_test_or_bench = `#[{$attr_name}]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+    .warn = {-passes_previously_accepted}
+
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function
     .label = not a function

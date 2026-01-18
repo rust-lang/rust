@@ -2275,6 +2275,7 @@ symbols! {
         test_case,
         test_removed_feature,
         test_runner,
+        test_trace: "<test_trace>",
         test_unstable_lint,
         thread,
         thread_local,
