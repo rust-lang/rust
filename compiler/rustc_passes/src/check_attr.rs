@@ -225,8 +225,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => {
-                    self.check_should_panic(attrs, *span, target);
+                    self.must_be_applied_to_test(attrs, *span, target, sym::should_panic);
                 },
+                Attribute::Parsed(AttributeKind::Ignore { span, .. }) => {
+                    self.must_be_applied_to_test(attrs, *span, target, sym::ignore);
+                }
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -238,7 +241,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::Ignore { .. }
                     | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
@@ -487,11 +489,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_mix_no_mangle_export(hir_id, attrs);
     }
 
-    fn check_should_panic(&self, attrs: &[Attribute], attr_span: Span, target: Target) {
+    fn must_be_applied_to_test(
+        &self,
+        attrs: &[Attribute],
+        attr_span: Span,
+        target: Target,
+        attr_name: Symbol,
+    ) {
         // The error message only makes sense if it's actually being applied on a function
         if matches!(target, Target::Fn) {
             if !find_attr!(attrs, AttributeKind::TestTrace) {
-                self.dcx().emit_warn(errors::MustBeAppliedToTest { attr_span, warning: true });
+                self.dcx().emit_warn(errors::MustBeAppliedToTest {
+                    attr_span,
+                    attr_name,
+                    warning: true,
+                });
             }
         }
     }

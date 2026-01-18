@@ -1318,10 +1318,11 @@ pub(crate) struct FunctionNamesDuplicated {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_should_panic_must_be_applied_to_test_or_bench)]
+#[diag(passes_attr_must_be_applied_to_test_or_bench)]
 pub(crate) struct MustBeAppliedToTest {
     #[primary_span]
     pub attr_span: Span,
     #[warning]
     pub warning: bool,
+    pub attr_name: Symbol,
 }
