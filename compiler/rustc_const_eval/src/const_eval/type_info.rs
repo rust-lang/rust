@@ -257,8 +257,8 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         {
             let field_place = self.project_field(&place, field_idx)?;
             match field.name {
-                sym::bit_width => self.write_scalar(
-                    ScalarInt::try_from_target_usize(bit_width, self.tcx.tcx).unwrap(),
+                sym::bits => self.write_scalar(
+                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
                     &field_place,
                 )?,
                 sym::signed => self.write_scalar(Scalar::from_bool(signed), &field_place)?,
@@ -278,8 +278,8 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         {
             let field_place = self.project_field(&place, field_idx)?;
             match field.name {
-                sym::bit_width => self.write_scalar(
-                    ScalarInt::try_from_target_usize(bit_width, self.tcx.tcx).unwrap(),
+                sym::bits => self.write_scalar(
+                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
                     &field_place,
                 )?,
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
