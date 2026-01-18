@@ -1,13 +1,23 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
-  --> RUSTLIB/alloc/src/rc.rs:LL:CC
+  --> RUSTLIB/alloc/src/raw_rc/rc_alloc.rs:LL:CC
    |
-LL |                 Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let allocation_result = alloc.allocate(rc_layout.get());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: stack backtrace:
-           0: std::rc::Rc::new
+           0: alloc::raw_rc::rc_alloc::allocate_uninit_raw_bytes
+               at RUSTLIB/alloc/src/raw_rc/rc_alloc.rs:LL:CC
+           1: alloc::raw_rc::rc_alloc::allocate_uninit_in
+               at RUSTLIB/alloc/src/raw_rc/rc_alloc.rs:LL:CC
+           2: alloc::raw_rc::rc_alloc::allocate_uninit
+               at RUSTLIB/alloc/src/raw_rc/rc_alloc.rs:LL:CC
+           3: alloc::raw_rc::raw_weak::RawWeak::<std::cell::RefCell<std::option::Option<Dummy>>, std::alloc::Global>::new_uninit
+               at RUSTLIB/alloc/src/raw_rc/raw_weak.rs:LL:CC
+           4: alloc::raw_rc::raw_rc::RawRc::new
+               at RUSTLIB/alloc/src/raw_rc/raw_rc.rs:LL:CC
+           5: std::rc::Rc::new
                at RUSTLIB/alloc/src/rc.rs:LL:CC
-           1: main
+           6: main
                at tests/fail/memleak_rc.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
