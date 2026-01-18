@@ -241,17 +241,6 @@ LL | #![feature(x0600)]
    |  +
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:885:1
-   |
-LL | #[no_main]
-   | ^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL | #![no_main]
-   |  +
-
-warning: crate-level attribute should be an inner attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:909:1
    |
 LL | #[no_builtins]
@@ -474,56 +463,6 @@ LL |     #[feature(x0600)] impl S { }
 help: add a `!`
    |
 LL |     #![feature(x0600)] impl S { }
-   |      +
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:889:17
-   |
-LL |     mod inner { #![no_main] }
-   |                 ^^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:892:5
-   |
-LL |     #[no_main] fn f() { }
-   |     ^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_main] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:896:5
-   |
-LL |     #[no_main] struct S;
-   |     ^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_main] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:900:5
-   |
-LL |     #[no_main] type T = S;
-   |     ^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_main] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:904:5
-   |
-LL |     #[no_main] impl S { }
-   |     ^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_main] impl S { }
    |      +
 
 warning: crate-level attribute should be in the root module
@@ -1406,6 +1345,76 @@ note: This attribute does not have an `!`, which means it is applied to this imp
    |
 LL |     #[crate_name = "0900"] impl S { }
    |                            ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:885:1
+   |
+LL | #[no_main]
+   | ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:887:1
+   |
+LL | / mod no_main_1 {
+LL | |
+LL | |     mod inner { #![no_main] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![no_main]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:889:17
+   |
+LL |     mod inner { #![no_main] }
+   |                 ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:892:5
+   |
+LL |     #[no_main] fn f() { }
+   |     ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:892:16
+   |
+LL |     #[no_main] fn f() { }
+   |                ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:896:5
+   |
+LL |     #[no_main] struct S;
+   |     ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:896:16
+   |
+LL |     #[no_main] struct S;
+   |                ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:900:5
+   |
+LL |     #[no_main] type T = S;
+   |     ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:900:16
+   |
+LL |     #[no_main] type T = S;
+   |                ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:904:5
+   |
+LL |     #[no_main] impl S { }
+   |     ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:904:16
+   |
+LL |     #[no_main] impl S { }
+   |                ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:1

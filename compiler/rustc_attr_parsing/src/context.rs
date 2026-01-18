@@ -28,9 +28,9 @@ use crate::attributes::codegen_attrs::{
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
-    RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
-    WindowsSubsystemParser,
+    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoMainParser, NoStdParser,
+    PatternComplexityLimitParser, RecursionLimitParser, RustcCoherenceIsCoreParser,
+    TypeLengthLimitParser, WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -263,6 +263,7 @@ attribute_parsers!(
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
         Single<WithoutArgs<NoLinkParser>>,
+        Single<WithoutArgs<NoMainParser>>,
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,
