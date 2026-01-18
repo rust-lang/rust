@@ -1911,14 +1911,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     return Ok(());
                 }
             },
-            (ty::ValTreeKind::Branch(_), ty::Array(t, _)) if t == u8_type => {
-                let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
-                    bug!("expected to convert valtree to raw bytes for type {:?}", t)
-                });
+            // If it is a branch with an array, and this array can be printed as raw bytes, then dump its bytes
+            (ty::ValTreeKind::Branch(_), ty::Array(t, _))
+                if t == u8_type
+                    && let Some(bytes) = cv.try_to_raw_bytes(self.tcx()) =>
+            {
                 write!(self, "*")?;
                 self.pretty_print_byte_str(bytes)?;
                 return Ok(());
             }
+            // Otherwise, print the array separated by commas (or if it's a tuple)
             (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
                 let fields_iter = fields.iter().copied();
 
