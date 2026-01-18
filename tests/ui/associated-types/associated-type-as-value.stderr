@@ -1,5 +1,5 @@
 error[E0599]: no associated item named `Item` found for type parameter `T` in the current scope
-  --> $DIR/issue-38919.rs:2:8
+  --> $DIR/associated-type-as-value.rs:4:8
    |
 LL | fn foo<T: Iterator>() {
    |        - associated item `Item` not found for this type parameter

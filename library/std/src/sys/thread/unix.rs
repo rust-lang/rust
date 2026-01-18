@@ -49,7 +49,7 @@ impl Thread {
         // WASI does not support threading via pthreads. While wasi-libc provides
         // pthread stubs, pthread_create returns EAGAIN, which causes confusing
         // errors. We return UNSUPPORTED_PLATFORM directly instead.
-        if cfg!(target_os = "wasi") {
+        if cfg!(all(target_os = "wasi", not(target_feature = "atomics"))) {
             return Err(io::Error::UNSUPPORTED_PLATFORM);
         }
 

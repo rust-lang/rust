@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17441>
+
 fn main() {
     let _foo = &[1_usize, 2] as [usize];
     //~^ ERROR cast to unsized type: `&[usize; 2]` as `[usize]`

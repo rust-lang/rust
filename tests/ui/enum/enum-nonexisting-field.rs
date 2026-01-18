@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/19922>
+
 enum Homura {
     Akemi { madoka: () }
 }

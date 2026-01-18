@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-16966.rs:3:12
+  --> $DIR/panic-with-unspecified-type.rs:4:12
    |
 LL |     panic!(std::default::Default::default());
    |     -------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-

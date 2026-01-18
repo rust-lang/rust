@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/16745>
 //@ run-pass
 fn main() {
     const X: u8 = 0;

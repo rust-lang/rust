@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17351>
 //@ run-pass
 
 trait Str { fn foo(&self) {} } //~ WARN method `foo` is never used

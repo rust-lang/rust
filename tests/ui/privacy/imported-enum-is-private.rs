@@ -1,6 +1,7 @@
-//@ aux-build:issue-11680.rs
+//! regression test for <https://github.com/rust-lang/rust/issues/11680>
+//@ aux-build:imported-enum-is-private.rs
 
-extern crate issue_11680 as other;
+extern crate imported_enum_is_private as other;
 
 fn main() {
     let _b = other::Foo::Bar(1);
