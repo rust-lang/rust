@@ -884,26 +884,26 @@ mod feature {
 
 #[no_main]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod no_main_1 {
+    //~^ NOTE: This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_main] }
-//~^ WARN crate-level attribute should be in the root module
+    //~^ WARN the `#![no_main]` attribute can only be used at the crate root
 
     #[no_main] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[no_main] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[no_main] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[no_main] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation
 }
 
 #[no_builtins]

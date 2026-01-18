@@ -297,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::NoMain
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
