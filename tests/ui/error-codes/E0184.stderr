@@ -5,6 +5,12 @@ LL | #[derive(Copy)]
    |          ---- in this derive macro expansion
 LL | struct Foo;
    |        ^^^ `Copy` not allowed on types with destructors
+   |
+note: destructor declared here
+  --> $DIR/E0184.rs:5:5
+   |
+LL |     fn drop(&mut self) {
+   |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
