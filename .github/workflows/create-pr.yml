@@ -1,0 +1,137 @@
+# 自动为修复分支创建 Pull Request 到上游仓库
+#
+# 使用方法：
+# 1. 在 fork 仓库的 Settings > Secrets and variables > Actions 中配置:
+#    - UPSTREAM_REPO: rust-lang/rust
+#    - PAT: Personal Access Token (需要有 repo 和 public_repo 权限)
+# 2. 创建新分支时，使用以下命名约定:
+#    - fix/xxx - 修复问题
+#    - feat/xxx - 新功能
+#    - refactor/xxx - 重构
+#    - chore/xxx - 杂项
+# 3. 推送分支后，工作流会自动创建 PR
+
+name: Create PR to Upstream
+
+on:
+  push:
+    branches:
+      - 'fix/**'
+      - 'feat/**'
+      - 'refactor/**'
+      - 'chore/**'
+      - 'impl/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: '要创建 PR 的分支名称'
+        required: true
+        type: string
+
+jobs:
+  create-pr:
+    name: Create Pull Request
+    runs-on: ubuntu-latest
+    # 只在 fork 仓库中运行，避免在上游仓库中触发
+    if: github.repository_owner != 'rust-lang'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0
+
+      - name: Get branch name
+        id: branch-name
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Check if PR already exists
+        id: check-pr
+        run: |
+          PR_EXISTS=$(gh pr list \
+            --repo ${{ secrets.UPSTREAM_REPO }} \
+            --head "ViewWay:${{ steps.branch-name.outputs.branch }}" \
+            --json number \
+            --jq 'length')
+
+          if [ "$PR_EXISTS" -gt 0 ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "PR already exists, skipping..."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+
+      - name: Generate PR title
+        id: pr-title
+        if: steps.check-pr.outputs.exists != 'true'
+        run: |
+          BRANCH="${{ steps.branch-name.outputs.branch }}"
+          TYPE=$(echo $BRANCH | cut -d'/' -f1)
+          DESC=$(echo $BRANCH | cut -d'/' -f2- | sed 's/-/ /g')
+
+          case "$TYPE" in
+            fix)
+              TITLE="Fix: ${DESC^}"
+              ;;
+            feat)
+              TITLE="Feat: ${DESC^}"
+              ;;
+            refactor)
+              TITLE="Refactor: ${DESC^}"
+              ;;
+            impl)
+              TITLE="Impl: ${DESC^}"
+              ;;
+            *)
+              TITLE="${DESC^}"
+              ;;
+          esac
+
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+      - name: Get recent commits
+        id: commits
+        if: steps.check-pr.outputs.exists != 'true'
+        run: |
+          COMMITS=$(git log origin/main..${{ steps.branch-name.outputs.branch }} --pretty=format:"- %s" --reverse)
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.check-pr.outputs.exists != 'true'
+        run: |
+          gh pr create \
+            --repo ${{ secrets.UPSTREAM_REPO }} \
+            --base main \
+            --head "ViewWay:${{ steps.branch-name.outputs.branch }}" \
+            --title "${{ steps.pr-title.outputs.title }}" \
+            --body "${{ steps.commits.outputs.commits }}" \
+            --label "T-compiler"
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+
+      - name: Summary
+        if: steps.check-pr.outputs.exists != 'true'
+        run: |
+          echo "## PR 创建成功 :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **分支**: \`${{ steps.branch-name.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **标题**: ${{ steps.pr-title.outputs.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **上游**: \`${{ secrets.UPSTREAM_REPO }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: PR already exists
+        if: steps.check-pr.outputs.exists == 'true'
+        run: |
+          echo "## PR 已存在 :information_source:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "分支 \`${{ steps.branch-name.outputs.branch }}\` 的 PR 已经存在，无需重复创建。" >> $GITHUB_STEP_SUMMARY

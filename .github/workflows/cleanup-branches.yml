@@ -1,0 +1,82 @@
+# 自动清理已合并的修复分支
+# 当上游 PR 合并后，自动删除 fork 仓库中对应的分支
+#
+# 使用方法：
+# 1. 在 fork 仓库的 Settings > Secrets and variables > Actions 中配置:
+#    - UPSTREAM_REPO: rust-lang/rust
+#    - PAT: Personal Access Token (需要有 repo 权限)
+# 2. 每小时自动检查一次
+# 3. 也可以手动触发
+
+name: Cleanup Merged Branches
+
+on:
+  # 每小时运行一次
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Delete merged branches
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'ViewWay'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: |
+          git fetch --all
+          git fetch upstream
+
+      - name: Find merged branches
+        id: find-branches
+        run: |
+          BRANCHES=()
+
+          # 获取所有远程分支（排除 main）
+          for branch in $(git branch -r | grep origin/ | grep -v 'origin/main\|origin/HEAD' | sed 's|origin/||'); do
+            # 检查分支是否已合并到上游 main
+            if git merge-base --is-ancestor "$branch" upstream/main 2>/dev/null; then
+              BRANCHES+=("$branch")
+              echo "Found merged branch: $branch"
+            fi
+          done
+
+          if [ ${#BRANCHES[@]} -gt 0 ]; then
+            echo "branches=${BRANCHES[@]}" >> $GITHUB_OUTPUT
+            echo "count=${#BRANCHES[@]}" >> $GITHUB_OUTPUT
+          else
+            echo "branches=" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete merged branches
+        if: steps.find-branches.outputs.count > 0
+        run: |
+          for branch in ${{ steps.find-branches.outputs.branches }}; do
+            echo "Deleting branch: $branch"
+            git push origin --delete "$branch"
+          done
+
+      - name: Create summary
+        run: |
+          COUNT=${{ steps.find-branches.outputs.count }}
+          if [ "$COUNT" -gt 0 ]; then
+            echo "## 清理完成 :broom:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "删除了 $COUNT 个已合并的分支:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for branch in ${{ steps.find-branches.outputs.branches }}; do
+            echo "- \`$branch\`" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "## 无需清理 :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "没有需要删除的已合并分支。" >> $GITHUB_STEP_SUMMARY
+          fi
