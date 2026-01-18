@@ -194,6 +194,9 @@ expand_trailing_semi_macro = trailing semicolon in macro used in expression posi
     .note1 = macro invocations at the end of a block are treated as expressions
     .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
 
+expand_type_const_in_cfg_attr =
+    `type_const` within an `#[cfg_attr]` attribute is forbidden
+
 expand_unknown_macro_variable = unknown macro variable `{$name}`
 
 expand_unsupported_key_value =
