@@ -460,6 +460,10 @@ const fn is_ascii(s: &[u8]) -> bool {
     )
 }
 
+/// Chunk size for vectorized ASCII checking (two 16-byte SSE registers).
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+const CHUNK_SIZE: usize = 32;
+
 /// SSE2 implementation using `_mm_movemask_epi8` (compiles to `pmovmskb`) to
 /// avoid LLVM's broken AVX-512 auto-vectorization of counting loops.
 ///
@@ -469,8 +473,6 @@ const fn is_ascii(s: &[u8]) -> bool {
 #[target_feature(enable = "sse2")]
 unsafe fn is_ascii_sse2(bytes: &[u8]) -> bool {
     use crate::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128};
-
-    const CHUNK_SIZE: usize = 32;
 
     let mut i = 0;
 
@@ -518,11 +520,27 @@ unsafe fn is_ascii_sse2(bytes: &[u8]) -> bool {
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn is_ascii(bytes: &[u8]) -> bool {
+    const USIZE_SIZE: usize = size_of::<usize>();
+    const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;
+
     const_eval_select!(
         @capture { bytes: &[u8] } -> bool:
         if const {
             is_ascii_simple(bytes)
         } else {
+            // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
+            if bytes.len() < CHUNK_SIZE {
+                let chunks = bytes.chunks_exact(USIZE_SIZE);
+                let remainder = chunks.remainder();
+                for chunk in chunks {
+                    let word = usize::from_ne_bytes(chunk.try_into().unwrap());
+                    if (word & NONASCII_MASK) != 0 {
+                        return false;
+                    }
+                }
+                return remainder.iter().all(|b| b.is_ascii());
+            }
+
             // SAFETY: SSE2 is guaranteed available on x86_64
             unsafe { is_ascii_sse2(bytes) }
         }
