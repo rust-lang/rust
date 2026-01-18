@@ -12,8 +12,8 @@
 // we already face this difficulty, probably. If we need to fix this by reducing the error margin,
 // we should improve compiletest.
 
-#[derive(Clone, Eq)] //~ ERROR [E0277]
-pub struct Struct<T>(T);
+#[derive(Clone, Eq)]
+pub struct Struct<T>(T); //~ ERROR [E0277]
 
 impl<T: Clone, U> PartialEq<U> for Struct<T>
 where

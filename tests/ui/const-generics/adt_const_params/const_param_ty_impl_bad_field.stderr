@@ -8,13 +8,12 @@ LL | impl std::marker::ConstParamTy_ for CantParam {}
    |                                     ^^^^^^^^^
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
-  --> $DIR/const_param_ty_impl_bad_field.rs:13:10
+  --> $DIR/const_param_ty_impl_bad_field.rs:14:8
    |
 LL | #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
+   |          ------------------------- in this derive macro expansion
 LL | struct CantParamDerive(NotParam);
-   |                        -------- this field does not implement `ConstParamTy_`
+   |        ^^^^^^^^^^^^^^^ -------- this field does not implement `ConstParamTy_`
 
 error: aborting due to 2 previous errors
 

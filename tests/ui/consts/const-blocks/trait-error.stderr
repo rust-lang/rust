@@ -8,9 +8,12 @@ note: required for `Foo<String>` to implement `Copy`
   --> $DIR/trait-error.rs:1:10
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |          ^^^^
+   |          |
+   |          unsatisfied trait bound introduced in this `derive` macro
+   |          in this derive macro expansion
 LL | struct Foo<T>(T);
-   |            - would need to be `Copy`
+   |        ^^^ - would need to be `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: create an inline `const` block

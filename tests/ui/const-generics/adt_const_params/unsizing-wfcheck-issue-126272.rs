@@ -6,8 +6,8 @@
 use std::marker::ConstParamTy;
 
 #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-//~^ ERROR the trait `ConstParamTy_`
 struct Foo {
+//~^ ERROR the trait `ConstParamTy_`
     nested: &'static Bar<dyn std::fmt::Debug>,
     //~^ ERROR the size for values
     //~| ERROR the size for values

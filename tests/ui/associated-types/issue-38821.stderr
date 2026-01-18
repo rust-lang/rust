@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:40:1
+  --> $DIR/issue-38821.rs:37:1
    |
 LL | pub enum ColumnInsertValue<Col, Expr> where
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
@@ -82,10 +82,13 @@ LL | impl<T: NotNull> IntoNullable for T {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:23:10
+  --> $DIR/issue-38821.rs:37:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ----- in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -98,7 +101,13 @@ note: required for `ColumnInsertValue<Col, Expr>` to implement `Debug`
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |          ^^^^^
+   |          |
+   |          unsatisfied trait bound introduced in this `derive` macro
+   |          in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------
@@ -127,10 +136,13 @@ LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Co
    |                                                                       +++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:23:17
+  --> $DIR/issue-38821.rs:37:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                 ---- in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -143,7 +155,13 @@ note: required for `ColumnInsertValue<Col, Expr>` to implement `Copy`
   --> $DIR/issue-38821.rs:23:17
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |                 ^^^^
+   |                 |
+   |                 unsatisfied trait bound introduced in this `derive` macro
+   |                 in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------
@@ -201,10 +219,13 @@ LL | impl<T: NotNull> IntoNullable for T {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:23:23
+  --> $DIR/issue-38821.rs:37:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ----- in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -217,7 +238,13 @@ note: required for `ColumnInsertValue<Col, Expr>` to implement `Clone`
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |                       ^^^^^
+   |                       |
+   |                       unsatisfied trait bound introduced in this `derive` macro
+   |                       in this derive macro expansion
+...
+LL | pub enum ColumnInsertValue<Col, Expr> where
+   |          ^^^^^^^^^^^^^^^^^
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------

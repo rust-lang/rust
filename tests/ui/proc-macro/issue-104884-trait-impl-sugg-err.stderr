@@ -1,11 +1,14 @@
 error[E0277]: can't compare `PriorityQueue<T>` with `PriorityQueue<T>`
-  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:19:8
    |
 LL | #[derive(PartialOrd, AddImpl)]
-   |          ^^^^^^^^^^ no implementation for `PriorityQueue<T> == PriorityQueue<T>`
+   |          ---------- in this derive macro expansion
+...
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   |        ^^^^^^^^^^^^^ no implementation for `PriorityQueue<T> == PriorityQueue<T>`
    |
 help: the trait `PartialEq` is not implemented for `PriorityQueue<T>`
-  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:1
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:19:1
    |
 LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +22,7 @@ LL | #[derive(PartialOrd, AddImpl)]
    |                      ^^^^^^^ unsatisfied trait bound
    |
 help: the trait `Eq` is not implemented for `PriorityQueue<T>`
-  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:1
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:19:1
    |
 LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,16 +40,19 @@ note: required for `PriorityQueue<T>` to implement `PartialOrd`
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
    |
 LL | #[derive(PartialOrd, AddImpl)]
-   |          ^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |          ^^^^^^^^^^
+   |          |
+   |          unsatisfied trait bound introduced in this `derive` macro
+   |          in this derive macro expansion
 ...
 LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
-   |                      - would need to be `PartialOrd`
+   |        ^^^^^^^^^^^^^ - would need to be `PartialOrd`
    = help: consider manually implementing `PartialOrd` to avoid undesired bounds
 note: required by a bound in `Ord`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0277]: can't compare `BinaryHeap<PriorityQueueEntry<T>>` with `_`
-  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:25
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:19:25
    |
 LL | #[derive(PartialOrd, AddImpl)]
    |          ---------- in this derive macro expansion

@@ -1,8 +1,10 @@
 error[E0184]: the trait `Copy` cannot be implemented for this type; the type has a destructor
-  --> $DIR/E0184.rs:1:10
+  --> $DIR/E0184.rs:2:8
    |
 LL | #[derive(Copy)]
-   |          ^^^^ `Copy` not allowed on types with destructors
+   |          ---- in this derive macro expansion
+LL | struct Foo;
+   |        ^^^ `Copy` not allowed on types with destructors
 
 error: aborting due to 1 previous error
 

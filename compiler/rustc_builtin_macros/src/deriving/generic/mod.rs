@@ -791,7 +791,8 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // Create the type of `self`.
-        let path = cx.path_all(self.span, false, vec![type_ident], self_params);
+        let path =
+            cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
         let rustc_const_unstable =
             cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));

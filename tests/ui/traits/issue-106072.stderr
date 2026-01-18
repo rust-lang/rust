@@ -1,5 +1,5 @@
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-106072.rs:5:1
+  --> $DIR/issue-106072.rs:3:1
    |
 LL | struct Foo;
    | ----------- previous definition of the type `Foo` here
@@ -9,18 +9,23 @@ LL | trait Foo {}
    = note: `Foo` must be defined only once in the type namespace of this module
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/issue-106072.rs:1:10
+  --> $DIR/issue-106072.rs:2:8
    |
 LL | #[derive(Clone)]
-   |          ^^^^^
+   |          ----- in this derive macro expansion
+LL | struct Foo;
+   |        ^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | struct dyn Foo;
+   |        +++
 
 error[E0782]: expected a type, found a trait
   --> $DIR/issue-106072.rs:1:10
    |
 LL | #[derive(Clone)]
    |          ^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

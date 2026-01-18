@@ -1,9 +1,10 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/missing-bound-in-derive-copy-impl.rs:9:17
+  --> $DIR/missing-bound-in-derive-copy-impl.rs:10:12
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^
+   |                 ---- in this derive macro expansion
 LL | pub struct AABB<K> {
+   |            ^^^^
 LL |     pub loc: Vector2<K>,
    |     ------------------- this field does not implement `Copy`
    |
@@ -62,9 +63,12 @@ note: required for `Vector2<K>` to implement `Debug`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |          ^^^^^
+   |          |
+   |          unsatisfied trait bound introduced in this `derive` macro
+   |          in this derive macro expansion
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
-   |                               ----
+   |            ^^^^^^^            ----
    = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
 help: consider restricting type parameter `K` with trait `Copy`
@@ -132,9 +136,12 @@ note: required for `Vector2<K>` to implement `Clone`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |                       ^^^^^
+   |                       |
+   |                       unsatisfied trait bound introduced in this `derive` macro
+   |                       in this derive macro expansion
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
-   |                               ----
+   |            ^^^^^^^            ----
    = help: consider manually implementing `Clone` to avoid undesired bounds
 help: consider restricting type parameter `K` with trait `Copy`
    |
