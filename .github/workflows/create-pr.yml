@@ -1,15 +1,4 @@
 # 自动为修复分支创建 Pull Request 到上游仓库
-#
-# 使用方法：
-# 1. 在 fork 仓库的 Settings > Secrets and variables > Actions 中配置:
-#    - UPSTREAM_REPO: rust-lang/rust
-#    - PAT: Personal Access Token (需要有 repo 和 public_repo 权限)
-# 2. 创建新分支时，使用以下命名约定:
-#    - fix/xxx - 修复问题
-#    - feat/xxx - 新功能
-#    - refactor/xxx - 重构
-#    - chore/xxx - 杂项
-# 3. 推送分支后，工作流会自动创建 PR
 
 name: Create PR to Upstream
 
@@ -32,7 +21,6 @@ jobs:
   create-pr:
     name: Create Pull Request
     runs-on: ubuntu-latest
-    # 只在 fork 仓库中运行，避免在上游仓库中触发
     if: github.repository_owner != 'rust-lang'
 
     steps:

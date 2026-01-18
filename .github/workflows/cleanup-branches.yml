@@ -1,17 +1,8 @@
 # 自动清理已合并的修复分支
-# 当上游 PR 合并后，自动删除 fork 仓库中对应的分支
-#
-# 使用方法：
-# 1. 在 fork 仓库的 Settings > Secrets and variables > Actions 中配置:
-#    - UPSTREAM_REPO: rust-lang/rust
-#    - PAT: Personal Access Token (需要有 repo 权限)
-# 2. 每小时自动检查一次
-# 3. 也可以手动触发
 
 name: Cleanup Merged Branches
 
 on:
-  # 每小时运行一次
   schedule:
     - cron: '0 * * * *'
   workflow_dispatch:
@@ -39,9 +30,7 @@ jobs:
         run: |
           BRANCHES=()
 
-          # 获取所有远程分支（排除 main）
           for branch in $(git branch -r | grep origin/ | grep -v 'origin/main\|origin/HEAD' | sed 's|origin/||'); do
-            # 检查分支是否已合并到上游 main
             if git merge-base --is-ancestor "$branch" upstream/main 2>/dev/null; then
               BRANCHES+=("$branch")
               echo "Found merged branch: $branch"

@@ -1,19 +1,11 @@
 # 自动同步上游仓库 (rust-lang/rust) 到 fork 仓库
 # 每天自动运行，保持 fork 的 main 分支与上游同步
-#
-# 使用方法：
-# 1. 在 fork 仓库的 Settings > Secrets and variables > Actions 中配置:
-#    - UPSTREAM_REPO: rust-lang/rust
-#    - PAT: Personal Access Token (需要有 repo 权限)
-# 2. 手动触发: GitHub 页面 > Actions > Sync Upstream > Run workflow
 
 name: Sync Upstream
 
 on:
-  # 每天自动运行（UTC 时间 00:00）
   schedule:
     - cron: '0 0 * * *'
-  # 允许手动触发
   workflow_dispatch:
     inputs:
       force:
@@ -22,7 +14,6 @@ on:
         type: boolean
         default: false
 
-# 防止并发运行
 concurrency:
   group: sync-upstream
   cancel-in-progress: false
@@ -31,14 +22,12 @@ jobs:
   sync:
     name: Sync with upstream
     runs-on: ubuntu-latest
-    # 只在 main 分支上运行
     if: github.repository_owner == 'ViewWay' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 使用 PAT 而不是默认的 GITHUB_TOKEN，以便能够推送到 fork
           token: ${{ secrets.PAT }}
           fetch-depth: 0
 
@@ -70,14 +59,8 @@ jobs:
       - name: Merge upstream changes
         if: steps.check-commits.outputs.has_new_commits == 'true'
         run: |
-          # 切换到 main 分支
           git checkout main
-
-          # 合并上游的 main 分支
-          # 使用 --strategy-option=theirs 以优先采用上游的更改
           git merge upstream/main --no-edit --strategy-option=theirs
-
-          # 推送到 fork 仓库
           git push origin main
 
       - name: Create summary
