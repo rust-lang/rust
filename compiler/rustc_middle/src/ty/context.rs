@@ -2543,7 +2543,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let rel_lo = (data.lo - source_file.start_pos).0;
         let rel_hi = (data.hi - source_file.start_pos).0;
 
-        // Get the source crate's stable ID
         let source_crate = self.stable_crate_id(source_file.cnum);
 
         SpanRef::FileRelative {

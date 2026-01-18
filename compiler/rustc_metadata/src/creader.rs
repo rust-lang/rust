@@ -658,6 +658,8 @@ impl CStore {
                 .map_err(|err| CrateError::MissingSpanFile(crate_name, err))?;
         }
 
+        crate_metadata.preload_all_source_files(tcx, self);
+
         self.set_crate_data(cnum, crate_metadata);
 
         Ok(cnum)

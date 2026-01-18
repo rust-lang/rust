@@ -8,7 +8,6 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, SpanRef};
-use rustc_span::def_id::{DefId, LocalDefId};
 
 fn convert_to_span_ref<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -84,18 +84,8 @@ make_fn!(baz);
     // Compile with RDR flags - this would ICE before the fix due to
     // hygiene contexts not being hashed when spans are ignored.
     // With SpanRef migration, -Zincremental-ignore-spans is no longer needed.
-    rustc()
-        .input("lib.rs")
-        .crate_type("lib")
-        .incremental("incr")
-        .arg("-Zstable-crate-hash")
-        .run();
+    rustc().input("lib.rs").crate_type("lib").incremental("incr").arg("-Zstable-crate-hash").run();
 
     // Second compilation to exercise incremental path
-    rustc()
-        .input("lib.rs")
-        .crate_type("lib")
-        .incremental("incr")
-        .arg("-Zstable-crate-hash")
-        .run();
+    rustc().input("lib.rs").crate_type("lib").incremental("incr").arg("-Zstable-crate-hash").run();
 }

@@ -43,8 +43,9 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
         debug!("predicates_of: inferred_outlives_of({:?}) = {:?}", def_id, inferred_outlives,);
-        let inferred_outlives_iter =
-            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), tcx.resolve_span_ref(*span)));
+        let inferred_outlives_iter = inferred_outlives
+            .iter()
+            .map(|(clause, span)| ((*clause).upcast(tcx), tcx.resolve_span_ref(*span)));
         if result.predicates.is_empty() {
             result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
         } else {

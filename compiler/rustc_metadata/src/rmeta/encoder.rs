@@ -39,6 +39,62 @@ use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
+/// State for converting `Span` to `SpanRef` during encoding.
+/// Separated from `EncodeContext` to allow disjoint borrows.
+struct SpanConversionState {
+    // Cache for source file lookups (file, index into source map)
+    source_file_cache: (Arc<SourceFile>, usize),
+    // Tracks which source files are referenced (for .spans file)
+    required_source_files: Option<FxIndexSet<usize>>,
+    // Maps original stable_id -> exported stable_id for local files
+    stable_id_export_map: FxHashMap<StableSourceFileId, StableSourceFileId>,
+}
+
+impl SpanConversionState {
+    fn span_to_span_ref(&mut self, span: Span, tcx: TyCtxt<'_>, is_proc_macro: bool) -> SpanRef {
+        let span_data = span.data();
+        let ctxt = if is_proc_macro { SyntaxContext::root() } else { span_data.ctxt };
+
+        if span_data.is_dummy() {
+            return SpanRef::Opaque { ctxt };
+        }
+
+        if !self.source_file_cache.0.contains(span_data.lo) {
+            let source_map = tcx.sess.source_map();
+            let source_file_index = source_map.lookup_source_file_idx(span_data.lo);
+            self.source_file_cache =
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
+        }
+        let (ref source_file, source_file_index) = self.source_file_cache;
+
+        if !source_file.contains(span_data.hi) {
+            return SpanRef::Opaque { ctxt };
+        }
+
+        if (!source_file.is_imported() || is_proc_macro)
+            && let Some(required_source_files) = self.required_source_files.as_mut()
+        {
+            required_source_files.insert(source_file_index);
+        }
+
+        let lo = (span_data.lo - source_file.start_pos).0;
+        let hi = (span_data.hi - source_file.start_pos).0;
+        let source_crate = tcx.stable_crate_id(source_file.cnum);
+
+        let file_stable_id = if source_file.cnum == LOCAL_CRATE {
+            let mut adapted_name = source_file.name.clone();
+            if let FileName::Real(ref mut real_name) = adapted_name {
+                real_name.update_for_crate_metadata();
+            }
+            StableSourceFileId::from_filename_for_export(&adapted_name, source_crate)
+        } else {
+            source_file.stable_id
+        };
+
+        SpanRef::FileRelative { source_crate, file: file_stable_id, lo, hi, ctxt }
+    }
+}
+
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,
     tcx: TyCtxt<'tcx>,
@@ -52,17 +108,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
 
     interpret_allocs: FxIndexSet<interpret::AllocId>,
 
-    // This is used to speed up Span encoding.
-    // The `usize` is an index into the `MonotonicVec`
-    // that stores the `SourceFile`
-    source_file_cache: (Arc<SourceFile>, usize),
-    // The indices (into the `SourceMap`'s `MonotonicVec`)
-    // of all of the `SourceFiles` that we need to serialize.
-    // When we serialize a `Span`, we insert the index of its
-    // `SourceFile` into the `FxIndexSet`.
-    // The order inside the `FxIndexSet` is used as on-disk
-    // order of `SourceFiles`, and encoded inside `Span`s.
-    required_source_files: Option<FxIndexSet<usize>>,
+    span_state: SpanConversionState,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
@@ -214,63 +260,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_span_as_span_ref(&mut self, span: Span) {
-        let span_data = span.data();
-        let ctxt = if self.is_proc_macro { SyntaxContext::root() } else { span_data.ctxt };
-
-        // For dummy spans, encode as Opaque
-        if span_data.is_dummy() {
-            let span_ref = SpanRef::Opaque { ctxt };
-            span_ref.encode(self);
-            return;
-        }
-
-        // Look up the source file for this span
-        if !self.source_file_cache.0.contains(span_data.lo) {
-            let source_map = self.tcx.sess.source_map();
-            let source_file_index = source_map.lookup_source_file_idx(span_data.lo);
-            self.source_file_cache =
-                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
-        }
-        let (ref source_file, source_file_index) = self.source_file_cache;
-
-        // Check if hi is in the same file
-        if !source_file.contains(span_data.hi) {
-            // Cross-file span - encode as Opaque
-            let span_ref = SpanRef::Opaque { ctxt };
-            span_ref.encode(self);
-            return;
-        }
-
-        if (!source_file.is_imported() || self.is_proc_macro)
-            && let Some(required_source_files) = self.required_source_files.as_mut()
-        {
-            required_source_files.insert(source_file_index);
-        }
-
-        // Create FileRelative with stable source file ID and source crate ID
-        let lo = (span_data.lo - source_file.start_pos).0;
-        let hi = (span_data.hi - source_file.start_pos).0;
-        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
-        let file_stable_id = if source_file.cnum == LOCAL_CRATE {
-            let mut adapted_name = source_file.name.clone();
-            if let FileName::Real(ref mut real_name) = adapted_name {
-                real_name.update_for_crate_metadata();
-            }
-            StableSourceFileId::from_filename_for_export(&adapted_name, source_crate)
-        } else {
-            source_file.stable_id
-        };
-        debug!(
-            cnum = ?source_file.cnum,
-            ?source_crate,
-            file_name = ?source_file.name,
-            original_stable_id = ?source_file.stable_id,
-            export_stable_id = ?file_stable_id,
-            lo,
-            hi,
-            "encode_span_as_span_ref: FileRelative"
-        );
-        let span_ref = SpanRef::FileRelative { source_crate, file: file_stable_id, lo, hi, ctxt };
+        let span_ref = self.span_state.span_to_span_ref(span, self.tcx, self.is_proc_macro);
         span_ref.encode(self);
     }
 }
@@ -326,13 +316,13 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(self.lo <= self.hi);
 
-        if !s.source_file_cache.0.contains(self.lo) {
+        if !s.span_state.source_file_cache.0.contains(self.lo) {
             let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(self.lo);
-            s.source_file_cache =
+            s.span_state.source_file_cache =
                 (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
         }
-        let (ref source_file, source_file_index) = s.source_file_cache;
+        let (ref source_file, source_file_index) = s.span_state.source_file_cache;
         debug_assert!(source_file.contains(self.lo));
 
         if !source_file.contains(self.hi) {
@@ -384,7 +374,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         } else {
             // Record the fact that we need to encode the data for this `SourceFile`
             let source_files =
-                s.required_source_files.as_mut().expect("Already encoded SourceMap!");
+                s.span_state.required_source_files.as_mut().expect("Already encoded SourceMap!");
             let (metadata_index, _) = source_files.insert_full(source_file_index);
             let metadata_index: u32 =
                 metadata_index.try_into().expect("cannot export more than U32_MAX files");
@@ -414,9 +404,9 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         metadata_index.encode(s);
 
         if kind == SpanKind::Foreign {
-            // This needs to be two lines to avoid holding the `s.source_file_cache`
+            // This needs to be two lines to avoid holding the `s.span_state.source_file_cache`
             // while calling `cnum.encode(s)`
-            let cnum = s.source_file_cache.0.cnum;
+            let cnum = s.span_state.source_file_cache.0.cnum;
             cnum.encode(s);
         }
     }
@@ -485,75 +475,31 @@ macro_rules! record_defaulted_array {
     }};
 }
 
+macro_rules! record_defaulted_array_with {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $transform:expr) => {{
+        {
+            let value = $value;
+            let lazy = $self.lazy_array_with(value, $transform);
+            $self.$tables.$table.set($def_id.index, lazy);
+        }
+    }};
+}
+
+macro_rules! record_defaulted_array_with_mut {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $transform:expr) => {{
+        {
+            let value = $value;
+            let lazy = $self.lazy_array_with_mut(value, $transform);
+            $self.$tables.$table.set($def_id.index, lazy);
+        }
+    }};
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Converts a `Span` to a `SpanRef`, preserving file-relative position when possible.
-    ///
-    /// This method creates `SpanRef::FileRelative` for spans that fit within a single
-    /// source file, allowing stable span references that survive recompilation.
-    /// Falls back to `SpanRef::Opaque` for dummy spans or spans that cross file boundaries.
+    /// Converts a `Span` to a `SpanRef`. Delegates to `SpanConversionState`.
     fn span_to_span_ref(&mut self, span: Span) -> SpanRef {
-        let span_data = span.data();
-        let ctxt = if self.is_proc_macro { SyntaxContext::root() } else { span_data.ctxt };
-
-        // For dummy spans, return Opaque
-        if span_data.is_dummy() {
-            return SpanRef::Opaque { ctxt };
-        }
-
-        // Look up the source file for this span
-        if !self.source_file_cache.0.contains(span_data.lo) {
-            let source_map = self.tcx.sess.source_map();
-            let source_file_index = source_map.lookup_source_file_idx(span_data.lo);
-            self.source_file_cache =
-                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
-        }
-        let (ref source_file, source_file_index) = self.source_file_cache;
-
-        // Check if hi is in the same file
-        if !source_file.contains(span_data.hi) {
-            // Cross-file span - return Opaque
-            return SpanRef::Opaque { ctxt };
-        }
-
-        if (!source_file.is_imported() || self.is_proc_macro)
-            && let Some(required_source_files) = self.required_source_files.as_mut()
-        {
-            required_source_files.insert(source_file_index);
-        }
-
-        // Create FileRelative with stable source file ID and source crate ID
-        let lo = (span_data.lo - source_file.start_pos).0;
-        let hi = (span_data.hi - source_file.start_pos).0;
-        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
-
-        // For local source files, we need to compute the export version of the stable_id,
-        // because when source files are written to metadata their stable_id is recalculated
-        // to include the crate's stable ID. We also need to adapt the filename the same way
-        // as encode_source_map_with does (via update_for_crate_metadata) to ensure the hash
-        // matches.
-        // For imported source files, the stable_id is already in the correct form (it was
-        // read from that crate's metadata).
-        let file_stable_id = if source_file.cnum == LOCAL_CRATE {
-            let mut adapted_name = source_file.name.clone();
-            if let FileName::Real(ref mut real_name) = adapted_name {
-                real_name.update_for_crate_metadata();
-            }
-            StableSourceFileId::from_filename_for_export(&adapted_name, source_crate)
-        } else {
-            source_file.stable_id
-        };
-
-        debug!(
-            cnum = ?source_file.cnum,
-            ?source_crate,
-            file_name = ?source_file.name,
-            original_stable_id = ?source_file.stable_id,
-            export_stable_id = ?file_stable_id,
-            lo,
-            hi,
-            "span_to_span_ref: FileRelative"
-        );
-        SpanRef::FileRelative { source_crate, file: file_stable_id, lo, hi, ctxt }
+        self.span_state.span_to_span_ref(span, self.tcx, self.is_proc_macro)
     }
 
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
@@ -606,6 +552,70 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(self.lazy_state, LazyState::NoNode);
         self.lazy_state = LazyState::NodeStart(pos);
         let len = values.into_iter().map(|value| value.borrow().encode(self)).count();
+        self.lazy_state = LazyState::NoNode;
+
+        assert!(pos.get() <= self.position());
+
+        LazyArray::from_position_and_num_elems(pos, len)
+    }
+
+    /// Encodes a lazy array, applying `F` to each item before encoding.
+    ///
+    /// `F` receives a reference to `stable_id_export_map` as a parameter, scoping
+    /// the borrow per-item rather than across the entire iteration. This avoids
+    /// borrow conflicts with `encode(&mut self)`.
+    fn lazy_array_with<T, I, U, F, B>(&mut self, values: I, transform: F) -> LazyArray<T>
+    where
+        T: ParameterizedOverTcx,
+        I: IntoIterator<Item = U>,
+        F: Fn(U, &FxHashMap<StableSourceFileId, StableSourceFileId>) -> B,
+        B: Borrow<T::Value<'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+    {
+        let pos = NonZero::new(self.position()).unwrap();
+
+        assert_eq!(self.lazy_state, LazyState::NoNode);
+        self.lazy_state = LazyState::NodeStart(pos);
+        let len = values
+            .into_iter()
+            .map(|value| {
+                let transformed = transform(value, &self.span_state.stable_id_export_map);
+                transformed.borrow().encode(self)
+            })
+            .count();
+        self.lazy_state = LazyState::NoNode;
+
+        assert!(pos.get() <= self.position());
+
+        LazyArray::from_position_and_num_elems(pos, len)
+    }
+
+    /// Encodes a lazy array, applying `F` to each item before encoding.
+    ///
+    /// `F` receives mutable access to [`SpanConversionState`], allowing
+    /// transformations that update the source file cache. The borrow is scoped
+    /// per-item to avoid conflicts with `encode(&mut self)`.
+    fn lazy_array_with_mut<T, I, U, F, B>(&mut self, values: I, transform: F) -> LazyArray<T>
+    where
+        T: ParameterizedOverTcx,
+        I: IntoIterator<Item = U>,
+        F: Fn(U, &mut SpanConversionState, TyCtxt<'tcx>, bool) -> B,
+        B: Borrow<T::Value<'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+    {
+        let pos = NonZero::new(self.position()).unwrap();
+
+        assert_eq!(self.lazy_state, LazyState::NoNode);
+        self.lazy_state = LazyState::NodeStart(pos);
+        let len = values
+            .into_iter()
+            .map(|value| {
+                let tcx = self.tcx;
+                let is_proc_macro = self.is_proc_macro;
+                let transformed = transform(value, &mut self.span_state, tcx, is_proc_macro);
+                transformed.borrow().encode(self)
+            })
+            .count();
         self.lazy_state = LazyState::NoNode;
 
         assert!(pos.get() <= self.position());
@@ -668,7 +678,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
-        let required_source_files = self.required_source_files.take().unwrap();
+        let required_source_files = self.span_state.required_source_files.take().unwrap();
         self.encode_source_map_with(required_source_files)
     }
 
@@ -1657,8 +1667,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-                // Query already returns SpanRef, no conversion needed
-                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives.to_vec());
+                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives.iter().copied());
 
                 for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
@@ -1680,8 +1689,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
                 self.tables.asyncness.set(def_id.index, asyncness);
-                record_array!(self.tables.fn_arg_idents[def_id] <-
-                    tcx.fn_arg_idents(def_id).iter().map(|opt| opt.map(|id| id.to_ident_ref())));
+                let ident_refs: Vec<_> = tcx
+                    .fn_arg_idents(def_id)
+                    .iter()
+                    .map(|opt| {
+                        opt.map(|id| {
+                            rustc_span::IdentRef::new(id.name, self.span_to_span_ref(id.span))
+                        })
+                    })
+                    .collect();
+                record_array!(self.tables.fn_arg_idents[def_id] <- ident_refs);
             }
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
@@ -1692,34 +1709,34 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                // Queries already return SpanRef, no conversion needed
-                let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates.to_vec());
-                let implied_predicates = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates.to_vec());
+                let super_preds = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
+                record_defaulted_array_with!(self.tables.explicit_super_predicates_of[def_id] <-
+                    super_preds.iter(),
+                    |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
+                let implied_preds = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                record_defaulted_array_with!(self.tables.explicit_implied_predicates_of[def_id] <-
+                    implied_preds.iter(),
+                    |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
-                    // explicit_implied_const_bounds still returns Span, needs conversion
                     let const_bounds = self.tcx.explicit_implied_const_bounds(def_id).skip_binder();
-                    let const_bounds_converted: Vec<_> = {
-                        let mut result = Vec::with_capacity(const_bounds.len());
-                        for &(c, s) in const_bounds.iter() {
-                            result.push((c, self.span_to_span_ref(s)));
-                        }
-                        result
-                    };
-                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
+                    record_defaulted_array_with_mut!(self.tables.explicit_implied_const_bounds[def_id] <-
+                        const_bounds.iter(),
+                        |&(c, s), span_state, tcx, is_proc_macro| (c, span_state.span_to_span_ref(s, tcx, is_proc_macro)));
                 }
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                // Queries already return SpanRef, no conversion needed
-                let super_predicates = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <- super_predicates.to_vec());
-                let implied_predicates = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <- implied_predicates.to_vec());
+                let super_preds = self.tcx.explicit_super_predicates_of(def_id).skip_binder();
+                record_defaulted_array_with!(self.tables.explicit_super_predicates_of[def_id] <-
+                    super_preds.iter(),
+                    |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
+                let implied_preds = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                record_defaulted_array_with!(self.tables.explicit_implied_predicates_of[def_id] <-
+                    implied_preds.iter(),
+                    |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1781,14 +1798,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
                     let const_bounds = tcx.explicit_implied_const_bounds(def_id).skip_binder();
-                    let const_bounds_converted: Vec<_> = {
-                        let mut result = Vec::with_capacity(const_bounds.len());
-                        for &(c, s) in const_bounds.iter() {
-                            result.push((c, self.span_to_span_ref(s)));
-                        }
-                        result
-                    };
-                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
+                    record_defaulted_array_with_mut!(self.tables.explicit_implied_const_bounds[def_id] <-
+                        const_bounds.iter(),
+                        |&(c, s), span_state, tcx, is_proc_macro| (c, span_state.span_to_span_ref(s, tcx, is_proc_macro)));
                 }
             }
             if let DefKind::AnonConst = def_kind {
@@ -1928,16 +1940,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
-        // Query already returns SpanRef, no conversion needed
-        let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds.to_vec());
+        let item_bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
+        record_defaulted_array_with!(self.tables.explicit_item_bounds[def_id] <-
+            item_bounds.iter(),
+            |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
     }
 
     fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
-        // Query already returns SpanRef, no conversion needed
-        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds.to_vec());
+        let item_bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        record_defaulted_array_with!(self.tables.explicit_item_self_bounds[def_id] <-
+            item_bounds.iter(),
+            |&(clause, span_ref), map| (clause, transform_span_ref_for_export(span_ref, map)));
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1958,14 +1972,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.encode_explicit_item_self_bounds(def_id);
             if tcx.is_conditionally_const(def_id) {
                 let const_bounds = self.tcx.explicit_implied_const_bounds(def_id).skip_binder();
-                let const_bounds_converted: Vec<_> = {
-                    let mut result = Vec::with_capacity(const_bounds.len());
-                    for &(c, s) in const_bounds.iter() {
-                        result.push((c, self.span_to_span_ref(s)));
-                    }
-                    result
-                };
-                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id] <- const_bounds_converted);
+                record_defaulted_array_with_mut!(self.tables.explicit_implied_const_bounds[def_id] <-
+                    const_bounds.iter(),
+                    |&(c, s), span_state, tcx, is_proc_macro| (c, span_state.span_to_span_ref(s, tcx, is_proc_macro)));
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
@@ -2726,6 +2735,46 @@ pub fn encode_spans(
     });
 }
 
+/// Builds a mapping from original stable_id to exported stable_id for local source files.
+fn build_stable_id_export_map(
+    tcx: TyCtxt<'_>,
+) -> FxHashMap<StableSourceFileId, StableSourceFileId> {
+    let source_map_files = tcx.sess.source_map().files();
+    let local_crate_stable_id = tcx.stable_crate_id(LOCAL_CRATE);
+    let mut map = FxHashMap::with_capacity_and_hasher(source_map_files.len(), Default::default());
+
+    for source_file in source_map_files.iter() {
+        if source_file.cnum != LOCAL_CRATE {
+            continue;
+        }
+        let original_id = source_file.stable_id;
+        let mut adapted_name = source_file.name.clone();
+        if let FileName::Real(ref mut real_name) = adapted_name {
+            real_name.update_for_crate_metadata();
+        }
+        let exported_id =
+            StableSourceFileId::from_filename_for_export(&adapted_name, local_crate_stable_id);
+        map.insert(original_id, exported_id);
+    }
+    map
+}
+
+/// Transforms a SpanRef's stable_id from local to exported form for cross-crate use.
+fn transform_span_ref_for_export(
+    span_ref: SpanRef,
+    export_map: &FxHashMap<StableSourceFileId, StableSourceFileId>,
+) -> SpanRef {
+    let SpanRef::FileRelative { source_crate, file, lo, hi, ctxt } = span_ref else {
+        return span_ref;
+    };
+
+    let Some(&exported_stable_id) = export_map.get(&file) else {
+        return span_ref;
+    };
+
+    SpanRef::FileRelative { source_crate, file: exported_stable_id, lo, hi, ctxt }
+}
+
 /// Encodes metadata with standard header.
 /// Returns the required_source_files if stable_crate_hash is enabled (for span file encoding).
 fn with_encode_metadata_header(
@@ -2742,9 +2791,9 @@ fn with_encode_metadata_header(
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
-    let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
+    let stable_id_export_map = build_stable_id_export_map(tcx);
     let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
@@ -2756,9 +2805,12 @@ fn with_encode_metadata_header(
         span_shorthands: Default::default(),
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache,
         interpret_allocs: Default::default(),
-        required_source_files,
+        span_state: SpanConversionState {
+            source_file_cache,
+            required_source_files: Some(FxIndexSet::default()),
+            stable_id_export_map,
+        },
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),
@@ -2783,7 +2835,7 @@ fn with_encode_metadata_header(
 
     // Return required_source_files if stable_crate_hash is enabled (for span file encoding)
     if tcx.sess.opts.unstable_opts.stable_crate_hash {
-        ecx.required_source_files.take()
+        ecx.span_state.required_source_files.take()
     } else {
         None
     }
@@ -2808,6 +2860,7 @@ fn with_encode_span_header(
     let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
     drop(source_map_files);
 
+    let stable_id_export_map = build_stable_id_export_map(tcx);
     let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
@@ -2819,10 +2872,12 @@ fn with_encode_span_header(
         span_shorthands: Default::default(),
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache,
         interpret_allocs: Default::default(),
-        // Not used for span file encoding, but required by EncodeContext
-        required_source_files: None,
+        span_state: SpanConversionState {
+            source_file_cache,
+            required_source_files: None,
+            stable_id_export_map,
+        },
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),

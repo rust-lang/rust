@@ -712,6 +712,8 @@ pub fn std_cargo(
     cargo.rustdocflag(&html_root);
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+
+    cargo.rustflag("-Zstable-crate-hash");
 }
 
 /// Link all libstd rlibs/dylibs into a sysroot of `target_compiler`.
@@ -2622,6 +2624,15 @@ pub fn add_to_sysroot(
             DependencyType::TargetSelfContained => self_contained_dst,
         };
         builder.copy_link(&path, &dst.join(filename), FileType::Regular);
+
+        // Copy .spans file if present (-Zstable-crate-hash).
+        if filename.ends_with(".rlib") {
+            let spans_filename = filename.replace(".rlib", ".spans");
+            let spans_path = path.parent().unwrap().join(&spans_filename);
+            if spans_path.exists() {
+                builder.copy_link(&spans_path, &dst.join(&spans_filename), FileType::Regular);
+            }
+        }
     }
 
     // Check that none of the rustc_* crates have multiple versions. Otherwise using them from

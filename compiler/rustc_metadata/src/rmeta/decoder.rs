@@ -2126,8 +2126,11 @@ impl<'a> CrateMetadataRef<'a> {
         tcx: TyCtxt<'_>,
         target_stable_id: rustc_span::StableSourceFileId,
     ) -> Option<ImportedSourceFile> {
-        // Iterate through all source files in this crate's metadata
-        let num_files = self.root.source_map.size();
+        let num_files = if let Some(span_data) = self.cdata.span_file_data() {
+            span_data.source_map.size()
+        } else {
+            self.root.source_map.size()
+        };
         debug!(
             ?target_stable_id,
             crate_name = ?self.cdata.root.header.name,
@@ -2264,6 +2267,25 @@ impl CrateMetadata {
         let data = self.load_span_file(path)?;
         let _ = self.span_file_data.set(Some(data));
         Ok(())
+    }
+
+    /// Pre-imports all source files to ensure deterministic `BytePos` values for
+    /// diagnostic output ordering.
+    pub(crate) fn preload_all_source_files(&self, tcx: TyCtxt<'_>, cstore: &CStore) {
+        let cref = CrateMetadataRef { cdata: self, cstore };
+        let num_files = if let Some(span_data) = self.span_file_data() {
+            span_data.source_map.size()
+        } else {
+            self.root.source_map.size()
+        };
+        debug!(
+            crate_name = ?self.root.header.name,
+            num_files,
+            "preload_all_source_files: importing all source files"
+        );
+        for file_index in 0..num_files {
+            let _ = cref.imported_source_file(tcx, file_index as u32);
+        }
     }
 
     /// Lazily loads the span file data if a span file path is configured.
