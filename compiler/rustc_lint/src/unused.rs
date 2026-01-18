@@ -136,10 +136,20 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         let ty = cx.typeck_results().expr_ty(expr);
 
+        let prefer_inner_macro_suggestion = let_underscore_init_parent(cx, expr);
         let must_use_result = is_ty_must_use(cx, ty, expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
-                emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
+                emit_must_use_untranslated(
+                    cx,
+                    &path,
+                    "",
+                    "",
+                    1,
+                    false,
+                    expr_is_from_block,
+                    prefer_inner_macro_suggestion,
+                );
                 true
             }
             None => false,
@@ -257,6 +267,31 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             } else {
                 false
             }
+        }
+
+        fn let_underscore_init_parent(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+            let mut current_expr = Some(expr.hir_id);
+            for (_, parent) in cx.tcx.hir_parent_iter(expr.hir_id) {
+                match parent {
+                    hir::Node::Expr(parent_expr) => {
+                        current_expr = Some(parent_expr.hir_id);
+                    }
+                    hir::Node::LetStmt(local) => {
+                        return local.init.is_some_and(|init| {
+                            current_expr == Some(init.hir_id)
+                                && matches!(local.pat.kind, hir::PatKind::Wild)
+                        });
+                    }
+                    hir::Node::Stmt(stmt) if let hir::StmtKind::Let(local) = stmt.kind => {
+                        return local.init.is_some_and(|init| {
+                            current_expr == Some(init.hir_id)
+                                && matches!(local.pat.kind, hir::PatKind::Wild)
+                        });
+                    }
+                    _ => {}
+                }
+            }
+            false
         }
 
         /// A path through a type to a must_use source. Contains useful info for the lint.
@@ -431,6 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         1,
                         false,
                         expr_is_from_block,
+                        false,
                     )
                 })
                 .is_some()
@@ -445,6 +481,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             plural_len: usize,
             is_inner: bool,
             expr_is_from_block: bool,
+            prefer_inner_macro_suggestion: bool,
         ) {
             let plural_suffix = pluralize!(plural_len);
 
@@ -460,6 +497,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         plural_len,
                         true,
                         expr_is_from_block,
+                        prefer_inner_macro_suggestion,
                     );
                 }
                 MustUsePath::Pinned(path) => {
@@ -472,6 +510,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         plural_len,
                         true,
                         expr_is_from_block,
+                        prefer_inner_macro_suggestion,
                     );
                 }
                 MustUsePath::Opaque(path) => {
@@ -484,6 +523,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         plural_len,
                         true,
                         expr_is_from_block,
+                        prefer_inner_macro_suggestion,
                     );
                 }
                 MustUsePath::TraitObject(path) => {
@@ -496,6 +536,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         plural_len,
                         true,
                         expr_is_from_block,
+                        prefer_inner_macro_suggestion,
                     );
                 }
                 MustUsePath::TupleElement(elems) => {
@@ -509,6 +550,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             plural_len,
                             true,
                             expr_is_from_block,
+                            prefer_inner_macro_suggestion,
                         );
                     }
                 }
@@ -522,6 +564,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
                         true,
                         expr_is_from_block,
+                        prefer_inner_macro_suggestion,
                     );
                 }
                 MustUsePath::Closure(span) => {
@@ -539,23 +582,34 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    let span = span.find_ancestor_not_from_macro().unwrap_or(*span);
+                    let lint_span = span.find_ancestor_not_from_macro().unwrap_or(*span);
+                    let suggestion_span = if prefer_inner_macro_suggestion
+                        && span.from_expansion()
+                        && lint_span != *span
+                    {
+                        *span
+                    } else {
+                        lint_span
+                    };
+                    let use_block_suggestion = expr_is_from_block;
                     cx.emit_span_lint(
                         UNUSED_MUST_USE,
-                        span,
+                        lint_span,
                         UnusedDef {
                             pre: descr_pre,
                             post: descr_post,
                             cx,
                             def_id: *def_id,
                             note: *reason,
-                            suggestion: (!is_inner).then_some(if expr_is_from_block {
+                            suggestion: (!is_inner).then_some(if use_block_suggestion {
                                 UnusedDefSuggestion::BlockTailExpr {
-                                    before_span: span.shrink_to_lo(),
-                                    after_span: span.shrink_to_hi(),
+                                    before_span: suggestion_span.shrink_to_lo(),
+                                    after_span: suggestion_span.shrink_to_hi(),
                                 }
                             } else {
-                                UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
+                                UnusedDefSuggestion::NormalExpr {
+                                    span: suggestion_span.shrink_to_lo(),
+                                }
                             }),
                         },
                     );
