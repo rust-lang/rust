@@ -113,7 +113,7 @@ pub mod epoll {
 
     /// The libc epoll_event type doesn't fit to the EPOLLIN etc constants, so we have our
     /// own type. We also make the data field an int since we typically want to store FDs there.
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone, Copy)]
     pub struct Ev {
         pub events: c_int,
         pub data: c_int,
@@ -138,10 +138,10 @@ pub mod epoll {
     }
 
     #[track_caller]
-    pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
+    pub fn check_epoll_wait<const N: usize>(epfd: i32, expected: &[Ev], timeout: i32) {
         let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
         let num = errno_result(unsafe {
-            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
+            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), timeout)
         })
         .expect("epoll_wait returned an error");
         let got = &mut array[..num.try_into().unwrap()];
@@ -150,5 +150,10 @@ pub mod epoll {
             .map(|e| Ev { events: e.events.cast_signed(), data: e.u64.try_into().unwrap() })
             .collect::<Vec<_>>();
         assert_eq!(got, expected, "got wrong notifications");
+    }
+
+    #[track_caller]
+    pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
+        check_epoll_wait::<N>(epfd, expected, 0);
     }
 }
