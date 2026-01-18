@@ -311,13 +311,19 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 
 ### Codegen tests
 
-The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the test
-with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
+The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the
+test with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
 [FileCheck] tool. The test is annotated with various `// CHECK` comments to
 check the generated code. See the [FileCheck] documentation for a tutorial and
 more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
+
+By default, codegen tests will have `//@ needs-target-std` *implied* (that the
+target needs to support std), *unless* the `#![no_std]`/`#![no_core]` attribute
+was specified in the test source. You can override this behavior and explicitly
+write `//@ needs-target-std` to only run the test when target supports std, even
+if the test is `#![no_std]`/`#![no_core]`.
 
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
