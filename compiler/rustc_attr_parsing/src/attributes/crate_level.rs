@@ -211,3 +211,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
 }
+
+pub(crate) struct NoBuiltinsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoBuiltinsParser {
+    const PATH: &[Symbol] = &[sym::no_builtins];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
+}

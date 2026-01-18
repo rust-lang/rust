@@ -303,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PanicRuntime
                     | AttributeKind::NeedsPanicRuntime
                     | AttributeKind::ProfilerRuntime
+                    | AttributeKind::NoBuiltins
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
@@ -401,7 +402,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_no_implicit_bounds
                             | sym::test_runner
                             | sym::reexport_test_harness_main
-                            | sym::no_builtins
                             | sym::crate_type
                             | sym::rustc_preserve_ub_checks,
                             ..

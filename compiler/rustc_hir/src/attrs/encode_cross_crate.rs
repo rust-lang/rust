@@ -78,6 +78,7 @@ impl AttributeKind {
             Naked(..) => No,
             NeedsAllocator => No,
             NeedsPanicRuntime => No,
+            NoBuiltins => Yes,
             NoCore(..) => No,
             NoImplicitPrelude(..) => No,
             NoLink => No,

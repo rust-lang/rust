@@ -849,6 +849,9 @@ pub enum AttributeKind {
     /// Represents `#[needs_panic_runtime]`
     NeedsPanicRuntime,
 
+    /// Represents `#[no_builtins]`
+    NoBuiltins,
+
     /// Represents `#[no_core]`
     NoCore(Span),
 
