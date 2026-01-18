@@ -25,6 +25,7 @@ note: the following trait bounds were not satisfied:
    |
 LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
    |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
    |
 LL + #[derive(Clone, Copy)]

@@ -15,6 +15,7 @@ note: trait bound `NotClone: Clone` was not satisfied
    |
 LL | #[derive(Clone)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

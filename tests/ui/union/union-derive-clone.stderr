@@ -29,6 +29,7 @@ note: trait bound `CloneNoCopy: Copy` was not satisfied
    |
 LL | #[derive(Clone, Copy)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
    |
 LL + #[derive(Clone, Copy)]

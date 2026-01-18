@@ -1650,6 +1650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find all the requirements that come from a local `impl` block.
         let mut skip_list: UnordSet<_> = Default::default();
         let mut spanned_predicates = FxIndexMap::default();
+        let mut manually_impl = false;
         for (p, parent_p, cause) in unsatisfied_predicates {
             // Extract the predicate span and parent def id of the cause,
             // if we have one.
@@ -1700,6 +1701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     entry.2.push(p);
                     skip_list.insert(p);
+                    manually_impl = true;
                 }
 
                 // Unmet obligation coming from an `impl`.
@@ -1943,6 +1945,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             *suggested_derive = self.suggest_derive(err, unsatisfied_predicates);
             *unsatisfied_bounds = true;
+        }
+        if manually_impl {
+            err.help("consider manually implementing the trait to avoid undesired bounds");
         }
     }
 
