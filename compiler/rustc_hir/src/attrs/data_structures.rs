@@ -846,6 +846,9 @@ pub enum AttributeKind {
     /// Represents `#[needs_allocator]`
     NeedsAllocator,
 
+    /// Represents `#[needs_panic_runtime]`
+    NeedsPanicRuntime,
+
     /// Represents `#[no_core]`
     NoCore(Span),
 
@@ -875,6 +878,9 @@ pub enum AttributeKind {
 
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
+
+    /// Represents `#[panic_runtime]`
+    PanicRuntime,
 
     /// Represents `#[rustc_paren_sugar]`.
     ParenSugar(Span),

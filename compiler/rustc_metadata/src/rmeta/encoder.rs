@@ -743,9 +743,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 debugger_visualizers,
                 compiler_builtins: find_attr!(attrs, AttributeKind::CompilerBuiltins),
                 needs_allocator: find_attr!(attrs, AttributeKind::NeedsAllocator),
-                needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
+                needs_panic_runtime: find_attr!(attrs, AttributeKind::NeedsPanicRuntime),
                 no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
-                panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
+                panic_runtime: find_attr!(attrs, AttributeKind::PanicRuntime),
                 profiler_runtime: ast::attr::contains_name(attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 

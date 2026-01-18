@@ -28,9 +28,9 @@ use crate::attributes::codegen_attrs::{
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoMainParser, NoStdParser,
-    PatternComplexityLimitParser, RecursionLimitParser, RustcCoherenceIsCoreParser,
-    TypeLengthLimitParser, WindowsSubsystemParser,
+    CrateNameParser, MoveSizeLimitParser, NeedsPanicRuntimeParser, NoCoreParser, NoMainParser,
+    NoStdParser, PanicRuntimeParser, PatternComplexityLimitParser, RecursionLimitParser,
+    RustcCoherenceIsCoreParser, TypeLengthLimitParser, WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -268,6 +268,7 @@ attribute_parsers!(
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NeedsAllocatorParser>>,
+        Single<WithoutArgs<NeedsPanicRuntimeParser>>,
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
         Single<WithoutArgs<NoLinkParser>>,
@@ -275,6 +276,7 @@ attribute_parsers!(
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,
+        Single<WithoutArgs<PanicRuntimeParser>>,
         Single<WithoutArgs<ParenSugarParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PinV2Parser>>,
