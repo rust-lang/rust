@@ -652,6 +652,19 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 }
 
 impl<'tcx> EmbargoVisitor<'tcx> {
+    fn check_assoc_item(&mut self, item: &ty::AssocItem, item_ev: EffectiveVisibility) {
+        let def_id = item.def_id.expect_local();
+        let tcx = self.tcx;
+        let mut reach = self.reach(def_id, item_ev);
+        reach.generics().predicates();
+        if assoc_has_type_of(tcx, item) {
+            reach.ty();
+        }
+        if item.is_type() && item.container == AssocContainer::Trait {
+            reach.bounds();
+        }
+    }
+
     fn check_def_id(&mut self, owner_id: OwnerId) {
         // Update levels of nested things and mark all items
         // in interfaces of reachable items as reachable.
@@ -682,19 +695,10 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                     self.reach(owner_id.def_id, item_ev).generics().predicates();
 
                     for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
-                        if assoc_item.is_impl_trait_in_trait() {
-                            continue;
-                        }
-
                         let def_id = assoc_item.def_id.expect_local();
                         self.update(def_id, item_ev, Level::Reachable);
 
-                        let tcx = self.tcx;
-                        let mut reach = self.reach(def_id, item_ev);
-                        reach.generics().predicates();
-                        if assoc_has_type_of(tcx, assoc_item) {
-                            reach.ty();
-                        }
+                        self.check_assoc_item(assoc_item, item_ev);
                     }
                 }
             }
@@ -732,17 +736,13 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
 
                 for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
-                    if assoc_item.is_impl_trait_in_trait() {
-                        continue;
-                    }
-
                     let def_id = assoc_item.def_id.expect_local();
                     let max_vis =
                         if of_trait { None } else { Some(self.tcx.local_visibility(def_id)) };
                     self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
 
                     if let Some(impl_item_ev) = self.get(def_id) {
-                        self.reach(def_id, impl_item_ev).generics().predicates().ty();
+                        self.check_assoc_item(assoc_item, impl_item_ev);
                     }
                 }
             }
@@ -834,7 +834,12 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn predicates(&mut self) -> &mut Self {
-        self.visit_predicates(self.ev.tcx.predicates_of(self.item_def_id));
+        self.visit_predicates(self.ev.tcx.explicit_predicates_of(self.item_def_id));
+        self
+    }
+
+    fn bounds(&mut self) -> &mut Self {
+        self.visit_clauses(self.ev.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
         self
     }
 
@@ -1372,17 +1377,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
         self.in_primary_interface = true;
         for param in &self.tcx.generics_of(self.item_def_id).own_params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {}
-                GenericParamDefKind::Type { has_default, .. } => {
-                    if has_default {
-                        let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
-                    }
-                }
-                // FIXME(generic_const_exprs): May want to look inside const here
-                GenericParamDefKind::Const { .. } => {
-                    let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
-                }
+            if let GenericParamDefKind::Const { .. } = param.kind {
+                let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
+            }
+            if let Some(default) = param.default_value(self.tcx) {
+                let _ = self.visit(default.instantiate_identity());
             }
         }
         self

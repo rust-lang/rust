@@ -1,13 +1,4 @@
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:88:48
-   |
-LL |         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
-   |                                                ^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability.rs:17:5
    |
 LL |     extern crate stability_cfg2;
@@ -372,6 +363,15 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
    |
 LL |         let _ = Unstable::StableVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/lint-stability.rs:88:48
+   |
+LL |         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
+   |                                                ^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
