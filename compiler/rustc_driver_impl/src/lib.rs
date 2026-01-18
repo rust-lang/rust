@@ -228,8 +228,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
     let args = args::arg_expand_all(&default_early_dcx, at_args);
 
-    let Some(matches) = handle_options(&default_early_dcx, &args) else {
-        return;
+    let (matches, help_only) = match handle_options(&default_early_dcx, &args) {
+        HandledOptions::None => return,
+        HandledOptions::Normal(matches) => (matches, false),
+        HandledOptions::HelpOnly(matches) => (matches, true),
     };
 
     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
@@ -288,6 +290,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
             describe_lints(sess, registered_lints);
+            return early_exit();
+        }
+
+        // We have now handled all help options, exit
+        if help_only {
             return early_exit();
         }
 
@@ -1097,7 +1104,7 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     // Don't handle -W help here, because we might first load additional lints.
     let debug_flags = matches.opt_strs("Z");
     if debug_flags.iter().any(|x| *x == "help") {
-        describe_debug_flags();
+        describe_unstable_flags();
         return true;
     }
 
@@ -1137,8 +1144,8 @@ fn get_backend_from_raw_matches(
     get_codegen_backend(early_dcx, &sysroot, backend_name, &target)
 }
 
-fn describe_debug_flags() {
-    safe_println!("\nAvailable options:\n");
+fn describe_unstable_flags() {
+    safe_println!("\nAvailable unstable options:\n");
     print_flag_list("-Z", config::Z_OPTIONS);
 }
 
@@ -1160,6 +1167,16 @@ fn print_flag_list<T>(cmdline_opt: &str, flag_list: &[OptionDesc<T>]) {
             width = max_len
         );
     }
+}
+
+pub enum HandledOptions {
+    /// Parsing failed, or we parsed a flag causing an early exit
+    None,
+    /// Successful parsing
+    Normal(getopts::Matches),
+    /// Parsing succeeded, but we received one or more 'help' flags
+    /// The compiler should proceed only until a possible `-W help` flag has been processed
+    HelpOnly(getopts::Matches),
 }
 
 /// Process command line options. Emits messages as appropriate. If compilation
@@ -1189,7 +1206,7 @@ fn print_flag_list<T>(cmdline_opt: &str, flag_list: &[OptionDesc<T>]) {
 /// This does not need to be `pub` for rustc itself, but @chaosite needs it to
 /// be public when using rustc as a library, see
 /// <https://github.com/rust-lang/rust/commit/2b4c33817a5aaecabf4c6598d41e190080ec119e>
-pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<getopts::Matches> {
+pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> HandledOptions {
     // Parse with *all* options defined in the compiler, we don't worry about
     // option stability here we just want to parse as much as possible.
     let mut options = getopts::Options::new();
@@ -1235,26 +1252,69 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(early_dcx, &matches, &config::rustc_optgroups());
 
-    if args.is_empty() || matches.opt_present("h") || matches.opt_present("help") {
-        // Only show unstable options in --help if we accept unstable options.
-        let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
-        let nightly_build = nightly_options::match_is_nightly_build(&matches);
-        usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
-        return None;
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
+        return HandledOptions::None;
     }
 
-    if describe_flag_categories(early_dcx, &matches) {
-        return None;
+    if handle_help(&matches, args) {
+        return HandledOptions::HelpOnly(matches);
+    }
+
+    if matches.opt_strs("C").iter().any(|x| x == "passes=list") {
+        get_backend_from_raw_matches(early_dcx, &matches).print_passes();
+        return HandledOptions::None;
     }
 
     if matches.opt_present("version") {
         version!(early_dcx, "rustc", &matches);
-        return None;
+        return HandledOptions::None;
     }
 
     warn_on_confusing_output_filename_flag(early_dcx, &matches, args);
 
-    Some(matches)
+    HandledOptions::Normal(matches)
+}
+
+/// Handle help options in the order they are provided, ignoring other flags. Returns if any options were handled
+/// Handled options:
+/// - `-h`/`--help`/empty arguments
+/// - `-Z help`
+/// - `-C help`
+/// NOTE: `-W help` is NOT handled here, as additional lints may be loaded.
+pub fn handle_help(matches: &getopts::Matches, args: &[String]) -> bool {
+    let opt_pos = |opt| matches.opt_positions(opt).first().copied();
+    let opt_help_pos = |opt| {
+        matches
+            .opt_strs_pos(opt)
+            .iter()
+            .filter_map(|(pos, oval)| if oval == "help" { Some(*pos) } else { None })
+            .next()
+    };
+    let help_pos = if args.is_empty() { Some(0) } else { opt_pos("h").or_else(|| opt_pos("help")) };
+    let zhelp_pos = opt_help_pos("Z");
+    let chelp_pos = opt_help_pos("C");
+    let print_help = || {
+        // Only show unstable options in --help if we accept unstable options.
+        let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
+        let nightly_build = nightly_options::match_is_nightly_build(&matches);
+        usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
+    };
+
+    let mut helps = [
+        (help_pos, &print_help as &dyn Fn()),
+        (zhelp_pos, &describe_unstable_flags),
+        (chelp_pos, &describe_codegen_flags),
+    ];
+    helps.sort_by_key(|(pos, _)| pos.clone());
+    let mut printed_any = false;
+    for printer in helps.iter().filter_map(|(pos, func)| pos.is_some().then_some(func)) {
+        printer();
+        printed_any = true;
+    }
+    printed_any
 }
 
 /// Warn if `-o` is used without a space between the flag name and the value

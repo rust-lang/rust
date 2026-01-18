@@ -852,6 +852,9 @@ pub enum AttributeKind {
     /// Represents `#[no_link]`
     NoLink,
 
+    /// Represents `#[no_main]`
+    NoMain,
+
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 

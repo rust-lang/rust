@@ -989,7 +989,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = import.imported_module.get() {
-                    if module != initial_module && no_ambiguity {
+                    if module != initial_module && no_ambiguity && !self.issue_145575_hack_applied {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
