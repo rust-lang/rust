@@ -47,8 +47,8 @@ fn test_tuples() {
 
                 match (a.ty.info().kind, b.ty.info().kind) {
                     (TypeKind::Int(a), TypeKind::Int(b)) => {
-                        assert!(a.bit_width == 8 && a.signed);
-                        assert!(b.bit_width == 8 && !b.signed);
+                        assert!(a.bits == 8 && a.signed);
+                        assert!(b.bits == 8 && !b.signed);
                     }
                     _ => unreachable!(),
                 }
@@ -70,27 +70,27 @@ fn test_primitives() {
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<i32>() }) else { panic!() };
     assert_eq!(size, Some(4));
-    assert_eq!(ty.bit_width, 32);
+    assert_eq!(ty.bits, 32);
     assert!(ty.signed);
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<isize>() }) else { panic!() };
     assert_eq!(size, Some(size_of::<isize>()));
-    assert_eq!(ty.bit_width, size_of::<isize>() * 8);
+    assert_eq!(ty.bits as usize, size_of::<isize>() * 8);
     assert!(ty.signed);
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<u32>() }) else { panic!() };
     assert_eq!(size, Some(4));
-    assert_eq!(ty.bit_width, 32);
+    assert_eq!(ty.bits, 32);
     assert!(!ty.signed);
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<usize>() }) else { panic!() };
     assert_eq!(size, Some(size_of::<usize>()));
-    assert_eq!(ty.bit_width, size_of::<usize>() * 8);
+    assert_eq!(ty.bits as usize, size_of::<usize>() * 8);
     assert!(!ty.signed);
 
     let Type { kind: Float(ty), size, .. } = (const { Type::of::<f32>() }) else { panic!() };
     assert_eq!(size, Some(4));
-    assert_eq!(ty.bit_width, 32);
+    assert_eq!(ty.bits, 32);
 
     let Type { kind: Str(_ty), size, .. } = (const { Type::of::<str>() }) else { panic!() };
     assert_eq!(size, None);
