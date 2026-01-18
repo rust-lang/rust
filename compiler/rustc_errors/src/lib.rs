@@ -1745,7 +1745,7 @@ impl DiagCtxtInner {
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> SubdiagMessage {
-        SubdiagMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+        SubdiagMessage::Str(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
