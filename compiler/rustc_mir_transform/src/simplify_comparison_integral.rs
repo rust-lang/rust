@@ -27,7 +27,7 @@ pub(super) struct SimplifyComparisonIntegral;
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
