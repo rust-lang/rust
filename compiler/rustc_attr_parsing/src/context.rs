@@ -28,8 +28,8 @@ use crate::attributes::codegen_attrs::{
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NeedsPanicRuntimeParser, NoCoreParser, NoMainParser,
-    NoStdParser, PanicRuntimeParser, PatternComplexityLimitParser, RecursionLimitParser,
+    CrateNameParser, MoveSizeLimitParser, NeedsPanicRuntimeParser, NoCoreParser, NoMainParser, NoStdParser,
+    PanicRuntimeParser, PatternComplexityLimitParser, ProfilerRuntimeParser, RecursionLimitParser,
     RustcCoherenceIsCoreParser, TypeLengthLimitParser, WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
@@ -283,6 +283,7 @@ attribute_parsers!(
         Single<WithoutArgs<PointeeParser>>,
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
+        Single<WithoutArgs<ProfilerRuntimeParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcAllocatorParser>>,
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,

@@ -99,6 +99,7 @@ impl AttributeKind {
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
             ProcMacroDerive { .. } => No,
+            ProfilerRuntime => No,
             PubTransparent(..) => Yes,
             RecursionLimit { .. } => No,
             Repr { .. } => No,

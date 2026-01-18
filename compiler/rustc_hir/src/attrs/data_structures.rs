@@ -912,6 +912,9 @@ pub enum AttributeKind {
     /// Represents `#[proc_macro_derive]`
     ProcMacroDerive { trait_name: Symbol, helper_attrs: ThinVec<Symbol>, span: Span },
 
+    /// Represents `#[profiler_runtime]`
+    ProfilerRuntime,
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 

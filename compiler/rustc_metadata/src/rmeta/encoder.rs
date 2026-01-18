@@ -746,7 +746,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 needs_panic_runtime: find_attr!(attrs, AttributeKind::NeedsPanicRuntime),
                 no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
                 panic_runtime: find_attr!(attrs, AttributeKind::PanicRuntime),
-                profiler_runtime: ast::attr::contains_name(attrs, sym::profiler_runtime),
+                profiler_runtime: find_attr!(attrs, AttributeKind::ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,

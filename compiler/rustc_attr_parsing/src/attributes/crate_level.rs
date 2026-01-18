@@ -202,3 +202,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for NeedsPanicRuntimeParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
 }
+
+pub(crate) struct ProfilerRuntimeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
+    const PATH: &[Symbol] = &[sym::profiler_runtime];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
+}
