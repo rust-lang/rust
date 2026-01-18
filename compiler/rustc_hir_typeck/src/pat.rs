@@ -2434,10 +2434,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
+            let tail_span = field.span.shrink_to_hi().to(pat.span.shrink_to_hi());
+            let comma_hi_offset =
+                self.tcx.sess.source_map().span_to_snippet(tail_span).ok().and_then(|snippet| {
+                    let trimmed = snippet.trim_start();
+                    trimmed.starts_with(',').then(|| (snippet.len() - trimmed.len() + 1) as u32)
+                });
             err.span_suggestion_verbose(
-                field.span.shrink_to_hi(),
+                if let Some(comma_hi_offset) = comma_hi_offset {
+                    tail_span.with_hi(tail_span.lo() + BytePos(comma_hi_offset)).shrink_to_hi()
+                } else {
+                    field.span.shrink_to_hi()
+                },
                 "ignore the inaccessible and unused fields",
-                ", ..",
+                if comma_hi_offset.is_some() { " .." } else { ", .." },
                 Applicability::MachineApplicable,
             );
         } else {
