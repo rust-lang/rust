@@ -873,7 +873,7 @@ fn link_natively(
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
                 if let Some(code) = prog.status.code() {
-                    // All Microsoft `link.exe` linking ror codes are
+                    // All Microsoft `link.exe` linking error codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
                         is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
