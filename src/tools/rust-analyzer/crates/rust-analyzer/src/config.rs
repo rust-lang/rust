@@ -1067,6 +1067,7 @@ pub struct Config {
     /// The workspace roots as registered by the LSP client
     workspace_roots: Vec<AbsPathBuf>,
     caps: ClientCapabilities,
+    /// The LSP root path, deprecated in favor of `workspace_roots`
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
     client_info: Option<ClientInfo>,
@@ -1389,6 +1390,10 @@ impl Config {
         }
 
         self.discovered_projects_from_command.push(ProjectJsonFromCommand { data, buildfile });
+    }
+
+    pub fn workspace_roots(&self) -> &[AbsPathBuf] {
+        &self.workspace_roots
     }
 }
 
@@ -1766,6 +1771,7 @@ impl Config {
     }
 
     pub fn root_path(&self) -> &AbsPathBuf {
+        // We should probably use `workspace_roots` here if set
         &self.root_path
     }
 

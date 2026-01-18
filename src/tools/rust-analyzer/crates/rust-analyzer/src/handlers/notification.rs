@@ -289,9 +289,22 @@ pub(crate) fn handle_did_change_watched_files(
     state: &mut GlobalState,
     params: DidChangeWatchedFilesParams,
 ) -> anyhow::Result<()> {
+    // we want to trigger flycheck if a file outside of our workspaces has changed,
+    // as to reduce stale diagnostics when outside changes happen
+    let mut trigger_flycheck = false;
     for change in params.changes.iter().unique_by(|&it| &it.uri) {
         if let Ok(path) = from_proto::abs_path(&change.uri) {
+            if !trigger_flycheck {
+                trigger_flycheck =
+                    state.config.workspace_roots().iter().any(|root| !path.starts_with(root));
+            }
             state.loader.handle.invalidate(path);
+        }
+    }
+
+    if trigger_flycheck && state.config.check_on_save(None) {
+        for flycheck in state.flycheck.iter() {
+            flycheck.restart_workspace(None);
         }
     }
     Ok(())
