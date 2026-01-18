@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/2995>
+
 fn bad (p: *const isize) {
     let _q: &isize = p as &isize; //~ ERROR non-primitive cast
 }

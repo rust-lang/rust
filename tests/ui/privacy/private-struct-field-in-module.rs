@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/26472>
+
 mod sub {
     pub struct S { len: usize }
     impl S {

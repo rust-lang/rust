@@ -1,5 +1,5 @@
 error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
-  --> $DIR/issue-17441.rs:2:16
+  --> $DIR/cast-to-unsized-type.rs:4:16
    |
 LL |     let _foo = &[1_usize, 2] as [usize];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     let _foo = &[1_usize, 2] as &[usize];
    |                                 +
 
 error[E0620]: cast to unsized type: `Box<usize>` as `dyn Debug`
-  --> $DIR/issue-17441.rs:5:16
+  --> $DIR/cast-to-unsized-type.rs:7:16
    |
 LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,25 +21,25 @@ LL |     let _bar = Box::new(1_usize) as Box<dyn std::fmt::Debug>;
    |                                     ++++                   +
 
 error[E0620]: cast to unsized type: `usize` as `dyn Debug`
-  --> $DIR/issue-17441.rs:8:16
+  --> $DIR/cast-to-unsized-type.rs:10:16
    |
 LL |     let _baz = 1_usize as dyn std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using a box or reference as appropriate
-  --> $DIR/issue-17441.rs:8:16
+  --> $DIR/cast-to-unsized-type.rs:10:16
    |
 LL |     let _baz = 1_usize as dyn std::fmt::Debug;
    |                ^^^^^^^
 
 error[E0620]: cast to unsized type: `[usize; 2]` as `[usize]`
-  --> $DIR/issue-17441.rs:11:17
+  --> $DIR/cast-to-unsized-type.rs:13:17
    |
 LL |     let _quux = [1_usize, 2] as [usize];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using a box or reference as appropriate
-  --> $DIR/issue-17441.rs:11:17
+  --> $DIR/cast-to-unsized-type.rs:13:17
    |
 LL |     let _quux = [1_usize, 2] as [usize];
    |                 ^^^^^^^^^^^^
