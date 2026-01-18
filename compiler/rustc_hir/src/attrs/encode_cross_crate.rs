@@ -88,6 +88,7 @@ impl AttributeKind {
             Optimize(..) => No,
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
+            PatchableFunctionEntry { .. } => Yes,
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
             PinV2(..) => Yes,

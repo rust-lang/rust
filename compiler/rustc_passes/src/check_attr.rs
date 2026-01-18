@@ -324,6 +324,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcReallocator
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcOffloadKernel
+                    | AttributeKind::PatchableFunctionEntry { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -349,7 +350,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::deny
                             | sym::forbid
                             // need to be fixed
-                            | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
                             | sym::prelude_import
