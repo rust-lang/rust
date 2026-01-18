@@ -2,7 +2,7 @@ use std::char;
 use std::collections::BTreeMap;
 
 use crate::UnicodeData;
-use crate::fmt_helpers::{CharEscape, fmt_list};
+use crate::fmt_helpers::{CharEscape, Hex, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 
@@ -44,7 +44,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
             INDEX_MASK | (u32::try_from(multis.len()).unwrap() - 1)
         };
 
-        mappings.push((CharEscape(key), value));
+        mappings.push((CharEscape(key), Hex(value)));
     }
 
     let size = size_of_val(mappings.as_slice()) + size_of_val(multis.as_slice());

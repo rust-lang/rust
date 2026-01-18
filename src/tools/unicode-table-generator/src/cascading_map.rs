@@ -42,7 +42,7 @@ impl RawEmitter {
             let codepoints = codepoints_by_high_bytes.get_mut(&high_byte).unwrap();
             if codepoints.len() == 1 {
                 let ch = codepoints.pop().unwrap();
-                writeln!(arms, "{high_byte} => c as u32 == {ch:#04x},");
+                writeln!(arms, "{high_byte:#04x} => c as u32 == {ch:#04x},");
                 continue;
             }
             // more than 1 codepoint in this arm
@@ -51,7 +51,7 @@ impl RawEmitter {
             }
             writeln!(
                 arms,
-                "{high_byte} => WHITESPACE_MAP[c as usize & 0xff] & {bit_for_high_byte} != 0,"
+                "{high_byte:#04x} => WHITESPACE_MAP[c as usize & 0xff] & {bit_for_high_byte} != 0,"
             );
             bit_for_high_byte <<= 1;
         }
