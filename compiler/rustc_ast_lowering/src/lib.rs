@@ -2384,7 +2384,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             Some(ConstItemRhs::TypeConst(anon)) => {
                 hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg_and_alloc(anon))
             }
-            None if attr::contains_name(attrs, sym::type_const) => {
+            None if find_attr!(attrs, AttributeKind::TypeConst(_)) => {
                 let const_arg = ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::Error(
