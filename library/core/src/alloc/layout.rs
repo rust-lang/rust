@@ -217,10 +217,11 @@ impl Layout {
     /// be that of a valid pointer, which means this must not be used
     /// as a "not yet initialized" sentinel value.
     /// Types that lazily allocate must track initialization by some other means.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
-    pub const fn dangling(&self) -> NonNull<u8> {
+    pub const fn dangling_ptr(&self) -> NonNull<u8> {
         NonNull::without_provenance(self.align.as_nonzero())
     }
 
@@ -250,29 +251,23 @@ impl Layout {
     }
 
     /// Returns the amount of padding we must insert after `self`
-    /// to ensure that the following address will satisfy `align`
-    /// (measured in bytes).
+    /// to ensure that the following address will satisfy `alignment`.
     ///
-    /// e.g., if `self.size()` is 9, then `self.padding_needed_for(4)`
+    /// e.g., if `self.size()` is 9, then `self.padding_needed_for(alignment4)`
+    /// (where `alignment4.as_usize() == 4`)
     /// returns 3, because that is the minimum number of bytes of
     /// padding required to get a 4-aligned address (assuming that the
     /// corresponding memory block starts at a 4-aligned address).
     ///
-    /// The return value of this function has no meaning if `align` is
-    /// not a power-of-two.
-    ///
-    /// Note that the utility of the returned value requires `align`
+    /// Note that the utility of the returned value requires `alignment`
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
-    /// satisfy this constraint is to ensure `align <= self.align()`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
-    #[must_use = "this returns the padding needed, \
-                  without modifying the `Layout`"]
+    /// satisfy this constraint is to ensure `alignment.as_usize() <= self.align()`.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[must_use = "this returns the padding needed, without modifying the `Layout`"]
     #[inline]
-    pub const fn padding_needed_for(&self, align: usize) -> usize {
-        // FIXME: Can we just change the type on this to `Alignment`?
-        let Some(align) = Alignment::new(align) else { return usize::MAX };
-        let len_rounded_up = self.size_rounded_up_to_custom_align(align);
+    pub const fn padding_needed_for(&self, alignment: Alignment) -> usize {
+        let len_rounded_up = self.size_rounded_up_to_custom_align(alignment);
         // SAFETY: Cannot overflow because the rounded-up value is never less
         unsafe { unchecked_sub(len_rounded_up, self.size) }
     }
@@ -335,6 +330,8 @@ impl Layout {
     /// layout of the array and `offs` is the distance between the start
     /// of each element in the array.
     ///
+    /// Does not include padding after the trailing element.
+    ///
     /// (That distance between elements is sometimes known as "stride".)
     ///
     /// On arithmetic overflow, returns `LayoutError`.
@@ -342,7 +339,6 @@ impl Layout {
     /// # Examples
     ///
     /// ```
-    /// #![feature(alloc_layout_extra)]
     /// use std::alloc::Layout;
     ///
     /// // All rust types have a size that's a multiple of their alignment.
@@ -353,17 +349,32 @@ impl Layout {
     /// // But you can manually make layouts which don't meet that rule.
     /// let padding_needed = Layout::from_size_align(6, 4).unwrap();
     /// let repeated = padding_needed.repeat(3).unwrap();
-    /// assert_eq!(repeated, (Layout::from_size_align(24, 4).unwrap(), 8));
+    /// assert_eq!(repeated, (Layout::from_size_align(22, 4).unwrap(), 8));
+    ///
+    /// // Repeating an element zero times has zero size, but keeps the alignment (like `[T; 0]`)
+    /// let repeated = normal.repeat(0).unwrap();
+    /// assert_eq!(repeated, (Layout::from_size_align(0, 4).unwrap(), 12));
+    /// let repeated = padding_needed.repeat(0).unwrap();
+    /// assert_eq!(repeated, (Layout::from_size_align(0, 4).unwrap(), 8));
     /// ```
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
+        // FIXME(const-hack): the following could be way shorter with `?`
         let padded = self.pad_to_align();
-        if let Ok(repeated) = padded.repeat_packed(n) {
-            Ok((repeated, padded.size()))
+        let Ok(result) = (if let Some(k) = n.checked_sub(1) {
+            let Ok(repeated) = padded.repeat_packed(k) else {
+                return Err(LayoutError);
+            };
+            repeated.extend_packed(*self)
         } else {
-            Err(LayoutError)
-        }
+            debug_assert!(n == 0);
+            self.repeat_packed(0)
+        }) else {
+            return Err(LayoutError);
+        };
+        Ok((result, padded.size()))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -443,7 +454,8 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         if let Some(size) = self.size.checked_mul(n) {
@@ -460,7 +472,8 @@ impl Layout {
     /// and is not incorporated *at all* into the resulting layout.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "alloc_layout_extra", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         // SAFETY: each `size` is at most `isize::MAX == usize::MAX/2`, so the
