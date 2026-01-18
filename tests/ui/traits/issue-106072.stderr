@@ -15,11 +15,6 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct Foo;
    |        ^^^
-   |
-help: you can add the `dyn` keyword if you want a trait object
-   |
-LL | struct dyn Foo;
-   |        +++
 
 error[E0782]: expected a type, found a trait
   --> $DIR/issue-106072.rs:1:10
