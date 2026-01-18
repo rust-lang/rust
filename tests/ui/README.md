@@ -10,17 +10,17 @@ These tests deal with *Application Binary Interfaces* (ABI), mostly relating to 
 
 Tests for unsupported ABIs can be made cross-platform by using the `extern "rust-invalid"` ABI, which is considered unsupported on every platform.
 
-## `tests/ui/allocator`
-
-These tests exercise `#![feature(allocator_api)]` and the `#[global_allocator]` attribute.
-
-See [Allocator traits and `std::heap` #32838](https://github.com/rust-lang/rust/issues/32838).
-
 ## `tests/ui/alloc-error`
 
 These tests exercise alloc error handling.
 
 See <https://doc.rust-lang.org/std/alloc/fn.handle_alloc_error.html>.
+
+## `tests/ui/allocator`
+
+These tests exercise `#![feature(allocator_api)]` and the `#[global_allocator]` attribute.
+
+See [Allocator traits and `std::heap` #32838](https://github.com/rust-lang/rust/issues/32838).
 
 ## `tests/ui/annotate-moves`
 
@@ -52,13 +52,13 @@ These tests exercise rustc reading command line arguments from an externally pro
 
 See [Implement `@argsfile` to read arguments from command line #63576](https://github.com/rust-lang/rust/issues/63576).
 
-## `tests/ui/array-slice-vec`: Arrays, slices and vectors
-
-Exercises various aspects surrounding basic collection types `[]`, `&[]` and `Vec`. E.g. type-checking, out-of-bounds indices, attempted instructions which are allowed in other programming languages, and more.
-
 ## `tests/ui/argument-suggestions`: Argument suggestions
 
 Calling a function with the wrong number of arguments causes a compilation failure, but the compiler is able to, in some cases, provide suggestions on how to fix the error, such as which arguments to add or delete. These tests exercise the quality of such diagnostics.
+
+## `tests/ui/array-slice-vec`: Arrays, slices and vectors
+
+Exercises various aspects surrounding basic collection types `[]`, `&[]` and `Vec`. E.g. type-checking, out-of-bounds indices, attempted instructions which are allowed in other programming languages, and more.
 
 ## `tests/ui/asm`: `asm!` macro
 
@@ -184,6 +184,10 @@ See [RFC 3729: Hierarchy of Sized traits](https://github.com/rust-lang/rfcs/pull
 
 Defining custom auto traits with the `auto` keyword belongs to `tests/ui/auto-traits/` instead.
 
+## `tests/ui/c-variadic`: C Variadic Function
+
+Tests for FFI with C varargs (`va_list`).
+
 ## `tests/ui/cast/`: Type Casting
 
 Tests for type casting using the `as` operator. Includes tests for valid/invalid casts between primitive types, trait objects, and custom types. For example, check that trying to cast `i32` into `bool` results in a helpful error message.
@@ -202,15 +206,15 @@ Tests for the `--check-cfg` compiler mechanism  for checking cfg configurations,
 
 See [Checking conditional configurations | The rustc book](https://doc.rust-lang.org/rustc/check-cfg.html).
 
-## `tests/ui/closure_context/`: Closure type inference in context
-
-Tests for closure type inference with respect to surrounding scopes, mostly quality of diagnostics.
-
 ## `tests/ui/closure-expected-type/`: Closure type inference
 
 Tests targeted at how we deduce the types of closure arguments. This process is a result of some heuristics which take into account the *expected type* we have alongside the *actual types* that we get from inputs.
 
 **FIXME**: Appears to have significant overlap with `tests/ui/closure_context` and `tests/ui/functions-closures/closure-expected-type`. Needs further investigation.
+
+## `tests/ui/closure_context`: Closure type inference in context
+
+Tests for closure type inference with respect to surrounding scopes, mostly quality of diagnostics.
 
 ## `tests/ui/closures/`: General Closure Tests
 
@@ -305,10 +309,6 @@ See:
 - [Tracking Issue for complex generic constants: `feature(generic_const_exprs)` #76560](https://github.com/rust-lang/rust/issues/76560)
 - [Const generics | Reference](https://doc.rust-lang.org/reference/items/generics.html#const-generics)
 
-## `tests/ui/const_prop/`: Constant Propagation
-
-Tests exercising `ConstProp` mir-opt pass (mostly regression tests). See <https://blog.rust-lang.org/inside-rust/2019/12/02/const-prop-on-by-default/>.
-
 ## `tests/ui/const-ptr/`: Constant Pointers
 
 Tests exercise const raw pointers. E.g. pointer arithmetic, casting and dereferencing, always with a `const`.
@@ -318,6 +318,10 @@ See:
 - [`std::primitive::pointer`](https://doc.rust-lang.org/std/primitive.pointer.html)
 - [`std::ptr`](https://doc.rust-lang.org/std/ptr/index.html)
 - [Pointer types | Reference](https://doc.rust-lang.org/reference/types/pointer.html)
+
+## `tests/ui/const_prop`: Constant Propagation
+
+Tests exercising `ConstProp` mir-opt pass (mostly regression tests). See <https://blog.rust-lang.org/inside-rust/2019/12/02/const-prop-on-by-default/>.
 
 ## `tests/ui/consts/`: General Constant Evaluation
 
@@ -360,10 +364,6 @@ Tests for `#[bench]`, `#[test_case]` attributes and the `custom_test_frameworks`
 
 See [Tracking issue for eRFC 2318, Custom test frameworks #50297](https://github.com/rust-lang/rust/issues/50297).
 
-## `tests/ui/c-variadic/`: C Variadic Function
-
-Tests for FFI with C varargs (`va_list`).
-
 ## `tests/ui/cycle-trait/`: Trait Cycle Detection
 
 Tests for detection and handling of cyclic trait dependencies.
@@ -400,15 +400,15 @@ These tests use the unstable command line option `query-dep-graph` to examine th
 
 Tests for `#[deprecated]` attribute and `deprecated_in_future` internal lint.
 
+## `tests/ui/deref`
+
+Tests for `Deref` and `DerefMut` traits.
+
 ## `tests/ui/deref-patterns`: `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`
 
 Tests for `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`. See [Deref patterns | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/deref-patterns.html).
 
 **FIXME**: May have some overlap with `tests/ui/pattern/deref-patterns`.
-
-## `tests/ui/deref`
-
-Tests for `Deref` and `DerefMut` traits.
 
 See [`std::ops::Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) and [`std::ops::DerefMut`](https://doc.rust-lang.org/std/ops/trait.DerefMut.html)
 
@@ -438,6 +438,10 @@ These tests revolve around command-line flags which change the way error/warning
 
 **FIXME**: Check redundancy with `annotate-snippet`, which is another emitter.
 
+## `tests/ui/diagnostic-width`: `--diagnostic-width`
+
+Everything to do with `--diagnostic-width`.
+
 ## `tests/ui/diagnostic_namespace/`
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
@@ -445,10 +449,6 @@ Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic att
 ## `tests/ui/diagnostics-infra`
 
 This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
-
-## `tests/ui/diagnostic-width/`: `--diagnostic-width`
-
-Everything to do with `--diagnostic-width`.
 
 ## `tests/ui/did_you_mean/`
 
@@ -497,10 +497,6 @@ Tests for dynamically-sized types (DSTs). See [Dynamically Sized Types | Referen
 
 Tests about duplicated symbol names and associated errors, such as using the `#[export_name]` attribute to rename a function with the same name as another function.
 
-## `tests/ui/dynamically-sized-types/`: Dynamically Sized Types
-
-**FIXME**: should be coalesced with `tests/ui/dst`.
-
 ## `tests/ui/dyn-compatibility/`: Dyn-compatibility
 
 Tests for dyn-compatibility of traits.
@@ -521,6 +517,10 @@ Previously known as "object safety".
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
 
 See [`dyn` keyword](https://doc.rust-lang.org/std/keyword.dyn.html).
+
+## `tests/ui/dynamically-sized-types`: Dynamically Sized Types
+
+**FIXME**: should be coalesced with `tests/ui/dst`.
 
 ## `tests/ui/editions/`: Rust edition-specific peculiarities
 
@@ -627,6 +627,12 @@ A broad category of tests on functions.
 
 Tests for `#![feature(fn_traits)]`. See [`fn_traits` | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/library-features/fn-traits.html).
 
+## `tests/ui/for-loop-while`
+
+Anything to do with loops and `for`, `loop` and `while` keywords to express them.
+
+**FIXME**: After `ui/for` is merged into this, also carry over its SUMMARY text.
+
 ## `tests/ui/force-inlining/`: `#[rustc_force_inline]`
 
 Tests for `#[rustc_force_inline]`, which will force a function to always be labelled as inline by the compiler (it will be inserted at the point of its call instead of being used as a normal function call.) If the compiler is unable to inline the function, an error will be reported. See <https://github.com/rust-lang/rust/pull/134082>.
@@ -637,12 +643,6 @@ Tests for `extern "C"` and `extern "Rust`.
 
 **FIXME**: Check for potential overlap/merge with `ui/c-variadic` and/or `ui/extern`.
 
-## `tests/ui/for-loop-while/`
-
-Anything to do with loops and `for`, `loop` and `while` keywords to express them.
-
-**FIXME**: After `ui/for` is merged into this, also carry over its SUMMARY text.
-
 ## `tests/ui/frontmatter/`
 
 Tests for `#![feature(frontmatter)]`. See [Tracking Issue for `frontmatter` #136889](https://github.com/rust-lang/rust/issues/136889).
@@ -650,12 +650,6 @@ Tests for `#![feature(frontmatter)]`. See [Tracking Issue for `frontmatter` #136
 ## `tests/ui/fully-qualified-type/`
 
 Tests for diagnostics when there may be identically named types that need further qualifications to disambiguate.
-
-## `tests/ui/functional-struct-update/`
-
-Functional Struct Update is the name for the idiom by which one can write `..<expr>` at the end of a struct literal expression to fill in all remaining fields of the struct literal by using `<expr>` as the source for them.
-
-See [RFC 0736 Privacy-respecting Functional Struct Update](https://github.com/rust-lang/rfcs/blob/master/text/0736-privacy-respecting-fru.md).
 
 ## `tests/ui/function-pointer/`
 
@@ -665,6 +659,12 @@ See:
 
 - [Function pointer types | Reference](https://doc.rust-lang.org/reference/types/function-pointer.html)
 - [Higher-ranked trait bounds | Nomicon](https://doc.rust-lang.org/nomicon/hrtb.html)
+
+## `tests/ui/functional-struct-update/`
+
+Functional Struct Update is the name for the idiom by which one can write `..<expr>` at the end of a struct literal expression to fill in all remaining fields of the struct literal by using `<expr>` as the source for them.
+
+See [RFC 0736 Privacy-respecting Functional Struct Update](https://github.com/rust-lang/rfcs/blob/master/text/0736-privacy-respecting-fru.md).
 
 ## `tests/ui/functions-closures/`
 
@@ -721,13 +721,13 @@ This test category revolves around trait objects with `Sized` having illegal ope
 
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
-## `tests/ui/implied-bounds/`
-
-See [Implied bounds | Reference](https://doc.rust-lang.org/reference/trait-bounds.html#implied-bounds).
-
 ## `tests/ui/impl-trait/`
 
 Tests for trait impls.
+
+## `tests/ui/implied-bounds/`
+
+See [Implied bounds | Reference](https://doc.rust-lang.org/reference/trait-bounds.html#implied-bounds).
 
 ## `tests/ui/imports/`
 
@@ -854,6 +854,12 @@ Broad directory on lifetimes, including proper specifiers, lifetimes not living 
 
 These tests exercises numerical limits, such as `[[u8; 1518599999]; 1518600000]`.
 
+## `tests/ui/link-native-libs/`
+
+Tests for `#[link(name = "", kind = "")]` and `-l` command line flag.
+
+See [Tracking Issue for linking modifiers for native libraries #81490](https://github.com/rust-lang/rust/issues/81490).
+
 ## `tests/ui/linkage-attr/`
 
 Tests for the linkage attribute `#[linkage]` of `#![feature(linkage)]`.
@@ -865,12 +871,6 @@ Tests for the linkage attribute `#[linkage]` of `#![feature(linkage)]`.
 Tests on code which fails during the linking stage, or which contain arguments and lines that have been known to cause unjustified errors in the past, such as specifying an unusual `#[export_name]`.
 
 See [Linkage | Reference](https://doc.rust-lang.org/reference/linkage.html).
-
-## `tests/ui/link-native-libs/`
-
-Tests for `#[link(name = "", kind = "")]` and `-l` command line flag.
-
-See [Tracking Issue for linking modifiers for native libraries #81490](https://github.com/rust-lang/rust/issues/81490).
 
 ## `tests/ui/lint/`
 
@@ -997,6 +997,10 @@ See [RFC 3550 New Range](https://github.com/rust-lang/rfcs/blob/master/text/3550
 
 Tests for Non-lexical lifetimes. See [RFC 2094 NLL](https://rust-lang.github.io/rfcs/2094-nll.html).
 
+## `tests/ui/no_std/`
+
+Tests for where the standard library is disabled through `#![no_std]`.
+
 ## `tests/ui/non_modrs_mods/`
 
 Despite the size of the directory, this is a single test, spawning a sprawling `mod` dependency tree and checking its successful build.
@@ -1008,10 +1012,6 @@ Despite the size of the directory, this is a single test, spawning a sprawling `
 A very similar principle as `non_modrs_mods`, but with an added inline `mod` statement inside another `mod`'s code block.
 
 **FIXME**: Consider merge with `tests/ui/modules/`, keeping the directory structure.
-
-## `tests/ui/no_std/`
-
-Tests for where the standard library is disabled through `#![no_std]`.
 
 ## `tests/ui/not-panic/`
 
@@ -1134,6 +1134,10 @@ Exercises the `-Z print-type-sizes` flag.
 
 Exercises on name privacy. E.g. the meaning of `pub`, `pub(crate)`, etc.
 
+## `tests/ui/proc-macro/`
+
+Broad category of tests on proc-macros. See [Procedural Macros | Reference](https://doc.rust-lang.org/reference/procedural-macros.html).
+
 ## `tests/ui/process/`
 
 Some standard library process tests which are hard to write within standard library crate tests.
@@ -1141,10 +1145,6 @@ Some standard library process tests which are hard to write within standard libr
 ## `tests/ui/process-termination/`
 
 Some standard library process termination tests which are hard to write within standard library crate tests.
-
-## `tests/ui/proc-macro/`
-
-Broad category of tests on proc-macros. See [Procedural Macros | Reference](https://doc.rust-lang.org/reference/procedural-macros.html).
 
 ## `tests/ui/ptr_ops/`: Using operations on a pointer
 
@@ -1260,6 +1260,10 @@ Tests that exercise behaviors and features specific to the Rust 2024 edition.
 
 Tests on environmental variables that affect `rustc`.
 
+## `tests/ui/rustc_public-ir-print`
+
+Some tests for pretty printing of rustc_public's IR.
+
 ## `tests/ui/rustdoc`
 
 Hybrid tests that exercises `rustdoc`, and also some joint `rustdoc`/`rustc` interactions.
@@ -1339,10 +1343,6 @@ Stability attributes used internally by the standard library: `#[stable()]` and 
 ## `tests/ui/stack-probes`
 
 **FIXME**: Contains a single test, should likely be rehomed to `tests/ui/abi`.
-
-## `tests/ui/rustc_public-ir-print/`
-
-Some tests for pretty printing of rustc_public's IR.
 
 ## `tests/ui/stack-protector/`: `-Z stack-protector` command line flag
 
@@ -1512,13 +1512,13 @@ Tests for `type` aliases in the context of `enum` variants, such as that applied
 
 `#![feature(type_alias_impl_trait)]`. See [Type Alias Impl Trait | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/type-alias-impl-trait.html).
 
-## `tests/ui/typeck/`
-
-General collection of type checking related tests.
-
 ## `tests/ui/type-inference/`
 
 General collection of type inference related tests.
+
+## `tests/ui/typeck`
+
+General collection of type checking related tests.
 
 ## `tests/ui/ufcs/`
 
@@ -1598,13 +1598,13 @@ See:
 
 **FIXME**: Seems to also contain more generic tests that fit in `tests/ui/unsized/`.
 
-## `tests/ui/unused-crate-deps/`
-
-Exercises the `unused_crate_dependencies` lint.
-
 ## `tests/ui/unstable-feature-bound`
 
 Tests for gating and diagnostics when unstable features are used.
+
+## `tests/ui/unused-crate-deps`
+
+Exercises the `unused_crate_dependencies` lint.
 
 ## `tests/ui/unwind-abis/`
 
