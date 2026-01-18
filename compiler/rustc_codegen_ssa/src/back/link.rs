@@ -901,9 +901,7 @@ fn link_natively(
                     is_vs_installed,
                     has_linker,
                 };
-                sess.dcx().emit_err(err);
-
-                sess.dcx().abort_if_errors();
+                sess.dcx().emit_fatal(err);
             }
 
             let stderr = escape_string(&prog.stderr);
@@ -952,20 +950,19 @@ fn link_natively(
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
-            let err = if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound {
+            if linker_not_found {
+                sess.dcx().emit_fatal(errors::LinkerNotFound {
                     linker_path,
                     error: e,
                     msvc: sess.target.is_like_msvc,
                 })
             } else {
-                sess.dcx().emit_err(errors::UnableToExeLinker {
+                sess.dcx().emit_fatal(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
                 })
             };
-            err.raise_fatal();
         }
     }
 
