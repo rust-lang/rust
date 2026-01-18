@@ -1,6 +1,7 @@
 //! Set and unset common attributes on LLVM values.
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
 use rustc_hir::def_id::DefId;
+use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
@@ -470,9 +471,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
         if let Some(instance) = instance
-            && let Some(zv) =
-                tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
-            && let Some(name) = zv.value_str()
+            && let Some(name) = find_attr!(tcx.get_all_attrs(instance.def_id()), rustc_hir::attrs::AttributeKind::RustcAllocatorZeroedVariant {name} => name)
         {
             to_add.push(llvm::CreateAttrStringValue(
                 cx.llcx,

@@ -318,6 +318,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NeedsAllocator
                     | AttributeKind::RustcAllocator
                     | AttributeKind::RustcAllocatorZeroed
+                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
                     | AttributeKind::RustcDeallocator
                     | AttributeKind::RustcReallocator
                 ) => { /* do nothing  */ }
@@ -365,7 +366,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
                             | sym::rustc_conversion_suggestion
-                            | sym::rustc_allocator_zeroed_variant
                             | sym::rustc_deprecated_safe_2024
                             | sym::rustc_test_marker
                             | sym::rustc_abi

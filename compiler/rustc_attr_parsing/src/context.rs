@@ -65,8 +65,8 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_allocator::{
-    RustcAllocatorParser, RustcAllocatorZeroedParser, RustcDeallocatorParser,
-    RustcReallocatorParser,
+    RustcAllocatorParser, RustcAllocatorZeroedParser, RustcAllocatorZeroedVariantParser,
+    RustcDeallocatorParser, RustcReallocatorParser,
 };
 use crate::attributes::rustc_dump::{
     RustcDumpDefParents, RustcDumpItemBounds, RustcDumpPredicates, RustcDumpUserArgs,
@@ -227,6 +227,7 @@ attribute_parsers!(
         Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
         Single<RecursionLimitParser>,
+        Single<RustcAllocatorZeroedVariantParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEndParser>,

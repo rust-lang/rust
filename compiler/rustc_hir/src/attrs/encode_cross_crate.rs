@@ -99,6 +99,7 @@ impl AttributeKind {
             Repr { .. } => No,
             RustcAllocator => No,
             RustcAllocatorZeroed => No,
+            RustcAllocatorZeroedVariant { .. } => Yes,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
             RustcDeallocator => No,
