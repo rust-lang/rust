@@ -3596,8 +3596,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ) {
                             derived = true;
                             spans.push_span_label(
+                                data.span.ctxt().outer_expn_data().call_site,
+                                format!(
+                                    "unsatisfied trait bound introduced in this `derive` macro"
+                                ),
+                            );
+                            spans.push_span_label(
                                 data.span,
-                                "unsatisfied trait bound introduced in this `derive` macro",
+                                if data.span.in_derive_expansion() {
+                                    format!("would need to be `{trait_name}`")
+                                } else {
+                                    format!("")
+                                },
                             );
                         } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
                             // `Sized` may be an explicit or implicit trait bound. If it is

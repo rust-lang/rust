@@ -62,9 +62,9 @@ note: required for `Bar<(dyn Debug + 'static)>` to implement `Debug`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:19:10
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-   |          ^^^^^
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
 LL | struct Bar<T>(T);
-   |            - unsatisfied trait bound introduced in this `derive` macro
+   |            -
    = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: 2 redundant requirements hidden
    = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
@@ -97,9 +97,9 @@ note: required for `Bar<dyn Debug>` to implement `Eq`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:19:28
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-   |                            ^^
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
 LL | struct Bar<T>(T);
-   |            - unsatisfied trait bound introduced in this `derive` macro
+   |            - would need to be `Eq`
    = help: consider manually implementing `Eq` to avoid undesired bounds
    = note: 1 redundant requirement hidden
    = note: required for `&'static Bar<dyn Debug>` to implement `Eq`

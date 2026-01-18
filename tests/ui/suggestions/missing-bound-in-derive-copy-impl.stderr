@@ -62,9 +62,9 @@ note: required for `Vector2<K>` to implement `Debug`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
-   |                               ---- unsatisfied trait bound introduced in this `derive` macro
+   |                               ----
    = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
 help: consider restricting type parameter `K` with trait `Copy`
@@ -132,9 +132,9 @@ note: required for `Vector2<K>` to implement `Clone`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^
+   |                       ^^^^^ unsatisfied trait bound introduced in this `derive` macro
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
-   |                               ---- unsatisfied trait bound introduced in this `derive` macro
+   |                               ----
    = help: consider manually implementing `Clone` to avoid undesired bounds
 help: consider restricting type parameter `K` with trait `Copy`
    |
