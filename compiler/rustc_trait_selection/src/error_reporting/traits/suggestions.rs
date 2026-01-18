@@ -3586,6 +3586,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                         spans.push(self_ty.span);
                         let mut spans: MultiSpan = spans.into();
+                        let mut derived = false;
                         if matches!(
                             self_ty.span.ctxt().outer_expn_data().kind,
                             ExpnKind::Macro(MacroKind::Derive, _)
@@ -3593,6 +3594,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             of_trait.map(|t| t.trait_ref.path.span.ctxt().outer_expn_data().kind),
                             Some(ExpnKind::Macro(MacroKind::Derive, _))
                         ) {
+                            derived = true;
                             spans.push_span_label(
                                 data.span,
                                 "unsatisfied trait bound introduced in this `derive` macro",
@@ -3621,6 +3623,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }
                         err.span_note(spans, msg);
+                        if derived {
+                            err.help(format!(
+                                "consider manually implementing `{trait_name}` to avoid undesired \
+                                 bounds",
+                            ));
+                        }
                         point_at_assoc_type_restriction(
                             tcx,
                             err,

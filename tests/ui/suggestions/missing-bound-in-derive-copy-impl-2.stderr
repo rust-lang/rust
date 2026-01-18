@@ -30,6 +30,7 @@ LL | #[derive(Debug, Copy, Clone)]
    |          ^^^^^
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ---- unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
 help: consider further restricting type parameter `K` with trait `Copy`
    |
@@ -71,6 +72,7 @@ LL | #[derive(Debug, Copy, Clone)]
    |                       ^^^^^
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ---- unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `Clone` to avoid undesired bounds
 help: consider further restricting type parameter `K` with trait `Copy`
    |
 LL | pub struct AABB<K: Debug + std::marker::Copy> {

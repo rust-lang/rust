@@ -638,27 +638,27 @@ impl<'a> TraitDef<'a> {
                 GenericParamKind::Type { .. } => {
                     // Extra restrictions on the generics parameters to the
                     // type being derived upon.
+                    let span = param.ident.span.with_ctxt(ctxt);
                     let bounds: Vec<_> = self
                         .additional_bounds
                         .iter()
                         .map(|p| {
-                            cx.trait_bound(
-                                p.to_path(cx, self.span, type_ident, generics),
-                                self.is_const,
-                            )
+                            cx.trait_bound(p.to_path(cx, span, type_ident, generics), self.is_const)
                         })
                         .chain(
                             // Add a bound for the current trait.
-                            self.skip_path_as_bound
-                                .not()
-                                .then(|| cx.trait_bound(trait_path.clone(), self.is_const)),
+                            self.skip_path_as_bound.not().then(|| {
+                                let mut trait_path = trait_path.clone();
+                                trait_path.span = span;
+                                cx.trait_bound(trait_path, self.is_const)
+                            }),
                         )
                         .chain({
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
                                 let p = deriving::path_std!(marker::Copy);
                                 Some(cx.trait_bound(
-                                    p.to_path(cx, self.span, type_ident, generics),
+                                    p.to_path(cx, span, type_ident, generics),
                                     self.is_const,
                                 ))
                             } else {
@@ -671,7 +671,7 @@ impl<'a> TraitDef<'a> {
                         )
                         .collect();
 
-                    cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
+                    cx.typaram(span, param.ident, bounds, None)
                 }
                 GenericParamKind::Const { ty, span, .. } => {
                     let const_nodefault_kind = GenericParamKind::Const {

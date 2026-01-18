@@ -102,6 +102,7 @@ LL | #[derive(Debug, Copy, Clone)]
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `Debug` to avoid undesired bounds
 help: consider further restricting the associated type
    |
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
@@ -146,6 +147,7 @@ LL | #[derive(Debug, Copy, Clone)]
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `Copy` to avoid undesired bounds
 help: consider further restricting the associated type
    |
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
@@ -219,6 +221,7 @@ LL | #[derive(Debug, Copy, Clone)]
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------ unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `Clone` to avoid undesired bounds
 help: consider further restricting the associated type
    |
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,

@@ -37,7 +37,11 @@ note: required for `PriorityQueue<T>` to implement `PartialOrd`
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
    |
 LL | #[derive(PartialOrd, AddImpl)]
-   |          ^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |          ^^^^^^^^^^
+...
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   |                      - unsatisfied trait bound introduced in this `derive` macro
+   = help: consider manually implementing `PartialOrd` to avoid undesired bounds
 note: required by a bound in `Ord`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
