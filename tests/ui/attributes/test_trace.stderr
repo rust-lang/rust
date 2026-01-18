@@ -1,0 +1,46 @@
+error: cannot find attribute `test_trace` in this scope
+  --> $DIR/test_trace.rs:5:3
+   |
+LL | #[test_trace]
+   |   ^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[test_trace]
+LL + #[<test_trace>]
+   |
+
+error: cannot find attribute `test_trace` in this scope
+  --> $DIR/test_trace.rs:11:3
+   |
+LL | #[test_trace]
+   |   ^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[test_trace]
+LL + #[<test_trace>]
+   |
+
+error: cannot find attribute `test_trace` in this scope
+  --> $DIR/test_trace.rs:16:3
+   |
+LL | #[test_trace]
+   |   ^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[test_trace]
+LL + #[<test_trace>]
+   |
+
+warning: duplicated attribute
+  --> $DIR/test_trace.rs:18:1
+   |
+LL | #[test]
+   | ^^^^^^^
+   |
+   = note: `#[warn(duplicate_macro_attributes)]` on by default
+
+error: aborting due to 3 previous errors; 1 warning emitted
+

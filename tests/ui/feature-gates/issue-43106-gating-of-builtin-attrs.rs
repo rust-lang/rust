@@ -382,8 +382,6 @@ mod should_panic {
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
-    #[should_panic] fn f() { }
-
     #[should_panic] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
@@ -414,8 +412,6 @@ mod ignore {
 //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
-
-    #[ignore] fn f() { }
 
     #[ignore] struct S;
     //~^ WARN attribute cannot be used on

@@ -264,6 +264,7 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
             sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
+            sym::test_trace,
             sym::ignore,
             sym::should_panic,
             sym::bench,
