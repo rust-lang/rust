@@ -221,6 +221,7 @@ pub enum LangCrateOrigin {
     ProcMacro,
     Std,
     Test,
+    Dependency,
     Other,
 }
 
@@ -245,7 +246,7 @@ impl fmt::Display for LangCrateOrigin {
             LangCrateOrigin::ProcMacro => "proc_macro",
             LangCrateOrigin::Std => "std",
             LangCrateOrigin::Test => "test",
-            LangCrateOrigin::Other => "other",
+            LangCrateOrigin::Other | LangCrateOrigin::Dependency => "other",
         };
         f.write_str(text)
     }

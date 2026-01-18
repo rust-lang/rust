@@ -27,7 +27,7 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
+use base_db::{CrateOrigin, LangCrateOrigin, LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -444,6 +444,12 @@ impl<'db> SymbolIndex<'db> {
                         .display_name(db)
                         .is_none_or(|name| name.canonical_name().as_str() == "build-script-build")
                     {
+                        continue;
+                    }
+                    if let CrateOrigin::Lang(LangCrateOrigin::Dependency | LangCrateOrigin::Other) =
+                        krate.origin(db)
+                    {
+                        // don't show dependencies of the sysroot
                         continue;
                     }
                     collector.push_crate_root(krate);
