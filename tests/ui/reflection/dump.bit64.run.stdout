@@ -35,7 +35,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 8,
+            bits: 8,
             signed: true,
         },
     ),
@@ -46,7 +46,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 32,
+            bits: 32,
             signed: true,
         },
     ),
@@ -57,7 +57,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 64,
+            bits: 64,
             signed: true,
         },
     ),
@@ -68,7 +68,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 128,
+            bits: 128,
             signed: true,
         },
     ),
@@ -79,7 +79,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 64,
+            bits: 64,
             signed: true,
         },
     ),
@@ -90,7 +90,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 8,
+            bits: 8,
             signed: false,
         },
     ),
@@ -101,7 +101,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 32,
+            bits: 32,
             signed: false,
         },
     ),
@@ -112,7 +112,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 64,
+            bits: 64,
             signed: false,
         },
     ),
@@ -123,7 +123,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 128,
+            bits: 128,
             signed: false,
         },
     ),
@@ -134,7 +134,7 @@ Type {
 Type {
     kind: Int(
         Int {
-            bit_width: 64,
+            bits: 64,
             signed: false,
         },
     ),

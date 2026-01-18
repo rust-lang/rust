@@ -114,7 +114,7 @@ pub struct Char {
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct Int {
     /// The bit width of the signed integer type.
-    pub bit_width: usize,
+    pub bits: u32,
     /// Whether the integer type is signed.
     pub signed: bool,
 }
@@ -125,7 +125,7 @@ pub struct Int {
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct Float {
     /// The bit width of the floating-point type.
-    pub bit_width: usize,
+    pub bits: u32,
 }
 
 /// Compile-time type information about string slice types.
