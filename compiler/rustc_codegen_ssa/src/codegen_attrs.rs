@@ -347,6 +347,9 @@ fn process_builtin_attrs(
                 AttributeKind::RustcAllocatorZeroed => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
                 }
+                AttributeKind::RustcNounwind => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND
+                }
                 _ => {}
             }
         }
@@ -356,7 +359,6 @@ fn process_builtin_attrs(
         };
 
         match name {
-            sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
             sym::patchable_function_entry => {
                 codegen_fn_attrs.patchable_function_entry =
                     parse_patchable_function_entry(tcx, attr);

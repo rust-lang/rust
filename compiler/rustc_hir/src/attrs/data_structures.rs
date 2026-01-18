@@ -981,6 +981,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
+    /// Represents `#[rustc_nounwind]`
+    RustcNounwind,
+
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 

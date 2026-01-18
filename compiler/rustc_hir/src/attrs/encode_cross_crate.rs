@@ -122,6 +122,7 @@ impl AttributeKind {
             RustcMustImplementOneOf { .. } => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,
+            RustcNounwind => No,
             RustcObjectLifetimeDefault => No,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
             RustcReallocator => No,
