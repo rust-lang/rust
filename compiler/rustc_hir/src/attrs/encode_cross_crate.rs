@@ -100,6 +100,7 @@ impl AttributeKind {
             RustcAllocator => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
+            RustcDeallocator => No,
             RustcDumpDefParents => No,
             RustcDumpItemBounds => No,
             RustcDumpPredicates => No,
