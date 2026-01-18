@@ -75,6 +75,7 @@ impl AttributeKind {
             MustNotSupend { .. } => Yes,
             MustUse { .. } => Yes,
             Naked(..) => No,
+            NeedsAllocator => No,
             NoCore(..) => No,
             NoImplicitPrelude(..) => No,
             NoLink => No,
