@@ -97,6 +97,7 @@ impl AttributeKind {
             PubTransparent(..) => Yes,
             RecursionLimit { .. } => No,
             Repr { .. } => No,
+            RustcAllocator => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
             RustcDumpDefParents => No,

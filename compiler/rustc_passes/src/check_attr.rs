@@ -316,6 +316,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::NeedsAllocator
+                    | AttributeKind::RustcAllocator
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -360,7 +361,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_do_not_const_check
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
-                            | sym::rustc_allocator
                             | sym::rustc_deallocator
                             | sym::rustc_reallocator
                             | sym::rustc_conversion_suggestion

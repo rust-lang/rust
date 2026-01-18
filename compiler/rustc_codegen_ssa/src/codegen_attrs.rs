@@ -335,6 +335,9 @@ fn process_builtin_attrs(
                 AttributeKind::InstructionSet(instruction_set) => {
                     codegen_fn_attrs.instruction_set = Some(*instruction_set)
                 }
+                AttributeKind::RustcAllocator => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR
+                }
                 _ => {}
             }
         }
@@ -344,7 +347,6 @@ fn process_builtin_attrs(
         };
 
         match name {
-            sym::rustc_allocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR,
             sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
             sym::rustc_reallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR,
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
