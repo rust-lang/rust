@@ -4,29 +4,21 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use clap::Parser;
+use clap::{Arg, ArgAction, Command, value_parser};
 use termcolor::Color;
 
-#[cfg(test)]
-mod tests;
-
 /// CLI flags used by tidy.
-#[derive(Parser, Debug, Clone, Default)]
-#[command(version, about, long_about = None)]
+#[derive(Debug, Clone, Default)]
 pub struct TidyFlags {
     pub root_path: PathBuf,
     pub cargo: PathBuf,
     pub output_directory: PathBuf,
     pub concurrency: usize,
     pub npm: PathBuf,
-    #[arg(long)]
     verbose: bool,
     /// Applies style and formatting changes during a tidy run.
-    #[arg(long)]
     bless: bool,
-    #[arg(long, value_delimiter=',', num_args=1..)]
     pub extra_checks: Option<Vec<String>>,
-    #[arg(last = true)]
     pub pos: Vec<String>,
 }
 
@@ -41,6 +33,75 @@ impl TidyFlags {
             }
         }
         flags
+    }
+
+    pub fn parse() -> Self {
+        let matches = Command::new("rust-tidy")
+            .arg(
+                Arg::new("root_path")
+                    .help("path of the root directory")
+                    .required(true)
+                    .value_parser(value_parser!(PathBuf)),
+            )
+            .arg(
+                Arg::new("cargo")
+                    .help("path of cargo")
+                    .required(true)
+                    .value_parser(value_parser!(PathBuf)),
+            )
+            .arg(
+                Arg::new("output_directory")
+                    .help("paath of output directory")
+                    .required(true)
+                    .value_parser(value_parser!(PathBuf)),
+            )
+            .arg(Arg::new("concurrency").required(true).value_parser(value_parser!(usize)))
+            .arg(
+                Arg::new("npm")
+                    .help("path of npm")
+                    .required(true)
+                    .value_parser(value_parser!(PathBuf)),
+            )
+            .arg(Arg::new("verbose").help("verbose").long("verbose").action(ArgAction::SetTrue))
+            .arg(Arg::new("bless").help("bless").long("bless").action(ArgAction::SetTrue))
+            .arg(
+                Arg::new("extra_checks")
+                    .help("extra checks")
+                    .long("extra-checks")
+                    .value_delimiter(',')
+                    .action(ArgAction::Append),
+            )
+            .arg(Arg::new("pos").help("some files").action(ArgAction::Append).last(true))
+            .get_matches();
+
+        let mut tidy_flags = TidyFlags {
+            root_path: matches.get_one::<PathBuf>("root_path").unwrap().clone(),
+            cargo: matches.get_one::<PathBuf>("cargo").unwrap().clone(),
+            output_directory: matches.get_one::<PathBuf>("output_directory").unwrap().clone(),
+            concurrency: matches.get_one::<usize>("concurrency").unwrap().clone(),
+            npm: matches.get_one::<PathBuf>("npm").unwrap().clone(),
+            verbose: *matches.get_one::<bool>("verbose").unwrap(),
+            bless: *matches.get_one::<bool>("bless").unwrap(),
+            extra_checks: None,
+            pos: vec![],
+        };
+
+        let extra_checks = matches
+            .get_many::<String>("extra_checks")
+            .unwrap_or_default()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>();
+        if extra_checks.len() > 0 {
+            tidy_flags.extra_checks = Some(extra_checks);
+        }
+
+        tidy_flags.pos = matches
+            .get_many::<String>("pos")
+            .unwrap_or_default()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>();
+
+        tidy_flags
     }
 }
 

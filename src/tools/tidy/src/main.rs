@@ -9,7 +9,6 @@ use std::num::NonZeroUsize;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
-use clap::Parser;
 use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, TidyCtx, TidyFlags, output_message};
 use tidy::*;
 
