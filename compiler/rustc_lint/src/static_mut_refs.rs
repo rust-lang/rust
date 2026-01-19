@@ -1,11 +1,12 @@
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, Stmt};
 use rustc_middle::ty::{Mutability, TyKind};
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span};
 
-use crate::lints::{MutRefSugg, RefOfMutStatic};
+use crate::lints::{MutRefSugg, RefOfMutStatic, StaticMutRefsInteriorMutabilitySugg};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -67,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
         match expr.kind {
             hir::ExprKind::AddrOf(borrow_kind, m, ex)
                 if matches!(borrow_kind, hir::BorrowKind::Ref)
-                    && let Some(err_span) = path_is_static_mut(ex, err_span) =>
+                    && let Some(static_mut) = path_is_static_mut(ex, err_span) =>
             {
                 let source_map = cx.sess().source_map();
                 let snippet = source_map.span_to_snippet(err_span);
@@ -86,10 +87,17 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
                     err_span.with_hi(ex.span.lo())
                 };
 
-                emit_static_mut_refs(cx, err_span, sugg_span, m, !expr.span.from_expansion());
+                emit_static_mut_refs(
+                    cx,
+                    static_mut.err_span,
+                    sugg_span,
+                    m,
+                    !expr.span.from_expansion(),
+                    static_mut.def_id,
+                );
             }
             hir::ExprKind::MethodCall(_, e, _, _)
-                if let Some(err_span) = path_is_static_mut(e, expr.span)
+                if let Some(static_mut) = path_is_static_mut(e, expr.span)
                     && let typeck = cx.typeck_results()
                     && let Some(method_def_id) = typeck.type_dependent_def_id(expr.hir_id)
                     && let inputs =
@@ -97,7 +105,14 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
                     && let Some(receiver) = inputs.get(0)
                     && let TyKind::Ref(_, _, m) = receiver.kind() =>
             {
-                emit_static_mut_refs(cx, err_span, err_span.shrink_to_lo(), *m, false);
+                emit_static_mut_refs(
+                    cx,
+                    static_mut.err_span,
+                    static_mut.err_span.shrink_to_lo(),
+                    *m,
+                    false,
+                    static_mut.def_id,
+                );
             }
             _ => {}
         }
@@ -108,14 +123,26 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
             && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
             && let hir::ByRef::Yes(_, m) = ba.0
             && let Some(init) = loc.init
-            && let Some(err_span) = path_is_static_mut(init, init.span)
+            && let Some(static_mut) = path_is_static_mut(init, init.span)
         {
-            emit_static_mut_refs(cx, err_span, err_span.shrink_to_lo(), m, false);
+            emit_static_mut_refs(
+                cx,
+                static_mut.err_span,
+                static_mut.err_span.shrink_to_lo(),
+                m,
+                false,
+                static_mut.def_id,
+            );
         }
     }
 }
 
-fn path_is_static_mut(mut expr: &hir::Expr<'_>, mut err_span: Span) -> Option<Span> {
+struct StaticMutInfo {
+    err_span: Span,
+    def_id: DefId,
+}
+
+fn path_is_static_mut(mut expr: &hir::Expr<'_>, mut err_span: Span) -> Option<StaticMutInfo> {
     if err_span.from_expansion() {
         err_span = expr.span;
     }
@@ -126,11 +153,11 @@ fn path_is_static_mut(mut expr: &hir::Expr<'_>, mut err_span: Span) -> Option<Sp
 
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
-        && let hir::def::Res::Def(def_kind, _) = path.res
+        && let hir::def::Res::Def(def_kind, def_id) = path.res
         && let hir::def::DefKind::Static { safety: _, mutability: Mutability::Mut, nested: false } =
             def_kind
     {
-        return Some(err_span);
+        return Some(StaticMutInfo { err_span, def_id });
     }
     None
 }
@@ -141,6 +168,7 @@ fn emit_static_mut_refs(
     sugg_span: Span,
     mutable: Mutability,
     suggest_addr_of: bool,
+    def_id: DefId,
 ) {
     let (shared_label, shared_note, mut_note, sugg) = match mutable {
         Mutability::Mut => {
@@ -155,9 +183,102 @@ fn emit_static_mut_refs(
         }
     };
 
+    let (interior_mutability_help, interior_mutability_sugg) =
+        interior_mutability_suggestion(cx, def_id);
+
     cx.emit_span_lint(
         STATIC_MUT_REFS,
         span,
-        RefOfMutStatic { span, sugg, shared_label, shared_note, mut_note },
+        RefOfMutStatic {
+            span,
+            sugg,
+            shared_label,
+            shared_note,
+            mut_note,
+            interior_mutability_help,
+            interior_mutability_sugg,
+        },
     );
+}
+
+fn interior_mutability_suggestion(
+    cx: &LateContext<'_>,
+    def_id: DefId,
+) -> (bool, Option<StaticMutRefsInteriorMutabilitySugg>) {
+    let static_ty = cx.tcx.type_of(def_id).skip_binder();
+    let has_interior_mutability = !static_ty.is_freeze(cx.tcx, cx.typing_env());
+
+    if !has_interior_mutability {
+        return (false, None);
+    }
+
+    let sugg =
+        static_mutability_span(cx, def_id).map(|span| StaticMutRefsInteriorMutabilitySugg { span });
+    (true, sugg)
+}
+
+fn static_mutability_span(cx: &LateContext<'_>, def_id: DefId) -> Option<Span> {
+    let hir_id = cx.tcx.hir_get_if_local(def_id)?;
+    let hir::Node::Item(item) = hir_id else { return None };
+    let (mutability, ident) = match item.kind {
+        hir::ItemKind::Static(mutability, ident, _, _) => (mutability, ident),
+        _ => return None,
+    };
+    if mutability != hir::Mutability::Mut {
+        return None;
+    }
+
+    let vis_span = item.vis_span.find_ancestor_inside(item.span)?;
+    if !item.span.can_be_used_for_suggestions() || !vis_span.can_be_used_for_suggestions() {
+        return None;
+    }
+
+    let header_span = vis_span.between(ident.span);
+    if !header_span.can_be_used_for_suggestions() {
+        return None;
+    }
+
+    let source_map = cx.sess().source_map();
+    let snippet = source_map.span_to_snippet(header_span).ok()?;
+
+    let (_static_start, static_end) = find_word(&snippet, "static", 0)?;
+    let (mut_start, mut_end) = find_word(&snippet, "mut", static_end)?;
+    let mut_end = extend_trailing_space(&snippet, mut_end);
+
+    Some(
+        header_span
+            .with_lo(header_span.lo() + BytePos(mut_start as u32))
+            .with_hi(header_span.lo() + BytePos(mut_end as u32)),
+    )
+}
+
+fn find_word(snippet: &str, word: &str, start: usize) -> Option<(usize, usize)> {
+    let bytes = snippet.as_bytes();
+    let word_bytes = word.as_bytes();
+    let mut search = start;
+    while search <= snippet.len() {
+        let found = snippet[search..].find(word)?;
+        let idx = search + found;
+        let end = idx + word_bytes.len();
+        let before_ok = idx == 0 || !is_ident_char(bytes[idx - 1]);
+        let after_ok = end >= bytes.len() || !is_ident_char(bytes[end]);
+        if before_ok && after_ok {
+            return Some((idx, end));
+        }
+        search = end;
+    }
+    None
+}
+
+fn is_ident_char(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+fn extend_trailing_space(snippet: &str, mut end: usize) -> usize {
+    if let Some(ch) = snippet[end..].chars().next()
+        && (ch == ' ' || ch == '\t')
+    {
+        end += ch.len_utf8();
+    }
+    end
 }
