@@ -1941,8 +1941,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match &errors[..] {
                         [] => {}
                         [error] => {
-                            // diag.note("{error:#?}");
-                            // diag.note(format!("{:#?} {:#?} {:#?}", error.obligation, error.obligation.cause, error.obligation.cause.code()));
                             let msg = "`Clone` is not implemented because a trait bound is not \
                                 satisfied";
                             if let traits::ObligationCauseCode::ImplDerived(data) =
