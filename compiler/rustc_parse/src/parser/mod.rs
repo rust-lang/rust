@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
         self.parse_ident_common(self.may_recover())
     }
 
-    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
+    pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
         if is_raw == IdentIsRaw::No && ident.is_reserved() {
