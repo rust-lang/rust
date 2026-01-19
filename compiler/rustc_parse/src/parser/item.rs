@@ -6,7 +6,6 @@ use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
-use rustc_ast::util::classify;
 use rustc_ast::{
     attr, {self as ast},
 };
@@ -2654,8 +2653,13 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
-            self.parse_block_common(self.token.span, BlockCheckMode::Default, None)
-                .map(|(attrs, body)| (attrs, Some(body)))?
+            let prev_in_fn_body = self.in_fn_body;
+            self.in_fn_body = true;
+            let res = self
+                .parse_block_common(self.token.span, BlockCheckMode::Default, None)
+                .map(|(attrs, body)| (attrs, Some(body)));
+            self.in_fn_body = prev_in_fn_body;
+            res?
         } else if self.token == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
@@ -3426,26 +3430,11 @@ impl<'a> Parser<'a> {
         let Some(ConstItemRhs::Body(rhs)) = rhs else {
             return None;
         };
-        if !self.may_recover() || rhs.span.from_expansion() {
+        if !self.in_fn_body || !self.may_recover() || rhs.span.from_expansion() {
             return None;
         }
-        let sm = self.psess.source_map();
-        // Check if this is a binary expression that spans multiple lines
-        // and the RHS looks like it could be an independent expression.
-        if let ExprKind::Binary(op, lhs, rhs_inner) = &rhs.kind
-            && sm.is_multiline(lhs.span.shrink_to_hi().until(rhs_inner.span.shrink_to_lo()))
-            && matches!(op.node, BinOpKind::Mul | BinOpKind::BitAnd)
-            && classify::expr_requires_semi_to_be_stmt(rhs_inner)
-        {
-            let lhs_end_span = lhs.span.shrink_to_hi();
-            let guar = self.dcx().emit_err(errors::ExpectedSemi {
-                span: lhs_end_span,
-                token: self.token,
-                unexpected_token_label: Some(self.token.span),
-                sugg: errors::ExpectedSemiSugg::AddSemi(lhs_end_span),
-            });
-
-            Some(self.mk_expr(lhs.span, ExprKind::Err(guar)))
+        if let Some((span, guar)) = self.missing_semi_from_binop("const", rhs) {
+            Some(self.mk_expr(span, ExprKind::Err(guar)))
         } else {
             None
         }

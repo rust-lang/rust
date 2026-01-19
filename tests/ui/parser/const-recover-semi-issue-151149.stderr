@@ -1,0 +1,100 @@
+error: expected `;`, found keyword `const`
+  --> $DIR/const-recover-semi-issue-151149.rs:16:3
+   |
+LL | &1
+   |   ^ help: add `;` here
+LL |
+LL | const fn foo() -> &'static u8 {
+   | ----- unexpected token
+
+error: expected `;`, found `}`
+  --> $DIR/const-recover-semi-issue-151149.rs:19:38
+   |
+LL |       const C: u8 = u8::const_default()
+   |  ______________________________________^
+LL | |     &C
+   | |______- to finish parsing this const, expected this to be followed by a `;`
+LL |   }
+   |   - unexpected token
+   |
+note: the const was parsed as having a bit-and binary expression
+  --> $DIR/const-recover-semi-issue-151149.rs:19:19
+   |
+LL |     const C: u8 = u8::const_default()
+   |                   ------------------- parsed as the left-hand expression
+LL |     &C
+   |     -- parsed as the right-hand expression
+   |     |
+   |     this was parsed as a bit-and
+help: you may have meant to write a `;` to terminate the const earlier
+   |
+LL |     const C: u8 = u8::const_default();
+   |                                      +
+
+error: expected `;`, found `}`
+  --> $DIR/const-recover-semi-issue-151149.rs:25:9
+   |
+LL |      + 2
+   |         ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: expected `;`, found `}`
+  --> $DIR/const-recover-semi-issue-151149.rs:30:13
+   |
+LL |      + val()
+   |             ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: expected `;`, found `}`
+  --> $DIR/const-recover-semi-issue-151149.rs:34:14
+   |
+LL |       let r = 1
+   |  ______________^
+LL | |     &r
+   | |______- to finish parsing this `let` binding, expected this to be followed by a `;`
+LL |   }
+   |   - unexpected token
+   |
+note: the `let` binding was parsed as having a bit-and binary expression
+  --> $DIR/const-recover-semi-issue-151149.rs:34:13
+   |
+LL |     let r = 1
+   |             - parsed as the left-hand expression
+LL |     &r
+   |     -- parsed as the right-hand expression
+   |     |
+   |     this was parsed as a bit-and
+help: you may have meant to write a `;` to terminate the `let` binding earlier
+   |
+LL |     let r = 1;
+   |              +
+
+error[E0308]: mismatched types
+  --> $DIR/const-recover-semi-issue-151149.rs:18:19
+   |
+LL | const fn foo() -> &'static u8 {
+   |          ---      ^^^^^^^^^^^ expected `&u8`, found `()`
+   |          |
+   |          implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/const-recover-semi-issue-151149.rs:23:19
+   |
+LL | const fn bar() -> u8 {
+   |          ---      ^^ expected `u8`, found `()`
+   |          |
+   |          implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/const-recover-semi-issue-151149.rs:28:19
+   |
+LL | const fn baz() -> u8 {
+   |          ---      ^^ expected `u8`, found `()`
+   |          |
+   |          implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
