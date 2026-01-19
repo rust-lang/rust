@@ -963,19 +963,19 @@ function preLoadCss(cssUrl) {
         const selfPath = script ? script.getAttribute("data-self-path") : null;
 
         // These sidebar blocks need filled in, too.
-        const mainContent = document.querySelector("#main-content");
-        const sidebarSection = document.querySelector(".sidebar section");
+        const mainContent = nonnull(document.querySelector("#main-content"));
+        const sidebarSection = nonnull(document.querySelector(".sidebar section"));
         let methods = document.querySelector(".sidebar .block.method");
         let associatedTypes = document.querySelector(".sidebar .block.associatedtype");
         let associatedConstants = document.querySelector(".sidebar .block.associatedconstant");
         let sidebarTraitList = document.querySelector(".sidebar .block.trait-implementation");
 
-        // @ts-expect-error
-        for (const impList of imp[window.currentCrate]) {
+        for (const impList of imp[nonnull(window.currentCrate)]) {
             const types = impList.slice(2);
             const text = impList[0];
             const isTrait = impList[1] !== 0;
             const traitName = impList[1];
+            // @ts-expect-error
             if (types.indexOf(selfPath) === -1) {
                 continue;
             }
@@ -999,33 +999,26 @@ function preLoadCss(cssUrl) {
                     h.appendChild(link);
                     trait_implementations = outputList;
                     trait_implementations_header = outputListHeader;
-                    // @ts-expect-error
                     sidebarSection.appendChild(h);
                     sidebarTraitList = document.createElement("ul");
                     sidebarTraitList.className = "block trait-implementation";
-                    // @ts-expect-error
                     sidebarSection.appendChild(sidebarTraitList);
-                    // @ts-expect-error
                     mainContent.appendChild(outputListHeader);
-                    // @ts-expect-error
                     mainContent.appendChild(outputList);
                 } else {
                     implementations = outputList;
                     if (trait_implementations) {
-                        // @ts-expect-error
                         mainContent.insertBefore(outputListHeader, trait_implementations_header);
-                        // @ts-expect-error
                         mainContent.insertBefore(outputList, trait_implementations_header);
                     } else {
-                        const mainContent = document.querySelector("#main-content");
-                        // @ts-expect-error
+                        const mainContent = nonnull(document.querySelector("#main-content"));
                         mainContent.appendChild(outputListHeader);
-                        // @ts-expect-error
                         mainContent.appendChild(outputList);
                     }
                 }
             }
             const template = document.createElement("template");
+            // @ts-expect-error
             template.innerHTML = text;
 
             onEachLazy(template.content.querySelectorAll("a"), elem => {
@@ -1065,8 +1058,8 @@ function preLoadCss(cssUrl) {
             if (isTrait) {
                 const li = document.createElement("li");
                 const a = document.createElement("a");
+                a.href = `#${nonnull(template.content.querySelector(".impl")).id}`;
                 // @ts-expect-error
-                a.href = `#${template.content.querySelector(".impl").id}`;
                 a.textContent = traitName;
                 li.appendChild(a);
                 // @ts-expect-error
@@ -1093,14 +1086,10 @@ function preLoadCss(cssUrl) {
                         const insertionReference = methods || sidebarTraitList;
                         if (insertionReference) {
                             const insertionReferenceH = insertionReference.previousElementSibling;
-                            // @ts-expect-error
                             sidebarSection.insertBefore(blockHeader, insertionReferenceH);
-                            // @ts-expect-error
                             sidebarSection.insertBefore(block, insertionReferenceH);
                         } else {
-                            // @ts-expect-error
                             sidebarSection.appendChild(blockHeader);
-                            // @ts-expect-error
                             sidebarSection.appendChild(block);
                         }
                         if (hasClass(item, "associatedtype")) {
