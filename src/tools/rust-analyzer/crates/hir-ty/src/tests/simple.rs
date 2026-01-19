@@ -3997,3 +3997,46 @@ extern "C" fn foo() -> ! {
     "#,
     );
 }
+
+#[test]
+fn regression_21478() {
+    check_infer(
+        r#"
+//- minicore: unsize, coerce_unsized
+struct LazyLock<T>(T);
+
+impl<T> LazyLock<T> {
+    const fn new() -> Self {
+        loop {}
+    }
+
+    fn force(this: &Self) -> &T {
+        loop {}
+    }
+}
+
+static VALUES_LAZY_LOCK: LazyLock<[u32; { 0 }]> = LazyLock::new();
+
+fn foo() {
+    let _ = LazyLock::force(&VALUES_LAZY_LOCK);
+}
+    "#,
+        expect![[r#"
+            73..96 '{     ...     }': LazyLock<T>
+            83..90 'loop {}': !
+            88..90 '{}': ()
+            111..115 'this': &'? LazyLock<T>
+            130..153 '{     ...     }': &'? T
+            140..147 'loop {}': !
+            145..147 '{}': ()
+            207..220 'LazyLock::new': fn new<[u32; _]>() -> LazyLock<[u32; _]>
+            207..222 'LazyLock::new()': LazyLock<[u32; _]>
+            234..285 '{     ...CK); }': ()
+            244..245 '_': &'? [u32; _]
+            248..263 'LazyLock::force': fn force<[u32; _]>(&'? LazyLock<[u32; _]>) -> &'? [u32; _]
+            248..282 'LazyLo..._LOCK)': &'? [u32; _]
+            264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; _]>
+            265..281 'VALUES...Y_LOCK': LazyLock<[u32; _]>
+        "#]],
+    );
+}
