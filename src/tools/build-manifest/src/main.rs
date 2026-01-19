@@ -14,11 +14,11 @@ use crate::versions::{PkgType, Versions};
 
 include!(concat!(env!("OUT_DIR"), "/targets.rs"));
 
-/// This allows the manifest to contain rust-docs for hosts that don't build
-/// docs.
+/// This allows the manifest to contain rust-docs and rustc-docs for hosts
+/// that don't build certain docs.
 ///
 /// Tuples of `(host_partial, host_instead)`. If the host does not have the
-/// rust-docs component available, then if the host name contains
+/// corresponding docs component available, then if the host name contains
 /// `host_partial`, it will use the docs from `host_instead` instead.
 ///
 /// The order here matters, more specific entries should be first.
@@ -392,9 +392,9 @@ impl Builder {
                     let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
                     // Fallbacks should typically be available on 'production' builds
                     // but may not be available for try builds, which only build one target by
-                    // default. Ideally we'd gate this being a hard error on whether we're in a
-                    // production build or not, but it's not information that's readily available
-                    // here.
+                    // default. It is also possible that `rust-docs` and `rustc-docs` differ in
+                    // availability per target. Thus, we take the first available fallback we can
+                    // find.
                     if !t.available {
                         eprintln!(
                             "{:?} not available for fallback",
