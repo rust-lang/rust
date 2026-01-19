@@ -1,0 +1,7 @@
+exiting thread
+fls_1_dtor_simple
+fls_2.1_early_dtor
+fls_2.2_later_dtor
+fls_3_later_dtor
+fls_4.1_early_dtor
+fls_4.2_later_dtor
