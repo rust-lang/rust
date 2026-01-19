@@ -197,7 +197,7 @@
 - [Opaque types](./opaque-types-type-alias-impl-trait.md)
     - [Inference details](./opaque-types-impl-trait-inference.md)
     - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
-    - [Region inference restrictions][opaque-infer]
+    - [Region inference restrictions](./borrow_check/opaque-types-region-inference-restrictions.md)
 - [Const condition checking](./effects.md)
 - [Pattern and exhaustiveness checking](./pat-exhaustive-checking.md)
 - [Unsafety checking](./unsafety-checking.md)
@@ -212,7 +212,7 @@
         - [Constraint propagation](./borrow_check/region_inference/constraint_propagation.md)
         - [Lifetime parameters](./borrow_check/region_inference/lifetime_parameters.md)
         - [Member constraints](./borrow_check/region_inference/member_constraints.md)
-        - [Placeholders and universes][pau]
+        - [Placeholders and universes](./borrow_check/region_inference/placeholders_and_universes.md)
         - [Closure constraints](./borrow_check/region_inference/closure_constraints.md)
         - [Error reporting](./borrow_check/region_inference/error_reporting.md)
     - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
@@ -263,8 +263,3 @@
 [Appendix E: Bibliography](./appendix/bibliography.md)
 
 [Appendix Z: HumorRust](./appendix/humorust.md)
-
----
-
-[pau]: ./borrow_check/region_inference/placeholders_and_universes.md
-[opaque-infer]: ./borrow_check/opaque-types-region-inference-restrictions.md
