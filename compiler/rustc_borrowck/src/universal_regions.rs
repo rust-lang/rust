@@ -207,10 +207,10 @@ struct UniversalRegionIndices<'tcx> {
     /// `ty::Region` to the internal `RegionVid` we are using. This is
     /// used because trait matching and type-checking will feed us
     /// region constraints that reference those regions and we need to
-    /// be able to map them to our internal `RegionVid`. This is
-    /// basically equivalent to an `GenericArgs`, except that it also
-    /// contains an entry for `ReStatic` -- it might be nice to just
-    /// use an args, and then handle `ReStatic` another way.
+    /// be able to map them to our internal `RegionVid`.
+    ///
+    /// This is similar to just using `GenericArgs`, except that it contains
+    /// an entry for `'static`, and also late bound parameters in scope.
     indices: FxIndexMap<ty::Region<'tcx>, RegionVid>,
 
     /// The vid assigned to `'static`. Used only for diagnostics.
