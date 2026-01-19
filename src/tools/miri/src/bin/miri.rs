@@ -4,8 +4,6 @@
     clippy::useless_format,
     clippy::field_reassign_with_default,
     clippy::needless_lifetimes,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 
 // The rustc crates we need

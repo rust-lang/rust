@@ -119,8 +119,6 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
             // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
             .map(|s| {
                 let s = s.trim();
-                // FIXME(workingjubilee): add proper diagnostics when we factor out "pre-run" setup
-                #[allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
                 s.parse::<usize>().unwrap_or_else(|_| {
                     let mut err = early_dcx.early_struct_fatal(format!(
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
@@ -301,7 +299,6 @@ pub(crate) fn run_in_thread_pool_with_globals<
     })
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     match unsafe { load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend") } {
         Ok(backend_sym) => backend_sym,
@@ -434,8 +431,6 @@ impl CodegenBackend for DummyCodegenBackend {
             .find(|&&crate_type| crate_type != CrateType::Rlib)
             && outputs.outputs.should_link()
         {
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal(format!(
                 "crate type {crate_type} not supported by the dummy codegen backend"
             ));
@@ -491,7 +486,6 @@ pub fn rustc_path<'a>(sysroot: &Sysroot) -> Option<&'a Path> {
         .as_deref()
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn get_codegen_sysroot(
     early_dcx: &EarlyDiagCtxt,
     sysroot: &Sysroot,

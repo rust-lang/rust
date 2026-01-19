@@ -1138,7 +1138,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     errors::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
-                        // FIXME: Make this translatable.
                         location,
                     },
                 );

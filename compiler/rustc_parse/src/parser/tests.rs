@@ -184,7 +184,6 @@ impl<T: Write> Write for Shared<T> {
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
 fn test_harness(
     file_text: &str,
     span_labels: Vec<SpanLabel>,

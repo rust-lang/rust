@@ -4,9 +4,6 @@ use super::prelude::*;
 
 pub(crate) struct TransparencyParser;
 
-// FIXME(jdonszelmann): make these proper diagnostics
-#[allow(rustc::untranslatable_diagnostic)]
-#[allow(rustc::diagnostic_outside_of_impl)]
 impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
     const PATH: &[Symbol] = &[sym::rustc_macro_transparency];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;

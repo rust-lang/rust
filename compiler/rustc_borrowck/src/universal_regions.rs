@@ -11,9 +11,6 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::cell::Cell;
 use std::iter;
 

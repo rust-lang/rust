@@ -75,11 +75,11 @@ use crate::attributes::rustc_dump::{
 use crate::attributes::rustc_internal::{
     RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
     RustcLayoutScalarValidRangeStartParser, RustcLegacyConstGenericsParser,
-    RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser,
-    RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
-    RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
-    RustcNoImplicitAutorefsParser, RustcNounwindParser, RustcObjectLifetimeDefaultParser,
-    RustcOffloadKernelParser, RustcScalableVectorParser, RustcSimdMonomorphizeLaneLimitParser,
+    RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser, RustcLintQueryInstabilityParser,
+    RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
+    RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser, RustcNounwindParser,
+    RustcObjectLifetimeDefaultParser, RustcOffloadKernelParser, RustcScalableVectorParser,
+    RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -289,7 +289,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDumpUserArgs>>,
         Single<WithoutArgs<RustcDumpVtable>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
-        Single<WithoutArgs<RustcLintDiagnosticsParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,

@@ -1,8 +1,5 @@
 //! Print diagnostics to explain why values are borrowed.
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;

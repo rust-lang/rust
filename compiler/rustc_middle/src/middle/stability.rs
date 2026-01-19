@@ -119,7 +119,6 @@ pub struct DeprecationSuggestion {
 pub struct Deprecated {
     pub sub: Option<DeprecationSuggestion>,
 
-    // FIXME: make this translatable
     pub kind: String,
     pub path: String,
     pub note: Option<Symbol>,
