@@ -29,11 +29,6 @@ passes_attr_application_struct_union =
     attribute should be applied to a struct or union
     .label = not a struct or union
 
-passes_attr_crate_level =
-    this attribute can only be applied at the crate level
-    .suggestion = to apply to the crate, use an inner attribute
-    .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function
     .label = not a function
@@ -54,10 +49,6 @@ passes_change_fields_to_be_of_unit_type =
       [one] field
      *[other] fields
     }
-
-passes_collapse_debuginfo =
-    `collapse_debuginfo` attribute should be applied to macro definitions
-    .label = not a macro definition
 
 passes_const_continue_attr =
     `#[const_continue]` should be applied to a break expression
@@ -111,9 +102,6 @@ passes_doc_alias_bad_location =
 
 passes_doc_alias_not_an_alias =
     `#[doc(alias = "{$attr_str}"]` is the same as the item's name
-
-passes_doc_attr_not_crate_level =
-    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
@@ -244,10 +232,6 @@ passes_function_not_have_default_implementation = function doesn't have a defaul
 passes_functions_names_duplicated = functions names are duplicated
     .note = all `#[rustc_must_implement_one_of]` arguments must be unique
 
-passes_has_incoherent_inherent_impl =
-    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
-    .label = only adts, extern types and traits are supported
-
 passes_ignored_derived_impls =
     `{$name}` has {$trait_list_len ->
       [one] a derived impl
@@ -261,9 +245,6 @@ passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
 passes_incorrect_crate_type = lang items are not allowed in stable dylibs
-
-passes_incorrect_do_not_recommend_args =
-    `#[diagnostic::do_not_recommend]` does not expect any arguments
 
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
@@ -383,10 +364,6 @@ passes_must_implement_not_function = not a function
 passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
 
 passes_must_implement_not_function_span_note = required by this annotation
-
-passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
-    .label = is not a struct, enum, union, or trait
 
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`

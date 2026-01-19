@@ -90,7 +90,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
+        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
     }
 
     fn unevaluated_to_pat(
@@ -174,10 +174,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        // Convert the valtree to a const.
-        let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
+        // Lower the valtree to a THIR pattern.
+        let mut thir_pat = self.valtree_to_pat(valtree, ty);
 
-        if !inlined_const_as_pat.references_error() {
+        if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
             if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
@@ -186,10 +186,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         }
 
-        // Wrap the pattern in a marker node to indicate that it is the result of lowering a
+        // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
-        Box::new(Pat { kind, ty, span: self.span })
+        thir_pat.extra.get_or_insert_default().expanded_const = Some(uv.def);
+        thir_pat
     }
 
     fn field_pats(
@@ -289,32 +289,29 @@ impl<'tcx> ConstToPat<'tcx> {
                 suffix: Box::new([]),
             },
             ty::Str => {
-                // String literal patterns may have type `str` if `deref_patterns` is enabled, in
-                // order to allow `deref!("..."): String`. Since we need a `&str` for the comparison
-                // when lowering to MIR in `Builder::perform_test`, treat the constant as a `&str`.
-                // This works because `str` and `&str` have the same valtree representation.
-                let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty);
-                PatKind::Constant { value: ty::Value { ty: ref_str_ty, valtree: cv } }
+                // Constant/literal patterns of type `&str` are lowered to a
+                // `PatKind::Deref` wrapping a `PatKind::Constant` of type `str`.
+                // This pattern node is the `str` constant part.
+                //
+                // Under `feature(deref_patterns)`, string literal patterns can also
+                // have type `str` directly, without the `&`, in order to allow things
+                // like `deref!("...")` to work when the scrutinee is `String`.
+                PatKind::Constant { value: ty::Value { ty, valtree: cv } }
             }
-            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
-                // `&str` is represented as a valtree, let's keep using this
-                // optimization for now.
-                ty::Str => PatKind::Constant { value: ty::Value { ty, valtree: cv } },
-                // All other references are converted into deref patterns and then recursively
-                // convert the dereferenced constant to a pattern that is the sub-pattern of the
-                // deref pattern.
-                _ => {
-                    if !pointee_ty.is_sized(tcx, self.typing_env) && !pointee_ty.is_slice() {
-                        return self.mk_err(
-                            tcx.dcx().create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }),
-                            ty,
-                        );
-                    } else {
-                        // References have the same valtree representation as their pointee.
-                        PatKind::Deref { subpattern: self.valtree_to_pat(cv, *pointee_ty) }
-                    }
+            ty::Ref(_, pointee_ty, ..) => {
+                if pointee_ty.is_str()
+                    || pointee_ty.is_slice()
+                    || pointee_ty.is_sized(tcx, self.typing_env)
+                {
+                    // References have the same valtree representation as their pointee.
+                    PatKind::Deref { subpattern: self.valtree_to_pat(cv, *pointee_ty) }
+                } else {
+                    return self.mk_err(
+                        tcx.dcx().create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }),
+                        ty,
+                    );
                 }
-            },
+            }
             ty::Float(flt) => {
                 let v = cv.to_leaf();
                 let is_nan = match flt {
@@ -351,7 +348,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind })
+        Box::new(Pat { span, ty, kind, extra: None })
     }
 }
 

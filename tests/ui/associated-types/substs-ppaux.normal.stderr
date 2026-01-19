@@ -88,7 +88,7 @@ note: required for `str` to implement `Foo<'_, '_, u8>`
 LL | impl<'a, 'b, T, S> Foo<'a, 'b, S> for T {}
    |              -     ^^^^^^^^^^^^^^     ^
    |              |
-   |              unsatisfied trait bound introduced here
+   |              unsatisfied trait bound implicitly introduced here
 
 error: aborting due to 5 previous errors
 

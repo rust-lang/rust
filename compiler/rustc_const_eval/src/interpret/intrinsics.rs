@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
@@ -27,6 +27,7 @@ use super::{
     throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
+use crate::interpret::Writeable;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -68,10 +69,10 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId
 }
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Generates a value of `TypeId` for `ty` in-place.
-    fn write_type_id(
+    pub(crate) fn write_type_id(
         &mut self,
         ty: Ty<'tcx>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()> {
         let tcx = self.tcx;
         let type_id_hash = tcx.type_id_hash(ty).as_u128();
@@ -242,13 +243,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {
                     let pred = pred.with_self_ty(tcx, tp_ty);
                     // Lifetimes can only be 'static because of the bound on T
-                    let pred = pred.fold_with(&mut ty::BottomUpFolder {
-                        tcx,
-                        ty_op: |ty| ty,
-                        lt_op: |lt| {
-                            if lt == tcx.lifetimes.re_erased { tcx.lifetimes.re_static } else { lt }
-                        },
-                        ct_op: |ct| ct,
+                    let pred = ty::fold_regions(tcx, pred, |r, _| {
+                        if r == tcx.lifetimes.re_erased { tcx.lifetimes.re_static } else { r }
                     });
                     Obligation::new(tcx, ObligationCause::dummy(), param_env, pred)
                 }));

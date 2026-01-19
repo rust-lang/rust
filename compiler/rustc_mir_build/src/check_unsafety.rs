@@ -342,8 +342,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild |
                 // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
-                PatKind::ExpandedConstant { .. } |
-                PatKind::AscribeUserType { .. } |
                 PatKind::Error(_) => {}
             }
         };
@@ -478,7 +476,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
         };
         match expr.kind {
-            ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
+            ExprKind::Scope { value, hir_id, region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
                 ensure_sufficient_stack(|| {

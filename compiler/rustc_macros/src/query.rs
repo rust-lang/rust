@@ -93,7 +93,7 @@ struct QueryModifiers {
     cache: Option<(Option<Pat>, Block)>,
 
     /// A cycle error for this query aborting the compilation with a fatal error.
-    fatal_cycle: Option<Ident>,
+    cycle_fatal: Option<Ident>,
 
     /// A cycle error results in a delay_bug call
     cycle_delay_bug: Option<Ident>,
@@ -136,7 +136,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
     let mut cache = None;
     let mut desc = None;
-    let mut fatal_cycle = None;
+    let mut cycle_fatal = None;
     let mut cycle_delay_bug = None;
     let mut cycle_stash = None;
     let mut no_hash = None;
@@ -189,8 +189,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(cache = (args, block));
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
-        } else if modifier == "fatal_cycle" {
-            try_insert!(fatal_cycle = modifier);
+        } else if modifier == "cycle_fatal" {
+            try_insert!(cycle_fatal = modifier);
         } else if modifier == "cycle_delay_bug" {
             try_insert!(cycle_delay_bug = modifier);
         } else if modifier == "cycle_stash" {
@@ -220,7 +220,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         arena_cache,
         cache,
         desc,
-        fatal_cycle,
+        cycle_fatal,
         cycle_delay_bug,
         cycle_stash,
         no_hash,
@@ -366,8 +366,8 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         }
 
         passthrough!(
-            fatal_cycle,
             arena_cache,
+            cycle_fatal,
             cycle_delay_bug,
             cycle_stash,
             no_hash,

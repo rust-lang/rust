@@ -134,7 +134,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// [`Ok(())`]: Ok
     /// [`Err(k)`]: Err
     #[inline]
-    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    #[unstable(feature = "iter_advance_by", issue = "77404")]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next_back().is_none() {

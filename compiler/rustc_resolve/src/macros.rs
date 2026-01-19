@@ -29,7 +29,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
 use crate::errors::{
@@ -52,7 +52,7 @@ pub(crate) struct MacroRulesDecl<'ra> {
     pub(crate) decl: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
-    pub(crate) ident: Ident,
+    pub(crate) ident: Macros20NormalizedIdent,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -164,6 +164,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId {
         self.invocation_parents[&id].parent_def
+    }
+
+    fn mark_scope_with_compile_error(&mut self, id: NodeId) {
+        if let Some(id) = self.opt_local_def_id(id)
+            && self.tcx.def_kind(id).is_module_like()
+        {
+            self.mods_with_parse_errors.insert(id.to_def_id());
+        }
     }
 
     fn resolve_dollar_crates(&self) {
@@ -403,13 +411,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
-                                let last_seg = resolution.path.segments.last().unwrap();
-                                let span = last_seg.ident.span.normalize_to_macros_2_0();
-                                entry.helper_attrs.extend(
-                                    ext.helper_attrs
-                                        .iter()
-                                        .map(|name| (i, Ident::new(*name, span))),
-                                );
+                                let span = resolution.path.segments.last().unwrap().ident.span;
+                                entry.helper_attrs.extend(ext.helper_attrs.iter().map(|name| {
+                                    (i, Macros20NormalizedIdent::new(Ident::new(*name, span)))
+                                }));
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
                             ext
@@ -530,7 +535,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         target_trait.for_each_child(self, |this, ident, ns, _binding| {
             // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
-                && overriding_keys.contains(&BindingKey::new(ident.0, ns))
+                && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
@@ -838,10 +843,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                  res: Res| {
             if let Some(initial_res) = initial_res {
                 if res != initial_res {
-                    // Make sure compilation does not succeed if preferred macro resolution
-                    // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as errors, so this is a bug.
-                    this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    if this.ambiguity_errors.is_empty() {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as errors, so this is a bug.
+                        this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    }
                 }
             } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently

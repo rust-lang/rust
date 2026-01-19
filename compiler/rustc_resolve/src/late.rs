@@ -37,7 +37,7 @@ use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -1077,7 +1077,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     self.smart_resolve_path(
                         *node_id,
                         &None,
-                        &target.extern_item_path,
+                        &target.foreign_item,
                         PathSource::Expr(None),
                     );
                 } else {
@@ -2929,8 +2929,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
 
-                if let Some(EiiExternTarget { extern_item_path, impl_unsafe: _ }) =
-                    &macro_def.eii_extern_target
+                if let Some(EiiDecl { foreign_item: extern_item_path, impl_unsafe: _ }) =
+                    &macro_def.eii_declaration
                 {
                     self.smart_resolve_path(
                         item.id,
@@ -3641,7 +3641,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return;
         };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = BindingKey::new(ident, ns);
+        let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
         let mut decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
         debug!(?decl);
         if decl.is_none() {
@@ -3652,7 +3652,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = BindingKey::new(ident, ns);
+            let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
             decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
             debug!(?decl);
         }
@@ -5222,7 +5222,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         self.r.traits_in_scope(
             self.current_trait_ref.as_ref().map(|(module, _)| *module),
             &self.parent_scope,
-            ident.span.ctxt(),
+            ident.span,
             Some((ident.name, ns)),
         )
     }
@@ -5321,7 +5321,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
                 .or_insert_with(|| {
                     self.r
-                        .traits_in_scope(None, &self.parent_scope, SyntaxContext::root(), None)
+                        .traits_in_scope(None, &self.parent_scope, DUMMY_SP, None)
                         .into_iter()
                         .filter_map(|tr| {
                             if self.is_invalid_proc_macro_item_for_doc(tr.def_id) {

@@ -643,6 +643,15 @@ pub(crate) enum InvalidFormatStringSuggestion {
         span: Span,
         replacement: String,
     },
+    #[suggestion(
+        builtin_macros_format_add_missing_colon,
+        code = ":?",
+        applicability = "machine-applicable"
+    )]
+    AddMissingColon {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -1001,21 +1010,21 @@ pub(crate) struct CfgSelectUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_macro)]
+#[diag(builtin_macros_eii_declaration_expected_macro)]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_list)]
+#[diag(builtin_macros_eii_declaration_expected_list)]
 pub(crate) struct EiiExternTargetExpectedList {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_unsafe)]
+#[diag(builtin_macros_eii_declaration_expected_unsafe)]
 pub(crate) struct EiiExternTargetExpectedUnsafe {
     #[primary_span]
     #[note]
@@ -1028,6 +1037,16 @@ pub(crate) struct EiiSharedMacroExpectedFunction {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_in_statement_position)]
+pub(crate) struct EiiSharedMacroInStatementPosition {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+    #[label]
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]

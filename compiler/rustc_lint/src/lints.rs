@@ -3312,3 +3312,12 @@ pub(crate) struct DocTestUnknown {
 #[derive(LintDiagnostic)]
 #[diag(lint_doc_test_literal)]
 pub(crate) struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_attr_crate_level)]
+#[note]
+pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_incorrect_do_not_recommend_args)]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;

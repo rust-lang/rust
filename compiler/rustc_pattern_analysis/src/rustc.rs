@@ -462,8 +462,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let arity;
         let fields: Vec<_>;
         match &pat.kind {
-            PatKind::AscribeUserType { subpattern, .. }
-            | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Missing | PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
@@ -585,19 +583,13 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         fields = vec![];
                         arity = 0;
                     }
-                    ty::Ref(_, t, _) if t.is_str() => {
-                        // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
-                        // with other `Deref` patterns. This could have been done in `const_to_pat`,
-                        // but that causes issues with the rest of the matching code.
-                        // So here, the constructor for a `"foo"` pattern is `&` (represented by
-                        // `Ref`), and has one field. That field has constructor `Str(value)` and no
-                        // subfields.
-                        // Note: `t` is `str`, not `&str`.
-                        let ty = self.reveal_opaque_ty(*t);
-                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
-                        ctor = Ref;
-                        fields = vec![subpattern.at_index(0)];
-                        arity = 1;
+                    ty::Str => {
+                        // For constant/literal patterns of type `&str`, the THIR
+                        // pattern is a `PatKind::Deref` of type `&str` wrapping a
+                        // `PatKind::Const` of type `str`.
+                        ctor = Str(*value);
+                        fields = vec![];
+                        arity = 0;
                     }
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are

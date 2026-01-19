@@ -1190,7 +1190,7 @@ pub macro Ord($item:item) {
 /// every `a`. This isn't always the case for types that implement `PartialOrd`, for example:
 ///
 /// ```
-/// let a = f64::sqrt(-1.0);
+/// let a = f64::NAN;
 /// assert_eq!(a <= a, false);
 /// ```
 ///

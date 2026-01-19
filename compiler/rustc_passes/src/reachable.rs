@@ -209,7 +209,10 @@ impl<'tcx> ReachableContext<'tcx> {
                             self.visit_nested_body(body);
                         }
                     }
-
+                    // For #[type_const] we want to evaluate the RHS.
+                    hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::TypeConst(_)) => {
+                        self.visit_const_item_rhs(init);
+                    }
                     hir::ItemKind::Const(_, _, _, init) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if

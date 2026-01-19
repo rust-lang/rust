@@ -68,7 +68,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect();
 
         let var_values =
-            CanonicalVarValues::instantiate(self.tcx, &canonical.variables, |var_values, info| {
+            CanonicalVarValues::instantiate(self.tcx, &canonical.var_kinds, |var_values, info| {
                 self.instantiate_canonical_var(span, info, &var_values, |ui| universes[ui])
             });
         let result = canonical.instantiate(self.tcx, &var_values);

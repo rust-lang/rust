@@ -967,6 +967,7 @@ parse_unknown_start_of_token = unknown start of token: {$escaped}
     .sugg_quotes = Unicode characters '“' (Left Double Quotation Mark) and '”' (Right Double Quotation Mark) look like '{$ascii_str}' ({$ascii_name}), but are not
     .sugg_other = Unicode character '{$ch}' ({$u_name}) looks like '{$ascii_str}' ({$ascii_name}), but it is not
     .help_null = source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+    .help_invisible_char = invisible characters like '{$escaped}' are not usually visible in text editors
     .note_repeats = character appears {$repeats ->
         [one] once more
         *[other] {$repeats} more times

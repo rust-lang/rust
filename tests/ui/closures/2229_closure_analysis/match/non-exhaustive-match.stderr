@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `L1::B` not covered
-  --> $DIR/non-exhaustive-match.rs:26:25
+  --> $DIR/non-exhaustive-match.rs:28:25
    |
 LL |     let _b = || { match l1 { L1::A => () } };
    |                         ^^ pattern `L1::B` not covered
@@ -16,7 +16,7 @@ LL |     let _b = || { match l1 { L1::A => (), L1::B => todo!() } };
    |                                         ++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
-  --> $DIR/non-exhaustive-match.rs:37:25
+  --> $DIR/non-exhaustive-match.rs:39:25
    |
 LL |     let _d = || { match e1 {} };
    |                         ^^
@@ -35,7 +35,7 @@ LL ~     } };
    |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/non-exhaustive-match.rs:39:25
+  --> $DIR/non-exhaustive-match.rs:41:25
    |
 LL |     let _e = || { match e2 { E2::A => (), E2::B => () } };
    |                         ^^ pattern `_` not covered
@@ -53,7 +53,7 @@ LL |     let _e = || { match e2 { E2::A => (), E2::B => (), _ => todo!() } };
    |                                                      ++++++++++++++
 
 error[E0505]: cannot move out of `e3` because it is borrowed
-  --> $DIR/non-exhaustive-match.rs:46:22
+  --> $DIR/non-exhaustive-match.rs:48:22
    |
 LL |     let _g = || { match e3 { E3::C => (), _ => () }  };
    |              --         -- borrow occurs due to use in closure

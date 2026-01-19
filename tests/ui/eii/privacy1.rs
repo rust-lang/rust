@@ -1,13 +1,13 @@
 //@ run-pass
 //@ check-run-results
-//@ aux-build: codegen1.rs
+//@ aux-build: other_crate_privacy1.rs
 //@ ignore-backends: gcc
-// FIXME: linking on windows (speciifcally mingw) not yet supported, see tracking issue #125418
+// FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
 // Tests whether re-exports work.
 #![feature(extern_item_impls)]
 
-extern crate codegen1 as codegen;
+extern crate other_crate_privacy1 as codegen;
 
 #[codegen::eii1]
 fn eii1_impl(x: u64) {

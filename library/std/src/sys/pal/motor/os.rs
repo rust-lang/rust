@@ -4,36 +4,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::motor::ffi::OsStrExt;
 use crate::path::{self, PathBuf};
-use crate::sys::io::RawOsError;
 use crate::{fmt, io};
-
-pub fn errno() -> RawOsError {
-    // Not used in Motor OS because it is ambiguous: Motor OS
-    // is micro-kernel-based, and I/O happens via a shared-memory
-    // ring buffer, so an I/O operation that on a unix is a syscall
-    // may involve no sycalls on Motor OS at all, or a syscall
-    // that e.g. waits for a notification from the I/O driver
-    // (sys-io); and the wait syscall may succeed, but the
-    // driver may report an I/O error; or a bunch of results
-    // for several I/O operations, some successful and some
-    // not.
-    //
-    // Also I/O operations in a Motor OS process are handled by a
-    // separate runtime background/I/O thread, so it is really hard
-    // to define what "last system error in the current thread"
-    // actually means.
-    let error_code: moto_rt::ErrorCode = moto_rt::Error::Unknown.into();
-    error_code.into()
-}
-
-pub fn error_string(errno: RawOsError) -> String {
-    let error: moto_rt::Error = match errno {
-        x if x < 0 => moto_rt::Error::Unknown,
-        x if x > u16::MAX.into() => moto_rt::Error::Unknown,
-        x => (x as moto_rt::ErrorCode).into(), /* u16 */
-    };
-    format!("{}", error)
-}
 
 pub fn getcwd() -> io::Result<PathBuf> {
     moto_rt::fs::getcwd().map(PathBuf::from).map_err(map_motor_error)

@@ -116,12 +116,6 @@ pub struct Param<'tcx> {
     pub hir_id: Option<HirId>,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
-pub enum LintLevel {
-    Inherited,
-    Explicit(HirId),
-}
-
 #[derive(Clone, Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
@@ -236,8 +230,8 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
-        /// The lint level for this `let` statement.
-        lint_level: LintLevel,
+        /// The [`HirId`] for this `let` statement.
+        hir_id: HirId,
 
         /// Span of the `let <PAT> = <INIT>` part.
         span: Span,
@@ -271,7 +265,7 @@ pub enum ExprKind<'tcx> {
     /// and to track the `HirId` of the expressions within the scope.
     Scope {
         region_scope: region::Scope,
-        lint_level: LintLevel,
+        hir_id: HirId,
         value: ExprId,
     },
     /// A `box <value>` expression.
@@ -579,7 +573,7 @@ pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<ExprId>,
     pub body: ExprId,
-    pub lint_level: LintLevel,
+    pub hir_id: HirId,
     pub scope: region::Scope,
     pub span: Span,
 }
@@ -643,10 +637,26 @@ pub struct FieldPat<'tcx> {
     pub pattern: Pat<'tcx>,
 }
 
+/// Additional per-node data that is not present on most THIR pattern nodes.
+#[derive(Clone, Debug, Default, HashStable, TypeVisitable)]
+pub struct PatExtra<'tcx> {
+    /// If present, this node represents a named constant that was lowered to
+    /// a pattern using `const_to_pat`.
+    ///
+    /// This is used by some diagnostics for non-exhaustive matches, to map
+    /// the pattern node back to the `DefId` of its original constant.
+    pub expanded_const: Option<DefId>,
+
+    /// User-written types that must be preserved into MIR so that they can be
+    /// checked.
+    pub ascriptions: Vec<Ascription<'tcx>>,
+}
+
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
+    pub extra: Option<Box<PatExtra<'tcx>>>,
     pub kind: PatKind<'tcx>,
 }
 
@@ -762,11 +772,6 @@ pub enum PatKind<'tcx> {
     /// A wildcard pattern: `_`.
     Wild,
 
-    AscribeUserType {
-        ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
-    },
-
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         name: Symbol,
@@ -829,21 +834,6 @@ pub enum PatKind<'tcx> {
     ///   error.
     Constant {
         value: ty::Value<'tcx>,
-    },
-
-    /// Wrapper node representing a named constant that was lowered to a pattern
-    /// using `const_to_pat`.
-    ///
-    /// This is used by some diagnostics for non-exhaustive matches, to map
-    /// the pattern node back to the `DefId` of its original constant.
-    ///
-    /// FIXME(#150498): Can we make this an `Option<DefId>` field on `Pat`
-    /// instead, so that non-diagnostic code can ignore it more easily?
-    ExpandedConstant {
-        /// [DefId] of the constant item.
-        def_id: DefId,
-        /// The pattern that the constant lowered to.
-        subpattern: Box<Pat<'tcx>>,
     },
 
     Range(Arc<PatRange<'tcx>>),
@@ -1119,7 +1109,7 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
     static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);

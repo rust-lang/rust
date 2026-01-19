@@ -9,7 +9,7 @@ use rustc_feature::{
 };
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, RustcVersion};
+use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -94,7 +94,6 @@ pub fn parse_cfg_entry<S: Stage>(
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
             _ => return Err(cx.expected_identifier(lit.span)),
         },
-        MetaItemOrLitParser::Err(_, err) => return Err(*err),
     })
 }
 
@@ -374,6 +373,7 @@ fn parse_cfg_attr_internal<'a>(
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
+        Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints,
         &meta,

@@ -10,16 +10,12 @@ use rustc_span::sym;
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::session_diagnostics::InvalidTarget;
+use crate::target_checking::Policy::Allow;
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
     AllowList(&'static [Policy]),
     AllowListWarnRest(&'static [Policy]),
-    /// Special, and not the same as `AllowList(&[Allow(Target::Crate)])`.
-    /// For crate-level attributes we emit a specific set of lints to warn
-    /// people about accidentally not using them on the crate.
-    /// Only use this for attributes that are *exclusively* valid at the crate level.
-    CrateLevel,
 }
 
 pub(crate) enum AllowedResult {
@@ -53,7 +49,6 @@ impl AllowedTargets {
                     AllowedResult::Warn
                 }
             }
-            AllowedTargets::CrateLevel => AllowedResult::Allowed,
         }
     }
 
@@ -61,7 +56,6 @@ impl AllowedTargets {
         match self {
             AllowedTargets::AllowList(list) => list,
             AllowedTargets::AllowListWarnRest(list) => list,
-            AllowedTargets::CrateLevel => ALL_TARGETS,
         }
         .iter()
         .filter_map(|target| match target {
@@ -95,7 +89,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
-        Self::check_type(matches!(allowed_targets, AllowedTargets::CrateLevel), target, cx);
+        // For crate-level attributes we emit a specific set of lints to warn
+        // people about accidentally not using them on the crate.
+        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
+            Self::check_crate_level(target, cx);
+            return;
+        }
 
         match allowed_targets.is_allowed(target) {
             AllowedResult::Allowed => {}
@@ -149,18 +148,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         }
     }
 
-    pub(crate) fn check_type(
-        crate_level: bool,
-        target: Target,
-        cx: &mut AcceptContext<'_, 'sess, S>,
-    ) {
-        let is_crate_root = S::id_is_crate_root(cx.target_id);
-
-        if is_crate_root {
-            return;
-        }
-
-        if !crate_level {
+    pub(crate) fn check_crate_level(target: Target, cx: &mut AcceptContext<'_, 'sess, S>) {
+        if target == Target::Crate {
             return;
         }
 

@@ -51,7 +51,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
-use rustc_hir::lints::DelayedLint;
+use rustc_hir::lints::{AttributeLint, DelayedLint};
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
     LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
@@ -1022,12 +1022,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
-            target_hir_id,
             target,
             OmitDoc::Lower,
             |s| l.lower(s),
-            |l| {
-                self.delayed_lints.push(DelayedLint::AttributeParsing(l));
+            |lint_id, span, kind| {
+                self.delayed_lints.push(DelayedLint::AttributeParsing(AttributeLint {
+                    lint_id,
+                    id: target_hir_id,
+                    span,
+                    kind,
+                }));
             },
         )
     }
@@ -2380,7 +2384,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             Some(ConstItemRhs::TypeConst(anon)) => {
                 hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg_and_alloc(anon))
             }
-            None if attr::contains_name(attrs, sym::type_const) => {
+            None if find_attr!(attrs, AttributeKind::TypeConst(_)) => {
                 let const_arg = ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::Error(
@@ -2517,6 +2521,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span,
                 }
             }
+            ExprKind::Array(elements) => {
+                let lowered_elems = self.arena.alloc_from_iter(elements.iter().map(|element| {
+                    let const_arg = if let ExprKind::ConstBlock(anon_const) = &element.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
+                        self.lower_anon_const_to_const_arg(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(element)
+                    };
+                    &*self.arena.alloc(const_arg)
+                }));
+                let array_expr = self.arena.alloc(hir::ConstArgArrayExpr {
+                    span: self.lower_span(expr.span),
+                    elems: lowered_elems,
+                });
+
+                ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Array(array_expr),
+                    span,
+                }
+            }
             ExprKind::Underscore => ConstArg {
                 hir_id: self.lower_node_id(expr.id),
                 kind: hir::ConstArgKind::Infer(()),
@@ -2532,6 +2558,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             | ExprKind::Struct(..)
                             | ExprKind::Call(..)
                             | ExprKind::Tup(..)
+                            | ExprKind::Array(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);

@@ -1,3 +1,4 @@
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ revisions: riscv64 riscv64-zbb loongarch64
 //@ compile-flags: -C opt-level=3
@@ -14,45 +15,8 @@
 #![no_std]
 #![no_core]
 // FIXME: Migrate these code after PR #130693 is landed.
-
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i8 {}
-impl Copy for u32 {}
-impl Copy for i32 {}
-
-#[lang = "neg"]
-trait Neg {
-    type Output;
-
-    fn neg(self) -> Self::Output;
-}
-
-impl Neg for i8 {
-    type Output = i8;
-
-    fn neg(self) -> Self::Output {
-        -self
-    }
-}
-
-#[lang = "Ordering"]
-#[repr(i8)]
-enum Ordering {
-    Less = -1,
-    Equal = 0,
-    Greater = 1,
-}
+extern crate minicore;
+use minicore::*;
 
 #[rustc_intrinsic]
 fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;

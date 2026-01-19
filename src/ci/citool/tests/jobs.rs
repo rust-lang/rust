@@ -4,7 +4,7 @@ const TEST_JOBS_YML_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/tes
 
 #[test]
 fn auto_jobs() {
-    let stdout = get_matrix("push", "commit", "refs/heads/auto");
+    let stdout = get_matrix("push", "commit", "refs/heads/automation/bors/auto");
     insta::assert_snapshot!(stdout, @r#"
     jobs=[{"name":"aarch64-gnu","full_name":"auto - aarch64-gnu","os":"ubuntu-22.04-arm","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"free_disk":true},{"name":"x86_64-gnu-llvm-18-1","full_name":"auto - x86_64-gnu-llvm-18-1","os":"ubuntu-24.04","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","DOCKER_SCRIPT":"stage_2_test_set1.sh","IMAGE":"x86_64-gnu-llvm-18","READ_ONLY_SRC":"0","RUST_BACKTRACE":1,"TOOLSTATE_PUBLISH":1},"free_disk":true},{"name":"aarch64-apple","full_name":"auto - aarch64-apple","os":"macos-14","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","MACOSX_DEPLOYMENT_TARGET":11.0,"MACOSX_STD_DEPLOYMENT_TARGET":11.0,"NO_DEBUG_ASSERTIONS":1,"NO_LLVM_ASSERTIONS":1,"NO_OVERFLOW_CHECKS":1,"RUSTC_RETRY_LINKER_ON_SEGFAULT":1,"RUST_CONFIGURE_ARGS":"--enable-sanitizers --enable-profiler --set rust.jemalloc","SCRIPT":"./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin","SELECT_XCODE":"/Applications/Xcode_15.4.app","TOOLSTATE_PUBLISH":1,"USE_XCODE_CLANG":1}},{"name":"dist-i686-msvc","full_name":"auto - dist-i686-msvc","os":"windows-2022","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","CODEGEN_BACKENDS":"llvm,cranelift","DEPLOY_BUCKET":"rust-lang-ci2","DIST_REQUIRE_ALL_TOOLS":1,"RUST_CONFIGURE_ARGS":"--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler","SCRIPT":"python x.py dist bootstrap --include-default-paths","TOOLSTATE_PUBLISH":1}},{"name":"pr-check-1","full_name":"auto - pr-check-1","os":"ubuntu-24.04","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"continue_on_error":false,"free_disk":true},{"name":"pr-check-2","full_name":"auto - pr-check-2","os":"ubuntu-24.04","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"continue_on_error":false,"free_disk":true},{"name":"tidy","full_name":"auto - tidy","os":"ubuntu-24.04","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"continue_on_error":false,"free_disk":true,"doc_url":"https://foo.bar"}]
     run_type=auto
@@ -13,7 +13,7 @@ fn auto_jobs() {
 
 #[test]
 fn try_jobs() {
-    let stdout = get_matrix("push", "commit", "refs/heads/try");
+    let stdout = get_matrix("push", "commit", "refs/heads/automation/bors/try");
     insta::assert_snapshot!(stdout, @r###"
     jobs=[{"name":"dist-x86_64-linux","full_name":"try - dist-x86_64-linux","os":"ubuntu-22.04-16core-64gb","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","CODEGEN_BACKENDS":"llvm,cranelift","DEPLOY_BUCKET":"rust-lang-ci2","DIST_TRY_BUILD":1,"TOOLSTATE_PUBLISH":1}}]
     run_type=try
@@ -28,7 +28,7 @@ fn try_custom_jobs() {
 
 try-job: aarch64-gnu
 try-job: dist-i686-msvc"#,
-        "refs/heads/try",
+        "refs/heads/automation/bors/try",
     );
     insta::assert_snapshot!(stdout, @r###"
     jobs=[{"name":"aarch64-gnu","full_name":"try - aarch64-gnu","os":"ubuntu-22.04-arm","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","DEPLOY_BUCKET":"rust-lang-ci2","TOOLSTATE_PUBLISH":1},"free_disk":true},{"name":"dist-i686-msvc","full_name":"try - dist-i686-msvc","os":"windows-2022","env":{"ARTIFACTS_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZN24CBO55","AWS_REGION":"us-west-1","CACHES_AWS_ACCESS_KEY_ID":"AKIA46X5W6CZI5DHEBFL","CODEGEN_BACKENDS":"llvm,cranelift","DEPLOY_BUCKET":"rust-lang-ci2","DIST_REQUIRE_ALL_TOOLS":1,"RUST_CONFIGURE_ARGS":"--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler","SCRIPT":"python x.py dist bootstrap --include-default-paths","TOOLSTATE_PUBLISH":1}}]

@@ -8,7 +8,7 @@ LL |     use super::prelude::*;
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
-error: `date_range` is ambiguous
+warning: `date_range` is ambiguous
   --> $DIR/ambiguous-9.rs:23:5
    |
 LL |     date_range();
@@ -29,7 +29,7 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: ambiguous glob re-exports
   --> $DIR/ambiguous-9.rs:15:13
@@ -39,7 +39,7 @@ LL |     pub use self::t::*;
 LL |     pub use super::dsl::*;
    |             ------------- but the name `date_range` in the value namespace is also re-exported here
 
-error: `date_range` is ambiguous
+warning: `date_range` is ambiguous
   --> $DIR/ambiguous-9.rs:23:5
    |
 LL |     date_range();
@@ -61,10 +61,10 @@ LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+warning: 4 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `date_range` is ambiguous
+warning: `date_range` is ambiguous
   --> $DIR/ambiguous-9.rs:23:5
    |
 LL |     date_range();
@@ -85,10 +85,10 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-error: `date_range` is ambiguous
+warning: `date_range` is ambiguous
   --> $DIR/ambiguous-9.rs:23:5
    |
 LL |     date_range();
@@ -109,5 +109,5 @@ note: `date_range` could also refer to the function imported here
 LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

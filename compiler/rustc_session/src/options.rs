@@ -10,6 +10,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
+use rustc_hir::attrs::CollapseMacroDebuginfo;
 use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
@@ -2125,6 +2126,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of unwind tables"),
+    help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
@@ -2277,6 +2279,8 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
+    cache_proc_macros: bool = (false, parse_bool, [TRACKED],
+        "cache the results of derive proc macro invocations (potentially unsound!) (default: no"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
@@ -2395,6 +2399,7 @@ options! {
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
+    help: bool = (false, parse_no_value, [UNTRACKED], "Print unstable compiler options"),
     higher_ranked_assumptions: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],

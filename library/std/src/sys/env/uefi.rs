@@ -95,8 +95,8 @@ mod uefi_env {
         val_ptr: *mut r_efi::efi::Char16,
     ) -> io::Result<()> {
         let shell = helpers::open_shell().ok_or(unsupported_err())?;
-        let r =
-            unsafe { ((*shell.as_ptr()).set_env)(key_ptr, val_ptr, r_efi::efi::Boolean::FALSE) };
+        let volatile = r_efi::efi::Boolean::TRUE;
+        let r = unsafe { ((*shell.as_ptr()).set_env)(key_ptr, val_ptr, volatile) };
         if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 }

@@ -417,5 +417,11 @@ pub fn decorate_attribute_lint(
         }
 
         &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.decorate_lint(diag),
+
+        &AttributeLintKind::AttrCrateLevelOnly => lints::AttrCrateLevelOnly.decorate_lint(diag),
+
+        &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
+            lints::DoNotRecommendDoesNotExpectArgs.decorate_lint(diag)
+        }
     }
 }

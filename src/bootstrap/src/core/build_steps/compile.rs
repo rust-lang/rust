@@ -296,8 +296,12 @@ impl Step for Std {
             vec![],
             &stamp,
             target_deps,
-            self.is_for_mir_opt_tests, // is_check
-            false,
+            if self.is_for_mir_opt_tests {
+                ArtifactKeepMode::OnlyRmeta
+            } else {
+                // We use -Zno-embed-metadata for the standard library
+                ArtifactKeepMode::BothRlibAndRmeta
+            },
         );
 
         builder.ensure(StdLink::from_std(
@@ -1167,14 +1171,28 @@ impl Step for Rustc {
             target,
         );
         let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
+
         run_cargo(
             builder,
             cargo,
             vec![],
             &stamp,
             vec![],
-            false,
-            true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
+            ArtifactKeepMode::Custom(Box::new(|filename| {
+                if filename.contains("jemalloc_sys")
+                    || filename.contains("rustc_public_bridge")
+                    || filename.contains("rustc_public")
+                {
+                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
+                    // so we need to distribute them as rlib to be able to use them.
+                    filename.ends_with(".rlib")
+                } else {
+                    // Distribute the rest of the rustc crates as rmeta files only to reduce
+                    // the tarball sizes by about 50%. The object files are linked into
+                    // librustc_driver.so, so it is still possible to link against them.
+                    filename.ends_with(".rmeta")
+                }
+            })),
         );
 
         let target_root_dir = stamp.path().parent().unwrap();
@@ -1612,24 +1630,33 @@ impl GccDylibSet {
                 "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
                 compiler.host
             );
-            let libgccjit = libgccjit.libgccjit();
-            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+            let libgccjit_path = libgccjit.libgccjit();
 
             // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a
             // symlink, which wouldn't work.
-            let actual_libgccjit_path = t!(
-                libgccjit.canonicalize(),
-                format!("Cannot find libgccjit at {}", libgccjit.display())
+            let libgccjit_path = t!(
+                libgccjit_path.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit_path.display())
             );
 
-            // <cg-sysroot>/lib/<target>/libgccjit.so
-            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
-            t!(fs::create_dir_all(&dest_dir));
-            let dst = dest_dir.join(target_filename);
-            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+            let dst = cg_sysroot.join(libgccjit_path_relative_to_cg_dir(target_pair, libgccjit));
+            t!(std::fs::create_dir_all(dst.parent().unwrap()));
+            builder.copy_link(&libgccjit_path, &dst, FileType::NativeLibrary);
         }
     }
+}
+
+/// Returns a path where libgccjit.so should be stored, **relative** to the
+/// **codegen backend directory**.
+pub fn libgccjit_path_relative_to_cg_dir(
+    target_pair: &GccTargetPair,
+    libgccjit: &GccOutput,
+) -> PathBuf {
+    let target_filename = libgccjit.libgccjit().file_name().unwrap().to_str().unwrap();
+
+    // <cg-dir>/lib/<target>/libgccjit.so
+    Path::new("lib").join(target_pair.target()).join(target_filename)
 }
 
 /// Output of the `compile::GccCodegenBackend` step.
@@ -1714,7 +1741,7 @@ impl Step for GccCodegenBackend {
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
@@ -1790,7 +1817,7 @@ impl Step for CraneliftCodegenBackend {
             build_compiler,
             target,
         );
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
 
@@ -2620,14 +2647,30 @@ pub fn add_to_sysroot(
     }
 }
 
+/// Specifies which rlib/rmeta artifacts outputted by Cargo should be put into the resulting
+/// build stamp, and thus be included in dist archives and copied into sysroots by default.
+/// Note that some kinds of artifacts are copied automatically (e.g. native libraries).
+pub enum ArtifactKeepMode {
+    /// Only keep .rlib files, ignore .rmeta files
+    OnlyRlib,
+    /// Only keep .rmeta files, ignore .rlib files
+    OnlyRmeta,
+    /// Keep both .rlib and .rmeta files.
+    /// This is essentially only useful when using `-Zno-embed-metadata`, in which case both the
+    /// .rlib and .rmeta files are needed for compilation/linking.
+    BothRlibAndRmeta,
+    /// Custom logic for keeping an artifact
+    /// It receives the filename of an artifact, and returns true if it should be kept.
+    Custom(Box<dyn Fn(&str) -> bool>),
+}
+
 pub fn run_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
-    is_check: bool,
-    rlib_only_metadata: bool,
+    artifact_keep_mode: ArtifactKeepMode,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.path().parent().unwrap();
@@ -2661,36 +2704,23 @@ pub fn run_cargo(
         };
         for filename in filenames_vec {
             // Skip files like executables
-            let mut keep = false;
-            if filename.ends_with(".lib")
+            let keep = if filename.ends_with(".lib")
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(Path::new(&*filename))
             {
                 // Always keep native libraries, rust dylibs and debuginfo
-                keep = true;
-            }
-            if is_check && filename.ends_with(".rmeta") {
-                // During check builds we need to keep crate metadata
-                keep = true;
-            } else if rlib_only_metadata {
-                if filename.contains("jemalloc_sys")
-                    || filename.contains("rustc_public_bridge")
-                    || filename.contains("rustc_public")
-                {
-                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
-                    // so we need to distribute them as rlib to be able to use them.
-                    keep |= filename.ends_with(".rlib");
-                } else {
-                    // Distribute the rest of the rustc crates as rmeta files only to reduce
-                    // the tarball sizes by about 50%. The object files are linked into
-                    // librustc_driver.so, so it is still possible to link against them.
-                    keep |= filename.ends_with(".rmeta");
-                }
+                true
             } else {
-                // In all other cases keep all rlibs
-                keep |= filename.ends_with(".rlib");
-            }
+                match &artifact_keep_mode {
+                    ArtifactKeepMode::OnlyRlib => filename.ends_with(".rlib"),
+                    ArtifactKeepMode::OnlyRmeta => filename.ends_with(".rmeta"),
+                    ArtifactKeepMode::BothRlibAndRmeta => {
+                        filename.ends_with(".rmeta") || filename.ends_with(".rlib")
+                    }
+                    ArtifactKeepMode::Custom(func) => func(&filename),
+                }
+            };
 
             if !keep {
                 continue;

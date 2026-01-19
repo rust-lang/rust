@@ -795,6 +795,18 @@ impl<D: Deps> DepGraph<D> {
         self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
     }
 
+    pub fn debug_dep_kind_was_loaded_from_disk(&self, dep_kind: DepKind) -> bool {
+        // We only check if we have a dep node corresponding to the given dep kind.
+        #[allow(rustc::potential_query_instability)]
+        self.data
+            .as_ref()
+            .unwrap()
+            .debug_loaded_from_disk
+            .lock()
+            .iter()
+            .any(|node| node.kind == dep_kind)
+    }
+
     #[cfg(debug_assertions)]
     #[inline(always)]
     pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)

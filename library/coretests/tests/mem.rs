@@ -1,3 +1,5 @@
+mod type_info;
+
 use core::mem::*;
 use core::{array, ptr};
 use std::cell::Cell;

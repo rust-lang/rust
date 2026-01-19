@@ -43,8 +43,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -223,12 +223,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
+                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
-                    AttributeKind::EiiExternTarget { .. }
-                    | AttributeKind::EiiExternItem
+                    AttributeKind::EiiDeclaration { .. }
+                    | AttributeKind::EiiForeignItem
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CollapseDebugInfo(..)
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
@@ -295,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::NoMain
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
@@ -306,13 +309,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::MustNotSupend { .. }
+                    | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::NeedsAllocator
+                    | AttributeKind::RustcAllocator
+                    | AttributeKind::RustcAllocatorZeroed
+                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
+                    | AttributeKind::RustcDeallocator
+                    | AttributeKind::RustcReallocator
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::do_not_recommend, ..] => {
-                            self.check_do_not_recommend(attr.span(), hir_id, target, attr, item)
-                        }
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
@@ -323,11 +336,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
-                        [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_has_incoherent_inherent_impls, ..] => {
-                            self.check_has_incoherent_inherent_impls(attr, span, target)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -338,8 +346,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::warn
                             | sym::deny
                             | sym::forbid
-                            | sym::cfg
-                            | sym::cfg_attr
                             // need to be fixed
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
@@ -347,14 +353,62 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::prelude_import
                             | sym::panic_handler
                             | sym::lang
-                            | sym::needs_allocator
-                            | sym::default_lib_allocator,
+                            | sym::default_lib_allocator
+                            | sym::rustc_diagnostic_item
+                            | sym::rustc_no_mir_inline
+                            | sym::rustc_insignificant_dtor
+                            | sym::rustc_nonnull_optimization_guaranteed
+                            | sym::rustc_intrinsic
+                            | sym::rustc_inherit_overflow_checks
+                            | sym::rustc_intrinsic_const_stable_indirect
+                            | sym::rustc_trivial_field_reads
+                            | sym::rustc_on_unimplemented
+                            | sym::rustc_do_not_const_check
+                            | sym::rustc_reservation_impl
+                            | sym::rustc_doc_primitive
+                            | sym::rustc_conversion_suggestion
+                            | sym::rustc_deprecated_safe_2024
+                            | sym::rustc_test_marker
+                            | sym::rustc_abi
+                            | sym::rustc_layout
+                            | sym::rustc_proc_macro_decls
+                            | sym::rustc_never_type_options
+                            | sym::rustc_autodiff
+                            | sym::rustc_capture_analysis
+                            | sym::rustc_regions
+                            | sym::rustc_strict_coherence
+                            | sym::rustc_variance
+                            | sym::rustc_variance_of_opaques
+                            | sym::rustc_hidden_type_of_opaques
+                            | sym::rustc_mir
+                            | sym::rustc_effective_visibility
+                            | sym::rustc_outlives
+                            | sym::rustc_symbol_name
+                            | sym::rustc_evaluate_where_clauses
+                            | sym::rustc_delayed_bug_from_inside_query
+                            | sym::rustc_def_path
+                            | sym::rustc_partition_reused
+                            | sym::rustc_partition_codegened
+                            | sym::rustc_expected_cgu_reuse
+                            | sym::rustc_nounwind
+                            // crate-level attrs, are checked below
+                            | sym::feature
+                            | sym::register_tool
+                            | sym::rustc_no_implicit_bounds
+                            | sym::test_runner
+                            | sym::reexport_test_harness_main
+                            | sym::no_main
+                            | sym::no_builtins
+                            | sym::crate_type
+                            | sym::compiler_builtins
+                            | sym::profiler_runtime
+                            | sym::needs_panic_runtime
+                            | sym::panic_runtime
+                            | sym::rustc_preserve_ub_checks,
                             ..
                         ] => {}
                         [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
-                                // checked below
-                                Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
                                 Some(_) => {
                                     if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
                                         // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
@@ -363,15 +417,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                         continue
                                     }
 
-                                    // FIXME: differentiate between unstable and internal attributes just
-                                    // like we do with features instead of just accepting `rustc_`
-                                    // attributes by name. That should allow trimming the above list, too.
-                                    if !name.as_str().starts_with("rustc_") {
-                                        span_bug!(
-                                            attr.span(),
-                                            "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
-                                        )
-                                    }
+                                    span_bug!(
+                                        attr.span(),
+                                        "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
+                                    )
                                 }
                                 None => (),
                             }
@@ -515,7 +564,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
 
             if let EiiImplResolution::Macro(eii_macro) = resolution
-                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
@@ -530,14 +579,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
-    /// arguments.
+    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
     fn check_do_not_recommend(
         &self,
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
         if !matches!(target, Target::Impl { .. })
@@ -552,14 +599,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir_id,
                 attr_span,
                 errors::IncorrectDoNotRecommendLocation,
-            );
-        }
-        if !attr.is_word() {
-            self.tcx.emit_node_span_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::DoNotRecommendDoesNotExpectArgs,
             );
         }
     }
@@ -715,18 +754,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
                 tcx.dcx().emit_err(errors::ObjectLifetimeErr { span: p.span, repr });
-            }
-        }
-    }
-    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
-    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::MacroDef => {}
-            _ => {
-                self.tcx.dcx().emit_err(errors::CollapseDebuginfo {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
             }
         }
     }
@@ -1036,29 +1063,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
-    fn check_attr_not_crate_level(&self, span: Span, hir_id: HirId, attr_name: &str) -> bool {
-        if CRATE_HIR_ID == hir_id {
-            self.dcx().emit_err(errors::DocAttrNotCrateLevel { span, attr_name });
-            return false;
-        }
-        true
-    }
-
-    /// Checks that an attribute is used at the crate level. Returns `true` if valid.
-    fn check_attr_crate_level(&self, span: Span, hir_id: HirId) -> bool {
-        if hir_id != CRATE_HIR_ID {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                span,
-                errors::AttrCrateLevelOnly {},
-            );
-            return false;
-        }
-        true
-    }
-
     /// Runs various checks on `#[doc]` attributes.
     ///
     /// `specified_inline` should be initialized to `None` and kept for the scope
@@ -1074,9 +1078,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             inline,
             // FIXME: currently unchecked
             cfg: _,
-            // already check in attr_parsing
+            // already checked in attr_parsing
             auto_cfg: _,
-            // already check in attr_parsing
+            // already checked in attr_parsing
             auto_cfg_change: _,
             fake_variadic,
             keyword,
@@ -1084,70 +1088,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // FIXME: currently unchecked
             notable_trait: _,
             search_unbox,
-            html_favicon_url,
-            html_logo_url,
-            html_playground_url,
-            html_root_url,
-            html_no_source,
-            issue_tracker_base_url,
+            // already checked in attr_parsing
+            html_favicon_url: _,
+            // already checked in attr_parsing
+            html_logo_url: _,
+            // already checked in attr_parsing
+            html_playground_url: _,
+            // already checked in attr_parsing
+            html_root_url: _,
+            // already checked in attr_parsing
+            html_no_source: _,
+            // already checked in attr_parsing
+            issue_tracker_base_url: _,
             rust_logo,
             // allowed anywhere
             test_attrs: _,
-            no_crate_inject,
+            // already checked in attr_parsing
+            no_crate_inject: _,
             attribute,
         } = attr;
 
         for (alias, span) in aliases {
-            if self.check_attr_not_crate_level(*span, hir_id, "alias") {
-                self.check_doc_alias_value(*span, hir_id, target, *alias);
-            }
+            self.check_doc_alias_value(*span, hir_id, target, *alias);
         }
 
-        if let Some((_, span)) = keyword
-            && self.check_attr_not_crate_level(*span, hir_id, "keyword")
-        {
+        if let Some((_, span)) = keyword {
             self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
         }
-        if let Some((_, span)) = attribute
-            && self.check_attr_not_crate_level(*span, hir_id, "attribute")
-        {
+        if let Some((_, span)) = attribute {
             self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
         }
 
-        if let Some(span) = fake_variadic
-            && self.check_attr_not_crate_level(*span, hir_id, "fake_variadic")
-        {
+        if let Some(span) = fake_variadic {
             self.check_doc_fake_variadic(*span, hir_id);
         }
 
-        if let Some(span) = search_unbox
-            && self.check_attr_not_crate_level(*span, hir_id, "search_unbox")
-        {
+        if let Some(span) = search_unbox {
             self.check_doc_search_unbox(*span, hir_id);
-        }
-
-        for i in [
-            html_favicon_url,
-            html_logo_url,
-            html_playground_url,
-            issue_tracker_base_url,
-            html_root_url,
-        ] {
-            if let Some((_, span)) = i {
-                self.check_attr_crate_level(*span, hir_id);
-            }
-        }
-
-        for i in [html_no_source, no_crate_inject] {
-            if let Some(span) = i {
-                self.check_attr_crate_level(*span, hir_id);
-            }
         }
 
         self.check_doc_inline(hir_id, target, inline);
 
         if let Some(span) = rust_logo
-            && self.check_attr_crate_level(*span, hir_id)
             && !self.tcx.features().rustdoc_internals()
         {
             feature_err(
@@ -1164,31 +1146,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_has_incoherent_inherent_impls(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
-            }
-        }
-    }
-
     fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
         if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
-        }
-    }
-
-    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
-    fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct | Target::Enum | Target::Union | Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::MustNotSuspend { attr_span: attr.span(), span });
-            }
         }
     }
 

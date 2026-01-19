@@ -29,9 +29,18 @@ define-function: (
     "open-settings-menu",
     [],
     block {
-        call-function: ("click-settings-button", {})
-        // Wait for the popover to appear...
-        wait-for-css: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "none")
+        }
+        if: (|settings_display| != "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to appear...
+            wait-for-css: ("#settings", {"display": "block"})
+        })
     }
 )
 
@@ -39,9 +48,18 @@ define-function: (
     "close-settings-menu",
     [],
     block {
-        call-function: ("click-settings-button", {})
-        // Wait for the popover to disappear...
-        wait-for-css-false: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "block")
+        }
+        if: (|settings_display| == "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to disappear...
+            wait-for-css-false: ("#settings", {"display": "block"})
+        })
     }
 )
 

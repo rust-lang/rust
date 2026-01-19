@@ -1,8 +1,7 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiExternTarget, EiiImpl, ItemKind, MetaItem, Path, Stmt, StmtKind,
-    Visibility, ast,
+    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, StmtKind, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -12,6 +11,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::errors::{
     EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
     EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroExpectedFunction,
+    EiiSharedMacroInStatementPosition,
 };
 
 /// ```rust
@@ -30,7 +30,7 @@ use crate::errors::{
 /// }
 ///
 /// #[rustc_builtin_macro(eii_shared_macro)]
-/// #[eii_extern_target(panic_handler)]
+/// #[eii_declaration(panic_handler)]
 /// macro panic_handler() {}
 /// ```
 pub(crate) fn eii(
@@ -55,29 +55,29 @@ fn eii_(
     ecx: &mut ExtCtxt<'_>,
     eii_attr_span: Span,
     meta_item: &ast::MetaItem,
-    item: Annotatable,
+    orig_item: Annotatable,
     impl_unsafe: bool,
 ) -> Vec<Annotatable> {
     let eii_attr_span = ecx.with_def_site_ctxt(eii_attr_span);
 
-    let (item, wrap_item): (_, &dyn Fn(_) -> _) = if let Annotatable::Item(item) = item {
-        (item, &Annotatable::Item)
-    } else if let Annotatable::Stmt(ref stmt) = item
+    let item = if let Annotatable::Item(item) = orig_item {
+        item
+    } else if let Annotatable::Stmt(ref stmt) = orig_item
         && let StmtKind::Item(ref item) = stmt.kind
+        && let ItemKind::Fn(ref f) = item.kind
     {
-        (item.clone(), &|item| {
-            Annotatable::Stmt(Box::new(Stmt {
-                id: DUMMY_NODE_ID,
-                kind: StmtKind::Item(item),
-                span: eii_attr_span,
-            }))
-        })
+        ecx.dcx().emit_err(EiiSharedMacroInStatementPosition {
+            span: eii_attr_span.to(item.span),
+            name: path_to_string(&meta_item.path),
+            item_span: f.ident.span,
+        });
+        return vec![orig_item];
     } else {
         ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![item];
+        return vec![orig_item];
     };
 
     let ast::Item { attrs, id: _, span: _, vis, kind: ItemKind::Fn(func), tokens: _ } =
@@ -87,7 +87,7 @@ fn eii_(
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![wrap_item(item)];
+        return vec![Annotatable::Item(item)];
     };
     // only clone what we need
     let attrs = attrs.clone();
@@ -98,17 +98,19 @@ fn eii_(
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, &func, &meta_item) else {
-        return vec![wrap_item(item)];
+        // we don't need to wrap in Annotatable::Stmt conditionally since
+        // EII can't be used on items in statement position
+        return vec![Annotatable::Item(item)];
     };
 
     // span of the declaring item without attributes
     let item_span = func.sig.span;
     let foreign_item_name = func.ident;
 
-    let mut return_items = Vec::new();
+    let mut module_items = Vec::new();
 
     if func.body.is_some() {
-        return_items.push(Box::new(generate_default_impl(
+        module_items.push(generate_default_impl(
             ecx,
             &func,
             impl_unsafe,
@@ -116,26 +118,29 @@ fn eii_(
             eii_attr_span,
             item_span,
             foreign_item_name,
-        )))
+        ))
     }
 
-    return_items.push(Box::new(generate_foreign_item(
+    module_items.push(generate_foreign_item(
         ecx,
         eii_attr_span,
         item_span,
         func,
         vis,
         &attrs_from_decl,
-    )));
-    return_items.push(Box::new(generate_attribute_macro_to_implement(
+    ));
+    module_items.push(generate_attribute_macro_to_implement(
         ecx,
         eii_attr_span,
         macro_name,
         foreign_item_name,
         impl_unsafe,
-    )));
+        &attrs_from_decl,
+    ));
 
-    return_items.into_iter().map(wrap_item).collect()
+    // we don't need to wrap in Annotatable::Stmt conditionally since
+    // EII can't be used on items in statement position
+    module_items.into_iter().map(Annotatable::Item).collect()
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -193,7 +198,7 @@ fn generate_default_impl(
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
-) -> ast::Item {
+) -> Box<ast::Item> {
     // FIXME: re-add some original attrs
     let attrs = ThinVec::new();
 
@@ -209,125 +214,38 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
-        known_eii_macro_resolution: Some(ast::EiiExternTarget {
-            extern_item_path: ast::Path {
-                span: foreign_item_name.span,
-                segments: thin_vec![
-                    ast::PathSegment {
-                        ident: Ident::from_str_and_span("super", foreign_item_name.span,),
-                        id: DUMMY_NODE_ID,
-                        args: None
-                    },
-                    ast::PathSegment { ident: foreign_item_name, id: DUMMY_NODE_ID, args: None },
-                ],
-                tokens: None,
-            },
+        known_eii_macro_resolution: Some(ast::EiiDecl {
+            foreign_item: ecx.path(
+                foreign_item_name.span,
+                // prefix self to explicitly escape the const block generated below
+                // NOTE: this is why EIIs can't be used on statements
+                vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
+            ),
             impl_unsafe,
         }),
     });
 
-    ast::Item {
-        attrs: ThinVec::new(),
-        id: ast::DUMMY_NODE_ID,
-        span: eii_attr_span,
-        vis: ast::Visibility {
-            span: eii_attr_span,
-            kind: ast::VisibilityKind::Inherited,
-            tokens: None,
-        },
-        kind: ast::ItemKind::Const(Box::new(ast::ConstItem {
-            ident: Ident { name: kw::Underscore, span: eii_attr_span },
-            defaultness: ast::Defaultness::Final,
-            generics: ast::Generics::default(),
-            ty: Box::new(ast::Ty {
-                id: DUMMY_NODE_ID,
-                kind: ast::TyKind::Tup(ThinVec::new()),
-                span: eii_attr_span,
-                tokens: None,
-            }),
-            rhs: Some(ast::ConstItemRhs::Body(Box::new(ast::Expr {
-                id: DUMMY_NODE_ID,
-                kind: ast::ExprKind::Block(
-                    Box::new(ast::Block {
-                        stmts: thin_vec![ast::Stmt {
-                            id: DUMMY_NODE_ID,
-                            kind: ast::StmtKind::Item(Box::new(ast::Item {
-                                attrs: ThinVec::new(),
-                                id: DUMMY_NODE_ID,
-                                span: item_span,
-                                vis: ast::Visibility {
-                                    span: item_span,
-                                    kind: ast::VisibilityKind::Inherited,
-                                    tokens: None
-                                },
-                                kind: ItemKind::Mod(
-                                    ast::Safety::Default,
-                                    Ident::from_str_and_span("dflt", item_span),
-                                    ast::ModKind::Loaded(
-                                        thin_vec![
-                                            Box::new(ast::Item {
-                                                attrs: thin_vec![ecx.attr_nested_word(
-                                                    sym::allow,
-                                                    sym::unused_imports,
-                                                    item_span
-                                                ),],
-                                                id: DUMMY_NODE_ID,
-                                                span: item_span,
-                                                vis: ast::Visibility {
-                                                    span: eii_attr_span,
-                                                    kind: ast::VisibilityKind::Inherited,
-                                                    tokens: None
-                                                },
-                                                kind: ItemKind::Use(ast::UseTree {
-                                                    prefix: ast::Path::from_ident(
-                                                        Ident::from_str_and_span(
-                                                            "super", item_span,
-                                                        )
-                                                    ),
-                                                    kind: ast::UseTreeKind::Glob,
-                                                    span: item_span,
-                                                }),
-                                                tokens: None,
-                                            }),
-                                            Box::new(ast::Item {
-                                                attrs,
-                                                id: DUMMY_NODE_ID,
-                                                span: item_span,
-                                                vis: ast::Visibility {
-                                                    span: eii_attr_span,
-                                                    kind: ast::VisibilityKind::Inherited,
-                                                    tokens: None
-                                                },
-                                                kind: ItemKind::Fn(Box::new(default_func)),
-                                                tokens: None,
-                                            }),
-                                        ],
-                                        ast::Inline::Yes,
-                                        ast::ModSpans {
-                                            inner_span: item_span,
-                                            inject_use_span: item_span,
-                                        }
-                                    )
-                                ),
-                                tokens: None,
-                            })),
-                            span: eii_attr_span,
-                        }],
-                        id: DUMMY_NODE_ID,
-                        rules: ast::BlockCheckMode::Default,
-                        span: eii_attr_span,
-                        tokens: None,
-                    }),
-                    None,
-                ),
-                span: eii_attr_span,
-                attrs: ThinVec::new(),
-                tokens: None,
-            }))),
-            define_opaque: None,
-        })),
-        tokens: None,
-    }
+    let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
+        let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
+        let underscore = Ident::new(kw::Underscore, item_span);
+        ecx.item_const(
+            span,
+            underscore,
+            unit,
+            ast::ConstItemRhs::Body(ecx.expr_block(ecx.block(span, stmts))),
+        )
+    };
+
+    // const _: () = {
+    //     <orig fn>
+    // }
+    anon_mod(
+        item_span,
+        thin_vec![ecx.stmt_item(
+            item_span,
+            ecx.item(item_span, attrs, ItemKind::Fn(Box::new(default_func)))
+        ),],
+    )
 }
 
 /// Generates a foreign item, like
@@ -342,13 +260,13 @@ fn generate_foreign_item(
     mut func: ast::Fn,
     vis: Visibility,
     attrs_from_decl: &[Attribute],
-) -> ast::Item {
+) -> Box<ast::Item> {
     let mut foreign_item_attrs = ThinVec::new();
     foreign_item_attrs.extend_from_slice(attrs_from_decl);
 
-    // Add the rustc_eii_extern_item on the foreign item. Usually, foreign items are mangled.
+    // Add the rustc_eii_foreign_item on the foreign item. Usually, foreign items are mangled.
     // This attribute makes sure that we later know that this foreign item's symbol should not be.
-    foreign_item_attrs.push(ecx.attr_word(sym::rustc_eii_extern_item, eii_attr_span));
+    foreign_item_attrs.push(ecx.attr_word(sym::rustc_eii_foreign_item, eii_attr_span));
 
     let abi = match func.sig.header.ext {
         // extern "X" fn  =>  extern "X" {}
@@ -374,16 +292,10 @@ fn generate_foreign_item(
         func.sig.header.safety = ast::Safety::Safe(func.sig.span);
     }
 
-    ast::Item {
-        attrs: ast::AttrVec::default(),
-        id: ast::DUMMY_NODE_ID,
-        span: eii_attr_span,
-        vis: ast::Visibility {
-            span: eii_attr_span,
-            kind: ast::VisibilityKind::Inherited,
-            tokens: None,
-        },
-        kind: ast::ItemKind::ForeignMod(ast::ForeignMod {
+    ecx.item(
+        eii_attr_span,
+        ThinVec::new(),
+        ast::ItemKind::ForeignMod(ast::ForeignMod {
             extern_span: eii_attr_span,
             safety: ast::Safety::Unsafe(eii_attr_span),
             abi,
@@ -396,8 +308,7 @@ fn generate_foreign_item(
                 tokens: None,
             })]),
         }),
-        tokens: None,
-    }
+    )
 }
 
 /// Generate a stub macro (a bit like in core) that will roughly look like:
@@ -407,7 +318,7 @@ fn generate_foreign_item(
 /// // This attribute tells the compiler that
 /// #[builtin_macro(eii_shared_macro)]
 /// // the metadata to link this macro to the generated foreign item.
-/// #[eii_extern_target(<related_reign_item>)]
+/// #[eii_declaration(<related_foreign_item>)]
 /// macro macro_name { () => {} }
 /// ```
 fn generate_attribute_macro_to_implement(
@@ -416,13 +327,22 @@ fn generate_attribute_macro_to_implement(
     macro_name: Ident,
     foreign_item_name: Ident,
     impl_unsafe: bool,
-) -> ast::Item {
+    attrs_from_decl: &[Attribute],
+) -> Box<ast::Item> {
     let mut macro_attrs = ThinVec::new();
+
+    // To avoid e.g. `error: attribute macro has missing stability attribute`
+    // errors for eii's in std.
+    macro_attrs.extend_from_slice(attrs_from_decl);
+
+    // Avoid "missing stability attribute" errors for eiis in std. See #146993.
+    macro_attrs.push(ecx.attr_name_value_str(sym::rustc_macro_transparency, sym::semiopaque, span));
 
     // #[builtin_macro(eii_shared_macro)]
     macro_attrs.push(ecx.attr_nested_word(sym::rustc_builtin_macro, sym::eii_shared_macro, span));
 
-    ast::Item {
+    // cant use ecx methods here to construct item since we need it to be public
+    Box::new(ast::Item {
         attrs: macro_attrs,
         id: ast::DUMMY_NODE_ID,
         span,
@@ -453,18 +373,18 @@ fn generate_attribute_macro_to_implement(
                     ]),
                 }),
                 macro_rules: false,
-                // #[eii_extern_target(foreign_item_ident)]
-                eii_extern_target: Some(ast::EiiExternTarget {
-                    extern_item_path: ast::Path::from_ident(foreign_item_name),
+                // #[eii_declaration(foreign_item_ident)]
+                eii_declaration: Some(ast::EiiDecl {
+                    foreign_item: ast::Path::from_ident(foreign_item_name),
                     impl_unsafe,
                 }),
             },
         ),
         tokens: None,
-    }
+    })
 }
 
-pub(crate) fn eii_extern_target(
+pub(crate) fn eii_declaration(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     meta_item: &ast::MetaItem,
@@ -513,7 +433,7 @@ pub(crate) fn eii_extern_target(
         false
     };
 
-    d.eii_extern_target = Some(EiiExternTarget { extern_item_path, impl_unsafe });
+    d.eii_declaration = Some(EiiDecl { foreign_item: extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
     vec![item]
