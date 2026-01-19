@@ -710,7 +710,7 @@ fn main() {
     if !miri_config.native_lib.is_empty() && miri_config.provenance_mode == ProvenanceMode::Strict {
         fatal_error!("strict provenance is not compatible with calling native functions");
     }
-    // Native calls and many-seeds are an "intersting" combination.
+    // Native calls and many-seeds are an "interesting" combination.
     if !miri_config.native_lib.is_empty() && many_seeds.is_some() {
         eprintln!(
             "warning: `-Zmiri-many-seeds` runs multiple instances of the program in the same address space, \
