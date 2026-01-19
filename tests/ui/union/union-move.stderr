@@ -16,7 +16,7 @@ LL | fn move_out<T>(x: T) {}
    |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
-note: if `U1` implemented `Clone`, you could clone the value
+help: if `U1` implemented `Clone`, you could clone the value
   --> $DIR/union-move.rs:9:1
    |
 LL | union U1 {
@@ -43,7 +43,7 @@ LL | fn move_out<T>(x: T) {}
    |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
-note: if `U1` implemented `Clone`, you could clone the value
+help: if `U1` implemented `Clone`, you could clone the value
   --> $DIR/union-move.rs:9:1
    |
 LL | union U1 {

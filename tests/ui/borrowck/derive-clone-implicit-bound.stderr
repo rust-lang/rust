@@ -15,7 +15,7 @@ note: consider changing this parameter type in method `return_value` to borrow i
    |
 LL |     fn return_value<T>(&self, offset: TypedAddress<T>) -> T;
    |        ------------ in this method    ^^^^^^^^^^^^^^^ this parameter takes ownership of the value
-note: if `TypedAddress<T>` implemented `Clone`, you could clone the value
+help: if `TypedAddress<T>` implemented `Clone`, you could clone the value
   --> $DIR/derive-clone-implicit-bound.rs:6:1
    |
 LL | #[derive(Clone, Copy)]

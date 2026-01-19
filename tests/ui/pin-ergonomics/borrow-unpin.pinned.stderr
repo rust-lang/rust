@@ -8,7 +8,7 @@ LL |     foo_pin_mut(&pin mut foo);
 LL |     foo_move(foo);
    |              ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -27,7 +27,7 @@ LL |     let x = &pin mut foo;
 LL |     foo_move(foo);
    |              ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -46,7 +46,7 @@ LL |     foo_pin_mut(&pin mut foo); // ok
 LL |     foo_move(foo);
    |              ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -65,7 +65,7 @@ LL |     let x = &pin mut foo; // ok
 LL |     foo_move(foo);
    |              ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -87,7 +87,7 @@ LL |
 LL |     foo_pin_ref(x);
    |                 - borrow later used here
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -106,7 +106,7 @@ LL |     foo_pin_mut(&pin mut foo); // ok
 LL |     foo_ref(&foo);
    |             ^^^^ value borrowed here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -125,7 +125,7 @@ LL |     let x = &pin mut foo; // ok
 LL |     foo_ref(&foo);
    |             ^^^^ value borrowed here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -144,7 +144,7 @@ LL |     foo_pin_mut(&pin mut foo); // ok
 LL |     foo_pin_mut(&pin mut foo);
    |                          ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -163,7 +163,7 @@ LL |     let x = &pin mut foo; // ok
 LL |     foo_pin_mut(&pin mut foo);
    |                          ^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -185,7 +185,7 @@ LL |
 LL |     foo_pin_ref(x);
    |                 - borrow later used here
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -204,7 +204,7 @@ LL |     foo_pin_mut(&pin mut foo); // ok
 LL |     foo_pin_ref(&pin const foo);
    |                 ^^^^^^^^^^^^^^ value borrowed here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);
@@ -223,7 +223,7 @@ LL |     let x = &pin mut foo; // ok
 LL |     foo_pin_ref(&pin const foo);
    |                 ^^^^^^^^^^^^^^ value borrowed here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:16:1
    |
 LL | struct Foo(PhantomPinned);

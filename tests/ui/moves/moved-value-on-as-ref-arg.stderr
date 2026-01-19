@@ -23,7 +23,7 @@ LL |     qux(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-note: if `Bar` implemented `Clone`, you could clone the value
+help: if `Bar` implemented `Clone`, you could clone the value
   --> $DIR/moved-value-on-as-ref-arg.rs:5:1
    |
 LL | struct Bar;
@@ -61,7 +61,7 @@ LL |     baz(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-note: if `Bar` implemented `Clone`, you could clone the value
+help: if `Bar` implemented `Clone`, you could clone the value
   --> $DIR/moved-value-on-as-ref-arg.rs:5:1
    |
 LL | struct Bar;

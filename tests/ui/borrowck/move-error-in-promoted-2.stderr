@@ -7,7 +7,7 @@ LL |     &([S][0],);
    |       cannot move out of here
    |       move occurs because value has type `S`, which does not implement the `Copy` trait
    |
-note: if `S` implemented `Clone`, you could clone the value
+help: if `S` implemented `Clone`, you could clone the value
   --> $DIR/move-error-in-promoted-2.rs:3:1
    |
 LL | struct S;

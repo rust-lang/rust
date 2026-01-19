@@ -12,7 +12,7 @@ LL |
 LL |     use_value(*theref)
    |               ------- borrow later used here
    |
-note: if `Alloc` implemented `Clone`, you could clone the value
+help: if `Alloc` implemented `Clone`, you could clone the value
   --> $DIR/leak-alloc.rs:8:1
    |
 LL | struct Alloc {}

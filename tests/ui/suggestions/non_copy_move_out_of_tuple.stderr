@@ -7,7 +7,7 @@ LL |     (b,) = *tuple;
    |      data moved here
    |      move occurs because the place has type `NonCopy`, which does not implement the `Copy` trait
    |
-note: if `NonCopy` implemented `Clone`, you could clone the value
+help: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/non_copy_move_out_of_tuple.rs:3:1
    |
 LL | struct NonCopy;

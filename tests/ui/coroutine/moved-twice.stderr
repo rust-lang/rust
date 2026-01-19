@@ -10,7 +10,7 @@ LL |         yield;
 LL |         let second = first;
    |                      ^^^^^ value used here after move
    |
-note: if `Foo` implemented `Clone`, you could clone the value
+help: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/moved-twice.rs:9:1
    |
 LL | struct Foo([u8; FOO_SIZE]);

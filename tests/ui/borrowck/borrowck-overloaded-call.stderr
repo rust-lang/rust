@@ -30,7 +30,7 @@ LL |     s(" world".to_string());
 LL |     s(" world".to_string());
    |     ^ value used here after move
    |
-note: if `SFnOnce` implemented `Clone`, you could clone the value
+help: if `SFnOnce` implemented `Clone`, you could clone the value
   --> $DIR/borrowck-overloaded-call.rs:41:1
    |
 LL | struct SFnOnce {

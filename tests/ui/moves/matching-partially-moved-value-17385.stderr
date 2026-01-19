@@ -8,7 +8,7 @@ LL |     drop(foo);
 LL |     match foo {
    |     ^^^^^^^^^ value used here after move
    |
-note: if `X` implemented `Clone`, you could clone the value
+help: if `X` implemented `Clone`, you could clone the value
   --> $DIR/matching-partially-moved-value-17385.rs:2:1
    |
 LL | struct X(isize);
@@ -27,7 +27,7 @@ LL |     drop(e);
 LL |     match e {
    |           ^ value used here after move
    |
-note: if `Enum` implemented `Clone`, you could clone the value
+help: if `Enum` implemented `Clone`, you could clone the value
   --> $DIR/matching-partially-moved-value-17385.rs:4:1
    |
 LL | enum Enum {

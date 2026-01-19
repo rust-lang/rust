@@ -1,5 +1,5 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/24357>
-struct NoCopy; //~ NOTE if `NoCopy` implemented `Clone`, you could clone the value
+struct NoCopy; //~ HELP if `NoCopy` implemented `Clone`, you could clone the value
 //~^ NOTE consider implementing `Clone` for this type
 fn main() {
     let x = NoCopy;

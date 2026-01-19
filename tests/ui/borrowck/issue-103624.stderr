@@ -18,7 +18,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
    |
 LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {
    |                                    ^^^^^^^^^^^
-note: if `StructB` implemented `Clone`, you could clone the value
+help: if `StructB` implemented `Clone`, you could clone the value
   --> $DIR/issue-103624.rs:23:1
    |
 LL |             self.b;

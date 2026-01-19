@@ -1304,7 +1304,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ),
             );
             span.push_span_label(expr.span, "you could clone this value");
-            err.span_note(
+            err.span_help(
                 span,
                 format!("if `{ty}` implemented `Clone`, you could clone the value"),
             );

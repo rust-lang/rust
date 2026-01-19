@@ -28,7 +28,7 @@ LL |     let mut s: S<B> = S::new(); drop(s);
 LL |     s.x = 10; s.y = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
    |
-note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+help: if `S<Box<u32>>` implemented `Clone`, you could clone the value
   --> $DIR/issue-21232-partial-init-and-use.rs:15:1
    |
 LL | struct S<Y> {
@@ -82,7 +82,7 @@ LL |     let mut s: S<B> = S::new(); drop(s);
 LL |     s.x = 10;
    |     ^^^^^^^^ value partially assigned here after move
    |
-note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+help: if `S<Box<u32>>` implemented `Clone`, you could clone the value
   --> $DIR/issue-21232-partial-init-and-use.rs:15:1
    |
 LL | struct S<Y> {

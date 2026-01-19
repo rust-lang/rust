@@ -14,7 +14,7 @@ LL |         println!("child function: {}", fancy_num.num);
 LL |     println!("main function: {}", fancy_ref.num);
    |                                   ------------- borrow later used here
    |
-note: if `FancyNum` implemented `Clone`, you could clone the value
+help: if `FancyNum` implemented `Clone`, you could clone the value
   --> $DIR/E0504.rs:2:1
    |
 LL | struct FancyNum {

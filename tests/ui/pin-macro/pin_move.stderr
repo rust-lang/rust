@@ -8,7 +8,7 @@ LL |     pin!(pointee);
 LL |     let _moved = pointee;
    |                  ^^^^^^^ value used here after move
    |
-note: if `a::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
+help: if `a::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
   --> $DIR/pin_move.rs:7:5
    |
 LL |     struct NotCopy<T>(T);
@@ -23,7 +23,7 @@ error[E0507]: cannot move out of a mutable reference
 LL |     pin!(*&mut pointee);
    |          ^^^^^^^^^^^^^ move occurs because value has type `b::NotCopy<PhantomPinned>`, which does not implement the `Copy` trait
    |
-note: if `b::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
+help: if `b::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
   --> $DIR/pin_move.rs:16:5
    |
 LL |     struct NotCopy<T>(T);

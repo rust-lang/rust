@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 #[derive(Clone, Copy)] //~ NOTE derived `Clone` adds implicit bounds on type parameters
 pub struct TypedAddress<T>{
-//~^ NOTE if `TypedAddress<T>` implemented `Clone`, you could clone the value
+//~^ HELP if `TypedAddress<T>` implemented `Clone`, you could clone the value
 //~| NOTE consider manually implementing `Clone` for this type
 //~| NOTE introduces an implicit `T: Clone` bound
     inner: u64,
@@ -19,7 +19,7 @@ pub trait Memory {
     //~| NOTE this parameter takes ownership of the value
     fn update_value<T, F>(&self, offset: TypedAddress<T>, update: F)
     //~^ NOTE move occurs because `offset` has type `TypedAddress<T>`, which does not implement the `Copy` trait
-        where F: FnOnce(T) -> T
+        where F: FnOnce(T) -> T //~ HELP consider further restricting type parameter `T`
     {
         let old = self.return_value(offset); //~ NOTE value moved here
         //~^ NOTE you could clone this value

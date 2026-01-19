@@ -4,7 +4,7 @@ error[E0507]: cannot move out of `*inbounds` which is behind a shared reference
 LL |     array[*inbounds as usize]
    |           ^^^^^^^^^ move occurs because `*inbounds` has type `Enum`, which does not implement the `Copy` trait
    |
-note: if `Enum` implemented `Clone`, you could clone the value
+help: if `Enum` implemented `Clone`, you could clone the value
   --> $DIR/issue-102389.rs:1:1
    |
 LL | enum Enum { A, B, C }

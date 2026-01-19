@@ -9,7 +9,7 @@ LL |         let a = $c;
 LL | sss!();
    | ------ in this macro invocation
    |
-note: if `A` implemented `Clone`, you could clone the value
+help: if `A` implemented `Clone`, you could clone the value
   --> $DIR/move-error-snippets.rs:9:1
    |
 LL | struct A;

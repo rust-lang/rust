@@ -7,7 +7,7 @@ LL |     let fancy_field = drop_struct.fancy;
    |                       cannot move out of here
    |                       move occurs because `drop_struct.fancy` has type `FancyNum`, which does not implement the `Copy` trait
    |
-note: if `FancyNum` implemented `Clone`, you could clone the value
+help: if `FancyNum` implemented `Clone`, you could clone the value
   --> $DIR/E0509.rs:1:1
    |
 LL | struct FancyNum {
