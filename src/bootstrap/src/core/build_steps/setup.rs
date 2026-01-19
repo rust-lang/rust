@@ -584,7 +584,7 @@ Select which editor you would like to set up [default: None]: ";
         }
     }
 
-    /// A list of historical hashes of each LSP settings file
+    /// A list of historical Sha256 hashes of each LSP settings file
     /// New entries should be appended whenever this is updated so we can detect
     /// outdated vs. user-modified settings files.
     fn hashes(&self) -> &'static [&'static str] {
@@ -607,6 +607,7 @@ Select which editor you would like to set up [default: None]: ";
                 "1c43ead340b20792b91d02b08494ee68708e7e09f56b6766629b4b72079208f1",
                 "eec09a09452682060afd23dd5d3536ccac5615b3cdbf427366446901215fb9f6",
                 "cb653043852d9d5ff4a5be56407b859ff9928be055ad3f307eb309aad04765e6",
+                "4ccdfb2a78d2b390dc96a88ca9b633fb04e6bc5d17f25bd63c0294bff5473f54",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
@@ -626,6 +627,7 @@ Select which editor you would like to set up [default: None]: ";
                 "02a49ac2d31f00ef6e4531c44e00dac51cea895112e480553f1ba060b3942a47",
                 "0aa4748848de0d1cb7ece92a0123c8897fef6de2f58aff8fda1426f098b7a798",
                 "e5e357862e5d6d0d9da335e9823c07b8a7dc42bbf18d72cc5206ad1049cd8fcc",
+                "5e83d1bed1cf6d90eb1b01a194f5dbecc8ba85c88f543f79e5e34586fb2abf92",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
@@ -636,6 +638,7 @@ Select which editor you would like to set up [default: None]: ";
                 "5ef83292111d9a8bb63b6afc3abf42d0bc78fe24985f0d2e039e73258b5dab8f",
                 "74420c13094b530a986b37c4f1d23cb58c0e8e2295f5858ded129fb1574e66f9",
                 "2d3b592c089b2ad2c528686a1e371af49922edad1c59accd5d5f31612a441568",
+                "c676b1bde629aee3e612cec0e35e2676a13fd570ead0a3d14bca405a9971286f",
             ],
         }
     }

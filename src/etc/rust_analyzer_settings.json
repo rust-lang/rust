@@ -46,5 +46,6 @@
         "*.fixed": "rust",
         "*.pp": "rust",
         "*.mir": "rust"
-    }
+    },
+    "editor.rulers": [100]
 }

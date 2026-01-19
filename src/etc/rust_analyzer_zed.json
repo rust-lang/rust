@@ -63,5 +63,7 @@
   },
   "file_types": {
     "Rust": ["fixed", "pp", "mir"]
-  }
+  },
+  "wrap_guides": [100],
+  "show_wrap_guides": true
 }

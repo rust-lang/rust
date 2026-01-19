@@ -69,3 +69,4 @@ RUSTUP_TOOLCHAIN = "nightly"
 [[language]]
 name = "rust"
 file-types = ["rs", "fixed", "pp", "mir"]
+rulers = [100]
