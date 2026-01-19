@@ -108,9 +108,6 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr_is_from_block = true;
         }
 
-        let prefer_inner_macro_suggestion = let_underscore_init_parent(cx, expr);
-        let emit_cx = EmitMustUseCtx { cx, expr_is_from_block, prefer_inner_macro_suggestion };
-
         if let hir::ExprKind::Ret(..) = expr.kind {
             return;
         }
@@ -124,11 +121,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             // Check that this `impl Future` actually comes from an `async fn`
             && cx.tcx.asyncness(async_fn_def_id).is_async()
             && check_must_use_def(
-                &emit_cx,
+                cx,
                 async_fn_def_id,
                 expr.span,
                 "output of future returned by ",
                 "",
+                expr_is_from_block,
             )
         {
             // We have a bare `foo().await;` on an opaque type from an async function that was
@@ -141,13 +139,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let must_use_result = is_ty_must_use(cx, ty, expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
-                emit_must_use_untranslated(&emit_cx, &path, "", "", 1, false);
+                emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
                 true
             }
             None => false,
         };
 
-        let fn_warned = check_fn_must_use(&emit_cx, expr);
+        let fn_warned = check_fn_must_use(cx, expr, expr_is_from_block);
 
         if !fn_warned && type_lint_emitted_or_suppressed {
             // We don't warn about unused unit or uninhabited types.
@@ -223,8 +221,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             cx.emit_span_lint(UNUSED_RESULTS, s.span, UnusedResult { ty });
         }
 
-        fn check_fn_must_use(emit_cx: &EmitMustUseCtx<'_, '_>, expr: &hir::Expr<'_>) -> bool {
-            let cx = emit_cx.cx;
+        fn check_fn_must_use(
+            cx: &LateContext<'_>,
+            expr: &hir::Expr<'_>,
+            expr_is_from_block: bool,
+        ) -> bool {
             let maybe_def_id = match expr.kind {
                 hir::ExprKind::Call(callee, _) => {
                     match callee.kind {
@@ -245,35 +246,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 _ => None,
             };
             if let Some(def_id) = maybe_def_id {
-                check_must_use_def(emit_cx, def_id, expr.span, "return value of ", "")
+                check_must_use_def(
+                    cx,
+                    def_id,
+                    expr.span,
+                    "return value of ",
+                    "",
+                    expr_is_from_block,
+                )
             } else {
                 false
             }
-        }
-
-        fn let_underscore_init_parent(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-            let mut current_expr = Some(expr.hir_id);
-            for (_, parent) in cx.tcx.hir_parent_iter(expr.hir_id) {
-                match parent {
-                    hir::Node::Expr(parent_expr) => {
-                        current_expr = Some(parent_expr.hir_id);
-                    }
-                    hir::Node::LetStmt(local) => {
-                        return local.init.is_some_and(|init| {
-                            current_expr == Some(init.hir_id)
-                                && matches!(local.pat.kind, hir::PatKind::Wild)
-                        });
-                    }
-                    hir::Node::Stmt(stmt) if let hir::StmtKind::Let(local) = stmt.kind => {
-                        return local.init.is_some_and(|init| {
-                            current_expr == Some(init.hir_id)
-                                && matches!(local.pat.kind, hir::PatKind::Wild)
-                        });
-                    }
-                    _ => {}
-                }
-            }
-            false
         }
 
         /// A path through a type to a must_use source. Contains useful info for the lint.
@@ -428,125 +411,154 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             }
         }
 
-        struct EmitMustUseCtx<'a, 'b> {
-            cx: &'a LateContext<'b>,
-            expr_is_from_block: bool,
-            prefer_inner_macro_suggestion: bool,
-        }
-
         // Returns whether further errors should be suppressed because either a lint has been
         // emitted or the type should be ignored.
         fn check_must_use_def(
-            emit_cx: &EmitMustUseCtx<'_, '_>,
+            cx: &LateContext<'_>,
             def_id: DefId,
             span: Span,
             descr_pre_path: &str,
             descr_post_path: &str,
+            expr_is_from_block: bool,
         ) -> bool {
-            is_def_must_use(emit_cx.cx, def_id, span)
+            is_def_must_use(cx, def_id, span)
                 .map(|must_use_path| {
                     emit_must_use_untranslated(
-                        emit_cx,
+                        cx,
                         &must_use_path,
                         descr_pre_path,
                         descr_post_path,
                         1,
                         false,
+                        expr_is_from_block,
                     )
                 })
                 .is_some()
         }
 
-        #[instrument(skip(emit_cx), level = "debug")]
+        #[instrument(skip(cx), level = "debug")]
         fn emit_must_use_untranslated(
-            emit_cx: &EmitMustUseCtx<'_, '_>,
+            cx: &LateContext<'_>,
             path: &MustUsePath,
             descr_pre: &str,
             descr_post: &str,
             plural_len: usize,
             is_inner: bool,
+            expr_is_from_block: bool,
         ) {
             let plural_suffix = pluralize!(plural_len);
+
             match path {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
                     let descr_pre = &format!("{descr_pre}boxed ");
                     emit_must_use_untranslated(
-                        emit_cx, path, descr_pre, descr_post, plural_len, true,
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::Pinned(path) => {
                     let descr_pre = &format!("{descr_pre}pinned ");
                     emit_must_use_untranslated(
-                        emit_cx, path, descr_pre, descr_post, plural_len, true,
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::Opaque(path) => {
                     let descr_pre = &format!("{descr_pre}implementer{plural_suffix} of ");
                     emit_must_use_untranslated(
-                        emit_cx, path, descr_pre, descr_post, plural_len, true,
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::TraitObject(path) => {
                     let descr_post = &format!(" trait object{plural_suffix}{descr_post}");
                     emit_must_use_untranslated(
-                        emit_cx, path, descr_pre, descr_post, plural_len, true,
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::TupleElement(elems) => {
                     for (index, path) in elems {
                         let descr_post = &format!(" in tuple element {index}");
                         emit_must_use_untranslated(
-                            emit_cx, path, descr_pre, descr_post, plural_len, true,
+                            cx,
+                            path,
+                            descr_pre,
+                            descr_post,
+                            plural_len,
+                            true,
+                            expr_is_from_block,
                         );
                     }
                 }
                 MustUsePath::Array(path, len) => {
                     let descr_pre = &format!("{descr_pre}array{plural_suffix} of ");
                     emit_must_use_untranslated(
-                        emit_cx,
+                        cx,
                         path,
                         descr_pre,
                         descr_post,
                         plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
                         true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::Closure(span) => {
-                    emit_cx.cx.emit_span_lint(
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         *span,
                         UnusedClosure { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
                 MustUsePath::Coroutine(span) => {
-                    emit_cx.cx.emit_span_lint(
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         *span,
                         UnusedCoroutine { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    let lint_span = span.find_ancestor_not_from_macro().unwrap_or(*span);
-                    let suggestion_span = if emit_cx.prefer_inner_macro_suggestion
-                        && span.from_expansion()
-                        && lint_span != *span
-                    {
-                        *span
-                    } else {
-                        lint_span
-                    };
-                    let use_block_suggestion = emit_cx.expr_is_from_block;
-                    emit_cx.cx.emit_span_lint(
+                    let ancenstor_span = span.find_ancestor_not_from_macro().unwrap_or(*span);
+                    let is_redundant_let_ignore = cx
+                        .sess()
+                        .source_map()
+                        .span_to_prev_source(ancenstor_span)
+                        .ok()
+                        .map(|prev| prev.trim_end().ends_with("let _ ="))
+                        .unwrap_or(false);
+                    let suggestion_span =
+                        if is_redundant_let_ignore { *span } else { ancenstor_span };
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
-                        lint_span,
+                        ancenstor_span,
                         UnusedDef {
                             pre: descr_pre,
                             post: descr_post,
-                            cx: emit_cx.cx,
+                            cx,
                             def_id: *def_id,
                             note: *reason,
-                            suggestion: (!is_inner).then_some(if use_block_suggestion {
+                            suggestion: (!is_inner).then_some(if expr_is_from_block {
                                 UnusedDefSuggestion::BlockTailExpr {
                                     before_span: suggestion_span.shrink_to_lo(),
                                     after_span: suggestion_span.shrink_to_hi(),
