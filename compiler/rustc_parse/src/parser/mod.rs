@@ -16,7 +16,6 @@ mod ty;
 pub mod asm;
 pub mod cfg_select;
 
-use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -40,6 +39,7 @@ use rustc_ast::{
     Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;

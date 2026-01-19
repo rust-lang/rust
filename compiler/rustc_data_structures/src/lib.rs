@@ -38,6 +38,11 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
+// Temporarily re-export `assert_matches!`, so that the rest of the compiler doesn't
+// have to worry about it being moved to a different module in std during stabilization.
+// FIXME(#151359): Remove this when `feature(assert_matches)` is stable in stage0.
+// (This doesn't necessarily need to be fixed during the beta bump itself.)
+pub use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::fmt;
 
 pub use atomic_ref::AtomicRef;
