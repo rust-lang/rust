@@ -13,7 +13,7 @@ struct Baz {
 #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz*2 })]
 // Relevant thing is this:  ^^^^^^^^^^^
 // because we are capturing state that is non-Copy.
-//~^^^ ERROR trait bound `Baz: std::marker::Copy` is not satisfied
+//~^^^ ERROR trait bound `Baz: Copy` is not satisfied
 fn doubler(x: Baz) -> Baz {
     Baz { baz: x.baz + 10 }
 }

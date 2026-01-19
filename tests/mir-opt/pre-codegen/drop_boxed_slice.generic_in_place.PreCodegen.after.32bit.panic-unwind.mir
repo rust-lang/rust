@@ -14,14 +14,14 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                 scope 4 {
                     scope 12 (inlined Layout::size) {
                     }
-                    scope 13 (inlined Unique::<[T]>::cast::<u8>) {
+                    scope 13 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
                         scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
                             scope 15 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
                     }
-                    scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
-                        scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
+                    scope 16 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
+                        scope 17 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                         }
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
@@ -45,7 +45,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         }
                     }
                 }
-                scope 5 (inlined Unique::<[T]>::as_ptr) {
+                scope 5 (inlined std::ptr::Unique::<[T]>::as_ptr) {
                     scope 6 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
