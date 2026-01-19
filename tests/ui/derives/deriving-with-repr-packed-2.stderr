@@ -21,10 +21,13 @@ LL |     let x: Foo<NonCopy> = Foo(NonCopy, NonCopy, NonCopy);
 note: the following trait bounds were not satisfied:
       `NonCopy: Clone`
       `NonCopy: Copy`
-  --> $DIR/deriving-with-repr-packed-2.rs:5:16
+  --> $DIR/deriving-with-repr-packed-2.rs:7:16
    |
 LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
-   |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   |                ----- in this derive macro expansion
+LL | #[repr(packed)]
+LL | pub struct Foo<T>(T, T, T);
+   |                ^ type parameter would need to implement `Clone`
    = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
    |
