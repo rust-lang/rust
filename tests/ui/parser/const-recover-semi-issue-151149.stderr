@@ -72,14 +72,6 @@ LL |     let r = 1;
    |              +
 
 error[E0308]: mismatched types
-  --> $DIR/const-recover-semi-issue-151149.rs:18:19
-   |
-LL | const fn foo() -> &'static u8 {
-   |          ---      ^^^^^^^^^^^ expected `&u8`, found `()`
-   |          |
-   |          implicitly returns `()` as its body has no tail or `return` expression
-
-error[E0308]: mismatched types
   --> $DIR/const-recover-semi-issue-151149.rs:23:19
    |
 LL | const fn bar() -> u8 {
@@ -95,6 +87,6 @@ LL | const fn baz() -> u8 {
    |          |
    |          implicitly returns `()` as its body has no tail or `return` expression
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

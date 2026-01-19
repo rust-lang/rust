@@ -226,6 +226,8 @@ pub struct Parser<'a> {
     recovery: Recovery,
     /// Whether we're parsing a function body.
     in_fn_body: bool,
+    /// Whether we have detected a missing semicolon in the function body.
+    pub fn_body_missing_semi_guar: Option<ErrorGuaranteed>,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
@@ -376,6 +378,7 @@ impl<'a> Parser<'a> {
             current_closure: None,
             recovery: Recovery::Allowed,
             in_fn_body: false,
+            fn_body_missing_semi_guar: None,
         };
 
         // Make parser point to the first token.

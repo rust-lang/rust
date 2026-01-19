@@ -2655,9 +2655,17 @@ impl<'a> Parser<'a> {
         } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
             let prev_in_fn_body = self.in_fn_body;
             self.in_fn_body = true;
-            let res = self
-                .parse_block_common(self.token.span, BlockCheckMode::Default, None)
-                .map(|(attrs, body)| (attrs, Some(body)));
+            let res = self.parse_block_common(self.token.span, BlockCheckMode::Default, None).map(
+                |(attrs, mut body)| {
+                    if let Some(guar) = self.fn_body_missing_semi_guar.take() {
+                        body.stmts.push(self.mk_stmt(
+                            body.span,
+                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                        ));
+                    }
+                    (attrs, Some(body))
+                },
+            );
             self.in_fn_body = prev_in_fn_body;
             res?
         } else if self.token == token::Eq {
@@ -3434,6 +3442,7 @@ impl<'a> Parser<'a> {
             return None;
         }
         if let Some((span, guar)) = self.missing_semi_from_binop("const", rhs) {
+            self.fn_body_missing_semi_guar = Some(guar);
             Some(self.mk_expr(span, ExprKind::Err(guar)))
         } else {
             None

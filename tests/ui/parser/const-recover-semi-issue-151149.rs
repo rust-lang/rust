@@ -15,7 +15,7 @@ const fn val() -> u8 {
 const C: u8 = u8::const_default()
 &1 //~ ERROR expected `;`, found keyword `const`
 
-const fn foo() -> &'static u8 { //~ ERROR mismatched types
+const fn foo() -> &'static u8 {
     const C: u8 = u8::const_default() //~ ERROR expected `;`
     &C
 }
@@ -30,7 +30,7 @@ const fn baz() -> u8 { //~ ERROR mismatched types
      + val() //~ ERROR expected `;`, found `}`
 }
 
-fn buzz() {
+fn buzz() -> &'static u8 {
     let r = 1 //~ ERROR expected `;`
     &r
 }

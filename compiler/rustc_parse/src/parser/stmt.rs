@@ -929,10 +929,10 @@ impl<'a> Parser<'a> {
             LocalKind::Decl => return None,
         };
         if let Some((span, guar)) = self.missing_semi_from_binop("`let` binding", expr) {
+            self.fn_body_missing_semi_guar = Some(guar);
             *expr = self.mk_expr(span, ExprKind::Err(guar));
             return Some(guar);
         }
-
         None
     }
 
