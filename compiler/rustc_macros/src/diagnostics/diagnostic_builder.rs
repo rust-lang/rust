@@ -110,6 +110,31 @@ impl DiagnosticDeriveKind {
 }
 
 impl DiagnosticDeriveVariantBuilder {
+    pub(crate) fn primary_message(&self) -> Option<&Path> {
+        match self.slug.value_ref() {
+            None => {
+                span_err(self.span, "diagnostic slug not specified")
+                    .help(
+                        "specify the slug as the first argument to the `#[diag(...)]` \
+                            attribute, such as `#[diag(hir_analysis_example_error)]`",
+                    )
+                    .emit();
+                None
+            }
+            Some(slug)
+                if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
+                    Mismatch::check(slug) =>
+            {
+                span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
+                    .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
+                    .help(format!("expected a slug starting with `{slug_prefix}_...`"))
+                    .emit();
+                None
+            }
+            Some(slug) => Some(slug),
+        }
+    }
+
     /// Generates calls to `code` and similar functions based on the attributes on the type or
     /// variant.
     pub(crate) fn preamble(&mut self, variant: &VariantInfo<'_>) -> TokenStream {
@@ -502,5 +527,29 @@ impl DiagnosticDeriveVariantBuilder {
                 )
             }),
         }
+    }
+}
+
+struct Mismatch {
+    slug_name: String,
+    crate_name: String,
+    slug_prefix: String,
+}
+
+impl Mismatch {
+    /// Checks whether the slug starts with the crate name it's in.
+    fn check(slug: &syn::Path) -> Option<Mismatch> {
+        // If this is missing we're probably in a test, so bail.
+        let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
+
+        // If we're not in a "rustc_" crate, bail.
+        let Some(("rustc", slug_prefix)) = crate_name.split_once('_') else { return None };
+
+        let slug_name = slug.segments.first()?.ident.to_string();
+        if slug_name.starts_with(slug_prefix) {
+            return None;
+        }
+
+        Some(Mismatch { slug_name, slug_prefix: slug_prefix.to_string(), crate_name })
     }
 }
