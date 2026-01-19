@@ -17,8 +17,6 @@ codegen_ssa_cgu_not_recorded =
 
 codegen_ssa_check_installed_visual_studio = please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option
 
-codegen_ssa_visual_studio_build_tools_url = you can obtain "Build Tools for Visual Studio" from <https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026>
-
 codegen_ssa_compiler_builtins_cannot_call =
     `compiler_builtins` cannot call functions through upstream monomorphizations; encountered invalid call from `{$caller}` to `{$callee}`
 
@@ -386,6 +384,8 @@ codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is
 codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-lib)
 
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
+
+codegen_ssa_visual_studio_build_tools_url = you can obtain "Build Tools for Visual Studio" from <https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026>
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
 
