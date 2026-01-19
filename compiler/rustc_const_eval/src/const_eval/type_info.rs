@@ -1,23 +1,74 @@
-use rustc_abi::FieldIdx;
+use std::borrow::Cow;
+
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CtfeProvenance, Scalar};
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Const, ScalarInt, Ty};
+use rustc_middle::ty::{
+    self, AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, ScalarInt, Ty,
+    VariantDef,
+};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{
-    Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Writeable, interp_ok,
+    Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Projectable, Writeable, interp_ok,
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
+    fn downcast(
+        &self,
+        place: &(impl Writeable<'tcx, CtfeProvenance> + 'tcx),
+        name: Symbol,
+    ) -> InterpResult<'tcx, (VariantIdx, impl Writeable<'tcx, CtfeProvenance> + 'tcx)> {
+        let variants = place.layout().ty.ty_adt_def().unwrap().variants();
+        let variant_id = variants
+            .iter_enumerated()
+            .find(|(_idx, var)| var.name == name)
+            .unwrap_or_else(|| panic!("got {name} but expected one of {variants:#?}"))
+            .0;
+
+        interp_ok((variant_id, self.project_downcast(place, variant_id)?))
+    }
+
+    // A general method to write an array to a static slice place.
+    fn project_write_array(
+        &mut self,
+        slice_place: impl Writeable<'tcx, CtfeProvenance>,
+        len: usize,
+        writer: impl Fn(&mut Self, /* index */ usize, MPlaceTy<'tcx>) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
+        // Array element type
+        let field_ty = slice_place
+            .layout()
+            .ty
+            .builtin_deref(false)
+            .unwrap()
+            .sequence_element_type(self.tcx.tcx);
+
+        // Allocate an array
+        let array_layout = self.layout_of(Ty::new_array(self.tcx.tcx, field_ty, len as u64))?;
+        let array_place = self.allocate(array_layout, MemoryKind::Stack)?;
+
+        // Fill the array fields
+        let mut field_places = self.project_array_fields(&array_place)?;
+        while let Some((i, place)) = field_places.next(self)? {
+            writer(self, i as usize, place)?;
+        }
+
+        // Write the slice pointing to the array
+        let array_place = array_place.map_provenance(CtfeProvenance::as_immutable);
+        let ptr = Immediate::new_slice(array_place.ptr(), len as u64, self);
+        self.write_immediate(ptr, &slice_place)
+    }
+
     /// Writes a `core::mem::type_info::TypeInfo` for a given type, `ty` to the given place.
     pub(crate) fn write_type_info(
         &mut self,
         ty: Ty<'tcx>,
-        dest: &impl Writeable<'tcx, CtfeProvenance>,
+        dest: &(impl Writeable<'tcx, CtfeProvenance> + 'tcx),
     ) -> InterpResult<'tcx> {
         let ty_struct = self.tcx.require_lang_item(LangItem::Type, self.tcx.span);
         let ty_struct = self.tcx.type_of(ty_struct).no_bound_vars().unwrap();
@@ -26,22 +77,13 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         // Fill all fields of the `TypeInfo` struct.
         for (idx, field) in ty_struct.fields.iter_enumerated() {
             let field_dest = self.project_field(dest, idx)?;
-            let downcast = |name: Symbol| {
-                let variants = field_dest.layout().ty.ty_adt_def().unwrap().variants();
-                let variant_id = variants
-                    .iter_enumerated()
-                    .find(|(_idx, var)| var.name == name)
-                    .unwrap_or_else(|| panic!("got {name} but expected one of {variants:#?}"))
-                    .0;
-
-                interp_ok((variant_id, self.project_downcast(&field_dest, variant_id)?))
-            };
             let ptr_bit_width = || self.tcx.data_layout.pointer_size().bits();
             match field.name {
                 sym::kind => {
                     let variant_index = match ty.kind() {
                         ty::Tuple(fields) => {
-                            let (variant, variant_place) = downcast(sym::Tuple)?;
+                            let (variant, variant_place) =
+                                self.downcast(&field_dest, sym::Tuple)?;
                             // project to the single tuple variant field of `type_info::Tuple` struct type
                             let tuple_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             assert_eq!(
@@ -59,23 +101,38 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Array(ty, len) => {
-                            let (variant, variant_place) = downcast(sym::Array)?;
+                            let (variant, variant_place) =
+                                self.downcast(&field_dest, sym::Array)?;
                             let array_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
                             self.write_array_type_info(array_place, *ty, *len)?;
 
                             variant
                         }
+                        ty::Adt(adt_def, generics) => {
+                            // TODO(type_info): Handle enum and union
+                            if !adt_def.is_struct() {
+                                self.downcast(&field_dest, sym::Other)?.0
+                            } else {
+                                let (variant, variant_place) =
+                                    self.downcast(&field_dest, sym::Struct)?;
+                                let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                                self.write_adt_type_info(place, (ty, *adt_def), generics)?;
+                                variant
+                            }
+                        }
                         ty::Bool => {
-                            let (variant, _variant_place) = downcast(sym::Bool)?;
+                            let (variant, _variant_place) =
+                                self.downcast(&field_dest, sym::Bool)?;
                             variant
                         }
                         ty::Char => {
-                            let (variant, _variant_place) = downcast(sym::Char)?;
+                            let (variant, _variant_place) =
+                                self.downcast(&field_dest, sym::Char)?;
                             variant
                         }
                         ty::Int(int_ty) => {
-                            let (variant, variant_place) = downcast(sym::Int)?;
+                            let (variant, variant_place) = self.downcast(&field_dest, sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_int_type_info(
                                 place,
@@ -85,7 +142,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Uint(uint_ty) => {
-                            let (variant, variant_place) = downcast(sym::Int)?;
+                            let (variant, variant_place) = self.downcast(&field_dest, sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_int_type_info(
                                 place,
@@ -95,25 +152,26 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Float(float_ty) => {
-                            let (variant, variant_place) = downcast(sym::Float)?;
+                            let (variant, variant_place) =
+                                self.downcast(&field_dest, sym::Float)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_float_type_info(place, float_ty.bit_width())?;
                             variant
                         }
                         ty::Str => {
-                            let (variant, _variant_place) = downcast(sym::Str)?;
+                            let (variant, _variant_place) = self.downcast(&field_dest, sym::Str)?;
                             variant
                         }
                         ty::Ref(_, ty, mutability) => {
-                            let (variant, variant_place) = downcast(sym::Reference)?;
+                            let (variant, variant_place) =
+                                self.downcast(&field_dest, sym::Reference)?;
                             let reference_place =
                                 self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_reference_type_info(reference_place, *ty, *mutability)?;
 
                             variant
                         }
-                        ty::Adt(_, _)
-                        | ty::Foreign(_)
+                        ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::Slice(_)
                         | ty::RawPtr(..)
@@ -131,14 +189,14 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Bound(..)
                         | ty::Placeholder(_)
                         | ty::Infer(..)
-                        | ty::Error(_) => downcast(sym::Other)?.0,
+                        | ty::Error(_) => self.downcast(&field_dest, sym::Other)?.0,
                     };
                     self.write_discriminant(variant_index, &field_dest)?
                 }
                 sym::size => {
                     let layout = self.layout_of(ty)?;
                     let variant_index = if layout.is_sized() {
-                        let (variant, variant_place) = downcast(sym::Some)?;
+                        let (variant, variant_place) = self.downcast(&field_dest, sym::Some)?;
                         let size_field_place =
                             self.project_field(&variant_place, FieldIdx::ZERO)?;
                         self.write_scalar(
@@ -148,7 +206,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         )?;
                         variant
                     } else {
-                        downcast(sym::None)?.0
+                        self.downcast(&field_dest, sym::None)?.0
                     };
                     self.write_discriminant(variant_index, &field_dest)?;
                 }
@@ -159,6 +217,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         interp_ok(())
     }
 
+    // TODO(type_info): Remove this method, use `project_write_array` as it's more general.
     pub(crate) fn write_tuple_fields(
         &mut self,
         tuple_place: impl Writeable<'tcx, CtfeProvenance>,
@@ -184,7 +243,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
         while let Some((i, place)) = fields_places.next(self)? {
             let field_ty = fields[i as usize];
-            self.write_field(field_ty, place, tuple_layout, i)?;
+            self.write_field(field_ty, place, tuple_layout, None, i)?;
         }
 
         let fields_place = fields_place.map_provenance(CtfeProvenance::as_immutable);
@@ -199,6 +258,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         field_ty: Ty<'tcx>,
         place: MPlaceTy<'tcx>,
         layout: TyAndLayout<'tcx>,
+        name: Option<Symbol>,
         idx: u64,
     ) -> InterpResult<'tcx> {
         for (field_idx, field_ty_field) in
@@ -206,6 +266,15 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         {
             let field_place = self.project_field(&place, field_idx)?;
             match field_ty_field.name {
+                sym::name => {
+                    let name = match name.as_ref() {
+                        Some(name) => Cow::Borrowed(name.as_str()),
+                        None => Cow::Owned(idx.to_string()), // For tuples
+                    };
+                    let name_place = self.allocate_str_dedup(&name)?;
+                    let ptr = self.mplace_to_ref(&name_place)?;
+                    self.write_immediate(*ptr, &field_place)?
+                }
                 sym::ty => self.write_type_id(field_ty, &field_place)?,
                 sym::offset => {
                     let offset = layout.fields.offset(idx as usize);
@@ -243,6 +312,154 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
+        interp_ok(())
+    }
+
+    // FIXME(type_info): No semver considerations for now
+    pub(crate) fn write_adt_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        adt: (Ty<'tcx>, AdtDef<'tcx>),
+        generics: &'tcx GenericArgs<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let (adt_ty, adt_def) = adt;
+        match adt_def.adt_kind() {
+            AdtKind::Struct => self.write_struct_type_info(
+                place,
+                (adt_ty, adt_def.variant(VariantIdx::ZERO)),
+                generics,
+            ),
+            AdtKind::Union => todo!(),
+            AdtKind::Enum => todo!(),
+        }
+    }
+
+    pub(crate) fn write_struct_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        struct_: (Ty<'tcx>, &'tcx VariantDef),
+        generics: &'tcx GenericArgs<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let (struct_ty, struct_def) = struct_;
+        let struct_layout = self.layout_of(struct_ty)?;
+
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                sym::generics => {
+                    self.project_write_array(field_place, generics.len(), |this, i, place| {
+                        match generics[i].kind() {
+                            GenericArgKind::Lifetime(region) => {
+                                this.write_generic_lifetime(region, place)
+                            }
+                            GenericArgKind::Type(ty) => this.write_generic_type(ty, place),
+                            GenericArgKind::Const(c) => this.write_generic_const(c, place),
+                        }
+                    })?;
+                }
+                // TODO(type_info): Use method `project_write_array` as it's more general.
+                sym::fields => {
+                    let fields_slice_place = field_place;
+                    let field_type = fields_slice_place
+                        .layout()
+                        .ty
+                        .builtin_deref(false)
+                        .unwrap()
+                        .sequence_element_type(self.tcx.tcx);
+                    let fields_layout = self.layout_of(Ty::new_array(
+                        self.tcx.tcx,
+                        field_type,
+                        struct_def.fields.len() as u64,
+                    ))?;
+                    let fields_place = self.allocate(fields_layout, MemoryKind::Stack)?;
+                    let mut fields_places = self.project_array_fields(&fields_place)?;
+
+                    for field_def in &struct_def.fields {
+                        let (i, place) = fields_places.next(self)?.unwrap();
+                        let field_ty = field_def.ty(*self.tcx, generics);
+                        self.write_field(field_ty, place, struct_layout, Some(field_def.name), i)?;
+                    }
+
+                    let fields_place = fields_place.map_provenance(CtfeProvenance::as_immutable);
+                    let ptr = Immediate::new_slice(
+                        fields_place.ptr(),
+                        struct_def.fields.len() as u64,
+                        self,
+                    );
+                    self.write_immediate(ptr, &fields_slice_place)?
+                }
+                sym::non_exhaustive => {
+                    let is_non_exhaustive = struct_def.is_field_list_non_exhaustive();
+                    self.write_scalar(Scalar::from_bool(is_non_exhaustive), &field_place)?
+                }
+                // TODO(type_info): Write more info
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+
+        interp_ok(())
+    }
+
+    fn write_generic_lifetime(
+        &mut self,
+        _region: Region<'tcx>,
+        place: MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let (variant_idx, _) = self.downcast(&place, sym::Lifetime)?;
+        self.write_discriminant(variant_idx, &place)?;
+        interp_ok(())
+    }
+
+    fn write_generic_type(&mut self, ty: Ty<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let (variant_idx, variant_place) = self.downcast(&place, sym::Type)?;
+        let generic_type_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+        for (field_idx, field_def) in generic_type_place
+            .layout()
+            .ty
+            .ty_adt_def()
+            .unwrap()
+            .non_enum_variant()
+            .fields
+            .iter_enumerated()
+        {
+            let field_place = self.project_field(&generic_type_place, field_idx)?;
+            match field_def.name {
+                sym::ty => self.write_type_id(ty, &field_place)?,
+                other => span_bug!(self.tcx.def_span(field_def.did), "unimplemented field {other}"),
+            }
+        }
+
+        self.write_discriminant(variant_idx, &place)?;
+        interp_ok(())
+    }
+
+    fn write_generic_const(&mut self, c: Const<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let ConstKind::Value(c) = c.kind() else { bug!("expected a computed const, got {c:?}") };
+
+        let (variant_idx, variant_place) = self.downcast(&place, sym::Const)?;
+        let const_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+        for (field_idx, field_def) in const_place
+            .layout()
+            .ty
+            .ty_adt_def()
+            .unwrap()
+            .non_enum_variant()
+            .fields
+            .iter_enumerated()
+        {
+            let field_place = self.project_field(&const_place, field_idx)?;
+            match field_def.name {
+                sym::ty => self.write_type_id(c.ty, &field_place)?,
+                other => span_bug!(self.tcx.def_span(field_def.did), "unimplemented field {other}"),
+            }
+        }
+
+        self.write_discriminant(variant_idx, &place)?;
         interp_ok(())
     }
 

@@ -3,14 +3,17 @@ Type {
         Tuple {
             fields: [
                 Field {
+                    name: "0",
                     ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
                     offset: 0,
                 },
                 Field {
+                    name: "1",
                     ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
                     offset: 1,
                 },
                 Field {
+                    name: "2",
                     ty: TypeId(0x41223169ff28813ba79b7268a2a968d9),
                     offset: 2,
                 },
@@ -143,13 +146,113 @@ Type {
     ),
 }
 Type {
-    kind: Other,
+    kind: Struct(
+        Struct {
+            generics: [],
+            fields: [
+                Field {
+                    name: "a",
+                    ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    offset: 0,
+                },
+            ],
+            non_exhaustive: false,
+        },
+    ),
     size: Some(
         4,
     ),
 }
 Type {
     kind: Other,
+    size: Some(
+        12,
+    ),
+}
+Type {
+    kind: Struct(
+        Struct {
+            generics: [],
+            fields: [
+                Field {
+                    name: "a",
+                    ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    offset: 0,
+                },
+            ],
+            non_exhaustive: true,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Struct(
+        Struct {
+            generics: [],
+            fields: [
+                Field {
+                    name: "0",
+                    ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    offset: 8,
+                },
+                Field {
+                    name: "1",
+                    ty: TypeId(0x9ed91be891e304132cb86891e578f4a5),
+                    offset: 0,
+                },
+            ],
+            non_exhaustive: false,
+        },
+    ),
+    size: Some(
+        12,
+    ),
+}
+Type {
+    kind: Struct(
+        Struct {
+            generics: [
+                Lifetime(
+                    Lifetime,
+                ),
+                Type(
+                    GenericType {
+                        ty: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
+                    },
+                ),
+                Type(
+                    GenericType {
+                        ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    },
+                ),
+                Const(
+                    Const {
+                        ty: TypeId(0x9ed91be891e304132cb86891e578f4a5),
+                    },
+                ),
+            ],
+            fields: [
+                Field {
+                    name: "a",
+                    ty: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
+                    offset: 4,
+                },
+                Field {
+                    name: "b",
+                    ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    offset: 8,
+                },
+                Field {
+                    name: "l",
+                    ty: TypeId(0x5d686ae9be5f6232dca1f88c0b941fd9),
+                    offset: 0,
+                },
+            ],
+            non_exhaustive: false,
+        },
+    ),
     size: Some(
         12,
     ),

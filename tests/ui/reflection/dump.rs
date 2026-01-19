@@ -14,10 +14,23 @@ struct Foo {
     a: u32,
 }
 
+#[non_exhaustive]
+struct NonExhaustiveStruct {
+    a: u32,
+}
+
+struct TupleStruct(u32, u64);
+
 enum Bar {
     Some(u32),
     None,
     Foomp { a: (), b: &'static str },
+}
+
+struct Generics<'a, A, B, const C: u64> {
+    a: A,
+    b: B,
+    l: &'a (),
 }
 
 struct Unsized {
@@ -37,7 +50,7 @@ fn main() {
         [u8; 2],
         i8, i32, i64, i128, isize,
         u8, u32, u64, u128, usize,
-        Foo, Bar,
+        Foo, Bar, NonExhaustiveStruct, TupleStruct, Generics<i32, u32, 1>,
         &Unsized, &str, &[u8],
         str, [u8],
         &u8, &mut u8,

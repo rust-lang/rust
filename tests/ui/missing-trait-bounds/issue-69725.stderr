@@ -1,17 +1,17 @@
-error[E0599]: the method `clone` exists for struct `Struct<A>`, but its trait bounds were not satisfied
+error[E0599]: the method `clone` exists for struct `issue_69725::Struct<A>`, but its trait bounds were not satisfied
   --> $DIR/issue-69725.rs:9:32
    |
 LL |     let _ = Struct::<A>::new().clone();
-   |                                ^^^^^ method cannot be called on `Struct<A>` due to unsatisfied trait bounds
+   |                                ^^^^^ method cannot be called on `issue_69725::Struct<A>` due to unsatisfied trait bounds
    |
   ::: $DIR/auxiliary/issue-69725.rs:2:1
    |
 LL | pub struct Struct<A>(A);
-   | -------------------- doesn't satisfy `Struct<A>: Clone`
+   | -------------------- doesn't satisfy `issue_69725::Struct<A>: Clone`
    |
    = note: the following trait bounds were not satisfied:
            `A: Clone`
-           which is required by `Struct<A>: Clone`
+           which is required by `issue_69725::Struct<A>: Clone`
 help: consider restricting the type parameter to satisfy the trait bound
    |
 LL | fn crash<A>() where A: Clone {
