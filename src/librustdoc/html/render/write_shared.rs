@@ -26,7 +26,6 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use indexmap::IndexMap;
-use regex::Regex;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -376,12 +375,15 @@ fn hack_get_external_crate_names(
     };
     // this is only run once so it's fine not to cache it
     // !dot_matches_new_line: all crates on same line. greedy: match last bracket
-    let regex = Regex::new(r"\[.*\]").unwrap();
-    let Some(content) = regex.find(&content) else {
-        return Err(Error::new("could not find crates list in crates.js", path));
-    };
-    let content: Vec<String> = try_err!(serde_json::from_str(content.as_str()), &path);
-    Ok(content)
+    if let Some(start) = content.find('[')
+        && let Some(end) = content[start..].find(']')
+    {
+        let content: Vec<String> =
+            try_err!(serde_json::from_str(&content[start..=start + end]), &path);
+        Ok(content)
+    } else {
+        Err(Error::new("could not find crates list in crates.js", path))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
