@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `(): Bound` is not satisfied
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:23:32
+   |
+LL |     let _: &dyn Trait<N = 0> = &();
+   |                                ^^^ the trait `Bound` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:18:1
+   |
+LL | trait Bound {}
+   | ^^^^^^^^^^^
+note: required by a bound in `Trait::N`
+  --> $DIR/dyn-compat-self-bound-on-assoc-const-allowed-and-enforced.rs:10:30
+   |
+LL |     const N: i32 where Self: Bound;
+   |                              ^^^^^ required by this bound in `Trait::N`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

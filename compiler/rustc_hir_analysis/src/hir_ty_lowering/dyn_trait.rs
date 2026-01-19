@@ -58,6 +58,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_items = Vec::new();
         for poly_trait_ref in hir_bounds.iter() {
+            // FIXME(mgca): We actually leak `trait_object_dummy_self` if the type of any assoc
+            //              const mentions `Self` (in "Self projections" which we intentionally
+            //              allow). That's because we query feed the instantiated type to `type_of`.
+            //              That's really bad, dummy self should never escape lowering! It leads us
+            //              to accept less code we'd like to support and can lead to ICEs later.
             let result = self.lower_poly_trait_ref(
                 poly_trait_ref,
                 dummy_self,

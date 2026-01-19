@@ -25,7 +25,8 @@ use crate::infer::TyCtxtInferExt;
 pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{
-    MethodViolationCode, Obligation, ObligationCause, normalize_param_env_or_error, util,
+    AssocConstViolation, MethodViolation, Obligation, ObligationCause,
+    normalize_param_env_or_error, util,
 };
 
 /// Returns the dyn-compatibility violations that affect HIR ty lowering.
@@ -230,7 +231,7 @@ fn predicate_references_self<'tcx>(
             // types for trait objects.
             //
             // Note that we *do* allow projection *outputs* to contain
-            // `self` (i.e., `trait Foo: Bar<Output=Self::Result> { type Result; }`),
+            // `Self` (i.e., `trait Foo: Bar<Output=Self::Result> { type Result; }`),
             // we just require the user to specify *both* outputs
             // in the object type (i.e., `dyn Foo<Output=(), Result=()>`).
             //
@@ -322,20 +323,36 @@ pub fn dyn_compatibility_violations_for_assoc_item(
 
     match item.kind {
         ty::AssocKind::Const { name } => {
+            // We will permit type associated consts if they are explicitly mentioned in the
+            // trait object type. We can't check this here, as here we only check if it is
+            // guaranteed to not be possible.
+
+            let mut errors = Vec::new();
+
             if tcx.features().min_generic_const_args() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
-                    vec![DynCompatibilityViolation::GenericAssocConst(name, span())]
+                    errors.push(AssocConstViolation::Generic);
                 } else if !find_attr!(tcx.get_all_attrs(item.def_id), AttributeKind::TypeConst(_)) {
-                    vec![DynCompatibilityViolation::NonTypeAssocConst(name, span())]
-                } else {
-                    // We will permit type associated consts if they are explicitly mentioned in the
-                    // trait object type. We can't check this here, as here we only check if it is
-                    // guaranteed to not be possible.
-                    Vec::new()
+                    errors.push(AssocConstViolation::NonType);
+                }
+
+                let ty = ty::Binder::dummy(tcx.type_of(item.def_id).instantiate_identity());
+                if contains_illegal_self_type_reference(
+                    tcx,
+                    trait_def_id,
+                    ty,
+                    AllowSelfProjections::Yes,
+                ) {
+                    errors.push(AssocConstViolation::TypeReferencesSelf);
                 }
             } else {
-                vec![DynCompatibilityViolation::AssocConst(name, span())]
+                errors.push(AssocConstViolation::FeatureNotEnabled);
             }
+
+            errors
+                .into_iter()
+                .map(|error| DynCompatibilityViolation::AssocConst(name, error, span()))
+                .collect()
         }
         ty::AssocKind::Fn { name, .. } => {
             virtual_call_violations_for_method(tcx, trait_def_id, item)
@@ -344,10 +361,10 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                     let node = tcx.hir_get_if_local(item.def_id);
                     // Get an accurate span depending on the violation.
                     let span = match (&v, node) {
-                        (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
-                        (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
-                        (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
-                        (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
+                        (MethodViolation::ReferencesSelfInput(Some(span)), _) => *span,
+                        (MethodViolation::UndispatchableReceiver(Some(span)), _) => *span,
+                        (MethodViolation::ReferencesImplTraitInTrait(span), _) => *span,
+                        (MethodViolation::ReferencesSelfOutput, Some(node)) => {
                             node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
                         }
                         _ => span(),
@@ -380,7 +397,7 @@ fn virtual_call_violations_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method: ty::AssocItem,
-) -> Vec<MethodViolationCode> {
+) -> Vec<MethodViolation> {
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
 
     // The method's first parameter must be named `self`
@@ -408,7 +425,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
         // Not having `self` parameter messes up the later checks,
         // so we need to return instead of pushing
-        return vec![MethodViolationCode::StaticMethod(sugg)];
+        return vec![MethodViolation::StaticMethod(sugg)];
     }
 
     let mut errors = Vec::new();
@@ -429,7 +446,7 @@ fn virtual_call_violations_for_method<'tcx>(
             } else {
                 None
             };
-            errors.push(MethodViolationCode::ReferencesSelfInput(span));
+            errors.push(MethodViolation::ReferencesSelfInput(span));
         }
     }
     if contains_illegal_self_type_reference(
@@ -438,19 +455,19 @@ fn virtual_call_violations_for_method<'tcx>(
         sig.output(),
         AllowSelfProjections::Yes,
     ) {
-        errors.push(MethodViolationCode::ReferencesSelfOutput);
+        errors.push(MethodViolation::ReferencesSelfOutput);
     }
-    if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
-        errors.push(code);
+    if let Some(error) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
+        errors.push(error);
     }
     if sig.skip_binder().c_variadic {
-        errors.push(MethodViolationCode::CVariadic);
+        errors.push(MethodViolation::CVariadic);
     }
 
     // We can't monomorphize things like `fn foo<A>(...)`.
     let own_counts = tcx.generics_of(method.def_id).own_counts();
     if own_counts.types > 0 || own_counts.consts > 0 {
-        errors.push(MethodViolationCode::Generic);
+        errors.push(MethodViolation::Generic);
     }
 
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
@@ -470,7 +487,7 @@ fn virtual_call_violations_for_method<'tcx>(
             } else {
                 None
             };
-            errors.push(MethodViolationCode::UndispatchableReceiver(span));
+            errors.push(MethodViolation::UndispatchableReceiver(span));
         } else {
             // We confirm that the `receiver_is_dispatchable` is accurate later,
             // see `check_receiver_correct`. It should be kept in sync with this code.
@@ -528,7 +545,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
         contains_illegal_self_type_reference(tcx, trait_def_id, pred, AllowSelfProjections::Yes)
     }) {
-        errors.push(MethodViolationCode::WhereClauseReferencesSelf);
+        errors.push(MethodViolation::WhereClauseReferencesSelf);
     }
 
     errors
@@ -870,12 +887,12 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
-) -> Option<MethodViolationCode> {
+) -> Option<MethodViolation> {
     let ty = tcx.liberate_late_bound_regions(fn_def_id, ty);
 
     if tcx.asyncness(fn_def_id).is_async() {
         // Rendering the error as a separate `async-specific` message is better.
-        Some(MethodViolationCode::AsyncFn)
+        Some(MethodViolation::AsyncFn)
     } else {
         ty.visit_with(&mut IllegalRpititVisitor { tcx, allowed: None }).break_value()
     }
@@ -887,14 +904,14 @@ struct IllegalRpititVisitor<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
-    type Result = ControlFlow<MethodViolationCode>;
+    type Result = ControlFlow<MethodViolation>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         if let ty::Alias(ty::Projection, proj) = *ty.kind()
             && Some(proj) != self.allowed
             && self.tcx.is_impl_trait_in_trait(proj.def_id)
         {
-            ControlFlow::Break(MethodViolationCode::ReferencesImplTraitInTrait(
+            ControlFlow::Break(MethodViolation::ReferencesImplTraitInTrait(
                 self.tcx.def_span(proj.def_id),
             ))
         } else {
