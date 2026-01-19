@@ -85,6 +85,7 @@ pub mod args;
 pub mod pretty;
 #[macro_use]
 mod print;
+pub mod highlighter;
 mod session_diagnostics;
 
 // Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
@@ -526,7 +527,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
         let mdstream = markdown::MdStream::parse_str(content);
         let bufwtr = markdown::create_stdout_bufwtr();
         let mut mdbuf = Vec::new();
-        if mdstream.write_anstream_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
+        if mdstream.write_anstream_buf(&mut mdbuf, Some(&highlighter::highlight)).is_ok() {
+            Some((bufwtr, mdbuf))
+        } else {
+            None
+        }
     };
 
     // Try to print via the pager, pretty output if possible.
