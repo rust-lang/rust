@@ -63,7 +63,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
-        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone();
+        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone()?;
         let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
         let expansion_span_map = db.expansion_span_map(expansion_file_id);
         let mut expansion = format(
@@ -846,6 +846,21 @@ struct S {
             expect![[r#"
                 foo!
                 u32"#]],
+        );
+    }
+
+    #[test]
+    fn regression_21489() {
+        check(
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive, fmt
+#[derive(Debug, proc_macros::DeriveIdentity$0)]
+struct Foo;
+        "#,
+            expect![[r#"
+                proc_macros::DeriveIdentity
+                struct Foo;"#]],
         );
     }
 }

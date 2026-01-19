@@ -641,11 +641,14 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<ExpandResult<SyntaxNode>>> {
+    pub fn expand_derive_macro(
+        &self,
+        attr: &ast::Attr,
+    ) -> Option<Vec<Option<ExpandResult<SyntaxNode>>>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
             .into_iter()
-            .flat_map(|call| {
+            .map(|call| {
                 let file_id = call?.left()?;
                 let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
                 let root_node = value.0.syntax_node();
