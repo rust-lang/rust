@@ -11,6 +11,7 @@ use rustc_session::config::EntryFnType;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use super::check_function_signature;
@@ -141,6 +142,19 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
+            error = true;
+        }
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
+        if !errors.is_empty() {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+            error = true;
+        }
+
+        let region_errors =
+            infcx.resolve_regions(main_diagnostics_def_id, param_env, tcx.mk_type_list(&[]));
+
+        if !region_errors.is_empty() {
+            infcx.err_ctxt().report_region_errors(main_diagnostics_def_id, &region_errors);
             error = true;
         }
         // now we can take the return type of the given main function
