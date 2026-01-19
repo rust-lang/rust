@@ -1194,14 +1194,23 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks whether values of this type `T` implement the `UnsafeUnpin` trait.
+    pub fn is_unsafe_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        self.is_trivially_unpin() || tcx.is_unsafe_unpin_raw(typing_env.as_query_input(self))
+    }
+
     /// Checks whether values of this type `T` implement the `Unpin` trait.
+    ///
+    /// Note that this is a safe trait, so it cannot be very semantically meaningful.
+    /// However, as a hack to mitigate <https://github.com/rust-lang/rust/issues/63818> until a
+    /// proper solution is implemented, we do give special semantics to the `Unpin` trait.
     pub fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         self.is_trivially_unpin() || tcx.is_unpin_raw(typing_env.as_query_input(self))
     }
 
-    /// Fast path helper for testing if a type is `Unpin`.
+    /// Fast path helper for testing if a type is `Unpin` *and* `UnsafeUnpin`.
     ///
-    /// Returning true means the type is known to be `Unpin`. Returning
+    /// Returning true means the type is known to be `Unpin` and `UnsafeUnpin`. Returning
     /// `false` means nothing -- could be `Unpin`, might not be.
     fn is_trivially_unpin(self) -> bool {
         match self.kind() {

@@ -1,9 +1,9 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
-#![feature(allocator_api)]
+#![feature(allocator_api, unsafe_unpin)]
 
-use std::marker::PhantomPinned;
+use std::marker::{PhantomPinned, UnsafeUnpin};
 use std::mem::MaybeUninit;
 use std::num::NonZero;
 use std::ptr::NonNull;
@@ -259,11 +259,21 @@ pub fn trait_raw(_: *const dyn Drop) {}
 
 // CHECK: @trait_box(ptr noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<dyn Drop + Unpin>) {}
+pub fn trait_box(_: Box<dyn Drop + Unpin + UnsafeUnpin>) {}
+
+// Ensure that removing *either* `Unpin` or `UnsafeUnpin` is enough to lose the attribute.
+// CHECK: @trait_box_pin1(ptr noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
+#[no_mangle]
+pub fn trait_box_pin1(_: Box<dyn Drop + Unpin>) {}
+// CHECK: @trait_box_pin2(ptr noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
+#[no_mangle]
+pub fn trait_box_pin2(_: Box<dyn Drop + UnsafeUnpin>) {}
 
 // CHECK: { ptr, ptr } @trait_option(ptr noalias noundef align 1 %x.0, ptr %x.1)
 #[no_mangle]
-pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + Unpin>> {
+pub fn trait_option(
+    x: Option<Box<dyn Drop + Unpin + UnsafeUnpin>>,
+) -> Option<Box<dyn Drop + Unpin + UnsafeUnpin>> {
     x
 }
 
