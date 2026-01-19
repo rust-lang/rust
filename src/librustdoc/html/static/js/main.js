@@ -1018,7 +1018,6 @@ function preLoadCss(cssUrl) {
                 }
             }
             const template = document.createElement("template");
-            // @ts-expect-error
             template.innerHTML = text;
 
             onEachLazy(template.content.querySelectorAll("a"), elem => {
