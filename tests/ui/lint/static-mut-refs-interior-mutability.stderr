@@ -1,0 +1,18 @@
+error: creating a shared reference to mutable static
+  --> $DIR/static-mut-refs-interior-mutability.rs:11:26
+   |
+LL |     let _lock = unsafe { STDINOUT_MUTEX.lock().unwrap() };
+   |                          ^^^^^^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = help: use a type that relies on "interior mutability" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: `#[deny(static_mut_refs)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
+help: this type already provides "interior mutability", so its binding doesn't need to be declared as mutable
+   |
+LL - static mut STDINOUT_MUTEX: Mutex<bool> = Mutex::new(false);
+LL + static STDINOUT_MUTEX: Mutex<bool> = Mutex::new(false);
+   |
+
+error: aborting due to 1 previous error
+
