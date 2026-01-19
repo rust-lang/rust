@@ -3,7 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{permute, pmaddbw, psadbw, pshufb};
+use super::{packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, psadbw, pshufb};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -88,6 +88,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 psadbw(this, left, right, dest)?
             }
+            // Used to implement the _mm512_madd_epi16 function.
+            "pmaddw.d.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                pmaddwd(this, left, right, dest)?;
+            }
             // Used to implement the _mm512_maddubs_epi16 function.
             "pmaddubs.w.512" => {
                 let [left, right] =
@@ -120,6 +129,38 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [src, a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 vpdpbusd(this, src, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packs_epi16 function
+            "packsswb.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                packsswb(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packus_epi16 function
+            "packuswb.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                packuswb(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packs_epi32 function
+            "packssdw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                packssdw(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packus_epi32 function
+            "packusdw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                packusdw(this, a, b, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

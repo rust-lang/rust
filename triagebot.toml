@@ -1465,6 +1465,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@tiif",
     "@WaffleLapkin",
     "@wesleywiser",
 ]
