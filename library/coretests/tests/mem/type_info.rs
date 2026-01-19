@@ -71,6 +71,11 @@ fn test_structs() {
         a: u8,
     }
     struct TupleStruct(u8, u16);
+    struct Generics<'a, A, B, const C: u64> {
+        a: A,
+        b: B,
+        l: &'a (), // FIXME(type_info): offset of this field is dumped as 0, which may not be correct
+    }
 
     let Type { kind: Struct(ty), size, .. } = (const { Type::of::<TestStruct>() }) else {
         panic!()
@@ -93,6 +98,20 @@ fn test_structs() {
     assert_eq!(ty.fields.len(), 2);
     assert_eq!(ty.fields[0].name, "0");
     assert_eq!(ty.fields[1].name, "1");
+
+    let Type { kind: Struct(ty), size, .. } =
+        (const { Type::of::<Generics<'static, i32, u32, 1>>() })
+    else {
+        panic!()
+    };
+    assert_eq!(ty.fields.len(), 3);
+    let Generic::Lifetime(_) = ty.generics[0] else { panic!() };
+    let Generic::Type(GenericType { ty: generic_ty }) = ty.generics[1] else { panic!() };
+    let TypeKind::Int(generic_ty) = generic_ty.info().kind else { panic!() };
+    assert_eq!(generic_ty.bits, 32);
+    let Generic::Type(GenericType { ty: generic_ty }) = ty.generics[2] else { panic!() };
+    let TypeKind::Int(generic_ty) = generic_ty.info().kind else { panic!() };
+    assert_eq!(generic_ty.bits, 32);
 }
 
 #[test]

@@ -469,7 +469,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
 LL |     trait GenericLifetime<'a> {
    |           ^^^^^^^^^^^^^^^ --
 
-error[E0107]: missing generics for trait `GenericType`
+error[E0107]: missing generics for trait `r#trait::GenericType`
   --> $DIR/wrong-number-of-args.rs:129:22
    |
 LL |     type D = Box<dyn GenericType>;

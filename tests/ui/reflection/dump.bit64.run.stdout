@@ -148,6 +148,7 @@ Type {
 Type {
     kind: Struct(
         Struct {
+            generics: [],
             fields: [
                 Field {
                     name: "a",
@@ -171,6 +172,7 @@ Type {
 Type {
     kind: Struct(
         Struct {
+            generics: [],
             fields: [
                 Field {
                     name: "a",
@@ -188,6 +190,7 @@ Type {
 Type {
     kind: Struct(
         Struct {
+            generics: [],
             fields: [
                 Field {
                     name: "0",
@@ -197,6 +200,53 @@ Type {
                 Field {
                     name: "1",
                     ty: TypeId(0x9ed91be891e304132cb86891e578f4a5),
+                    offset: 0,
+                },
+            ],
+            non_exhaustive: false,
+        },
+    ),
+    size: Some(
+        16,
+    ),
+}
+Type {
+    kind: Struct(
+        Struct {
+            generics: [
+                Lifetime(
+                    Lifetime,
+                ),
+                Type(
+                    GenericType {
+                        ty: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
+                    },
+                ),
+                Type(
+                    GenericType {
+                        ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    },
+                ),
+                Const(
+                    Const {
+                        ty: TypeId(0x9ed91be891e304132cb86891e578f4a5),
+                    },
+                ),
+            ],
+            fields: [
+                Field {
+                    name: "a",
+                    ty: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
+                    offset: 8,
+                },
+                Field {
+                    name: "b",
+                    ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                    offset: 12,
+                },
+                Field {
+                    name: "l",
+                    ty: TypeId(0x5d686ae9be5f6232dca1f88c0b941fd9),
                     offset: 0,
                 },
             ],

@@ -4,9 +4,12 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CtfeProvenance, Scalar};
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, AdtDef, AdtKind, Const, GenericArgs, ScalarInt, Ty, VariantDef};
+use rustc_middle::ty::{
+    self, AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, ScalarInt, Ty,
+    VariantDef,
+};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -28,6 +31,37 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             .0;
 
         interp_ok((variant_id, self.project_downcast(place, variant_id)?))
+    }
+
+    // A general method to write an array to a static slice place.
+    fn project_write_array(
+        &mut self,
+        slice_place: impl Writeable<'tcx, CtfeProvenance>,
+        len: usize,
+        writer: impl Fn(&mut Self, /* index */ usize, MPlaceTy<'tcx>) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
+        // Array element type
+        let field_ty = slice_place
+            .layout()
+            .ty
+            .builtin_deref(false)
+            .unwrap()
+            .sequence_element_type(self.tcx.tcx);
+
+        // Allocate an array
+        let array_layout = self.layout_of(Ty::new_array(self.tcx.tcx, field_ty, len as u64))?;
+        let array_place = self.allocate(array_layout, MemoryKind::Stack)?;
+
+        // Fill the array fields
+        let mut field_places = self.project_array_fields(&array_place)?;
+        while let Some((i, place)) = field_places.next(self)? {
+            writer(self, i as usize, place)?;
+        }
+
+        // Write the slice pointing to the array
+        let array_place = array_place.map_provenance(CtfeProvenance::as_immutable);
+        let ptr = Immediate::new_slice(array_place.ptr(), len as u64, self);
+        self.write_immediate(ptr, &slice_place)
     }
 
     /// Writes a `core::mem::type_info::TypeInfo` for a given type, `ty` to the given place.
@@ -183,6 +217,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         interp_ok(())
     }
 
+    // TODO(type_info): Remove this method, use `project_write_array` as it's more general.
     pub(crate) fn write_tuple_fields(
         &mut self,
         tuple_place: impl Writeable<'tcx, CtfeProvenance>,
@@ -314,6 +349,18 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
+                sym::generics => {
+                    self.project_write_array(field_place, generics.len(), |this, i, place| {
+                        match generics[i].kind() {
+                            GenericArgKind::Lifetime(region) => {
+                                this.write_generic_lifetime(region, place)
+                            }
+                            GenericArgKind::Type(ty) => this.write_generic_type(ty, place),
+                            GenericArgKind::Const(c) => this.write_generic_const(c, place),
+                        }
+                    })?;
+                }
+                // TODO(type_info): Use method `project_write_array` as it's more general.
                 sym::fields => {
                     let fields_slice_place = field_place;
                     let field_type = fields_slice_place
@@ -353,6 +400,66 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
+        interp_ok(())
+    }
+
+    fn write_generic_lifetime(
+        &mut self,
+        _region: Region<'tcx>,
+        place: MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let (variant_idx, _) = self.downcast(&place, sym::Lifetime)?;
+        self.write_discriminant(variant_idx, &place)?;
+        interp_ok(())
+    }
+
+    fn write_generic_type(&mut self, ty: Ty<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let (variant_idx, variant_place) = self.downcast(&place, sym::Type)?;
+        let generic_type_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+        for (field_idx, field_def) in generic_type_place
+            .layout()
+            .ty
+            .ty_adt_def()
+            .unwrap()
+            .non_enum_variant()
+            .fields
+            .iter_enumerated()
+        {
+            let field_place = self.project_field(&generic_type_place, field_idx)?;
+            match field_def.name {
+                sym::ty => self.write_type_id(ty, &field_place)?,
+                other => span_bug!(self.tcx.def_span(field_def.did), "unimplemented field {other}"),
+            }
+        }
+
+        self.write_discriminant(variant_idx, &place)?;
+        interp_ok(())
+    }
+
+    fn write_generic_const(&mut self, c: Const<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let ConstKind::Value(c) = c.kind() else { bug!("expected a computed const, got {c:?}") };
+
+        let (variant_idx, variant_place) = self.downcast(&place, sym::Const)?;
+        let const_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+        for (field_idx, field_def) in const_place
+            .layout()
+            .ty
+            .ty_adt_def()
+            .unwrap()
+            .non_enum_variant()
+            .fields
+            .iter_enumerated()
+        {
+            let field_place = self.project_field(&const_place, field_idx)?;
+            match field_def.name {
+                sym::ty => self.write_type_id(c.ty, &field_place)?,
+                other => span_bug!(self.tcx.def_span(field_def.did), "unimplemented field {other}"),
+            }
+        }
+
+        self.write_discriminant(variant_idx, &place)?;
         interp_ok(())
     }
 
