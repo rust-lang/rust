@@ -1318,6 +1318,16 @@ These proc-macros will be ignored when trying to expand them.
 This config takes a map of crate names with the exported proc-macro names to ignore as values.
 
 
+## rust-analyzer.procMacro.processes {#procMacro.processes}
+
+Default: `1`
+
+Number of proc-macro server processes to spawn.
+
+Controls how many independent `proc-macro-srv` processes rust-analyzer
+runs in parallel to handle macro expansion.
+
+
 ## rust-analyzer.procMacro.server {#procMacro.server}
 
 Default: `null`

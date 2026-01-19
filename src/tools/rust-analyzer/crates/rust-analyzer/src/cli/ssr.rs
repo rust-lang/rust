@@ -20,6 +20,7 @@ impl flags::Ssr {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (ref db, vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
@@ -56,6 +57,7 @@ impl flags::Search {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (ref db, _vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,

@@ -18,6 +18,7 @@ extern crate rustc_driver as _;
 
 pub mod bidirectional_protocol;
 pub mod legacy_protocol;
+pub mod pool;
 pub mod process;
 pub mod transport;
 
@@ -27,7 +28,9 @@ use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
 pub use crate::transport::codec::Codec;
-use crate::{bidirectional_protocol::SubCallback, process::ProcMacroServerProcess};
+use crate::{
+    bidirectional_protocol::SubCallback, pool::ProcMacroServerPool, process::ProcMacroServerProcess,
+};
 
 /// The versions of the server protocol
 pub mod version {
@@ -85,7 +88,7 @@ pub struct ProcMacroClient {
     ///
     /// That means that concurrent salsa requests may block each other when expanding proc macros,
     /// which is unfortunate, but simple and good enough for the time being.
-    process: Arc<ProcMacroServerProcess>,
+    pool: Arc<ProcMacroServerPool>,
     path: AbsPathBuf,
 }
 
@@ -107,7 +110,7 @@ impl MacroDylib {
 /// we share a single expander process for all macros within a workspace.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    process: Arc<ProcMacroServerProcess>,
+    pool: ProcMacroServerPool,
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
@@ -121,7 +124,6 @@ impl PartialEq for ProcMacro {
             && self.kind == other.kind
             && self.dylib_path == other.dylib_path
             && self.dylib_last_modified == other.dylib_last_modified
-            && Arc::ptr_eq(&self.process, &other.process)
     }
 }
 
@@ -151,9 +153,17 @@ impl ProcMacroClient {
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
         version: Option<&Version>,
+        num_process: usize,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::spawn(process_path, env, version)?;
-        Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
+        let pool_size = num_process;
+        let mut workers = Vec::with_capacity(pool_size);
+        for _ in 0..pool_size {
+            let worker = ProcMacroServerProcess::spawn(process_path, env.clone(), version)?;
+            workers.push(worker);
+        }
+
+        let pool = ProcMacroServerPool::new(workers);
+        Ok(ProcMacroClient { pool: Arc::new(pool), path: process_path.to_owned() })
     }
 
     /// Invokes `spawn` and returns a client connected to the resulting read and write handles.
@@ -167,11 +177,20 @@ impl ProcMacroClient {
             Box<dyn process::ProcessExit>,
             Box<dyn io::Write + Send + Sync>,
             Box<dyn io::BufRead + Send + Sync>,
-        )>,
+        )> + Clone,
         version: Option<&Version>,
+        num_process: usize,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(spawn, version, || "<unknown>".to_owned())?;
-        Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
+        let pool_size = num_process;
+        let mut workers = Vec::with_capacity(pool_size);
+        for _ in 0..pool_size {
+            let worker =
+                ProcMacroServerProcess::run(spawn.clone(), version, || "<unknown>".to_owned())?;
+            workers.push(worker);
+        }
+
+        let pool = ProcMacroServerPool::new(workers);
+        Ok(ProcMacroClient { pool: Arc::new(pool), path: process_path.to_owned() })
     }
 
     /// Returns the absolute path to the proc-macro server.
@@ -185,31 +204,12 @@ impl ProcMacroClient {
         dylib: MacroDylib,
         callback: Option<SubCallback<'_>>,
     ) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let macros = self.process.find_proc_macros(&dylib.path, callback)?;
-
-        let dylib_path = Arc::new(dylib.path);
-        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
-            .ok()
-            .and_then(|metadata| metadata.modified().ok());
-        match macros {
-            Ok(macros) => Ok(macros
-                .into_iter()
-                .map(|(name, kind)| ProcMacro {
-                    process: self.process.clone(),
-                    name: name.into(),
-                    kind,
-                    dylib_path: dylib_path.clone(),
-                    dylib_last_modified,
-                })
-                .collect()),
-            Err(message) => Err(ServerError { message, io: None }),
-        }
+        self.pool.load_dylib(&dylib, callback)
     }
 
     /// Checks if the proc-macro server has exited.
     pub fn exited(&self) -> Option<&ServerError> {
-        self.process.exited()
+        self.pool.exited()
     }
 }
 
@@ -225,7 +225,7 @@ impl ProcMacro {
     }
 
     fn needs_fixup_change(&self) -> bool {
-        let version = self.process.version();
+        let version = self.pool.version();
         (version::RUST_ANALYZER_SPAN_SUPPORT..version::HASHED_AST_ID).contains(&version)
     }
 
@@ -269,7 +269,7 @@ impl ProcMacro {
             }
         }
 
-        self.process.expand(
+        self.pool.pick_process()?.expand(
             self,
             subtree,
             attr,

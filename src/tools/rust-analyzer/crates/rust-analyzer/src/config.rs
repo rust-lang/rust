@@ -387,6 +387,12 @@ config_data! {
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
         procMacro_enable: bool = true,
 
+        /// Number of proc-macro server processes to spawn.
+        ///
+        /// Controls how many independent `proc-macro-srv` processes rust-analyzer
+        /// runs in parallel to handle macro expansion.
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
 
@@ -2671,6 +2677,13 @@ impl Config {
         }
     }
 
+    pub fn proc_macro_num_processes(&self) -> usize {
+        match self.procMacro_processes() {
+            NumProcesses::Concrete(0) | NumProcesses::Physical => num_cpus::get_physical(),
+            &NumProcesses::Concrete(n) => n,
+        }
+    }
+
     pub fn main_loop_num_threads(&self) -> usize {
         match self.numThreads() {
             Some(NumThreads::Concrete(0)) | None | Some(NumThreads::Physical) => {
@@ -3103,6 +3116,14 @@ pub enum TargetDirectory {
 pub enum NumThreads {
     Physical,
     Logical,
+    #[serde(untagged)]
+    Concrete(usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NumProcesses {
+    Physical,
     #[serde(untagged)]
     Concrete(usize),
 }
@@ -3929,6 +3950,22 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     "enumDescriptions": [
                         "Use the number of physical cores",
                         "Use the number of logical cores",
+                    ],
+                },
+            ],
+        },
+        "NumProcesses" => set! {
+            "anyOf": [
+                {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical"],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
                     ],
                 },
             ],
