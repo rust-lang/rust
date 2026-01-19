@@ -1571,6 +1571,9 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = where_clause;
 
+        if let Some(recovered_rhs) = self.try_recover_const_missing_semi(&rhs) {
+            return Ok((ident, generics, ty, Some(ConstItemRhs::Body(recovered_rhs))));
+        }
         self.expect_semi()?;
 
         Ok((ident, generics, ty, rhs))
@@ -2650,8 +2653,21 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
-            self.parse_block_common(self.token.span, BlockCheckMode::Default, None)
-                .map(|(attrs, body)| (attrs, Some(body)))?
+            let prev_in_fn_body = self.in_fn_body;
+            self.in_fn_body = true;
+            let res = self.parse_block_common(self.token.span, BlockCheckMode::Default, None).map(
+                |(attrs, mut body)| {
+                    if let Some(guar) = self.fn_body_missing_semi_guar.take() {
+                        body.stmts.push(self.mk_stmt(
+                            body.span,
+                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                        ));
+                    }
+                    (attrs, Some(body))
+                },
+            );
+            self.in_fn_body = prev_in_fn_body;
+            res?
         } else if self.token == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
@@ -3406,6 +3422,31 @@ impl<'a> Parser<'a> {
                 .map_err(|e| e.cancel()),
             Ok(Some(_))
         )
+    }
+
+    /// Try to recover from over-parsing in const item when a semicolon is missing.
+    ///
+    /// This detects cases where we parsed too much because a semicolon was missing
+    /// and the next line started an expression that the parser treated as a continuation
+    /// (e.g., `foo() \n &bar` was parsed as `foo() & bar`).
+    ///
+    /// Returns a corrected expression if recovery is successful.
+    fn try_recover_const_missing_semi(&mut self, rhs: &Option<ConstItemRhs>) -> Option<Box<Expr>> {
+        if self.token == TokenKind::Semi {
+            return None;
+        }
+        let Some(ConstItemRhs::Body(rhs)) = rhs else {
+            return None;
+        };
+        if !self.in_fn_body || !self.may_recover() || rhs.span.from_expansion() {
+            return None;
+        }
+        if let Some((span, guar)) = self.missing_semi_from_binop("const", rhs) {
+            self.fn_body_missing_semi_guar = Some(guar);
+            Some(self.mk_expr(span, ExprKind::Err(guar)))
+        } else {
+            None
+        }
     }
 }
 
