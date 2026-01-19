@@ -504,33 +504,37 @@ impl Hierarchy {
 
     fn add_path(self: &Rc<Self>, path: &Path) {
         let mut h = Rc::clone(self);
-        let mut elems = path
+        let mut components = path
             .components()
-            .filter_map(|s| match s {
-                Component::Normal(s) => Some(s.to_owned()),
-                Component::ParentDir => Some(OsString::from("..")),
-                _ => None,
-            })
+            .filter(|component| matches!(component, Component::Normal(_) | Component::ParentDir))
             .peekable();
-        loop {
-            let cur_elem = elems.next().expect("empty file path");
-            if cur_elem == ".." {
-                if let Some(parent) = h.parent.upgrade() {
-                    h = parent;
+
+        while let Some(component) = components.next() {
+            match component {
+                Component::Normal(s) => {
+                    if components.peek().is_none() {
+                        h.elems.borrow_mut().insert(s.to_owned());
+                        break;
+                    }
+                    let next_h = {
+                        let mut children = h.children.borrow_mut();
+
+                        if let Some(existing) = children.get(s) {
+                            Rc::clone(existing)
+                        } else {
+                            let new_node = Rc::new(Self::with_parent(s.to_owned(), &h));
+                            children.insert(s.to_owned(), Rc::clone(&new_node));
+                            new_node
+                        }
+                    };
+                    h = next_h;
                 }
-                continue;
-            }
-            if elems.peek().is_none() {
-                h.elems.borrow_mut().insert(cur_elem);
-                break;
-            } else {
-                let entry = Rc::clone(
-                    h.children
-                        .borrow_mut()
-                        .entry(cur_elem.clone())
-                        .or_insert_with(|| Rc::new(Self::with_parent(cur_elem, &h))),
-                );
-                h = entry;
+                Component::ParentDir => {
+                    if let Some(parent) = h.parent.upgrade() {
+                        h = parent;
+                    }
+                }
+                _ => {}
             }
         }
     }
