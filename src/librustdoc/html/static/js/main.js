@@ -619,8 +619,7 @@ function preLoadCss(cssUrl) {
      */
     function openParentDetails(elem) {
         while (elem) {
-            if (elem.tagName === "DETAILS") {
-                // @ts-expect-error
+            if (elem instanceof HTMLDetailsElement) {
                 elem.open = true;
             }
             elem = elem.parentElement;
@@ -656,10 +655,8 @@ function preLoadCss(cssUrl) {
         }
 
         if (document.activeElement &&
-            document.activeElement.tagName === "INPUT" &&
-            // @ts-expect-error
+            document.activeElement instanceof HTMLInputElement &&
             document.activeElement.type !== "checkbox" &&
-            // @ts-expect-error
             document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
