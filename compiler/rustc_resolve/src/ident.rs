@@ -702,7 +702,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
             Scope::StdLibPrelude => {
                 let mut result = Err(Determinacy::Determined);
-                if let Some(prelude) = self.prelude
+                if let Some(prelude) = &self.prelude
+                    && let Some(decl) = prelude.get(&BindingKey::new(ident, ns))
+                    && (matches!(use_prelude, UsePrelude::Yes) || self.is_builtin_macro(decl.res()))
+                {
+                    result = Ok(*decl)
+                } else if let Some(prelude) = self.local_prelude
                     && let Ok(decl) = self.reborrow().resolve_ident_in_scope_set(
                         ident.0,
                         ScopeSet::Module(ns, prelude),
@@ -712,9 +717,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ignore_decl,
                         ignore_import,
                     )
-                    && (matches!(use_prelude, UsePrelude::Yes) || self.is_builtin_macro(decl.res()))
                 {
-                    result = Ok(decl)
+                    result = Ok(decl);
                 }
 
                 result

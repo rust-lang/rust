@@ -14,6 +14,7 @@ use rustc_ast::{
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
@@ -712,7 +713,16 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     let path_res =
                         self.r.cm().maybe_resolve_path(&prefix, None, &self.parent_scope, None);
                     if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
-                        self.r.prelude = Some(module);
+                        let mut prelude = FxIndexMap::default();
+                        for (key, name_resolution) in self.r.resolutions(module).borrow().iter() {
+                            if let Some(decl) = name_resolution.borrow().best_decl() {
+                                prelude.insert(*key, decl);
+                            }
+                        }
+                        self.r.prelude = Some(prelude);
+                        if module.def_id().is_local() {
+                            self.r.local_prelude = Some(module);
+                        }
                     } else {
                         self.r.dcx().span_err(use_tree.span, "cannot resolve a prelude import");
                     }

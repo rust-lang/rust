@@ -1122,7 +1122,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// Assert that we are in speculative resolution mode.
     assert_speculative: bool,
 
-    prelude: Option<Module<'ra>> = None,
+    prelude: Option<FxIndexMap<BindingKey, Decl<'ra>>> = None,
+    local_prelude: Option<Module<'ra>> = None,
     extern_prelude: FxIndexMap<Macros20NormalizedIdent, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
@@ -1893,8 +1894,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Already handled in `ModuleNonGlobs` (but see #144993).
                 }
                 Scope::StdLibPrelude => {
-                    if let Some(module) = this.prelude {
+                    if let Some(module) = this.local_prelude {
                         this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                    } else if let Some(prelude) = &this.prelude {
+                        for (key, decl) in prelude {
+                            if key.ns == TypeNS
+                                && let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) =
+                                    decl.res()
+                                && this.trait_may_have_item(this.get_module(def_id), assoc_item)
+                            {
+                                found_traits.push(TraitCandidate {
+                                    def_id,
+                                    import_ids: Default::default(),
+                                });
+                            }
+                        }
                     }
                 }
                 Scope::ExternPreludeItems
@@ -2037,18 +2051,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
-                let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
-                    let empty_module = self.empty_module;
-                    let arenas = self.arenas;
-                    self.cm()
-                        .maybe_resolve_ident_in_module(
-                            ModuleOrUniformRoot::Module(prelude),
-                            ident,
-                            MacroNS,
-                            &ParentScope::module(empty_module, arenas),
-                            None,
-                        )
-                        .is_ok()
+                let found_in_stdlib_prelude = self.prelude.as_ref().is_some_and(|prelude| {
+                    let ident = Macros20NormalizedIdent::new(ident);
+                    prelude.get(&BindingKey::new(ident, MacroNS)).is_some()
                 });
                 if !found_in_stdlib_prelude {
                     self.lint_buffer().buffer_lint(

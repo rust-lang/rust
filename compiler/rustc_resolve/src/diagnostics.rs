@@ -1248,14 +1248,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 }
                 Scope::StdLibPrelude => {
-                    if let Some(prelude) = this.prelude {
-                        let mut tmp_suggestions = Vec::new();
-                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn, None);
-                        suggestions.extend(
-                            tmp_suggestions
-                                .into_iter()
-                                .filter(|s| use_prelude.into() || this.is_builtin_macro(s.res)),
-                        );
+                    if let Some(prelude) = &this.prelude {
+                        suggestions.extend(prelude.iter().filter_map(|(key, binding)| {
+                            let res = binding.res();
+                            (filter_fn(res) && (use_prelude.into() || this.is_builtin_macro(res)))
+                                .then_some(TypoSuggestion::typo_from_name(key.ident.name, res))
+                        }));
                     }
                 }
                 Scope::BuiltinTypes => {
