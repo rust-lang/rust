@@ -10,7 +10,7 @@ LL |   let S { x: ax } = a;
 LL |   f(pb);
    |     -- borrow later used here
    |
-help: if `S` implemented `Clone`, you could clone the value
+note: if `S` implemented `Clone`, you could clone the value
   --> $DIR/borrowck-move-subcomponent.rs:6:1
    |
 LL | struct S {

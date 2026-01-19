@@ -8,7 +8,7 @@ LL |     drop(t);
 LL |     drop(t);
    |          ^ value used here after move
    |
-help: if `S<()>` implemented `Clone`, you could clone the value
+note: if `S<()>` implemented `Clone`, you could clone the value
   --> $DIR/issue-25700.rs:1:1
    |
 LL | struct S<T: 'static>(#[allow(dead_code)] Option<&'static T>);

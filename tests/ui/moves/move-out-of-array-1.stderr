@@ -7,7 +7,7 @@ LL |     a[i]
    |     cannot move out of here
    |     move occurs because `a[_]` has type `D`, which does not implement the `Copy` trait
    |
-help: if `D` implemented `Clone`, you could clone the value
+note: if `D` implemented `Clone`, you could clone the value
   --> $DIR/move-out-of-array-1.rs:5:1
    |
 LL | struct D { _x: u8 }

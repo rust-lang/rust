@@ -7,7 +7,7 @@ LL |     let _value = array[0];
    |                  cannot move out of here
    |                  move occurs because `array[_]` has type `NonCopy`, which does not implement the `Copy` trait
    |
-help: if `NonCopy` implemented `Clone`, you could clone the value
+note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/E0508.rs:1:1
    |
 LL | struct NonCopy;

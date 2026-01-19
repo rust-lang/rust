@@ -33,7 +33,7 @@ LL |
 LL |     foo_pin_mut(x); //
    |                 - borrow later used here
    |
-help: if `Foo` implemented `Clone`, you could clone the value
+note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:20:1
    |
 LL | struct Foo;
@@ -55,7 +55,7 @@ LL |
 LL |     foo_pin_mut(x); //
    |                 - borrow later used here
    |
-help: if `Foo` implemented `Clone`, you could clone the value
+note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:20:1
    |
 LL | struct Foo;
@@ -77,7 +77,7 @@ LL |
 LL |     foo_pin_ref(x);
    |                 - borrow later used here
    |
-help: if `Foo` implemented `Clone`, you could clone the value
+note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/borrow-unpin.rs:20:1
    |
 LL | struct Foo;

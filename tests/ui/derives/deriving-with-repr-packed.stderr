@@ -7,7 +7,7 @@ LL | #[repr(packed)]
 LL | struct X(Y);
    |          ^ move occurs because value has type `Y`, which does not implement the `Copy` trait
    |
-help: if `Y` implemented `Clone`, you could clone the value
+note: if `Y` implemented `Clone`, you could clone the value
   --> $DIR/deriving-with-repr-packed.rs:16:1
    |
 LL | struct Y(usize);

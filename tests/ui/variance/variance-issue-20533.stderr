@@ -10,7 +10,7 @@ LL |         drop(a);
 LL |         drop(x);
    |              - borrow later used here
    |
-help: if `AffineU32` implemented `Clone`, you could clone the value
+note: if `AffineU32` implemented `Clone`, you could clone the value
   --> $DIR/variance-issue-20533.rs:26:1
    |
 LL | struct AffineU32(u32);
@@ -31,7 +31,7 @@ LL |         drop(a);
 LL |         drop(x);
    |              - borrow later used here
    |
-help: if `AffineU32` implemented `Clone`, you could clone the value
+note: if `AffineU32` implemented `Clone`, you could clone the value
   --> $DIR/variance-issue-20533.rs:26:1
    |
 LL | struct AffineU32(u32);
@@ -52,7 +52,7 @@ LL |         drop(a);
 LL |         drop(x);
    |              - borrow later used here
    |
-help: if `AffineU32` implemented `Clone`, you could clone the value
+note: if `AffineU32` implemented `Clone`, you could clone the value
   --> $DIR/variance-issue-20533.rs:26:1
    |
 LL | struct AffineU32(u32);
@@ -73,7 +73,7 @@ LL |         drop(a);
 LL |         drop(x);
    |              - borrow later used here
    |
-help: if `AffineU32` implemented `Clone`, you could clone the value
+note: if `AffineU32` implemented `Clone`, you could clone the value
   --> $DIR/variance-issue-20533.rs:26:1
    |
 LL | struct AffineU32(u32);

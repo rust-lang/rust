@@ -7,7 +7,7 @@ LL |     let c = async || {
 LL |         *x;
    |         ^^ `*x` is moved here
    |
-help: if `Ty` implemented `Clone`, you could clone the value
+note: if `Ty` implemented `Clone`, you could clone the value
   --> $DIR/move-out-of-ref.rs:5:1
    |
 LL | struct Ty;

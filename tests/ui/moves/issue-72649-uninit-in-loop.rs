@@ -3,10 +3,10 @@
 // 'value moved in previous iteration of loop' message
 
 struct NonCopy;
-//~^ HELP if `NonCopy` implemented `Clone`
-//~| HELP if `NonCopy` implemented `Clone`
-//~| HELP if `NonCopy` implemented `Clone`
-//~| HELP if `NonCopy` implemented `Clone`
+//~^ NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
+//~| NOTE if `NonCopy` implemented `Clone`
 //~| NOTE consider implementing `Clone` for this type
 //~| NOTE consider implementing `Clone` for this type
 //~| NOTE consider implementing `Clone` for this type

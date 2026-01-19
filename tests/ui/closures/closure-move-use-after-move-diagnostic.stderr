@@ -13,7 +13,7 @@ LL |         let y = x;
 LL |     let z = x;
    |             ^ value used here after move
    |
-help: if `NoCopy` implemented `Clone`, you could clone the value
+note: if `NoCopy` implemented `Clone`, you could clone the value
   --> $DIR/closure-move-use-after-move-diagnostic.rs:2:1
    |
 LL | struct NoCopy;

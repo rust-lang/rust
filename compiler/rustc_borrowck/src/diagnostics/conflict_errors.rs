@@ -1296,18 +1296,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 },
             );
-            span.push_span_label(
-                ty_span,
-                format!(
-                    "consider {}implementing `Clone` for this type",
-                    if derive_clone { "manually " } else { "" }
-                ),
-            );
+            let msg = if !derive_clone {
+                span.push_span_label(
+                    ty_span,
+                    format!(
+                        "consider {}implementing `Clone` for this type",
+                        if derive_clone { "manually " } else { "" }
+                    ),
+                );
+                format!("if `{ty}` implemented `Clone`, you could clone the value")
+            } else {
+                format!("if all bounds were met, you could clone the value")
+            };
             span.push_span_label(expr.span, "you could clone this value");
-            err.span_help(
-                span,
-                format!("if `{ty}` implemented `Clone`, you could clone the value"),
-            );
+            err.span_note(span, msg);
+            if derive_clone {
+                err.help("consider manually implementing `Clone` to avoid undesired bounds");
+            }
         } else if let ty::Param(param) = ty.kind()
             && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && let generics = self.infcx.tcx.generics_of(self.mir_def_id())

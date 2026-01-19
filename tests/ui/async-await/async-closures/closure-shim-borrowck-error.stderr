@@ -9,7 +9,7 @@ LL |
 LL |         x.hello();
    |         - variable moved due to use in coroutine
    |
-help: if `Ty` implemented `Clone`, you could clone the value
+note: if `Ty` implemented `Clone`, you could clone the value
   --> $DIR/closure-shim-borrowck-error.rs:17:1
    |
 LL |         x.hello();

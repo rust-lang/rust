@@ -132,7 +132,7 @@ LL |     foo_add + Foo;
 LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
-help: if `Foo` implemented `Clone`, you could clone the value
+note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/move-fn-self-receiver.rs:5:1
    |
 LL | struct Foo;

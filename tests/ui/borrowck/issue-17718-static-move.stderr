@@ -4,7 +4,7 @@ error[E0507]: cannot move out of static item `FOO`
 LL |     let _a = FOO;
    |              ^^^ move occurs because `FOO` has type `Foo`, which does not implement the `Copy` trait
    |
-help: if `Foo` implemented `Clone`, you could clone the value
+note: if `Foo` implemented `Clone`, you could clone the value
   --> $DIR/issue-17718-static-move.rs:1:1
    |
 LL | struct Foo;

@@ -10,7 +10,7 @@ LL |         let _used = value;
 LL |         let _used2 = value;
    |                      ^^^^^ value used here after move
    |
-help: if `NonCopy` implemented `Clone`, you could clone the value
+note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
@@ -33,7 +33,7 @@ LL |         let _used = value;
 LL |             let _used2 = value;
    |                          ^^^^^ value used here after move
    |
-help: if `NonCopy` implemented `Clone`, you could clone the value
+note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
@@ -53,7 +53,7 @@ LL |     loop {
 LL |         let _used = value;
    |                     ^^^^^ value moved here, in previous iteration of loop
    |
-help: if `NonCopy` implemented `Clone`, you could clone the value
+note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;
@@ -73,7 +73,7 @@ LL |     loop {
 LL |         let _used2 = value;
    |                      ^^^^^ value moved here, in previous iteration of loop
    |
-help: if `NonCopy` implemented `Clone`, you could clone the value
+note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/issue-72649-uninit-in-loop.rs:5:1
    |
 LL | struct NonCopy;

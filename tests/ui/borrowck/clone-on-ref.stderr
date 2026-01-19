@@ -59,7 +59,7 @@ LL |
 LL |     println!("{b:?}");
    |                - borrow later used here
    |
-help: if `A` implemented `Clone`, you could clone the value
+note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/clone-on-ref.rs:19:1
    |
 LL | struct A;

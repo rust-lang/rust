@@ -11,7 +11,7 @@ note: `Example::<E, FakeParam>::change` takes ownership of the receiver `self`, 
    |
 LL |     unsafe fn change<NewFakeParam>(self) -> Example<E, NewFakeParam> {
    |                                    ^^^^
-help: if `Example<E, NoLifetime>` implemented `Clone`, you could clone the value
+note: if `Example<E, NoLifetime>` implemented `Clone`, you could clone the value
   --> $DIR/issue-119915-bad-clone-suggestion.rs:3:1
    |
 LL | struct Example<E, FakeParam>(PhantomData<(fn(E), fn(FakeParam))>);
