@@ -141,7 +141,7 @@ pub(crate) struct IndexItem {
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
-    pub(crate) deprecation: Option<Deprecation>,
+    pub(crate) is_deprecated: bool,
 }
 
 /// A type used for the search index.
