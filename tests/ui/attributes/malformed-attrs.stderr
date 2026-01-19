@@ -771,7 +771,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[crate_name]
    | ^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/malformed-attrs.rs:116:1
    |
 LL | / fn test() {
