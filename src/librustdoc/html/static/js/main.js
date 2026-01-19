@@ -1011,7 +1011,6 @@ function preLoadCss(cssUrl) {
                         mainContent.insertBefore(outputListHeader, trait_implementations_header);
                         mainContent.insertBefore(outputList, trait_implementations_header);
                     } else {
-                        const mainContent = nonnull(document.querySelector("#main-content"));
                         mainContent.appendChild(outputListHeader);
                         mainContent.appendChild(outputList);
                     }
