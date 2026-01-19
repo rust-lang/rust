@@ -11,8 +11,11 @@ use crate::{cmp, ptr};
 /// (e.g., `collections::HashMap` uses it by default).
 ///
 /// See: <https://github.com/veorq/SipHash>
-#[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
+#[unstable(
+    feature = "hashmap_internals",
+    issue = "none",
+    reason = "use `std::hash::DefaultHasher` instead"
+)]
 #[derive(Debug, Clone, Default)]
 #[doc(hidden)]
 pub struct SipHasher13 {
@@ -23,7 +26,6 @@ pub struct SipHasher13 {
 ///
 /// See: <https://github.com/veorq/SipHash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -137,8 +139,7 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
-    //FIXME(fee1-dead): use debug_assert_eq
-    debug_assert!(i == len);
+    debug_assert_eq!(i, len);
     out
 }
 
@@ -167,7 +168,6 @@ impl SipHasher13 {
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-    #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
     pub const fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
@@ -176,7 +176,6 @@ impl SipHasher13 {
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-    #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
     pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }

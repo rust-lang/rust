@@ -3,9 +3,7 @@ use alloc::rc::Rc;
 use alloc::sync::Arc;
 use core::assert_matches::assert_matches;
 use core::ffi::{CStr, FromBytesUntilNulError, c_char};
-#[allow(deprecated)]
-use core::hash::SipHasher13 as DefaultHasher;
-use core::hash::{Hash, Hasher};
+use core::hash::{Hash, Hasher, SipHasher13 as DefaultHasher};
 
 #[test]
 fn c_to_rust() {
@@ -57,11 +55,9 @@ fn equal_hash() {
     let ptr = data.as_ptr() as *const c_char;
     let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
 
-    #[allow(deprecated)]
     let mut s = DefaultHasher::new();
     cstr.hash(&mut s);
     let cstr_hash = s.finish();
-    #[allow(deprecated)]
     let mut s = DefaultHasher::new();
     CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
     let cstring_hash = s.finish();
