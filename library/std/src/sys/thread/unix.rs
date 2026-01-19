@@ -649,7 +649,9 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         safe fn mach_wait_until(deadline: u64) -> libc::kern_return_t;
     }
 
-    let Some(deadline) = deadline.into_inner().into_mach_absolute_time() else {
+    // Make sure to round up to ensure that we definitely sleep until after
+    // the deadline has elapsed.
+    let Some(deadline) = deadline.into_inner().into_mach_absolute_time_ceil() else {
         // Since the deadline is before the system boot time, it has already
         // passed, so we can return immediately.
         return;

@@ -313,9 +313,11 @@ impl Instant {
     }
 
     /// Returns `self` converted into units of `mach_absolute_time`, or `None`
-    /// if `self` is before the system boot time.
+    /// if `self` is before the system boot time. If the conversion cannot be
+    /// performed precisely, this ceils the result up to the nearest
+    /// representable value.
     #[cfg(target_vendor = "apple")]
-    pub fn into_mach_absolute_time(self) -> Option<u128> {
+    pub fn into_mach_absolute_time_ceil(self) -> Option<u128> {
         #[repr(C)]
         struct mach_timebase_info {
             numer: u32,
@@ -338,7 +340,7 @@ impl Instant {
         // This multiplication cannot overflow since multiplying a 94-bit
         // number by a 32-bit number yields a number that needs at most
         // 126 bits.
-        Some(nanos * u128::from(timebase.denom) / u128::from(timebase.numer))
+        Some((nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer)))
     }
 }
 
