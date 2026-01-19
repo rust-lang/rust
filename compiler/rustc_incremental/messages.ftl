@@ -19,7 +19,7 @@ incremental_cargo_help_2 =
     the entire build directory can be changed to a different filesystem by setting the environment variable CARGO_TARGET_DIR to a different path (see https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)
 
 incremental_copy_workproduct_to_cache =
-    error copying object file `{$from}` to incremental directory as `{$to}`: {$err}
+    failed to copy object file `{$from}` to incremental directory as `{$to}`: {$err}
 
 incremental_corrupt_file = corrupt incremental compilation artifact found at `{$path}`. This file will automatically be ignored and deleted. If you see this message repeatedly or can provoke it without manually manipulating the compiler's artifacts, please file an issue. The incremental compilation system relies on hardlinks and filesystem locks behaving correctly, and may not deal well with OS crashes, so whatever information you can provide about your filesystem or other state may be very relevant.
 
@@ -32,21 +32,21 @@ incremental_create_lock =
     incremental compilation: could not create session directory lock file: {$lock_err}
 incremental_create_new = failed to create {$name} at `{$path}`: {$err}
 
-incremental_delete_full = error deleting incremental compilation session directory `{$path}`: {$err}
+incremental_delete_full = failed to delete incremental compilation session directory `{$path}`: {$err}
 
 incremental_delete_incompatible =
     failed to delete invalidated or incompatible incremental compilation session directory contents `{$path}`: {$err}
 
 incremental_delete_lock =
-    error deleting lock file for incremental compilation session directory `{$path}`: {$err}
+    failed to delete lock file for incremental compilation session directory `{$path}`: {$err}
 
 incremental_delete_old = unable to delete old {$name} at `{$path}`: {$err}
 
 incremental_delete_partial = failed to delete partly initialized session dir `{$path}`: {$err}
 
-incremental_delete_workproduct = file-system error deleting outdated file `{$path}`: {$err}
+incremental_delete_workproduct = file-system failed to delete outdated file `{$path}`: {$err}
 
-incremental_finalize = error finalizing incremental compilation session directory `{$path}`: {$err}
+incremental_finalize = failed to finalize incremental compilation session directory `{$path}`: {$err}
 
 incremental_finalized_gc_failed =
     failed to garbage collect finalized incremental compilation session directory `{$path}`: {$err}
