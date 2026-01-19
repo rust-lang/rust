@@ -12,7 +12,7 @@ note: required for `B<C>` to implement `Copy`
 LL | #[derive(Copy, Clone)]
    |          ---- in this derive macro expansion
 LL | struct B<T> {
-   |        ^ - would need to be `Copy`
+   |        ^ - type parameter would need to implement `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
 note: required by a bound in `is_copy`
   --> $DIR/deriving-copyclone.rs:18:15
@@ -38,7 +38,7 @@ note: required for `B<C>` to implement `Clone`
 LL | #[derive(Copy, Clone)]
    |                ----- in this derive macro expansion
 LL | struct B<T> {
-   |        ^ - would need to be `Clone`
+   |        ^ - type parameter would need to implement `Clone`
    = help: consider manually implementing `Clone` to avoid undesired bounds
 note: required by a bound in `is_clone`
   --> $DIR/deriving-copyclone.rs:19:16
@@ -64,7 +64,7 @@ note: required for `B<D>` to implement `Copy`
 LL | #[derive(Copy, Clone)]
    |          ---- in this derive macro expansion
 LL | struct B<T> {
-   |        ^ - would need to be `Copy`
+   |        ^ - type parameter would need to implement `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
 note: required by a bound in `is_copy`
   --> $DIR/deriving-copyclone.rs:18:15

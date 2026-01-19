@@ -10,7 +10,7 @@ note: required for `Foo<String>` to implement `Copy`
 LL | #[derive(Copy, Clone)]
    |          ---- in this derive macro expansion
 LL | struct Foo<T>(T);
-   |        ^^^ - would need to be `Copy`
+   |        ^^^ - type parameter would need to implement `Copy`
    = help: consider manually implementing `Copy` to avoid undesired bounds
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: create an inline `const` block

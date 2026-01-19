@@ -101,7 +101,7 @@ note: required for `Bar<dyn Debug>` to implement `Eq`
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    |                            -- in this derive macro expansion
 LL | struct Bar<T>(T);
-   |        ^^^ - would need to be `Eq`
+   |        ^^^ - type parameter would need to implement `Eq`
    = help: consider manually implementing `Eq` to avoid undesired bounds
    = note: 1 redundant requirement hidden
    = note: required for `&'static Bar<dyn Debug>` to implement `Eq`

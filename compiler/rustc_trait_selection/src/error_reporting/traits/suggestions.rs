@@ -3600,7 +3600,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             spans.push_span_label(
                                 data.span,
                                 if data.span.in_derive_expansion() {
-                                    format!("would need to be `{trait_name}`")
+                                    format!("type parameter would need to implement `{trait_name}`")
                                 } else {
                                     format!("unsatisfied trait bound")
                                 },
