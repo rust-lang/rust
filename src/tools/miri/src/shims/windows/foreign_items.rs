@@ -669,6 +669,69 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
+            
+            // Fiber-local storage - similar to TLS but supports destructors.
+            "FlsAlloc" => {
+                // Create key and return it.
+                let [dtor] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let dtor = this.read_pointer(dtor)?;
+
+                // Extract the function type out of the signature (that seems easier than constructing it ourselves).
+                let dtor = if !this.ptr_is_null(dtor)? {
+                    Some((
+                        this.get_ptr_fn(dtor)?.as_instance()?,
+                        this.machine.current_user_relevant_span(),
+                    ))
+                } else {
+                    None
+                };
+
+                let key = this.machine.tls.create_tls_key(dtor, dest.layout.size)?;
+                this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
+            }
+            "FlsGetValue" => {
+                let [key] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32) -> *mut _),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let active_thread = this.active_thread();
+                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "FlsSetValue" => {
+                let [key, new_ptr] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32, *mut _) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let active_thread = this.active_thread();
+                let new_data = this.read_scalar(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+
+                // Return success (`1`).
+                this.write_int(1, dest)?;
+            }
+            "IsThreadAFiber" => {
+                let [] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn() -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                
+                // Return FALSE, as Miri does not support fibers.
+                this.write_int(0, dest)?;
+            }
 
             // Access to command-line arguments
             "GetCommandLineW" => {
