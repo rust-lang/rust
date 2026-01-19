@@ -9,7 +9,9 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
+use rustc_span::hygiene::{
+    ExpnId, ExpnKind, LocalExpnId, MacroKind, PackagedSyntaxContext, SyntaxContext,
+};
 use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -53,15 +55,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut self: CmResolver<'r, 'ra, 'tcx>,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
-        // Location of the span is not significant, but pass a `Span` instead of `SyntaxContext`
-        // to avoid extracting and re-packaging the syntax context unnecessarily.
-        orig_ctxt: Span,
+        mut orig_ctxt: PackagedSyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
             &mut CmResolver<'r, 'ra, 'tcx>,
             Scope<'ra>,
             UsePrelude,
-            Span,
+            PackagedSyntaxContext,
         ) -> ControlFlow<T>,
     ) -> Option<T> {
         // General principles:
@@ -127,7 +127,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             TypeNS | ValueNS => Scope::ModuleNonGlobs(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
-        let mut ctxt = orig_ctxt.normalize_to_macros_2_0();
+        let mut ctxt = orig_ctxt.clone();
+        ctxt.mutate_ctxt(|ctxt| *ctxt = ctxt.normalize_to_macros_2_0());
         let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
@@ -152,7 +153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     true
                 }
                 Scope::ModuleNonGlobs(..) | Scope::ModuleGlobs(..) => true,
-                Scope::MacroUsePrelude => use_prelude || orig_ctxt.edition().is_rust_2015(),
+                Scope::MacroUsePrelude => use_prelude || orig_ctxt.ctxt().edition().is_rust_2015(),
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
                     use_prelude || module_and_extern_prelude || extern_prelude
@@ -165,7 +166,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if visit {
                 let use_prelude = if use_prelude { UsePrelude::Yes } else { UsePrelude::No };
                 if let ControlFlow::Break(break_result) =
-                    visitor(&mut self, scope, use_prelude, ctxt)
+                    visitor(&mut self, scope, use_prelude, ctxt.clone())
                 {
                     return Some(break_result);
                 }
@@ -198,7 +199,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ModuleGlobs(..) if module_only => break,
                 Scope::ModuleGlobs(..) if module_and_extern_prelude => match ns {
                     TypeNS => {
-                        ctxt.adjust(ExpnId::root());
+                        ctxt.mutate_ctxt(|ctxt| ctxt.adjust(ExpnId::root()));
                         Scope::ExternPreludeItems
                     }
                     ValueNS | MacroNS => break,
@@ -210,7 +211,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             Scope::ModuleNonGlobs(parent_module, lint_id.or(prev_lint_id))
                         }
                         None => {
-                            ctxt.adjust(ExpnId::root());
+                            ctxt.mutate_ctxt(|ctxt| ctxt.adjust(ExpnId::root()));
                             match ns {
                                 TypeNS => Scope::ExternPreludeItems,
                                 ValueNS => Scope::StdLibPrelude,
@@ -240,12 +241,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn hygienic_lexical_parent(
         &self,
         module: Module<'ra>,
-        span: &mut Span,
+        span: &mut PackagedSyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
     ) -> Option<(Module<'ra>, Option<NodeId>)> {
-        let ctxt = span.ctxt();
-        if !module.expansion.outer_expn_is_descendant_of(ctxt) {
-            return Some((self.expn_def_scope(span.remove_mark()), None));
+        if !module.expansion.outer_expn_is_descendant_of(span.ctxt()) {
+            return Some((self.expn_def_scope(span.mutate_ctxt(|ctxt| ctxt.remove_mark())), None));
         }
 
         if let ModuleKind::Block = module.kind {
@@ -275,7 +275,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ext = &self.get_macro_by_def_id(def_id).ext;
             if ext.builtin_name.is_none()
                 && ext.macro_kinds() == MacroKinds::DERIVE
-                && parent.expansion.outer_expn_is_descendant_of(ctxt)
+                && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
             {
                 return Some((parent, derive_fallback_lint_id));
             }
@@ -436,10 +436,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
-            orig_ident.span,
+            PackagedSyntaxContext::new(orig_ident.span),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
-                let ident = Ident::new(orig_ident.name, ctxt);
+                let ident = Ident::new(orig_ident.name, ctxt.finalize());
                 // The passed `ctxt` is already normalized, so avoid expensive double normalization.
                 let ident = Macros20NormalizedIdent(ident);
                 let res = match this.reborrow().resolve_ident_in_scope(

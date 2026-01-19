@@ -52,7 +52,8 @@ use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{
-    DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
+    DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind,
+    PackagedSyntaxContext, SyntaxContext,
 };
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;

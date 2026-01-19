@@ -51,6 +51,52 @@ use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_se
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
 
+#[derive(Clone)]
+pub struct PackagedSyntaxContext {
+    span: Span,
+    ctxt: Option<SyntaxContext>,
+}
+
+impl PackagedSyntaxContext {
+    #[inline]
+    pub fn new(span: Span) -> PackagedSyntaxContext {
+        PackagedSyntaxContext { span, ctxt: None }
+    }
+
+    #[inline]
+    pub fn ctxt(&mut self) -> SyntaxContext {
+        match self.ctxt {
+            Some(ctxt) => ctxt,
+            None => {
+                let ctxt = self.span.ctxt();
+                self.ctxt = Some(ctxt);
+                ctxt
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mutate_ctxt<R>(&mut self, f: impl FnOnce(&mut SyntaxContext) -> R) -> R {
+        match &mut self.ctxt {
+            Some(ctxt) => f(ctxt),
+            None => {
+                let mut ctxt = self.span.ctxt();
+                let ret = f(&mut ctxt);
+                self.ctxt = Some(ctxt);
+                ret
+            }
+        }
+    }
+
+    #[inline]
+    pub fn finalize(self) -> Span {
+        match self.ctxt {
+            Some(ctxt) => self.span.with_ctxt(ctxt),
+            None => self.span,
+        }
+    }
+}
+
 // To ensure correctness of incremental compilation,
 // `SyntaxContext` must not implement `Ord` or `PartialOrd`.
 // See https://github.com/rust-lang/rust/issues/90317.

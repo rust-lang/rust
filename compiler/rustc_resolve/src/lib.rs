@@ -74,7 +74,9 @@ use rustc_middle::ty::{
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::hygiene::{
+    ExpnId, LocalExpnId, MacroKind, PackagedSyntaxContext, SyntaxContext, Transparency,
+};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
@@ -1885,7 +1887,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         current_trait: Option<Module<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        ctxt: Span,
+        ctxt: PackagedSyntaxContext,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> Vec<TraitCandidate> {
         let mut found_traits = Vec::new();

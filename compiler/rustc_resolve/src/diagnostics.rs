@@ -30,7 +30,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{MacroKind, PackagedSyntaxContext};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::{
     BytePos, DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
@@ -1180,7 +1180,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ctxt: SyntaxContext,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        let ctxt = DUMMY_SP.with_ctxt(ctxt);
+        let ctxt = PackagedSyntaxContext::new(DUMMY_SP.with_ctxt(ctxt));
         self.cm().visit_scopes(scope_set, ps, ctxt, None, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
