@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::ptr;
@@ -13,6 +12,7 @@ use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphizati
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;

@@ -2,7 +2,6 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
-use std::assert_matches::assert_matches;
 use std::cell::RefCell;
 use std::fmt::Formatter;
 
@@ -11,6 +10,7 @@ use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable, interp_ok,
 };
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
