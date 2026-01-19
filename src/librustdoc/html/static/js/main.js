@@ -231,7 +231,6 @@ function preLoadCss(cssUrl) {
             // When loading settings.html as a standalone page, the equivalent HTML is
             // generated in context.rs.
             setTimeout(() => {
-                // @ts-expect-error
                 const themes = getVar("themes").split(",");
                 for (const theme of themes) {
                     // if there are no themes, do nothing
@@ -415,12 +414,10 @@ function preLoadCss(cssUrl) {
                     }
                     window.StringdexOnload.push(() => {
                         loadScript(
-                            // @ts-expect-error
                             getVar("static-root-path") + getVar("search-js"),
                             sendSearchForm,
                         );
                     });
-                    // @ts-expect-error
                     loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
                     loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
                 }
