@@ -298,6 +298,8 @@ const updateTheme = (function() {
     return updateTheme;
 })();
 
+// typescript thinks we're forgetting to call window.matchMedia,
+// but we're checking browser support of media queries.
 // @ts-ignore
 if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
