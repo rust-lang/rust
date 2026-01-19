@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 
 #[derive(PartialEq, Default)]
-//~^ ERROR conflicting implementations of trait `PartialEq<Interval<_>>` for type `Interval<_>`
+//~^ ERROR conflicting implementations of trait `PartialEq` for type `Interval<_>`
 pub(crate) struct Interval<T>(PhantomData<T>);
 
 // This impl overlaps with the `derive` unless we reject the nested
