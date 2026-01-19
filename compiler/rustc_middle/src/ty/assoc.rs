@@ -250,6 +250,10 @@ impl AssocItems {
         self.items.iter().map(|(_, v)| v)
     }
 
+    pub fn all(&self, f: impl Fn(&ty::AssocItem) -> bool) -> bool {
+        self.in_definition_order().all(f)
+    }
+
     pub fn len(&self) -> usize {
         self.items.len()
     }

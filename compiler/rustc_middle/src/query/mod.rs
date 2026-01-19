@@ -1139,6 +1139,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Whether all generic parameters of the type are unique unconstrained generic parameters
+    /// of the impl. `Bar<'static>` or `Foo<'a, 'a>` or outlives bounds on the lifetimes cause
+    /// this boolean to be false and `try_as_dyn` to return `None`.
+    query impl_is_fully_generic_for_reflection(impl_id: DefId) -> bool {
+        desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
+        cache_on_disk_if { impl_id.is_local() }
+        separate_provide_extern
+    }
+
     /// Given an `impl_def_id`, return true if the self type is guaranteed to be unsized due
     /// to either being one of the built-in unsized types (str/slice/dyn) or to be a struct
     /// whose tail is one of those types.

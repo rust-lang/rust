@@ -368,6 +368,8 @@ pub trait Interner:
 
     fn impl_polarity(self, impl_def_id: Self::ImplId) -> ty::ImplPolarity;
 
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool;
+
     fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
     fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
@@ -382,6 +384,8 @@ pub trait Interner:
 
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
+
+    fn trait_is_try_as_dyn_compatible(self, def_id: Self::TraitId) -> bool;
 
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 

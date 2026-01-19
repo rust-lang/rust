@@ -2308,6 +2308,7 @@ symbols! {
         truncf32,
         truncf64,
         truncf128,
+        try_as_dyn,
         try_blocks,
         try_blocks_heterogeneous,
         try_capture,

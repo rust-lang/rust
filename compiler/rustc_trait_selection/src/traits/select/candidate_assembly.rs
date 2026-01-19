@@ -14,7 +14,9 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::ty::{
+    self, ExistentialPredicate, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate,
+};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
@@ -127,6 +129,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation,
                         &mut candidates,
                     );
+                }
+                Some(LangItem::TryAsDyn) => {
+                    self.assemble_candidates_for_try_as_dyn(obligation, &mut candidates);
                 }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
@@ -1431,6 +1436,64 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Bound(..) => {
                 candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
             }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    fn assemble_candidates_for_try_as_dyn(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match *obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Dynamic(bounds, _lifetime) => {
+                for bound in bounds {
+                    match bound.skip_binder() {
+                        ExistentialPredicate::Trait(trait_ref) => {
+                            if !self.tcx().trait_is_try_as_dyn_compatible(trait_ref.def_id) {
+                                return;
+                            }
+                        }
+                        // FIXME(try_as_dyn): check what kind of projections we can allow
+                        ExistentialPredicate::Projection(_) => return,
+                        // Auto traits do not affect lifetimes outside of specialization,
+                        // which is disabled in reflection.
+                        ExistentialPredicate::AutoTrait(_) => {}
+                    }
+                }
+                candidates.vec.push(TryAsDynCandidate);
+            }
+            ty::Ref(..)
+            | ty::Adt(..)
+            | ty::Tuple(_)
+            | ty::Array(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Error(_)
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Pat(..)
+            | ty::Str
+            | ty::Slice(_)
+            | ty::Foreign(..)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Placeholder(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::UnsafeBinder(_)
+            | ty::CoroutineWitness(..)
+            | ty::Bound(..) => {}
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;

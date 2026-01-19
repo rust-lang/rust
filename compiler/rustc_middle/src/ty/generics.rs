@@ -1,13 +1,15 @@
+use std::ops::ControlFlow;
+
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
+use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
-use crate::ty;
-use crate::ty::{EarlyBinder, GenericArgsRef};
+use crate::ty::{self, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -416,6 +418,54 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+    }
+
+    pub fn is_fully_generic_for_reflection(self, params: FxHashSet<u32>) -> bool {
+        #[derive(Default)]
+        struct ParamChecker {
+            params: FxHashSet<u32>,
+        }
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamChecker {
+            type Result = ControlFlow<()>;
+            fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
+                match r.kind() {
+                    RegionKind::ReEarlyParam(param) => {
+                        if self.params.contains(&param.index) {
+                            ControlFlow::Break(())
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    }
+                    RegionKind::ReBound(..)
+                    | RegionKind::ReLateParam(_)
+                    | RegionKind::ReStatic
+                    | RegionKind::ReVar(_)
+                    | RegionKind::RePlaceholder(_)
+                    | RegionKind::ReErased
+                    | RegionKind::ReError(_) => ControlFlow::Continue(()),
+                }
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                match t.kind() {
+                    TyKind::Param(p) => {
+                        // Reject using parameters used in the type in where bounds
+                        if self.params.contains(&p.index) {
+                            return ControlFlow::Break(());
+                        }
+                    }
+                    TyKind::Alias(..) => return ControlFlow::Break(()),
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+
+        let mut checker = ParamChecker { params };
+
+        // Pessimistic: if any of the lifetimes used in the type show up in where bounds
+        // don't allow this impl to be used.
+        self.predicates.iter().all(|(clause, _)| clause.visit_with(&mut checker).is_continue())
     }
 }
 

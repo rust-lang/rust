@@ -690,6 +690,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.impl_polarity(impl_def_id)
     }
 
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool {
+        self.impl_is_fully_generic_for_reflection(impl_def_id)
+    }
+
     fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_is_auto(trait_def_id)
     }
@@ -712,6 +716,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).implement_via_object
+    }
+
+    fn trait_is_try_as_dyn_compatible(self, def_id: DefId) -> bool {
+        self.trait_is_try_as_dyn_compatible(def_id)
     }
 
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
@@ -858,6 +866,7 @@ bidirectional_lang_item_map! {
     Sized,
     TransmuteTrait,
     TrivialClone,
+    TryAsDyn,
     Tuple,
     Unpin,
     Unsize,
@@ -2382,6 +2391,22 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
+    }
+
+    pub fn trait_is_try_as_dyn_compatible(self, def_id: DefId) -> bool {
+        self.associated_items(def_id).all(|method| {
+            if let ty::AssocKind::Fn { .. } = method.kind {
+                // Methods with `Self: Sized` are not accessible in `dyn Trait`, so
+                // we do not need to care about them.
+                if !self.generics_require_sized_self(method.def_id) {
+                    // FIXME(try_as_dyn): can probably allow other bounds
+                    if !self.explicit_predicates_of(method.def_id).predicates.is_empty() {
+                        return false;
+                    }
+                }
+            }
+            true
+        })
     }
 
     /// Determines whether identifiers in the assembly have strict naming rules.

@@ -907,6 +907,16 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
 }
 
+/// Trait that is automatically implemented for all `dyn Trait` where `Trait` does
+/// not have any methods with `where` bounds unless the method also has a
+/// `where Self: Sized` bound.
+///
+/// This is required for `try_as_dyn` to be able to
+///
+#[unstable(feature = "try_as_dyn", issue = "144361")]
+#[lang = "try_as_dyn"]
+pub trait TryAsDynCompatible: ptr::Pointee<Metadata = ptr::DynMetadata<Self>> {}
+
 /// Returns `Some(&U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
 ///
 /// # Compile-time failures
@@ -942,12 +952,7 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
-    t: &T,
-) -> Option<&U> {
+pub const fn try_as_dyn<T, U: TryAsDynCompatible + ?Sized>(t: &T) -> Option<&U> {
     let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
     match vtable {
         Some(dyn_metadata) => {
@@ -995,12 +1000,7 @@ pub const fn try_as_dyn<
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn_mut<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
-    t: &mut T,
-) -> Option<&mut U> {
+pub const fn try_as_dyn_mut<T, U: TryAsDynCompatible + ?Sized>(t: &mut T) -> Option<&mut U> {
     let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
     match vtable {
         Some(dyn_metadata) => {
