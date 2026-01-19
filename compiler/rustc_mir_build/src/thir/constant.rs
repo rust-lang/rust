@@ -72,10 +72,10 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (ast::LitKind::Int(n, _), ty::Int(i)) => {
-            let scalar_int = trunc(
-                if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
-                i.to_unsigned(),
-            );
+            // Unsigned "negation" has the same bitwise effect as signed negation,
+            // which gets the result we want without additional casts.
+            let scalar_int =
+                trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, b.into()),
