@@ -107,7 +107,7 @@ fn test_references() {
         _ => unreachable!(),
     }
 
-    // Mutable pointer.
+    // Mutable references.
     match const { Type::of::<&mut u64>() }.kind {
         TypeKind::Reference(reference) => {
             assert_eq!(reference.pointee, TypeId::of::<u64>());
@@ -116,11 +116,41 @@ fn test_references() {
         _ => unreachable!(),
     }
 
-    // Wide pointer.
+    // Wide references.
     match const { Type::of::<&dyn Any>() }.kind {
         TypeKind::Reference(reference) => {
             assert_eq!(reference.pointee, TypeId::of::<dyn Any>());
             assert!(!reference.mutable);
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn test_pointers() {
+    // Immutable pointer.
+    match const { Type::of::<*const u8>() }.kind {
+        TypeKind::Pointer(pointer) => {
+            assert_eq!(pointer.pointee, TypeId::of::<u8>());
+            assert!(!pointer.mutable);
+        }
+        _ => unreachable!(),
+    }
+
+    // Mutable pointer.
+    match const { Type::of::<*mut u64>() }.kind {
+        TypeKind::Pointer(pointer) => {
+            assert_eq!(pointer.pointee, TypeId::of::<u64>());
+            assert!(pointer.mutable);
+        }
+        _ => unreachable!(),
+    }
+
+    // Wide pointer.
+    match const { Type::of::<*const dyn Any>() }.kind {
+        TypeKind::Pointer(pointer) => {
+            assert_eq!(pointer.pointee, TypeId::of::<dyn Any>());
+            assert!(!pointer.mutable);
         }
         _ => unreachable!(),
     }

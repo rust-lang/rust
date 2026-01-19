@@ -8,12 +8,15 @@ macro_rules! m {
 }
 
 m!(Self());
-//~^ ERROR expected one of `!` or `::`, found `(`
+//~^ ERROR expected identifier, found keyword `Self`
+//~^^ ERROR missing `fn` or `struct` for function or struct definition
 
 m!(Self{});
-//~^ ERROR expected one of `!` or `::`, found `{`
+//~^ ERROR expected identifier, found keyword `Self`
+//~^^ ERROR missing `enum` or `struct` for enum or struct definition
 
 m!(crate());
-//~^ ERROR expected one of `!` or `::`, found `(`
+//~^ ERROR expected identifier, found keyword `crate`
+//~^^ ERROR missing `fn` or `struct` for function or struct definition
 
 fn main() {}

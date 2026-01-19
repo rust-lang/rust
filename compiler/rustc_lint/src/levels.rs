@@ -941,8 +941,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         if self.lint_added_lints {
             let lint = builtin::UNKNOWN_LINTS;
             let level = self.lint_level(builtin::UNKNOWN_LINTS);
-            // FIXME: make this translatable
-            #[allow(rustc::diagnostic_outside_of_impl)]
             lint_level(self.sess, lint, level, Some(span.into()), |lint| {
                 lint.primary_message(fluent::lint_unknown_gated_lint);
                 lint.arg("name", lint_id.lint.name_lower());
@@ -970,7 +968,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// this lint context.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub(crate) fn opt_span_lint(
         &self,

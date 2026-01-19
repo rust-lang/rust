@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
-                        assert!(borrow.kind.allows_two_phase_borrow());
+                        assert!(borrow.kind.is_two_phase_borrow());
                         return ControlFlow::Continue(());
                     }
 
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if bk.allows_two_phase_borrow() {
+                        if bk.is_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))

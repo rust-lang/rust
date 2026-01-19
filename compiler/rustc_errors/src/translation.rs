@@ -76,7 +76,7 @@ impl Translator {
     ) -> Result<Cow<'a, str>, TranslateError<'a>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {
+            DiagMessage::Str(msg) => {
                 return Ok(Cow::Borrowed(msg));
             }
             DiagMessage::FluentIdentifier(identifier, attr) => (identifier, attr),

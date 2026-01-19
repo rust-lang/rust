@@ -1182,12 +1182,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_lint_untracked_query_information, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes,
     ),
-    // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
-    // APIs. Any function with this attribute will be checked by that lint.
-    rustc_attr!(
-        rustc_lint_diagnostics, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes,
-    ),
     // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
     rustc_attr!(

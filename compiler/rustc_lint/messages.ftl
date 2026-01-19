@@ -237,9 +237,6 @@ lint_deprecated_where_clause_location = where clause not allowed here
     .suggestion_move_to_end = move it to the end of the type declaration
     .suggestion_remove_where = remove this `where`
 
-lint_diag_out_of_impl =
-    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
-
 lint_doc_alias_duplicated = doc alias is duplicated
     .label = first defined here
 
@@ -991,8 +988,6 @@ lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
 lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
-
-lint_untranslatable_diag = diagnostics should be created using translatable messages
 
 lint_unused_allocation = unnecessary allocation, use `&` instead
 lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead

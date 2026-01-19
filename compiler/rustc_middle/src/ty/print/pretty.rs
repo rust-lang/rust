@@ -3421,6 +3421,13 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
                 def::Res::Def(DefKind::AssocTy, _) => {}
                 def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
+                    // Ignore external `#[doc(hidden)]` items and their descendants.
+                    // They shouldn't prevent other items from being considered
+                    // unique, and should be printed with a full path if necessary.
+                    if tcx.is_doc_hidden(def_id) {
+                        continue;
+                    }
+
                     if let Some(ns) = defkind.ns() {
                         collect_fn(&child.ident, ns, def_id);
                     }

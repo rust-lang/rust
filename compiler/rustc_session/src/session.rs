@@ -246,7 +246,6 @@ impl Session {
     pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
@@ -960,7 +959,6 @@ fn default_emitter(
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
@@ -1396,45 +1394,31 @@ impl EarlyDiagCtxt {
         self.dcx = DiagCtxt::new(emitter);
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().note(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_help(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().struct_help(msg).emit()
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.handle().err(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.dcx.handle().fatal(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         self.dcx.handle().struct_fatal(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().warn(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         self.dcx.handle().struct_warn(msg)
     }

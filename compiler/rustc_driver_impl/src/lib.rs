@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 #![feature(decl_macro)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
@@ -86,6 +85,7 @@ pub mod args;
 pub mod pretty;
 #[macro_use]
 mod print;
+pub mod highlighter;
 mod session_diagnostics;
 
 // Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
@@ -303,7 +303,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         }
 
         if !has_input {
-            #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal("no input filename given"); // this is fatal
         }
 
@@ -528,7 +527,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
         let mdstream = markdown::MdStream::parse_str(content);
         let bufwtr = markdown::create_stdout_bufwtr();
         let mut mdbuf = Vec::new();
-        if mdstream.write_anstream_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
+        if mdstream.write_anstream_buf(&mut mdbuf, Some(&highlighter::highlight)).is_ok() {
+            Some((bufwtr, mdbuf))
+        } else {
+            None
+        }
     };
 
     // Try to print via the pager, pretty output if possible.
@@ -615,7 +618,6 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
-            #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal("cannot list metadata for stdin");
         }
     }
@@ -842,7 +844,6 @@ fn print_crate_info(
                         sess.apple_deployment_target().fmt_pretty(),
                     )
                 } else {
-                    #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
                 }
             }

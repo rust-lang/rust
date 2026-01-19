@@ -57,6 +57,8 @@ pub enum TypeKind {
     Str(Str),
     /// References.
     Reference(Reference),
+    /// Pointers.
+    Pointer(Pointer),
     /// FIXME(#146922): add all the common types
     Other,
 }
@@ -144,5 +146,16 @@ pub struct Reference {
     /// The type of the value being referred to.
     pub pointee: TypeId,
     /// Whether this reference is mutable or not.
+    pub mutable: bool,
+}
+
+/// Compile-time type information about pointers.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Pointer {
+    /// The type of the value being pointed to.
+    pub pointee: TypeId,
+    /// Whether this pointer is mutable or not.
     pub mutable: bool,
 }
