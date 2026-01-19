@@ -2235,7 +2235,6 @@ async fn f<A, B, C>() -> Bar {}
 "#,
         expect![[r#"
             64..66 '{}': ()
-            64..66 '{}': impl Future<Output = ()>
         "#]],
     );
 }
