@@ -27,6 +27,12 @@ enum Bar {
     Foomp { a: (), b: &'static str },
 }
 
+struct Generics<'a, A, B, const C: u64> {
+    a: A,
+    b: B,
+    l: &'a (),
+}
+
 struct Unsized {
     x: u16,
     s: str,
@@ -44,7 +50,7 @@ fn main() {
         [u8; 2],
         i8, i32, i64, i128, isize,
         u8, u32, u64, u128, usize,
-        Foo, Bar, NonExhaustiveStruct, TupleStruct,
+        Foo, Bar, NonExhaustiveStruct, TupleStruct, Generics<i32, u32, 1>,
         &Unsized, &str, &[u8],
         str, [u8],
         &u8, &mut u8,

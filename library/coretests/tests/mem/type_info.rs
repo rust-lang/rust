@@ -1,5 +1,7 @@
+#![allow(dead_code)]
+
 use std::any::{Any, TypeId};
-use std::mem::type_info::{Type, TypeKind};
+use std::mem::type_info::{Const, Generic, GenericType, Type, TypeKind};
 
 #[test]
 fn test_arrays() {
@@ -62,37 +64,59 @@ fn test_tuples() {
 fn test_structs() {
     use TypeKind::*;
 
-    struct TestStruct {
-        first: u8,
-        second: u16,
+    const {
+        struct TestStruct {
+            first: u8,
+            second: u16,
+        }
+
+        let Type { kind: Struct(ty), size, .. } = Type::of::<TestStruct>() else { panic!() };
+        assert!(size == Some(size_of::<TestStruct>()));
+        assert!(!ty.non_exhaustive);
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].name == "first");
+        assert!(ty.fields[1].name == "second");
     }
-    #[non_exhaustive]
-    struct NonExhaustive {
-        a: u8,
+
+    const {
+        #[non_exhaustive]
+        struct NonExhaustive {
+            a: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<NonExhaustive>() else { panic!() };
+        assert!(ty.non_exhaustive);
     }
-    struct TupleStruct(u8, u16);
 
-    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<TestStruct>() }) else {
-        panic!()
-    };
-    assert_eq!(size, Some(size_of::<TestStruct>()));
-    assert!(!ty.non_exhaustive);
-    assert_eq!(ty.fields.len(), 2);
-    assert_eq!(ty.fields[0].name, "first");
-    assert_eq!(ty.fields[1].name, "second");
+    const {
+        struct TupleStruct(u8, u16);
 
-    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<NonExhaustive>() }) else {
-        panic!()
-    };
-    assert_eq!(size, Some(1));
-    assert!(ty.non_exhaustive);
+        let Type { kind: Struct(ty), .. } = Type::of::<TupleStruct>() else { panic!() };
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].name == "0");
+        assert!(ty.fields[0].ty == TypeId::of::<u8>());
+        assert!(ty.fields[1].name == "1");
+        assert!(ty.fields[1].ty == TypeId::of::<u16>());
+    }
 
-    let Type { kind: Struct(ty), size, .. } = (const { Type::of::<TupleStruct>() }) else {
-        panic!()
-    };
-    assert_eq!(ty.fields.len(), 2);
-    assert_eq!(ty.fields[0].name, "0");
-    assert_eq!(ty.fields[1].name, "1");
+    const {
+        struct Generics<'a, T, const C: u64> {
+            a: T,
+            z: &'a (), // FIXME(type_info): offset of this field is dumped as 0, which may not be correct
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<Generics<'static, i32, 1_u64>>() else {
+            panic!()
+        };
+        assert!(ty.fields.len() == 2);
+        assert!(ty.generics.len() == 3);
+
+        let Generic::Lifetime(_) = ty.generics[0] else { panic!() };
+        let Generic::Type(GenericType { ty: generic_ty, .. }) = ty.generics[1] else { panic!() };
+        assert!(generic_ty == TypeId::of::<i32>());
+        let Generic::Const(Const { ty: const_ty, .. }) = ty.generics[2] else { panic!() };
+        assert!(const_ty == TypeId::of::<u64>());
+    }
 }
 
 #[test]
