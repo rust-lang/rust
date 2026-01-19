@@ -41,12 +41,8 @@ fn main() {
 
         static ZERO: u8 = 0u8;
         let x: Simd<*const u8, 2> = simd_splat(&raw const ZERO);
+        let y: Simd<*const u8, 2> = const { simd_splat(&raw const ZERO) };
         assert_eq!(x.into_array(), [&raw const ZERO; 2]);
-
-        // FIXME: this hits "could not evaluate shuffle_indices at compile time",
-        // emitted in `immediate_const_vector`. const-eval should be able to handle
-        // this though I think? `const { [&raw const ZERO; 2] }` appears to work.
-        // let y: Simd<*const u8, 2> = const { simd_splat(&raw const ZERO) };
-        // assert_eq!(x.into_array(), y.into_array());
+        assert_eq!(x.into_array(), y.into_array());
     }
 }

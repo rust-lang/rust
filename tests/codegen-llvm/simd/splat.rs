@@ -1,3 +1,4 @@
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 #![no_std]
 #![feature(repr_simd, core_intrinsics)]
