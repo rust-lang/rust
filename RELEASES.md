@@ -49,9 +49,9 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`<MaybeUninit<T>>::assume_init_drop`](https://doc.rust-lang.org/stable/core/mem/union.MaybeUninit.html#method.assume_init_drop)
-- [`<MaybeUninit<T>>::assume_init_ref`](https://doc.rust-lang.org/stable/core/mem/union.MaybeUninit.html#method.assume_init_ref)
-- [`<MaybeUninit<T>>::assume_init_mut`](https://doc.rust-lang.org/stable/core/mem/union.MaybeUninit.html#method.assume_init_mut)
+- [`<[MaybeUninit<T>]>::assume_init_drop`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.assume_init_drop)
+- [`<[MaybeUninit<T>]>::assume_init_ref`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.assume_init_ref)
+- [`<[MaybeUninit<T>]>::assume_init_mut`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.assume_init_mut)
 - [`<[MaybeUninit<T>]>::write_copy_of_slice`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.write_copy_of_slice)
 - [`<[MaybeUninit<T>]>::write_clone_of_slice`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.write_clone_of_slice)
 - [`String::into_raw_parts`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.into_raw_parts)
