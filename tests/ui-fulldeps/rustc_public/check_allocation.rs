@@ -209,6 +209,7 @@ fn main() {
     generate_input(&path).unwrap();
     let args = &[
         "rustc".to_string(),
+        "-Zmir-enable-passes=+SingleUseConsts".to_string(), // Needed for `fn collect_consts()`
         "--edition=2021".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
