@@ -505,7 +505,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Block(l, _), ExprKind::Block(r, _)) => self.eq_block(l, r),
             (ExprKind::Binary(l_op, ll, lr), ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
+                    || swap_binop(self.inner.cx, l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -939,26 +939,35 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
 }
 
 fn swap_binop<'a>(
+    cx: &LateContext<'_>,
     binop: BinOpKind,
     lhs: &'a Expr<'a>,
     rhs: &'a Expr<'a>,
 ) -> Option<(BinOpKind, &'a Expr<'a>, &'a Expr<'a>)> {
     match binop {
-        BinOpKind::Add | BinOpKind::Eq | BinOpKind::Ne | BinOpKind::BitAnd | BinOpKind::BitXor | BinOpKind::BitOr => {
-            Some((binop, rhs, lhs))
-        },
+        // `==` and `!=`, are commutative
+        BinOpKind::Eq | BinOpKind::Ne => Some((binop, rhs, lhs)),
+        // Comparisons can be reversed
         BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
         BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
         BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
         BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
-        BinOpKind::Mul // Not always commutative, e.g. with matrices. See issue #5698
-        | BinOpKind::Shl
-        | BinOpKind::Shr
-        | BinOpKind::Rem
-        | BinOpKind::Sub
-        | BinOpKind::Div
+        // Non-commutative operators
+        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Rem | BinOpKind::Sub | BinOpKind::Div => None,
+        // We know that those operators are commutative for primitive types,
+        // and we don't assume anything for other types
+        BinOpKind::Mul
+        | BinOpKind::Add
         | BinOpKind::And
-        | BinOpKind::Or => None,
+        | BinOpKind::Or
+        | BinOpKind::BitAnd
+        | BinOpKind::BitXor
+        | BinOpKind::BitOr => cx
+            .typeck_results()
+            .expr_ty_adjusted(lhs)
+            .peel_refs()
+            .is_primitive()
+            .then_some((binop, rhs, lhs)),
     }
 }
 
