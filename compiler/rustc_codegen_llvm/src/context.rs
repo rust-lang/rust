@@ -215,6 +215,11 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
             target_data_layout = target_data_layout.replace("-f64:32:64", "");
         }
+        if sess.target.arch == Arch::AmdGpu {
+            // LLVM 22 specified ELF mangling in the amdgpu data layout:
+            // https://github.com/llvm/llvm-project/pull/163011
+            target_data_layout = target_data_layout.replace("-m:e", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
