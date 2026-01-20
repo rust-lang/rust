@@ -166,9 +166,11 @@ is clear, but the design space is too large to settle on a detailed specificatio
 Instead of providing a final design, an eRFC outlines a high-level strategy to authorize
 a period of active experimentation. This allows the team to implement the feature behind
 a feature gate and gather practical data, which then informs a subsequent formal RFC for stabilization.
-While this process was used for major features like coroutines, the explicit "eRFC" label
-is rarely used today. The project now generally prefers approving a standard RFC for an initial
-version and iterating on it through the nightly channel before final stabilization.
+While this process was used for major features like coroutines ([see RFC2033][rfc2033]),
+the explicit "eRFC" label is rarely used today. The project now generally prefers approving a standard
+RFC for an initial version and iterating on it through the nightly channel before final stabilization.
+
+[rfc2033]: https://github.com/rust-lang/rfcs/pull/2033#issuecomment-309057591
 
 <a id="impl"></a>
 
