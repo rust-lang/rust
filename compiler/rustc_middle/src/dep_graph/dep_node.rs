@@ -61,7 +61,7 @@ macro_rules! define_dep_nodes {
 
         /// List containing the name of each dep kind as a static string,
         /// indexable by `DepKind`.
-        pub const DEP_KIND_NAMES: &[&str] = &[
+        pub(crate) const DEP_KIND_NAMES: &[&str] = &[
             $( self::label_strs::$variant, )*
         ];
 

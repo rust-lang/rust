@@ -8,9 +8,7 @@ use crate::ty::{self, TyCtxt};
 #[macro_use]
 mod dep_node;
 
-pub use dep_node::{
-    DEP_KIND_NAMES, DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds, label_strs,
-};
+pub use dep_node::{DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds, label_strs};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 pub use rustc_query_system::dep_graph::{
@@ -23,9 +21,7 @@ pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
 #[derive(Clone)]
-pub struct DepsType {
-    pub dep_names: &'static [&'static str],
-}
+pub struct DepsType;
 
 impl Deps for DepsType {
     fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
@@ -49,8 +45,8 @@ impl Deps for DepsType {
         })
     }
 
-    fn name(&self, dep_kind: DepKind) -> &'static str {
-        self.dep_names[dep_kind.as_usize()]
+    fn name(dep_kind: DepKind) -> &'static str {
+        dep_node::DEP_KIND_NAMES[dep_kind.as_usize()]
     }
 
     const DEP_KIND_NULL: DepKind = dep_kinds::Null;
