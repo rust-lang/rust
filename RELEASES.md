@@ -1,7 +1,7 @@
-Version 1.93 (2026-01-22)
+Version 1.93.0 (2026-01-22)
 ==========================
 
-<a id="1.93-Language"></a>
+<a id="1.93.0-Language"></a>
 
 Language
 --------
@@ -16,13 +16,13 @@ Language
 - [Add warn-by-default `function_casts_as_integer` lint](https://github.com/rust-lang/rust/pull/141470)
 
 
-<a id="1.93-Compiler"></a>
+<a id="1.93.0-Compiler"></a>
 
 Compiler
 --------
 - [Stabilize `-Cjump-tables=bool`](https://github.com/rust-lang/rust/pull/145974). The flag was previously called `-Zno-jump-tables`.
 
-<a id="1.93-Platform-Support"></a>
+<a id="1.93.0-Platform-Support"></a>
 
 Platform Support
 ----------------
@@ -34,7 +34,7 @@ for more information on Rust's tiered platform support.
 
 [platform-support-doc]: https://doc.rust-lang.org/rustc/platform-support.html
 
-<a id="1.93-Libraries"></a>
+<a id="1.93.0-Libraries"></a>
 
 Libraries
 ---------
@@ -44,7 +44,7 @@ Libraries
 - [Don't require `T: RefUnwindSafe` for `vec::IntoIter<T>: UnwindSafe`](https://github.com/rust-lang/rust/pull/145665)
 
 
-<a id="1.93-Stabilized-APIs"></a>
+<a id="1.93.0-Stabilized-APIs"></a>
 
 Stabilized APIs
 ---------------
@@ -74,7 +74,7 @@ Stabilized APIs
 - [`std::fmt::FromFn`](https://doc.rust-lang.org/stable/std/fmt/struct.FromFn.html)
 
 
-<a id="1.93-Cargo"></a>
+<a id="1.93.0-Cargo"></a>
 
 Cargo
 -----
@@ -82,7 +82,7 @@ Cargo
 - [In `cargo tree`, support long forms for `--format` variables](https://github.com/rust-lang/cargo/pull/16204/)
 - [Add `--workspace` to `cargo clean`](https://github.com/rust-lang/cargo/pull/16263/)
 
-<a id="1.93-Rustdoc"></a>
+<a id="1.93.0-Rustdoc"></a>
 
 Rustdoc
 -----
@@ -92,7 +92,7 @@ Rustdoc
 - [Validate usage of crate-level doc attributes](https://github.com/rust-lang/rust/pull/149197).  This means if any of `html_favicon_url`, `html_logo_url`, `html_playground_url`, `issue_tracker_base_url`, or `html_no_source` either has a missing value, an unexpected value, or a value of the wrong type, rustdoc will emit the deny-by-default lint `rustdoc::invalid_doc_attributes`.
 
 
-<a id="1.93-Compatibility-Notes"></a>
+<a id="1.93.0-Compatibility-Notes"></a>
 
 Compatibility Notes
 -------------------
