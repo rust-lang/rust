@@ -16,7 +16,8 @@ assert: |menu_height| < |window_height| && |scroll_height| > |window_height|
 // We scroll to the last element of the menu.
 scroll-to: "#settings .setting-line:last-of-type input"
 // The item should be visible now, and so the Y scroll value should have changed.
-assert-property: ("#settings .settings", {"scrollTop": 295})
+// Note: The `scrollTop` value will change if settings are added or removed.
+assert-property: ("#settings .settings", {"scrollTop": 335})
 
 // Now we open the help menu.
 click: ".help-menu a"
