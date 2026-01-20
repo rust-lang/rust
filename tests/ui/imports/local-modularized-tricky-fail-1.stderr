@@ -31,8 +31,7 @@ LL |     panic!();
    |     ^^^^^ ambiguous name
    |
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
-   = note: `panic` could refer to a macro from prelude
-note: `panic` could also refer to the macro defined here
+note: `panic` could refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:12:5
    |
 LL | /     macro_rules! panic {
@@ -43,6 +42,8 @@ LL | |     }
 LL |       define_panic!();
    |       --------------- in this macro invocation
    = help: use `crate::panic` to refer to this macro unambiguously
+note: `panic` could also refer to a macro from prelude
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    = note: this error originates in the macro `define_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `include` is ambiguous
@@ -52,8 +53,7 @@ LL | include!();
    | ^^^^^^^ ambiguous name
    |
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
-   = note: `include` could refer to a macro from prelude
-note: `include` could also refer to the macro defined here
+note: `include` could refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:18:5
    |
 LL | /     macro_rules! include {
@@ -64,6 +64,8 @@ LL | |     }
 LL |       define_include!();
    |       ----------------- in this macro invocation
    = help: use `crate::include` to refer to this macro unambiguously
+note: `include` could also refer to a macro from prelude
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    = note: this error originates in the macro `define_include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

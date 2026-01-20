@@ -2,7 +2,7 @@ error[E0059]: type parameter to bare `Fn` trait must be a tuple
   --> $DIR/non-tupled-arg-mismatch.rs:3:9
    |
 LL | fn a<F: Fn<usize>>(f: F) {}
-   |         ^^^^^^^^^ the trait `std::marker::Tuple` is not implemented for `usize`
+   |         ^^^^^^^^^ the nightly-only, unstable trait `std::marker::Tuple` is not implemented for `usize`
    |
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

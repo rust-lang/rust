@@ -4,7 +4,7 @@ error[E0277]: `NotParam` can't be used as a const parameter type
 LL |     check::<&NotParam>();
    |             ^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `ConstParamTy_` is not implemented for `NotParam`
+help: the nightly-only, unstable trait `ConstParamTy_` is not implemented for `NotParam`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
    |
 LL | struct NotParam;
@@ -22,7 +22,7 @@ error[E0277]: `NotParam` can't be used as a const parameter type
 LL |     check::<[NotParam]>();
    |             ^^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `ConstParamTy_` is not implemented for `NotParam`
+help: the nightly-only, unstable trait `ConstParamTy_` is not implemented for `NotParam`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
    |
 LL | struct NotParam;
@@ -40,7 +40,7 @@ error[E0277]: `NotParam` can't be used as a const parameter type
 LL |     check::<[NotParam; 17]>();
    |             ^^^^^^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `ConstParamTy_` is not implemented for `NotParam`
+help: the nightly-only, unstable trait `ConstParamTy_` is not implemented for `NotParam`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
    |
 LL | struct NotParam;

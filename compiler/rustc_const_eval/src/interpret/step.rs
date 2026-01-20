@@ -218,7 +218,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // A fresh reference was created, make sure it gets retagged.
                 let val = M::retag_ptr_value(
                     self,
-                    if borrow_kind.allows_two_phase_borrow() {
+                    if borrow_kind.is_two_phase_borrow() {
                         mir::RetagKind::TwoPhase
                     } else {
                         mir::RetagKind::Default

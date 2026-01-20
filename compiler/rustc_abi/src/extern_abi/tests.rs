@@ -1,5 +1,6 @@
-use std::assert_matches::assert_matches;
 use std::str::FromStr;
+
+use rustc_data_structures::assert_matches;
 
 use super::*;
 

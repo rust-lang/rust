@@ -7,7 +7,7 @@ LL | struct Struct {
 LL |     x: Error
    |     ^^^^^^^^ the trait `Eq` is not implemented for `Error`
    |
-note: required by a bound in `AssertParamIsEq`
+note: required by a bound in `std::cmp::AssertParamIsEq`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: consider annotating `Error` with `#[derive(Eq)]`
    |

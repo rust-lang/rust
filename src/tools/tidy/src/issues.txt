@@ -33,8 +33,6 @@ ui/asm/issue-99122.rs
 ui/asm/x86_64/issue-82869.rs
 ui/asm/x86_64/issue-89875.rs
 ui/asm/x86_64/issue-96797.rs
-ui/associated-consts/issue-102335-const.rs
-ui/associated-consts/issue-105330.rs
 ui/associated-consts/issue-110933.rs
 ui/associated-consts/issue-24949-assoc-const-static-recursion-impl.rs
 ui/associated-consts/issue-24949-assoc-const-static-recursion-trait-default.rs
@@ -45,7 +43,6 @@ ui/associated-consts/issue-63496.rs
 ui/associated-consts/issue-69020-assoc-const-arith-overflow.rs
 ui/associated-consts/issue-88599-ref-self.rs
 ui/associated-consts/issue-93775.rs
-ui/associated-consts/issue-93835.rs
 ui/associated-inherent-types/issue-104260.rs
 ui/associated-inherent-types/issue-109071.rs
 ui/associated-inherent-types/issue-109299-1.rs
@@ -70,7 +67,6 @@ ui/associated-type-bounds/issue-73818.rs
 ui/associated-type-bounds/issue-79949.rs
 ui/associated-type-bounds/issue-81193.rs
 ui/associated-type-bounds/issue-83017.rs
-ui/associated-type-bounds/issue-99828.rs
 ui/associated-type-bounds/return-type-notation/issue-120208-higher-ranked-const.rs
 ui/associated-types/issue-18655.rs
 ui/associated-types/issue-19081.rs
@@ -498,6 +494,9 @@ ui/confuse-field-and-method/issue-18343.rs
 ui/confuse-field-and-method/issue-2392.rs
 ui/confuse-field-and-method/issue-32128.rs
 ui/confuse-field-and-method/issue-33784.rs
+ui/const-generics/associated-const-bindings/issue-102335-const.rs
+ui/const-generics/associated-const-bindings/issue-105330.rs
+ui/const-generics/associated-const-bindings/issue-93835.rs
 ui/const-generics/generic_arg_infer/issue-91614.rs
 ui/const-generics/generic_const_exprs/const_kind_expr/issue_114151.rs
 ui/const-generics/generic_const_exprs/issue-100217.rs

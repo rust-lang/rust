@@ -148,11 +148,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,
                     i.span,
-                    i.id,
                     Target::MacroDef,
                     OmitDoc::Skip,
                     std::convert::identity,
-                    |_l| {
+                    |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
                         // NOTE that before new attribute parsing, they didn't happen either
                         // but it would be nice if we could change that.
@@ -419,7 +418,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
             // Avoid overwriting `const_arg_context` as we may want to treat const blocks
             // as being anon consts if we are inside a const argument.
-            ExprKind::Struct(_) | ExprKind::Call(..) | ExprKind::Tup(..) => {
+            ExprKind::Struct(_) | ExprKind::Call(..) | ExprKind::Tup(..) | ExprKind::Array(..) => {
                 return visit::walk_expr(self, expr);
             }
             // FIXME(mgca): we may want to handle block labels in some manner

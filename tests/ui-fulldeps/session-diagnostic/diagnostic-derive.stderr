@@ -384,7 +384,7 @@ error: derive(Diagnostic): diagnostic slug not specified
 LL | #[lint(no_crate_example, code = E0123)]
    | ^
    |
-   = help: specify the slug as the first argument to the attribute, such as `#[diag(compiletest_example)]`
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
 
 error: derive(Diagnostic): attribute specified multiple times
   --> $DIR/diagnostic-derive.rs:613:53
@@ -657,7 +657,7 @@ LL | #[derive(Diagnostic)]
 LL |     other: Hello,
    |            ^^^^^ unsatisfied trait bound
    |
-help: the trait `IntoDiagArg` is not implemented for `Hello`
+help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `Hello`
   --> $DIR/diagnostic-derive.rs:40:1
    |
 LL | struct Hello {}

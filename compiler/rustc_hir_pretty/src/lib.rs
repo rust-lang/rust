@@ -1153,6 +1153,7 @@ impl<'a> State<'a> {
             }
             ConstArgKind::Struct(qpath, fields) => self.print_const_struct(qpath, fields),
             ConstArgKind::TupleCall(qpath, args) => self.print_const_ctor(qpath, args),
+            ConstArgKind::Array(..) => self.word("/* ARRAY EXPR */"),
             ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
             ConstArgKind::Error(_) => self.word("/*ERROR*/"),

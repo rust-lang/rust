@@ -278,7 +278,7 @@ macro_rules! define_callbacks {
                     ($V)
                 );
 
-                /// This function takes `ProvidedValue` and coverts it to an erased `Value` by
+                /// This function takes `ProvidedValue` and converts it to an erased `Value` by
                 /// allocating it on an arena if the query has the `arena_cache` modifier. The
                 /// value is then erased and returned. This will happen when computing the query
                 /// using a provider or decoding a stored result.
@@ -431,7 +431,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*, QueryStackDeferred<'tcx>>,
+                pub $name: QueryState<$($K)*>,
             )*
         }
 
@@ -532,7 +532,7 @@ macro_rules! define_feedable {
 // The result type of each query must implement `Clone`, and additionally
 // `ty::query::values::Value`, which produces an appropriate placeholder
 // (error) value if the query resulted in a query cycle.
-// Queries marked with `fatal_cycle` do not need the latter implementation,
+// Queries marked with `cycle_fatal` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
 mod sealed {

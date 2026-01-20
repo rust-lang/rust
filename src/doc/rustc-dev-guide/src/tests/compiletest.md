@@ -78,6 +78,10 @@ The following test suites are available, with links for more information:
 
 [`run-make`](#run-make-tests) are general purpose tests using Rust programs.
 
+### The build-std test suite
+
+[`build-std`](#build-std-tests) tests that -Zbuild-std works.
+
 ### Rustdoc test suites
 
 | Test suite                           | Purpose                                                                  |
@@ -428,6 +432,14 @@ The `run-make-cargo` test suite additionally builds an in-tree `cargo` to suppor
 use cases that require testing in-tree `cargo` in conjunction with in-tree `rustc`.
 The `run-make` test suite does not have access to in-tree `cargo` (so it can be the
 faster-to-iterate test suite).
+
+### `build-std` tests
+
+The tests in [`tests/build-std`] check that `-Zbuild-std` works. This is currently
+just a run-make test suite with a single recipe. The recipe generates test cases
+and runs them in parallel.
+
+[`tests/build-std`]: https://github.com/rust-lang/rust/tree/HEAD/tests/build-std
 
 #### Using Rust recipes
 

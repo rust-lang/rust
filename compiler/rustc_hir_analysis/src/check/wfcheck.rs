@@ -1205,7 +1205,7 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             EiiImplResolution::Macro(def_id) => {
                 // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
                 // signature that we'd like to compare the function we're currently checking with
-                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target: t, ..}) => *t)
+                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
                 {
                     (foreign_item, tcx.item_name(*def_id))
                 } else {
@@ -1213,7 +1213,7 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     continue;
                 }
             }
-            EiiImplResolution::Known(decl) => (decl.eii_extern_target, decl.name.name),
+            EiiImplResolution::Known(decl) => (decl.foreign_item, decl.name.name),
             EiiImplResolution::Error(_eg) => continue,
         };
 
@@ -2160,7 +2160,12 @@ fn report_bivariance<'tcx>(
         const_param_help,
     });
     diag.code(E0392);
-    diag.emit()
+    if item.kind.recovered() {
+        // Silence potentially redundant error, as the item had a parse error.
+        diag.delay_as_bug()
+    } else {
+        diag.emit()
+    }
 }
 
 /// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so

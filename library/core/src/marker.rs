@@ -455,9 +455,6 @@ marker_impls! {
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
-// This is unsound, but required by `hashbrown`
-// FIXME(joboet): change `hashbrown` to use `TrivialClone`
-#[rustc_unsafe_specialization_marker]
 #[rustc_diagnostic_item = "Copy"]
 pub trait Copy: Clone {
     // Empty.

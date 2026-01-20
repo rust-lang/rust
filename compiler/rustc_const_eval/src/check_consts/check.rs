@@ -1,11 +1,11 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
+use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -833,12 +833,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `panic_display` assumes the argument is `&&str`
                 if tcx.is_lang_item(callee, LangItem::PanicDisplay) {
-                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
-                        ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
-                            {}
-                        _ => {
-                            self.check_op(ops::PanicNonStr);
-                        }
+                    if let ty::Ref(_, ty, _) =
+                        args[0].node.ty(&self.ccx.body.local_decls, tcx).kind()
+                        && let ty::Ref(_, ty, _) = ty.kind()
+                        && ty.is_str()
+                    {
+                    } else {
+                        self.check_op(ops::PanicNonStr);
                     }
                     // Allow this call, skip all the checks below.
                     return;

@@ -20,7 +20,7 @@ pub trait TraitHidden {}
 //@ has 'foo/index.html' '//dt/a[@class="trait"]' 'Trait'
 pub trait Trait {
     //@ has 'foo/trait.Trait.html'
-    //@ has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0u32'
+    //@ has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0'
     #[doc(hidden)]
     const BAR: u32 = 0;
 
@@ -44,7 +44,7 @@ impl Struct {
 }
 
 impl Trait for Struct {
-    //@ has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0u32'
+    //@ has - '//*[@id="associatedconstant.BAR"]/*[@class="code-header"]' '#[doc(hidden)] const BAR: u32 = 0'
     //@ has - '//*[@id="method.foo"]/*[@class="code-header"]' '#[doc(hidden)] fn foo()'
 }
 //@ has - '//*[@id="impl-TraitHidden-for-Struct"]/*[@class="code-header"]' 'impl TraitHidden for Struct'

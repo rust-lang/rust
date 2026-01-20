@@ -31,7 +31,7 @@ impl Type {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     // FIXME(reflection): don't require the 'static bound
-    pub const fn of<T: 'static>() -> Self {
+    pub const fn of<T: ?Sized + 'static>() -> Self {
         const { TypeId::of::<T>().info() }
     }
 }
@@ -43,9 +43,22 @@ impl Type {
 pub enum TypeKind {
     /// Tuples.
     Tuple(Tuple),
-    /// Primitives
-    /// FIXME(#146922): disambiguate further
-    Leaf,
+    /// Arrays.
+    Array(Array),
+    /// Primitive boolean type.
+    Bool(Bool),
+    /// Primitive character type.
+    Char(Char),
+    /// Primitive signed and unsigned integer type.
+    Int(Int),
+    /// Primitive floating-point type.
+    Float(Float),
+    /// String slice type.
+    Str(Str),
+    /// References.
+    Reference(Reference),
+    /// Pointers.
+    Pointer(Pointer),
     /// FIXME(#146922): add all the common types
     Other,
 }
@@ -68,4 +81,81 @@ pub struct Field {
     pub ty: TypeId,
     /// Offset in bytes from the parent type
     pub offset: usize,
+}
+
+/// Compile-time type information about arrays.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Array {
+    /// The type of each element in the array.
+    pub element_ty: TypeId,
+    /// The length of the array.
+    pub len: usize,
+}
+
+/// Compile-time type information about `bool`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Bool {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about `char`.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Char {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about signed and unsigned integer types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Int {
+    /// The bit width of the signed integer type.
+    pub bits: u32,
+    /// Whether the integer type is signed.
+    pub signed: bool,
+}
+
+/// Compile-time type information about floating-point types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Float {
+    /// The bit width of the floating-point type.
+    pub bits: u32,
+}
+
+/// Compile-time type information about string slice types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Str {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about references.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Reference {
+    /// The type of the value being referred to.
+    pub pointee: TypeId,
+    /// Whether this reference is mutable or not.
+    pub mutable: bool,
+}
+
+/// Compile-time type information about pointers.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Pointer {
+    /// The type of the value being pointed to.
+    pub pointee: TypeId,
+    /// Whether this pointer is mutable or not.
+    pub mutable: bool,
 }

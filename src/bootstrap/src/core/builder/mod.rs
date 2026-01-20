@@ -927,6 +927,7 @@ impl<'a> Builder<'a> {
                 test::CollectLicenseMetadata,
                 test::RunMake,
                 test::RunMakeCargo,
+                test::BuildStd,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
@@ -980,6 +981,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::LlvmBitcodeLinker,
                 dist::RustDev,
+                dist::Enzyme,
                 dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
@@ -990,7 +992,8 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::GccDev
+                dist::GccDev,
+                dist::Gcc
             ),
             Kind::Install => describe!(
                 install::Docs,

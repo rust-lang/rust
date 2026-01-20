@@ -26,7 +26,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
     Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
 };
-use rustc_middle::dep_graph::{DepNode, DepNodeExt, label_strs};
+use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
@@ -357,17 +357,6 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn assert_loaded_from_disk(&self, item_span: Span, dep_node: DepNode) {
-        debug!("assert_loaded_from_disk({:?})", dep_node);
-
-        if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
-            let dep_node_str = self.dep_node_str(&dep_node);
-            self.tcx
-                .dcx()
-                .emit_err(errors::NotLoaded { span: item_span, dep_node_str: &dep_node_str });
-        }
-    }
-
     fn check_item(&mut self, item_id: LocalDefId) {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
@@ -385,8 +374,27 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 self.assert_dirty(item_span, dep_node);
             }
             for label in assertion.loaded_from_disk.items().into_sorted_stable_ord() {
-                let dep_node = DepNode::from_label_string(self.tcx, label, def_path_hash).unwrap();
-                self.assert_loaded_from_disk(item_span, dep_node);
+                match DepNode::from_label_string(self.tcx, label, def_path_hash) {
+                    Ok(dep_node) => {
+                        if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
+                            let dep_node_str = self.dep_node_str(&dep_node);
+                            self.tcx.dcx().emit_err(errors::NotLoaded {
+                                span: item_span,
+                                dep_node_str: &dep_node_str,
+                            });
+                        }
+                    }
+                    // Opaque/unit hash, we only know the dep kind
+                    Err(()) => {
+                        let dep_kind = dep_kind_from_label(label);
+                        if !self.tcx.dep_graph.debug_dep_kind_was_loaded_from_disk(dep_kind) {
+                            self.tcx.dcx().emit_err(errors::NotLoaded {
+                                span: item_span,
+                                dep_node_str: &label,
+                            });
+                        }
+                    }
+                }
             }
         }
     }

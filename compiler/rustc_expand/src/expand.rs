@@ -999,7 +999,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let kind = match item {
             Annotatable::Item(_)
@@ -2218,6 +2217,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             &attr,
             attr.span,
             self.cfg().lint_node_id,
+            // Target doesn't matter for `cfg` parsing.
+            Target::Crate,
             self.cfg().features,
             ShouldEmit::ErrorsAndLints,
             parse_cfg,

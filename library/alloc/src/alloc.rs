@@ -184,7 +184,7 @@ impl Global {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn alloc_impl_runtime(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
@@ -277,7 +277,7 @@ impl Global {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
                 self.deallocate(ptr, old_layout);
-                Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
+                Ok(NonNull::slice_from_raw_parts(new_layout.dangling_ptr(), 0))
             },
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
@@ -368,7 +368,7 @@ impl Global {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     const fn alloc_impl_const(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = core::intrinsics::const_allocate(layout.size(), layout.align());

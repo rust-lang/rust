@@ -2,12 +2,12 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
+use rustc_data_structures::debug_assert_matches;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;

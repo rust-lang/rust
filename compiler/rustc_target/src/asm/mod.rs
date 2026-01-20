@@ -261,7 +261,7 @@ impl InlineAsmArch {
             Arch::Mips | Arch::Mips32r6 => Some(Self::Mips),
             Arch::Mips64 | Arch::Mips64r6 => Some(Self::Mips64),
             Arch::PowerPC => Some(Self::PowerPC),
-            Arch::PowerPC64 | Arch::PowerPC64LE => Some(Self::PowerPC64),
+            Arch::PowerPC64 => Some(Self::PowerPC64),
             Arch::S390x => Some(Self::S390x),
             Arch::Sparc => Some(Self::Sparc),
             Arch::Sparc64 => Some(Self::Sparc64),

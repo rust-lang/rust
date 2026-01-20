@@ -2,7 +2,7 @@ error[E0277]: the trait bound `impl Future<Output = ()>: Coroutine<_>` is not sa
   --> $DIR/coroutine-not-future.rs:36:21
    |
 LL |     takes_coroutine(async_fn());
-   |     --------------- ^^^^^^^^^^ the trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
+   |     --------------- ^^^^^^^^^^ the nightly-only, unstable trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `impl Future<Output = ()>: Coroutine<_>` is not sa
   --> $DIR/coroutine-not-future.rs:38:21
    |
 LL |     takes_coroutine(returns_async_block());
-   |     --------------- ^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
+   |     --------------- ^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -30,7 +30,7 @@ error[E0277]: the trait bound `{async block@$DIR/coroutine-not-future.rs:40:21: 
   --> $DIR/coroutine-not-future.rs:40:21
    |
 LL |     takes_coroutine(async {});
-   |     --------------- ^^^^^^^^ the trait `Coroutine<_>` is not implemented for `{async block@$DIR/coroutine-not-future.rs:40:21: 40:26}`
+   |     --------------- ^^^^^^^^ the nightly-only, unstable trait `Coroutine<_>` is not implemented for `{async block@$DIR/coroutine-not-future.rs:40:21: 40:26}`
    |     |
    |     required by a bound introduced by this call
    |

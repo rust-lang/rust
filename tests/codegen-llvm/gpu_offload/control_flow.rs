@@ -12,8 +12,7 @@
 
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NOT: define
-// CHECK: %EmptyDesc = alloca %struct.__tgt_bin_desc, align 8
-// CHECK-NEXT: %.offload_baseptrs = alloca [1 x ptr], align 8
+// CHECK: %.offload_baseptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT: %.offload_ptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT: %.offload_sizes = alloca [1 x i64], align 8
 // CHECK-NEXT: %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8

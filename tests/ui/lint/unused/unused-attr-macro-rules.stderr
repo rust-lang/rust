@@ -27,7 +27,7 @@ error: crate-level attribute should be an inner attribute: add an exclamation ma
 LL | #[recursion_limit="1"]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this macro def
+note: this attribute does not have an `!`, which means it is applied to this macro def
   --> $DIR/unused-attr-macro-rules.rs:12:1
    |
 LL | / macro_rules! foo {

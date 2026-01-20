@@ -1444,9 +1444,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> Default for HashMap<K, V, S>
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<K, V, S> const Default for HashMap<K, V, S>
 where
-    S: Default,
+    S: [const] Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     #[inline]

@@ -35,6 +35,7 @@ targetting = "targetting"
 unparseable = "unparseable"
 unstability = "unstability"
 unstalled = "unstalled"
+numer = "numer"
 
 # this can be valid word, depends on dictionary edition
 #matcheable = "matcheable"

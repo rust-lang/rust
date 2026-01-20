@@ -1801,6 +1801,8 @@ supported_targets! {
     ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
+
+    ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1873,7 +1875,6 @@ crate::target_spec_enum! {
         Nvptx64 = "nvptx64",
         PowerPC = "powerpc",
         PowerPC64 = "powerpc64",
-        PowerPC64LE = "powerpc64le",
         RiscV32 = "riscv32",
         RiscV64 = "riscv64",
         S390x = "s390x",
@@ -1911,7 +1912,6 @@ impl Arch {
             Self::Nvptx64 => sym::nvptx64,
             Self::PowerPC => sym::powerpc,
             Self::PowerPC64 => sym::powerpc64,
-            Self::PowerPC64LE => sym::powerpc64le,
             Self::RiscV32 => sym::riscv32,
             Self::RiscV64 => sym::riscv64,
             Self::S390x => sym::s390x,
@@ -1940,8 +1940,8 @@ impl Arch {
 
             AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
             | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
-            | PowerPC64 | PowerPC64LE | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32
-            | Wasm64 | X86 | X86_64 | Xtensa => true,
+            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
+            | X86_64 | Xtensa => true,
         }
     }
 }
@@ -3298,10 +3298,19 @@ impl Target {
     pub fn search(
         target_tuple: &TargetTuple,
         sysroot: &Path,
+        unstable_options: bool,
     ) -> Result<(Target, TargetWarnings), String> {
         use std::{env, fs};
 
-        fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
+        fn load_file(
+            path: &Path,
+            unstable_options: bool,
+        ) -> Result<(Target, TargetWarnings), String> {
+            if !unstable_options {
+                return Err(
+                    "custom targets are unstable and require `-Zunstable-options`".to_string()
+                );
+            }
             let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
             Target::from_json(&contents)
         }
@@ -3325,7 +3334,7 @@ impl Target {
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
                     if p.is_file() {
-                        return load_file(&p);
+                        return load_file(&p, unstable_options);
                     }
                 }
 
@@ -3338,7 +3347,7 @@ impl Target {
                     Path::new("target.json"),
                 ]);
                 if p.is_file() {
-                    return load_file(&p);
+                    return load_file(&p, unstable_options);
                 }
 
                 Err(format!("could not find specification for target {target_tuple:?}"))
@@ -3436,7 +3445,6 @@ impl Target {
             Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
             Arch::AmdGpu
             | Arch::Nvptx64
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64

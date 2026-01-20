@@ -86,4 +86,6 @@ raw  { \n
 
     println!("{x?}, world!",);
     //~^ ERROR invalid format string: expected `}`, found `?`
+    println!("{x,}, world!",);
+    //~^ ERROR invalid format string: python's numeric grouping `,` is not supported in rust format strings
 }

@@ -97,6 +97,21 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         GenericBuilder { llbuilder, cx: scx }
     }
 
+    pub(crate) fn append_block(
+        cx: &'a GenericCx<'ll, CX>,
+        llfn: &'ll Value,
+        name: &str,
+    ) -> &'ll BasicBlock {
+        unsafe {
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx(), llfn, name.as_ptr())
+        }
+    }
+
+    pub(crate) fn trunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, UNNAMED) }
+    }
+
     pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
     }
@@ -171,19 +186,6 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
-        }
-    }
-
-    fn memset(&mut self, ptr: &'ll Value, fill_byte: &'ll Value, size: &'ll Value, align: Align) {
-        unsafe {
-            llvm::LLVMRustBuildMemSet(
-                self.llbuilder,
-                ptr,
-                align.bytes() as c_uint,
-                fill_byte,
-                size,
-                false,
-            );
         }
     }
 }
@@ -1773,6 +1775,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         if crate::llvm_util::get_version() >= (22, 0, 0) {
+            // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
+            // there can't be an addrspacecast in between.
+            let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
         } else {
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);

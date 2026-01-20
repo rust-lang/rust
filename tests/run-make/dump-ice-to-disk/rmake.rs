@@ -18,13 +18,16 @@
 //! # Test history
 //!
 //! The previous rmake.rs iteration of this test was flaky for unknown reason on
-//! `i686-pc-windows-gnu` *specifically*, so assertion failures in this test was made extremely
-//! verbose to help diagnose why the ICE messages was different. It appears that backtraces on
-//! `i686-pc-windows-gnu` specifically are quite unpredictable in how many backtrace frames are
-//! involved.
+//! `i686-pc-windows-gnu`, so assertion failures in this test was made extremely verbose to help
+//! diagnose why the ICE messages was different. It appears that backtraces on `i686-pc-windows-gnu`
+//! specifically are quite unpredictable in how many backtrace frames are involved.
+//!
+//! Disabled on `i686-pc-windows-msvc` as well, because sometimes the middle portion of the ICE
+//! backtrace becomes `<unknown>`.
 
 //@ ignore-cross-compile (exercising ICE dump on host)
 //@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
+//@ ignore-i686-pc-windows-msvc (sometimes partial backtrace becomes `<unknown>`)
 
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};

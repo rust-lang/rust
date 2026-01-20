@@ -11,7 +11,6 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -31,6 +30,7 @@ use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -51,7 +51,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -1816,37 +1816,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
-        }
-    }
-
-    /// Get an attribute from the diagnostic attribute namespace
-    ///
-    /// This function requests an attribute with the following structure:
-    ///
-    /// `#[diagnostic::$attr]`
-    ///
-    /// This function performs feature checking, so if an attribute is returned
-    /// it can be used by the consumer
-    pub fn get_diagnostic_attr(
-        self,
-        did: impl Into<DefId>,
-        attr: Symbol,
-    ) -> Option<&'tcx hir::Attribute> {
-        let did: DefId = did.into();
-        if did.as_local().is_some() {
-            // it's a crate local item, we need to check feature flags
-            if rustc_feature::is_stable_diagnostic_attribute(attr, self.features()) {
-                self.get_attrs_by_path(did, &[sym::diagnostic, sym::do_not_recommend]).next()
-            } else {
-                None
-            }
-        } else {
-            // we filter out unstable diagnostic attributes before
-            // encoding attributes
-            debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.attrs_for_def(did)
-                .iter()
-                .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
         }
     }
 

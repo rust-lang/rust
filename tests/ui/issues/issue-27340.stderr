@@ -16,7 +16,7 @@ LL |
 LL | struct Bar(Foo);
    |            ^^^ the trait `Clone` is not implemented for `Foo`
    |
-note: required by a bound in `AssertParamIsClone`
+note: required by a bound in `std::clone::AssertParamIsClone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |

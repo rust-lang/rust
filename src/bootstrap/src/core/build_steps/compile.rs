@@ -299,7 +299,8 @@ impl Step for Std {
             if self.is_for_mir_opt_tests {
                 ArtifactKeepMode::OnlyRmeta
             } else {
-                ArtifactKeepMode::OnlyRlib
+                // We use -Zno-embed-metadata for the standard library
+                ArtifactKeepMode::BothRlibAndRmeta
             },
         );
 
@@ -1629,24 +1630,33 @@ impl GccDylibSet {
                 "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
                 compiler.host
             );
-            let libgccjit = libgccjit.libgccjit();
-            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+            let libgccjit_path = libgccjit.libgccjit();
 
             // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a
             // symlink, which wouldn't work.
-            let actual_libgccjit_path = t!(
-                libgccjit.canonicalize(),
-                format!("Cannot find libgccjit at {}", libgccjit.display())
+            let libgccjit_path = t!(
+                libgccjit_path.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit_path.display())
             );
 
-            // <cg-sysroot>/lib/<target>/libgccjit.so
-            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
-            t!(fs::create_dir_all(&dest_dir));
-            let dst = dest_dir.join(target_filename);
-            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+            let dst = cg_sysroot.join(libgccjit_path_relative_to_cg_dir(target_pair, libgccjit));
+            t!(std::fs::create_dir_all(dst.parent().unwrap()));
+            builder.copy_link(&libgccjit_path, &dst, FileType::NativeLibrary);
         }
     }
+}
+
+/// Returns a path where libgccjit.so should be stored, **relative** to the
+/// **codegen backend directory**.
+pub fn libgccjit_path_relative_to_cg_dir(
+    target_pair: &GccTargetPair,
+    libgccjit: &GccOutput,
+) -> PathBuf {
+    let target_filename = libgccjit.libgccjit().file_name().unwrap().to_str().unwrap();
+
+    // <cg-dir>/lib/<target>/libgccjit.so
+    Path::new("lib").join(target_pair.target()).join(target_filename)
 }
 
 /// Output of the `compile::GccCodegenBackend` step.
@@ -2282,23 +2292,13 @@ impl Step for Assemble {
             builder.compiler(target_compiler.stage - 1, builder.config.host_target);
 
         // Build enzyme
-        if builder.config.llvm_enzyme && !builder.config.dry_run() {
+        if builder.config.llvm_enzyme {
             debug!("`llvm_enzyme` requested");
-            let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
-            if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
-                let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-                let lib_ext = std::env::consts::DLL_EXTENSION;
-                let libenzyme = format!("libEnzyme-{llvm_version_major}");
-                let src_lib =
-                    enzyme_install.join("build/Enzyme").join(&libenzyme).with_extension(lib_ext);
-                let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
-                let target_libdir =
-                    builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-                let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
-                let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
-                builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
-            }
+            let enzyme = builder.ensure(llvm::Enzyme { target: build_compiler.host });
+            let target_libdir =
+                builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+            let target_dst_lib = target_libdir.join(enzyme.enzyme_filename());
+            builder.copy_link(&enzyme.enzyme_path(), &target_dst_lib, FileType::NativeLibrary);
         }
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
@@ -2645,6 +2645,10 @@ pub enum ArtifactKeepMode {
     OnlyRlib,
     /// Only keep .rmeta files, ignore .rlib files
     OnlyRmeta,
+    /// Keep both .rlib and .rmeta files.
+    /// This is essentially only useful when using `-Zno-embed-metadata`, in which case both the
+    /// .rlib and .rmeta files are needed for compilation/linking.
+    BothRlibAndRmeta,
     /// Custom logic for keeping an artifact
     /// It receives the filename of an artifact, and returns true if it should be kept.
     Custom(Box<dyn Fn(&str) -> bool>),
@@ -2701,6 +2705,9 @@ pub fn run_cargo(
                 match &artifact_keep_mode {
                     ArtifactKeepMode::OnlyRlib => filename.ends_with(".rlib"),
                     ArtifactKeepMode::OnlyRmeta => filename.ends_with(".rmeta"),
+                    ArtifactKeepMode::BothRlibAndRmeta => {
+                        filename.ends_with(".rmeta") || filename.ends_with(".rlib")
+                    }
                     ArtifactKeepMode::Custom(func) => func(&filename),
                 }
             };
