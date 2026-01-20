@@ -2972,6 +2972,15 @@ impl Path {
     ///
     /// If `path` is absolute, it replaces the current path.
     ///
+    /// On Windows:
+    ///
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it
+    ///   replaces and returns everything except for the prefix (if any) of `self`.
+    /// * if `path` has a prefix but no root, `self` is ignored and `path` is returned.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
+    ///
     /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
     ///
     /// # Examples

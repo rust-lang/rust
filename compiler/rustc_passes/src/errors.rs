@@ -20,10 +20,6 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_incorrect_do_not_recommend_args)]
-pub(crate) struct DoNotRecommendDoesNotExpectArgs;
-
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {
@@ -180,27 +176,10 @@ pub(crate) struct DocMaskedNotExternCrateSelf {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_doc_attr_not_crate_level)]
-pub(crate) struct DocAttrNotCrateLevel<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_both_ffi_const_and_pure, code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
     pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_must_not_suspend)]
-pub(crate) struct MustNotSuspend {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -373,15 +352,6 @@ pub(crate) struct UnusedMultiple {
     #[note]
     pub other: Span,
     pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_collapse_debuginfo)]
-pub(crate) struct CollapseDebuginfo {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -1103,11 +1073,6 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[diag(passes_ineffective_unstable_impl)]
 #[note]
 pub(crate) struct IneffectiveUnstableImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_attr_crate_level)]
-#[note]
-pub(crate) struct AttrCrateLevelOnly {}
 
 /// "sanitize attribute not allowed here"
 #[derive(Diagnostic)]

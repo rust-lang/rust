@@ -2,6 +2,7 @@ use std::ffi::CString;
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::bug;
@@ -18,8 +19,6 @@ pub(crate) struct OffloadGlobals<'ll> {
     pub launcher_fn: &'ll llvm::Value,
     pub launcher_ty: &'ll llvm::Type,
 
-    pub bin_desc: &'ll llvm::Type,
-
     pub kernel_args_ty: &'ll llvm::Type,
 
     pub offload_entry_ty: &'ll llvm::Type,
@@ -30,8 +29,8 @@ pub(crate) struct OffloadGlobals<'ll> {
 
     pub ident_t_global: &'ll llvm::Value,
 
-    pub register_lib: &'ll llvm::Value,
-    pub unregister_lib: &'ll llvm::Value,
+    // FIXME(offload): Drop this, once we fully automated our offload compilation pipeline, since
+    // LLVM will initialize them for us if it sees gpu kernels being registered.
     pub init_rtls: &'ll llvm::Value,
 }
 
@@ -43,33 +42,92 @@ impl<'ll> OffloadGlobals<'ll> {
         let (begin_mapper, _, end_mapper, mapper_fn_ty) = gen_tgt_data_mappers(cx);
         let ident_t_global = generate_at_one(cx);
 
-        let tptr = cx.type_ptr();
-        let ti32 = cx.type_i32();
-        let tgt_bin_desc_ty = vec![ti32, tptr, tptr, tptr];
-        let bin_desc = cx.type_named_struct("struct.__tgt_bin_desc");
-        cx.set_struct_body(bin_desc, &tgt_bin_desc_ty, false);
-
-        let reg_lib_decl = cx.type_func(&[cx.type_ptr()], cx.type_void());
-        let register_lib = declare_offload_fn(&cx, "__tgt_register_lib", reg_lib_decl);
-        let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
         let init_ty = cx.type_func(&[], cx.type_void());
         let init_rtls = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
+
+        // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
+        // openmp and offload optimizations.
+        llvm::add_module_flag_u32(cx.llmod(), llvm::ModuleFlagMergeBehavior::Max, "openmp", 51);
 
         OffloadGlobals {
             launcher_fn,
             launcher_ty,
-            bin_desc,
             kernel_args_ty,
             offload_entry_ty,
             begin_mapper,
             end_mapper,
             mapper_fn_ty,
             ident_t_global,
-            register_lib,
-            unregister_lib,
             init_rtls,
         }
     }
+}
+
+// We need to register offload before using it. We also should unregister it once we are done, for
+// good measures. Previously we have done so before and after each individual offload intrinsic
+// call, but that comes at a performance cost. The repeated (un)register calls might also confuse
+// the LLVM ompOpt pass, which tries to move operations to a better location. The easiest solution,
+// which we copy from clang, is to just have those two calls once, in the global ctor/dtor section
+// of the final binary.
+pub(crate) fn register_offload<'ll>(cx: &CodegenCx<'ll, '_>) {
+    // First we check quickly whether we already have done our setup, in which case we return early.
+    // Shouldn't be needed for correctness.
+    let register_lib_name = "__tgt_register_lib";
+    if cx.get_function(register_lib_name).is_some() {
+        return;
+    }
+
+    let reg_lib_decl = cx.type_func(&[cx.type_ptr()], cx.type_void());
+    let register_lib = declare_offload_fn(&cx, register_lib_name, reg_lib_decl);
+    let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
+
+    let ptr_null = cx.const_null(cx.type_ptr());
+    let const_struct = cx.const_struct(&[cx.get_const_i32(0), ptr_null, ptr_null, ptr_null], false);
+    let omp_descriptor =
+        add_global(cx, ".omp_offloading.descriptor", const_struct, InternalLinkage);
+    // @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 1, ptr @.omp_offloading.device_images, ptr @__start_llvm_offload_entries, ptr @__stop_llvm_offload_entries }
+    // @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 0, ptr null, ptr null, ptr null }
+
+    let atexit = cx.type_func(&[cx.type_ptr()], cx.type_i32());
+    let atexit_fn = declare_offload_fn(cx, "atexit", atexit);
+
+    let desc_ty = cx.type_func(&[], cx.type_void());
+    let reg_name = ".omp_offloading.descriptor_reg";
+    let unreg_name = ".omp_offloading.descriptor_unreg";
+    let desc_reg_fn = declare_offload_fn(cx, reg_name, desc_ty);
+    let desc_unreg_fn = declare_offload_fn(cx, unreg_name, desc_ty);
+    llvm::set_linkage(desc_reg_fn, InternalLinkage);
+    llvm::set_linkage(desc_unreg_fn, InternalLinkage);
+    llvm::set_section(desc_reg_fn, c".text.startup");
+    llvm::set_section(desc_unreg_fn, c".text.startup");
+
+    // define internal void @.omp_offloading.descriptor_reg() section ".text.startup" {
+    // entry:
+    //   call void @__tgt_register_lib(ptr @.omp_offloading.descriptor)
+    //   %0 = call i32 @atexit(ptr @.omp_offloading.descriptor_unreg)
+    //   ret void
+    // }
+    let bb = Builder::append_block(cx, desc_reg_fn, "entry");
+    let mut a = Builder::build(cx, bb);
+    a.call(reg_lib_decl, None, None, register_lib, &[omp_descriptor], None, None);
+    a.call(atexit, None, None, atexit_fn, &[desc_unreg_fn], None, None);
+    a.ret_void();
+
+    // define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
+    // entry:
+    //   call void @__tgt_unregister_lib(ptr @.omp_offloading.descriptor)
+    //   ret void
+    // }
+    let bb = Builder::append_block(cx, desc_unreg_fn, "entry");
+    let mut a = Builder::build(cx, bb);
+    a.call(reg_lib_decl, None, None, unregister_lib, &[omp_descriptor], None, None);
+    a.ret_void();
+
+    // @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
+    let args = vec![cx.get_const_i32(101), desc_reg_fn, ptr_null];
+    let const_struct = cx.const_struct(&args, false);
+    let arr = cx.const_array(cx.val_ty(const_struct), &[const_struct]);
+    add_global(cx, "llvm.global_ctors", arr, AppendingLinkage);
 }
 
 pub(crate) struct OffloadKernelDims<'ll> {
@@ -357,7 +415,6 @@ pub(crate) fn add_global<'ll>(
 pub(crate) fn gen_define_handling<'ll>(
     cx: &CodegenCx<'ll, '_>,
     metadata: &[OffloadMetadata],
-    types: &[&'ll Type],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
 ) -> OffloadKernelGlobals<'ll> {
@@ -367,25 +424,18 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let offload_entry_ty = offload_globals.offload_entry_ty;
 
-    // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
-    // reference) types.
-    let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
-        rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
-        _ => None,
-    });
-
     // FIXME(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
-    let (ptr_sizes, ptr_transfer): (Vec<_>, Vec<_>) =
-        ptr_meta.map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
+    let (sizes, transfer): (Vec<_>, Vec<_>) =
+        metadata.iter().map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
 
-    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
+    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
     // will be 2. For now, everything is 3, until we have our frontend set up.
     // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
     let memtransfer_types =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &ptr_transfer);
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &transfer);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
@@ -441,13 +491,25 @@ fn declare_offload_fn<'ll>(
     )
 }
 
+pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
+    match cx.type_kind(ty) {
+        TypeKind::Half
+        | TypeKind::Float
+        | TypeKind::Double
+        | TypeKind::X86_FP80
+        | TypeKind::FP128
+        | TypeKind::PPC_FP128 => cx.float_width(ty) as u64,
+        TypeKind::Integer => cx.int_width(ty),
+        other => bug!("scalar_width was called on a non scalar type {other:?}"),
+    }
+}
+
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
 // the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
 // Since in our frontend users (by default) don't have to specify data transfer, this is something
-// we should optimize in the future! We also assume that everything should be copied back and forth,
-// but sometimes we can directly zero-allocate on the device and only move back, or if something is
-// immutable, we might only copy it to the device, but not back.
+// we should optimize in the future! In some cases we can directly zero-allocate on the device and
+// only move data back, or if something is immutable, we might only copy it to the device.
 //
 // Current steps:
 // 0. Alloca some variables for the following steps
@@ -478,9 +540,6 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let tgt_decl = offload_globals.launcher_fn;
     let tgt_target_kernel_ty = offload_globals.launcher_ty;
 
-    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
-    let tgt_bin_desc = offload_globals.bin_desc;
-
     let tgt_kernel_decl = offload_globals.kernel_args_ty;
     let begin_mapper_decl = offload_globals.begin_mapper;
     let end_mapper_decl = offload_globals.end_mapper;
@@ -504,12 +563,9 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     }
 
     // Step 0)
-    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
-    // %6 = alloca %struct.__tgt_bin_desc, align 8
     unsafe {
         llvm::LLVMRustPositionBuilderPastAllocas(&builder.llbuilder, builder.llfn());
     }
-    let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
 
     let ty = cx.type_array(cx.type_ptr(), num_args);
     // Baseptr are just the input pointer to the kernel, stored in a local alloca
@@ -527,27 +583,46 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     unsafe {
         llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, bb);
     }
-    builder.memset(tgt_bin_desc_alloca, cx.get_const_i8(0), cx.get_const_i64(32), Align::EIGHT);
 
     // Now we allocate once per function param, a copy to be passed to one of our maps.
     let mut vals = vec![];
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
     for &v in args {
-        let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
-        vals.push(v);
+        let ty = cx.val_ty(v);
+        let ty_kind = cx.type_kind(ty);
+        let (base_val, gep_base) = match ty_kind {
+            TypeKind::Pointer => (v, v),
+            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                // FIXME(Sa4dUs): check for `f128` support, latest NVIDIA cards support it
+                let num_bits = scalar_width(cx, ty);
+
+                let bb = builder.llbb();
+                unsafe {
+                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, builder.llfn());
+                }
+                let addr = builder.direct_alloca(cx.type_i64(), Align::EIGHT, "addr");
+                unsafe {
+                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder, bb);
+                }
+
+                let cast = builder.bitcast(v, cx.type_ix(num_bits));
+                let value = builder.zext(cast, cx.type_i64());
+                builder.store(value, addr, Align::EIGHT);
+                (value, addr)
+            }
+            other => bug!("offload does not support {other:?}"),
+        };
+
+        let gep = builder.inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
+
+        vals.push(base_val);
         geps.push(gep);
     }
 
-    let mapper_fn_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
-    let register_lib_decl = offload_globals.register_lib;
-    let unregister_lib_decl = offload_globals.unregister_lib;
     let init_ty = cx.type_func(&[], cx.type_void());
     let init_rtls_decl = offload_globals.init_rtls;
 
-    // FIXME(offload): Later we want to add them to the wrapper code, rather than our main function.
-    // call void @__tgt_register_lib(ptr noundef %6)
-    builder.call(mapper_fn_ty, None, None, register_lib_decl, &[tgt_bin_desc_alloca], None, None);
     // call void @__tgt_init_all_rtls()
     builder.call(init_ty, None, None, init_rtls_decl, &[], None, None);
 
@@ -644,6 +719,4 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         num_args,
         s_ident_t,
     );
-
-    builder.call(mapper_fn_ty, None, None, unregister_lib_decl, &[tgt_bin_desc_alloca], None, None);
 }

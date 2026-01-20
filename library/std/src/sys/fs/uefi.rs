@@ -6,7 +6,7 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-pub use crate::sys::fs::common::{Dir, remove_dir_all};
+pub use crate::sys::fs::common::{Dir, copy, remove_dir_all};
 use crate::sys::pal::{helpers, unsupported};
 use crate::sys::time::SystemTime;
 
@@ -539,10 +539,6 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     crate::path::absolute(p)
-}
-
-pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
-    unsupported()
 }
 
 fn set_perm_inner(f: &uefi_fs::File, perm: FilePermissions) -> io::Result<()> {

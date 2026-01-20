@@ -29,9 +29,18 @@ define-function: (
     "open-settings-menu",
     [],
     block {
-        call-function: ("click-settings-button", {})
-        // Wait for the popover to appear...
-        wait-for-css: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "none")
+        }
+        if: (|settings_display| != "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to appear...
+            wait-for-css: ("#settings", {"display": "block"})
+        })
     }
 )
 
@@ -39,9 +48,18 @@ define-function: (
     "close-settings-menu",
     [],
     block {
-        call-function: ("click-settings-button", {})
-        // Wait for the popover to disappear...
-        wait-for-css-false: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "block")
+        }
+        if: (|settings_display| == "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to disappear...
+            wait-for-css-false: ("#settings", {"display": "block"})
+        })
     }
 )
 
@@ -60,18 +78,39 @@ define-function: (
 )
 
 define-function: (
+    "open-search",
+    [],
+    block {
+        store-count: (".search-input", __search_input_count)
+        if: (|__search_input_count| != 0, block {
+            store-css: ("#alternative-display", {"display": __search_input_display})
+        })
+        else: block {
+            // Block requests with doubled `//`.
+            // Amazon S3 doesn't support them, but other web hosts do,
+            // and so do file:/// URLs, which means we need to block
+            // it here if we want to avoid breaking the main docs site.
+            // https://github.com/rust-lang/rust/issues/145646
+            block-network-request: "file://*//*"
+            store-value: (__search_input_display, "none")
+        }
+
+        if: (|__search_input_display| == "none", block {
+            // Open search
+            click: "#search-button"
+            wait-for: ".search-input"
+        })
+    }
+)
+
+define-function: (
     "perform-search",
     [query],
     block {
-        // Block requests with doubled `//`.
-        // Amazon S3 doesn't support them, but other web hosts do,
-        // and so do file:/// URLs, which means we need to block
-        // it here if we want to avoid breaking the main docs site.
-        // https://github.com/rust-lang/rust/issues/145646
-        block-network-request: "file://*//*"
-        // Perform search
-        click: "#search-button"
-        wait-for: ".search-input"
+        call-function: ("open-search", {})
+        // We empty the search input in case it wasn't empty.
+        set-property: (".search-input", {"value": ""})
+        // We write the actual query.
         write-into: (".search-input", |query|)
         press-key: 'Enter'
         // wait for the search to start

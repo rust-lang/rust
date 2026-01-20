@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImplResolution};
+use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{
@@ -134,16 +134,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_eii_extern_target(
+    fn lower_eii_decl(
         &mut self,
         id: NodeId,
-        eii_name: Ident,
-        EiiExternTarget { extern_item_path, impl_unsafe }: &EiiExternTarget,
-    ) -> Option<EiiDecl> {
-        self.lower_path_simple_eii(id, extern_item_path).map(|did| EiiDecl {
-            eii_extern_target: did,
+        name: Ident,
+        EiiDecl { foreign_item, impl_unsafe }: &EiiDecl,
+    ) -> Option<hir::attrs::EiiDecl> {
+        self.lower_path_simple_eii(id, foreign_item).map(|did| hir::attrs::EiiDecl {
+            foreign_item: did,
             impl_unsafe: *impl_unsafe,
-            name: eii_name,
+            name,
         })
     }
 
@@ -160,7 +160,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }: &EiiImpl,
     ) -> hir::attrs::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
-            && let Some(decl) = self.lower_eii_extern_target(
+            && let Some(decl) = self.lower_eii_decl(
                 *node_id,
                 // the expect is ok here since we always generate this path in the eii macro.
                 eii_macro_path.segments.last().expect("at least one segment").ident,
@@ -196,9 +196,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
             }
-            ItemKind::MacroDef(name, MacroDef { eii_extern_target: Some(target), .. }) => self
-                .lower_eii_extern_target(id, *name, target)
-                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiExternTarget(decl))])
+            ItemKind::MacroDef(name, MacroDef { eii_declaration: Some(target), .. }) => self
+                .lower_eii_decl(id, *name, target)
+                .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))])
                 .unwrap_or_default(),
 
             ItemKind::ExternCrate(..)
@@ -242,10 +242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis_span,
             span: self.lower_span(i.span),
             has_delayed_lints: !self.delayed_lints.is_empty(),
-            eii: find_attr!(
-                attrs,
-                AttributeKind::EiiImpls(..) | AttributeKind::EiiExternTarget(..)
-            ),
+            eii: find_attr!(attrs, AttributeKind::EiiImpls(..) | AttributeKind::EiiDeclaration(..)),
         };
         self.arena.alloc(item)
     }
@@ -539,7 +536,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::TraitAlias(constness, ident, generics, bounds)
             }
-            ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_extern_target: _ }) => {
+            ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_declaration: _ }) => {
                 let ident = self.lower_ident(*ident);
                 let body = Box::new(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
@@ -553,7 +550,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let macro_def = self.arena.alloc(ast::MacroDef {
                     body,
                     macro_rules: *macro_rules,
-                    eii_extern_target: None,
+                    eii_declaration: None,
                 });
                 hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
@@ -693,7 +690,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             has_delayed_lints: !this.delayed_lints.is_empty(),
                             eii: find_attr!(
                                 attrs,
-                                AttributeKind::EiiImpls(..) | AttributeKind::EiiExternTarget(..)
+                                AttributeKind::EiiImpls(..) | AttributeKind::EiiDeclaration(..)
                             ),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))

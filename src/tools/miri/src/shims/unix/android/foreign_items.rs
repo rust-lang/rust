@@ -28,21 +28,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // File related shims
             "stat" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.readdir64("dirent", dirp)?;
                 this.write_scalar(result, dest)?;
             }
             "pread64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off64_t) -> isize),
                     link_name,
@@ -56,6 +60,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, n, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *const _, usize, libc::off64_t) -> isize),
                     link_name,
@@ -70,6 +75,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write(fd, buf, count, Some(offset), dest)?;
             }
             "lseek64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [fd, offset, whence] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
                     link_name,

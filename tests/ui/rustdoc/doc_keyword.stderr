@@ -1,3 +1,9 @@
+error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
+  --> $DIR/doc_keyword.rs:4:8
+   |
+LL | #![doc(keyword = "match")]
+   |        ^^^^^^^
+
 error: nonexistent keyword `tadam` used in `#[doc(keyword = "...")]`
   --> $DIR/doc_keyword.rs:22:17
    |
@@ -23,12 +29,6 @@ error: `#[doc(keyword = "...")]` should be used on modules
    |
 LL |     #[doc(keyword = "match")]
    |           ^^^^^^^
-
-error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
-  --> $DIR/doc_keyword.rs:4:8
-   |
-LL | #![doc(keyword = "match")]
-   |        ^^^^^^^
 
 error: aborting due to 5 previous errors
 

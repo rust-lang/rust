@@ -1,8 +1,8 @@
 error: unresolved link to `TypeAlias::hoge`
-  --> $DIR/deprecated.rs:3:1
+  --> $DIR/deprecated.rs:3:16
    |
 LL | #[deprecated = "[broken cross-reference](TypeAlias::hoge)"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
@@ -16,10 +16,10 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unresolved link to `TypeAlias::hoge`
-  --> $DIR/deprecated.rs:6:1
+  --> $DIR/deprecated.rs:6:38
    |
 LL | #[deprecated(since = "0.0.0", note = "[broken cross-reference](TypeAlias::hoge)")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            
@@ -28,10 +28,10 @@ LL | #[deprecated(since = "0.0.0", note = "[broken cross-reference](TypeAlias::h
    = note: no item named `TypeAlias` in scope
 
 error: unresolved link to `TypeAlias::hoge`
-  --> $DIR/deprecated.rs:9:1
+  --> $DIR/deprecated.rs:9:21
    |
 LL | #[deprecated(note = "[broken cross-reference](TypeAlias::hoge)", since = "0.0.0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
            

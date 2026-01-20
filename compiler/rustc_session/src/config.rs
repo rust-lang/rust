@@ -1,8 +1,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -24,7 +22,9 @@ use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::{FileName, RealFileName, SourceFileHashAlgorithm, Symbol, sym};
+use rustc_span::{
+    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
+};
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
     Target, TargetTuple,
@@ -1319,6 +1319,29 @@ impl OutputFilenames {
     }
 }
 
+pub(crate) fn parse_remap_path_scope(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+) -> RemapPathScopeComponents {
+    if let Some(v) = matches.opt_str("remap-path-scope") {
+        let mut slot = RemapPathScopeComponents::empty();
+        for s in v.split(',') {
+            slot |= match s {
+                "macro" => RemapPathScopeComponents::MACRO,
+                "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
+                "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
+                "coverage" => RemapPathScopeComponents::COVERAGE,
+                "object" => RemapPathScopeComponents::OBJECT,
+                "all" => RemapPathScopeComponents::all(),
+                _ => early_dcx.early_fatal("argument for `--remap-path-scope` must be a comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `coverage`, `object`, `all`"),
+            }
+        }
+        slot
+    } else {
+        RemapPathScopeComponents::all()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Sysroot {
     pub explicit: Option<PathBuf>,
@@ -1355,9 +1378,9 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
-    unstable_opts: &UnstableOptions,
+    remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), unstable_opts.remap_path_scope)
+    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
 }
 
 impl Default for Options {
@@ -1369,7 +1392,7 @@ impl Default for Options {
         // to create a default working directory.
         let working_dir = {
             let working_dir = std::env::current_dir().unwrap();
-            let file_mapping = file_path_mapping(Vec::new(), &unstable_opts);
+            let file_mapping = file_path_mapping(Vec::new(), RemapPathScopeComponents::empty());
             file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
         };
 
@@ -1404,6 +1427,7 @@ impl Default for Options {
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
+            remap_path_scope: RemapPathScopeComponents::all(),
             real_rust_source_base_dir: None,
             real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -1430,7 +1454,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
+        file_path_mapping(self.remap_path_prefix.clone(), self.remap_path_scope)
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -1589,8 +1613,9 @@ pub fn build_target_config(
     early_dcx: &EarlyDiagCtxt,
     target: &TargetTuple,
     sysroot: &Path,
+    unstable_options: bool,
 ) -> Target {
-    match Target::search(target, sysroot) {
+    match Target::search(target, sysroot, unstable_options) {
         Ok((target, warnings)) => {
             for warning in warnings.warning_messages() {
                 early_dcx.early_warn(warning)
@@ -1866,6 +1891,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "remap-path-prefix",
             "Remap source names in all output (compiler messages and output files)",
             "<FROM>=<TO>",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "remap-path-scope",
+            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
+            "<macro,diagnostics,debuginfo,coverage,object,all>",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
     ];
@@ -2670,6 +2703,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_scope = parse_remap_path_scope(early_dcx, matches);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 
@@ -2736,7 +2770,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
         });
 
-        let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+        let file_mapping = file_path_mapping(remap_path_prefix.clone(), remap_path_scope);
         file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
     };
 
@@ -2773,6 +2807,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
+        remap_path_scope,
         real_rust_source_base_dir,
         real_rustc_dev_source_base_dir,
         edition,
@@ -3065,6 +3100,7 @@ pub(crate) mod dep_tracking {
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
+    use rustc_hir::attrs::CollapseMacroDebuginfo;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
@@ -3074,13 +3110,12 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
-        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
-        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
+        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
+        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3297,25 +3332,6 @@ pub enum ProcMacroExecutionStrategy {
 
     /// Run the proc-macro code on a different thread.
     CrossThread,
-}
-
-/// How to perform collapse macros debug info
-/// if-ext - if macro from different crate (related to callsite code)
-/// | cmd \ attr    | no  | (unspecified) | external | yes |
-/// | no            | no  | no            | no       | no  |
-/// | (unspecified) | no  | no            | if-ext   | yes |
-/// | external      | no  | if-ext        | if-ext   | yes |
-/// | yes           | yes | yes           | yes      | yes |
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CollapseMacroDebuginfo {
-    /// Don't collapse debuginfo for the macro
-    No = 0,
-    /// Unspecified value
-    Unspecified = 1,
-    /// Collapse debuginfo if the macro comes from a different crate
-    External = 2,
-    /// Collapse debuginfo for the macro
-    Yes = 3,
 }
 
 /// Which format to use for `-Z dump-mono-stats`

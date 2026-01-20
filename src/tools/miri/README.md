@@ -228,7 +228,8 @@ and macOS targets are usually on par. Windows is supported less well.
 
 ### Running tests in parallel
 
-Though it implements Rust threading, Miri itself is a single-threaded interpreter.
+Though it implements Rust threading, Miri itself is a single-threaded interpreter
+(it works like a multi-threaded OS on a single-core CPU).
 This means that when running `cargo miri test`, you will probably see a dramatic
 increase in the amount of time it takes to run your whole test suite due to the
 inherent interpreter slowdown and a loss of parallelism.

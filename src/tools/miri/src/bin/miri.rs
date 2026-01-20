@@ -4,8 +4,6 @@
     clippy::useless_format,
     clippy::field_reassign_with_default,
     clippy::needless_lifetimes,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 
 // The rustc crates we need
@@ -305,7 +303,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
         config.override_queries = Some(|_, local_providers| {
             // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
             // FIXME handle this somehow in rustc itself to avoid this hack.
-            local_providers.exported_non_generic_symbols = |tcx, LocalCrate| {
+            local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
                 let reachable_set = tcx
                     .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
                 tcx.arena.alloc_from_iter(
@@ -710,7 +708,7 @@ fn main() {
     if !miri_config.native_lib.is_empty() && miri_config.provenance_mode == ProvenanceMode::Strict {
         fatal_error!("strict provenance is not compatible with calling native functions");
     }
-    // Native calls and many-seeds are an "intersting" combination.
+    // Native calls and many-seeds are an "interesting" combination.
     if !miri_config.native_lib.is_empty() && many_seeds.is_some() {
         eprintln!(
             "warning: `-Zmiri-many-seeds` runs multiple instances of the program in the same address space, \

@@ -6,7 +6,7 @@ build = "build.rs"
 default-run = "bootstrap"
 
 [features]
-build-metrics = ["sysinfo"]
+build-metrics = ["dep:sysinfo", "build_helper/metrics"]
 tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:chrono", "dep:tempfile"]
 
 [lib]

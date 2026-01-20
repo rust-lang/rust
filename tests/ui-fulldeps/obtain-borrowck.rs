@@ -114,7 +114,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
 }
 
 fn override_queries(_session: &Session, local: &mut Providers) {
-    local.mir_borrowck = mir_borrowck;
+    local.queries.mir_borrowck = mir_borrowck;
 }
 
 // Since mir_borrowck does not have access to any other state, we need to use a
@@ -142,8 +142,8 @@ fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'t
         }
     });
     let mut providers = Providers::default();
-    rustc_borrowck::provide(&mut providers);
-    let original_mir_borrowck = providers.mir_borrowck;
+    rustc_borrowck::provide(&mut providers.queries);
+    let original_mir_borrowck = providers.queries.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }
 

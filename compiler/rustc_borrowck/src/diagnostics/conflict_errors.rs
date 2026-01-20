@@ -1,8 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::iter;
 use std::ops::ControlFlow;
 

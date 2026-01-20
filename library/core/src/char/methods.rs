@@ -1143,11 +1143,12 @@ impl char {
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
+    /// `'ﬅ'` (U+FB05) is a single Unicode code point (a ligature) that maps to "ST" in uppercase.
     ///
     /// As an iterator:
     ///
     /// ```
-    /// for c in 'ß'.to_uppercase() {
+    /// for c in 'ﬅ'.to_uppercase() {
     ///     print!("{c}");
     /// }
     /// println!();
@@ -1156,13 +1157,13 @@ impl char {
     /// Using `println!` directly:
     ///
     /// ```
-    /// println!("{}", 'ß'.to_uppercase());
+    /// println!("{}", 'ﬅ'.to_uppercase());
     /// ```
     ///
     /// Both are equivalent to:
     ///
     /// ```
-    /// println!("SS");
+    /// println!("ST");
     /// ```
     ///
     /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
@@ -1171,7 +1172,7 @@ impl char {
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
     ///
     /// // Sometimes the result is more than one character:
-    /// assert_eq!('ß'.to_uppercase().to_string(), "SS");
+    /// assert_eq!('ﬅ'.to_uppercase().to_string(), "ST");
     ///
     /// // Characters that do not have both uppercase and lowercase
     /// // convert into themselves.

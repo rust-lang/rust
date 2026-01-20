@@ -32,21 +32,6 @@ error: malformed `patchable_function_entry` attribute input
 LL | #[patchable_function_entry]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: malformed `must_not_suspend` attribute input
-  --> $DIR/malformed-attrs.rs:138:1
-   |
-LL | #[must_not_suspend()]
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[must_not_suspend()]
-LL + #[must_not_suspend = "reason"]
-   |
-LL - #[must_not_suspend()]
-LL + #[must_not_suspend]
-   |
-
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:184:1
    |
@@ -527,6 +512,22 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0539]: malformed `must_not_suspend` attribute input
+  --> $DIR/malformed-attrs.rs:138:1
+   |
+LL | #[must_not_suspend()]
+   | ^^^^^^^^^^^^^^^^^^--^
+   |                   |
+   |                   didn't expect a list here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[must_not_suspend(count)]
+   |                    +++++
+LL - #[must_not_suspend()]
+LL + #[must_not_suspend]
+   |
+
 error[E0539]: malformed `cfi_encoding` attribute input
   --> $DIR/malformed-attrs.rs:140:1
    |
@@ -728,14 +729,6 @@ help: use `#[rustc_align(...)]` instead
 LL | #[repr]
    | ^^^^^^^
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/malformed-attrs.rs:155:1
-   |
-LL | #[diagnostic::do_not_recommend()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
-
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:144:1
    |
@@ -743,6 +736,7 @@ LL | #[diagnostic::on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: at least one of the `message`, `note` and `label` options are expected
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: malformed `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:146:1
@@ -777,7 +771,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[crate_name]
    | ^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/malformed-attrs.rs:116:1
    |
 LL | / fn test() {
@@ -821,6 +815,12 @@ LL | #[no_implicit_prelude = 23]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+
+warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
+  --> $DIR/malformed-attrs.rs:155:1
+   |
+LL | #[diagnostic::do_not_recommend()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `#[automatically_derived]` attribute cannot be used on modules
   --> $DIR/malformed-attrs.rs:196:1

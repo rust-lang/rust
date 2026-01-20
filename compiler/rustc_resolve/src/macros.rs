@@ -166,6 +166,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.invocation_parents[&id].parent_def
     }
 
+    fn mark_scope_with_compile_error(&mut self, id: NodeId) {
+        if let Some(id) = self.opt_local_def_id(id)
+            && self.tcx.def_kind(id).is_module_like()
+        {
+            self.mods_with_parse_errors.insert(id.to_def_id());
+        }
+    }
+
     fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
@@ -835,10 +843,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                  res: Res| {
             if let Some(initial_res) = initial_res {
                 if res != initial_res {
-                    // Make sure compilation does not succeed if preferred macro resolution
-                    // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as errors, so this is a bug.
-                    this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    if this.ambiguity_errors.is_empty() {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as errors, so this is a bug.
+                        this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    }
                 }
             } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently
@@ -1128,7 +1138,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     errors::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
-                        // FIXME: Make this translatable.
                         location,
                     },
                 );

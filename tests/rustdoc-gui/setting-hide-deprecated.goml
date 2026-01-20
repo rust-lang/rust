@@ -1,0 +1,96 @@
+// Test that the "hide deprecated" setting is correctly handled.
+
+include: "utils.goml"
+
+go-to: "file://" + |DOC_PATH| + "/lib2/deprecated/index.html"
+store-value: (deprecated_class, ".deprecated")
+
+// There should be two deprecated items listed on the module page:
+// `DeprecatedStruct` and `DeprecatedTrait`.
+assert-count: ("dt" + |deprecated_class|, 2)
+// `DeprecatedStruct` and `DeprecatedTrait` should be displayed for now.
+assert-css: ("dt" + |deprecated_class|, {"display": "block"}, ALL)
+
+// We enable the "hide deprecated items" setting.
+call-function: ("open-settings-menu", {})
+click: "#hide-deprecated-items"
+// None of them should be displayed anymore.
+wait-for-css: ("dt" + |deprecated_class|, {"display": "none"}, ALL)
+
+// We disable the setting.
+click: "#hide-deprecated-items"
+// All of them should be displayed back.
+wait-for-css: ("dt" + |deprecated_class|, {"display": "block"}, ALL)
+
+// Now we go to a trait with a deprecated method and a deprecated associated const.
+go-to: "file://" + |DOC_PATH| + "/lib2/deprecated/trait.NormalTrait.html"
+
+// There should be two deprecated items.
+assert-count: ("details" + |deprecated_class|, 2)
+// They should be displayed for now.
+assert-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
+
+// We enable the "hide deprecated items" setting.
+call-function: ("open-settings-menu", {})
+click: "#hide-deprecated-items"
+
+// They shouldn't be displayed anymore.
+wait-for-css: ("details" + |deprecated_class|, {"display": "none"}, ALL)
+
+// We disable the setting.
+click: "#hide-deprecated-items"
+// All of them should be displayed back.
+wait-for-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
+
+// We now go to a struct with a deprecated method which implements a deprecated trait and a trait
+// with deprecated associated items.
+go-to: "file://" + |DOC_PATH| + "/lib2/deprecated/struct.NonDeprecatedStruct.html"
+
+// There should be five deprecated items (six minus one "future" deprecated)...
+assert-count: ("details" + |deprecated_class|, 5)
+// One of which being a deprecated impl because the trait itself is deprecated.
+assert-count: ("details.implementors-toggle" + |deprecated_class|, 1)
+// And another has `since = "TBD"` and should NOT have the `deprecated` class.
+assert: "details:not(" + |deprecated_class| + ") #method\.future_deprecated_fn"
+// They should all be displayed for now.
+assert-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
+
+// We enable the "hide deprecated items" setting.
+call-function: ("open-settings-menu", {})
+click: "#hide-deprecated-items"
+
+// They shouldn't be displayed anymore.
+wait-for-css: ("details" + |deprecated_class|, {"display": "none"}, ALL)
+
+// We disable the setting.
+click: "#hide-deprecated-items"
+// All of them should be displayed back.
+wait-for-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
+
+// And now we check with the search results.
+call-function: ("perform-search", {"query": "deprecated::depr"})
+// There should at least 7 results.
+store-count: ("#results ul.search-results.active > a", nb_search_results)
+assert: |nb_search_results| >= 7
+// There should be at least 5 deprecated items.
+store-count: ("#results ul.search-results.active > a" + |deprecated_class|, nb_deprecated_results)
+assert: |nb_search_results| >= 5
+// Deprecated items should all be displayed.
+assert-css: ("#results ul.search-results.active > a" + |deprecated_class|, {"display": "grid"}, ALL)
+// We enable the "hide deprecated items" setting.
+call-function: ("open-settings-menu", {})
+click: "#hide-deprecated-items"
+// None of them should be displayed anymore.
+wait-for-css: (
+    "#results ul.search-results.active > a" + |deprecated_class|,
+    {"display": "none"},
+    ALL,
+)
+
+// Finally we check that the future deprecated item doesn't have the deprecated class in the search
+// and therefore isn't impact by the setting.
+call-function: ("perform-search", {"query": "deprecated::future_deprecated"})
+assert-text: (
+    "#results ul.search-results.active > a:not(" + |deprecated_class| + ") .path",
+    " lib2::deprecated::NonDeprecatedStruct::future_deprecated_fn",
+)

@@ -26,7 +26,9 @@ pub(crate) enum OverlayKind {
     RustAnalyzer,
     RustcCodegenCranelift,
     RustcCodegenGcc,
+    Gcc,
     LlvmBitcodeLinker,
+    Enzyme,
 }
 
 impl OverlayKind {
@@ -36,6 +38,7 @@ impl OverlayKind {
             OverlayKind::Llvm => {
                 &["src/llvm-project/llvm/LICENSE.TXT", "src/llvm-project/llvm/README.txt"]
             }
+            OverlayKind::Enzyme => &["src/tools/enzyme/LICENSE", "src/tools/enzyme/Readme.md"],
             OverlayKind::Cargo => &[
                 "src/tools/cargo/README.md",
                 "src/tools/cargo/LICENSE-MIT",
@@ -78,6 +81,14 @@ impl OverlayKind {
                 "LICENSE-MIT",
                 "src/tools/llvm-bitcode-linker/README.md",
             ],
+            OverlayKind::Gcc => &[
+                "src/gcc/README",
+                "src/gcc/COPYING",
+                "src/gcc/COPYING.LIB",
+                "src/gcc/COPYING.RUNTIME",
+                "src/gcc/COPYING3",
+                "src/gcc/COPYING3.LIB",
+            ],
         }
     }
 
@@ -101,6 +112,8 @@ impl OverlayKind {
             OverlayKind::RustcCodegenCranelift => builder.rust_version(),
             OverlayKind::RustcCodegenGcc => builder.rust_version(),
             OverlayKind::LlvmBitcodeLinker => builder.rust_version(),
+            OverlayKind::Gcc => builder.rust_version(),
+            OverlayKind::Enzyme => builder.rust_version(),
         }
     }
 }

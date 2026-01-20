@@ -40,30 +40,6 @@ fn match_unit_variant(x: (Choice, u32, u32)) {
     };
 }
 
-struct Unit;
-
-fn match_unit_struct(mut x: (Unit, u32)) {
-    let r = &mut x.0;
-    let _ = || {
-        let (Unit, a) = x;
-        a
-    };
-
-    let _ = *r;
-}
-
-enum Also { Unit }
-
-fn match_unit_enum(mut x: (Also, u32)) {
-    let r = &mut x.0;
-    let _ = || {
-        let (Also::Unit, a) = x;
-        a
-    };
-
-    let _ = *r;
-}
-
 enum TEnum {
     A(u32),
     B(u32),
@@ -98,46 +74,6 @@ enum SSingle {
 
 struct TStruct(u32, u32);
 struct SStruct { a: u32, b: u32 }
-
-fn match_struct(mut x: SStruct) {
-    let r = &mut x.a;
-    let _ = || {
-        let SStruct { b, .. } = x;
-        b
-    };
-
-    let _ = *r;
-}
-
-fn match_tuple_struct(mut x: TStruct) {
-    let r = &mut x.0;
-    let _ = || {
-        let TStruct(_, a) = x;
-        a
-    };
-
-    let _ = *r;
-}
-
-fn match_singleton(mut x: SSingle) {
-    let SSingle::A { a: ref mut r, .. } = x;
-    let _ = || {
-        let SSingle::A { b, .. } = x;
-        b
-    };
-
-    let _ = *r;
-}
-
-fn match_tuple_singleton(mut x: TSingle) {
-    let TSingle::A(ref mut r, _) = x;
-    let _ = || {
-        let TSingle::A(_, a) = x;
-        a
-    };
-
-    let _ = *r;
-}
 
 fn match_slice(x: (&[u32], u32, u32)) {
     let _ = || {

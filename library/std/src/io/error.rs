@@ -653,7 +653,7 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno())
+        Error::from_raw_os_error(sys::io::errno())
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -1004,7 +1004,7 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::decode_error_kind(code),
+            ErrorData::Os(code) => sys::io::decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
@@ -1014,7 +1014,7 @@ impl Error {
     #[inline]
     pub(crate) fn is_interrupted(&self) -> bool {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::is_interrupted(code),
+            ErrorData::Os(code) => sys::io::is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
             ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
             ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
@@ -1028,8 +1028,8 @@ impl fmt::Debug for Repr {
             ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::decode_error_kind(code))
-                .field("message", &sys::os::error_string(code))
+                .field("kind", &sys::io::decode_error_kind(code))
+                .field("message", &sys::io::error_string(code))
                 .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -1047,7 +1047,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                let detail = sys::os::error_string(code);
+                let detail = sys::io::error_string(code);
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),

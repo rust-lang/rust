@@ -166,8 +166,9 @@ hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twic
     .label = parameter captured again here
 
 hir_analysis_eii_with_generics =
-    #[{$eii_name}] cannot have generic parameters other than lifetimes
+    `{$impl_name}` cannot have generic parameters other than lifetimes
     .label = required by this attribute
+    .help = `#[{$eii_name}]` marks the implementation of an "externally implementable item"
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl

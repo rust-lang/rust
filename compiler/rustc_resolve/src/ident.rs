@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRe
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Macros20NormalizedIdent, Span, kw, sym};
 use smallvec::SmallVec;
@@ -20,9 +21,10 @@ use crate::late::{
 };
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Decl, DeclKind, Determinacy, Finalize,
-    ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
-    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
+    AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
+    Determinacy, Finalize, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
+    Segment, Stage, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -51,13 +53,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut self: CmResolver<'r, 'ra, 'tcx>,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
-        orig_ctxt: SyntaxContext,
+        // Location of the span is not significant, but pass a `Span` instead of `SyntaxContext`
+        // to avoid extracting and re-packaging the syntax context unnecessarily.
+        orig_ctxt: Span,
         derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
             &mut CmResolver<'r, 'ra, 'tcx>,
             Scope<'ra>,
             UsePrelude,
-            SyntaxContext,
+            Span,
         ) -> ControlFlow<T>,
     ) -> Option<T> {
         // General principles:
@@ -236,11 +240,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn hygienic_lexical_parent(
         &self,
         module: Module<'ra>,
-        ctxt: &mut SyntaxContext,
+        span: &mut Span,
         derive_fallback_lint_id: Option<NodeId>,
     ) -> Option<(Module<'ra>, Option<NodeId>)> {
-        if !module.expansion.outer_expn_is_descendant_of(*ctxt) {
-            return Some((self.expn_def_scope(ctxt.remove_mark()), None));
+        let ctxt = span.ctxt();
+        if !module.expansion.outer_expn_is_descendant_of(ctxt) {
+            return Some((self.expn_def_scope(span.remove_mark()), None));
         }
 
         if let ModuleKind::Block = module.kind {
@@ -270,7 +275,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ext = &self.get_macro_by_def_id(def_id).ext;
             if ext.builtin_name.is_none()
                 && ext.macro_kinds() == MacroKinds::DERIVE
-                && parent.expansion.outer_expn_is_descendant_of(*ctxt)
+                && parent.expansion.outer_expn_is_descendant_of(ctxt)
             {
                 return Some((parent, derive_fallback_lint_id));
             }
@@ -431,10 +436,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
-            orig_ident.span.ctxt(),
+            orig_ident.span,
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
-                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+                let ident = Ident::new(orig_ident.name, ctxt);
                 // The passed `ctxt` is already normalized, so avoid expensive double normalization.
                 let ident = Macros20NormalizedIdent(ident);
                 let res = match this.reborrow().resolve_ident_in_scope(
@@ -841,6 +846,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if issue_145575_hack || issue_149681_hack {
                 self.issue_145575_hack_applied = true;
             } else {
+                // Turn ambiguity errors for core vs std panic into warnings.
+                // FIXME: Remove with lang team approval.
+                let is_issue_147319_hack = orig_ident.span.edition() <= Edition::Edition2024
+                    && matches!(orig_ident.name, sym::panic)
+                    && matches!(scope, Scope::StdLibPrelude)
+                    && matches!(innermost_scope, Scope::ModuleGlobs(_, _))
+                    && ((self.is_specific_builtin_macro(res, sym::std_panic)
+                        && self.is_specific_builtin_macro(innermost_res, sym::core_panic))
+                        || (self.is_specific_builtin_macro(res, sym::core_panic)
+                            && self.is_specific_builtin_macro(innermost_res, sym::std_panic)));
+
+                let warning = is_issue_147319_hack.then_some(AmbiguityWarning::PanicImport);
+
                 self.ambiguity_errors.push(AmbiguityError {
                     kind,
                     ident: orig_ident,
@@ -848,7 +866,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     b2: decl,
                     scope1: innermost_scope,
                     scope2: scope,
-                    warning: false,
+                    warning,
                 });
                 return true;
             }
@@ -1693,7 +1711,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {
         let mut module = None;
-        let mut module_had_parse_errors = false;
+        let mut module_had_parse_errors = !self.mods_with_parse_errors.is_empty()
+            && self.mods_with_parse_errors.contains(&parent_scope.module.nearest_parent_mod());
         let mut allow_super = true;
         let mut second_binding = None;
 
