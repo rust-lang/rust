@@ -49,6 +49,7 @@ fn main() {
     #[cfg(target_os = "macos")]
     test_ioctl();
     test_opendir_closedir();
+    test_readdir();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -608,4 +609,44 @@ fn test_opendir_closedir() {
     assert_eq!(e.raw_os_error(), Some(libc::ENOTDIR));
     assert_eq!(e.kind(), ErrorKind::NotADirectory);
     remove_file(&file_path).unwrap();
+}
+
+fn test_readdir() {
+    use std::fs::{create_dir, remove_dir};
+
+    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    create_dir(&dir_path).ok();
+
+    // Create test files
+    let file1 = dir_path.join("file1.txt");
+    let file2 = dir_path.join("file2.txt");
+    std::fs::write(&file1, b"content1").unwrap();
+    std::fs::write(&file2, b"content2").unwrap();
+
+    let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
+
+    unsafe {
+        let dirp = libc::opendir(c_path.as_ptr()); // DIR *opendir(const char *name);
+        assert!(!dirp.is_null());
+        let mut entries = Vec::new();
+        loop {
+            let entry_ptr = libc::readdir(dirp);
+            if entry_ptr.is_null() {
+                break;
+            }
+            let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
+            let name = CStr::from_ptr(name_ptr);
+            let name_str = name.to_string_lossy();
+            if name_str != "." && name_str != ".." {
+                entries.push(name_str.into_owned());
+            }
+        }
+        assert_eq!(libc::closedir(dirp), 0);
+        entries.sort();
+        assert_eq!(entries, vec!["file1.txt", "file2.txt"]);
+    }
+
+    remove_file(&file1).unwrap();
+    remove_file(&file2).unwrap();
+    remove_dir(&dir_path).unwrap();
 }
