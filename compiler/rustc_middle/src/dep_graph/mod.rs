@@ -8,7 +8,9 @@ use crate::ty::{self, TyCtxt};
 #[macro_use]
 mod dep_node;
 
-pub use dep_node::{DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds, label_strs};
+pub use dep_node::{
+    DEP_KIND_NAMES, DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds, label_strs,
+};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 pub use rustc_query_system::dep_graph::{
@@ -22,7 +24,7 @@ pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCt
 
 #[derive(Clone)]
 pub struct DepsType {
-    pub dep_names: Vec<&'static str>,
+    pub dep_names: &'static [&'static str],
 }
 
 impl Deps for DepsType {
