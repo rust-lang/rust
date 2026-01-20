@@ -1099,9 +1099,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     //
                     // Note: if these two lines are combined into one we get
                     // dynamic borrow errors on `self.inner`.
-                    let known = self.inner.borrow_mut().type_variables().probe(v).known();
-                    known.map_or_else(
-                        || Ty::new_var(self.tcx, self.root_var(v)),
+                    let (root_vid, value) =
+                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
+                    value.known().map_or_else(
+                        || Ty::new_var(self.tcx, root_vid),
                         |t| self.shallow_resolve(t),
                     )
                 }
@@ -1132,9 +1133,12 @@ impl<'tcx> InferCtxt<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
                 InferConst::Var(vid) => {
-                    let known =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).known();
-                    known.unwrap_or_else(|| ty::Const::new_var(self.tcx, self.root_const_var(vid)))
+                    let (root, value) = self
+                        .inner
+                        .borrow_mut()
+                        .const_unification_table()
+                        .inlined_probe_key_value(vid);
+                    value.known().unwrap_or_else(|| ty::Const::new_var(self.tcx, root.vid))
                 }
                 InferConst::Fresh(_) => ct,
             },
