@@ -77,17 +77,23 @@ fn use_after_free() {
     };
 }
 
-fn manual_copy() {
-    const unsafe extern "C" fn helper(ap: ...) {
+macro_rules! va_list_copy {
+    ($ap:expr) => {{
         // A copy created using Clone is valid, and can be used to read arguments.
-        let mut copy = ap.clone();
+        let mut copy = $ap.clone();
         assert!(copy.arg::<i32>() == 1i32);
 
         let mut u = core::mem::MaybeUninit::uninit();
-        unsafe { core::ptr::copy_nonoverlapping(&ap, u.as_mut_ptr(), 1) };
+        unsafe { core::ptr::copy_nonoverlapping(&$ap, u.as_mut_ptr(), 1) };
 
         // Manually creating the copy is fine.
-        let mut copy = unsafe { u.assume_init() };
+        unsafe { u.assume_init() }
+    }};
+}
+
+fn manual_copy_drop() {
+    const unsafe extern "C" fn helper(ap: ...) {
+        let mut copy: VaList = va_list_copy!(ap);
 
         // Using the copy is actually fine.
         let _ = copy.arg::<i32>();
@@ -101,10 +107,41 @@ fn manual_copy() {
     //~^ ERROR va_end on unknown va_list allocation ALLOC0 [E0080]
 }
 
+fn manual_copy_forget() {
+    const unsafe extern "C" fn helper(ap: ...) {
+        let mut copy: VaList = va_list_copy!(ap);
+
+        // Using the copy is actually fine.
+        let _ = copy.arg::<i32>();
+        std::mem::forget(copy);
+
+        // The read (via `copy`) deallocated the original allocation.
+        drop(ap);
+    }
+
+    const { unsafe { helper(1, 2, 3) } };
+    //~^ ERROR va_end on unknown va_list allocation ALLOC0 [E0080]
+}
+
+fn manual_copy_read() {
+    const unsafe extern "C" fn helper(mut ap: ...) {
+        let mut copy: VaList = va_list_copy!(ap);
+
+        // Reading from `ap` after reading from `copy` is UB.
+        let _ = copy.arg::<i32>();
+        let _ = ap.arg::<i32>();
+    }
+
+    const { unsafe { helper(1, 2, 3) } };
+    //~^ ERROR va_arg on unknown va_list allocation ALLOC0
+}
+
 fn main() {
     unsafe {
         read_too_many();
         read_cast();
-        manual_copy();
+        manual_copy_read();
+        manual_copy_drop();
+        manual_copy_forget();
     }
 }
