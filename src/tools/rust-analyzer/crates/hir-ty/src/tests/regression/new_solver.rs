@@ -471,7 +471,76 @@ fn foo() {
             244..246 '_x': {unknown}
             249..257 'to_bytes': fn to_bytes() -> [u8; _]
             249..259 'to_bytes()': [u8; _]
-            249..268 'to_byt..._vec()': {unknown}
+            249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
+        "#]],
+    );
+}
+
+#[test]
+fn regression_21315() {
+    check_infer(
+        r#"
+struct Consts;
+impl Consts { const MAX: usize = 0; }
+
+struct Between<const M: usize, const N: usize, T>(T);
+
+impl<const M: usize, T> Between<M, { Consts::MAX }, T> {
+    fn sep_once(self, _sep: &str, _other: Self) -> Self {
+        self
+    }
+}
+
+trait Parser: Sized {
+    fn at_least<const M: usize>(self) -> Between<M, { Consts::MAX }, Self> {
+        Between(self)
+    }
+    fn at_most<const N: usize>(self) -> Between<0, N, Self> {
+        Between(self)
+    }
+}
+
+impl Parser for char {}
+
+fn test_at_least() {
+    let num = '9'.at_least::<1>();
+    let _ver = num.sep_once(".", num);
+}
+
+fn test_at_most() {
+    let num = '9'.at_most::<1>();
+}
+    "#,
+        expect![[r#"
+            48..49 '0': usize
+            182..186 'self': Between<M, _, T>
+            188..192 '_sep': &'? str
+            200..206 '_other': Between<M, _, T>
+            222..242 '{     ...     }': Between<M, _, T>
+            232..236 'self': Between<M, _, T>
+            300..304 'self': Self
+            343..372 '{     ...     }': Between<M, _, Self>
+            353..360 'Between': fn Between<M, _, Self>(Self) -> Between<M, _, Self>
+            353..366 'Between(self)': Between<M, _, Self>
+            361..365 'self': Self
+            404..408 'self': Self
+            433..462 '{     ...     }': Between<0, N, Self>
+            443..450 'Between': fn Between<0, N, Self>(Self) -> Between<0, N, Self>
+            443..456 'Between(self)': Between<0, N, Self>
+            451..455 'self': Self
+            510..587 '{     ...um); }': ()
+            520..523 'num': Between<1, _, char>
+            526..529 ''9'': char
+            526..545 ''9'.at...:<1>()': Between<1, _, char>
+            555..559 '_ver': Between<1, _, char>
+            562..565 'num': Between<1, _, char>
+            562..584 'num.se..., num)': Between<1, _, char>
+            575..578 '"."': &'static str
+            580..583 'num': Between<1, _, char>
+            607..644 '{     ...>(); }': ()
+            617..620 'num': Between<0, 1, char>
+            623..626 ''9'': char
+            623..641 ''9'.at...:<1>()': Between<0, 1, char>
         "#]],
     );
 }

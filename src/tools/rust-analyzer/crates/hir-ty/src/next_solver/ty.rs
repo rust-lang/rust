@@ -508,6 +508,11 @@ impl<'db> Ty<'db> {
         references_non_lt_error(&self)
     }
 
+    /// Whether the type contains a type error (ignoring const and lifetime errors).
+    pub fn references_only_ty_error(self) -> bool {
+        references_only_ty_error(&self)
+    }
+
     pub fn callable_sig(self, interner: DbInterner<'db>) -> Option<Binder<'db, FnSig<'db>>> {
         match self.kind() {
             TyKind::FnDef(callable, args) => {
@@ -774,6 +779,20 @@ impl<'db> TypeVisitor<DbInterner<'db>> for ReferencesNonLifetimeError {
 
     fn visit_const(&mut self, c: Const<'db>) -> Self::Result {
         if c.is_ct_error() { ControlFlow::Break(()) } else { c.super_visit_with(self) }
+    }
+}
+
+pub fn references_only_ty_error<'db, T: TypeVisitableExt<DbInterner<'db>>>(t: &T) -> bool {
+    t.references_error() && t.visit_with(&mut ReferencesOnlyTyError).is_break()
+}
+
+struct ReferencesOnlyTyError;
+
+impl<'db> TypeVisitor<DbInterner<'db>> for ReferencesOnlyTyError {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
+        if ty.is_ty_error() { ControlFlow::Break(()) } else { ty.super_visit_with(self) }
     }
 }
 
