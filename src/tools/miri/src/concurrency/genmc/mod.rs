@@ -220,7 +220,7 @@ impl GenmcCtx {
     /// Don't call this function if an error was found.
     ///
     /// GenMC detects certain errors only when the execution ends.
-    /// If an error occured, a string containing a short error description is returned.
+    /// If an error occurred, a string containing a short error description is returned.
     ///
     /// GenMC currently doesn't return an error in all cases immediately when one happens.
     /// This function will also check for those, and return their error description.
