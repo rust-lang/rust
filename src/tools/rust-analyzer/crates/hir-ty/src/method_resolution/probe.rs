@@ -1246,9 +1246,9 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             .filter(|step| step.reachable_via_deref)
             .filter(|step| {
                 debug!("pick_all_method: step={:?}", step);
-                // skip types that are from a type error or that would require dereferencing
-                // a raw pointer
-                !step.self_ty.value.value.references_non_lt_error() && !step.from_unsafe_deref
+                // Skip types with type errors (but not const/lifetime errors, which are
+                // often spurious due to incomplete const evaluation) and raw pointer derefs.
+                !step.self_ty.value.value.references_only_ty_error() && !step.from_unsafe_deref
             })
             .try_for_each(|step| {
                 let InferOk { value: self_ty, obligations: instantiate_self_ty_obligations } = self
