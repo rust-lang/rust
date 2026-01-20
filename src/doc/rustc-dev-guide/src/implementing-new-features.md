@@ -225,7 +225,7 @@ The below steps needs to be followed in order to implement a new unstable featur
 [`rustc_ast_passes::feature_gate::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
-[here]: ./stabilization_guide.md
+[here]: ./stabilization-guide.md
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
 
@@ -278,7 +278,7 @@ backward incompatible changes are generally no longer permitted
 To learn more about stabilization, see the [stabilization guide][stab].
 
 
-[stab]: ./stabilization_guide.md
+[stab]: ./stabilization-guide.md
 [rust-blog]: https://github.com/rust-lang/blog.rust-lang.org/
 [twir]: https://github.com/rust-lang/this-week-in-rust
 [twir-cft]: https://this-week-in-rust.org/blog/2025/01/22/this-week-in-rust-583/#calls-for-testing

@@ -158,7 +158,7 @@ See [#113971] for how we used to conflate the difference.
 
 [#113971]: https://github.com/rust-lang/rust/issues/113971
 [SCC]: https://en.wikipedia.org/wiki/Strongly_connected_component
-[member constraints]: ./region_inference/member_constraints.md
+[member constraints]: region-inference/member-constraints.md
 
 **interaction with "once modulo regions" restriction**
 In the example above, note the opaque type in the signature is `Opaque<'a>` and the one in the
@@ -195,7 +195,7 @@ fn test<'a>() -> Opaque<'a> {
 }
 ```
 
-**Motivation:** 
+**Motivation:**
 In closure bodies, external lifetimes, although being categorized as "universal" lifetimes,
 behave more like existential lifetimes in that the relations between them are not known ahead of
 time, instead their values are inferred just like existential lifetimes and the requirements are
@@ -208,7 +208,7 @@ Here is an example that details how :
 ```rust
 type Opaque<'x, 'y> = impl Sized;
 
-// 
+//
 fn test<'a, 'b>(s: &'a str) -> impl FnOnce() -> Opaque<'a, 'b> {
     move || { s }
     //~^ ERROR hidden type for `Opaque<'_, '_>` captures lifetime that does not appear in bounds

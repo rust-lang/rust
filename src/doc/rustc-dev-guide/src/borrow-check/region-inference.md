@@ -34,14 +34,14 @@ The MIR-based region analysis consists of two major functions:
   - The [NLL RFC] also includes fairly thorough (and hopefully readable)
     coverage.
 
-[cp]: ./region_inference/constraint_propagation.md
+[cp]: ./region-inference/constraint-propagation.md
 [fvb]: ../appendix/background.md#free-vs-bound
 [`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/nll/fn.replace_regions_in_mir.html
 [`compute_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/nll/fn.compute_regions.html
 [`RegionInferenceContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/region_infer/struct.RegionInferenceContext.html
 [`solve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/region_infer/struct.RegionInferenceContext.html#method.solve
 [NLL RFC]: https://rust-lang.github.io/rfcs/2094-nll.html
-[MIR type checker]: ./type_check.md
+[MIR type checker]: ./type-check.md
 
 ## Universal regions
 
@@ -97,7 +97,7 @@ The kinds of region elements are as follows:
 - There is an element `!1` for each placeholder region `!1`. This
   corresponds (intuitively) to some unknown set of other elements –
   for details on placeholders, see the section
-  [placeholders and universes](region_inference/placeholders_and_universes.md).
+  [placeholders and universes](region-inference/placeholders-and-universes.md).
 
 ## Constraints
 

@@ -99,7 +99,7 @@ it replaces it for something from the list of substitutions, otherwise recursive
 To replace it, calls [ty_for_param]
 and all that does is index into the list of substitutions with the index of the `Param`.
 
-[a previous chapter]: ty_module/instantiating_binders.md
+[a previous chapter]: ty-module/instantiating-binders.md
 [`TypeFoldable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFoldable.html
 [`TypeFolder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html
 [`fold_ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html#method.fold_ty

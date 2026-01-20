@@ -49,7 +49,7 @@ The stabilization reports summarizes:
 
 The [*Stabilization Template*][srt] includes a series of questions that aim to surface connections between this feature and lang's subteams (e.g. types, opsem, lang-docs, etc.) and to identify items that are commonly overlooked.
 
-[srt]: ./stabilization_report_template.md
+[srt]: ./stabilization-report-template.md
 
 The stabilization report is typically posted as the main comment on the stabilization PR (see the next section).
 

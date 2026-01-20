@@ -12,7 +12,7 @@ mechanism][libs-gate].
 
 See ["Stability in code"][adding] in the "Implementing new features" section for instructions.
 
-[adding]: ./implementing_new_features.md#stability-in-code
+[adding]: ./implementing-new-features.md#stability-in-code
 
 ## Removing a feature gate
 
@@ -80,5 +80,5 @@ for instructions. There are additional steps you will need to take beyond just
 updating the declaration!
 
 
-["Stability in code"]: ./implementing_new_features.md#stability-in-code
-["Updating the feature-gate listing"]: ./stabilization_guide.md#updating-the-feature-gate-listing
+["Stability in code"]: ./implementing-new-features.md#stability-in-code
+["Updating the feature-gate listing"]: ./stabilization-guide.md#updating-the-feature-gate-listing

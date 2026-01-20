@@ -284,6 +284,6 @@ A note is added to the [Release notes][relnotes] about the feature.
 
 [stab]: https://github.com/rust-lang/rust/pull/56245
 
-Steps to stabilize the feature can be found at [Stabilizing Features](./stabilization_guide.md).
+Steps to stabilize the feature can be found at [Stabilizing Features](./stabilization-guide.md).
 
 [relnotes]: https://github.com/rust-lang/rust/blob/HEAD/RELEASES.md
