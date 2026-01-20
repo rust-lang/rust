@@ -97,7 +97,7 @@ If that sounds like a lot of work, it's because it is.
 But no fear!
 Even if you're not a compiler hacker, you can get great feedback by doing a _pre-RFC_.
 This is an _informal_ discussion of the idea.
-The best place to do this is internals.rust-lang.org.
+The best place to do this is [internals.rust-lang.org](https://internals.rust-lang.org).
 Your post doesn't have to follow any particular structure.
 It doesn't even need to be a cohesive idea.
 Generally, you will get tons of feedback that you can integrate back to produce a good RFC.
