@@ -334,6 +334,16 @@ fn sleep_ms_smoke() {
 }
 
 #[test]
+fn sleep_accurate() {
+    let now = Instant::now();
+    thread::sleep(Duration::from_millis(20));
+
+    // We should try our best to make sure that the duration slept is somewhat
+    // accurate. If this test fails, you might need to increase the leeway here.
+    assert!(now.elapsed() >= Duration::from_millis(18));
+}
+
+#[test]
 fn test_size_of_option_thread_id() {
     assert_eq!(size_of::<Option<ThreadId>>(), size_of::<ThreadId>());
 }

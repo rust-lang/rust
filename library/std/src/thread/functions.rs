@@ -217,58 +217,40 @@ pub fn panicking() -> bool {
     panicking::panicking()
 }
 
-/// Uses [`sleep`].
+/// Puts the current thread to sleep for the specified amount of time.
 ///
-/// Puts the current thread to sleep for at least the specified amount of time.
-///
-/// The thread may sleep longer than the duration specified due to scheduling
-/// specifics or platform-dependent functionality. It will never sleep less.
-///
-/// This function is blocking, and should not be used in `async` functions.
-///
-/// # Platform-specific behavior
-///
-/// On Unix platforms, the underlying syscall may be interrupted by a
-/// spurious wakeup or signal handler. To ensure the sleep occurs for at least
-/// the specified duration, this function may invoke that system call multiple
-/// times.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::thread;
-///
-/// // Let's sleep for 2 seconds:
-/// thread::sleep_ms(2000);
-/// ```
+/// Use [`sleep`] and [`Duration::from_millis`] instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.6.0", note = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
 
-/// Puts the current thread to sleep for at least the specified amount of time.
+/// Puts the current thread to sleep for the specified amount of time.
 ///
-/// The thread may sleep longer than the duration specified due to scheduling
-/// specifics or platform-dependent functionality. It will never sleep less.
+/// The actual duration slept may be slightly shorter or longer than specified
+/// due to scheduling specifics or platform-dependent functionality. In particular,
+/// this function might use a different clock source than the one used by [`Instant`].
+/// Consider using [`sleep_until`] with an absolute timestamp if you need to ensure
+/// that a specific amount of time (as measured using [`Instant`]) has elapsed.
 ///
 /// This function is blocking, and should not be used in `async` functions.
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms, the underlying syscall may be interrupted by a
-/// spurious wakeup or signal handler. To ensure the sleep occurs for at least
-/// the specified duration, this function may invoke that system call multiple
-/// times.
-/// Platforms which do not support nanosecond precision for sleeping will
-/// have `dur` rounded up to the nearest granularity of time they can sleep for.
+/// Note that, like with all of `std`'s abstractions, the choice of syscall used
+/// is [subject to change].
+///
+/// On Unix platforms, the underlying syscall ([`nanosleep`]) may be interrupted
+/// by a spurious wakeup or signal handler, in which case this function will
+/// restart the syscall to achieve better timing precision.
 ///
 /// Currently, specifying a zero duration on Unix platforms returns immediately
-/// without invoking the underlying [`nanosleep`] syscall, whereas on Windows
-/// platforms the underlying [`Sleep`] syscall is always invoked.
-/// If the intention is to yield the current time-slice you may want to use
-/// [`yield_now`] instead.
+/// without invoking the underlying syscall, whereas on Windows platforms the
+/// underlying [`Sleep`] syscall is always invoked. If the intention is to yield
+/// the current time-slice you may want to use [`yield_now`] instead.
 ///
+/// [currently]: crate::io#platform-specific-behavior
 /// [`nanosleep`]: https://linux.die.net/man/2/nanosleep
 /// [`Sleep`]: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
 ///
@@ -282,7 +264,7 @@ pub fn sleep_ms(ms: u32) {
 ///
 /// thread::sleep(ten_millis);
 ///
-/// assert!(now.elapsed() >= ten_millis);
+/// println!("{:?}", now.elapsed()); // ca. 10 ms.
 /// ```
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
