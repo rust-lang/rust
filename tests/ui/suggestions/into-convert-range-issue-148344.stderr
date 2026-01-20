@@ -2,13 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/into-convert-range-issue-148344.rs:12:22
    |
 LL |     let _: Strange = 0..10;
-   |            -------   ^^^^^ expected `Strange`, found `Range<{integer}>`
+   |            -------   ^^^^^ expected `Strange`, found `Range<{integer}, {integer}>`
    |            |
    |            expected due to this
    |
    = note: expected struct `Strange`
-              found struct `std::ops::Range<{integer}>`
-help: call `Into::into` on this expression to convert `std::ops::Range<{integer}>` into `Strange`
+              found struct `std::ops::Range<{integer}, {integer}>`
+help: call `Into::into` on this expression to convert `std::ops::Range<{integer}, {integer}>` into `Strange`
    |
 LL |     let _: Strange = (0..10).into();
    |                      +     ++++++++

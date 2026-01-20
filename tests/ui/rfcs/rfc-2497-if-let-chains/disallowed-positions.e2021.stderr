@@ -1079,24 +1079,15 @@ LL |     use_expr!((let 0 = 1));
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0308]: mismatched types
-  --> $DIR/disallowed-positions.rs:133:8
-   |
-LL |     if true..(let 0 = 0) {}
-   |        ^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
-   |
-   = note: expected type `bool`
-            found struct `std::ops::Range<bool>`
-
-error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:142:12
    |
 LL |     if let Range { start: _, end: _ } = true..true && false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
-   |            expected `bool`, found `Range<_>`
+   |            expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:145:12
@@ -1104,10 +1095,10 @@ error[E0308]: mismatched types
 LL |     if let Range { start: _, end: _ } = true..true || false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
-   |            expected `bool`, found `Range<_>`
+   |            expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:151:12
@@ -1115,10 +1106,10 @@ error[E0308]: mismatched types
 LL |     if let Range { start: F, end } = F..|| true {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `fn() -> bool`
    |            |
-   |            expected fn pointer, found `Range<_>`
+   |            expected fn pointer, found `Range<_, _>`
    |
    = note: expected fn pointer `fn() -> bool`
-                  found struct `std::ops::Range<_>`
+                  found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:157:12
@@ -1126,10 +1117,10 @@ error[E0308]: mismatched types
 LL |     if let Range { start: true, end } = t..&&false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |            |
-   |            expected `bool`, found `Range<_>`
+   |            expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:113:20
@@ -1140,24 +1131,15 @@ LL |         if let 0 = 0? {}
    = help: the nightly-only, unstable trait `Try` is not implemented for `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/disallowed-positions.rs:224:11
-   |
-LL |     while true..(let 0 = 0) {}
-   |           ^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
-   |
-   = note: expected type `bool`
-            found struct `std::ops::Range<bool>`
-
-error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:233:15
    |
 LL |     while let Range { start: _, end: _ } = true..true && false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
-   |               expected `bool`, found `Range<_>`
+   |               expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:236:15
@@ -1165,10 +1147,10 @@ error[E0308]: mismatched types
 LL |     while let Range { start: _, end: _ } = true..true || false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
-   |               expected `bool`, found `Range<_>`
+   |               expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:242:15
@@ -1176,10 +1158,10 @@ error[E0308]: mismatched types
 LL |     while let Range { start: F, end } = F..|| true {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `fn() -> bool`
    |               |
-   |               expected fn pointer, found `Range<_>`
+   |               expected fn pointer, found `Range<_, _>`
    |
    = note: expected fn pointer `fn() -> bool`
-                  found struct `std::ops::Range<_>`
+                  found struct `std::ops::Range<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:248:15
@@ -1187,10 +1169,10 @@ error[E0308]: mismatched types
 LL |     while let Range { start: true, end } = t..&&false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |               |
-   |               expected `bool`, found `Range<_>`
+   |               expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:204:23
@@ -1206,10 +1188,10 @@ error[E0308]: mismatched types
 LL |     (let Range { start: _, end: _ } = true..true || false);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |          |
-   |          expected `bool`, found `Range<_>`
+   |          expected `bool`, found `Range<_, _>`
    |
    = note: expected type `bool`
-            found struct `std::ops::Range<_>`
+            found struct `std::ops::Range<_, _>`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:308:17
@@ -1219,7 +1201,7 @@ LL |         let 0 = 0?;
    |
    = help: the nightly-only, unstable trait `Try` is not implemented for `{integer}`
 
-error: aborting due to 134 previous errors
+error: aborting due to 132 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

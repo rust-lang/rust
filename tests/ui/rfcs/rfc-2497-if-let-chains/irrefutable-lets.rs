@@ -9,7 +9,7 @@
 use std::ops::Range;
 
 fn main() {
-    let opt = Some(None..Some(1));
+    let opt: Option<Range<Option<i32>> = Some(None..Some(1));
 
     if let first = &opt && let Some(second) = first && let None = second.start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
@@ -27,7 +27,8 @@ fn main() {
     if let Some(ref first) = opt && let second = first && let _third = second {}
     //[disallowed]~^ ERROR trailing irrefutable patterns in let chain
 
-    if let Range { start: local_start, end: _ } = (None..Some(1)) && let None = local_start {}
+    if let Range { start: local_start, end: _ } = (None::<Option<i32>>..Some(1))
+        && let None = local_start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
 
     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}
