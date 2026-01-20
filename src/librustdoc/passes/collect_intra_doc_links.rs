@@ -11,10 +11,11 @@ use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
-use rustc_hir::{Mutability, Safety};
+use rustc_hir::{Attribute, Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
@@ -1108,10 +1109,8 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let rustc_hir::Attribute::Parsed(rustc_hir::attrs::AttributeKind::Deprecation {
-                span,
-                deprecation,
-            }) = attr
+            let Attribute::Parsed(AttributeKind::Deprecation { span: depr_span, deprecation }) =
+                attr
             else {
                 continue;
             };
@@ -1128,8 +1127,14 @@ impl LinkCollector<'_, '_> {
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
             let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && item.span(tcx).is_none_or(|item_span| !item_span.inner().contains(*span))
-            {
+                && tcx.get_all_attrs(inline_stmt_id).iter().any(|attr| {
+                    matches!(
+                        attr,
+                        Attribute::Parsed(AttributeKind::Deprecation {
+                            span: attr_span, ..
+                        }) if attr_span == depr_span,
+                    )
+                }) {
                 inline_stmt_id.to_def_id()
             } else {
                 item.item_id.expect_def_id()
