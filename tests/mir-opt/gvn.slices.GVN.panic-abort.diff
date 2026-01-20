@@ -210,9 +210,9 @@
           _26 = &(*_27);
           StorageLive(_28);
 -         _28 = Option::<Arguments<'_>>::None;
--         _22 = assert_failed::<*const u8, *const u8>(move _23, move _24, move _26, move _28) -> unwind unreachable;
+-         _22 = core::panicking::assert_failed::<*const u8, *const u8>(move _23, move _24, move _26, move _28) -> unwind unreachable;
 +         _28 = const Option::<Arguments<'_>>::None;
-+         _22 = assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _24, move _26, const Option::<Arguments<'_>>::None) -> unwind unreachable;
++         _22 = core::panicking::assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _24, move _26, const Option::<Arguments<'_>>::None) -> unwind unreachable;
       }
   
       bb7: {
@@ -313,9 +313,9 @@
           _52 = &(*_53);
           StorageLive(_54);
 -         _54 = Option::<Arguments<'_>>::None;
--         _48 = assert_failed::<*const u8, *const u8>(move _49, move _50, move _52, move _54) -> unwind unreachable;
+-         _48 = core::panicking::assert_failed::<*const u8, *const u8>(move _49, move _50, move _52, move _54) -> unwind unreachable;
 +         _54 = const Option::<Arguments<'_>>::None;
-+         _48 = assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _50, move _52, const Option::<Arguments<'_>>::None) -> unwind unreachable;
++         _48 = core::panicking::assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _50, move _52, const Option::<Arguments<'_>>::None) -> unwind unreachable;
       }
   }
   

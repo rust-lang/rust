@@ -1,12 +1,12 @@
 // ignore-tidy-filelength
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;

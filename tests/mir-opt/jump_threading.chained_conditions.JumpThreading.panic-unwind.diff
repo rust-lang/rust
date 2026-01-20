@@ -57,13 +57,13 @@
                                   scope 11 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                                       scope 12 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
                                           let mut _34: std::ptr::NonNull<u8>;
-                                          scope 13 (inlined Unique::<u8>::cast::<u8>) {
+                                          scope 13 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
                                               scope 14 (inlined NonNull::<u8>::cast::<u8>) {
                                                   scope 15 (inlined NonNull::<u8>::as_ptr) {
                                                   }
                                               }
                                           }
-                                          scope 16 (inlined Unique::<u8>::as_non_null_ptr) {
+                                          scope 16 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                                           }
                                       }
                                       scope 17 (inlined NonNull::<u8>::as_ptr) {
@@ -115,13 +115,13 @@
                                   scope 34 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                                       scope 35 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
                                           let mut _46: std::ptr::NonNull<u8>;
-                                          scope 36 (inlined Unique::<u8>::cast::<u8>) {
+                                          scope 36 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
                                               scope 37 (inlined NonNull::<u8>::cast::<u8>) {
                                                   scope 38 (inlined NonNull::<u8>::as_ptr) {
                                                   }
                                               }
                                           }
-                                          scope 39 (inlined Unique::<u8>::as_non_null_ptr) {
+                                          scope 39 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                                           }
                                       }
                                       scope 40 (inlined NonNull::<u8>::as_ptr) {

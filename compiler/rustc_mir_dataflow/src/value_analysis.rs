@@ -1,8 +1,8 @@
-use std::assert_matches::debug_assert_matches;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;

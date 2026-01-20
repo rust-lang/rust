@@ -1,4 +1,4 @@
-error: `Result` is ambiguous
+warning: `Result` is ambiguous
   --> $DIR/issue-114682-4.rs:9:11
    |
 LL | fn a() -> Result<i32, ()> {
@@ -12,12 +12,14 @@ note: `Result` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `Result` could also refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-4-extern.rs:10:9
    |
 LL | pub use b::*;
    |         ^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error[E0107]: type alias takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/issue-114682-4.rs:9:11
@@ -33,11 +35,11 @@ note: type alias defined here, with 1 generic parameter: `T`
 LL |     pub type Result<T> = std::result::Result<T, ()>;
    |              ^^^^^^ -
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0107`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Result` is ambiguous
+warning: `Result` is ambiguous
   --> $DIR/issue-114682-4.rs:9:11
    |
 LL | fn a() -> Result<i32, ()> {
@@ -51,10 +53,12 @@ note: `Result` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `Result` could also refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-4-extern.rs:10:9
    |
 LL | pub use b::*;
    |         ^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

@@ -156,7 +156,7 @@ impl const From<TryReserveErrorKind> for TryReserveError {
     }
 }
 
-#[unstable(feature = "try_reserve_kind", reason = "new API", issue = "48043")]
+#[unstable(feature = "try_reserve_kind", issue = "48043")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(not(test))]
 impl const From<LayoutError> for TryReserveErrorKind {

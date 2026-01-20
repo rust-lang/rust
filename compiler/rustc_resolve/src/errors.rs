@@ -1464,6 +1464,7 @@ pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
 pub(crate) struct Ambiguity {
     pub ident: Ident,
     pub kind: &'static str,
+    pub help: Option<&'static [&'static str]>,
     pub b1_note: Spanned<String>,
     pub b1_help_msgs: Vec<String>,
     pub b2_note: Spanned<String>,
@@ -1476,6 +1477,11 @@ impl Ambiguity {
         diag.span_label(self.ident.span, "ambiguous name");
         diag.note(format!("ambiguous because of {}", self.kind));
         diag.span_note(self.b1_note.span, self.b1_note.node);
+        if let Some(help) = self.help {
+            for help in help {
+                diag.help(*help);
+            }
+        }
         for help_msg in self.b1_help_msgs {
             diag.help(help_msg);
         }

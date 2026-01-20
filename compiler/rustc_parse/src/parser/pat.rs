@@ -1669,7 +1669,6 @@ impl<'a> Parser<'a> {
         Ok((fields, etc))
     }
 
-    #[deny(rustc::untranslatable_diagnostic)]
     fn report_misplaced_at_in_struct_pat(&self, prev_field: Ident) -> Diag<'a> {
         debug_assert_eq!(self.token, token::At);
         let span = prev_field.span.to(self.token.span);

@@ -49,7 +49,7 @@ impl Thread {
         // WASI does not support threading via pthreads. While wasi-libc provides
         // pthread stubs, pthread_create returns EAGAIN, which causes confusing
         // errors. We return UNSUPPORTED_PLATFORM directly instead.
-        if cfg!(target_os = "wasi") {
+        if cfg!(all(target_os = "wasi", not(target_feature = "atomics"))) {
             return Err(io::Error::UNSUPPORTED_PLATFORM);
         }
 
@@ -639,6 +639,49 @@ pub fn sleep_until(deadline: crate::time::Instant) {
                     "timespec is in range,
                          clockid is valid and kernel should support it"
                 );
+            }
+        }
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+pub fn sleep_until(deadline: crate::time::Instant) {
+    unsafe extern "C" {
+        // This is defined in the public header mach/mach_time.h alongside
+        // `mach_absolute_time`, and like it has been available since the very
+        // beginning.
+        //
+        // There isn't really any documentation on this function, except for a
+        // short reference in technical note 2169:
+        // https://developer.apple.com/library/archive/technotes/tn2169/_index.html
+        safe fn mach_wait_until(deadline: u64) -> libc::kern_return_t;
+    }
+
+    // Make sure to round up to ensure that we definitely sleep until after
+    // the deadline has elapsed.
+    let Some(deadline) = deadline.into_inner().into_mach_absolute_time_ceil() else {
+        // Since the deadline is before the system boot time, it has already
+        // passed, so we can return immediately.
+        return;
+    };
+
+    // If the deadline is not representable, then sleep for the maximum duration
+    // possible and worry about the potential clock issues later (in ca. 600 years).
+    let deadline = deadline.try_into().unwrap_or(u64::MAX);
+    loop {
+        match mach_wait_until(deadline) {
+            // Success! The deadline has passed.
+            libc::KERN_SUCCESS => break,
+            // If the sleep gets interrupted by a signal, `mach_wait_until`
+            // returns KERN_ABORTED, so we need to restart the syscall.
+            // Also see Apple's implementation of the POSIX `nanosleep`, which
+            // converts this error to the POSIX equivalent EINTR:
+            // https://github.com/apple-oss-distributions/Libc/blob/55b54c0a0c37b3b24393b42b90a4c561d6c606b1/gen/nanosleep.c#L281-L306
+            libc::KERN_ABORTED => continue,
+            // All other errors indicate that something has gone wrong...
+            error => {
+                let description = unsafe { CStr::from_ptr(libc::mach_error_string(error)) };
+                panic!("mach_wait_until failed: {} (code {error})", description.display())
             }
         }
     }

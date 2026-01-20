@@ -19,6 +19,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
 };
+use rustc_hir::Target;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -403,6 +404,8 @@ impl<'a> StripUnconfigured<'a> {
             attr,
             attr.span,
             self.lint_node_id,
+            // Doesn't matter what the target actually is here.
+            Target::Crate,
             self.features,
             emit_errors,
             parse_cfg,

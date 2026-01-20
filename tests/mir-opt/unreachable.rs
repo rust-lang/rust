@@ -47,10 +47,11 @@ fn as_match() {
     // CHECK: bb1: {
     // CHECK: [[eq:_.*]] = Ne({{.*}}, const 1_isize);
     // CHECK-NEXT: assume(move [[eq]]);
-    // CHECK-NEXT: goto -> bb2;
-    // CHECK: bb2: {
+    // CHECK-NEXT: goto -> [[return:bb.*]];
+    // CHECK: [[return]]: {
+    // CHECK-NOT: {{bb.*}}: {
     // CHECK: return;
-    // CHECK: bb3: {
+    // CHECK: {{bb.*}}: {
     // CHECK-NEXT: unreachable;
     match empty() {
         Some(_x) => match _x {},

@@ -742,7 +742,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: ast::attr::contains_name(attrs, sym::needs_allocator),
+                needs_allocator: find_attr!(attrs, AttributeKind::NeedsAllocator),
                 needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
                 no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
                 panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
@@ -1379,9 +1379,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 }
 
 fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-        && find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
-        // AssocConst ==> assoc item has value
+    // AssocConst ==> assoc item has value
+    tcx.is_type_const(def_id)
         && (!matches!(def_kind, DefKind::AssocConst) || assoc_item_has_value(tcx, def_id))
 }
 

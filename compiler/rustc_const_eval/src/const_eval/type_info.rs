@@ -1,6 +1,6 @@
 use rustc_abi::FieldIdx;
+use rustc_ast::Mutability;
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::CtfeProvenance;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Const, ScalarInt, Ty};
@@ -8,7 +8,8 @@ use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{
-    Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Writeable, interp_ok,
+    CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Scalar, Writeable,
+    interp_ok,
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
@@ -35,6 +36,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                 interp_ok((variant_id, self.project_downcast(&field_dest, variant_id)?))
             };
+            let ptr_bit_width = || self.tcx.data_layout.pointer_size().bits();
             match field.name {
                 sym::kind => {
                     let variant_index = match ty.kind() {
@@ -64,17 +66,65 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
-                        // For now just merge all primitives into one `Leaf` variant with no data
-                        ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Char | ty::Bool => {
-                            downcast(sym::Leaf)?.0
+                        ty::Bool => {
+                            let (variant, _variant_place) = downcast(sym::Bool)?;
+                            variant
+                        }
+                        ty::Char => {
+                            let (variant, _variant_place) = downcast(sym::Char)?;
+                            variant
+                        }
+                        ty::Int(int_ty) => {
+                            let (variant, variant_place) = downcast(sym::Int)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_int_type_info(
+                                place,
+                                int_ty.bit_width().unwrap_or_else(/* isize */ ptr_bit_width),
+                                true,
+                            )?;
+                            variant
+                        }
+                        ty::Uint(uint_ty) => {
+                            let (variant, variant_place) = downcast(sym::Int)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_int_type_info(
+                                place,
+                                uint_ty.bit_width().unwrap_or_else(/* usize */ ptr_bit_width),
+                                false,
+                            )?;
+                            variant
+                        }
+                        ty::Float(float_ty) => {
+                            let (variant, variant_place) = downcast(sym::Float)?;
+                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_float_type_info(place, float_ty.bit_width())?;
+                            variant
+                        }
+                        ty::Str => {
+                            let (variant, _variant_place) = downcast(sym::Str)?;
+                            variant
+                        }
+                        ty::Ref(_, ty, mutability) => {
+                            let (variant, variant_place) = downcast(sym::Reference)?;
+                            let reference_place =
+                                self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_reference_type_info(reference_place, *ty, *mutability)?;
+
+                            variant
+                        }
+                        ty::RawPtr(ty, mutability) => {
+                            let (variant, variant_place) = downcast(sym::Pointer)?;
+                            let pointer_place =
+                                self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+                            self.write_pointer_type_info(pointer_place, *ty, *mutability)?;
+
+                            variant
                         }
                         ty::Adt(_, _)
                         | ty::Foreign(_)
-                        | ty::Str
                         | ty::Pat(_, _)
                         | ty::Slice(_)
-                        | ty::RawPtr(..)
-                        | ty::Ref(..)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)
                         | ty::UnsafeBinder(..)
@@ -197,6 +247,99 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::element_ty => self.write_type_id(ty, &field_place)?,
                 // Write the length of the array to the `len` field.
                 sym::len => self.write_scalar(len.to_leaf(), &field_place)?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+
+        interp_ok(())
+    }
+
+    fn write_int_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        bit_width: u64,
+        signed: bool,
+    ) -> InterpResult<'tcx> {
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+            match field.name {
+                sym::bits => self.write_scalar(
+                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
+                    &field_place,
+                )?,
+                sym::signed => self.write_scalar(Scalar::from_bool(signed), &field_place)?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+        interp_ok(())
+    }
+
+    fn write_float_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        bit_width: u64,
+    ) -> InterpResult<'tcx> {
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+            match field.name {
+                sym::bits => self.write_scalar(
+                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
+                    &field_place,
+                )?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+        interp_ok(())
+    }
+
+    pub(crate) fn write_reference_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+        mutability: Mutability,
+    ) -> InterpResult<'tcx> {
+        // Iterate over all fields of `type_info::Reference`.
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                // Write the `TypeId` of the reference's inner type to the `ty` field.
+                sym::pointee => self.write_type_id(ty, &field_place)?,
+                // Write the boolean representing the reference's mutability to the `mutable` field.
+                sym::mutable => {
+                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
+                }
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+        interp_ok(())
+    }
+
+    pub(crate) fn write_pointer_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+        mutability: Mutability,
+    ) -> InterpResult<'tcx> {
+        // Iterate over all fields of `type_info::Pointer`.
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                // Write the `TypeId` of the pointer's inner type to the `ty` field.
+                sym::pointee => self.write_type_id(ty, &field_place)?,
+                // Write the boolean representing the pointer's mutability to the `mutable` field.
+                sym::mutable => {
+                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
+                }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }

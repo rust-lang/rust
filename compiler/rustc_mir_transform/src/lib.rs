@@ -197,6 +197,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod ssa_range_prop: SsaRangePropagation;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -743,6 +744,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
+            // This pass does attempt to track assignments.
+            // Keep it close to GVN which merges identical values into the same local.
+            &ssa_range_prop::SsaRangePropagation,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,

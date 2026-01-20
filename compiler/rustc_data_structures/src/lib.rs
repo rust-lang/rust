@@ -18,6 +18,8 @@
 #![feature(assert_matches)]
 #![feature(auto_traits)]
 #![feature(cfg_select)]
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(extend_one)]
@@ -36,6 +38,11 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
+// Temporarily re-export `assert_matches!`, so that the rest of the compiler doesn't
+// have to worry about it being moved to a different module in std during stabilization.
+// FIXME(#151359): Remove this when `feature(assert_matches)` is stable in stage0.
+// (This doesn't necessarily need to be fixed during the beta bump itself.)
+pub use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::fmt;
 
 pub use atomic_ref::AtomicRef;

@@ -1458,7 +1458,6 @@ compiler = [
     "@jieyouxu",
     "@jdonszelmann",
     "@JonathanBrouwer",
-    "@lcnr",
     "@madsmtm",
     "@mati865",
     "@Nadrieril",
@@ -1466,6 +1465,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@tiif",
     "@WaffleLapkin",
     "@wesleywiser",
 ]

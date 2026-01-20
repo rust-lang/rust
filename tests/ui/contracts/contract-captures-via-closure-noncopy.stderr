@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`
+error[E0277]: the trait bound `Baz: Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`
   --> $DIR/contract-captures-via-closure-noncopy.rs:13:1
    |
 LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz*2 })]
@@ -9,7 +9,7 @@ LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz
    | unsatisfied trait bound
    | required by a bound introduced by this call
    |
-   = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`, the trait `std::marker::Copy` is not implemented for `Baz`
+   = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`, the trait `Copy` is not implemented for `Baz`
 note: required because it's used within this closure
   --> $DIR/contract-captures-via-closure-noncopy.rs:13:42
    |

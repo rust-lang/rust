@@ -9,7 +9,7 @@ use rustc_feature::{
 };
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, RustcVersion};
+use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -373,6 +373,7 @@ fn parse_cfg_attr_internal<'a>(
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
+        Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints,
         &meta,
@@ -411,7 +412,6 @@ fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Feat
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Features) {
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {

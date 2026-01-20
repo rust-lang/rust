@@ -176,6 +176,12 @@ impl DepNodeExt for DepNode {
     }
 }
 
+/// Maps a query label to its DepKind. Panics if a query with the given label does not exist.
+pub fn dep_kind_from_label(label: &str) -> DepKind {
+    dep_kind_from_label_string(label)
+        .unwrap_or_else(|_| panic!("Query label {label} does not exist"))
+}
+
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for () {
     #[inline(always)]
     fn fingerprint_style() -> FingerprintStyle {

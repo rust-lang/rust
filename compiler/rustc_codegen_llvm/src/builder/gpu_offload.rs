@@ -55,6 +55,10 @@ impl<'ll> OffloadGlobals<'ll> {
         let init_ty = cx.type_func(&[], cx.type_void());
         let init_rtls = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
 
+        // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
+        // openmp and offload optimizations.
+        llvm::add_module_flag_u32(cx.llmod(), llvm::ModuleFlagMergeBehavior::Max, "openmp", 51);
+
         OffloadGlobals {
             launcher_fn,
             launcher_ty,

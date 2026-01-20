@@ -1,8 +1,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };

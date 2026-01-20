@@ -20,10 +20,6 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_incorrect_do_not_recommend_args)]
-pub(crate) struct DoNotRecommendDoesNotExpectArgs;
-
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {

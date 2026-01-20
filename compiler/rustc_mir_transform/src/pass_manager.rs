@@ -258,8 +258,6 @@ fn run_passes_inner<'tcx>(
 
     // Verify that no passes are missing from the `declare_passes` invocation
     #[cfg(debug_assertions)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     {
         let used_passes: FxIndexSet<_> = passes.iter().map(|p| p.name()).collect();
 

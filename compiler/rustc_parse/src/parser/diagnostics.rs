@@ -2264,7 +2264,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseParen)
         {
             // `fn foo(String s) {}`
-            let ident = self.parse_ident().unwrap();
+            let ident = self.parse_ident_common(true).unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
             err.span_suggestion(

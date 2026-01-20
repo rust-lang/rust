@@ -434,7 +434,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         } = candidate.kind()
             && tcx.do_not_recommend_impl(impl_def_id)
         {
-            trace!("#[do_not_recommend] -> exit");
+            trace!("#[diagnostic::do_not_recommend] -> exit");
             return ControlFlow::Break(self.obligation.clone());
         }
 

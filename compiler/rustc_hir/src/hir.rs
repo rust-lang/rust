@@ -4525,6 +4525,26 @@ impl ItemKind<'_> {
             _ => return None,
         })
     }
+
+    pub fn recovered(&self) -> bool {
+        match self {
+            ItemKind::Struct(
+                _,
+                _,
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+            ) => true,
+            ItemKind::Union(
+                _,
+                _,
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+            ) => true,
+            ItemKind::Enum(_, _, def) => def.variants.iter().any(|v| match v.data {
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. } => true,
+                _ => false,
+            }),
+            _ => false,
+        }
+    }
 }
 
 // The bodies for items are stored "out of line", in a separate

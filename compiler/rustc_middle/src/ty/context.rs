@@ -4,7 +4,6 @@
 
 pub mod tls;
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::env::VarError;
@@ -17,7 +16,6 @@ use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
-use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -29,6 +27,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
+use rustc_data_structures::{debug_assert_matches, defer};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
@@ -3282,7 +3281,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn node_span_lint(
         self,
@@ -3342,7 +3340,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Emit a lint at the appropriate level for a hir node.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn node_lint(
         self,
@@ -3540,7 +3537,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
-        self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
+        find_attr!(self.get_all_attrs(def_id), AttributeKind::DoNotRecommend { .. })
     }
 
     pub fn is_trivial_const<P>(self, def_id: P) -> bool

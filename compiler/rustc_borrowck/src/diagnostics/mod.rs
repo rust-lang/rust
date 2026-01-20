@@ -162,8 +162,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         for (_, (mut diag, count)) in std::mem::take(&mut self.diags_buffer.buffered_mut_errors) {
             if count > 10 {
-                #[allow(rustc::diagnostic_outside_of_impl)]
-                #[allow(rustc::untranslatable_diagnostic)]
                 diag.note(format!("...and {} other attempted mutable borrows", count - 10));
             }
             self.buffer_error(diag);
@@ -236,7 +234,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// LL |         for (key, value) in dict {
     ///    |                             ^^^^
     /// ```
-    #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
@@ -820,7 +817,6 @@ impl UseSpans<'_> {
     }
 
     /// Add a span label to the arguments of the closure, if it exists.
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn args_subdiag(self, err: &mut Diag<'_>, f: impl FnOnce(Span) -> CaptureArgLabel) {
         if let UseSpans::ClosureUse { args_span, .. } = self {
             err.subdiagnostic(f(args_span));
@@ -829,7 +825,6 @@ impl UseSpans<'_> {
 
     /// Add a span label to the use of the captured variable, if it exists.
     /// only adds label to the `path_span`
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_path_only_subdiag(
         self,
         err: &mut Diag<'_>,
@@ -861,7 +856,6 @@ impl UseSpans<'_> {
     }
 
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_subdiag(
         self,
         err: &mut Diag<'_>,
@@ -1225,8 +1219,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.borrow_spans(span, borrow.reserve_location)
     }
 
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn explain_captures(
         &mut self,
         err: &mut Diag<'infcx>,

@@ -305,30 +305,22 @@ jobs:
           DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
         run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
-  # This job isused to tell bors the final status of the build, as there is no practical way to detect
-  # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
+  # This job is used to publish toolstate for successful auto builds.
   outcome:
-    name: bors build finished
+    name: publish toolstate
     runs-on: ubuntu-24.04
     needs: [ calculate_matrix, job ]
-    # !cancelled() executes the job regardless of whether the previous jobs passed or failed
-    if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
+    if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
+    environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}
     steps:
       - name: checkout the source code
         uses: actions/checkout@v5
         with:
           fetch-depth: 2
-      # Calculate the exit status of the whole CI workflow.
-      # If all dependent jobs were successful, this exits with 0 (and the outcome job continues successfully).
-      # If a some dependent job has failed, this exits with 1.
-      - name: calculate the correct exit status
-        run: jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
       # Publish the toolstate if an auto build succeeds (just before push to the default branch)
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
-        if: needs.calculate_matrix.outputs.run_type == 'auto'
         env:
           TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
           TOOLSTATE_PUBLISH: 1

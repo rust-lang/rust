@@ -122,6 +122,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
+            "mach_wait_until" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [deadline] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.mach_wait_until(deadline)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Access to command-line arguments
             "_NSGetArgc" => {
                 // FIXME: This does not have a direct test (#3179).

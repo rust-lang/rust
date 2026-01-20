@@ -1,5 +1,4 @@
 #![allow(rustc::symbol_intern_string_literal)]
-use std::assert_matches::assert_matches;
 use std::io::prelude::*;
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -11,6 +10,7 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
+use rustc_data_structures::assert_matches;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::translation::Translator;
@@ -184,7 +184,6 @@ impl<T: Write> Write for Shared<T> {
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
 fn test_harness(
     file_text: &str,
     span_labels: Vec<SpanLabel>,
