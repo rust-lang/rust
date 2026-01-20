@@ -2717,6 +2717,55 @@ impl Step for LlvmBitcodeLinker {
     }
 }
 
+/// Distributes the `enzyme` library so that it can be used by a compiler whose host
+/// is `target`.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Enzyme {
+    /// Enzyme will by usable by rustc on this host.
+    pub target: TargetSelection,
+}
+
+impl Step for Enzyme {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("enzyme")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.llvm_enzyme
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Enzyme { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents Enzyme from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+
+        let enzyme = builder.ensure(llvm::Enzyme { target });
+
+        let target_libdir = format!("lib/rustlib/{}/lib", target.triple);
+
+        // Prepare the image directory
+        let mut tarball = Tarball::new(builder, "enzyme", &target.triple);
+        tarball.set_overlay(OverlayKind::Enzyme);
+        tarball.is_preview(true);
+
+        tarball.add_file(enzyme.enzyme_path(), target_libdir, FileType::NativeLibrary);
+
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
 /// Should not be considered stable by end users.
