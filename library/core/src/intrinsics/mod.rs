@@ -52,7 +52,6 @@
                       in the rest of the standard library",
     issue = "none"
 )]
-#![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
@@ -72,6 +71,7 @@ use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, O
 /// A type for atomic ordering parameters for intrinsics. This is a separate type from
 /// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
 /// risk of leaking that to stable code.
+#[allow(missing_docs)]
 #[derive(Debug, ConstParamTy, PartialEq, Eq)]
 pub enum AtomicOrdering {
     // These values must match the compiler's `AtomicOrdering` defined in
@@ -2619,7 +2619,7 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 }
 
 /// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
-/// At runtime, does nothing.
+/// At runtime, it does nothing.
 ///
 /// # Safety
 ///
@@ -2637,6 +2637,9 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+/// Convert the allocation this pointer points to into immutable global memory.
+/// The pointer must point to the beginning of a heap allocation.
+/// This operation only makes sense during compile time. At runtime, it does nothing.
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
