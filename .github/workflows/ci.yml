@@ -123,7 +123,9 @@ jobs:
 
       # Measure build time of tidy
       - name: build tidy
-        run: cd ./src/tools/tidy && cargo clean && time cargo build --quiet
+        run: |
+          cd src/tools/tidy
+          for i in {1..3}; do cargo clean; /usr/bin/time -f "%e" cargo build --quiet 2>&1; done | awk '{sum+=$1; sumsq+=$1*$1} END{avg=sum/NR; print "avg=",avg,"std=",sqrt(sumsq/NR-avg*avg)}'
 
   #     # Free up disk space on Linux by removing preinstalled components that
   #     # we do not need. We do this to enable some of the less resource
