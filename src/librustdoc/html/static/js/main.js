@@ -1692,7 +1692,7 @@ function preLoadCss(cssUrl) {
 
         const container = document.createElement("div");
         if (!isHelpPage) {
-            container.className = "popover content";
+            container.className = "popover";
         }
         container.id = "help";
 
@@ -1701,9 +1701,14 @@ function preLoadCss(cssUrl) {
         side_by_side.appendChild(div_shortcuts);
         side_by_side.appendChild(div_infos);
 
-        container.appendChild(book_info);
-        container.appendChild(side_by_side);
-        container.appendChild(rustdoc_version);
+        const content = document.createElement("div");
+        content.className = "content";
+
+        content.appendChild(book_info);
+        content.appendChild(side_by_side);
+        content.appendChild(rustdoc_version);
+
+        container.appendChild(content);
 
         if (isHelpPage) {
             const help_section = document.createElement("section");

@@ -1760,6 +1760,10 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
   return false;
 }
 
+extern "C" LLVMValueRef LLVMRustStripPointerCasts(LLVMValueRef V) {
+  return wrap(unwrap(V)->stripPointerCasts());
+}
+
 extern "C" bool LLVMRustLLVMHasZlibCompression() {
   return llvm::compression::zlib::isAvailable();
 }
