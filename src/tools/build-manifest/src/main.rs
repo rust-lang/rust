@@ -301,11 +301,12 @@ impl Builder {
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs
+                | PkgType::RustcDocs
                 | PkgType::RustcCodegenCranelift
                 | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
-                PkgType::RustcDev | PkgType::RustcDocs => {
+                PkgType::RustcDev => {
                     extensions.extend(HOSTS.iter().map(|target| Component::from_pkg(pkg, target)));
                 }
                 PkgType::RustSrc => {
