@@ -246,9 +246,6 @@ passes_implied_feature_not_exist =
 
 passes_incorrect_crate_type = lang items are not allowed in stable dylibs
 
-passes_incorrect_do_not_recommend_args =
-    `#[diagnostic::do_not_recommend]` does not expect any arguments
-
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 
@@ -379,7 +376,7 @@ passes_no_main_function =
     }
     .consider_adding_main_to_file = consider adding a `main` function to `{$filename}`
     .consider_adding_main_at_crate = consider adding a `main` function at the crate level
-    .teach_note = If you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
+    .teach_note = if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
     .non_function_main = non-function item at `crate::main` is found
 
 passes_non_exhaustive_with_default_field_values =

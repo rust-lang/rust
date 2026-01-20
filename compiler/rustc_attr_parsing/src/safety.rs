@@ -1,7 +1,7 @@
 use rustc_ast::Safety;
 use rustc_feature::{AttributeSafety, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
-use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::Span;
@@ -15,8 +15,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attr_path: &AttrPath,
         attr_span: Span,
         attr_safety: Safety,
-        emit_lint: &mut impl FnMut(AttributeLint<S::Id>),
-        target_id: S::Id,
+        emit_lint: &mut impl FnMut(LintId, Span, AttributeLintKind),
     ) {
         if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
             return;
@@ -82,16 +81,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         },
                     );
                 } else {
-                    emit_lint(AttributeLint {
-                        lint_id: LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
-                        id: target_id,
-                        span: path_span,
-                        kind: AttributeLintKind::UnsafeAttrOutsideUnsafe {
+                    emit_lint(
+                        LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
+                        path_span,
+                        AttributeLintKind::UnsafeAttrOutsideUnsafe {
                             attribute_name_span: path_span,
                             sugg_spans: not_from_proc_macro
                                 .then(|| (diag_span.shrink_to_lo(), diag_span.shrink_to_hi())),
                         },
-                    })
+                    )
                 }
             }
 

@@ -1,11 +1,10 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::assert_matches::assert_matches;
-
 use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_data_structures::assert_matches;
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};

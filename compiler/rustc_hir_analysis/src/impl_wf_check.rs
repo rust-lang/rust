@@ -8,9 +8,8 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use std::assert_matches::debug_assert_matches;
-
 use min_specialization::check_min_specialization;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_errors::codes::*;

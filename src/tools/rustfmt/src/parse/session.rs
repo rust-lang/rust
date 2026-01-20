@@ -349,7 +349,6 @@ mod tests {
         }
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> DiagInner {
-            #[allow(rustc::untranslatable_diagnostic)] // no translation needed for empty string
             let mut diag = DiagInner::new(level, "");
             diag.messages.clear();
             if let Some(span) = span {

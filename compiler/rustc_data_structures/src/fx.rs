@@ -28,3 +28,18 @@ macro_rules! define_stable_id_collections {
         pub type $entry_name<'a, T> = $crate::fx::IndexEntry<'a, $key, T>;
     };
 }
+
+pub mod default {
+    use super::{FxBuildHasher, FxHashMap, FxHashSet};
+
+    // FIXME: These two functions will become unnecessary after
+    // <https://github.com/rust-lang/rustc-hash/pull/63> lands and we start using the corresponding
+    // `rustc-hash` version. After that we can use `Default::default()` instead.
+    pub const fn fx_hash_map<K, V>() -> FxHashMap<K, V> {
+        FxHashMap::with_hasher(FxBuildHasher)
+    }
+
+    pub const fn fx_hash_set<V>() -> FxHashSet<V> {
+        FxHashSet::with_hasher(FxBuildHasher)
+    }
+}

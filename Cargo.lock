@@ -3767,6 +3767,7 @@ dependencies = [
 name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
+ "anstyle",
  "ctrlc",
  "jiff",
  "libc",
@@ -3792,6 +3793,7 @@ dependencies = [
  "rustc_index",
  "rustc_infer",
  "rustc_interface",
+ "rustc_lexer",
  "rustc_lint",
  "rustc_log",
  "rustc_macros",
@@ -3887,11 +3889,13 @@ dependencies = [
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
+ "rustc_middle",
  "rustc_parse",
  "rustc_proc_macro",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "scoped-tls",
  "smallvec",
  "thin-vec",
  "tracing",

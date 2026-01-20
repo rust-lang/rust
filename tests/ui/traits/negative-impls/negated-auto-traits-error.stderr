@@ -77,12 +77,12 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL |     is_send(Box::new(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^^^ the trait `Send` is not implemented for `Unique<dummy2::TestType>`
+   |     ------- ^^^^^^^^^^^^^^^^^^ the trait `Send` is not implemented for `std::ptr::Unique<dummy2::TestType>`
    |     |
    |     required by a bound introduced by this call
    |
-   = note: the trait bound `Unique<dummy2::TestType>: Send` is not satisfied
-   = note: required for `Unique<dummy2::TestType>` to implement `Send`
+   = note: the trait bound `std::ptr::Unique<dummy2::TestType>: Send` is not satisfied
+   = note: required for `std::ptr::Unique<dummy2::TestType>` to implement `Send`
 note: required because it appears within the type `Box<dummy2::TestType>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `is_send`
@@ -113,7 +113,7 @@ note: required because it appears within the type `Outer2<dummy3::TestType>`
    |
 LL | struct Outer2<T>(T);
    |        ^^^^^^
-   = note: required for `Unique<Outer2<dummy3::TestType>>` to implement `Send`
+   = note: required for `std::ptr::Unique<Outer2<dummy3::TestType>>` to implement `Send`
 note: required because it appears within the type `Box<Outer2<dummy3::TestType>>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `is_send`

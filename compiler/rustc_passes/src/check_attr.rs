@@ -43,8 +43,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -223,6 +223,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
+                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -265,7 +266,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
-                    | AttributeKind::RustcLintDiagnostics
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
@@ -296,6 +296,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::NoMain
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
@@ -314,13 +315,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::NeedsAllocator
+                    | AttributeKind::RustcAllocator
+                    | AttributeKind::RustcAllocatorZeroed
+                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
+                    | AttributeKind::RustcDeallocator
+                    | AttributeKind::RustcReallocator
+                    | AttributeKind::RustcNounwind
+                    | AttributeKind::RustcOffloadKernel
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::do_not_recommend, ..] => {
-                            self.check_do_not_recommend(attr.span(), hir_id, target, attr, item)
-                        }
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
@@ -348,7 +354,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::prelude_import
                             | sym::panic_handler
                             | sym::lang
-                            | sym::needs_allocator
                             | sym::default_lib_allocator
                             | sym::rustc_diagnostic_item
                             | sym::rustc_no_mir_inline
@@ -362,12 +367,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_do_not_const_check
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
-                            | sym::rustc_allocator
-                            | sym::rustc_deallocator
-                            | sym::rustc_reallocator
                             | sym::rustc_conversion_suggestion
-                            | sym::rustc_allocator_zeroed
-                            | sym::rustc_allocator_zeroed_variant
                             | sym::rustc_deprecated_safe_2024
                             | sym::rustc_test_marker
                             | sym::rustc_abi
@@ -391,13 +391,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_partition_reused
                             | sym::rustc_partition_codegened
                             | sym::rustc_expected_cgu_reuse
-                            | sym::rustc_nounwind,
+                            // crate-level attrs, are checked below
+                            | sym::feature
+                            | sym::register_tool
+                            | sym::rustc_no_implicit_bounds
+                            | sym::test_runner
+                            | sym::reexport_test_harness_main
+                            | sym::no_main
+                            | sym::no_builtins
+                            | sym::crate_type
+                            | sym::compiler_builtins
+                            | sym::profiler_runtime
+                            | sym::needs_panic_runtime
+                            | sym::panic_runtime
+                            | sym::rustc_preserve_ub_checks,
                             ..
                         ] => {}
                         [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
-                                // checked below
-                                Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
                                 Some(_) => {
                                     if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
                                         // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
@@ -568,14 +579,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
-    /// arguments.
+    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
     fn check_do_not_recommend(
         &self,
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
         if !matches!(target, Target::Impl { .. })
@@ -590,14 +599,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir_id,
                 attr_span,
                 errors::IncorrectDoNotRecommendLocation,
-            );
-        }
-        if !attr.is_word() {
-            self.tcx.emit_node_span_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::DoNotRecommendDoesNotExpectArgs,
             );
         }
     }
@@ -1690,7 +1691,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             let hir_sig = tcx.hir_fn_sig_by_hir_id(hir_id);
             if let Some(hir_sig) = hir_sig {
-                #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
                         if let Some(ty) = hir_sig.decl.inputs.get(idx) {

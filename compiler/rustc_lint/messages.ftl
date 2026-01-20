@@ -237,9 +237,6 @@ lint_deprecated_where_clause_location = where clause not allowed here
     .suggestion_move_to_end = move it to the end of the type declaration
     .suggestion_remove_where = remove this `where`
 
-lint_diag_out_of_impl =
-    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
-
 lint_doc_alias_duplicated = doc alias is duplicated
     .label = first defined here
 
@@ -480,6 +477,9 @@ lint_improper_ctypes_unsafe_binder = unsafe binders are incompatible with foreig
 lint_improper_gpu_kernel_arg = passing type `{$ty}` to a function with "gpu-kernel" ABI may have unexpected behavior
     .help = use primitive types and raw pointers to get reliable behavior
 
+lint_incorrect_do_not_recommend_args =
+    `#[diagnostic::do_not_recommend]` does not expect any arguments
+
 lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
     .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
     .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
@@ -539,7 +539,7 @@ lint_invalid_style = {$is_used_as_inner ->
         [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
         *[other] the `#![{$name}]` attribute can only be used at the crate root
     }
-    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+    .note = this attribute does not have an `!`, which means it is applied to this {$target}
 
 lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
     .warn = {-lint_previously_accepted}
@@ -988,8 +988,6 @@ lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
 lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
-
-lint_untranslatable_diag = diagnostics should be created using translatable messages
 
 lint_unused_allocation = unnecessary allocation, use `&` instead
 lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead

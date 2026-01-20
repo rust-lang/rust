@@ -1,9 +1,9 @@
 //! See docs in build/expr/mod.rs
 
-use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
 use rustc_middle::mir::AssertKind::BoundsCheck;
@@ -16,6 +16,7 @@ use tracing::{debug, instrument, trace};
 
 use crate::builder::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::builder::expr::category::Category;
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 
 /// The "outermost" place that holds this value.
@@ -427,8 +428,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {
-            ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+            ExprKind::Scope { region_scope, hir_id, value } => {
+                this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
                     this.expr_as_place(block, value, mutability, fake_borrow_temps)
                 })
             }

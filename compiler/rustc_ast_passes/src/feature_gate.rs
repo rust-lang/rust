@@ -13,15 +13,11 @@ use crate::errors;
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
         if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
-            // FIXME: make this translatable
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            #[allow(rustc::untranslatable_diagnostic)]
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};
@@ -31,13 +27,11 @@ macro_rules! gate {
 macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr, $notes: expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             let mut diag = feature_err(&$visitor.sess, $name, $span, $explain);
             for note in $notes {
                 diag.note(*note);
@@ -491,7 +485,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
                 && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
             {
-                #[allow(rustc::untranslatable_diagnostic)]
                 // Emit yield_expr as the error, since that will be sufficient. You can think of it
                 // as coroutines and gen_blocks imply yield_expr.
                 feature_err(&visitor.sess, sym::yield_expr, *span, "yield syntax is experimental")
@@ -523,7 +516,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             if !visitor.features.min_generic_const_args()
                 && !span.allows_unstable(sym::min_generic_const_args)
             {
-                #[allow(rustc::untranslatable_diagnostic)]
                 feature_err(
                     &visitor.sess,
                     sym::min_generic_const_args,
@@ -559,7 +551,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 if let Ok(snippet) = sm.span_to_snippet(span)
                     && snippet == "!"
                 {
-                    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
                     feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
                         .emit();
                 } else {

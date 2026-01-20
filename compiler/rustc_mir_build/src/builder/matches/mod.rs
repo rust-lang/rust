@@ -5,13 +5,13 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 use std::sync::Arc;
 
 use itertools::{Itertools, Position};
 use rustc_abi::{FIRST_VARIANT, VariantIdx};
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
@@ -29,7 +29,7 @@ use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::matches::buckets::PartitionedCandidates;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
-use crate::builder::scope::DropKind;
+use crate::builder::scope::{DropKind, LintLevel};
 use crate::builder::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
 };
@@ -182,9 +182,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
             }
-            ExprKind::Scope { region_scope, lint_level, value } => {
+            ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
-                this.in_scope(region_scope, lint_level, |this| {
+                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
                     this.then_else_break_inner(block, value, args)
                 })
             }
@@ -434,7 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let guard_scope = arm
                     .guard
                     .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
-                self.in_scope(arm_scope, arm.lint_level, |this| {
+                self.in_scope(arm_scope, LintLevel::Explicit(arm.hir_id), |this| {
                     this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
                         // `if let` guard temps needing deduplicating will be in the guard scope.
                         let old_dedup_scope =
@@ -1339,19 +1339,13 @@ enum TestKind<'tcx> {
 
     /// Tests the place against a string constant using string equality.
     StringEq {
-        /// Constant `&str` value to test against.
+        /// Constant string value to test against.
+        /// Note that this value has type `str` (not `&str`).
         value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node. Usually `&str`, but could
-        /// be `str` for patterns like `deref!("..."): String`.
-        pat_ty: Ty<'tcx>,
     },
 
     /// Tests the place against a constant using scalar equality.
-    ScalarEq {
-        value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node.
-        pat_ty: Ty<'tcx>,
-    },
+    ScalarEq { value: ty::Value<'tcx> },
 
     /// Test whether the value falls within an inclusive or exclusive range.
     Range(Arc<PatRange<'tcx>>),

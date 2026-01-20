@@ -14,13 +14,13 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,

@@ -448,11 +448,9 @@ impl<T> [T] {
                 // SAFETY:
                 // allocated above with the capacity of `s`, and initialize to `s.len()` in
                 // ptr::copy_to_non_overlapping below.
-                if s.len() > 0 {
-                    unsafe {
-                        s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
-                        v.set_len(s.len());
-                    }
+                unsafe {
+                    s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
+                    v.set_len(s.len());
                 }
                 v
             }

@@ -88,7 +88,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                 pattern,
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
                                 else_block,
-                                lint_level: LintLevel::Explicit(local.hir_id),
+                                hir_id: local.hir_id,
                                 span,
                             },
                         };
