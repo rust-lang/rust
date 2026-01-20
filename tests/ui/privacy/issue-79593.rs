@@ -10,7 +10,7 @@ mod foo {
         Pub {};
         //~^ ERROR missing field `private` in initializer of `Pub`
         Enum::Variant { x: () };
-        //~^ ERROR missing field `y` in initializer of `Enum`
+        //~^ ERROR missing field `y` in initializer of `foo::Enum`
     }
 }
 
@@ -21,9 +21,9 @@ fn correct() {
 
 fn wrong() {
     foo::Enum::Variant { x: () };
-    //~^ ERROR missing field `y` in initializer of `Enum`
+    //~^ ERROR missing field `y` in initializer of `foo::Enum`
     foo::Enum::Variant { };
-    //~^ ERROR missing fields `x` and `y` in initializer of `Enum`
+    //~^ ERROR missing fields `x` and `y` in initializer of `foo::Enum`
 }
 
 fn main() {}

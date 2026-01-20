@@ -120,6 +120,48 @@ fn test_structs() {
 }
 
 #[test]
+fn test_enums() {
+    use TypeKind::*;
+
+    const {
+        enum E {
+            Some(u32),
+            None,
+            #[non_exhaustive]
+            Foomp {
+                a: (),
+                b: &'static str,
+            },
+        }
+
+        let Type { kind: Enum(ty), size, .. } = Type::of::<E>() else { panic!() };
+        assert!(size == Some(size_of::<E>()));
+        assert!(ty.variants.len() == 3);
+
+        assert!(ty.variants[0].name == "Some");
+        assert!(!ty.variants[0].non_exhaustive);
+        assert!(ty.variants[0].fields.len() == 1);
+
+        assert!(ty.variants[1].name == "None");
+        assert!(!ty.variants[1].non_exhaustive);
+        assert!(ty.variants[1].fields.len() == 0);
+
+        assert!(ty.variants[2].name == "Foomp");
+        assert!(ty.variants[2].non_exhaustive);
+        assert!(ty.variants[2].fields.len() == 2);
+    }
+
+    const {
+        let Type { kind: Enum(ty), size, .. } = Type::of::<Option<i32>>() else { panic!() };
+        assert!(size == Some(size_of::<Option<i32>>()));
+        assert!(ty.variants.len() == 2);
+        assert!(ty.generics.len() == 1);
+        let Generic::Type(GenericType { ty: generic_ty, .. }) = ty.generics[0] else { panic!() };
+        assert!(generic_ty == TypeId::of::<i32>());
+    }
+}
+
+#[test]
 fn test_primitives() {
     use TypeKind::*;
 

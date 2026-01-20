@@ -164,7 +164,46 @@ Type {
     ),
 }
 Type {
-    kind: Other,
+    kind: Enum(
+        Enum {
+            generics: [],
+            variants: [
+                Variant {
+                    name: "Some",
+                    fields: [
+                        Field {
+                            name: "0",
+                            ty: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
+                            offset: 4,
+                        },
+                    ],
+                    non_exhaustive: false,
+                },
+                Variant {
+                    name: "None",
+                    fields: [],
+                    non_exhaustive: false,
+                },
+                Variant {
+                    name: "Foomp",
+                    fields: [
+                        Field {
+                            name: "a",
+                            ty: TypeId(0x41223169ff28813ba79b7268a2a968d9),
+                            offset: 4,
+                        },
+                        Field {
+                            name: "b",
+                            ty: TypeId(0xb98b1b7157a6417863eb502cd6cb5d6d),
+                            offset: 8,
+                        },
+                    ],
+                    non_exhaustive: true,
+                },
+            ],
+            non_exhaustive: false,
+        },
+    ),
     size: Some(
         24,
     ),

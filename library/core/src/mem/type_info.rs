@@ -47,6 +47,8 @@ pub enum TypeKind {
     Array(Array),
     /// Structs.
     Struct(Struct),
+    /// Enums.
+    Enum(Enum),
     /// Primitive boolean type.
     Bool(Bool),
     /// Primitive character type.
@@ -106,6 +108,32 @@ pub struct Struct {
     /// All fields of the struct.
     pub fields: &'static [Field],
     /// Whether the struct field list is non-exhaustive.
+    pub non_exhaustive: bool,
+}
+
+/// Compile-time type information about enums.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Enum {
+    /// Instantiated generics of the enum.
+    pub generics: &'static [Generic],
+    /// All variants of the enum.
+    pub variants: &'static [Variant],
+    /// Whether the enum variant list is non-exhaustive.
+    pub non_exhaustive: bool,
+}
+
+/// Compile-time type information about variants of enums.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Variant {
+    /// The name of the variant.
+    pub name: &'static str,
+    /// All fields of the variant.
+    pub fields: &'static [Field],
+    /// Whether the enum variant fields is non-exhaustive.
     pub non_exhaustive: bool,
 }
 

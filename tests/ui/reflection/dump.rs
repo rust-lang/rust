@@ -24,7 +24,11 @@ struct TupleStruct(u32, u64);
 enum Bar {
     Some(u32),
     None,
-    Foomp { a: (), b: &'static str },
+    #[non_exhaustive]
+    Foomp {
+        a: (),
+        b: &'static str,
+    },
 }
 
 struct Generics<'a, A, B, const C: u64> {
