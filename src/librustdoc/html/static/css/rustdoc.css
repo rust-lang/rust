@@ -64,7 +64,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 }
 
-:root.sans-serif {
+:root.sans-serif-fonts {
 	--font-family: "Fira Sans", sans-serif;
 	--font-family-code: "Fira Mono", monospace;
 }
@@ -2640,6 +2640,15 @@ However, it's not needed with smaller screen width because the doc/code block is
 		top: 16px;
 		--popover-arrow-offset: 16px;
 	}
+}
+
+/* Items on module pages */
+.hide-deprecated-items dt.deprecated,
+.hide-deprecated-items dt.deprecated + dd,
+/* Items on item pages */
+.hide-deprecated-items .deprecated,
+.hide-deprecated-items .deprecated + .item-info {
+	display: none;
 }
 
 /*

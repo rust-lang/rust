@@ -43,41 +43,17 @@
                     }
                 }
                 break;
-            case "hide-sidebar":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-sidebar");
-                } else {
-                    removeClass(document.documentElement, "hide-sidebar");
-                }
-                break;
-            case "hide-toc":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-toc");
-                } else {
-                    removeClass(document.documentElement, "hide-toc");
-                }
-                break;
-            case "hide-modnav":
-                if (value === true) {
-                    addClass(document.documentElement, "hide-modnav");
-                } else {
-                    removeClass(document.documentElement, "hide-modnav");
-                }
-                break;
             case "sans-serif-fonts":
-                if (value === true) {
-                    addClass(document.documentElement, "sans-serif");
-                } else {
-                    removeClass(document.documentElement, "sans-serif");
-                }
-                break;
+            case "hide-sidebar":
+            case "hide-toc":
+            case "hide-modnav":
             case "word-wrap-source-code":
+            case "hide-deprecated-items":
                 if (value === true) {
-                    addClass(document.documentElement, "word-wrap-source-code");
+                    addClass(document.documentElement, settingName);
                 } else {
-                    removeClass(document.documentElement, "word-wrap-source-code");
+                    removeClass(document.documentElement, settingName);
                 }
-                break;
         }
     }
 
@@ -272,6 +248,11 @@
             {
                 "name": "Word wrap source code",
                 "js_name": "word-wrap-source-code",
+                "default": false,
+            },
+            {
+                "name": "Hide deprecated items",
+                "js_name": "hide-deprecated-items",
                 "default": false,
             },
         ];
