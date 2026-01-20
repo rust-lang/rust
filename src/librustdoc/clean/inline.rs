@@ -645,6 +645,9 @@ pub(crate) fn build_impl(
             } else {
                 ImplKind::Normal
             },
+            is_deprecated: tcx
+                .lookup_deprecation(did)
+                .is_some_and(|deprecation| deprecation.is_in_effect()),
         })),
         merged_attrs,
         cfg,
