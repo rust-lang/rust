@@ -1515,6 +1515,7 @@ fn supported_sanitizers(
             "x86_64",
             &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
         ),
+        "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }
