@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, or `<`, found `..`
-  --> $DIR/irrefutable-lets.rs:12:51
+  --> $DIR/irrefutable-lets.rs:15:51
    |
 LL |     let opt: Option<Range<Option<i32>> = Some(None..Some(1));
    |            - while parsing the type for `opt`     ^^ expected one of `!`, `(`, `+`, `::`, or `<`
