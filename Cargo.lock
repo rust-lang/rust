@@ -3337,6 +3337,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde_json",
  "similar",
+ "tempfile",
  "wasmparser 0.236.1",
 ]
 
