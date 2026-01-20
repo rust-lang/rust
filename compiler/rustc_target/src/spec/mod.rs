@@ -1720,6 +1720,7 @@ supported_targets! {
 
     ("amdgcn-amd-amdhsa", amdgcn_amd_amdhsa),
 
+    ("spirv64-intel-unknown", spirv64_intel_unknown),
     ("spirv-unknown-vulkan1.3", spirv_unknown_vulkan1_3),
 
     ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),

@@ -44,6 +44,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     "thumbv7r-none-eabihf",
     "thumbv8r-none-eabihf",
     "spirv-unknown-vulkan1.3",
+    "spirv64-intel-unknown",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
