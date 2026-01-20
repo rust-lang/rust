@@ -274,6 +274,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
+                    | AttributeKind::RustcVariance
+                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ExportStable
                     | AttributeKind::FfiConst(..)
                     | AttributeKind::UnstableFeatureBound(..)
@@ -378,8 +380,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_capture_analysis
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
-                            | sym::rustc_variance
-                            | sym::rustc_variance_of_opaques
                             | sym::rustc_hidden_type_of_opaques
                             | sym::rustc_mir
                             | sym::rustc_effective_visibility

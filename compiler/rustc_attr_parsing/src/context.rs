@@ -85,7 +85,9 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
+use crate::attributes::test_attrs::{
+    IgnoreParser, RustcVarianceOfOpaquesParser, RustcVarianceParser, ShouldPanicParser,
+};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoinductiveParser, DenyExplicitImplParser,
     DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
@@ -300,6 +302,8 @@ attribute_parsers!(
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
+        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
+        Single<WithoutArgs<RustcVarianceParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,

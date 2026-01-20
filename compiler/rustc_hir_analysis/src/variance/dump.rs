@@ -1,8 +1,9 @@
 use std::fmt::Write;
 
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_middle::ty::{GenericArgs, TyCtxt};
-use rustc_span::sym;
 
 fn format_variances(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
     let variances = tcx.variances_of(def_id);
@@ -25,7 +26,7 @@ fn format_variances(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
 pub(crate) fn variances(tcx: TyCtxt<'_>) {
     let crate_items = tcx.hir_crate_items(());
 
-    if tcx.has_attr(CRATE_DEF_ID, sym::rustc_variance_of_opaques) {
+    if find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcVarianceOfOpaques) {
         for id in crate_items.opaques() {
             tcx.dcx().emit_err(crate::errors::VariancesOf {
                 span: tcx.def_span(id),
@@ -35,7 +36,7 @@ pub(crate) fn variances(tcx: TyCtxt<'_>) {
     }
 
     for id in crate_items.free_items() {
-        if !tcx.has_attr(id.owner_id, sym::rustc_variance) {
+        if !find_attr!(tcx.get_all_attrs(id.owner_id), AttributeKind::RustcVariance) {
             continue;
         }
 
