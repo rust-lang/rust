@@ -136,6 +136,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoStdParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoStd;
 }
 
+pub(crate) struct NoMainParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoMainParser {
+    const PATH: &[Symbol] = &[sym::no_main];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
+}
+
 pub(crate) struct RustcCoherenceIsCoreParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {

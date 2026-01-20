@@ -2,6 +2,7 @@ use either::Either;
 use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
+use rustc_data_structures::assert_matches;
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -10,7 +11,7 @@ use tracing::trace;
 
 use super::{
     ImmTy, InterpCx, InterpResult, Machine, MinMax, MulAddType, OpTy, PlaceTy, Provenance, Scalar,
-    Size, TyAndLayout, assert_matches, interp_ok, throw_ub_format,
+    Size, TyAndLayout, interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
 

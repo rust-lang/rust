@@ -93,6 +93,28 @@ macro_rules! uint_impl {
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
         /// assert_eq!(max.count_zeros(), 0);
         /// ```
+        ///
+        /// This is heavily dependent on the width of the type, and thus
+        /// might give surprising results depending on type inference:
+        /// ```
+        /// # fn foo(_: u8) {}
+        /// # fn bar(_: u16) {}
+        /// let lucky = 7;
+        /// foo(lucky);
+        /// assert_eq!(lucky.count_zeros(), 5);
+        /// assert_eq!(lucky.count_ones(), 3);
+        ///
+        /// let lucky = 7;
+        /// bar(lucky);
+        /// assert_eq!(lucky.count_zeros(), 13);
+        /// assert_eq!(lucky.count_ones(), 3);
+        /// ```
+        /// You might want to use [`Self::count_ones`] instead, or emphasize
+        /// the type you're using in the call rather than method syntax:
+        /// ```
+        /// let small = 1;
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::count_zeros(small), ", stringify!($BITS_MINUS_ONE) ,");")]
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \

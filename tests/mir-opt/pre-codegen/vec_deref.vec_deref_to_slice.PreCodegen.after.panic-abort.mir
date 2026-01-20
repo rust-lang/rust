@@ -16,13 +16,13 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
                     scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                         scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
                             let mut _2: std::ptr::NonNull<u8>;
-                            scope 7 (inlined Unique::<u8>::cast::<u8>) {
+                            scope 7 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
                                 scope 8 (inlined NonNull::<u8>::cast::<u8>) {
                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
                                     }
                                 }
                             }
-                            scope 10 (inlined Unique::<u8>::as_non_null_ptr) {
+                            scope 10 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                             }
                         }
                         scope 11 (inlined NonNull::<u8>::as_ptr) {

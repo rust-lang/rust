@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+anstyle = "1.0.13"
 jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
@@ -28,6 +29,7 @@ rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_interface = { path = "../rustc_interface" }
+rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_log = { path = "../rustc_log" }
 rustc_macros = { path = "../rustc_macros" }

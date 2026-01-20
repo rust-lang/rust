@@ -103,9 +103,9 @@ You might also find the following sites useful:
 [tlgba]: https://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
 [rctd]: tests/intro.md
-[cheatsheet]: https://bors.rust-lang.org/
+[cheatsheet]: https://bors.rust-lang.org/help
 [Miri]: https://github.com/rust-lang/miri
-[@bors]: https://github.com/bors
+[@bors]: https://github.com/rust-lang/bors
 [a GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
 [rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
 [Forge]: https://forge.rust-lang.org/

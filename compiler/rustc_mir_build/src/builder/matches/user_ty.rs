@@ -4,10 +4,10 @@
 //! This avoids having to repeatedly clone a partly-built [`UserTypeProjections`]
 //! at every step of the traversal, which is what the previous code was doing.
 
-use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::smallvec::SmallVec;
 use rustc_middle::mir::{ProjectionElem, UserTypeProjection, UserTypeProjections};
 use rustc_middle::ty::{AdtDef, UserTypeAnnotationIndex};

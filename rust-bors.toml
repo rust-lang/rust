@@ -23,7 +23,9 @@ labels_blocking_approval = [
     "S-waiting-on-t-opsem",
     "S-waiting-on-t-rustdoc",
     "S-waiting-on-t-rustdoc-frontend",
-    "S-waiting-on-t-clippy"
+    "S-waiting-on-t-clippy",
+    # PR manually set to blocked
+    "S-blocked"
 ]
 
 # If CI runs quicker than this duration, consider it to be a failure

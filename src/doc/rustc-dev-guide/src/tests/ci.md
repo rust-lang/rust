@@ -198,7 +198,7 @@ to help make the perf comparison as fair as possible.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
->    with `try` permissions by `@bors delegate` by someone who has `try`
+>    with `try` permissions by `@bors delegate=try` by someone who has `try`
 >    permissions.
 >
 > Note that this is usually easier to do than manually edit [`jobs.yml`].
@@ -213,10 +213,7 @@ the corresponding PR.
 Multiple try builds can execute concurrently across different PRs, but there can be at most
 a single try build running on a single PR at any given time.
 
-Note that try builds are handled using the [new bors] implementation.
-
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
-[new bors]: https://github.com/rust-lang/bors
 
 ### Modifying CI jobs
 
@@ -281,8 +278,7 @@ Breakages like these usually happen when another, incompatible PR is merged
 after the build happened.
 
 To ensure a `main` branch that works all the time, we forbid manual merges.
-Instead, all PRs have to be approved through our bot, [bors] (the software
-behind it is called [homu]).
+Instead, all PRs have to be approved through our bot, [bors].
 All the approved PRs are put in a [merge queue]
 (sorted by priority and creation date) and are automatically tested one at the time.
 If all the builders are green, the PR is merged, otherwise the failure is
@@ -465,8 +461,7 @@ To do this:
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/HEAD/.github/workflows/ci.yml
 [`src/ci/citool`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/citool
-[bors]: https://github.com/bors
-[homu]: https://github.com/rust-lang/homu
+[bors]: https://github.com/rust-lang/bors
 [merge queue]: https://bors.rust-lang.org/queue/rust
 [dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
 [the GitHub Actions workflows page]: https://github.com/rust-lang/rust/actions

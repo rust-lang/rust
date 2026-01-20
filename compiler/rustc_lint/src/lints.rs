@@ -1,6 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
 use rustc_errors::codes::*;
@@ -943,14 +942,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub(crate) struct LintPassByHand;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_diag_out_of_impl)]
-pub(crate) struct DiagOutOfImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_untranslatable_diag)]
-pub(crate) struct UntranslatableDiag;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
@@ -2869,7 +2860,6 @@ pub(crate) struct AmbiguousGlobReexports {
     pub duplicate_reexport: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -2882,7 +2872,6 @@ pub(crate) struct HiddenGlobReexports {
     pub private_item: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 

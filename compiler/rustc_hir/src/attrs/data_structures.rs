@@ -840,6 +840,9 @@ pub enum AttributeKind {
     /// Represents `#[naked]`
     Naked(Span),
 
+    /// Represents `#[needs_allocator]`
+    NeedsAllocator,
+
     /// Represents `#[no_core]`
     NoCore(Span),
 
@@ -848,6 +851,9 @@ pub enum AttributeKind {
 
     /// Represents `#[no_link]`
     NoLink,
+
+    /// Represents `#[no_main]`
+    NoMain,
 
     /// Represents `#[no_mangle]`
     NoMangle(Span),
@@ -903,11 +909,23 @@ pub enum AttributeKind {
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
 
+    /// Represents `#[rustc_allocator]`
+    RustcAllocator,
+
+    /// Represents `#[rustc_allocator_zeroed]`
+    RustcAllocatorZeroed,
+
+    /// Represents `#[rustc_allocator_zeroed_variant]`
+    RustcAllocatorZeroedVariant { name: Symbol },
+
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
+
+    /// Represents `#[rustc_deallocator]`
+    RustcDeallocator,
 
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
@@ -936,9 +954,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_legacy_const_generics]`
     RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
 
-    /// Represents `#[rustc_lint_diagnostics]`
-    RustcLintDiagnostics,
-
     /// Represents `#[rustc_lint_opt_deny_field_access]`
     RustcLintOptDenyFieldAccess { lint_message: Symbol },
 
@@ -963,11 +978,20 @@ pub enum AttributeKind {
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
+    /// Represents `#[rustc_nounwind]`
+    RustcNounwind,
+
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[rustc_offload_kernel]`
+    RustcOffloadKernel,
+
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
+
+    /// Represents `#[rustc_reallocator]`
+    RustcReallocator,
 
     /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {

@@ -287,8 +287,6 @@ pub(crate) fn emit_nll_mir<'tcx>(
     Ok(())
 }
 
-#[allow(rustc::diagnostic_outside_of_impl)]
-#[allow(rustc::untranslatable_diagnostic)]
 pub(super) fn dump_annotation<'tcx, 'infcx>(
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,

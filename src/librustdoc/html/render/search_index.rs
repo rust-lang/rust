@@ -1282,7 +1282,7 @@ pub(crate) fn build_index(
                     cache,
                 ),
                 aliases: item.attrs.get_doc_aliases(),
-                deprecation: item.deprecation(tcx),
+                is_deprecated: item.is_deprecated(tcx),
             });
         }
     }
@@ -1519,7 +1519,7 @@ pub(crate) fn build_index(
                 trait_parent: item.trait_parent_idx,
                 module_path,
                 exact_module_path,
-                deprecated: item.deprecation.is_some(),
+                deprecated: item.is_deprecated,
                 associated_item_disambiguator: if let Some(impl_id) = item.impl_id
                     && let Some(parent_idx) = item.parent_idx
                     && associated_item_duplicates

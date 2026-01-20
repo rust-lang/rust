@@ -29,7 +29,6 @@ pub(crate) fn extern_abi_enabled(
     })
 }
 
-#[allow(rustc::untranslatable_diagnostic)]
 pub(crate) fn gate_unstable_abi(sess: &Session, features: &Features, span: Span, abi: ExternAbi) {
     match extern_abi_enabled(features, span, abi) {
         Ok(_) => (),

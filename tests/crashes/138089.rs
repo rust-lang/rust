@@ -1,4 +1,6 @@
 //@ known-bug: #138089
+//@ needs-rustc-debug-assertions
+
 #![feature(generic_const_exprs)]
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]

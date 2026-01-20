@@ -28,9 +28,9 @@ use crate::attributes::codegen_attrs::{
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
-    RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
-    WindowsSubsystemParser,
+    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoMainParser, NoStdParser,
+    PatternComplexityLimitParser, RecursionLimitParser, RustcCoherenceIsCoreParser,
+    TypeLengthLimitParser, WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -41,7 +41,7 @@ use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::instruction_set::InstructionSetParser;
 use crate::attributes::link_attrs::{
     ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
-    LinkParser, LinkSectionParser, LinkageParser, StdInternalSymbolParser,
+    LinkParser, LinkSectionParser, LinkageParser, NeedsAllocatorParser, StdInternalSymbolParser,
 };
 use crate::attributes::lint_helpers::{
     AsPtrParser, AutomaticallyDerivedParser, PassByValueParser, PubTransparentParser,
@@ -64,6 +64,10 @@ use crate::attributes::proc_macro_attrs::{
 };
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
+use crate::attributes::rustc_allocator::{
+    RustcAllocatorParser, RustcAllocatorZeroedParser, RustcAllocatorZeroedVariantParser,
+    RustcDeallocatorParser, RustcReallocatorParser,
+};
 use crate::attributes::rustc_dump::{
     RustcDumpDefParents, RustcDumpItemBounds, RustcDumpPredicates, RustcDumpUserArgs,
     RustcDumpVtable,
@@ -71,10 +75,10 @@ use crate::attributes::rustc_dump::{
 use crate::attributes::rustc_internal::{
     RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
     RustcLayoutScalarValidRangeStartParser, RustcLegacyConstGenericsParser,
-    RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser,
-    RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
-    RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
-    RustcNoImplicitAutorefsParser, RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
+    RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser, RustcLintQueryInstabilityParser,
+    RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
+    RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser, RustcNounwindParser,
+    RustcObjectLifetimeDefaultParser, RustcOffloadKernelParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
@@ -223,6 +227,7 @@ attribute_parsers!(
         Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
         Single<RecursionLimitParser>,
+        Single<RustcAllocatorZeroedVariantParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEndParser>,
@@ -259,9 +264,11 @@ attribute_parsers!(
         Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
+        Single<WithoutArgs<NeedsAllocatorParser>>,
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
         Single<WithoutArgs<NoLinkParser>>,
+        Single<WithoutArgs<NoMainParser>>,
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,
@@ -272,21 +279,26 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<RustcAllocatorParser>>,
+        Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
+        Single<WithoutArgs<RustcDeallocatorParser>>,
         Single<WithoutArgs<RustcDumpDefParents>>,
         Single<WithoutArgs<RustcDumpItemBounds>>,
         Single<WithoutArgs<RustcDumpPredicates>>,
         Single<WithoutArgs<RustcDumpUserArgs>>,
         Single<WithoutArgs<RustcDumpVtable>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
-        Single<WithoutArgs<RustcLintDiagnosticsParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,
         Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<RustcNeverReturnsNullPointerParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
+        Single<WithoutArgs<RustcNounwindParser>>,
+        Single<WithoutArgs<RustcOffloadKernelParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
+        Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,

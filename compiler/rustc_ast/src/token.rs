@@ -625,12 +625,12 @@ impl TokenKind {
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, span: Span) -> Self {
+    pub const fn new(kind: TokenKind, span: Span) -> Self {
         Token { kind, span }
     }
 
     /// Some token that will be thrown away later.
-    pub fn dummy() -> Self {
+    pub const fn dummy() -> Self {
         Token::new(TokenKind::Question, DUMMY_SP)
     }
 

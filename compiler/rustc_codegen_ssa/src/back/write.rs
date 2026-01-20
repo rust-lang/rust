@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::marker::PhantomData;
 use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
@@ -8,6 +7,7 @@ use std::{fs, io, mem, str, thread};
 
 use rustc_abi::Size;
 use rustc_ast::attr;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;

@@ -270,22 +270,25 @@ pub struct Instant {
 }
 
 impl Instant {
+    // CLOCK_UPTIME_RAW   clock that increments monotonically, in the same man-
+    //                    ner as CLOCK_MONOTONIC_RAW, but that does not incre-
+    //                    ment while the system is asleep.  The returned value
+    //                    is identical to the result of mach_absolute_time()
+    //                    after the appropriate mach_timebase conversion is
+    //                    applied.
+    //
+    // We use `CLOCK_UPTIME_RAW` instead of `CLOCK_MONOTONIC` since
+    // `CLOCK_UPTIME_RAW` is based on `mach_absolute_time`, which is the
+    // clock that all timeouts and deadlines are measured against inside
+    // the kernel.
     #[cfg(target_vendor = "apple")]
     pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
+
     #[cfg(not(target_vendor = "apple"))]
     pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_MONOTONIC;
+
     pub fn now() -> Instant {
         // https://pubs.opengroup.org/onlinepubs/9799919799/functions/clock_getres.html
-        //
-        // CLOCK_UPTIME_RAW   clock that increments monotonically, in the same man-
-        //                    ner as CLOCK_MONOTONIC_RAW, but that does not incre-
-        //                    ment while the system is asleep.  The returned value
-        //                    is identical to the result of mach_absolute_time()
-        //                    after the appropriate mach_timebase conversion is
-        //                    applied.
-        //
-        // Instant on macos was historically implemented using mach_absolute_time;
-        // we preserve this value domain out of an abundance of caution.
         Instant { t: Timespec::now(Self::CLOCK_ID) }
     }
 
@@ -307,6 +310,37 @@ impl Instant {
     )]
     pub(crate) fn into_timespec(self) -> Timespec {
         self.t
+    }
+
+    /// Returns `self` converted into units of `mach_absolute_time`, or `None`
+    /// if `self` is before the system boot time. If the conversion cannot be
+    /// performed precisely, this ceils the result up to the nearest
+    /// representable value.
+    #[cfg(target_vendor = "apple")]
+    pub fn into_mach_absolute_time_ceil(self) -> Option<u128> {
+        #[repr(C)]
+        struct mach_timebase_info {
+            numer: u32,
+            denom: u32,
+        }
+
+        unsafe extern "C" {
+            unsafe fn mach_timebase_info(info: *mut mach_timebase_info) -> libc::kern_return_t;
+        }
+
+        let secs = u64::try_from(self.t.tv_sec).ok()?;
+
+        let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
+        assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
+
+        // Since `tv_sec` is 64-bit and `tv_nsec` is smaller than 1 billion,
+        // this cannot overflow. The resulting number needs at most 94 bits.
+        let nanos =
+            u128::from(secs) * u128::from(NSEC_PER_SEC) + u128::from(self.t.tv_nsec.as_inner());
+        // This multiplication cannot overflow since multiplying a 94-bit
+        // number by a 32-bit number yields a number that needs at most
+        // 126 bits.
+        Some((nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer)))
     }
 }
 

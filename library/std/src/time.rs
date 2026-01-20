@@ -682,6 +682,56 @@ impl SystemTime {
     pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_sub_duration(&duration).map(SystemTime)
     }
+
+    /// Saturating [`SystemTime`] addition, computing `self + duration`,
+    /// returning [`SystemTime::MAX`] if overflow occurred.
+    ///
+    /// In the case that the `duration` is smaller than the time precision of
+    /// the operating system, `self` will be returned.
+    #[unstable(feature = "time_saturating_systemtime", issue = "151199")]
+    pub fn saturating_add(&self, duration: Duration) -> SystemTime {
+        self.checked_add(duration).unwrap_or(SystemTime::MAX)
+    }
+
+    /// Saturating [`SystemTime`] subtraction, computing `self - duration`,
+    /// returning [`SystemTime::MIN`] if overflow occurred.
+    ///
+    /// In the case that the `duration` is smaller than the time precision of
+    /// the operating system, `self` will be returned.
+    #[unstable(feature = "time_saturating_systemtime", issue = "151199")]
+    pub fn saturating_sub(&self, duration: Duration) -> SystemTime {
+        self.checked_sub(duration).unwrap_or(SystemTime::MIN)
+    }
+
+    /// Saturating computation of time elapsed from an earlier point in time,
+    /// returning [`Duration::ZERO`] in the case that `earlier` is later or
+    /// equal to `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(time_saturating_systemtime)]
+    /// use std::time::{Duration, SystemTime};
+    ///
+    /// let now = SystemTime::now();
+    /// let prev = now.saturating_sub(Duration::new(1, 0));
+    ///
+    /// // now - prev should return non-zero.
+    /// assert_eq!(now.saturating_duration_since(prev), Duration::new(1, 0));
+    /// assert!(now.duration_since(prev).is_ok());
+    ///
+    /// // prev - now should return zero (and fail with the non-saturating).
+    /// assert_eq!(prev.saturating_duration_since(now), Duration::ZERO);
+    /// assert!(prev.duration_since(now).is_err());
+    ///
+    /// // now - now should return zero (and work with the non-saturating).
+    /// assert_eq!(now.saturating_duration_since(now), Duration::ZERO);
+    /// assert!(now.duration_since(now).is_ok());
+    /// ```
+    #[unstable(feature = "time_saturating_systemtime", issue = "151199")]
+    pub fn saturating_duration_since(&self, earlier: SystemTime) -> Duration {
+        self.duration_since(earlier).unwrap_or(Duration::ZERO)
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
