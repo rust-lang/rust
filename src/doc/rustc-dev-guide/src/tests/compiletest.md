@@ -80,7 +80,7 @@ The following test suites are available, with links for more information:
 
 ### The build-std test suite
 
-[`build-std`](#build-std-tests) test that -Zbuild-std works.
+[`build-std`](#build-std-tests) tests that -Zbuild-std works.
 
 ### Rustdoc test suites
 
