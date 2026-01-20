@@ -297,6 +297,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::manual_assert::MANUAL_ASSERT_INFO,
     crate::manual_async_fn::MANUAL_ASYNC_FN_INFO,
     crate::manual_bits::MANUAL_BITS_INFO,
+    crate::manual_checked_ops::MANUAL_CHECKED_OPS_INFO,
     crate::manual_clamp::MANUAL_CLAMP_INFO,
     crate::manual_float_methods::MANUAL_IS_FINITE_INFO,
     crate::manual_float_methods::MANUAL_IS_INFINITE_INFO,
