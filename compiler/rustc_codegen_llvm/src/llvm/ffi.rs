@@ -1675,7 +1675,11 @@ mod Offload {
             _M: &'a Module,
             _host_out: *const c_char,
         ) -> bool;
-        pub(crate) fn LLVMRustOffloadMapper<'a>(OldFn: &'a Value, NewFn: &'a Value);
+        pub(crate) fn LLVMRustOffloadMapper<'a>(
+            OldFn: &'a Value,
+            NewFn: &'a Value,
+            RebuiltArgs: *const &Value,
+        );
     }
 }
 
@@ -1702,7 +1706,11 @@ mod Offload_fallback {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
     #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(_OldFn: &'a Value, _NewFn: &'a Value) {
+    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(
+        _OldFn: &'a Value,
+        _NewFn: &'a Value,
+        _RebuiltArgs: *const &Value,
+    ) {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
 }

@@ -97,6 +97,21 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         GenericBuilder { llbuilder, cx: scx }
     }
 
+    pub(crate) fn append_block(
+        cx: &'a GenericCx<'ll, CX>,
+        llfn: &'ll Value,
+        name: &str,
+    ) -> &'ll BasicBlock {
+        unsafe {
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx(), llfn, name.as_ptr())
+        }
+    }
+
+    pub(crate) fn trunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, UNNAMED) }
+    }
+
     pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
     }
