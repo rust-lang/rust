@@ -49,7 +49,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let guard_condition = guard.condition()?.reset_indent();
     let arm_expr = match_arm.expr()?;
-    let then_branch = make::block_expr(None, Some(arm_expr.reset_indent().indent(1.into())));
+    let then_branch = crate::utils::wrap_block(&arm_expr);
     let if_expr = make::expr_if(guard_condition, then_branch, None).indent(arm_expr.indent_level());
 
     let target = guard.syntax().text_range();
@@ -345,6 +345,35 @@ fn main() {
     }
 
     #[test]
+    fn move_guard_to_block_arm_body_works() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x $0if x > 10 => {
+            let _ = true;
+            false
+        },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            let _ = true;
+            false
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn move_let_guard_to_arm_body_works() {
         check_assist(
             move_guard_to_arm_body,
@@ -395,9 +424,7 @@ fn main() {
             && true
             && true {
             {
-                {
-                    false
-                }
+                false
             }
         },
         _ => true
