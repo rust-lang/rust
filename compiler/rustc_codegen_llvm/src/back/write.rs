@@ -13,6 +13,7 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -33,6 +34,8 @@ use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
     LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
+use crate::builder::SBuilder;
+use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
@@ -669,7 +672,17 @@ pub(crate) unsafe fn llvm_optimize(
         // Create the new parameter list, with ptr as the first argument
         let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
         new_param_types.push(cx.type_ptr());
-        new_param_types.extend(old_param_types);
+
+        // This relies on undocumented LLVM knowledge that scalars must be passed as i64
+        for &old_ty in &old_param_types {
+            let new_ty = match cx.type_kind(old_ty) {
+                TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                    cx.type_i64()
+                }
+                _ => old_ty,
+            };
+            new_param_types.push(new_ty);
+        }
 
         // Create the new function type
         let ret_ty = unsafe { llvm::LLVMGetReturnType(old_fn_ty) };
@@ -682,10 +695,33 @@ pub(crate) unsafe fn llvm_optimize(
         let a0 = llvm::get_param(new_fn, 0);
         llvm::set_value_name(a0, CString::new("dyn_ptr").unwrap().as_bytes());
 
+        let bb = SBuilder::append_block(cx, new_fn, "entry");
+        let mut builder = SBuilder::build(cx, bb);
+
+        let mut old_args_rebuilt = Vec::with_capacity(old_param_types.len());
+
+        for (i, &old_ty) in old_param_types.iter().enumerate() {
+            let new_arg = llvm::get_param(new_fn, (i + 1) as u32);
+
+            let rebuilt = match cx.type_kind(old_ty) {
+                TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                    let num_bits = scalar_width(cx, old_ty);
+
+                    let trunc = builder.trunc(new_arg, cx.type_ix(num_bits));
+                    builder.bitcast(trunc, old_ty)
+                }
+                _ => new_arg,
+            };
+
+            old_args_rebuilt.push(rebuilt);
+        }
+
+        builder.ret_void();
+
         // Here we map the old arguments to the new arguments, with an offset of 1 to make sure
         // that we don't use the newly added `%dyn_ptr`.
         unsafe {
-            llvm::LLVMRustOffloadMapper(old_fn, new_fn);
+            llvm::LLVMRustOffloadMapper(old_fn, new_fn, old_args_rebuilt.as_ptr());
         }
 
         llvm::set_linkage(new_fn, llvm::get_linkage(old_fn));
