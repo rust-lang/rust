@@ -1,6 +1,4 @@
-use crate::spec::{
-    Arch, LinkerFlavor, Os, PanicStrategy, Target, TargetMetadata, TargetOptions
-};
+use crate::spec::{Arch, LinkerFlavor, Os, PanicStrategy, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,7 +14,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::SpirV,
         options: TargetOptions {
             os: Os::Vulkan,
-            vendor: "unknown".into(), 
+            vendor: "unknown".into(),
             linker_flavor: LinkerFlavor::Llbc,
             max_atomic_width: Some(32),
             panic_strategy: PanicStrategy::Abort,

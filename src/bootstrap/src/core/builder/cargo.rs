@@ -258,7 +258,7 @@ impl Cargo {
     fn configure_linker(&mut self, builder: &Builder<'_>) -> &mut Cargo {
         let target = self.target;
         let compiler = self.compiler;
-        
+
         if target.contains("spirv") {
             return self;
         }
