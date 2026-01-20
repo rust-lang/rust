@@ -609,6 +609,56 @@ pub fn sleep(dur: Duration) {
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
 
+    #[cfg(all(
+        target_os = "linux",
+        target_env = "gnu",
+        target_pointer_width = "32",
+        not(target_arch = "riscv32")
+    ))]
+    {
+        use crate::sys::pal::time::__timespec64;
+        use crate::sys::pal::weak::weak;
+
+        // This got added in glibc 2.31, along with a 64-bit `clock_gettime`
+        // function.
+        weak! {
+            fn __clock_nanosleep_time64(
+                clock_id: libc::clockid_t,
+                flags: libc::c_int,
+                req: *const __timespec64,
+                rem: *mut __timespec64,
+            ) -> libc::c_int;
+        }
+
+        if let Some(clock_nanosleep) = __clock_nanosleep_time64.get() {
+            let ts = deadline.into_inner().into_timespec().to_timespec64();
+            loop {
+                let r = unsafe {
+                    clock_nanosleep(
+                        crate::sys::time::Instant::CLOCK_ID,
+                        libc::TIMER_ABSTIME,
+                        &ts,
+                        core::ptr::null_mut(),
+                    )
+                };
+
+                match r {
+                    0 => return,
+                    libc::EINTR => continue,
+                    // If the underlying kernel doesn't support the 64-bit
+                    // syscall, `__clock_nanosleep_time64` will fail. The
+                    // error code nowadays is EOVERFLOW, but it used to be
+                    // ENOSYS – so just don't rely on any particular value.
+                    // The parameters are all valid, so the only reasons
+                    // why the call might fail are EINTR and the call not
+                    // being supported. Fall through to the clamping version
+                    // in that case.
+                    _ => break,
+                }
+            }
+        }
+    }
+
     let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
         // The deadline is further in the future then can be passed to
         // clock_nanosleep. We have to use Self::sleep instead. This might
