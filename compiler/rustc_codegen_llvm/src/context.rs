@@ -216,6 +216,12 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-f64:32:64", "");
         }
     }
+    if llvm_version < (23, 0, 0) {
+        if sess.target.arch == Arch::S390x {
+            // LLVM 23 updated the s390x layout to specify the stack alignment: https://github.com/llvm/llvm-project/pull/176041
+            target_data_layout = target_data_layout.replace("-S64", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
