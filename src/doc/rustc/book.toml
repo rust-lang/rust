@@ -10,3 +10,9 @@ use-boolean-and = true
 
 [output.html.playground]
 runnable = false
+
+[preprocessor.rustc-gen-target-tables]
+command = "cargo run --manifest-path ../../../../src/tools/mdbook-rustc/Cargo.toml"
+
+[build]
+extra-watch-dirs = ["../../tools/mdbook-rustc"]

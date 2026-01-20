@@ -787,6 +787,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mdbook-rustc"
+version = "0.0.0"
+dependencies = [
+ "mdbook-preprocessor",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "mdbook-spec"
 version = "0.0.0"
 dependencies = [
@@ -1161,6 +1170,7 @@ dependencies = [
  "clap",
  "mdbook-driver",
  "mdbook-i18n-helpers",
+ "mdbook-rustc",
  "mdbook-spec",
  "mdbook-trpl",
  "tracing-subscriber",

@@ -1,5 +1,10 @@
 [workspace]
-members = ["../error_index_generator"]
+members = [
+# tidy-alphabetical-start
+  "../error_index_generator",
+  "../mdbook-rustc"
+# tidy-alphabetical-end
+]
 
 [package]
 name = "rustbook"
@@ -11,6 +16,7 @@ edition = "2021"
 clap = { version = "4.0.32", features = ["cargo"] }
 mdbook-driver = { version = "0.5.2", features = ["search"] }
 mdbook-i18n-helpers = "0.4.0"
+mdbook-rustc = { path = "../mdbook-rustc" }
 mdbook-spec = { path = "../../doc/reference/tools/mdbook-spec" }
 mdbook-trpl = { path = "../../doc/book/packages/mdbook-trpl" }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
