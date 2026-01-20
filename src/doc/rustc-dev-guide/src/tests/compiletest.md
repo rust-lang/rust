@@ -439,6 +439,8 @@ The tests in [`tests/build-std`] check that `-Zbuild-std` works. This is current
 just a run-make test suite with a single recipe. The recipe generates test cases
 and runs them in parallel.
 
+[`tests/build-std`]: https://github.com/rust-lang/rust/tree/HEAD/tests/build-std
+
 #### Using Rust recipes
 
 Each test should be in a separate directory with a `rmake.rs` Rust program,
