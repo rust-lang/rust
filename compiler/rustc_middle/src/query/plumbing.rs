@@ -342,22 +342,12 @@ macro_rules! define_callbacks {
             })*
         }
 
+        #[derive(Default)]
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
                 (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
                 ()
             ),)*
-        }
-
-        impl Default for QueryArenas<'_> {
-            fn default() -> Self {
-                Self {
-                    $($name: query_if_arena!([$($modifiers)*]
-                        (Default::default())
-                        ()
-                    ),)*
-                }
-            }
         }
 
         #[derive(Default)]
