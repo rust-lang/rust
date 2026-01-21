@@ -22,6 +22,7 @@ pub struct PrintRequest {
 pub enum PrintKind {
     // tidy-alphabetical-start
     AllTargetSpecsJson,
+    BackendHasZstd,
     CallingConventions,
     Cfg,
     CheckCfg,
@@ -59,6 +60,7 @@ impl PrintKind {
         match self {
             // tidy-alphabetical-start
             AllTargetSpecsJson => "all-target-specs-json",
+            BackendHasZstd => "backend-has-zstd",
             CallingConventions => "calling-conventions",
             Cfg => "cfg",
             CheckCfg => "check-cfg",
@@ -111,6 +113,7 @@ impl PrintKind {
 
             // Unstable values:
             AllTargetSpecsJson => false,
+            BackendHasZstd => false, // (perma-unstable, for use by compiletest)
             CheckCfg => false,
             CrateRootLintLevels => false,
             SupportedCrateTypes => false,
@@ -210,7 +213,6 @@ fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nigh
         .join(", ");
 
     let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
-    #[allow(rustc::diagnostic_outside_of_impl)]
     diag.help(format!("valid print requests are: {prints}"));
 
     if req == "lints" {

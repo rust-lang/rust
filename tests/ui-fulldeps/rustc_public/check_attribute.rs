@@ -38,16 +38,13 @@ fn test_tool(items: &CrateItems) {
     assert_eq!(rustfmt_attrs[0].as_str(), "#[rustfmt::skip]\n");
 
     let clippy_fn = *get_item(&items, "complex_fn").unwrap();
-    let clippy_attrs = clippy_fn.tool_attrs(&["clippy".to_string(),
-                                               "cyclomatic_complexity".to_string()]);
+    let clippy_attrs =
+        clippy_fn.tool_attrs(&["clippy".to_string(), "cyclomatic_complexity".to_string()]);
     assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]\n");
 }
 
-fn get_item<'a>(
-    items: &'a CrateItems,
-    name: &str,
-) -> Option<&'a rustc_public::CrateItem> {
-    items.iter().find(|crate_item| crate_item.name() == name)
+fn get_item<'a>(items: &'a CrateItems, name: &str) -> Option<&'a rustc_public::CrateItem> {
+    items.iter().find(|crate_item| crate_item.trimmed_name() == name)
 }
 
 /// This test will generate and analyze a dummy crate using the stable mir.

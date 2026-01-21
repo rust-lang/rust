@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::AArch64,
         options: TargetOptions {
             linker: Some("aarch64-kmc-elf-gcc".into()),
-            features: "+v8a,+neon,+fp-armv8".into(),
+            features: "+v8a,+neon".into(),
             relocation_model: RelocModel::Static,
             disable_redzone: true,
             max_atomic_width: Some(128),

@@ -12,7 +12,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{GenericArgKind, Region, RegionKind, Ty, TyCtxt, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -303,13 +303,13 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
         if self.sig_drop_holder != SigDropHolder::None {
             let parent_ty = self.cx.typeck_results().expr_ty(parent_expr);
-            if !ty_has_erased_regions(parent_ty) && !parent_expr.is_syntactic_place_expr() {
+            if !parent_ty.has_erased_regions() && !parent_expr.is_syntactic_place_expr() {
                 self.replace_current_sig_drop(parent_expr.span, parent_ty.is_unit(), 0);
                 self.sig_drop_holder = SigDropHolder::Moved;
             }
 
             let (peel_ref_ty, peel_ref_times) = ty_peel_refs(parent_ty);
-            if !ty_has_erased_regions(peel_ref_ty) && is_copy(self.cx, peel_ref_ty) {
+            if !peel_ref_ty.has_erased_regions() && is_copy(self.cx, peel_ref_ty) {
                 self.replace_current_sig_drop(parent_expr.span, peel_ref_ty.is_unit(), peel_ref_times);
                 self.sig_drop_holder = SigDropHolder::Moved;
             }
@@ -397,24 +397,6 @@ fn ty_peel_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
         n += 1;
     }
     (ty, n)
-}
-
-fn ty_has_erased_regions(ty: Ty<'_>) -> bool {
-    struct V;
-
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for V {
-        type Result = ControlFlow<()>;
-
-        fn visit_region(&mut self, region: Region<'tcx>) -> Self::Result {
-            if region.is_erased() {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        }
-    }
-
-    ty.visit_with(&mut V).is_break()
 }
 
 impl<'tcx> Visitor<'tcx> for SigDropHelper<'_, 'tcx> {

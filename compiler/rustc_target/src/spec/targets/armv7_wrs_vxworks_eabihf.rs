@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             ..base::vxworks::opts()
         },

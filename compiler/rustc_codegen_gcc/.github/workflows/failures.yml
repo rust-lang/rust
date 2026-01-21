@@ -54,8 +54,6 @@ jobs:
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
       run: |
           echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
-          echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'

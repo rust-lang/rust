@@ -2,8 +2,7 @@
 //!
 //! For more information about delegation design, see the tracking issue #118212.
 
-use std::assert_matches::debug_assert_matches;
-
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -135,9 +134,6 @@ fn build_generics<'tcx>(
     // }
     own_params.sort_by_key(|key| key.kind.is_ty_or_const());
 
-    let param_def_id_to_index =
-        own_params.iter().map(|param| (param.def_id, param.index)).collect();
-
     let (parent_count, has_self) = if let Some(def_id) = parent {
         let parent_generics = tcx.generics_of(def_id);
         let parent_kind = tcx.def_kind(def_id);
@@ -161,6 +157,9 @@ fn build_generics<'tcx>(
             *has_default = false;
         }
     }
+
+    let param_def_id_to_index =
+        own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
     ty::Generics {
         parent,
@@ -400,12 +399,6 @@ fn check_constraints<'tcx>(
             callee_span: tcx.def_span(sig_id),
         }));
     };
-
-    if let Some(local_sig_id) = sig_id.as_local()
-        && tcx.hir_opt_delegation_sig_id(local_sig_id).is_some()
-    {
-        emit("recursive delegation is not supported yet");
-    }
 
     if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
         // See issue #127443 for explanation.

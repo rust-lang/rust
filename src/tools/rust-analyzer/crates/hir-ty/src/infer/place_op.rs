@@ -1,7 +1,6 @@
 //! Inference of *place operators*: deref and indexing (operators that create places, as opposed to values).
 
-use base_db::Crate;
-use hir_def::{hir::ExprId, lang_item::LangItem};
+use hir_def::hir::ExprId;
 use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
@@ -66,7 +65,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 oprnd_expr,
                 Box::new([Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                    target: method.sig.inputs_and_output.inputs()[0],
+                    target: method.sig.inputs_and_output.inputs()[0].store(),
                 }]),
             );
         } else {
@@ -125,8 +124,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                     ctx.table.register_predicate(Obligation::new(
                         ctx.interner(),
                         ObligationCause::new(),
-                        ctx.table.trait_env.env,
-                        ClauseKind::ConstArgHasType(ct, ctx.types.usize),
+                        ctx.table.param_env,
+                        ClauseKind::ConstArgHasType(ct, ctx.types.types.usize),
                     ));
                     self_ty = Ty::new_slice(ctx.interner(), element_ty);
                 } else {
@@ -152,7 +151,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                        target: Ty::new_imm_ref(autoderef.ctx().interner(), region, adjusted_ty),
+                        target: Ty::new_imm_ref(autoderef.ctx().interner(), region, adjusted_ty)
+                            .store(),
                     });
                 } else {
                     panic!("input to index is not a ref?");
@@ -160,7 +160,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 if unsize {
                     adjustments.push(Adjustment {
                         kind: Adjust::Pointer(PointerCast::Unsize),
-                        target: method.sig.inputs_and_output.inputs()[0],
+                        target: method.sig.inputs_and_output.inputs()[0].store(),
                     });
                 }
                 autoderef.ctx().write_expr_adj(base_expr, adjustments.into_boxed_slice());
@@ -187,8 +187,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         debug!("try_overloaded_place_op({:?},{:?})", base_ty, op);
 
         let (Some(imm_tr), imm_op) = (match op {
-            PlaceOp::Deref => (LangItem::Deref.resolve_trait(self.db, self.krate()), sym::deref),
-            PlaceOp::Index => (LangItem::Index.resolve_trait(self.db, self.krate()), sym::index),
+            PlaceOp::Deref => (self.lang_items.Deref, sym::deref),
+            PlaceOp::Index => (self.lang_items.Index, sym::index),
         }) else {
             // Bail if `Deref` or `Index` isn't defined.
             return None;
@@ -209,16 +209,16 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     pub(super) fn try_mutable_overloaded_place_op(
         table: &InferenceTable<'db>,
-        krate: Crate,
         base_ty: Ty<'db>,
         opt_rhs_ty: Option<Ty<'db>>,
         op: PlaceOp,
     ) -> Option<InferOk<'db, MethodCallee<'db>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?})", base_ty, op);
 
+        let lang_items = table.interner().lang_items();
         let (Some(mut_tr), mut_op) = (match op {
-            PlaceOp::Deref => (LangItem::DerefMut.resolve_trait(table.db, krate), sym::deref_mut),
-            PlaceOp::Index => (LangItem::IndexMut.resolve_trait(table.db, krate), sym::index_mut),
+            PlaceOp::Deref => (lang_items.DerefMut, sym::deref_mut),
+            PlaceOp::Index => (lang_items.IndexMut, sym::index_mut),
         }) else {
             // Bail if `DerefMut` or `IndexMut` isn't defined.
             return None;
@@ -276,8 +276,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 ))
             }
         };
-        let method =
-            Self::try_mutable_overloaded_place_op(&self.table, self.krate(), base_ty, arg_ty, op);
+        let method = Self::try_mutable_overloaded_place_op(&self.table, base_ty, arg_ty, op);
         let method = match method {
             Some(ok) => self.table.register_infer_ok(ok),
             // Couldn't find the mutable variant of the place op, keep the
@@ -285,7 +284,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             None => return,
         };
         debug!("convert_place_op_to_mutable: method={:?}", method);
-        self.result.method_resolutions.insert(expr, (method.def_id, method.args));
+        self.result.method_resolutions.insert(expr, (method.def_id, method.args.store()));
 
         let TyKind::Ref(region, _, Mutability::Mut) =
             method.sig.inputs_and_output.inputs()[0].kind()
@@ -310,9 +309,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(mutbl));
-                    adjustment.target = Ty::new_ref(interner, region, source, mutbl.into());
+                    adjustment.target = Ty::new_ref(interner, region, source, mutbl.into()).store();
                 }
-                source = adjustment.target;
+                source = adjustment.target.as_ref();
             }
 
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
@@ -322,7 +321,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target },
             ] = adjustments[..]
             {
-                *target = method.sig.inputs_and_output.inputs()[0];
+                *target = method.sig.inputs_and_output.inputs()[0].store();
             }
         }
     }

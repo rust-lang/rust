@@ -8,7 +8,7 @@ use crate::collections::TryReserveError;
 use crate::fmt::Write;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{fmt, mem, str};
 
 #[cfg(test)]
@@ -319,12 +319,6 @@ impl Slice {
     #[inline]
     pub fn clone_into(&self, buf: &mut Buf) {
         self.inner.clone_into(&mut buf.inner)
-    }
-
-    #[inline]
-    pub fn into_box(&self) -> Box<Slice> {
-        let boxed: Box<[u8]> = self.inner.into();
-        unsafe { mem::transmute(boxed) }
     }
 
     #[inline]

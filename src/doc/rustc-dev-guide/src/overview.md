@@ -50,10 +50,10 @@ preserves full fidelity information for both IDEs and procedural macros
 The *parser* [translates the token stream from the `lexer` into an Abstract Syntax
 Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
 analysis. The crate entry points for the `parser` are the
-[`Parser::parse_crate_mod()`][parse_crate_mod] and [`Parser::parse_mod()`][parse_mod]
+[`Parser::parse_crate_mod`][parse_crate_mod] and [`Parser::parse_mod`][parse_mod]
 methods found in [`rustc_parse::parser::Parser`]. The external module parsing
 entry point is [`rustc_expand::module::parse_external_mod`][parse_external_mod].
-And the macro-`parser` entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
+And the macro-`parser` entry point is [`Parser::parse_nonterminal`][parse_nonterminal].
 
 Parsing is performed with a set of [`parser`] utility methods including [`bump`],
 [`check`], [`eat`], [`expect`], [`look_ahead`].
@@ -130,7 +130,7 @@ with additional low-level types and annotations added (e.g. an ELF object or
 the final binary.
 
 [*trait solving*]: traits/resolution.md
-[*type checking*]: type-checking.md
+[*type checking*]: hir-typeck/summary.md
 [*type inference*]: type-inference.md
 [`bump`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.bump
 [`check`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.check

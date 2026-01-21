@@ -1,12 +1,8 @@
 [
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(3000),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(0),
+            id: ModuleIdLt {
+                [salsa id]: Id(3800),
             },
         },
         [
@@ -16,7 +12,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3401,
+                                3c01,
                             ),
                         },
                     ),
@@ -24,7 +20,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -43,6 +39,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Struct",
@@ -50,7 +47,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -58,7 +55,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -77,6 +74,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "mul1",
@@ -84,7 +82,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -92,7 +90,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -111,6 +109,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "mul2",
@@ -118,7 +117,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -126,7 +125,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -145,6 +144,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s1",
@@ -152,7 +152,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -160,7 +160,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -179,6 +179,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s1",
@@ -186,7 +187,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3401,
+                                3c01,
                             ),
                         },
                     ),
@@ -194,7 +195,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -213,6 +214,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s2",
@@ -220,7 +222,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -228,7 +230,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -247,6 +249,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
         ],
     ),

@@ -1,52 +1,47 @@
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{
+    Constness, ExprKind, ForeignItemKind, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind,
+    Node, TraitItem, TraitItemKind, VariantData,
+};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-fn parent_impl_or_trait_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
-    let parent_id = tcx.local_parent(def_id);
-    match tcx.def_kind(parent_id) {
-        DefKind::Impl { of_trait: true } => tcx.impl_trait_header(parent_id).constness,
-        DefKind::Impl { of_trait: false } => tcx.constness(parent_id),
-        DefKind::Trait => {
-            if tcx.is_const_trait(parent_id.into()) {
-                hir::Constness::Const
-            } else {
-                hir::Constness::NotConst
-            }
-        }
-        _ => hir::Constness::NotConst,
-    }
-}
-
-/// Checks whether a function-like definition is considered to be `const`.
-fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
+/// Checks whether a function-like definition is considered to be `const`. Also stores constness of inherent impls.
+fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(hir::VariantData::Tuple(..)) => hir::Constness::Const,
-        hir::Node::ForeignItem(item) if let hir::ForeignItemKind::Fn(..) = item.kind => {
+        Node::Ctor(VariantData::Tuple(..)) => Constness::Const,
+        Node::ForeignItem(item) if let ForeignItemKind::Fn(..) = item.kind => {
             // Foreign functions cannot be evaluated at compile-time.
-            hir::Constness::NotConst
+            Constness::NotConst
         }
-        hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
-        hir::Node::Item(i) if let hir::ItemKind::Impl(impl_) = i.kind => impl_.constness,
-        _ => {
-            if let Some(fn_kind) = node.fn_kind() {
-                if fn_kind.constness() == hir::Constness::Const {
-                    return hir::Constness::Const;
-                }
-
-                // If the function itself is not annotated with `const`, it may still be a `const fn`
-                // if it resides in a const trait impl.
-                parent_impl_or_trait_constness(tcx, def_id)
-            } else {
-                tcx.dcx().span_bug(
-                    tcx.def_span(def_id),
-                    format!("should not be requesting the constness of items that can't be const: {node:#?}: {:?}", tcx.def_kind(def_id))
-                )
+        Node::Expr(e) if let ExprKind::Closure(c) = e.kind => c.constness,
+        // FIXME(fee1-dead): extract this one out and rename this query to `fn_constness` so we don't need `is_const_fn` anymore.
+        Node::Item(i) if let ItemKind::Impl(impl_) = i.kind => impl_.constness,
+        Node::Item(Item { kind: ItemKind::Fn { sig, .. }, .. }) => sig.header.constness,
+        Node::ImplItem(ImplItem {
+            impl_kind: ImplItemImplKind::Trait { .. },
+            kind: ImplItemKind::Fn(..),
+            ..
+        }) => tcx.impl_trait_header(tcx.local_parent(def_id)).constness,
+        Node::ImplItem(ImplItem {
+            impl_kind: ImplItemImplKind::Inherent { .. },
+            kind: ImplItemKind::Fn(sig, _),
+            ..
+        }) => {
+            match sig.header.constness {
+                Constness::Const => Constness::Const,
+                // inherent impl could be const
+                Constness::NotConst => tcx.constness(tcx.local_parent(def_id)),
             }
+        }
+        Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(..), .. }) => tcx.trait_def(tcx.local_parent(def_id)).constness,
+        _ => {
+            tcx.dcx().span_bug(
+                tcx.def_span(def_id),
+                format!("should not be requesting the constness of items that can't be const: {node:#?}: {:?}", tcx.def_kind(def_id))
+            )
         }
     }
 }

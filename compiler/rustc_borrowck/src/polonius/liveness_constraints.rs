@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
 
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Location};
-use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{
+    self, Relate, RelateResult, TypeRelation, relate_args_with_variances,
+};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::points::PointIndex;
 
@@ -254,6 +257,20 @@ impl<'tcx> VarianceExtractor<'_, 'tcx> {
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for VarianceExtractor<'_, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        _: Ty<'tcx>,
+        def_id: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let variances = self.cx().variances_of(def_id);
+        relate_args_with_variances(self, variances, a_args, b_args)?;
+        Ok(a_ty)
     }
 
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(

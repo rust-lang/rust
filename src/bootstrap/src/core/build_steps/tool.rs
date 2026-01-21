@@ -228,9 +228,8 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
-    // Note that `miri` always uses jemalloc. As such, there is no checking of the jemalloc build flag.
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {
@@ -681,11 +680,14 @@ impl Step for Rustdoc {
     /// Path to the built rustdoc binary.
     type Output = PathBuf;
 
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc").path("src/librustdoc")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -803,12 +805,14 @@ impl Cargo {
 
 impl Step for Cargo {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.tool_enabled("cargo"))
+        run.path("src/tools/cargo")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("cargo")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1025,12 +1029,14 @@ impl RustAnalyzer {
 
 impl Step for RustAnalyzer {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(builder.tool_enabled("rust-analyzer"))
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1077,19 +1083,17 @@ impl RustAnalyzerProcMacroSrv {
 
 impl Step for RustAnalyzerProcMacroSrv {
     type Output = ToolBuildResult;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
-            .default_condition(
-                builder.tool_enabled("rust-analyzer")
-                    || builder.tool_enabled("rust-analyzer-proc-macro-srv"),
-            )
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
+            || builder.tool_enabled("rust-analyzer-proc-macro-srv")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1168,13 +1172,14 @@ impl LlvmBitcodeLinker {
 
 impl Step for LlvmBitcodeLinker {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         run.path("src/tools/llvm-bitcode-linker")
-            .default_condition(builder.tool_enabled("llvm-bitcode-linker"))
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("llvm-bitcode-linker")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1218,11 +1223,14 @@ pub enum LibcxxVersion {
 
 impl Step for LibcxxVersionTool {
     type Output = LibcxxVersion;
-    const DEFAULT: bool = false;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
@@ -1425,14 +1433,19 @@ macro_rules! tool_rustc_extended {
 
         impl Step for $name {
             type Output = ToolBuildResult;
-            const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 should_run_extended_rustc_tool(
                     run,
-                    $tool_name,
                     $path,
+                )
+            }
+
+            fn is_default_step(builder: &Builder<'_>) -> bool {
+                extended_rustc_tool_is_default_step(
+                    builder,
+                    $tool_name,
                     $stable,
                 )
             }
@@ -1466,28 +1479,28 @@ macro_rules! tool_rustc_extended {
     }
 }
 
-fn should_run_extended_rustc_tool<'a>(
-    run: ShouldRun<'a>,
+fn should_run_extended_rustc_tool<'a>(run: ShouldRun<'a>, path: &'static str) -> ShouldRun<'a> {
+    run.path(path)
+}
+
+fn extended_rustc_tool_is_default_step(
+    builder: &Builder<'_>,
     tool_name: &'static str,
-    path: &'static str,
     stable: bool,
-) -> ShouldRun<'a> {
-    let builder = run.builder;
-    run.path(path).default_condition(
-        builder.config.extended
-            && builder.config.tools.as_ref().map_or(
-                // By default, on nightly/dev enable all tools, else only
-                // build stable tools.
-                stable || builder.build.unstable_features(),
-                // If `tools` is set, search list for this tool.
-                |tools| {
-                    tools.iter().any(|tool| match tool.as_ref() {
-                        "clippy" => tool_name == "clippy-driver",
-                        x => tool_name == x,
-                    })
-                },
-            ),
-    )
+) -> bool {
+    builder.config.extended
+        && builder.config.tools.as_ref().map_or(
+            // By default, on nightly/dev enable all tools, else only
+            // build stable tools.
+            stable || builder.build.unstable_features(),
+            // If `tools` is set, search list for this tool.
+            |tools| {
+                tools.iter().any(|tool| match tool.as_ref() {
+                    "clippy" => tool_name == "clippy-driver",
+                    x => tool_name == x,
+                })
+            },
+        )
 }
 
 fn build_extended_rustc_tool(

@@ -384,7 +384,7 @@ error: derive(Diagnostic): diagnostic slug not specified
 LL | #[lint(no_crate_example, code = E0123)]
    | ^
    |
-   = help: specify the slug as the first argument to the attribute, such as `#[diag(compiletest_example)]`
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
 
 error: derive(Diagnostic): attribute specified multiple times
   --> $DIR/diagnostic-derive.rs:613:53
@@ -570,19 +570,37 @@ error: cannot find attribute `warn_` in this scope
   --> $DIR/diagnostic-derive.rs:590:3
    |
 LL | #[warn_(no_crate_example, code = E0123)]
-   |   ^^^^^ help: a built-in attribute with a similar name exists: `warn`
+   |   ^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[warn_(no_crate_example, code = E0123)]
+LL + #[warn(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:597:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[lint(no_crate_example, code = E0123)]
+LL + #[link(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:604:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[lint(no_crate_example, code = E0123)]
+LL + #[link(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:644:3
@@ -639,7 +657,7 @@ LL | #[derive(Diagnostic)]
 LL |     other: Hello,
    |            ^^^^^ unsatisfied trait bound
    |
-help: the trait `IntoDiagArg` is not implemented for `Hello`
+help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `Hello`
   --> $DIR/diagnostic-derive.rs:40:1
    |
 LL | struct Hello {}
@@ -647,6 +665,9 @@ LL | struct Hello {}
    = help: normalized in stderr
 note: required by a bound in `Diag::<'a, G>::arg`
   --> $COMPILER_DIR/rustc_errors/src/diagnostic.rs:LL:CC
+  ::: $COMPILER_DIR/rustc_errors/src/diagnostic.rs:LL:CC
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `with_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 85 previous errors

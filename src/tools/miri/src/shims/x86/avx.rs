@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     FloatBinOp, FloatUnaryOp, bin_op_simd_float_all, conditional_dot_product, convert_float_to_int,
-    mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked, unary_op_ps,
+    round_all, test_bits_masked, test_high_bits_masked, unary_op_ps,
 };
 use crate::*;
 
@@ -199,27 +199,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         &this.project_index(&dest, i)?,
                     )?;
                 }
-            }
-            // Used to implement the _mm_maskload_ps, _mm_maskload_pd, _mm256_maskload_ps
-            // and _mm256_maskload_pd functions.
-            // For the element `i`, if the high bit of the `i`-th element of `mask`
-            // is one, it is loaded from `ptr.wrapping_add(i)`, otherwise zero is
-            // loaded.
-            "maskload.ps" | "maskload.pd" | "maskload.ps.256" | "maskload.pd.256" => {
-                let [ptr, mask] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                mask_load(this, ptr, mask, dest)?;
-            }
-            // Used to implement the _mm_maskstore_ps, _mm_maskstore_pd, _mm256_maskstore_ps
-            // and _mm256_maskstore_pd functions.
-            // For the element `i`, if the high bit of the element `i`-th of `mask`
-            // is one, it is stored into `ptr.wapping_add(i)`.
-            // Unlike SSE2's _mm_maskmoveu_si128, these are not non-temporal stores.
-            "maskstore.ps" | "maskstore.pd" | "maskstore.ps.256" | "maskstore.pd.256" => {
-                let [ptr, mask, value] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                mask_store(this, ptr, mask, value)?;
             }
             // Used to implement the _mm256_lddqu_si256 function.
             // Reads a 256-bit vector from an unaligned pointer. This intrinsic

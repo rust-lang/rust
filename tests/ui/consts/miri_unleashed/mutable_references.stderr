@@ -43,17 +43,6 @@ LL | const BLUNT: &mut i32 = &mut 42;
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered mutable reference in `const` value
-  --> $DIR/mutable_references.rs:28:1
-   |
-LL | const SUBTLE: &mut i32 = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
 error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
   --> $DIR/mutable_references.rs:40:1
    |
@@ -210,7 +199,7 @@ help: skipping check that does not even have a feature gate
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                   ^^^^^^
 
-error: aborting due to 16 previous errors; 1 warning emitted
+error: aborting due to 15 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0080, E0594.
 For more information about an error, try `rustc --explain E0080`.

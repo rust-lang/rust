@@ -8,6 +8,7 @@ autobins = false
 build_helper = { path = "../../build_helper" }
 cargo_metadata = "0.21"
 regex = "1"
+globset = "0.4.18"
 miropt-test-tools = { path = "../miropt-test-tools" }
 walkdir = "2"
 ignore = "0.4.18"
@@ -18,6 +19,7 @@ rustc-hash = "2.0.0"
 fluent-syntax = "0.12"
 similar = "2.5.0"
 toml = "0.7.8"
+tempfile = "3.15.0"
 
 [features]
 build-metrics = ["dep:serde"]

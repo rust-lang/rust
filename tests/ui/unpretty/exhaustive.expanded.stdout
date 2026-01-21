@@ -28,9 +28,9 @@
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
+#![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
-#[macro_use]
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;
@@ -222,7 +222,12 @@ mod expressions {
     }
 
     /// ExprKind::TryBlock
-    fn expr_try_block() { try {} try { return; } }
+    fn expr_try_block() {
+        try {}
+        try { return; }
+        try bikeshed Option<_> {}
+        try bikeshed Option<String> { None? }
+    }
 
     /// ExprKind::Assign
     fn expr_assign() { let expr; expr = true; }

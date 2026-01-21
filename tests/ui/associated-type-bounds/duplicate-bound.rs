@@ -1,7 +1,7 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(associated_const_equality, min_generic_const_args, return_type_notation)]
+#![feature(min_generic_const_args, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 
@@ -224,7 +224,9 @@ fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
 
 fn callable_const(_: impl Trait<ASSOC = 3, ASSOC = 3>) {}
 
-fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+fn uncallable_rtn(
+    _: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>
+) {}
 
 fn callable_rtn(_: impl Trait<foo(..): Send, foo(..): Send, foo(..): Eq>) {}
 

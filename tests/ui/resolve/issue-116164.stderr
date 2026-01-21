@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `ExOne` in this scope
-  --> $DIR/issue-116164.rs:17:5
+  --> $DIR/issue-116164.rs:18:5
    |
 LL |     ExOne;
    |     ^^^^^ not found in this scope

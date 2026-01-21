@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![allow(non_fmt_panics)]
 #![crate_type = "lib"]
 

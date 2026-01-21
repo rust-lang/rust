@@ -363,12 +363,13 @@ pub(crate) fn format_expr(
         // Style Guide RFC for InlineAsm variant pending
         // https://github.com/rust-dev-tools/fmt-rfcs/issues/152
         ast::ExprKind::InlineAsm(..) => Ok(context.snippet(expr.span).to_owned()),
-        ast::ExprKind::TryBlock(ref block) => {
+        ast::ExprKind::TryBlock(ref block, None) => {
             if let rw @ Ok(_) =
                 rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)
             {
                 rw
             } else {
+                // FIXME: 9 sounds like `"do catch ".len()`, so may predate the rename
                 // 9 = `try `
                 let budget = shape.width.saturating_sub(9);
                 Ok(format!(
@@ -384,6 +385,8 @@ pub(crate) fn format_expr(
                 ))
             }
         }
+        // FIXME: heterogeneous try blocks, which include a type so are harder to format
+        ast::ExprKind::TryBlock(_, Some(_)) => Err(RewriteError::Unknown),
         ast::ExprKind::Gen(capture_by, ref block, ref kind, _) => {
             let mover = if matches!(capture_by, ast::CaptureBy::Value { .. }) {
                 "move "

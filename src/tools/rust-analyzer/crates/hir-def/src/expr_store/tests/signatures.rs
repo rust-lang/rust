@@ -38,14 +38,24 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
         match def {
             GenericDefId::AdtId(adt_id) => match adt_id {
                 crate::AdtId::StructId(struct_id) => {
-                    out += &print_struct(&db, &db.struct_signature(struct_id), Edition::CURRENT);
+                    out += &print_struct(
+                        &db,
+                        struct_id,
+                        &db.struct_signature(struct_id),
+                        Edition::CURRENT,
+                    );
                 }
                 crate::AdtId::UnionId(_id) => (),
                 crate::AdtId::EnumId(_id) => (),
             },
             GenericDefId::ConstId(_id) => (),
             GenericDefId::FunctionId(function_id) => {
-                out += &print_function(&db, &db.function_signature(function_id), Edition::CURRENT)
+                out += &print_function(
+                    &db,
+                    function_id,
+                    &db.function_signature(function_id),
+                    Edition::CURRENT,
+                )
             }
 
             GenericDefId::ImplId(_id) => (),
@@ -184,6 +194,18 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
                 Param[0]: Foo,
                 Param[1]: Baz::<Assoc = Qux::<Param[0]>>
              {...}
+        "#]],
+    );
+}
+
+#[test]
+fn regression_21138() {
+    lower_and_print(
+        r#"
+fn foo(v: for<'a> Trait1 + Trait2) {}
+    "#,
+        expect![[r#"
+            fn foo(dyn for<'a> Trait1 + Trait2) {...}
         "#]],
     );
 }

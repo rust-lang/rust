@@ -15,7 +15,7 @@ use crate::type_of::LayoutGccExt;
 use crate::{attributes, base};
 
 impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    #[cfg_attr(not(feature = "master"), allow(unused_variables))]
+    #[cfg_attr(not(feature = "master"), expect(unused_variables))]
     fn predefine_static(
         &mut self,
         def_id: DefId,
@@ -41,7 +41,6 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.instances.borrow_mut().insert(instance, global);
     }
 
-    #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     fn predefine_fn(
         &mut self,
         instance: Instance<'tcx>,

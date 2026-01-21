@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `extern`
-  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+  --> $DIR/keyword-extern-as-identifier-use.rs:2:5
    |
 LL | use extern::foo;
    |     ^^^^^^ expected identifier, found keyword
@@ -10,7 +10,7 @@ LL | use r#extern::foo;
    |     ++
 
 error[E0432]: unresolved import `r#extern`
-  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+  --> $DIR/keyword-extern-as-identifier-use.rs:2:5
    |
 LL | use extern::foo;
    |     ^^^^^^ use of unresolved module or unlinked crate `r#extern`

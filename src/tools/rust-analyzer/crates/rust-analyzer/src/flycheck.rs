@@ -25,7 +25,7 @@ use toolchain::Tool;
 use triomphe::Arc;
 
 use crate::{
-    command::{CargoParser, CommandHandle},
+    command::{CommandHandle, JsonLinesParser},
     diagnostics::DiagnosticsGeneration,
 };
 
@@ -147,13 +147,13 @@ pub(crate) struct FlycheckHandle {
     sender: Sender<StateChange>,
     _thread: stdx::thread::JoinHandle,
     id: usize,
-    generation: AtomicUsize,
+    generation: Arc<AtomicUsize>,
 }
 
 impl FlycheckHandle {
     pub(crate) fn spawn(
         id: usize,
-        generation: DiagnosticsGeneration,
+        generation: Arc<AtomicUsize>,
         sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
@@ -163,7 +163,7 @@ impl FlycheckHandle {
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(
             id,
-            generation,
+            generation.load(Ordering::Relaxed),
             sender,
             config,
             sysroot_root,
@@ -176,7 +176,7 @@ impl FlycheckHandle {
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, format!("Flycheck{id}"))
                 .spawn(move || actor.run(receiver))
                 .expect("failed to spawn thread");
-        FlycheckHandle { id, generation: generation.into(), sender, _thread: thread }
+        FlycheckHandle { id, generation, sender, _thread: thread }
     }
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
@@ -753,7 +753,7 @@ enum CargoCheckMessage {
 
 struct CargoCheckParser;
 
-impl CargoParser<CargoCheckMessage> for CargoCheckParser {
+impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
     fn from_line(&self, line: &str, error: &mut String) -> Option<CargoCheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();

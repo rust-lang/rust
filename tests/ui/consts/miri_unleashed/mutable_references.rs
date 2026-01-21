@@ -25,8 +25,8 @@ static BOO: &mut Foo<()> = &mut Foo(());
 const BLUNT: &mut i32 = &mut 42;
 //~^ ERROR: pointing to read-only memory
 
+// This is fine, it points to a static so there are no questions of pointer identity.
 const SUBTLE: &mut i32 = unsafe {
-    //~^ ERROR: encountered mutable reference
     static mut STATIC: i32 = 0;
     &mut STATIC
 };

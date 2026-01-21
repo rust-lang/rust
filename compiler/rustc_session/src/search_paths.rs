@@ -71,7 +71,6 @@ pub enum PathKind {
     Crate,
     Dependency,
     Framework,
-    ExternFlag,
     All,
 }
 
@@ -108,7 +107,6 @@ impl SearchPath {
         let dir = match path.strip_prefix("@RUSTC_BUILTIN") {
             Some(stripped) => {
                 if !is_unstable_enabled {
-                    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
                     early_dcx.early_fatal(
                         "the `-Z unstable-options` flag must also be passed to \
                          enable the use of `@RUSTC_BUILTIN`",
@@ -120,7 +118,6 @@ impl SearchPath {
             None => PathBuf::from(path),
         };
         if dir.as_os_str().is_empty() {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             early_dcx.early_fatal("empty search path given via `-L`");
         }
 

@@ -246,3 +246,22 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn type_placeholder_type() {
+    check_types_source_code(
+        r#"
+struct S<T>(T);
+fn test() {
+    let f: S<_> = S(3);
+           //^ i32
+    let f: [_; _] = [4_u32, 5, 6];
+          //^ u32
+    let f: (_, _, _) = (1_u32, 1_i32, false);
+          //^ u32
+             //^ i32
+                //^ bool
+}
+"#,
+    );
+}

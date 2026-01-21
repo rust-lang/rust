@@ -130,7 +130,9 @@ impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     ) -> Self::T {
         use rustc_middle::ty::adjustment::PointerCoercion;
         match self {
-            PointerCoercion::ReifyFnPointer => crate::mir::PointerCoercion::ReifyFnPointer,
+            PointerCoercion::ReifyFnPointer(safety) => {
+                crate::mir::PointerCoercion::ReifyFnPointer(safety.stable(tables, cx))
+            }
             PointerCoercion::UnsafeFnPointer => crate::mir::PointerCoercion::UnsafeFnPointer,
             PointerCoercion::ClosureFnPointer(safety) => {
                 crate::mir::PointerCoercion::ClosureFnPointer(safety.stable(tables, cx))
@@ -595,7 +597,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
                 .must_implement_one_of
                 .as_ref()
                 .map(|idents| idents.iter().map(|ident| opaque(ident)).collect()),
-            implement_via_object: self.implement_via_object,
+            force_dyn_incompatible: self.force_dyn_incompatible.stable(tables, cx),
             deny_explicit_impl: self.deny_explicit_impl,
         }
     }

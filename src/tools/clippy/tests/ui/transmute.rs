@@ -128,4 +128,17 @@ fn bytes_to_str(mb: &mut [u8]) {
     //~^ transmute_bytes_to_str
 }
 
+fn issue16104() {
+    let b = vec![1_u8, 2_u8];
+    macro_rules! take_ref {
+        ($x:expr) => {
+            $x.as_slice()
+        };
+    }
+    unsafe {
+        let _: &str = std::mem::transmute(take_ref!(b));
+        //~^ transmute_bytes_to_str
+    }
+}
+
 fn main() {}

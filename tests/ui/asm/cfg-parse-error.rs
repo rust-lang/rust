@@ -1,5 +1,4 @@
 //@ needs-asm-support
-#![feature(asm_cfg)]
 
 use std::arch::asm;
 

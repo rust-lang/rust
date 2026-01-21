@@ -131,6 +131,7 @@ macro_rules! declare_tests {
 // then any fix will necessarily have to re-bless the affected tests!
 declare_tests!(
     // tidy-alphabetical-start
+    (x_bench, "bench"),
     (x_build, "build"),
     (x_build_compiler, "build compiler"),
     (x_build_compiletest, "build compiletest"),
@@ -148,7 +149,16 @@ declare_tests!(
     (x_check_library, "check library"),
     (x_check_rustc, "check rustc"),
     (x_check_rustdoc, "check rustdoc"),
+    (x_clean, "clean"),
+    (x_clippy, "clippy"),
     (x_dist, "dist"),
+    (x_doc, "doc"),
+    (x_fix, "fix"),
+    (x_fmt, "fmt"),
+    (x_install, "install"),
+    (x_miri, "miri"),
+    (x_run, "run"),
+    (x_setup, "setup"),
     (x_test, "test"),
     (x_test_coverage, "test coverage"),
     (x_test_coverage_map, "test coverage-map"),
@@ -159,7 +169,9 @@ declare_tests!(
     (x_test_library, "test library"),
     (x_test_librustdoc, "test librustdoc"),
     (x_test_librustdoc_rustdoc, "test librustdoc rustdoc"),
+    (x_test_librustdoc_rustdoc_html, "test librustdoc rustdoc-html"),
     (x_test_rustdoc, "test rustdoc"),
+    (x_test_rustdoc_html, "test rustdoc-html"),
     (x_test_skip_coverage, "test --skip=coverage"),
     // FIXME(Zalathar): This doesn't skip the coverage-map or coverage-run tests.
     (x_test_skip_tests, "test --skip=tests"),
@@ -174,5 +186,6 @@ declare_tests!(
     (x_test_tidy, "test tidy"),
     (x_test_tidyselftest, "test tidyselftest"),
     (x_test_ui, "test ui"),
+    (x_vendor, "vendor"),
     // tidy-alphabetical-end
 );

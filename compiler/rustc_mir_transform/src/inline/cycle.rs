@@ -68,7 +68,7 @@ fn process<'tcx>(
     involved: &mut FxHashSet<LocalDefId>,
     recursion_limiter: &mut FxHashMap<DefId, usize>,
     recursion_limit: Limit,
-) -> bool {
+) -> Option<bool> {
     trace!(%caller);
     let mut reaches_root = false;
 
@@ -127,10 +127,9 @@ fn process<'tcx>(
                         recursion_limiter,
                         recursion_limit,
                     )
-                })
+                })?
             } else {
-                // Pessimistically assume that there could be recursion.
-                true
+                return None;
             };
             seen.insert(callee, callee_reaches_root);
             callee_reaches_root
@@ -144,14 +143,14 @@ fn process<'tcx>(
         }
     }
 
-    reaches_root
+    Some(reaches_root)
 }
 
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn mir_callgraph_cyclic<'tcx>(
     tcx: TyCtxt<'tcx>,
     root: LocalDefId,
-) -> UnordSet<LocalDefId> {
+) -> Option<UnordSet<LocalDefId>> {
     assert!(
         !tcx.is_constructor(root.to_def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
@@ -164,16 +163,16 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     // limit, we will hit the limit first and give up on looking for inlining. And in any case,
     // the default recursion limits are quite generous for us. If we need to recurse 64 times
     // into the call graph, we're probably not going to find any useful MIR inlining.
-    let recursion_limit = tcx.recursion_limit() / 2;
+    let recursion_limit = tcx.recursion_limit() / 8;
     let mut involved = FxHashSet::default();
     let typing_env = ty::TypingEnv::post_analysis(tcx, root);
     let root_instance =
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
-        return involved.into();
+        return Some(involved.into());
     }
-    process(
+    match process(
         tcx,
         typing_env,
         root_instance,
@@ -182,8 +181,10 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
         &mut involved,
         &mut FxHashMap::default(),
         recursion_limit,
-    );
-    involved.into()
+    ) {
+        Some(_) => Some(involved.into()),
+        _ => None,
+    }
 }
 
 pub(crate) fn mir_inliner_callees<'tcx>(

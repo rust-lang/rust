@@ -17,6 +17,9 @@ fn main() {
             "arm-unknown-linux-gnueabi".to_owned(),
         ]);
     }
+    if llvm_components_contain("amdgpu") {
+        targets.push("amdgcn-amd-amdhsa".to_owned());
+    }
     let mut x86_archs = Vec::new();
     if llvm_components_contain("x86") {
         x86_archs.append(&mut vec!["i686", "x86_64"]);
@@ -52,21 +55,25 @@ fn main() {
         // enabled by-default for i686 and ARM; these features will be invalid
         // on some platforms, but LLVM just prints a warning so that's fine for
         // now.
+        let mut cmd = rustc();
+        cmd.target(&target).emit("llvm-ir,asm").input("simd.rs");
         let target_feature = if target.starts_with("i686") || target.starts_with("x86") {
             "+sse2"
         } else if target.starts_with("arm") || target.starts_with("aarch64") {
             "-soft-float,+neon"
         } else if target.starts_with("mips") {
             "+msa,+fp64"
+        } else if target.starts_with("amdgcn") {
+            cmd.arg("-Ctarget-cpu=gfx900");
+            ""
         } else {
             panic!("missing target_feature case for {target}");
         };
-        rustc()
-            .target(&target)
-            .emit("llvm-ir,asm")
-            .input("simd.rs")
-            .arg(format!("-Ctarget-feature={target_feature}"))
-            .arg(&format!("-Cextra-filename=-{target}"))
-            .run();
+
+        if !target_feature.is_empty() {
+            cmd.arg(format!("-Ctarget-feature={target_feature}"));
+        }
+
+        cmd.arg(&format!("-Cextra-filename=-{target}")).run();
     }
 }

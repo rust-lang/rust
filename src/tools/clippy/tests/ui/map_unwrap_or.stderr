@@ -12,6 +12,9 @@ LL | |         .unwrap_or(0);
 help: use `map_or(<a>, <f>)` instead
    |
 LL -     let _ = opt.map(|x| x + 1)
+LL -
+LL -         // Should lint even though this call is on a separate line.
+LL -         .unwrap_or(0);
 LL +     let _ = opt.map_or(0, |x| x + 1);
    |
 
@@ -98,6 +101,7 @@ LL | |         .unwrap_or(None);
 help: use `and_then(<f>)` instead
    |
 LL -         .map(|x| Some(x + 1))
+LL -         .unwrap_or(None);
 LL +         .and_then(|x| Some(x + 1));
    |
 
@@ -123,6 +127,14 @@ LL | |         x + 1
 LL | |     }
 LL | |     ).unwrap_or_else(|| 0);
    | |__________________________^
+   |
+help: try
+   |
+LL ~     let _ = opt.map_or_else(|| 0, |x| {
+LL +
+LL +         x + 1
+LL ~     });
+   |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
   --> tests/ui/map_unwrap_or.rs:63:13
@@ -134,6 +146,12 @@ LL | |         .unwrap_or_else(||
 LL | |             0
 LL | |         );
    | |_________^
+   |
+help: try
+   |
+LL ~     let _ = opt.map_or_else(||
+LL ~             0, |x| x + 1);
+   |
 
 error: called `map(<f>).unwrap_or(false)` on an `Option` value
   --> tests/ui/map_unwrap_or.rs:70:13
@@ -157,6 +175,14 @@ LL | |         x + 1
 LL | |     }
 LL | |     ).unwrap_or_else(|_e| 0);
    | |____________________________^
+   |
+help: try
+   |
+LL ~     let _ = res.map_or_else(|_e| 0, |x| {
+LL +
+LL +         x + 1
+LL ~     });
+   |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
   --> tests/ui/map_unwrap_or.rs:86:13
@@ -168,6 +194,13 @@ LL | |         .unwrap_or_else(|_e| {
 LL | |             0
 LL | |         });
    | |__________^
+   |
+help: try
+   |
+LL ~     let _ = res.map_or_else(|_e| {
+LL +             0
+LL ~         }, |x| x + 1);
+   |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
   --> tests/ui/map_unwrap_or.rs:111:13

@@ -1,15 +1,19 @@
+use std::convert::identity;
+
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
+use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult};
-use rustc_feature::{AttrSuggestionStyle, AttributeTemplate, Features, template};
+use rustc_feature::{
+    AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
+};
 use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, RustcVersion};
+use rustc_hir::lints::AttributeLintKind;
+use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
@@ -21,10 +25,7 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{
-    AttributeParser, CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics,
-    try_gate_cfg,
-};
+use crate::{AttributeParser, fluent_generated, parse_version, session_diagnostics};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -36,12 +37,12 @@ const CFG_ATTR_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute"
 );
 
-pub fn parse_cfg<'c, S: Stage>(
-    cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser<'_>,
+pub fn parse_cfg<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser,
 ) -> Option<CfgEntry> {
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
     let Some(single) = list.single() else {
@@ -53,7 +54,7 @@ pub fn parse_cfg<'c, S: Stage>(
 
 pub fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    item: &MetaItemOrLitParser<'_>,
+    item: &MetaItemOrLitParser,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
@@ -93,13 +94,12 @@ pub fn parse_cfg_entry<S: Stage>(
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
             _ => return Err(cx.expected_identifier(lit.span)),
         },
-        MetaItemOrLitParser::Err(_, err) => return Err(*err),
     })
 }
 
 fn parse_cfg_entry_version<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    list: &MetaItemListParser<'_>,
+    list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
@@ -131,7 +131,7 @@ fn parse_cfg_entry_version<S: Stage>(
 
 fn parse_cfg_entry_target<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    list: &MetaItemListParser<'_>,
+    list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     if let Some(features) = cx.features_option()
@@ -172,7 +172,7 @@ fn parse_cfg_entry_target<S: Stage>(
     Ok(CfgEntry::All(result, list.span))
 }
 
-fn parse_name_value<S: Stage>(
+pub(crate) fn parse_name_value<S: Stage>(
     name: Symbol,
     name_span: Span,
     value: Option<&NameValueParser>,
@@ -193,43 +193,46 @@ fn parse_name_value<S: Stage>(
         }
     };
 
-    Ok(CfgEntry::NameValue { name, name_span, value, span })
+    match cx.sess.psess.check_config.expecteds.get(&name) {
+        Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => cx
+            .emit_lint(
+                UNEXPECTED_CFGS,
+                AttributeLintKind::UnexpectedCfgValue((name, name_span), value),
+                span,
+            ),
+        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_lint(
+            UNEXPECTED_CFGS,
+            AttributeLintKind::UnexpectedCfgName((name, name_span), value),
+            span,
+        ),
+        _ => { /* not unexpected */ }
+    }
+
+    Ok(CfgEntry::NameValue { name, value: value.map(|(v, _)| v), span })
 }
 
-pub fn eval_config_entry(
-    sess: &Session,
-    cfg_entry: &CfgEntry,
-    id: NodeId,
-    emit_lints: ShouldEmit,
-) -> EvalConfigResult {
+pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResult {
     match cfg_entry {
         CfgEntry::All(subs, ..) => {
-            let mut all = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
-                // We cannot short-circuit because `eval_config_entry` emits some lints
+                let res = eval_config_entry(sess, sub);
                 if !res.as_bool() {
-                    all.get_or_insert(res);
+                    return res;
                 }
             }
-            all.unwrap_or_else(|| EvalConfigResult::True)
+            EvalConfigResult::True
         }
         CfgEntry::Any(subs, span) => {
-            let mut any = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
-                // We cannot short-circuit because `eval_config_entry` emits some lints
+                let res = eval_config_entry(sess, sub);
                 if res.as_bool() {
-                    any.get_or_insert(res);
+                    return res;
                 }
             }
-            any.unwrap_or_else(|| EvalConfigResult::False {
-                reason: cfg_entry.clone(),
-                reason_span: *span,
-            })
+            EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
         }
         CfgEntry::Not(sub, span) => {
-            if eval_config_entry(sess, sub, id, emit_lints).as_bool() {
+            if eval_config_entry(sess, sub).as_bool() {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             } else {
                 EvalConfigResult::True
@@ -242,32 +245,8 @@ pub fn eval_config_entry(
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             }
         }
-        CfgEntry::NameValue { name, name_span, value, span } => {
-            if let ShouldEmit::ErrorsAndLints = emit_lints {
-                match sess.psess.check_config.expecteds.get(name) {
-                    Some(ExpectedValues::Some(values))
-                        if !values.contains(&value.map(|(v, _)| v)) =>
-                    {
-                        id.emit_span_lint(
-                            sess,
-                            UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgValue((*name, *name_span), *value),
-                        );
-                    }
-                    None if sess.psess.check_config.exhaustive_names => {
-                        id.emit_span_lint(
-                            sess,
-                            UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgName((*name, *name_span), *value),
-                        );
-                    }
-                    _ => { /* not unexpected */ }
-                }
-            }
-
-            if sess.psess.config.contains(&(*name, value.map(|(v, _)| v))) {
+        CfgEntry::NameValue { name, value, span } => {
+            if sess.psess.config.contains(&(*name, *value)) {
                 EvalConfigResult::True
             } else {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
@@ -314,11 +293,9 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
 ) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
-    match cfg_attr.get_normal_item().args {
-        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
-            if !tokens.is_empty() =>
-        {
-            check_cfg_attr_bad_delim(&sess.psess, dspan, delim);
+    match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
+            check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
                 parse_cfg_attr_internal(p, sess, features, cfg_attr)
             }) {
@@ -342,7 +319,7 @@ pub fn parse_cfg_attr(
         }
         _ => {
             let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args
+                cfg_attr.get_normal_item().args.unparsed_ref()?
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
@@ -353,7 +330,7 @@ pub fn parse_cfg_attr(
                 span,
                 attr_span: cfg_attr.span,
                 template: CFG_ATTR_TEMPLATE,
-                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: CFG_ATTR_TEMPLATE
@@ -391,16 +368,12 @@ fn parse_cfg_attr_internal<'a>(
         attribute.span,
         attribute.get_normal_item().span(),
         attribute.style,
-        AttrPath {
-            segments: attribute
-                .ident_path()
-                .expect("cfg_attr is not a doc comment")
-                .into_boxed_slice(),
-            span: attribute.span,
-        },
+        AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
+        Some(attribute.get_normal_item().unsafety),
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
+        Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints,
         &meta,
@@ -430,4 +403,19 @@ fn parse_cfg_attr_internal<'a>(
     }
 
     Ok((cfg_predicate, expanded_attrs))
+}
+
+fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
+    let gate = find_gated_cfg(|sym| sym == name);
+    if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+        gate_cfg(gated_cfg, span, sess, feats);
+    }
+}
+
+fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Features) {
+    let (cfg, feature, has_feature) = gated_cfg;
+    if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
+        let explain = format!("`cfg({cfg})` is experimental and subject to change");
+        feature_err(sess, *feature, cfg_span, explain).emit();
+    }
 }

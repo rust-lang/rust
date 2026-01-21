@@ -25,7 +25,7 @@ use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 
-use crate::coercion::DynamicCoerceMany;
+use crate::coercion::CoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
@@ -56,13 +56,13 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
     ///
-    /// This is a `RefCell<DynamicCoerceMany>`, which means that we
+    /// This is a `RefCell<CoerceMany>`, which means that we
     /// can track all the return expressions and then use them to
     /// compute a useful coercion from the set, similar to a match
     /// expression or other branching context. You can use methods
     /// like `expected_ty` to access the declared return type (if
     /// any).
-    pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
+    pub(super) ret_coercion: Option<RefCell<CoerceMany<'tcx>>>,
 
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
@@ -115,7 +115,9 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 
     pub(super) root_ctxt: &'a TypeckRootCtxt<'tcx>,
 
-    pub(super) fallback_has_occurred: Cell<bool>,
+    /// True if a divirging inference variable has been set to `()`/`!` because
+    /// of never type fallback. This is only used for diagnostics.
+    pub(super) diverging_fallback_has_occurred: Cell<bool>,
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
     pub(super) diverging_block_behavior: DivergingBlockBehavior,
@@ -153,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             root_ctxt,
-            fallback_has_occurred: Cell::new(false),
+            diverging_fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
@@ -190,7 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         TypeErrCtxt {
             infcx: &self.infcx,
             typeck_results: Some(self.typeck_results.borrow()),
-            fallback_has_occurred: self.fallback_has_occurred.get(),
+            diverging_fallback_has_occurred: self.diverging_fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {
                 if fn_sig.has_escaping_bound_vars() {
                     return fn_sig;
@@ -505,11 +507,6 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
         return DivergingFallbackBehavior::ToNever;
     }
 
-    // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback() {
-        return DivergingFallbackBehavior::ContextDependent;
-    }
-
     // Otherwise: fallback to `()`
     DivergingFallbackBehavior::ToUnit
 }
@@ -536,7 +533,6 @@ fn parse_never_type_options_attr(
             let mode = item.value_str().unwrap();
             match mode {
                 sym::unit => fallback = Some(DivergingFallbackBehavior::ToUnit),
-                sym::niko => fallback = Some(DivergingFallbackBehavior::ContextDependent),
                 sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
                 sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {

@@ -34,7 +34,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -94,7 +94,7 @@ jobs:
     steps:
      # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -112,7 +112,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -168,7 +168,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -179,7 +179,7 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: binaries
         path: target/debug

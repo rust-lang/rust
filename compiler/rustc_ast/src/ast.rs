@@ -34,6 +34,7 @@ use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
@@ -141,16 +142,11 @@ impl Path {
     /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
     /// be represented without an anon const in the HIR.
     ///
-    /// If `allow_mgca_arg` is true (as should be the case in most situations when
-    /// `#![feature(min_generic_const_args)]` is enabled), then this always returns true
-    /// because all paths are valid.
-    ///
-    /// Otherwise, it returns true iff the path has exactly one segment, and it has no generic args
+    /// Returns true iff the path has exactly one segment, and it has no generic args
     /// (i.e., it is _potentially_ a const parameter).
     #[tracing::instrument(level = "debug", ret)]
-    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
-        allow_mgca_arg
-            || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
+        self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
 }
 
@@ -857,7 +853,7 @@ impl BindingMode {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub enum RangeEnd {
     /// `..=` or `...`
     Included(RangeSyntax),
@@ -865,7 +861,7 @@ pub enum RangeEnd {
     Excluded,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub enum RangeSyntax {
     /// `...`
     DotDotDot,
@@ -1259,6 +1255,19 @@ pub enum StmtKind {
     MacCall(Box<MacCallStmt>),
 }
 
+impl StmtKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            StmtKind::Let(_) => "local",
+            StmtKind::Item(_) => "item",
+            StmtKind::Expr(_) => "expression",
+            StmtKind::Semi(_) => "statement",
+            StmtKind::Empty => "semicolon",
+            StmtKind::MacCall(_) => "macro call",
+        }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MacCallStmt {
     pub mac: Box<MacCall>,
@@ -1372,6 +1381,15 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// Track whether under `feature(min_generic_const_args)` this anon const
+/// was explicitly disambiguated as an anon const or not through the use of
+/// `const { ... }` syntax.
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Walkable)]
+pub enum MgcaDisambiguation {
+    AnonConst,
+    Direct,
+}
+
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1381,6 +1399,7 @@ pub enum UnsafeSource {
 pub struct AnonConst {
     pub id: NodeId,
     pub value: Box<Expr>,
+    pub mgca_disambiguation: MgcaDisambiguation,
 }
 
 /// An expression.
@@ -1399,26 +1418,20 @@ impl Expr {
     ///
     /// This will unwrap at most one block level (curly braces). After that, if the expression
     /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
-    /// See there for more info about `allow_mgca_arg`.
     ///
-    /// The only additional thing to note is that when `allow_mgca_arg` is false, this function
-    /// will only allow paths with no qself, before dispatching to the `Path` function of
-    /// the same name.
+    /// This function will only allow paths with no qself, before dispatching to the `Path`
+    /// function of the same name.
     ///
     /// Does not ensure that the path resolves to a const param/item, the caller should check this.
     /// This also does not consider macros, so it's only correct after macro-expansion.
-    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = self.maybe_unwrap_block();
-        if allow_mgca_arg {
-            matches!(this.kind, ExprKind::Path(..))
+        if let ExprKind::Path(None, path) = &this.kind
+            && path.is_potential_trivial_const_arg()
+        {
+            true
         } else {
-            if let ExprKind::Path(None, path) = &this.kind
-                && path.is_potential_trivial_const_arg(allow_mgca_arg)
-            {
-                true
-            } else {
-                false
-            }
+            false
         }
     }
 
@@ -1521,11 +1534,10 @@ impl Expr {
             // then type of result is trait object.
             // Otherwise we don't assume the result type.
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
-                if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
-                    TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
-                } else {
+                let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
-                }
+                };
+                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -1799,15 +1811,21 @@ pub enum ExprKind {
     /// or a `gen` block (`gen move { ... }`).
     ///
     /// The span is the "decl", which is the header before the body `{ }`
-    /// including the `asyng`/`gen` keywords and possibly `move`.
+    /// including the `async`/`gen` keywords and possibly `move`.
     Gen(CaptureBy, Box<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(Box<Expr>, Span),
     /// A use expression (`x.use`). Span is of use keyword.
     Use(Box<Expr>, Span),
 
-    /// A try block (`try { ... }`).
-    TryBlock(Box<Block>),
+    /// A try block (`try { ... }`), if the type is `None`, or
+    /// A try block (`try bikeshed Ty { ... }`) if the type is `Some`.
+    ///
+    /// Note that `try bikeshed` is a *deliberately ridiculous* placeholder
+    /// syntax to avoid deciding what keyword or symbol should go there.
+    /// It's that way for experimentation only; an RFC to decide the final
+    /// semantics and syntax would be needed to put it on stabilization-track.
+    TryBlock(Box<Block>, Option<Box<Ty>>),
 
     /// An assignment (`a = foo()`).
     /// The `Span` argument is the span of the `=` token.
@@ -1915,7 +1933,7 @@ pub enum ForLoopKind {
 }
 
 /// Used to differentiate between `async {}` blocks and `gen {}` blocks.
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
 pub enum GenBlockKind {
     Async,
     Gen,
@@ -2090,6 +2108,20 @@ pub struct MacroDef {
     pub body: Box<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
+
+    /// Corresponds to `#[eii_declaration(...)]`.
+    /// `#[eii_declaration(...)]` is a built-in attribute macro, not a built-in attribute,
+    /// because we require some name resolution to occur in the parameters of this attribute.
+    /// Name resolution isn't possible in attributes otherwise, so we encode it in the AST.
+    /// During ast lowering, we turn it back into an attribute again
+    pub eii_declaration: Option<EiiDecl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+pub struct EiiDecl {
+    /// path to the extern item we're targeting
+    pub foreign_item: Path,
+    pub impl_unsafe: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -2364,7 +2396,7 @@ impl FnSig {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AssocItemConstraint {
@@ -2513,8 +2545,6 @@ pub enum TyKind {
     ImplTrait(NodeId, #[visitable(extra = BoundKind::Impl)] GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(Box<Ty>),
-    /// Unused for now.
-    Typeof(AnonConst),
     /// This means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
@@ -3318,7 +3348,8 @@ impl UseTree {
 /// Distinguishes between `Attribute`s that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, HashStable_Generic, Walkable)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -3362,7 +3393,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
+                args: AttrItemKind::Unparsed(AttrArgs::Empty),
                 tokens: None,
             },
             tokens: None,
@@ -3374,9 +3405,51 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrArgs,
+    pub args: AttrItemKind,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
+}
+
+/// Some attributes are stored in a parsed form, for performance reasons.
+/// Their arguments don't have to be reparsed everytime they're used
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum AttrItemKind {
+    Parsed(EarlyParsedAttribute),
+    Unparsed(AttrArgs),
+}
+
+impl AttrItemKind {
+    pub fn unparsed(self) -> Option<AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            AttrItemKind::Unparsed(args) => args.span(),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+}
+
+/// Some attributes are stored in parsed form in the AST.
+/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+///
+/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
+/// When adding new early parsed attributes, consider whether they should be pretty printed.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {
@@ -3731,6 +3804,34 @@ pub struct Fn {
     pub contract: Option<Box<FnContract>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
+
+    /// This function is an implementation of an externally implementable item (EII).
+    /// This means, there was an EII declared somewhere and this function is the
+    /// implementation that should be run when the declaration is called.
+    pub eii_impls: ThinVec<EiiImpl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct EiiImpl {
+    pub node_id: NodeId,
+    pub eii_macro_path: Path,
+    /// This field is an implementation detail that prevents a lot of bugs.
+    /// See <https://github.com/rust-lang/rust/issues/149981> for an example.
+    ///
+    /// The problem is, that if we generate a declaration *together* with its default,
+    /// we generate both a declaration and an implementation. The generated implementation
+    /// uses the same mechanism to register itself as a user-defined implementation would,
+    /// despite being invisible to users. What does happen is a name resolution step.
+    /// The invisible default implementation has to find the declaration.
+    /// Both are generated at the same time, so we can skip that name resolution step.
+    ///
+    /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
+    /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
+    pub known_eii_macro_resolution: Option<EiiDecl>,
+    pub impl_safety: Safety,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4097,7 +4198,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

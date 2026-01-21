@@ -16,7 +16,6 @@ error[E0282]: type annotations needed
    |
 LL |         .sum::<_>()
    |          ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
-   |
 
 error: aborting due to 2 previous errors
 

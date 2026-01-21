@@ -1190,6 +1190,8 @@ impl UnusedParens {
                 // `&(a..=b)`, there is a recursive `check_pat` on `a` and `b`, but we will assume
                 // that if there are unnecessary parens they serve a purpose of readability.
                 PatKind::Range(..) => return,
+                // Parentheses may be necessary to disambiguate precedence in guard patterns.
+                PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
@@ -1653,18 +1655,6 @@ impl EarlyLintPass for UnusedBraces {
                     cx,
                     &len.value,
                     UnusedDelimsCtx::ArrayLenExpr,
-                    false,
-                    None,
-                    None,
-                    false,
-                );
-            }
-
-            ast::TyKind::Typeof(ref anon_const) => {
-                self.check_unused_delims_expr(
-                    cx,
-                    &anon_const.value,
-                    UnusedDelimsCtx::AnonConst,
                     false,
                     None,
                     None,

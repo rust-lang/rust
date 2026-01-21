@@ -96,7 +96,7 @@ pub fn expand_eager_macro_input(
         DocCommentDesugarMode::Mbe,
     );
 
-    subtree.top_subtree_delimiter_mut().kind = crate::tt::DelimiterKind::Invisible;
+    subtree.set_top_subtree_delimiter_kind(crate::tt::DelimiterKind::Invisible);
 
     let loc = MacroCallLoc {
         def,
@@ -238,7 +238,7 @@ fn eager_macro_recur(
                     None => ExpandResult { value: None, err },
                 }
             }
-            MacroDefKind::Declarative(_)
+            MacroDefKind::Declarative(..)
             | MacroDefKind::BuiltIn(..)
             | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)

@@ -13,6 +13,7 @@ LL | |         .enumerate() {
 help: consider removing 5 leading `&`-references
    |
 LL -     for (i, _) in & & &
+LL -         & &v
 LL +     for (i, _) in v
    |
 

@@ -1,3 +1,5 @@
+//~vv HELP consider importing this struct
+
 type Real = double;
 //~^ ERROR cannot find type `double` in this scope
 //~| HELP perhaps you intended to use this type
@@ -8,10 +10,10 @@ fn main() {
     //~^ ERROR cannot find type `long` in this scope
     //~| HELP perhaps you intended to use this type
     let v1: Boolean = true;
-    //~^ ERROR: cannot find type `Boolean` in this scope [E0412]
+    //~^ ERROR: cannot find type `Boolean` in this scope [E0425]
     //~| HELP perhaps you intended to use this type
     let v2: Bool = true;
-    //~^ ERROR: cannot find type `Bool` in this scope [E0412]
+    //~^ ERROR: cannot find type `Bool` in this scope [E0425]
     //~| HELP a builtin type with a similar name exists
     //~| HELP perhaps you intended to use this type
 }

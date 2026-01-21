@@ -1,12 +1,11 @@
 use std::any::Any;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::{env, io};
 
 use rand::{RngCore, rng};
-use rustc_ast::NodeId;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -14,22 +13,20 @@ use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{
-    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
-};
+use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    LintEmitter, TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
+use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
@@ -41,8 +38,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
-    SwitchWithOptPath,
+    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -160,20 +156,6 @@ pub struct Session {
     pub invocation_temp: Option<String>,
 }
 
-impl LintEmitter for &'_ Session {
-    type Id = NodeId;
-
-    fn emit_node_span_lint(
-        self,
-        lint: &'static rustc_lint_defs::Lint,
-        node_id: Self::Id,
-        span: impl Into<rustc_errors::MultiSpan>,
-        decorator: impl for<'a> rustc_errors::LintDiagnostic<'a, ()> + DynSend + 'static,
-    ) {
-        self.psess.buffer_lint(lint, span, node_id, decorator);
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum CodegenUnits {
     /// Specified by the user. In this case we try fairly hard to produce the
@@ -207,7 +189,11 @@ impl Session {
     }
 
     pub fn local_crate_source_file(&self) -> Option<RealFileName> {
-        Some(self.source_map().path_mapping().to_real_filename(self.io.input.opt_path()?))
+        Some(
+            self.source_map()
+                .path_mapping()
+                .to_real_filename(self.source_map().working_dir(), self.io.input.opt_path()?),
+        )
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
@@ -260,7 +246,6 @@ impl Session {
     pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
@@ -861,21 +846,6 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn filename_display_preference(
-        &self,
-        scope: RemapPathScopeComponents,
-    ) -> FileNameDisplayPreference {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to `Session::filename_display_preference`"
-        );
-        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
-            FileNameDisplayPreference::Remapped
-        } else {
-            FileNameDisplayPreference::Local
-        }
-    }
-
     /// Get the deployment target on Apple platforms based on the standard environment variables,
     /// or fall back to the minimum version supported by `rustc`.
     ///
@@ -947,7 +917,7 @@ fn default_emitter(
 
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
+            HumanReadableErrorType { short, unicode } => {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -963,20 +933,6 @@ fn default_emitter(
                                 .ignore_directory_in_diagnostics_source_blocks
                                 .clone(),
                         );
-                Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
-            }
-            HumanReadableErrorType::Default { short } => {
-                let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map)
-                    .short_message(short)
-                    .diagnostic_width(sopts.diagnostic_width)
-                    .macro_backtrace(macro_backtrace)
-                    .track_diagnostics(track_diagnostics)
-                    .terminal_url(terminal_url)
-                    .theme(OutputTheme::Ascii)
-                    .ignored_directories_in_source_blocks(
-                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -1003,7 +959,6 @@ fn default_emitter(
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
@@ -1045,8 +1000,11 @@ pub fn build_session(
     }
 
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
-    let (host, target_warnings) = Target::search(&host_triple, sopts.sysroot.path())
-        .unwrap_or_else(|e| dcx.handle().fatal(format!("Error loading host specification: {e}")));
+    let (host, target_warnings) =
+        Target::search(&host_triple, sopts.sysroot.path(), sopts.unstable_opts.unstable_options)
+            .unwrap_or_else(|e| {
+                dcx.handle().fatal(format!("Error loading host specification: {e}"))
+            });
     for warning in target_warnings.warning_messages() {
         dcx.handle().warn(warning)
     }
@@ -1436,45 +1394,31 @@ impl EarlyDiagCtxt {
         self.dcx = DiagCtxt::new(emitter);
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().note(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_help(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().struct_help(msg).emit()
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.handle().err(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagMessage>) -> ! {
         self.dcx.handle().fatal(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
         self.dcx.handle().struct_fatal(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagMessage>) {
         self.dcx.handle().warn(msg)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         self.dcx.handle().struct_warn(msg)
     }
@@ -1487,14 +1431,9 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+            HumanReadableErrorType { short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .short_message(short),
-            ),
-            HumanReadableErrorType::Default { short } => Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(OutputTheme::Ascii)
                     .short_message(short),
             ),
         },
@@ -1510,47 +1449,4 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         }
     };
     emitter
-}
-
-pub trait RemapFileNameExt {
-    type Output<'a>
-    where
-        Self: 'a;
-
-    /// Returns a possibly remapped filename based on the passed scope and remap cli options.
-    ///
-    /// One and only one scope should be passed to this method, it will panic otherwise.
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
-}
-
-impl RemapFileNameExt for rustc_span::FileName {
-    type Output<'a> = rustc_span::FileNameDisplay<'a>;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.prefer_remapped_unconditionally()
-        } else {
-            self.prefer_local()
-        }
-    }
-}
-
-impl RemapFileNameExt for rustc_span::RealFileName {
-    type Output<'a> = &'a Path;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.remapped_path_if_available()
-        } else {
-            self.local_path_if_available()
-        }
-    }
 }

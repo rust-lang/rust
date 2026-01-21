@@ -3,7 +3,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 cfg_select! {
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         pub use unix::*;
     }
@@ -18,10 +18,6 @@ cfg_select! {
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         pub use sgx::*;
-    }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use wasi::*;
     }
     _ => {}
 }

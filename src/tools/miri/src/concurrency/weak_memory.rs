@@ -208,11 +208,10 @@ impl StoreBufferAlloc {
         range: AllocRange,
     ) -> InterpResult<'tcx, Option<Ref<'_, StoreBuffer>>> {
         let access_type = self.store_buffers.borrow().access_type(range);
-        let pos = match access_type {
-            AccessType::PerfectlyOverlapping(pos) => pos,
+        let AccessType::PerfectlyOverlapping(pos) = access_type else {
             // If there is nothing here yet, that means there wasn't an atomic write yet so
             // we can't return anything outdated.
-            _ => return interp_ok(None),
+            return interp_ok(None);
         };
         let store_buffer = Ref::map(self.store_buffers.borrow(), |buffer| &buffer[pos]);
         interp_ok(Some(store_buffer))

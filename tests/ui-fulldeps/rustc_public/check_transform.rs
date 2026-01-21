@@ -34,7 +34,7 @@ fn test_transform() -> ControlFlow<()> {
     let items = rustc_public::all_local_items();
 
     // Test fn_abi
-    let target_fn = *get_item(&items, (ItemKind::Fn, "dummy")).unwrap();
+    let target_fn = *get_item(&items, (ItemKind::Fn, "input::dummy")).unwrap();
     let instance = Instance::try_from(target_fn).unwrap();
     let body = instance.body().unwrap();
     check_msg(&body, "oops");
@@ -69,6 +69,7 @@ fn check_msg(body: &Body, expected: &str) {
                             })
                             .unwrap()
                     }
+                    Operand::RuntimeChecks(_) => panic!("unexpected runtime checks"),
                 };
                 let ConstantKind::Allocated(alloc) = msg_const.const_.kind() else {
                     unreachable!()

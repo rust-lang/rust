@@ -363,33 +363,6 @@ pub(crate) enum TypeKind {
     X86_AMX = 19,
 }
 
-impl TypeKind {
-    pub(crate) fn to_generic(self) -> rustc_codegen_ssa::common::TypeKind {
-        use rustc_codegen_ssa::common::TypeKind as Common;
-        match self {
-            Self::Void => Common::Void,
-            Self::Half => Common::Half,
-            Self::Float => Common::Float,
-            Self::Double => Common::Double,
-            Self::X86_FP80 => Common::X86_FP80,
-            Self::FP128 => Common::FP128,
-            Self::PPC_FP128 => Common::PPC_FP128,
-            Self::Label => Common::Label,
-            Self::Integer => Common::Integer,
-            Self::Function => Common::Function,
-            Self::Struct => Common::Struct,
-            Self::Array => Common::Array,
-            Self::Pointer => Common::Pointer,
-            Self::Vector => Common::Vector,
-            Self::Metadata => Common::Metadata,
-            Self::Token => Common::Token,
-            Self::ScalableVector => Common::ScalableVector,
-            Self::BFloat => Common::BFloat,
-            Self::X86_AMX => Common::X86_AMX,
-        }
-    }
-}
-
 /// LLVMAtomicRmwBinOp
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -738,12 +711,9 @@ unsafe extern "C" {
 pub(crate) type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 
 pub(crate) mod debuginfo {
-    use std::ptr;
-
     use bitflags::bitflags;
 
     use super::{InvariantOpaque, Metadata};
-    use crate::llvm::{self, Module};
 
     /// Opaque target type for references to an LLVM debuginfo builder.
     ///
@@ -755,33 +725,6 @@ pub(crate) mod debuginfo {
     /// session (`'ll`) that it participates in.
     #[repr(C)]
     pub(crate) struct DIBuilder<'ll>(InvariantOpaque<'ll>);
-
-    /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
-    /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
-    /// needed for debuginfo FFI calls.
-    pub(crate) struct DIBuilderBox<'ll> {
-        raw: ptr::NonNull<DIBuilder<'ll>>,
-    }
-
-    impl<'ll> DIBuilderBox<'ll> {
-        pub(crate) fn new(llmod: &'ll Module) -> Self {
-            let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
-            let raw = ptr::NonNull::new(raw).unwrap();
-            Self { raw }
-        }
-
-        pub(crate) fn as_ref(&self) -> &DIBuilder<'ll> {
-            // SAFETY: This is an owning pointer, so `&DIBuilder` is valid
-            // for as long as `&self` is.
-            unsafe { self.raw.as_ref() }
-        }
-    }
-
-    impl<'ll> Drop for DIBuilderBox<'ll> {
-        fn drop(&mut self) {
-            unsafe { llvm::LLVMDisposeDIBuilder(self.raw) };
-        }
-    }
 
     pub(crate) type DIDescriptor = Metadata;
     pub(crate) type DILocation = Metadata;
@@ -998,6 +941,7 @@ unsafe extern "C" {
     // Operations on array, pointer, and vector types (sequence types)
     pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
+    pub(crate) fn LLVMScalableVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
     pub(crate) fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
@@ -1160,13 +1104,9 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
-    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
-    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
-    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -1726,8 +1666,20 @@ mod Offload {
     use super::*;
     unsafe extern "C" {
         /// Processes the module and writes it in an offload compatible way into a "host.out" file.
-        pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
-        pub(crate) fn LLVMRustOffloadMapper<'a>(OldFn: &'a Value, NewFn: &'a Value);
+        pub(crate) fn LLVMRustBundleImages<'a>(
+            M: &'a Module,
+            TM: &'a TargetMachine,
+            host_out: *const c_char,
+        ) -> bool;
+        pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
+            _M: &'a Module,
+            _host_out: *const c_char,
+        ) -> bool;
+        pub(crate) fn LLVMRustOffloadMapper<'a>(
+            OldFn: &'a Value,
+            NewFn: &'a Value,
+            RebuiltArgs: *const &Value,
+        );
     }
 }
 
@@ -1740,11 +1692,25 @@ mod Offload_fallback {
     /// Processes the module and writes it in an offload compatible way into a "host.out" file.
     /// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
     #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustBundleImages<'a>(_M: &'a Module, _TM: &'a TargetMachine) -> bool {
+    pub(crate) unsafe fn LLVMRustBundleImages<'a>(
+        _M: &'a Module,
+        _TM: &'a TargetMachine,
+        _host_out: *const c_char,
+    ) -> bool {
+        unimplemented!("This rustc version was not built with LLVM Offload support!");
+    }
+    pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
+        _M: &'a Module,
+        _host_out: *const c_char,
+    ) -> bool {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
     #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(_OldFn: &'a Value, _NewFn: &'a Value) {
+    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(
+        _OldFn: &'a Value,
+        _NewFn: &'a Value,
+        _RebuiltArgs: *const &Value,
+    ) {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
 }
@@ -2001,6 +1967,7 @@ unsafe extern "C" {
         Metadata: &'a Metadata,
     );
     pub(crate) fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;
+    pub(crate) fn LLVMRustStripPointerCasts<'a>(Val: &'a Value) -> &'a Value;
 
     // Operations on scalar constants
     pub(crate) fn LLVMRustConstIntGetZExtValue(ConstantVal: &ConstantInt, Value: &mut u64) -> bool;
@@ -2383,6 +2350,7 @@ unsafe extern "C" {
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
+        T: &TargetMachine,
         PM: &PassManager<'a>,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,
@@ -2414,7 +2382,7 @@ unsafe extern "C" {
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
         EmitLifetimeMarkers: bool,
-        RunEnzyme: bool,
+        RunEnzyme: *const c_void,
         PrintBeforeEnzyme: bool,
         PrintAfterEnzyme: bool,
         PrintPasses: bool,
@@ -2493,7 +2461,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub(crate) fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub(crate) fn LLVMRustModuleCost(M: &Module) -> u64;
-    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
 
     pub(crate) fn LLVMRustThinLTOBufferCreate(
         M: &Module,
@@ -2584,4 +2552,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
 }

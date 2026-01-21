@@ -8,7 +8,7 @@ use tracing::debug;
 
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
-use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
+use crate::debuggers::extract_gdb_version;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -46,7 +46,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.revision)
             .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
@@ -90,7 +90,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.as_path(),
+            self.config.target_run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -105,7 +105,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.revision)
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
@@ -122,13 +122,15 @@ impl TestCx<'_> {
         let exe_file = self.make_exe_name();
 
         let debugger_run_result;
-        if is_android_gdb_target(&self.config.target) {
+        // If bootstrap gave us an `--android-cross-path`, assume the target
+        // needs Android-specific handling.
+        if let Some(android_cross_path) = self.config.android_cross_path.as_deref() {
             cmds = cmds.replace("run", "continue");
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", &self.config.android_cross_path));
+            script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
@@ -148,12 +150,16 @@ impl TestCx<'_> {
             debug!("script_str = {}", script_str);
             self.dump_output_file(&script_str, "debugger.script");
 
-            let adb_path = &self.config.adb_path;
+            // Note: when `--android-cross-path` is specified, we expect both `adb_path` and
+            // `adb_test_dir` to be available.
+            let adb_path = self.config.adb_path.as_ref().expect("`adb_path` must be specified");
+            let adb_test_dir =
+                self.config.adb_test_dir.as_ref().expect("`adb_test_dir` must be specified");
 
             Command::new(adb_path)
                 .arg("push")
                 .arg(&exe_file)
-                .arg(&self.config.adb_test_dir)
+                .arg(adb_test_dir)
                 .status()
                 .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
@@ -165,9 +171,9 @@ impl TestCx<'_> {
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
                  gdbserver{} :5039 {}/{}",
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 if self.config.target.contains("aarch64") { "64" } else { "" },
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 exe_file.file_name().unwrap()
             );
 
@@ -313,7 +319,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
+                self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {
@@ -360,7 +366,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.revision)
             .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:

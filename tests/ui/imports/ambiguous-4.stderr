@@ -1,0 +1,49 @@
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-4.rs:7:25
+   |
+LL |     ambiguous_4_extern::id();
+   |                         ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-4-extern.rs:13:9
+   |
+LL | pub use evp::*;
+   |         ^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
+note: `id` could also refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-4-extern.rs:14:9
+   |
+LL | pub use handwritten::*;
+   |         ^^^^^^^^^^^
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-4.rs:7:25
+   |
+LL |     ambiguous_4_extern::id();
+   |                         ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-4-extern.rs:13:9
+   |
+LL | pub use evp::*;
+   |         ^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
+note: `id` could also refer to the function defined here
+  --> $DIR/auxiliary/../ambiguous-4-extern.rs:14:9
+   |
+LL | pub use handwritten::*;
+   |         ^^^^^^^^^^^
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+

@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 fn main() { //~ NOTE expected `()` because of default return type
     &panic!()
     //~^ ERROR mismatched types

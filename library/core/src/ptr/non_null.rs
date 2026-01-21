@@ -1656,7 +1656,7 @@ impl<T: PointeeSized> Copy for NonNull<T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T: ?Sized> TrivialClone for NonNull<T> {}
+unsafe impl<T: PointeeSized> TrivialClone for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}

@@ -16,7 +16,6 @@ mod ty;
 pub mod asm;
 pub mod cfg_select;
 
-use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -35,11 +34,12 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    self as ast, AnonConst, AttrArgs, AttrId, BlockCheckMode, ByRef, Const, CoroutineKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation,
+    Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
@@ -175,17 +175,17 @@ pub enum Recovery {
 pub struct Parser<'a> {
     pub psess: &'a ParseSess,
     /// The current token.
-    pub token: Token,
+    pub token: Token = Token::dummy(),
     /// The spacing for the current token.
-    token_spacing: Spacing,
+    token_spacing: Spacing = Spacing::Alone,
     /// The previous token.
-    pub prev_token: Token,
-    pub capture_cfg: bool,
-    restrictions: Restrictions,
-    expected_token_types: TokenTypeSet,
+    pub prev_token: Token = Token::dummy(),
+    pub capture_cfg: bool = false,
+    restrictions: Restrictions = Restrictions::empty(),
+    expected_token_types: TokenTypeSet = TokenTypeSet::new(),
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
-    num_bump_calls: u32,
+    num_bump_calls: u32 = 0,
     // During parsing we may sometimes need to "unglue" a glued token into two
     // or three component tokens (e.g. `>>` into `>` and `>`, or `>>=` into `>`
     // and `>` and `=`), so the parser can consume them one at a time. This
@@ -204,25 +204,27 @@ pub struct Parser<'a> {
     //
     // This value is always 0, 1, or 2. It can only reach 2 when splitting
     // `>>=` or `<<=`.
-    break_last_token: u32,
+    break_last_token: u32 = 0,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
     ///
     /// See the comments in the `parse_path_segment` function for more details.
-    unmatched_angle_bracket_count: u16,
-    angle_bracket_nesting: u16,
+    unmatched_angle_bracket_count: u16 = 0,
+    angle_bracket_nesting: u16 = 0,
+    /// Keep track of when we're within `<...>` for proper error recovery.
+    parsing_generics: bool = false,
 
-    last_unexpected_token_span: Option<Span>,
+    last_unexpected_token_span: Option<Span> = None,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    current_closure: Option<ClosureSpans>,
+    current_closure: Option<ClosureSpans> = None,
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
-    recovery: Recovery,
+    recovery: Recovery = Recovery::Allowed,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
@@ -351,18 +353,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         let mut parser = Parser {
             psess,
-            token: Token::dummy(),
-            token_spacing: Spacing::Alone,
-            prev_token: Token::dummy(),
-            capture_cfg: false,
-            restrictions: Restrictions::empty(),
-            expected_token_types: TokenTypeSet::new(),
             token_cursor: TokenCursor { curr: TokenTreeCursor::new(stream), stack: Vec::new() },
-            num_bump_calls: 0,
-            break_last_token: 0,
-            unmatched_angle_bracket_count: 0,
-            angle_bracket_nesting: 0,
-            last_unexpected_token_span: None,
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
@@ -370,8 +361,7 @@ impl<'a> Parser<'a> {
                 inner_attr_parser_ranges: Default::default(),
                 seen_attrs: IntervalSet::new(u32::MAX as usize),
             },
-            current_closure: None,
-            recovery: Recovery::Allowed,
+            ..
         };
 
         // Make parser point to the first token.
@@ -469,10 +459,10 @@ impl<'a> Parser<'a> {
         self.parse_ident_common(self.may_recover())
     }
 
-    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
+    pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -606,7 +596,20 @@ impl<'a> Parser<'a> {
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
-            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: exp.kw.as_str() });
+            let kw = exp.kw.as_str();
+            let is_upper = kw.chars().all(char::is_uppercase);
+            let is_lower = kw.chars().all(char::is_lowercase);
+
+            let case = match (is_upper, is_lower) {
+                (true, true) => {
+                    unreachable!("keyword that is both fully upper- and fully lowercase")
+                }
+                (true, false) => errors::Case::Upper,
+                (false, true) => errors::Case::Lower,
+                (false, false) => errors::Case::Mixed,
+            };
+
+            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw, case });
             self.bump();
             true
         } else {
@@ -714,7 +717,10 @@ impl<'a> Parser<'a> {
     }
 
     fn check_const_arg(&mut self) -> bool {
-        self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
+        let is_mcg_arg = self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const);
+        let is_mgca_arg = self.is_keyword_ahead(0, &[kw::Const])
+            && self.look_ahead(1, |t| *t == token::OpenBrace);
+        is_mcg_arg || is_mgca_arg
     }
 
     fn check_const_closure(&self) -> bool {
@@ -1187,10 +1193,9 @@ impl<'a> Parser<'a> {
         let mut token = Token::dummy();
         while i < dist {
             token = cursor.next().0;
-            if matches!(
-                token.kind,
-                token::OpenInvisible(origin) | token::CloseInvisible(origin) if origin.skip()
-            ) {
+            if let token::OpenInvisible(origin) | token::CloseInvisible(origin) = token.kind
+                && origin.skip()
+            {
                 continue;
             }
             i += 1;
@@ -1286,27 +1291,30 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_mgca_const_block(&mut self, gate_syntax: bool) -> PResult<'a, AnonConst> {
+        let kw_span = self.prev_token.span;
+        let value = self.parse_expr_block(None, kw_span, BlockCheckMode::Default)?;
+        if gate_syntax {
+            self.psess.gated_spans.gate(sym::min_generic_const_args, kw_span.to(value.span));
+        }
+        Ok(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::AnonConst,
+        })
+    }
+
     /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
+    fn parse_const_block(&mut self, span: Span) -> PResult<'a, Box<Expr>> {
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+            mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
-        let kind = if pat {
-            let guar = self
-                .dcx()
-                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
-                .with_help(
-                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
-                )
-                .emit();
-            ExprKind::Err(guar)
-        } else {
-            ExprKind::ConstBlock(anon_const)
-        };
+        let kind = ExprKind::ConstBlock(anon_const);
         Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 

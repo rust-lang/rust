@@ -1,13 +1,10 @@
 //! Defines database & queries for name resolution.
 use base_db::{Crate, RootQueryDb, SourceDatabase};
-use either::Either;
 use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
 };
-use intern::sym;
 use la_arena::ArenaMap;
-use syntax::{AstPtr, ast};
 use triomphe::Arc;
 
 use crate::{
@@ -17,20 +14,18 @@ use crate::{
     MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
     ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
     TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
-    attr::{Attrs, AttrsWithOwner},
+    attrs::AttrFlags,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
     },
     hir::generics::GenericParams,
     import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
-    lang_item::{self, LangItem},
     nameres::crate_def_map,
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
         StructSignature, TraitSignature, TypeAliasSignature, UnionSignature,
     },
-    tt,
     visibility::{self, Visibility},
 };
 
@@ -238,28 +233,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         def: GenericDefId,
     ) -> (Arc<GenericParams>, Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>);
 
-    // region:attrs
-
-    #[salsa::invoke(Attrs::fields_attrs_query)]
-    fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
-
-    // should this really be a query?
-    #[salsa::invoke(crate::attr::fields_attrs_source_map)]
-    fn fields_attrs_source_map(
-        &self,
-        def: VariantId,
-    ) -> Arc<ArenaMap<LocalFieldId, AstPtr<Either<ast::TupleField, ast::RecordField>>>>;
-
-    // FIXME: Make this a non-interned query.
-    #[salsa::invoke_interned(AttrsWithOwner::attrs_query)]
-    fn attrs(&self, def: AttrDefId) -> Attrs;
-
-    #[salsa::transparent]
-    #[salsa::invoke(lang_item::lang_attr)]
-    fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
-
-    // endregion:attrs
-
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
@@ -302,43 +275,16 @@ fn include_macro_invoc(
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
-    let file = crate_id.data(db).root_file_id(db);
-    let item_tree = db.file_item_tree(file.into());
-    let attrs = item_tree.top_level_raw_attrs();
-    for attr in &**attrs {
-        match attr.path().as_ident() {
-            Some(ident) if *ident == sym::no_std => return true,
-            Some(ident) if *ident == sym::cfg_attr => {}
-            _ => continue,
-        }
-
-        // This is a `cfg_attr`; check if it could possibly expand to `no_std`.
-        // Syntax is: `#[cfg_attr(condition(cfg, style), attr0, attr1, <...>)]`
-        let tt = match attr.token_tree_value() {
-            Some(tt) => tt.token_trees(),
-            None => continue,
-        };
-
-        let segments =
-            tt.split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
-        for output in segments.skip(1) {
-            match output.flat_tokens() {
-                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::no_std => {
-                    return true;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    false
+    let root_module = crate_def_map(db, crate_id).root_module_id();
+    let attrs = AttrFlags::query(db, AttrDefId::ModuleId(root_module));
+    attrs.contains(AttrFlags::IS_NO_STD)
 }
 
 fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
     let kind = |expander, file_id, m| {
         let in_file = InFile::new(file_id, m);
         match expander {
-            MacroExpander::Declarative => MacroDefKind::Declarative(in_file),
+            MacroExpander::Declarative { styles } => MacroDefKind::Declarative(in_file, styles),
             MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(in_file, it),
             MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
             MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),
@@ -351,7 +297,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc: Macro2Loc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
@@ -362,7 +308,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc: MacroRulesLoc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
                 allow_internal_unsafe: loc
@@ -375,7 +321,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: MacroDefKind::ProcMacro(loc.id, loc.expander, loc.kind),
                 local_inner: false,
                 allow_internal_unsafe: false,

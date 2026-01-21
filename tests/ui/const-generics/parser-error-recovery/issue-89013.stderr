@@ -16,8 +16,8 @@ error[E0658]: associated const equality is incomplete
 LL | impl Foo<N = const 3> for Bar {
    |          ^^^^^^^^^^^
    |
-   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
-   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0229]: associated item constraints are not allowed here

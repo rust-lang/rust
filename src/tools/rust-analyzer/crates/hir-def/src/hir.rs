@@ -45,7 +45,7 @@ pub type PatId = Idx<Pat>;
 
 // FIXME: Encode this as a single u32, we won't ever reach all 32 bits especially given these counts
 // are local to the body.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, salsa::Update)]
 pub enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),

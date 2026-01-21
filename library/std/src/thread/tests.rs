@@ -1,11 +1,10 @@
-use super::Builder;
 use crate::any::Any;
 use crate::panic::panic_any;
 use crate::result;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::mpsc::{Sender, channel};
 use crate::sync::{Arc, Barrier};
-use crate::thread::{self, Scope, ThreadId};
+use crate::thread::{self, Builder, Scope, ThreadId};
 use crate::time::{Duration, Instant};
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!

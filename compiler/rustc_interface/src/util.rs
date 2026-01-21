@@ -119,8 +119,6 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
             // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
             .map(|s| {
                 let s = s.trim();
-                // FIXME(workingjubilee): add proper diagnostics when we factor out "pre-run" setup
-                #[allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
                 s.parse::<usize>().unwrap_or_else(|_| {
                     let mut err = early_dcx.early_struct_fatal(format!(
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
@@ -301,7 +299,6 @@ pub(crate) fn run_in_thread_pool_with_globals<
     })
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     match unsafe { load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend") } {
         Ok(backend_sym) => backend_sym,
@@ -339,7 +336,7 @@ pub fn get_codegen_backend(
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
-            "dummy" => || Box::new(DummyCodegenBackend),
+            "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -352,7 +349,9 @@ pub fn get_codegen_backend(
     unsafe { load() }
 }
 
-struct DummyCodegenBackend;
+pub struct DummyCodegenBackend {
+    pub target_config_override: Option<Box<dyn Fn(&Session) -> TargetConfig>>,
+}
 
 impl CodegenBackend for DummyCodegenBackend {
     fn locale_resource(&self) -> &'static str {
@@ -364,15 +363,20 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
+        if let Some(target_config_override) = &self.target_config_override {
+            return target_config_override(sess);
+        }
+
+        let abi_required_features = sess.target.abi_required_features();
         let (target_features, unstable_target_features) = cfg_target_feature::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
                 // This is a standin for the list of features a backend is expected to enable.
                 // It would be better to parse target.features instead and handle implied features,
-                // but target.features is a list of LLVM target features, not Rust target features.
-                // The dummy backend doesn't know the mapping between LLVM and Rust target features.
-                sess.target.abi_required_features().required.contains(&feature)
+                // but target.features doesn't contain features that are enabled by default for an
+                // architecture or target cpu.
+                abi_required_features.required.contains(&feature)
             },
         );
 
@@ -427,8 +431,6 @@ impl CodegenBackend for DummyCodegenBackend {
             .find(|&&crate_type| crate_type != CrateType::Rlib)
             && outputs.outputs.should_link()
         {
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal(format!(
                 "crate type {crate_type} not supported by the dummy codegen backend"
             ));
@@ -484,7 +486,6 @@ pub fn rustc_path<'a>(sysroot: &Sysroot) -> Option<&'a Path> {
         .as_deref()
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn get_codegen_sysroot(
     early_dcx: &EarlyDiagCtxt,
     sysroot: &Sysroot,

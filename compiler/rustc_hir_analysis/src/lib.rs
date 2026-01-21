@@ -56,9 +56,6 @@ This API is completely unstable and subject to change.
 */
 
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]
@@ -102,7 +99,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
 pub use crate::collect::suggest_impl_trait;
-use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
+use crate::hir_ty_lowering::HirTyLowerer;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -158,7 +155,19 @@ pub fn provide(providers: &mut Providers) {
 fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
-            rustc_attr_parsing::emit_attribute_lint(attribute_lint, tcx)
+            tcx.node_span_lint(
+                attribute_lint.lint_id.lint,
+                attribute_lint.id,
+                attribute_lint.span,
+                |diag| {
+                    rustc_lint::decorate_attribute_lint(
+                        tcx.sess,
+                        Some(tcx),
+                        &attribute_lint.kind,
+                        diag,
+                    );
+                },
+            );
         }
     }
 }
@@ -290,8 +299,8 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
 pub fn lower_const_arg_for_rustdoc<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_ct: &hir::ConstArg<'tcx>,
-    feed: FeedConstTy<'_, 'tcx>,
+    ty: Ty<'tcx>,
 ) -> Const<'tcx> {
     let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);
-    collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, feed)
+    collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, ty)
 }

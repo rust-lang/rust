@@ -925,9 +925,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty
             }
-            rustc_hir::PatExprKind::ConstBlock(c) => {
-                self.check_expr_const_block(c, Expectation::NoExpectation)
-            }
             rustc_hir::PatExprKind::Path(qpath) => {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
@@ -997,20 +994,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && self.try_structurally_resolve_type(span, expected).is_str()
         {
             pat_ty = self.tcx.types.str_;
-        }
-
-        if self.tcx.features().string_deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
-        {
-            let tcx = self.tcx;
-            let expected = self.resolve_vars_if_possible(expected);
-            pat_ty = match expected.kind() {
-                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => expected,
-                ty::Str => Ty::new_static_str(tcx),
-                _ => pat_ty,
-            };
         }
 
         // Somewhat surprising: in this case, the subtyping relation goes the
@@ -1529,11 +1512,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         // Type-check the path.
-        let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
+        let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
         // Type-check subpatterns.
         match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
-            Ok(()) => pat_ty,
+            Ok(()) => match had_err {
+                Ok(()) => pat_ty,
+                Err(guar) => Ty::new_error(self.tcx, guar),
+            },
             Err(guar) => Ty::new_error(self.tcx, guar),
         }
     }
@@ -1781,8 +1767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
-        let had_err = diag.map_err(|diag| diag.emit());
+        let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -2006,11 +1991,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(reported) = self.demand_eqtype_pat(span, expected, pat_ty, &pat_info.top_info) {
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| Ty::new_error(tcx, reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, Ty::new_error(tcx, reported), pat_info);
             }
-            Ty::new_tup_from_iter(tcx, element_tys_iter)
+            Ty::new_error(tcx, reported)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, element_tys[i], pat_info);
@@ -2296,7 +2280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suggested_name =
                     find_best_match_for_name(&[field.name], pat_field.ident.name, None);
                 if let Some(suggested_name) = suggested_name {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         pat_field.ident.span,
                         "a field with a similar name exists",
                         suggested_name,

@@ -100,11 +100,8 @@ impl<'tcx> MovePath<'tcx> {
         move_paths: &IndexSlice<MovePathIndex, MovePath<'_>>,
         f: impl Fn(MovePathIndex) -> bool,
     ) -> Option<MovePathIndex> {
-        let mut todo = if let Some(child) = self.first_child {
-            vec![child]
-        } else {
-            return None;
-        };
+        let Some(child) = self.first_child else { return None };
+        let mut todo = vec![child];
 
         while let Some(mpi) = todo.pop() {
             if f(mpi) {
@@ -180,8 +177,9 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
-    /// of executing the code at `l`.
-    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
+    /// of executing the code at `l`. Only very rarely (e.g. inline asm)
+    /// is there more than one Init at any `l`.
+    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 1]>>,
     pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
 }
 
@@ -331,11 +329,10 @@ impl<'tcx> MovePathLookup<'tcx> {
                 MoveSubPathResult::Stop => None,
             };
 
-            if let Some(&subpath) = subpath {
-                result = subpath;
-            } else {
+            let Some(&subpath) = subpath else {
                 return LookupResult::Parent(Some(result));
-            }
+            };
+            result = subpath;
         }
 
         LookupResult::Exact(result)

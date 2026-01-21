@@ -6,11 +6,10 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_hash::FxHashSet;
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
-use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -472,6 +471,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )
     }
 
+    /// Call a function in an "empty" thread.
+    fn call_thread_root_function(
+        &mut self,
+        f: ty::Instance<'tcx>,
+        caller_abi: ExternAbi,
+        args: &[ImmTy<'tcx>],
+        dest: Option<&MPlaceTy<'tcx>>,
+        span: Span,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        assert!(this.active_thread_stack().is_empty());
+        assert!(this.active_thread_ref().origin_span.is_dummy());
+        this.active_thread_mut().origin_span = span;
+        this.call_function(f, caller_abi, args, dest, ReturnContinuation::Stop { cleanup: true })
+    }
+
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
     /// of `action` will be true if this is frozen, false if this is in an `UnsafeCell`.
     /// The range is relative to `place`.
@@ -567,13 +582,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_iter(
-                memory_index: &IndexVec<FieldIdx, u32>,
-            ) -> impl Iterator<Item = FieldIdx> + 'static {
-                let inverse_memory_index = memory_index.invert_bijective_mapping();
-                inverse_memory_index.into_iter()
-            }
-
             // Hook to detect `UnsafeCell`.
             fn visit_value(&mut self, v: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
@@ -647,7 +655,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 // Deduplicate these warnings *by shim* (not by span)
                 static DEDUP: Mutex<FxHashSet<String>> =
-                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                    Mutex::new(FxHashSet::with_hasher(FxBuildHasher));
                 let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
@@ -995,11 +1003,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    /// Lookup an array of immediates from any linker sections matching the provided predicate,
+    /// with the spans of where they were found.
     fn lookup_link_section(
         &mut self,
         include_name: impl Fn(&str) -> bool,
-    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1012,6 +1021,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             };
             if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
+                let span = tcx.def_span(def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
@@ -1019,12 +1029,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 match const_val.layout.ty.kind() {
                     ty::FnPtr(..) => {
-                        array.push(this.read_immediate(&const_val)?);
+                        array.push((this.read_immediate(&const_val)?, span));
                     }
                     ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
                         let mut elems = this.project_array_fields(&const_val)?;
                         while let Some((_idx, elem)) = elems.next(this)? {
-                            array.push(this.read_immediate(&elem)?);
+                            array.push((this.read_immediate(&elem)?, span));
                         }
                     }
                     _ =>

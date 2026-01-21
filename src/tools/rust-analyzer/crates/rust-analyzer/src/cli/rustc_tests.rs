@@ -185,7 +185,7 @@ impl Tester {
 
             if !worker.is_finished() {
                 // attempt to cancel the worker, won't work for chalk hangs unfortunately
-                self.host.request_cancellation();
+                self.host.trigger_garbage_collection();
             }
             worker.join().and_then(identity)
         });

@@ -1,3 +1,4 @@
+//@ edition:2015
 // Checks that the #[unsafe(naked)] attribute can be placed on function definitions only.
 //
 //@ needs-asm-support

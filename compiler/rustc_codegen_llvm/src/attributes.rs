@@ -1,6 +1,7 @@
 //! Set and unset common attributes on LLVM values.
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
 use rustc_hir::def_id::DefId;
+use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
@@ -28,6 +29,14 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
     }
+}
+
+pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
+    llvm::HasStringAttribute(llfn, name)
+}
+
+pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
+    llvm::RemoveStringAttrFromFn(llfn, name);
 }
 
 /// Get LLVM attribute for the provided inline heuristic.
@@ -408,6 +417,10 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
     }
 
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
+        to_add.push(llvm::CreateAttrString(cx.llcx, "offload-kernel"))
+    }
+
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         to_add.push(AttributeKind::Cold.create_attr(cx.llcx));
     }
@@ -458,9 +471,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
         if let Some(instance) = instance
-            && let Some(zv) =
-                tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
-            && let Some(name) = zv.value_str()
+            && let Some(name) = find_attr!(tcx.get_all_attrs(instance.def_id()), rustc_hir::attrs::AttributeKind::RustcAllocatorZeroedVariant {name} => name)
         {
             to_add.push(llvm::CreateAttrStringValue(
                 cx.llcx,

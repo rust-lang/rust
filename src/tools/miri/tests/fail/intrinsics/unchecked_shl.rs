@@ -1,5 +1,3 @@
-#![feature(unchecked_shifts)]
-
 fn main() {
     unsafe {
         let _n = 1i8.unchecked_shl(8);

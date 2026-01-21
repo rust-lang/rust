@@ -12,7 +12,7 @@ the resulting program](#controlling-passfail-expectations) to verify its
 behavior.
 
 For a survey of each subdirectory's purpose under `tests/ui`, consult the
-[SUMMARY.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/SUMMARY.md).
+[README.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/README.md).
 This is useful if you write a new test, and are looking for a category to
 place it in.
 
@@ -138,6 +138,10 @@ For example, it will anonymize line numbers in the output (line numbers
 prefixing each source line are replaced with `LL`). In extremely rare
 situations, this mode can be disabled with the directive `//@
 compile-flags: -Z ui-testing=no`.
+
+When using `-Z ui-testing=no` the `--diagnostic-width` argument should also
+be set to avoid tests failing or passing depending on the width of the terminal
+from which the UI test suite is being run.
 
 Note: The line and column numbers for `-->` lines pointing to the test are *not*
 normalized, and left as-is. This ensures that the compiler continues to point to

@@ -20,9 +20,9 @@ error[E0539]: malformed `rustc_align` attribute input
   --> $DIR/malformed-fn-align.rs:17:1
    |
 LL | #[rustc_align = 16]
-   | ^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^^^^^^^^^----^
+   | |             |
+   | |             expected this to be a list
    | help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
@@ -37,11 +37,11 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(0)]
    |               ^
 
-error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/malformed-fn-align.rs:29:15
    |
 LL | #[rustc_align(-1)]
-   |               ^
+   |               ^^ expressions are not allowed here
    |
 help: negative numbers are not literals, try removing the `-` sign
    |

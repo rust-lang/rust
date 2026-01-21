@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/ice-struct-tail-normalization-113272.rs:5:25
    |
 LL | impl Trait for () where Missing: Trait {}
@@ -24,5 +24,5 @@ LL |         std::mem::transmute::<Option<()>, Option<&Other>>(None);
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0046, E0412, E0512.
+Some errors have detailed explanations: E0046, E0425, E0512.
 For more information about an error, try `rustc --explain E0046`.

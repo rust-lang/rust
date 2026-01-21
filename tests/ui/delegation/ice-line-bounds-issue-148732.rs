@@ -3,6 +3,7 @@ reuse a as b {
     //~| ERROR functions delegation is not yet fully implemented
     dbg!(b);
     //~^ ERROR missing lifetime specifier
+    //~| ERROR `fn() {b}` doesn't implement `Debug`
 }
 
 fn main() {}

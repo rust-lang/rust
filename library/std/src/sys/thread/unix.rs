@@ -5,6 +5,7 @@
     target_os = "redox",
     target_os = "hurd",
     target_os = "aix",
+    target_os = "wasi",
 )))]
 use crate::ffi::CStr;
 use crate::mem::{self, DropGuard, ManuallyDrop};
@@ -13,9 +14,9 @@ use crate::num::NonZero;
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
-use crate::sys::{os, stack_overflow};
+use crate::thread::ThreadInit;
 use crate::time::Duration;
-use crate::{cmp, io, ptr};
+use crate::{cmp, io, ptr, sys};
 #[cfg(not(any(
     target_os = "l4re",
     target_os = "vxworks",
@@ -30,11 +31,6 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
-struct ThreadData {
-    name: Option<Box<str>>,
-    f: Box<dyn FnOnce()>,
-}
-
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -47,13 +43,17 @@ unsafe impl Sync for Thread {}
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(
-        stack: usize,
-        name: Option<&str>,
-        f: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
-        let data = Box::new(ThreadData { name: name.map(Box::from), f });
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        // FIXME: remove this block once wasi-sdk is updated with the fix from
+        // https://github.com/WebAssembly/wasi-libc/pull/716
+        // WASI does not support threading via pthreads. While wasi-libc provides
+        // pthread stubs, pthread_create returns EAGAIN, which causes confusing
+        // errors. We return UNSUPPORTED_PLATFORM directly instead.
+        if cfg!(all(target_os = "wasi", not(target_feature = "atomics"))) {
+            return Err(io::Error::UNSUPPORTED_PLATFORM);
+        }
 
+        let data = init;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
         let mut attr = DropGuard::new(&mut attr, |attr| {
@@ -85,7 +85,7 @@ impl Thread {
                     // multiple of the system page size. Because it's definitely
                     // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                     // Round up to the nearest page and try again.
-                    let page_size = os::page_size();
+                    let page_size = sys::os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
 
@@ -116,12 +116,15 @@ impl Thread {
 
         extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
-                let data = Box::from_raw(data as *mut ThreadData);
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                let _handler = stack_overflow::Handler::new(data.name);
-                // Finally, let's run some code.
-                (data.f)();
+                // SAFETY: we are simply recreating the box that was leaked earlier.
+                let init = Box::from_raw(data as *mut ThreadInit);
+                let rust_start = init.init();
+
+                // Now that the thread information is set, set up our stack
+                // overflow handler.
+                let _handler = sys::stack_overflow::Handler::new();
+
+                rust_start();
             }
             ptr::null_mut()
         }
@@ -133,6 +136,7 @@ impl Thread {
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
+    #[cfg(not(target_os = "wasi"))]
     pub fn id(&self) -> libc::pthread_t {
         self.id
     }
@@ -524,7 +528,7 @@ pub fn set_name(name: &CStr) {
     debug_assert_eq!(res, libc::OK);
 }
 
-#[cfg(not(target_os = "espidf"))]
+#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
 pub fn sleep(dur: Duration) {
     let mut secs = dur.as_secs();
     let mut nsecs = dur.subsec_nanos() as _;
@@ -540,7 +544,7 @@ pub fn sleep(dur: Duration) {
             secs -= ts.tv_sec as u64;
             let ts_ptr = &raw mut ts;
             if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
-                assert_eq!(os::errno(), libc::EINTR);
+                assert_eq!(sys::io::errno(), libc::EINTR);
                 secs += ts.tv_sec as u64;
                 nsecs = ts.tv_nsec;
             } else {
@@ -550,7 +554,13 @@ pub fn sleep(dur: Duration) {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(
+    target_os = "espidf",
+    // wasi-libc prior to WebAssembly/wasi-libc#696 has a broken implementation
+    // of `nanosleep`, used above by most platforms, so use `usleep` until
+    // that fix propagates throughout the ecosystem.
+    target_os = "wasi",
+))]
 pub fn sleep(dur: Duration) {
     // ESP-IDF does not have `nanosleep`, so we use `usleep` instead.
     // As per the documentation of `usleep`, it is expected to support
@@ -594,6 +604,7 @@ pub fn sleep(dur: Duration) {
     target_os = "hurd",
     target_os = "fuchsia",
     target_os = "vxworks",
+    target_os = "wasi",
 ))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
@@ -628,6 +639,49 @@ pub fn sleep_until(deadline: crate::time::Instant) {
                     "timespec is in range,
                          clockid is valid and kernel should support it"
                 );
+            }
+        }
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+pub fn sleep_until(deadline: crate::time::Instant) {
+    unsafe extern "C" {
+        // This is defined in the public header mach/mach_time.h alongside
+        // `mach_absolute_time`, and like it has been available since the very
+        // beginning.
+        //
+        // There isn't really any documentation on this function, except for a
+        // short reference in technical note 2169:
+        // https://developer.apple.com/library/archive/technotes/tn2169/_index.html
+        safe fn mach_wait_until(deadline: u64) -> libc::kern_return_t;
+    }
+
+    // Make sure to round up to ensure that we definitely sleep until after
+    // the deadline has elapsed.
+    let Some(deadline) = deadline.into_inner().into_mach_absolute_time_ceil() else {
+        // Since the deadline is before the system boot time, it has already
+        // passed, so we can return immediately.
+        return;
+    };
+
+    // If the deadline is not representable, then sleep for the maximum duration
+    // possible and worry about the potential clock issues later (in ca. 600 years).
+    let deadline = deadline.try_into().unwrap_or(u64::MAX);
+    loop {
+        match mach_wait_until(deadline) {
+            // Success! The deadline has passed.
+            libc::KERN_SUCCESS => break,
+            // If the sleep gets interrupted by a signal, `mach_wait_until`
+            // returns KERN_ABORTED, so we need to restart the syscall.
+            // Also see Apple's implementation of the POSIX `nanosleep`, which
+            // converts this error to the POSIX equivalent EINTR:
+            // https://github.com/apple-oss-distributions/Libc/blob/55b54c0a0c37b3b24393b42b90a4c561d6c606b1/gen/nanosleep.c#L281-L306
+            libc::KERN_ABORTED => continue,
+            // All other errors indicate that something has gone wrong...
+            error => {
+                let description = unsafe { CStr::from_ptr(libc::mach_error_string(error)) };
+                panic!("mach_wait_until failed: {} (code {error})", description.display())
             }
         }
     }

@@ -106,7 +106,6 @@ fn aarch64_linux() {
     println!("sve2: {}", is_aarch64_feature_detected!("sve2"));
     println!("sve2p1: {}", is_aarch64_feature_detected!("sve2p1"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
-    println!("tme: {}", is_aarch64_feature_detected!("tme"));
     println!("wfxt: {}", is_aarch64_feature_detected!("wfxt"));
     // tidy-alphabetical-end
 }

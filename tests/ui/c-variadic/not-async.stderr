@@ -14,9 +14,9 @@ error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that 
   --> $DIR/not-async.rs:5:65
    |
 LL | async unsafe extern "C" fn fn_cannot_be_async(x: isize, _: ...) {}
-   | --------------------------------------------------------------- ^^
-   | |
-   | opaque type defined here
+   |                                                                -^^
+   |                                                                |
+   |                                                                opaque type defined here
    |
    = note: hidden type `{async fn body of fn_cannot_be_async()}` captures lifetime `'_`
 
@@ -24,9 +24,9 @@ error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that 
   --> $DIR/not-async.rs:12:73
    |
 LL |     async unsafe extern "C" fn method_cannot_be_async(x: isize, _: ...) {}
-   |     ------------------------------------------------------------------- ^^
-   |     |
-   |     opaque type defined here
+   |                                                                        -^^
+   |                                                                        |
+   |                                                                        opaque type defined here
    |
    = note: hidden type `{async fn body of S::method_cannot_be_async()}` captures lifetime `'_`
 

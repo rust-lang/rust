@@ -1,8 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -561,11 +558,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             VarDebugInfoContents::Place(ref p) => p == place,
             _ => false,
         });
-        let arg_name = if let Some(var_info) = var_info {
-            var_info.name
-        } else {
-            return;
-        };
+        let Some(var_info) = var_info else { return };
+        let arg_name = var_info.name;
         struct MatchArgFinder {
             expr_span: Span,
             match_arg_span: Option<Span>,
@@ -3940,13 +3934,30 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
+            let is_for_loop = matches!(
+                            decl.local_info(),
+                            LocalInfo::User(BindingForm::Var(VarBindingForm {
+                                opt_match_place: Some((_, match_span)),
+                                ..
+                            })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
+            );
+            let message = if is_for_loop
+                && let Ok(binding_name) =
+                    self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
+            {
+                format!("(mut {}) ", binding_name)
+            } else {
+                "mut ".to_string()
+            };
             err.span_suggestion_verbose(
                 decl.source_info.span.shrink_to_lo(),
                 "consider making this binding mutable",
-                "mut ".to_string(),
+                message,
                 Applicability::MachineApplicable,
             );
+
             if !from_arg
+                && !is_for_loop
                 && matches!(
                     decl.local_info(),
                     LocalInfo::User(BindingForm::Var(VarBindingForm {
@@ -4504,7 +4515,9 @@ struct BreakFinder {
 impl<'hir> Visitor<'hir> for BreakFinder {
     fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
         match ex.kind {
-            hir::ExprKind::Break(destination, _) => {
+            hir::ExprKind::Break(destination, _)
+                if !ex.span.is_desugaring(DesugaringKind::ForLoop) =>
+            {
                 self.found_breaks.push((destination, ex.span));
             }
             hir::ExprKind::Continue(destination) => {

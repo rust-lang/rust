@@ -3,8 +3,6 @@
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
     clippy::symbol_as_str,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 #![warn(
     trivial_casts,
@@ -38,6 +36,7 @@ mod lint_without_lint_pass;
 mod msrv_attr_impl;
 mod outer_expn_data_pass;
 mod produce_ice;
+mod repeated_is_diagnostic_item;
 mod symbols;
 mod unnecessary_def_path;
 mod unsorted_clippy_utils_paths;
@@ -77,4 +76,5 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_late_pass(|_| Box::new(msrv_attr_impl::MsrvAttrImpl));
     store.register_late_pass(|_| Box::new(almost_standard_lint_formulation::AlmostStandardFormulation::new()));
     store.register_late_pass(|_| Box::new(unusual_names::UnusualNames));
+    store.register_late_pass(|_| Box::new(repeated_is_diagnostic_item::RepeatedIsDiagnosticItem));
 }

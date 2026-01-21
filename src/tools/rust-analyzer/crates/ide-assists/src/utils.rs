@@ -27,7 +27,7 @@ use syntax::{
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::{Removable, SyntaxEditor},
+    syntax_editor::{Element, Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -101,16 +101,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
 }
 
 pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
-    attrs.iter().any(|attr| {
-        let path = attr.path();
-        (|| {
-            Some(
-                path.segments().first()?.as_str().starts_with("test")
-                    || path.segments().last()?.as_str().ends_with("test"),
-            )
-        })()
-        .unwrap_or_default()
-    })
+    attrs.is_test()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -136,7 +127,7 @@ pub fn filter_assoc_items(
         .copied()
         .filter(|assoc_item| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
-                && assoc_item.attrs(sema.db).has_doc_hidden()
+                && assoc_item.attrs(sema.db).is_doc_hidden()
             {
                 if let hir::AssocItem::Function(f) = assoc_item
                     && !f.has_body(sema.db)
@@ -391,6 +382,28 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
         },
         _ => None,
     }
+}
+
+pub(crate) fn insert_attributes(
+    before: impl Element,
+    edit: &mut SyntaxEditor,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+) {
+    let mut attrs = attrs.into_iter().peekable();
+    if attrs.peek().is_none() {
+        return;
+    }
+    let elem = before.syntax_element();
+    let indent = IndentLevel::from_element(&elem);
+    let whitespace = format!("\n{indent}");
+    edit.insert_all(
+        syntax::syntax_editor::Position::before(elem),
+        attrs
+            .flat_map(|attr| {
+                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
+            })
+            .collect(),
+    );
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {

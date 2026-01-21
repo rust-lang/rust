@@ -13,8 +13,8 @@
 //@ [chk_fail_yeet] compile-flags: -Zcontract-checks=yes
 //! This test ensures that ensures clauses are checked for different return points of a function.
 
+#![expect(incomplete_features)]
 #![feature(contracts)]
-//~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 #![feature(yeet_expr)]
 
 /// This ensures will fail in different return points depending on the input.

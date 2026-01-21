@@ -1,6 +1,7 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
     StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
@@ -8,7 +9,7 @@ use rustc_hir::{
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{self, UnsupportedLiteralReason};
+use crate::session_diagnostics::{self};
 
 macro_rules! reject_outside_std {
     ($cx: ident) => {
@@ -43,7 +44,7 @@ const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
     Allow(Target::TyAlias),
     Allow(Target::Variant),
     Allow(Target::Field),
-    Allow(Target::Param),
+    Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: true }),
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),
@@ -267,7 +268,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
 /// `name = value`
 fn insert_value_into_option_or_error<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    param: &MetaItemParser<'_>,
+    param: &MetaItemParser,
     item: &mut Option<Symbol>,
     name: Ident,
 ) -> Option<()> {
@@ -289,25 +290,20 @@ fn insert_value_into_option_or_error<S: Stage>(
 /// its stability information.
 pub(crate) fn parse_stability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut since = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 
     for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
-            cx.emit_err(session_diagnostics::UnsupportedLiteral {
-                span: param_span,
-                reason: UnsupportedLiteralReason::Generic,
-                is_bytestr: false,
-                start_point_span: cx.sess().source_map().start_point(param_span),
-            });
+            cx.unexpected_literal(param.span());
             return None;
         };
 
@@ -320,11 +316,7 @@ pub(crate) fn parse_stability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
             }
             _ => {
-                cx.emit_err(session_diagnostics::UnknownMetaItem {
-                    span: param_span,
-                    item: param.path().to_string(),
-                    expected: &["feature", "since"],
-                });
+                cx.expected_specific_argument(param_span, &[sym::feature, sym::since]);
                 return None;
             }
         }
@@ -365,7 +357,7 @@ pub(crate) fn parse_stability<S: Stage>(
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut reason = None;
@@ -376,18 +368,13 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut old_name = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 
     for param in list.mixed() {
         let Some(param) = param.meta_item() else {
-            cx.emit_err(session_diagnostics::UnsupportedLiteral {
-                span: param.span(),
-                reason: UnsupportedLiteralReason::Generic,
-                is_bytestr: false,
-                start_point_span: cx.sess().source_map().start_point(param.span()),
-            });
+            cx.unexpected_literal(param.span());
             return None;
         };
 
@@ -436,11 +423,17 @@ pub(crate) fn parse_unstability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
             }
             _ => {
-                cx.emit_err(session_diagnostics::UnknownMetaItem {
-                    span: param.span(),
-                    item: param.path().to_string(),
-                    expected: &["feature", "reason", "issue", "soft", "implied_by", "old_name"],
-                });
+                cx.expected_specific_argument(
+                    param.span(),
+                    &[
+                        sym::feature,
+                        sym::reason,
+                        sym::issue,
+                        sym::soft,
+                        sym::implied_by,
+                        sym::old_name,
+                    ],
+                );
                 return None;
             }
         }

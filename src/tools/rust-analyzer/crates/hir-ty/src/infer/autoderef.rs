@@ -16,16 +16,16 @@ use crate::{
 
 impl<'db> InferenceTable<'db> {
     pub(crate) fn autoderef(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db, usize> {
-        Autoderef::new(&self.infer_ctxt, &self.trait_env, base_ty)
+        Autoderef::new(&self.infer_ctxt, self.param_env, base_ty)
     }
 
     pub(crate) fn autoderef_with_tracking(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db> {
-        Autoderef::new_with_tracking(&self.infer_ctxt, &self.trait_env, base_ty)
+        Autoderef::new_with_tracking(&self.infer_ctxt, self.param_env, base_ty)
     }
 }
 
 impl<'db, Ctx: AutoderefCtx<'db>> GeneralAutoderef<'db, Ctx> {
-    pub(crate) fn adjust_steps_as_infer_ok(&mut self) -> InferOk<'db, Vec<Adjustment<'db>>> {
+    pub(crate) fn adjust_steps_as_infer_ok(&mut self) -> InferOk<'db, Vec<Adjustment>> {
         let steps = self.steps();
         if steps.is_empty() {
             return InferOk { obligations: PredicateObligations::new(), value: vec![] };
@@ -42,7 +42,10 @@ impl<'db, Ctx: AutoderefCtx<'db>> GeneralAutoderef<'db, Ctx> {
                 }
             })
             .zip(targets)
-            .map(|(autoderef, target)| Adjustment { kind: Adjust::Deref(autoderef), target })
+            .map(|(autoderef, target)| Adjustment {
+                kind: Adjust::Deref(autoderef),
+                target: target.store(),
+            })
             .collect();
 
         InferOk { obligations: self.take_obligations(), value: steps }

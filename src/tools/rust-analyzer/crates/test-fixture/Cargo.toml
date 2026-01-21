@@ -14,12 +14,15 @@ test-utils.workspace = true
 tt.workspace = true
 cfg.workspace = true
 base-db.workspace = true
-rustc-hash.workspace = true
 span.workspace = true
 stdx.workspace = true
 intern.workspace = true
 triomphe.workspace = true
 paths.workspace = true
+
+[features]
+default = []
+in-rust-tree = []
 
 [lints]
 workspace = true

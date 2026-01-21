@@ -236,7 +236,7 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn t_f6(_: ..., x: isize);
    |             ^^^^^^
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:33:43
    |
 LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
@@ -244,7 +244,7 @@ LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constant functions
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:37:36
    |
 LL | const extern "C" fn f4_2(x: isize, _: ...) {}
@@ -252,7 +252,7 @@ LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
    |
 LL |     const fn i_f5(x: isize, _: ...) {}

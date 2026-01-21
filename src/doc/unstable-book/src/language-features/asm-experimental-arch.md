@@ -40,6 +40,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `ctr`          | `ctr`                              | Only clobbers        |
 | PowerPC      | `lr`           | `lr`                               | Only clobbers        |
 | PowerPC      | `xer`          | `xer`                              | Only clobbers        |
+| PowerPC      | `spe_acc`      | `spe_acc`                          | Only clobbers        |
 | wasm32       | `local`        | None\*                             | `r`                  |
 | BPF          | `reg`          | `r[0-10]`                          | `r`                  |
 | BPF          | `wreg`         | `w[0-10]`                          | `w`                  |
@@ -63,6 +64,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 > - WebAssembly doesn't have registers, so named registers are not supported.
 >
 > - r29 is reserved only on 32 bit PowerPC targets.
+>
+> - spe_acc is only available on PowerPC SPE targets.
 
 # Register class supported types
 
@@ -87,6 +90,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `ctr`                           | N/A            | Only clobbers                           |
 | PowerPC      | `lr`                            | N/A            | Only clobbers                           |
 | PowerPC      | `xer`                           | N/A            | Only clobbers                           |
+| PowerPC      | `spe_acc`                       | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
 | BPF          | `reg`                           | None           | `i8` `i16` `i32` `i64`                  |
 | BPF          | `wreg`                          | `alu32`        | `i8` `i16` `i32`                        |

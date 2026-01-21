@@ -6,8 +6,7 @@ use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
-use crate::sys::abi;
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, abi};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, str};
 
@@ -354,7 +353,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This method is used by sys_common code to abstract over targets.
     pub fn as_raw(&self) -> c_int {
         self.as_raw_fd()
     }

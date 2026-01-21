@@ -1,4 +1,3 @@
-use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::codes::*;
 use rustc_hir::attrs::AttributeKind;
@@ -6,9 +5,8 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, ItemId, Node, find_attr};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::RemapFileNameExt;
-use rustc_session::config::{CrateType, EntryFnType, RemapPathScopeComponents, sigpipe};
-use rustc_span::{Span, sym};
+use rustc_session::config::{CrateType, EntryFnType, sigpipe};
+use rustc_span::{RemapPathScopeComponents, Span};
 
 use crate::errors::{ExternMain, MultipleRustcMain, NoMainErr};
 
@@ -31,7 +29,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(tcx.hir_attrs(CRATE_HIR_ID), sym::no_main) {
+    if find_attr!(tcx.hir_attrs(CRATE_HIR_ID), AttributeKind::NoMain) {
         return None;
     }
 
@@ -115,7 +113,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     let filename = tcx
         .sess
         .local_crate_source_file()
-        .map(|src| src.for_scope(&tcx.sess, RemapPathScopeComponents::DIAGNOSTICS).to_path_buf())
+        .map(|src| src.path(RemapPathScopeComponents::DIAGNOSTICS).to_path_buf())
         .unwrap_or_else(|| {
             has_filename = false;
             Default::default()

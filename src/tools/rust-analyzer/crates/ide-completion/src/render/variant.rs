@@ -1,7 +1,7 @@
 //! Code common to structs, unions, and enum variants.
 
 use crate::context::CompletionContext;
-use hir::{HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind, sym};
+use hir::{HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind};
 use ide_db::SnippetCap;
 use itertools::Itertools;
 use syntax::SmolStr;
@@ -105,8 +105,8 @@ pub(crate) fn visible_fields(
         .copied()
         .collect::<Vec<_>>();
     let has_invisible_field = n_fields - fields.len() > 0;
-    let is_foreign_non_exhaustive = item.attrs(ctx.db).by_key(sym::non_exhaustive).exists()
-        && item.krate(ctx.db) != module.krate();
+    let is_foreign_non_exhaustive =
+        item.attrs(ctx.db).is_non_exhaustive() && item.krate(ctx.db) != module.krate(ctx.db);
     let fields_omitted = has_invisible_field || is_foreign_non_exhaustive;
     Some((fields, fields_omitted))
 }

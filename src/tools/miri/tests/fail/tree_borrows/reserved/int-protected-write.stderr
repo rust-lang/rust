@@ -29,13 +29,11 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
    |
 LL |         unsafe fn write_second(x: &mut u8, y: *mut u8) {
    |                                ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main::write_second` at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
-note: inside `main`
-  --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
-   |
-LL |         write_second(x, y);
-   |         ^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: main::write_second
+               at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -653,4 +653,58 @@ mod tests {
         let expect = expect![["fn it() {\n    \n}"]];
         expect.assert_eq(&edit.new_root.to_string());
     }
+
+    #[test]
+    fn test_more_times_replace_node_to_mutable_token() {
+        let arg_list =
+            make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
+
+        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let target_expr = make::token(parser::SyntaxKind::UNDERSCORE);
+
+        for arg in arg_list.args() {
+            editor.replace(arg.syntax(), &target_expr);
+        }
+
+        let edit = editor.finish();
+
+        let expect = expect![["(_, _)"]];
+        expect.assert_eq(&edit.new_root.to_string());
+    }
+
+    #[test]
+    fn test_more_times_replace_node_to_mutable() {
+        let arg_list =
+            make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
+
+        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let target_expr = make::expr_literal("3").clone_for_update();
+
+        for arg in arg_list.args() {
+            editor.replace(arg.syntax(), target_expr.syntax());
+        }
+
+        let edit = editor.finish();
+
+        let expect = expect![["(3, 3)"]];
+        expect.assert_eq(&edit.new_root.to_string());
+    }
+
+    #[test]
+    fn test_more_times_insert_node_to_mutable() {
+        let arg_list =
+            make::arg_list([make::expr_literal("1").into(), make::expr_literal("2").into()]);
+
+        let mut editor = SyntaxEditor::new(arg_list.syntax().clone());
+        let target_expr = make::ext::expr_unit().clone_for_update();
+
+        for arg in arg_list.args() {
+            editor.insert(Position::before(arg.syntax()), target_expr.syntax());
+        }
+
+        let edit = editor.finish();
+
+        let expect = expect![["(()1, ()2)"]];
+        expect.assert_eq(&edit.new_root.to_string());
+    }
 }

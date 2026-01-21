@@ -42,10 +42,10 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let resolved_call = ctx.sema.resolve_method_call(&call)?;
 
     let current_module = ctx.sema.scope(call.syntax())?.module();
-    let current_edition = current_module.krate().edition(ctx.db());
+    let current_edition = current_module.krate(ctx.db()).edition(ctx.db());
     let target_module_def = ModuleDef::from(resolved_call);
     let item_in_ns = ItemInNs::from(target_module_def);
-    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_module.krate()));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_module.krate(ctx.sema.db)));
     let receiver_path = current_module.find_path(
         ctx.sema.db,
         item_for_path_search(ctx.sema.db, item_in_ns)?,

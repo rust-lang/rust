@@ -16,13 +16,11 @@ help: <TAG> is this argument
    |
 LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
    |                ^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
-   |
-LL |         test(Box::from_raw(ptr), ptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: test
+               at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

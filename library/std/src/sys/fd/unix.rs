@@ -35,13 +35,12 @@ cfg_select! {
 
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 #[cfg(all(target_os = "android", target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
 #[cfg(any(all(target_os = "android", target_pointer_width = "32"), target_vendor = "apple"))]
 use crate::sys::pal::weak::weak;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
@@ -152,7 +151,8 @@ impl FileDesc {
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "wasi",
         )))
     }
 
@@ -385,7 +385,8 @@ impl FileDesc {
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "wasi",
         )))
     }
 
@@ -560,6 +561,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "wasi",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -583,6 +585,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "wasi",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

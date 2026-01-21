@@ -10,12 +10,12 @@
 //! otherwise silence errors, if move analysis runs after promotion on broken
 //! MIR.
 
-use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_index::{IndexSlice, IndexVec};
@@ -360,6 +360,10 @@ impl<'tcx> Validator<'_, 'tcx> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.validate_place(place.as_ref()),
 
+            // `RuntimeChecks` behaves different in const-eval and runtime MIR,
+            // so we do not promote it.
+            Operand::RuntimeChecks(_) => Err(Unpromotable),
+
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
             // `validate_rvalue` upon access.
             Operand::Constant(c) => {
@@ -410,14 +414,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // In theory, any zero-sized value could be borrowed
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
-                if let ty::Array(_, len) = ty.kind() {
-                    match len.try_to_target_usize(self.tcx) {
-                        Some(0) => {}
-                        _ => return Err(Unpromotable),
-                    }
-                } else {
-                    return Err(Unpromotable);
-                }
+                let ty::Array(_, len) = ty.kind() else { return Err(Unpromotable) };
+                let Some(0) = len.try_to_target_usize(self.tcx) else { return Err(Unpromotable) };
             }
         }
 
@@ -448,10 +446,6 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }
-
-            Rvalue::NullaryOp(op) => match op {
-                NullOp::RuntimeChecks(_) => {}
-            },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
 

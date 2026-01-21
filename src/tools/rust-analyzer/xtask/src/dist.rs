@@ -134,8 +134,19 @@ fn dist_server(
     };
 
     let mut cmd = build_command(sh, command, &target_name, features, dev_rel);
+    let mut rustflags = Vec::new();
+
     if let Some(profile) = pgo_profile {
-        cmd = cmd.env("RUSTFLAGS", format!("-Cprofile-use={}", profile.to_str().unwrap()));
+        rustflags.push(format!("-Cprofile-use={}", profile.to_str().unwrap()));
+    }
+
+    if target_name.ends_with("-windows-msvc") {
+        // https://github.com/rust-lang/rust-analyzer/issues/20970
+        rustflags.push("-Ctarget-feature=+crt-static".to_owned());
+    }
+
+    if !rustflags.is_empty() {
+        cmd = cmd.env("RUSTFLAGS", rustflags.join(" "));
     }
     cmd.run().context("cannot build Rust Analyzer")?;
 

@@ -1,5 +1,5 @@
 // Test that we can use ! as an argument to a trait impl.
-
+//
 //@ check-pass
 
 #![feature(never_type)]

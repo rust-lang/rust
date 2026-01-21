@@ -2,6 +2,7 @@ use either::Either;
 use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
+use rustc_data_structures::assert_matches;
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -10,7 +11,7 @@ use tracing::trace;
 
 use super::{
     ImmTy, InterpCx, InterpResult, Machine, MinMax, MulAddType, OpTy, PlaceTy, Provenance, Scalar,
-    Size, TyAndLayout, assert_matches, interp_ok, throw_ub_format,
+    Size, TyAndLayout, interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
 
@@ -202,8 +203,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_le => Op::MirOp(BinOp::Le),
                     sym::simd_gt => Op::MirOp(BinOp::Gt),
                     sym::simd_ge => Op::MirOp(BinOp::Ge),
-                    sym::simd_fmax => Op::FMinMax(MinMax::MaxNum),
-                    sym::simd_fmin => Op::FMinMax(MinMax::MinNum),
+                    sym::simd_fmax => Op::FMinMax(MinMax::MaximumNumber),
+                    sym::simd_fmin => Op::FMinMax(MinMax::MinimumNumber),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
                     sym::simd_arith_offset => Op::WrappingOffset,
@@ -295,8 +296,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_reduce_xor => Op::MirOp(BinOp::BitXor),
                     sym::simd_reduce_any => Op::MirOpBool(BinOp::BitOr),
                     sym::simd_reduce_all => Op::MirOpBool(BinOp::BitAnd),
-                    sym::simd_reduce_max => Op::MinMax(MinMax::MaxNum),
-                    sym::simd_reduce_min => Op::MinMax(MinMax::MinNum),
+                    sym::simd_reduce_max => Op::MinMax(MinMax::MaximumNumber),
+                    sym::simd_reduce_min => Op::MinMax(MinMax::MinimumNumber),
                     _ => unreachable!(),
                 };
 
@@ -320,8 +321,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             } else {
                                 // Just boring integers, no NaNs to worry about.
                                 let mirop = match mmop {
-                                    MinMax::MinNum | MinMax::Minimum => BinOp::Le,
-                                    MinMax::MaxNum | MinMax::Maximum => BinOp::Ge,
+                                    MinMax::MinimumNumber | MinMax::Minimum => BinOp::Le,
+                                    MinMax::MaximumNumber | MinMax::Maximum => BinOp::Ge,
                                 };
                                 if self.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res
@@ -545,7 +546,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (right, right_len) = self.project_to_simd(&args[1])?;
                 let (dest, dest_len) = self.project_to_simd(&dest)?;
 
-                let index = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
+                let index = generic_args[2].expect_const().to_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
@@ -553,7 +554,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 for i in 0..dest_len {
                     let src_index: u64 =
-                        index[usize::try_from(i).unwrap()].unwrap_leaf().to_u32().into();
+                        index[usize::try_from(i).unwrap()].to_leaf().to_u32().into();
                     let dest = self.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
@@ -657,9 +658,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     dest_layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..dest_len {
@@ -689,9 +688,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     args[2].layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..vals_len {

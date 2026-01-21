@@ -5,7 +5,6 @@ use crate::num::NonZero;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 
@@ -86,6 +85,10 @@ impl Command {
         self.env.iter()
     }
 
+    pub fn get_env_clear(&self) -> bool {
+        self.env.does_clear()
+    }
+
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(|cs| Path::new(cs))
     }
@@ -103,8 +106,8 @@ pub fn output(_cmd: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> 
     unsupported()
 }
 
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
+impl From<ChildPipe> for Stdio {
+    fn from(pipe: ChildPipe) -> Stdio {
         pipe.diverge()
     }
 }
@@ -312,4 +315,15 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    out: ChildPipe,
+    _stdout: &mut Vec<u8>,
+    _err: ChildPipe,
+    _stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    match out.diverge() {}
 }

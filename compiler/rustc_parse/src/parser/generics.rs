@@ -109,7 +109,31 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(exp!(Const))?;
         let ident = self.parse_ident()?;
-        self.expect(exp!(Colon))?;
+        if let Err(mut err) = self.expect(exp!(Colon)) {
+            return if self.token.kind == token::Comma || self.token.kind == token::Gt {
+                // Recover parse from `<const N>` where the type is missing.
+                let span = const_span.to(ident.span);
+                err.span_suggestion_verbose(
+                    ident.span.shrink_to_hi(),
+                    "you likely meant to write the type of the const parameter here",
+                    ": /* Type */".to_string(),
+                    Applicability::HasPlaceholders,
+                );
+                let kind = TyKind::Err(err.emit());
+                let ty = self.mk_ty(span, kind);
+                Ok(GenericParam {
+                    ident,
+                    id: ast::DUMMY_NODE_ID,
+                    attrs: preceding_attrs,
+                    bounds: Vec::new(),
+                    kind: GenericParamKind::Const { ty, span, default: None },
+                    is_placeholder: false,
+                    colon_span: None,
+                })
+            } else {
+                Err(err)
+            };
+        }
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
@@ -180,9 +204,11 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_generic_params(&mut self) -> PResult<'a, ThinVec<ast::GenericParam>> {
         let mut params = ThinVec::new();
         let mut done = false;
+        let prev = self.parsing_generics;
+        self.parsing_generics = true;
         while !done {
             let attrs = self.parse_outer_attributes()?;
-            let param = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
+            let param = match self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
                 if this.eat_keyword_noexpect(kw::SelfUpper) {
                     // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
                     // as if `Self` never existed.
@@ -264,7 +290,13 @@ impl<'a> Parser<'a> {
                 }
                 // We just ate the comma, so no need to capture the trailing token.
                 Ok((param, Trailing::No, UsePreAttrPos::No))
-            })?;
+            }) {
+                Ok(param) => param,
+                Err(err) => {
+                    self.parsing_generics = prev;
+                    return Err(err);
+                }
+            };
 
             if let Some(param) = param {
                 params.push(param);
@@ -272,6 +304,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        self.parsing_generics = prev;
         Ok(params)
     }
 

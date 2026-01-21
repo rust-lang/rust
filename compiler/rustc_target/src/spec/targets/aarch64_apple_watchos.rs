@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch,
         options: TargetOptions {
-            features: "+v8a,+neon,+fp-armv8,+apple-a7".into(),
+            features: "+v8a,+neon,+apple-a7".into(),
             max_atomic_width: Some(128),
             dynamic_linking: false,
             position_independent_executables: true,

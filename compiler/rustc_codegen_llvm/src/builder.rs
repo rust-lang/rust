@@ -16,7 +16,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -95,6 +95,21 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         // Create a fresh builder from the simple context.
         let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.deref().borrow().llcx) };
         GenericBuilder { llbuilder, cx: scx }
+    }
+
+    pub(crate) fn append_block(
+        cx: &'a GenericCx<'ll, CX>,
+        llfn: &'ll Value,
+        name: &str,
+    ) -> &'ll BasicBlock {
+        unsafe {
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx(), llfn, name.as_ptr())
+        }
+    }
+
+    pub(crate) fn trunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
     pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -610,6 +625,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             // Cast to default addrspace if necessary
             llvm::LLVMBuildPointerCast(bx.llbuilder, alloca, self.cx().type_ptr(), UNNAMED)
+        }
+    }
+
+    fn scalable_alloca(&mut self, elt: u64, align: Align, element_ty: Ty<'_>) -> Self::Value {
+        let mut bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
+        let llvm_ty = match element_ty.kind() {
+            ty::Bool => bx.type_i1(),
+            ty::Int(int_ty) => self.cx.type_int_from_ty(*int_ty),
+            ty::Uint(uint_ty) => self.cx.type_uint_from_ty(*uint_ty),
+            ty::Float(float_ty) => self.cx.type_float_from_ty(*float_ty),
+            _ => unreachable!("scalable vectors can only contain a bool, int, uint or float"),
+        };
+
+        unsafe {
+            let ty = llvm::LLVMScalableVectorType(llvm_ty, elt.try_into().unwrap());
+            let alloca = llvm::LLVMBuildAlloca(&bx.llbuilder, ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
         }
     }
 
@@ -1405,14 +1439,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // Attributes on the function definition being called
             let fn_defn_attrs = self.cx.tcx.codegen_fn_attrs(instance.def_id());
             if let Some(fn_call_attrs) = fn_call_attrs
-                && !fn_call_attrs.target_features.is_empty()
                 // If there is an inline attribute and a target feature that matches
                 // we will add the attribute to the callsite otherwise we'll omit
                 // this and not add the attribute to prevent soundness issues.
                 && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, instance)
                 && self.cx.tcx.is_target_feature_call_safe(
-                    &fn_call_attrs.target_features,
                     &fn_defn_attrs.target_features,
+                    &fn_call_attrs.target_features.iter().cloned().chain(
+                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
+                            name: *feat,
+                            kind: TargetFeatureKind::Implied,
+                        })
+                    ).collect::<Vec<_>>(),
                 )
             {
                 attributes::apply_to_callsite(
@@ -1682,7 +1720,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_call<'b>(
+    pub(crate) fn check_call<'b>(
         &mut self,
         typ: &str,
         fn_ty: &'ll Type,
@@ -1750,6 +1788,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
 
         if crate::llvm_util::get_version() >= (22, 0, 0) {
+            // LLVM 22 requires the lifetime intrinsic to act directly on the alloca,
+            // there can't be an addrspacecast in between.
+            let ptr = unsafe { llvm::LLVMRustStripPointerCasts(ptr) };
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[ptr]);
         } else {
             self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);

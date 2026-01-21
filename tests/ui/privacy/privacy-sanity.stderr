@@ -47,7 +47,23 @@ LL | pub extern "C" {
    = note: place qualifiers on individual foreign items instead
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:39:5
+  --> $DIR/privacy-sanity.rs:29:5
+   |
+LL |     pub Duck,
+   |     ^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/privacy-sanity.rs:31:5
+   |
+LL |     pub(crate) Dove,
+   |     ^^^^^^^^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/privacy-sanity.rs:47:5
    |
 LL |     pub impl Tr for S {
    |     ^^^ help: remove the qualifier
@@ -55,7 +71,7 @@ LL |     pub impl Tr for S {
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:40:9
+  --> $DIR/privacy-sanity.rs:48:9
    |
 LL |         pub fn f() {}
    |         ^^^ help: remove the qualifier
@@ -63,7 +79,7 @@ LL |         pub fn f() {}
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:41:9
+  --> $DIR/privacy-sanity.rs:49:9
    |
 LL |         pub const C: u8 = 0;
    |         ^^^ help: remove the qualifier
@@ -71,7 +87,7 @@ LL |         pub const C: u8 = 0;
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:42:9
+  --> $DIR/privacy-sanity.rs:50:9
    |
 LL |         pub type T = u8;
    |         ^^^ help: remove the qualifier
@@ -79,7 +95,7 @@ LL |         pub type T = u8;
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:44:5
+  --> $DIR/privacy-sanity.rs:52:5
    |
 LL |     pub impl S {
    |     ^^^ help: remove the qualifier
@@ -87,7 +103,7 @@ LL |     pub impl S {
    = note: place qualifiers on individual impl items instead
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:49:5
+  --> $DIR/privacy-sanity.rs:57:5
    |
 LL |     pub extern "C" {
    |     ^^^ help: remove the qualifier
@@ -95,7 +111,7 @@ LL |     pub extern "C" {
    = note: place qualifiers on individual foreign items instead
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:68:5
+  --> $DIR/privacy-sanity.rs:76:5
    |
 LL |     pub impl Tr for S {
    |     ^^^ help: remove the qualifier
@@ -103,7 +119,7 @@ LL |     pub impl Tr for S {
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:69:9
+  --> $DIR/privacy-sanity.rs:77:9
    |
 LL |         pub fn f() {}
    |         ^^^ help: remove the qualifier
@@ -111,7 +127,7 @@ LL |         pub fn f() {}
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:70:9
+  --> $DIR/privacy-sanity.rs:78:9
    |
 LL |         pub const C: u8 = 0;
    |         ^^^ help: remove the qualifier
@@ -119,7 +135,7 @@ LL |         pub const C: u8 = 0;
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:71:9
+  --> $DIR/privacy-sanity.rs:79:9
    |
 LL |         pub type T = u8;
    |         ^^^ help: remove the qualifier
@@ -127,7 +143,7 @@ LL |         pub type T = u8;
    = note: trait items always share the visibility of their trait
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:73:5
+  --> $DIR/privacy-sanity.rs:81:5
    |
 LL |     pub impl S {
    |     ^^^ help: remove the qualifier
@@ -135,13 +151,29 @@ LL |     pub impl S {
    = note: place qualifiers on individual impl items instead
 
 error[E0449]: visibility qualifiers are not permitted here
-  --> $DIR/privacy-sanity.rs:78:5
+  --> $DIR/privacy-sanity.rs:86:5
    |
 LL |     pub extern "C" {
    |     ^^^ help: remove the qualifier
    |
    = note: place qualifiers on individual foreign items instead
 
-error: aborting due to 18 previous errors
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/privacy-sanity.rs:91:9
+   |
+LL |         pub Duck,
+   |         ^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/privacy-sanity.rs:93:9
+   |
+LL |         pub(crate) Dove,
+   |         ^^^^^^^^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0449`.

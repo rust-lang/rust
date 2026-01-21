@@ -822,6 +822,37 @@ fn f(x: EnumAlias<u8>) {
 }
 
 #[test]
+fn through_alias_it_self() {
+    check(
+        r#"
+enum Enum<T> {
+    Unit,
+    Tuple(T),
+}
+
+type EnumAlias<T> = Enum<T>;
+
+fn f(x: EnumAlias<u8>) {
+    match x {
+        $0 => (),
+        _ => (),
+    }
+
+}
+
+"#,
+        expect![[r#"
+            en Enum
+            ta EnumAlias
+            bn Enum::Tuple(…) Enum::Tuple($1)$0
+            bn Enum::Unit          Enum::Unit$0
+            kw mut
+            kw ref
+        "#]],
+    );
+}
+
+#[test]
 fn pat_no_unstable_item_on_stable() {
     check(
         r#"

@@ -8,11 +8,11 @@ use std::sync::Arc;
 pub use BoundRegionConversionTime::*;
 use ena::unify as ut;
 use hir_def::GenericParamId;
-use hir_def::lang_item::LangItem;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
-use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
 use rustc_pattern_analysis::Captures;
+use rustc_type_ir::solve::{NoSolution, inspect};
 use rustc_type_ir::{
     ClosureKind, ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy,
     IntVarValue, IntVid, OutlivesPredicate, RegionVid, TermKind, TyVid, TypeFoldable, TypeFolder,
@@ -28,6 +28,7 @@ use traits::{ObligationCause, PredicateObligations};
 use type_variable::TypeVariableOrigin;
 use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
+pub use crate::next_solver::infer::traits::ObligationInspector;
 use crate::next_solver::{
     ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
     SolverContext,
@@ -251,6 +252,8 @@ pub struct InferCtxt<'db> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<UniverseIndex>,
+
+    obligation_inspector: Cell<Option<ObligationInspector<'db>>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -376,6 +379,7 @@ impl<'db> InferCtxtBuilder<'db> {
             inner: RefCell::new(InferCtxtInner::new()),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(UniverseIndex::ROOT),
+            obligation_inspector: Cell::new(None),
         }
     }
 }
@@ -403,7 +407,7 @@ impl<'db> InferCtxt<'db> {
         self.evaluate_obligation(obligation).may_apply()
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn predicate_may_hold_opaque_types_jank(
         &self,
@@ -533,7 +537,7 @@ impl<'db> InferCtxt<'db> {
         })
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'db, Predicate<'db>>) -> bool {
         <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
@@ -542,9 +546,7 @@ impl<'db> InferCtxt<'db> {
     pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        let Some(copy_def_id) =
-            LangItem::Copy.resolve_trait(self.interner.db, self.interner.krate.unwrap())
-        else {
+        let Some(copy_def_id) = self.interner.lang_items().Copy else {
             return false;
         };
 
@@ -876,9 +878,11 @@ impl<'db> InferCtxt<'db> {
         self.tainted_by_errors.set(Some(e));
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
-    pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
-        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
+    #[instrument(level = "debug", skip(self))]
+    pub fn take_opaque_types(
+        &self,
+    ) -> impl IntoIterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> + use<'db> {
+        self.inner.borrow_mut().opaque_type_storage.take_opaque_types()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1225,6 +1229,30 @@ impl<'db> InferCtxt<'db> {
 
     fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
         self.inner.borrow_mut().type_variables().sub_unify(a, b);
+    }
+
+    /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.
+    pub fn attach_obligation_inspector(&self, inspector: ObligationInspector<'db>) {
+        debug_assert!(
+            self.obligation_inspector.get().is_none(),
+            "shouldn't override a set obligation inspector"
+        );
+        self.obligation_inspector.set(Some(inspector));
+    }
+
+    pub fn inspect_evaluated_obligation(
+        &self,
+        obligation: &PredicateObligation<'db>,
+        result: &Result<GoalEvaluation<DbInterner<'db>>, NoSolution>,
+        get_proof_tree: impl FnOnce() -> Option<inspect::GoalEvaluation<DbInterner<'db>>>,
+    ) {
+        if let Some(inspector) = self.obligation_inspector.get() {
+            let result = match result {
+                Ok(GoalEvaluation { certainty, .. }) => Ok(*certainty),
+                Err(_) => Err(NoSolution),
+            };
+            (inspector)(self, obligation, result, get_proof_tree());
+        }
     }
 }
 

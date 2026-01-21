@@ -2,12 +2,12 @@ use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
-    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MgcaDisambiguation,
+    MutTy, Mutability, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers,
+    TraitObjectSyntax, Ty, TyKind, UnsafeBinderTy,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diag, PResult};
+use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
-            self.parse_typeof_ty()?
+            self.parse_typeof_ty(lo)?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -658,7 +658,17 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = self.parse_expr_anon_const()?;
+            let mut length = if self.eat_keyword(exp!(Const)) {
+                // While we could just disambiguate `Direct` from `AnonConst` by
+                // treating all const block exprs as `AnonConst`, that would
+                // complicate the DefCollector and likely all other visitors.
+                // So we strip the const blockiness and just store it as a block
+                // in the AST with the extra disambiguator on the AnonConst
+                self.parse_mgca_const_block(false)?
+            } else {
+                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
+            };
+
             if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
@@ -699,8 +709,9 @@ impl<'a> Parser<'a> {
         _ = self.eat(exp!(Comma)) || self.eat(exp!(Colon)) || self.eat(exp!(Star));
         let suggestion_span = self.prev_token.span.with_lo(hi);
 
+        // FIXME(mgca): recovery is broken for `const {` args
         // we first try to parse pattern like `[u8 5]`
-        let length = match self.parse_expr_anon_const() {
+        let length = match self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct) {
             Ok(length) => length,
             Err(e) => {
                 e.cancel();
@@ -784,13 +795,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parses the `typeof(EXPR)`.
-    // To avoid ambiguity, the type is surrounded by parentheses.
-    fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
+    /// Parses the `typeof(EXPR)` for better diagnostics before returning
+    /// an error type.
+    fn parse_typeof_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr_anon_const()?;
+        let _expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
         self.expect(exp!(CloseParen))?;
-        Ok(TyKind::Typeof(expr))
+        let span = lo.to(self.prev_token.span);
+        let guar = self
+            .dcx()
+            .struct_span_err(span, "`typeof` is a reserved keyword but unimplemented")
+            .with_note("consider replacing `typeof(...)` with an actual type")
+            .with_code(E0516)
+            .emit();
+        Ok(TyKind::Err(guar))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).
@@ -1470,14 +1488,44 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
 
+        let snapshot = if self.parsing_generics {
+            // The snapshot is only relevant if we're parsing the generics of an `fn` to avoid
+            // incorrect recovery.
+            Some(self.create_snapshot_for_diagnostic())
+        } else {
+            None
+        };
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
         let mode =
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
-        let inputs: ThinVec<_> =
-            self.parse_fn_params(&mode)?.into_iter().map(|input| input.ty).collect();
+        let params = match self.parse_fn_params(&mode) {
+            Ok(params) => params,
+            Err(err) => {
+                if let Some(snapshot) = snapshot {
+                    self.restore_snapshot(snapshot);
+                    err.cancel();
+                    return Ok(());
+                } else {
+                    return Err(err);
+                }
+            }
+        };
+        let inputs: ThinVec<_> = params.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
-        let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
+        let output = match self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)
+        {
+            Ok(output) => output,
+            Err(err) => {
+                if let Some(snapshot) = snapshot {
+                    self.restore_snapshot(snapshot);
+                    err.cancel();
+                    return Ok(());
+                } else {
+                    return Err(err);
+                }
+            }
+        };
         let args = ast::ParenthesizedArgs {
             span: fn_path_segment.span().to(self.prev_token.span),
             inputs,
@@ -1485,6 +1533,17 @@ impl<'a> Parser<'a> {
             output,
         }
         .into();
+
+        if let Some(snapshot) = snapshot
+            && ![token::Comma, token::Gt, token::Plus].contains(&self.token.kind)
+        {
+            // We would expect another bound or the end of type params by now. Most likely we've
+            // encountered a `(` *not* representing `Trait()`, but rather the start of the `fn`'s
+            // argument list where the generic param list wasn't properly closed.
+            self.restore_snapshot(snapshot);
+            return Ok(());
+        }
+
         *fn_path_segment = ast::PathSegment {
             ident: fn_path_segment.ident,
             args: Some(args),
@@ -1531,9 +1590,7 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
-            if matches!(is_raw, IdentIsRaw::No)
-                && ident.without_first_quote().is_reserved_lifetime()
-            {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved_lifetime() {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
             }
 

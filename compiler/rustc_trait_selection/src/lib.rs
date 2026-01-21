@@ -11,8 +11,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
@@ -22,6 +20,7 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_reduce)]
 #![feature(never_type)]
+#![feature(strip_circumfix)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]

@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `main`
-  --> $DIR/inaccessible-test-modules.rs:5:5
+  --> $DIR/inaccessible-test-modules.rs:6:5
    |
 LL | use main as x;
    |     ^^^^^^^^^ no `main` in the root
 
 error[E0432]: unresolved import `test`
-  --> $DIR/inaccessible-test-modules.rs:6:5
+  --> $DIR/inaccessible-test-modules.rs:7:5
    |
 LL | use test as y;
    |     ^^^^^^^^^ no `test` in the root

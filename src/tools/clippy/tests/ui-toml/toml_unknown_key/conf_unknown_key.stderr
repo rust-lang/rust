@@ -9,6 +9,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
+           allow-large-stack-frames-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests
@@ -50,6 +51,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            future-size-threshold
            ignore-interior-mutability
            inherent-impl-lint-scope
+           large-error-ignored
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -106,6 +108,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
+           allow-large-stack-frames-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests
@@ -147,6 +150,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            future-size-threshold
            ignore-interior-mutability
            inherent-impl-lint-scope
+           large-error-ignored
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -203,6 +207,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
+           allow-large-stack-frames-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests
@@ -244,6 +249,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            future-size-threshold
            ignore-interior-mutability
            inherent-impl-lint-scope
+           large-error-ignored
            large-error-threshold
            lint-commented-code
            literal-representation-threshold

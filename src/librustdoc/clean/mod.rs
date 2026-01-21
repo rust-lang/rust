@@ -1,7 +1,7 @@
 //! This module defines the primary IR[^1] used in rustdoc together with the procedures that
 //! transform rustc data types into it.
 //!
-//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][ast].
+//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][rustc_ast].
 //!
 //! There are two kinds of transformation — *cleaning* — procedures:
 //!
@@ -34,17 +34,15 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{LangItem, PredicateOrigin, find_attr};
-use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -52,11 +50,10 @@ use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableE
 use rustc_middle::{bug, span_bug};
 use rustc_span::ExpnKind;
 use rustc_span::hygiene::{AstPass, MacroKind};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use tracing::{debug, instrument};
 use utils::*;
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::cfg::{CfgInfo, extract_cfg_from_attrs};
 pub(crate) use self::types::*;
@@ -198,12 +195,12 @@ fn generate_item_with_correct_attrs(
             // For glob re-exports the item may or may not exist to be re-exported (potentially the
             // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
             // itself matter), for non-inlined re-exports see #85043.
-            let import_is_inline =
-                hir_attr_lists(inline::load_attrs(cx, import_id.to_def_id()), sym::doc)
-                    .get_word_attr(sym::inline)
-                    .is_some()
-                    || (is_glob_import(cx.tcx, import_id)
-                        && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
+            let import_is_inline = find_attr!(
+                inline::load_attrs(cx, import_id.to_def_id()),
+                AttributeKind::Doc(d)
+                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+            ) || (is_glob_import(cx.tcx, import_id)
+                && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -321,8 +318,25 @@ pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind 
         hir::ConstArgKind::Path(qpath) => {
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
+        hir::ConstArgKind::Struct(..) => {
+            // FIXME(mgca): proper printing :3
+            ConstantKind::Path { path: "/* STRUCT EXPR */".to_string().into() }
+        }
+        hir::ConstArgKind::TupleCall(..) => {
+            ConstantKind::Path { path: "/* TUPLE CALL */".to_string().into() }
+        }
+        hir::ConstArgKind::Tup(..) => {
+            // FIXME(mgca): proper printing :3
+            ConstantKind::Path { path: "/* TUPLE EXPR */".to_string().into() }
+        }
+        hir::ConstArgKind::Array(..) => {
+            ConstantKind::Path { path: "/* ARRAY EXPR */".to_string().into() }
+        }
         hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
         hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => ConstantKind::Infer,
+        hir::ConstArgKind::Literal(..) => {
+            ConstantKind::Path { path: "/* LITERAL */".to_string().into() }
+        }
     }
 }
 
@@ -454,11 +468,17 @@ fn clean_middle_term<'tcx>(
     }
 }
 
-fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+fn clean_hir_term<'tcx>(
+    assoc_item: Option<DefId>,
+    term: &hir::Term<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Term {
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => {
-            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, FeedConstTy::No);
+            // FIXME(generic_const_items): this should instantiate with the alias item's args
+            let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity();
+            let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct), cx))
         }
     }
@@ -561,12 +581,7 @@ fn clean_generic_param_def(
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(
-                        cx.tcx
-                            .type_of(def.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic"),
-                    ),
+                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
                     cx,
                     Some(def.def_id),
                     None,
@@ -640,7 +655,9 @@ fn clean_generic_param<'tcx>(
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
-                    Box::new(lower_const_arg_for_rustdoc(cx.tcx, ct, FeedConstTy::No).to_string())
+                    Box::new(
+                        lower_const_arg_for_rustdoc(cx.tcx, ct, lower_ty(cx.tcx, ty)).to_string(),
+                    )
                 }),
             },
         ),
@@ -1033,26 +1050,20 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
-    for meta_item_list in attrs
-        .iter()
-        .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
-        .filter_map(|a| a.meta_item_list())
-    {
-        for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
-            match literal.kind {
-                ast::LitKind::Int(a, _) => {
-                    let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
-                    if let GenericParamDefKind::Const { ty, .. } = kind {
-                        func.decl.inputs.insert(
-                            a.get() as _,
-                            Parameter { name: Some(name), type_: *ty, is_const: true },
-                        );
-                    } else {
-                        panic!("unexpected non const in position {pos}");
-                    }
-                }
-                _ => panic!("invalid arg index"),
-            }
+    let Some(indexes) =
+        find_attr!(attrs, AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
+    else {
+        return;
+    };
+
+    for (pos, (index, _)) in indexes.iter().enumerate() {
+        let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
+        if let GenericParamDefKind::Const { ty, .. } = kind {
+            func.decl
+                .inputs
+                .insert(*index, Parameter { name: Some(name), type_: *ty, is_const: true });
+        } else {
+            panic!("unexpected non const in position {pos}");
         }
     }
 }
@@ -1527,7 +1538,7 @@ fn first_non_private_clean_path<'tcx>(
         && path_last.args.is_some()
     {
         assert!(new_path_last.args.is_empty());
-        new_path_last.args = clean_generic_args(path_last_args, cx);
+        new_path_last.args = clean_generic_args(None, path_last_args, cx);
     }
     new_clean_path
 }
@@ -1808,13 +1819,18 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             let length = match const_arg.kind {
                 hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
-                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
+                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                     let ct = cx.tcx.normalize_erasing_regions(typing_env, ct);
                     print_const(cx, ct)
                 }
-                hir::ConstArgKind::Path(..) => {
-                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
+                hir::ConstArgKind::Struct(..)
+                | hir::ConstArgKind::Path(..)
+                | hir::ConstArgKind::TupleCall(..)
+                | hir::ConstArgKind::Tup(..)
+                | hir::ConstArgKind::Array(..)
+                | hir::ConstArgKind::Literal(..) => {
+                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     print_const(cx, ct)
                 }
             };
@@ -1841,7 +1857,6 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer(())
         | TyKind::Err(_)
-        | TyKind::Typeof(..)
         | TyKind::InferDelegation(..)
         | TyKind::TraitAscription(_) => Infer,
     }
@@ -2508,6 +2523,7 @@ fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
 }
 
 fn clean_generic_args<'tcx>(
+    trait_did: Option<DefId>,
     generic_args: &hir::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
@@ -2531,7 +2547,13 @@ fn clean_generic_args<'tcx>(
             let constraints = generic_args
                 .constraints
                 .iter()
-                .map(|c| clean_assoc_item_constraint(c, cx))
+                .map(|c| {
+                    clean_assoc_item_constraint(
+                        trait_did.expect("only trait ref has constraints"),
+                        c,
+                        cx,
+                    )
+                })
                 .collect::<ThinVec<_>>();
             GenericArgs::AngleBracketed { args, constraints }
         }
@@ -2554,7 +2576,11 @@ fn clean_path_segment<'tcx>(
     path: &hir::PathSegment<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    PathSegment { name: path.ident.name, args: clean_generic_args(path.args(), cx) }
+    let trait_did = match path.res {
+        hir::def::Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
+        _ => None,
+    };
+    PathSegment { name: path.ident.name, args: clean_generic_args(trait_did, path.args(), cx) }
 }
 
 fn clean_bare_fn_ty<'tcx>(
@@ -2641,63 +2667,6 @@ fn get_all_import_attributes<'hir>(
     attrs
 }
 
-fn filter_tokens_from_list(
-    args_tokens: &TokenStream,
-    should_retain: impl Fn(&TokenTree) -> bool,
-) -> Vec<TokenTree> {
-    let mut tokens = Vec::with_capacity(args_tokens.len());
-    let mut skip_next_comma = false;
-    for token in args_tokens.iter() {
-        match token {
-            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
-                skip_next_comma = false;
-            }
-            token if should_retain(token) => {
-                skip_next_comma = false;
-                tokens.push(token.clone());
-            }
-            _ => {
-                skip_next_comma = true;
-            }
-        }
-    }
-    tokens
-}
-
-fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
-    if is_inline {
-        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
-    } else {
-        ident == sym::cfg
-    }
-}
-
-/// Remove attributes from `normal` that should not be inherited by `use` re-export.
-/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
-fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
-    match args {
-        hir::AttrArgs::Delimited(args) => {
-            let tokens = filter_tokens_from_list(&args.tokens, |token| {
-                !matches!(
-                    token,
-                    TokenTree::Token(
-                        Token {
-                            kind: TokenKind::Ident(
-                                ident,
-                                _,
-                            ),
-                            ..
-                        },
-                        _,
-                    ) if filter_doc_attr_ident(*ident, is_inline),
-                )
-            });
-            args.tokens = TokenStream::new(tokens);
-        }
-        hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => {}
-    }
-}
-
 /// When inlining items, we merge their attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
@@ -2725,27 +2694,32 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if attr.is_doc_comment().is_some() {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-            continue;
-        }
-        let mut attr = attr.clone();
         match attr {
-            hir::Attribute::Unparsed(ref mut normal) if let [ident] = &*normal.path.segments => {
-                let ident = ident.name;
-                if ident == sym::doc {
-                    filter_doc_attr(&mut normal.args, is_inline);
-                    attrs.push((Cow::Owned(attr), import_parent));
-                } else if is_inline || ident != sym::cfg_trace {
-                    // If it's not a `cfg()` attribute, we keep it.
-                    attrs.push((Cow::Owned(attr), import_parent));
+            hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+                attrs.push((Cow::Borrowed(attr), import_parent));
+            }
+            hir::Attribute::Parsed(AttributeKind::Doc(box d)) => {
+                // Remove attributes from `normal` that should not be inherited by `use` re-export.
+                let DocAttribute { hidden, inline, cfg, .. } = d;
+                let mut attr = DocAttribute::default();
+                if is_inline {
+                    attr.cfg = cfg.clone();
+                } else {
+                    attr.inline = inline.clone();
+                    attr.hidden = hidden.clone();
                 }
+                attrs.push((
+                    Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
+                    import_parent,
+                ));
             }
-            // FIXME: make sure to exclude `#[cfg_trace]` here when it is ported to the new parsers
-            hir::Attribute::Parsed(..) => {
-                attrs.push((Cow::Owned(attr), import_parent));
+
+            // We discard `#[cfg(...)]` attributes unless we're inlining
+            hir::Attribute::Parsed(AttributeKind::CfgTrace(..)) if !is_inline => {}
+            // We keep all other attributes
+            _ => {
+                attrs.push((Cow::Borrowed(attr), import_parent));
             }
-            _ => {}
         }
     }
 }
@@ -2930,6 +2904,9 @@ fn clean_impl<'tcx>(
             )),
             _ => None,
         });
+    let is_deprecated = tcx
+        .lookup_deprecation(def_id.to_def_id())
+        .is_some_and(|deprecation| deprecation.is_in_effect());
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
             safety: match impl_.of_trait {
@@ -2945,11 +2922,12 @@ fn clean_impl<'tcx>(
             } else {
                 ty::ImplPolarity::Positive
             },
-            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
+            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), |d| d.fake_variadic.is_some()) {
                 ImplKind::FakeVariadic
             } else {
                 ImplKind::Normal
             },
+            is_deprecated,
         }));
         Item::from_def_id_and_parts(def_id.to_def_id(), None, kind, cx)
     };
@@ -2974,11 +2952,10 @@ fn clean_extern_crate<'tcx>(
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => ast::attr::list_contains_name(&l, sym::inline),
-                    None => false,
-                }
+            matches!(
+            a,
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
         })
         && !cx.is_json_output();
 
@@ -3041,7 +3018,11 @@ fn clean_use_statement_inner<'tcx>(
 
     let visibility = cx.tcx.visibility(import.owner_id);
     let attrs = cx.tcx.hir_attrs(import.hir_id());
-    let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
+    let inline_attr = find_attr!(
+        attrs,
+        AttributeKind::Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
+    )
+    .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
     let import_def_id = import.owner_id.def_id;
@@ -3059,10 +3040,10 @@ fn clean_use_statement_inner<'tcx>(
     let is_visible_from_parent_mod =
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
-    if pub_underscore && let Some(ref inline) = inline_attr {
+    if pub_underscore && let Some((_, inline_span)) = inline_attr {
         struct_span_code_err!(
             cx.tcx.dcx(),
-            inline.span(),
+            *inline_span,
             E0780,
             "anonymous imports cannot be inlined"
         )
@@ -3077,16 +3058,11 @@ fn clean_use_statement_inner<'tcx>(
     let mut denied = cx.is_json_output()
         || !(visibility.is_public() || (cx.document_private() && is_visible_from_parent_mod))
         || pub_underscore
-        || attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => {
-                        ast::attr::list_contains_name(&l, sym::no_inline)
-                            || ast::attr::list_contains_name(&l, sym::hidden)
-                    }
-                    None => false,
-                }
-        });
+        || attrs.iter().any(|a| matches!(
+            a,
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
+        ));
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
@@ -3172,17 +3148,27 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
 }
 
 fn clean_assoc_item_constraint<'tcx>(
+    trait_did: DefId,
     constraint: &hir::AssocItemConstraint<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> AssocItemConstraint {
     AssocItemConstraint {
         assoc: PathSegment {
             name: constraint.ident.name,
-            args: clean_generic_args(constraint.gen_args, cx),
+            args: clean_generic_args(None, constraint.gen_args, cx),
         },
         kind: match constraint.kind {
             hir::AssocItemConstraintKind::Equality { ref term } => {
-                AssocItemConstraintKind::Equality { term: clean_hir_term(term, cx) }
+                let assoc_tag = match term {
+                    hir::Term::Ty(_) => ty::AssocTag::Type,
+                    hir::Term::Const(_) => ty::AssocTag::Const,
+                };
+                let assoc_item = cx
+                    .tcx
+                    .associated_items(trait_did)
+                    .find_by_ident_and_kind(cx.tcx, constraint.ident, assoc_tag, trait_did)
+                    .map(|item| item.def_id);
+                AssocItemConstraintKind::Equality { term: clean_hir_term(assoc_item, term, cx) }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
                 bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, cx)).collect(),

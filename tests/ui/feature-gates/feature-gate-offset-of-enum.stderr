@@ -1,5 +1,5 @@
 error[E0573]: expected type, found variant `Alpha::One`
-  --> $DIR/feature-gate-offset-of-enum.rs:9:16
+  --> $DIR/feature-gate-offset-of-enum.rs:10:16
    |
 LL |     offset_of!(Alpha::One, 0);
    |                ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     offset_of!(Alpha::One, 0);
    |                help: try using the variant's enum: `Alpha`
 
 error[E0658]: using enums in offset_of is experimental
-  --> $DIR/feature-gate-offset-of-enum.rs:10:23
+  --> $DIR/feature-gate-offset-of-enum.rs:11:23
    |
 LL |     offset_of!(Alpha, One);
    |                       ^^^
@@ -18,13 +18,13 @@ LL |     offset_of!(Alpha, One);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
-  --> $DIR/feature-gate-offset-of-enum.rs:10:23
+  --> $DIR/feature-gate-offset-of-enum.rs:11:23
    |
 LL |     offset_of!(Alpha, One);
    |                       ^^^ enum variant
 
 error[E0658]: using enums in offset_of is experimental
-  --> $DIR/feature-gate-offset-of-enum.rs:12:23
+  --> $DIR/feature-gate-offset-of-enum.rs:13:23
    |
 LL |     offset_of!(Alpha, Two.0);
    |                       ^^^

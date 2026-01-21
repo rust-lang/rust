@@ -1,58 +1,76 @@
-error: `doc(html_favicon_url)` expects a string value
-  --> $DIR/bad-render-options.rs:3:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:3:1
    |
 LL | #![doc(html_favicon_url)]
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(invalid_doc_attributes)]` on by default
+   | ^^^^^^^----------------^^
+   |        |
+   |        expected this to be of the form `html_favicon_url = "..."`
 
-error: `doc(html_logo_url)` expects a string value
-  --> $DIR/bad-render-options.rs:4:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:6:1
    |
 LL | #![doc(html_logo_url)]
-   |        ^^^^^^^^^^^^^
+   | ^^^^^^^-------------^^
+   |        |
+   |        expected this to be of the form `html_logo_url = "..."`
 
-error: `doc(html_playground_url)` expects a string value
-  --> $DIR/bad-render-options.rs:5:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:9:1
    |
 LL | #![doc(html_playground_url)]
-   |        ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^-------------------^^
+   |        |
+   |        expected this to be of the form `html_playground_url = "..."`
 
-error: `doc(issue_tracker_base_url)` expects a string value
-  --> $DIR/bad-render-options.rs:6:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:12:1
    |
 LL | #![doc(issue_tracker_base_url)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^----------------------^^
+   |        |
+   |        expected this to be of the form `issue_tracker_base_url = "..."`
 
-error: `doc(html_favicon_url)` expects a string value
-  --> $DIR/bad-render-options.rs:7:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:15:1
    |
 LL | #![doc(html_favicon_url = 1)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                           |
+   |                           expected a string literal here
 
-error: `doc(html_logo_url)` expects a string value
-  --> $DIR/bad-render-options.rs:8:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:18:1
    |
 LL | #![doc(html_logo_url = 2)]
-   |        ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                        |
+   |                        expected a string literal here
 
-error: `doc(html_playground_url)` expects a string value
-  --> $DIR/bad-render-options.rs:9:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:21:1
    |
 LL | #![doc(html_playground_url = 3)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                              |
+   |                              expected a string literal here
 
-error: `doc(issue_tracker_base_url)` expects a string value
-  --> $DIR/bad-render-options.rs:10:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:24:1
    |
 LL | #![doc(issue_tracker_base_url = 4)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                                 |
+   |                                 expected a string literal here
 
-error: `doc(html_no_source)` does not accept a value
-  --> $DIR/bad-render-options.rs:11:8
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:27:1
    |
 LL | #![doc(html_no_source = "asdf")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |                       |
+   |                       didn't expect any arguments here
 
 error: aborting due to 9 previous errors
 
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

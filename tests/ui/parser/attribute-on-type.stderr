@@ -13,13 +13,13 @@ LL |     let _: #[attr] &'static str = "123";
 error: attributes cannot be applied to generic arguments
   --> $DIR/attribute-on-type.rs:19:16
    |
-LL |     let _: Bar<#[cfg(any())] 'static> = Bar(&123);
+LL |     let _: Bar<#[cfg(false)] 'static> = Bar(&123);
    |                ^^^^^^^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied to generic arguments
   --> $DIR/attribute-on-type.rs:22:16
    |
-LL |     let _: Baz<#[cfg(any())] 42> = Baz(42);
+LL |     let _: Baz<#[cfg(false)] 42> = Baz(42);
    |                ^^^^^^^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied to generic arguments
@@ -31,7 +31,7 @@ LL |     let _: Foo<#[cfg(not(wrong))]String> = Foo(String::new());
 error: attributes cannot be applied to generic arguments
   --> $DIR/attribute-on-type.rs:28:16
    |
-LL |     let _: Bar<#[cfg(any())]       'static> = Bar(&456);
+LL |     let _: Bar<#[cfg(false)]       'static> = Bar(&456);
    |                ^^^^^^^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied to generic arguments

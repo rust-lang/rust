@@ -28,6 +28,9 @@ help: the following other types implement trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
    |
    = note: `RangeTo<usize>` implements `SliceIndex<ByteStr>`
+  ::: $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: in this macro invocation
   --> $SRC_DIR/core/src/str/traits.rs:LL:COL
    |
    = note: `RangeTo<usize>` implements `SliceIndex<str>`

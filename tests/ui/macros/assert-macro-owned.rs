@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ run-fail
 //@ error-pattern:panicked
 //@ error-pattern:test-assert-owned

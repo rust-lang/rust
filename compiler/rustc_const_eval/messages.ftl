@@ -140,9 +140,9 @@ const_eval_incompatible_return_types =
 const_eval_interior_mutable_borrow_escaping =
     interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
     .label = this borrow of an interior mutable value refers to such a temporary
-    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
-    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
-    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+    .note = temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = to avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 const_eval_intern_kind = {$kind ->
     [static] static
@@ -225,9 +225,9 @@ const_eval_modified_global =
 const_eval_mutable_borrow_escaping =
     mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
     .label = this mutable borrow refers to such a temporary
-    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
-    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
-    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+    .note = temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = to avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
@@ -473,7 +473,6 @@ const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid re
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
-const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_nonnull_ptr_out_of_range = {$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero

@@ -6,8 +6,8 @@ use semver::Version;
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
-    line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
+    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
 
@@ -23,6 +23,19 @@ fn handler_names() {
     assert!(
         unknown_names.is_empty(),
         "Directive handler names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
+
+#[test]
+fn external_ignores() {
+    let unknown_names = directives::cfg::EXTERNAL_IGNORES_SET
+        .difference(&KNOWN_DIRECTIVE_NAMES_SET)
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive names not in `directive_names.rs`: {unknown_names:#?}"
     );
 }
 
@@ -104,6 +117,7 @@ struct ConfigBuilder {
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
+    std_remap_debuginfo: bool,
 }
 
 impl ConfigBuilder {
@@ -172,6 +186,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn std_remap_debuginfo(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_remap_debuginfo = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
@@ -206,6 +225,7 @@ impl ConfigBuilder {
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",
+            "--jobs=0",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -232,6 +252,9 @@ impl ConfigBuilder {
         }
         if self.std_debug_assertions {
             args.push("--with-std-debug-assertions".to_owned());
+        }
+        if self.std_remap_debuginfo {
+            args.push("--with-std-remap-debuginfo".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -385,6 +408,19 @@ fn std_debug_assertions() {
 
     assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
     assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
+}
+
+#[test]
+fn std_remap_debuginfo() {
+    let config: Config = cfg().std_remap_debuginfo(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(!check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
+
+    let config: Config = cfg().std_remap_debuginfo(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
 }
 
 #[test]
@@ -595,7 +631,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let modes = [
         "pretty",
         "debuginfo",
-        "rustdoc",
+        "rustdoc-html",
         "rustdoc-json",
         "codegen-units",
         "incremental",
@@ -987,7 +1023,8 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
+    let line =
+        line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment).unwrap();
 
     super::parse_edition_range(&config, &line)
 }

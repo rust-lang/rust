@@ -4,9 +4,8 @@ mod unsupported_env;
 pub use unsupported_env::{Env, env, setenv, unsetenv};
 
 use crate::ffi::{OsStr, OsString};
-use crate::sys::os_str;
 use crate::sys::pal::{WORD_SIZE, abi};
-use crate::sys_common::FromInner;
+use crate::sys::{FromInner, os_str};
 
 pub fn getenv(varname: &OsStr) -> Option<OsString> {
     let varname = varname.as_encoded_bytes();

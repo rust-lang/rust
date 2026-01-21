@@ -16,7 +16,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.typeck_results().expr_ty(ex).peel_refs();
     let adt_def = match ty.kind() {
         ty::Adt(adt_def, _)
-            if adt_def.is_enum() && !(ty.is_diag_item(cx, sym::Option) || ty.is_diag_item(cx, sym::Result)) =>
+            if adt_def.is_enum() && !matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result)) =>
         {
             adt_def
         },

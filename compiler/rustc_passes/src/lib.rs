@@ -9,7 +9,7 @@
 #![feature(map_try_insert)]
 // tidy-alphabetical-end
 
-use rustc_middle::util::Providers;
+use rustc_middle::query::Providers;
 
 pub mod abi_test;
 mod check_attr;
@@ -17,6 +17,7 @@ mod check_export;
 pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
+mod eii;
 pub mod entry;
 mod errors;
 pub mod hir_id_validator;
@@ -43,4 +44,5 @@ pub fn provide(providers: &mut Providers) {
     stability::provide(providers);
     upvars::provide(providers);
     check_export::provide(providers);
+    providers.check_externally_implementable_items = eii::check_externally_implementable_items;
 }

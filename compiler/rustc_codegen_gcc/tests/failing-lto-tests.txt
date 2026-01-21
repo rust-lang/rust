@@ -1,0 +1,7 @@
+tests/ui/lto/all-crates.rs
+tests/ui/lto/debuginfo-lto-alloc.rs
+tests/ui/panic-runtime/lto-unwind.rs
+tests/ui/uninhabited/uninhabited-transparent-return-abi.rs
+tests/ui/coroutine/panic-drops-resume.rs
+tests/ui/coroutine/panic-drops.rs
+tests/ui/coroutine/panic-safe.rs

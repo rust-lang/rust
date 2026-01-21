@@ -43,7 +43,7 @@ Options:
         --print <INFO>[=<FILE>]
                         Compiler information to print on stdout (or to a file)
                         INFO may be one of
-                        <all-target-specs-json|calling-conventions|cfg|check-cfg|code-models|crate-name|crate-root-lint-levels|deployment-target|file-names|host-tuple|link-args|native-static-libs|relocation-models|split-debuginfo|stack-protector-strategies|supported-crate-types|sysroot|target-cpus|target-features|target-libdir|target-list|target-spec-json|target-spec-json-schema|tls-models>.
+                        <all-target-specs-json|backend-has-zstd|calling-conventions|cfg|check-cfg|code-models|crate-name|crate-root-lint-levels|deployment-target|file-names|host-tuple|link-args|native-static-libs|relocation-models|split-debuginfo|stack-protector-strategies|supported-crate-types|sysroot|target-cpus|target-features|target-libdir|target-list|target-spec-json|target-spec-json-schema|tls-models>.
     -g                  Equivalent to -C debuginfo=2
     -O                  Equivalent to -C opt-level=3
     -o <FILENAME>       Write output to FILENAME
@@ -51,7 +51,7 @@ Options:
         --explain <OPT> Provide a detailed explanation of an error message
         --test          Build a test harness
         --target <TARGET>
-                        Target triple for which the code is compiled
+                        Target tuple for which the code is compiled
     -A, --allow <LINT>  Set lint allowed
     -W, --warn <LINT>   Set lint warnings
         --force-warn <LINT>
@@ -83,6 +83,9 @@ Options:
         --remap-path-prefix <FROM>=<TO>
                         Remap source names in all output (compiler messages
                         and output files)
+        --remap-path-scope <macro,diagnostics,debuginfo,coverage,object,all>
+                        Defines which scopes of paths should be remapped by
+                        `--remap-path-prefix`
     @path               Read newline separated options from `path`
 
 Additional help:

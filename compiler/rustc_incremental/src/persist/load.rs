@@ -91,10 +91,7 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(
-    sess: &Session,
-    deps: &DepsType,
-) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
+fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {
@@ -174,7 +171,7 @@ fn load_dep_graph(
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder, deps);
+            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder);
 
             LoadResult::Ok { data: (dep_graph, prev_work_products) }
         }
@@ -212,12 +209,11 @@ pub fn setup_dep_graph(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
-    deps: &DepsType,
 ) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
     prepare_session_directory(sess, crate_name, stable_crate_id);
 
-    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess, deps));
+    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
 
     if sess.opts.incremental.is_some() {
         sess.time("incr_comp_garbage_collect_session_directories", || {

@@ -43,7 +43,7 @@ pub use self::lower::{
     hir_assoc_type_binding_to_ast, hir_generic_arg_to_ast, hir_segment_to_ast_segment,
 };
 
-/// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
+/// A wrapper around [`span::SyntaxContext`] that is intended only for comparisons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HygieneId(span::SyntaxContext);
 
@@ -57,8 +57,7 @@ impl HygieneId {
         Self(ctx)
     }
 
-    // FIXME: Inline this
-    pub(crate) fn lookup(self) -> SyntaxContext {
+    pub(crate) fn syntax_context(self) -> SyntaxContext {
         self.0
     }
 
@@ -73,7 +72,8 @@ pub type ExprSource = InFile<ExprPtr>;
 pub type PatPtr = AstPtr<ast::Pat>;
 pub type PatSource = InFile<PatPtr>;
 
-pub type LabelPtr = AstPtr<ast::Label>;
+/// BlockExpr -> Desugared label from try block
+pub type LabelPtr = AstPtr<Either<ast::Label, ast::BlockExpr>>;
 pub type LabelSource = InFile<LabelPtr>;
 
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
@@ -942,7 +942,7 @@ impl ExpressionStoreSourceMap {
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
-        let src = node.map(AstPtr::new);
+        let src = node.map(AstPtr::new).map(AstPtr::wrap_left);
         self.expr_only()?.label_map.get(&src).cloned()
     }
 

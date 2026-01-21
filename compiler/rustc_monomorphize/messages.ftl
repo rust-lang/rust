@@ -2,7 +2,10 @@ monomorphize_abi_error_disabled_vector_type =
   this function {$is_call ->
     [true] call
     *[false] definition
-  } uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+  } uses {$is_scalable ->
+    [true] scalable
+    *[false] SIMD
+  } vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
     [true] {" "}in the caller
     *[false] {""}
   }
@@ -59,7 +62,7 @@ monomorphize_encountered_error_while_instantiating_global_asm =
 monomorphize_large_assignments =
     moving {$size} bytes
     .label = value moved from here
-    .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+    .note = the current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 monomorphize_no_optimized_mir =
     missing optimized MIR for `{$instance}` in the crate `{$crate_name}`
@@ -71,5 +74,9 @@ monomorphize_recursion_limit =
 
 monomorphize_start_not_found = using `fn main` requires the standard library
     .help = use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`
+
+monomorphize_static_initializer_cyclic =  static initializer forms a cycle involving `{$head}`
+    .label = part of this cycle
+    .note = cyclic static initializers are not supported for target `{$target}`
 
 monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined

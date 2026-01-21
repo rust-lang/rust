@@ -6,10 +6,10 @@ use std::sync::{Arc, Mutex};
 
 use termcolor::Color;
 
+/// CLI flags used by tidy.
 #[derive(Clone, Default)]
-///CLI flags used by tidy.
 pub struct TidyFlags {
-    ///Applies style and formatting changes during a tidy run.
+    /// Applies style and formatting changes during a tidy run.
     bless: bool,
 }
 
@@ -213,7 +213,7 @@ impl RunningCheck {
         }
     }
 
-    /// Has an error already occured for this check?
+    /// Has an error already occurred for this check?
     pub fn is_bad(&self) -> bool {
         self.bad
     }

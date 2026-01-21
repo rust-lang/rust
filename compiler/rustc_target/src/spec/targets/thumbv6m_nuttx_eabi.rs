@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
             // The ARMv6-M doesn't support hardware atomic operations, use atomic builtins instead.
             features: "+strict-align".into(),
             max_atomic_width: Some(32),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

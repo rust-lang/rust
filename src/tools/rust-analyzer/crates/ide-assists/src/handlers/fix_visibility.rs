@@ -59,7 +59,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
     let (vis_owner, target, target_file, target_name) = target_data_for_def(ctx.db(), def)?;
 
-    let missing_visibility = if current_module.krate() == target_module.krate() {
+    let missing_visibility = if current_module.krate(ctx.db()) == target_module.krate(ctx.db()) {
         make::visibility_pub_crate()
     } else {
         make::visibility_pub()
@@ -70,7 +70,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         Some(name) => {
             format!(
                 "Change visibility of {} to {missing_visibility}",
-                name.display(ctx.db(), current_module.krate().edition(ctx.db()))
+                name.display(ctx.db(), current_module.krate(ctx.db()).edition(ctx.db()))
             )
         }
     };

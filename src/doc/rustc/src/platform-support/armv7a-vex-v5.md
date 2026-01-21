@@ -21,7 +21,7 @@ This target is cross-compiled. Dynamic linking is unsupported.
 
 `#![no_std]` crates can be built using `build-std` to build `core` and `panic_abort` and optionally `alloc`. Unwinding panics are not yet supported on this target.
 
-`std` has only partial support due platform limitations. Notably:
+`std` has only partial support due to platform limitations. Notably:
 - `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding, as this is a single-threaded environment.
 - `std::time` has full support for `Instant`, but no support for `SystemTime`.
 - `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to to USB channel 1 on this platform and are not differentiated.

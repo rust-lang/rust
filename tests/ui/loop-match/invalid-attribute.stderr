@@ -94,14 +94,6 @@ LL |     #[const_continue]
    |
    = help: `#[const_continue]` can be applied to 
 
-error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:40:9
-   |
-LL |         #[const_continue]
-   |         ^^^^^^^^^^^^^^^^^
-LL |         5
-   |         - not a break expression
-
 error: `#[loop_match]` should be applied to a loop
   --> $DIR/invalid-attribute.rs:39:9
    |
@@ -110,6 +102,14 @@ LL |         #[loop_match]
 LL |         #[const_continue]
 LL |         5
    |         - not a loop
+
+error: `#[const_continue]` should be applied to a break expression
+  --> $DIR/invalid-attribute.rs:40:9
+   |
+LL |         #[const_continue]
+   |         ^^^^^^^^^^^^^^^^^
+LL |         5
+   |         - not a break expression
 
 error: aborting due to 14 previous errors
 

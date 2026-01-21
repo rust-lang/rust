@@ -14,11 +14,11 @@ use crate::versions::{PkgType, Versions};
 
 include!(concat!(env!("OUT_DIR"), "/targets.rs"));
 
-/// This allows the manifest to contain rust-docs for hosts that don't build
-/// docs.
+/// This allows the manifest to contain rust-docs and rustc-docs for hosts
+/// that don't build certain docs.
 ///
 /// Tuples of `(host_partial, host_instead)`. If the host does not have the
-/// rust-docs component available, then if the host name contains
+/// corresponding docs component available, then if the host name contains
 /// `host_partial`, it will use the docs from `host_instead` instead.
 ///
 /// The order here matters, more specific entries should be first.
@@ -29,17 +29,7 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
     ("", "x86_64-unknown-linux-gnu"),
 ];
 
-static MSI_INSTALLERS: &[&str] = &[
-    "aarch64-pc-windows-msvc",
-    "i686-pc-windows-gnu",
-    "i686-pc-windows-msvc",
-    "x86_64-pc-windows-gnu",
-    "x86_64-pc-windows-msvc",
-];
-
 static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
-
-static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
 static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
     &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift];
@@ -292,6 +282,14 @@ impl Builder {
                 PkgType::RustMingw => {
                     if host.contains("pc-windows-gnu") {
                         components.push(host_component(pkg));
+                        extensions.extend(
+                            TARGETS
+                                .iter()
+                                .filter(|&&target| {
+                                    target.contains("pc-windows-gnu") && target != host
+                                })
+                                .map(|target| Component::from_pkg(pkg, target)),
+                        );
                     }
                 }
                 // Tools are always present in the manifest,
@@ -303,11 +301,12 @@ impl Builder {
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs
+                | PkgType::RustcDocs
                 | PkgType::RustcCodegenCranelift
                 | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
-                PkgType::RustcDev | PkgType::RustcDocs => {
+                PkgType::RustcDev => {
                     extensions.extend(HOSTS.iter().map(|target| Component::from_pkg(pkg, target)));
                 }
                 PkgType::RustSrc => {
@@ -394,9 +393,9 @@ impl Builder {
                     let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
                     // Fallbacks should typically be available on 'production' builds
                     // but may not be available for try builds, which only build one target by
-                    // default. Ideally we'd gate this being a hard error on whether we're in a
-                    // production build or not, but it's not information that's readily available
-                    // here.
+                    // default. It is also possible that `rust-docs` and `rustc-docs` differ in
+                    // availability per target. Thus, we take the first available fallback we can
+                    // find.
                     if !t.available {
                         eprintln!(
                             "{:?} not available for fallback",

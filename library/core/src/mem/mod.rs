@@ -19,6 +19,10 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+mod maybe_dangling;
+#[unstable(feature = "maybe_dangling", issue = "118166")]
+pub use maybe_dangling::MaybeDangling;
+
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, TransmuteFrom};
@@ -32,6 +36,9 @@ pub use drop_guard::DropGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
+
+#[unstable(feature = "type_info", issue = "146922")]
+pub mod type_info;
 
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///
@@ -898,8 +905,6 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This does so by calling the argument's implementation of [`Drop`][drop].
-///
 /// This effectively does nothing for types which implement `Copy`, e.g.
 /// integers. Such values are copied and _then_ moved into the function, so the
 /// value persists after this function call.
@@ -910,7 +915,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// pub fn drop<T>(_x: T) {}
 /// ```
 ///
-/// Because `_x` is moved into the function, it is automatically dropped before
+/// Because `_x` is moved into the function, it is automatically [dropped][drop] before
 /// the function returns.
 ///
 /// [drop]: Drop

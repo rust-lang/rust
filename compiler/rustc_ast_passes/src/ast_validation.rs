@@ -33,7 +33,7 @@ use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
-    PATTERNS_IN_FNS_WITHOUT_BODY,
+    PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, kw, sym};
@@ -401,8 +401,15 @@ impl<'a> AstValidator<'a> {
                     | CanonAbi::Rust
                     | CanonAbi::RustCold
                     | CanonAbi::Arm(_)
-                    | CanonAbi::GpuKernel
                     | CanonAbi::X86(_) => { /* nothing to check */ }
+
+                    CanonAbi::GpuKernel => {
+                        // An `extern "gpu-kernel"` function cannot be `async` and/or `gen`.
+                        self.reject_coroutine(abi, sig);
+
+                        // An `extern "gpu-kernel"` function cannot return a value.
+                        self.reject_return(abi, sig);
+                    }
 
                     CanonAbi::Custom => {
                         // An `extern "custom"` function must be unsafe.
@@ -433,18 +440,7 @@ impl<'a> AstValidator<'a> {
                                 self.dcx().emit_err(errors::AbiX86Interrupt { spans, param_count });
                             }
 
-                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
-                                && match &ret_ty.kind {
-                                    TyKind::Never => false,
-                                    TyKind::Tup(tup) if tup.is_empty() => false,
-                                    _ => true,
-                                }
-                            {
-                                self.dcx().emit_err(errors::AbiMustNotHaveReturnType {
-                                    span: ret_ty.span,
-                                    abi,
-                                });
-                            }
+                            self.reject_return(abi, sig);
                         } else {
                             // An `extern "interrupt"` function must have type `fn()`.
                             self.reject_params_or_return(abi, ident, sig);
@@ -493,6 +489,18 @@ impl<'a> AstValidator<'a> {
                 coroutine_kind_span,
                 coroutine_kind_str: coroutine_kind.as_str(),
             });
+        }
+    }
+
+    fn reject_return(&self, abi: ExternAbi, sig: &FnSig) {
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+            && match &ret_ty.kind {
+                TyKind::Never => false,
+                TyKind::Tup(tup) if tup.is_empty() => false,
+                _ => true,
+            }
+        {
+            self.dcx().emit_err(errors::AbiMustNotHaveReturnType { span: ret_ty.span, abi });
         }
     }
 
@@ -710,6 +718,14 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
+                if !self.sess.target.arch.supports_c_variadic_definitions() {
+                    self.dcx().emit_err(errors::CVariadicNotSupported {
+                        variadic_span: variadic_param.span,
+                        target: &*self.sess.target.llvm_target,
+                    });
+                    return;
+                }
+
                 match sig.header.ext {
                     Extern::Implicit(_) => {
                         if !matches!(sig.header.safety, Safety::Unsafe(_)) {
@@ -818,6 +834,12 @@ impl<'a> AstValidator<'a> {
             return;
         }
         self.dcx().emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
+    }
+
+    fn deny_const_auto_traits(&self, constness: Const) {
+        if let Const::Yes(span) = constness {
+            self.dcx().emit_err(errors::ConstAutoTrait { span });
+        }
     }
 
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
@@ -1061,7 +1083,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr, self.lint_node_id);
+        validate_attr::check_attr(&self.sess.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -1165,10 +1187,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     contract: _,
                     body,
                     define_opaque: _,
+                    eii_impls,
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness);
+
+                for EiiImpl { eii_macro_path, .. } in eii_impls {
+                    self.visit_path(eii_macro_path);
+                }
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
                 if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
@@ -1257,6 +1284,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 if *is_auto == IsAuto::Yes {
+                    // For why we reject `const auto trait`, see rust-lang/rust#149285.
+                    self.deny_const_auto_traits(*constness);
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, ident.span);
                     self.deny_super_traits(bounds, ident.span);
@@ -1298,6 +1327,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Struct(ident, generics, vdata) => {
                 self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
+                    // Scalable vectors can only be tuple structs
+                    let is_scalable_vector =
+                        item.attrs.iter().any(|attr| attr.has_name(sym::rustc_scalable_vector));
+                    if is_scalable_vector && !matches!(vdata, VariantData::Tuple(..)) {
+                        this.dcx()
+                            .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
+                    }
+
                     match vdata {
                         VariantData::Struct { fields, .. } => {
                             this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
@@ -1323,7 +1360,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 });
             }
-            ItemKind::Const(box ConstItem { defaultness, rhs, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, ident, rhs, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
                 if rhs.is_none() {
                     self.dcx().emit_err(errors::ConstWithoutBody {
@@ -1331,6 +1368,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
+                if ident.name == kw::Underscore
+                    && !matches!(item.vis.kind, VisibilityKind::Inherited)
+                    && ident.span.eq_ctxt(item.vis.span)
+                {
+                    self.lint_buffer.buffer_lint(
+                        UNUSED_VISIBILITIES,
+                        item.id,
+                        item.vis.span,
+                        BuiltinLintDiag::UnusedVisibility(item.vis.span),
+                    )
+                }
+
                 visit::walk_item(self, item);
             }
             ItemKind::Static(box StaticItem { expr, safety, .. }) => {

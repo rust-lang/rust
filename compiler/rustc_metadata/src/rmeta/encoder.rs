@@ -35,6 +35,7 @@ use rustc_span::{
 };
 use tracing::{debug, instrument, trace};
 
+use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
@@ -541,8 +542,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // is done.
         let required_source_files = self.required_source_files.take().unwrap();
 
-        let working_directory = &self.tcx.sess.opts.working_dir;
-
         let mut adapted = TableBuilder::default();
 
         let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
@@ -567,10 +566,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    let adapted_file_name = source_map
-                        .path_mapping()
-                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
-
+                    let mut adapted_file_name = original_file_name.clone();
+                    adapted_file_name.update_for_crate_metadata();
                     adapted_source_file.name = FileName::Real(adapted_file_name);
                 }
                 _ => {
@@ -619,6 +616,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // We have already encoded some things. Get their combined size from the current position.
         stats.push(("preamble", self.position()));
+
+        let externally_implementable_items = stat!("externally-implementable-items", || self
+            .encode_externally_implementable_items());
 
         let (crate_deps, dylib_dependency_formats) =
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
@@ -738,10 +738,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     attrs,
                     sym::default_lib_allocator,
                 ),
+                externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: ast::attr::contains_name(attrs, sym::needs_allocator),
+                needs_allocator: find_attr!(attrs, AttributeKind::NeedsAllocator),
                 needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
                 no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
                 panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
@@ -870,26 +871,17 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         && !rustc_feature::encode_cross_crate(name)
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
-    } else if attr.doc_str().is_some() {
+    } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
         // their own.
         if state.is_exported {
             should_encode = true;
         }
-    } else if attr.has_name(sym::doc) {
-        // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
-        // `#[doc(inline)]`), then we can remove it. It won't be inlinable in downstream crates.
-        if let Some(item_list) = attr.meta_item_list() {
-            for item in item_list {
-                if !item.has_name(sym::inline) {
-                    should_encode = true;
-                    if item.has_name(sym::hidden) {
-                        state.is_doc_hidden = true;
-                        break;
-                    }
-                }
-            }
+    } else if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+        should_encode = true;
+        if d.hidden.is_some() {
+            state.is_doc_hidden = true;
         }
     } else if let &[sym::diagnostic, seg] = &*attr.path() {
         should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
@@ -1132,8 +1124,7 @@ fn should_encode_mir(
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `const trait`.
-            let is_const_fn = tcx.is_const_fn(def_id.to_def_id())
-                || tcx.is_const_default_method(def_id.to_def_id());
+            let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
             (is_const_fn, opt)
         }
         // The others don't have MIR.
@@ -1388,9 +1379,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 }
 
 fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-        && find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
-        // AssocConst ==> assoc item has value
+    // AssocConst ==> assoc item has value
+    tcx.is_type_const(def_id)
         && (!matches!(def_kind, DefKind::AssocConst) || assoc_item_has_value(tcx, def_id))
 }
 
@@ -1449,14 +1439,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
                         // Skip encoding defs for these as they should not have had a `DefId` created
                         hir::ConstArgKind::Error(..)
+                        | hir::ConstArgKind::Struct(..)
+                        | hir::ConstArgKind::Array(..)
+                        | hir::ConstArgKind::TupleCall(..)
+                        | hir::ConstArgKind::Tup(..)
                         | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Literal(..)
                         | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
                     _ => false,
                 }
             {
-                continue;
+                // MGCA doesn't have unnecessary DefIds
+                if !tcx.features().min_generic_const_args() {
+                    continue;
+                }
             }
 
             if def_kind == DefKind::Field
@@ -1524,17 +1522,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_constness(def_kind) {
                 let constness = self.tcx.constness(def_id);
-                match constness {
-                    hir::Constness::Const => self.tables.constness.set(def_id.index, constness),
-                    hir::Constness::NotConst => {}
-                }
+                self.tables.constness.set(def_id.index, constness);
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
-                match asyncness {
-                    ty::Asyncness::Yes => self.tables.asyncness.set(def_id.index, asyncness),
-                    ty::Asyncness::No => {}
-                }
+                self.tables.asyncness.set(def_id.index, asyncness);
                 record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
@@ -1661,6 +1653,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    fn encode_externally_implementable_items(&mut self) -> LazyArray<EiiMapEncodedKeyValue> {
+        empty_proc_macro!(self);
+        let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
+
+        self.lazy_array(externally_implementable_items.iter().map(
+            |(foreign_item, (decl, impls))| {
+                (
+                    *foreign_item,
+                    (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()),
+                )
+            },
+        ))
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn encode_info_for_adt(&mut self, local_def_id: LocalDefId) {
         let def_id = local_def_id.to_def_id();
@@ -1697,7 +1703,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }));
 
             for field in &variant.fields {
-                self.tables.safety.set_some(field.did.index, field.safety);
+                self.tables.safety.set(field.did.index, field.safety);
             }
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
@@ -1738,6 +1744,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
                 module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
+
+            let ambig_module_children = tcx
+                .resolutions(())
+                .ambig_module_children
+                .get(&local_def_id)
+                .map_or_default(|v| &v[..]);
+            record_defaulted_array!(self.tables.ambig_module_children[def_id] <-
+                ambig_module_children);
         }
     }
 
@@ -1759,7 +1773,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item = tcx.associated_item(def_id);
 
         if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
-            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+            self.tables.defaultness.set(def_id.index, item.defaultness(tcx));
         }
 
         record!(self.tables.assoc_container[def_id] <- item.container);
@@ -2161,7 +2175,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
-                self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
+                self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
@@ -2212,7 +2226,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
-                self_ty: simp,
+                self_ty: self.lazy(simp),
                 impls: self.lazy_array(impls.iter().map(|def_id| def_id.local_def_index)),
             })
             .collect();

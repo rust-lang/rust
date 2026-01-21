@@ -38,7 +38,7 @@ USAGE = cleandoc(
             `--tag` can be specified to look for artifacts with a specific tag, such as
             for a specific architecture.
 
-            Note that `--extract` will overwrite files in `iai-home`.
+            Note that `--extract` will overwrite files in `gungraun-home`.
 
         handle-bench-regressions PR_NUMBER
             Exit with success if the pull request contains a line starting with
@@ -49,7 +49,7 @@ USAGE = cleandoc(
 
 REPO_ROOT = Path(__file__).parent.parent
 GIT = ["git", "-C", REPO_ROOT]
-DEFAULT_BRANCH = "master"
+DEFAULT_BRANCH = "main"
 WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
 ARTIFACT_PREFIX = "baseline-icount*"
 
@@ -186,7 +186,7 @@ class Context:
 
     def _init_change_list(self):
         """Create a list of files that have been changed. This uses GITHUB_REF if
-        available, otherwise a diff between `HEAD` and `master`.
+        available, otherwise a diff between `HEAD` and `main`.
         """
 
         # For pull requests, GitHub creates a ref `refs/pull/1234/merge` (1234 being
@@ -390,6 +390,7 @@ def locate_baseline(flags: list[str]) -> None:
 
     artifact_glob = f"{ARTIFACT_PREFIX}{f"-{tag}" if tag else ""}*"
 
+    # Skip checking because this will fail if the file already exists, which is fine.
     sp.run(
         ["gh", "run", "download", str(job_id), f"--pattern={artifact_glob}"],
         check=False,
@@ -409,7 +410,17 @@ def locate_baseline(flags: list[str]) -> None:
     candidate_baselines.sort(reverse=True)
     baseline_archive = candidate_baselines[0]
     eprint(f"extracting {baseline_archive}")
-    sp.run(["tar", "xJvf", baseline_archive], check=True)
+
+    all_paths = sp.check_output(["tar", "tJf", baseline_archive], encoding="utf8")
+    sp.run(["tar", "xJf", baseline_archive], check=True)
+
+    # Print a short summary of paths, we don't use `tar v` since the list is huge
+    short_paths = re.findall(r"^(?:[^/\n]+/?){1,3}", all_paths, re.MULTILINE)
+
+    print("Extracted:")
+    for path in sorted(set(short_paths)):
+        print(f"* {path}")
+
     eprint("baseline extracted successfully")
 
 

@@ -26,7 +26,7 @@ pub(crate) fn target() -> Target {
             // There are no atomic CAS instructions available in the instruction set of the ARMv6-M
             // architecture
             atomic_cas: false,
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

@@ -332,6 +332,7 @@ fn pretty_operand(operand: &Operand) -> String {
             format!("move {mv:?}")
         }
         Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
+        Operand::RuntimeChecks(checks) => format!("{checks:?}"),
     }
 }
 
@@ -386,9 +387,6 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
         }
-        Rvalue::NullaryOp(nul) => {
-            write!(writer, "{nul:?}() \" \"")
-        }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))
         }
@@ -412,7 +410,7 @@ fn pretty_aggregate<W: Write>(
         }
         AggregateKind::Adt(def, var, _, _, _) => {
             if def.kind() == AdtKind::Enum {
-                write!(writer, "{}::{}", def.name(), def.variant(*var).unwrap().name())?;
+                write!(writer, "{}::{}", def.trimmed_name(), def.variant(*var).unwrap().name())?;
             } else {
                 write!(writer, "{}", def.variant(*var).unwrap().name())?;
             }

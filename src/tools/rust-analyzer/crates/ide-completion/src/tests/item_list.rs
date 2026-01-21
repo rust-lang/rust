@@ -106,6 +106,40 @@ fn in_item_list_after_attr() {
 }
 
 #[test]
+fn in_item_list_after_inner_attr() {
+    check_with_base_items(
+        r#"#![attr] $0"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
+        "#]],
+    )
+}
+
+#[test]
 fn in_qualified_path() {
     check_with_base_items(
         r#"crate::$0"#,
@@ -174,6 +208,105 @@ fn after_visibility_unsafe() {
             kw trait
         "#]],
     );
+}
+
+#[test]
+fn after_abi() {
+    check_with_base_items(
+        r#"extern "C" $0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_with_base_items(
+        r#"extern "C" f$0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+}
+
+#[test]
+fn after_extern_token() {
+    check_with_base_items(
+        r#"extern $0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw crate
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_with_base_items(
+        r#"extern cr$0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw crate
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_edit("crate", "extern $0", "extern crate $0;");
 }
 
 #[test]

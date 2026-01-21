@@ -2,7 +2,7 @@
 
 use std::collections::hash_map;
 
-use hir_def::{GenericParamId, TraitId, hir::ExprId, lang_item::LangItem};
+use hir_def::{GenericParamId, TraitId, hir::ExprId};
 use intern::{Symbol, sym};
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
@@ -39,7 +39,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             && is_builtin_binop(lhs_ty, rhs_ty, category)
         {
             self.enforce_builtin_binop_types(lhs_ty, rhs_ty, category);
-            self.types.unit
+            self.types.types.unit
         } else {
             return_ty
         };
@@ -67,20 +67,20 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 // && and || are a simple case.
                 self.infer_expr_coerce(
                     lhs_expr,
-                    &Expectation::HasType(self.types.bool),
+                    &Expectation::HasType(self.types.types.bool),
                     ExprIsRead::Yes,
                 );
                 let lhs_diverges = self.diverges;
                 self.infer_expr_coerce(
                     rhs_expr,
-                    &Expectation::HasType(self.types.bool),
+                    &Expectation::HasType(self.types.types.bool),
                     ExprIsRead::Yes,
                 );
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges = lhs_diverges;
 
-                self.types.bool
+                self.types.types.bool
             }
             _ => {
                 // Otherwise, we always treat operators as if they are
@@ -131,9 +131,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
         match category {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(self.types.bool, lhs_ty);
-                self.demand_suptype(self.types.bool, rhs_ty);
-                self.types.bool
+                self.demand_suptype(self.types.types.bool, lhs_ty);
+                self.demand_suptype(self.types.types.bool, rhs_ty);
+                self.types.types.bool
             }
 
             BinOpCategory::Shift => {
@@ -150,7 +150,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
                 self.demand_suptype(lhs_ty, rhs_ty);
-                self.types.bool
+                self.types.types.bool
             }
         }
     }
@@ -213,7 +213,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                     let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: method.sig.inputs_and_output.inputs()[0],
+                        target: method.sig.inputs_and_output.inputs()[0].store(),
                     };
                     self.write_expr_adj(lhs_expr, Box::new([autoref]));
                 }
@@ -227,7 +227,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: method.sig.inputs_and_output.inputs()[1],
+                        target: method.sig.inputs_and_output.inputs()[1].store(),
                     };
                     // HACK(eddyb) Bypass checks due to reborrows being in
                     // some cases applied on the RHS, on top of which we need
@@ -251,7 +251,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             }
             Err(_errors) => {
                 // FIXME: Report diagnostic.
-                self.types.error
+                self.types.types.error
             }
         };
 
@@ -271,7 +271,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             }
             Err(_errors) => {
                 // FIXME: Report diagnostic.
-                self.types.error
+                self.types.types.error
             }
         }
     }
@@ -343,7 +343,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 let obligation = Obligation::new(
                     self.interner(),
                     cause,
-                    self.table.trait_env.env,
+                    self.table.param_env,
                     TraitRef::new_from_args(self.interner(), trait_did.into(), args),
                 );
                 let mut ocx = ObligationCtxt::new(self.infcx());
@@ -355,17 +355,18 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     fn lang_item_for_bin_op(&self, op: BinaryOp) -> (Symbol, Option<TraitId>) {
         let (method_name, trait_lang_item) =
-            crate::lang_items::lang_items_for_bin_op(op).expect("invalid operator provided");
-        (method_name, trait_lang_item.resolve_trait(self.db, self.krate()))
+            crate::lang_items::lang_items_for_bin_op(self.lang_items, op)
+                .expect("invalid operator provided");
+        (method_name, trait_lang_item)
     }
 
     fn lang_item_for_unop(&self, op: UnaryOp) -> (Symbol, Option<TraitId>) {
         let (method_name, trait_lang_item) = match op {
-            UnaryOp::Not => (sym::not, LangItem::Not),
-            UnaryOp::Neg => (sym::neg, LangItem::Neg),
+            UnaryOp::Not => (sym::not, self.lang_items.Not),
+            UnaryOp::Neg => (sym::neg, self.lang_items.Neg),
             UnaryOp::Deref => panic!("Deref is not overloadable"),
         };
-        (method_name, trait_lang_item.resolve_trait(self.db, self.krate()))
+        (method_name, trait_lang_item)
     }
 }
 

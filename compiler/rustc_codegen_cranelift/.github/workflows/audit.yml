@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          sed -i 's/components.*/components = []/' rust-toolchain
+          sed -i 's/components.*/components = []/' rust-toolchain.toml
       - uses: rustsec/audit-check@v1.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

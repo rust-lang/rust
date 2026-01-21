@@ -1,6 +1,6 @@
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [main] }
   pull_request:
 
 concurrency:
@@ -13,7 +13,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2025-05-28 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2025-12-01 # Pin the toolchain for reproducable results
 
 jobs:
   # Determine which tests should be run based on changed files.
@@ -89,7 +89,7 @@ jobs:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
         - target: x86_64-apple-darwin
-          os: macos-13
+          os: macos-15-intel
         - target: i686-pc-windows-msvc
           os: windows-2025
         - target: x86_64-pc-windows-msvc
@@ -132,10 +132,7 @@ jobs:
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
 
-    # Our scripts use nextest if possible. This is skipped on the native ppc
-    # and s390x runners since install-action doesn't support them.
     - uses: taiki-e/install-action@nextest
-      if: "!(matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x')"
 
     - uses: Swatinem/rust-cache@v2
       with:
@@ -206,7 +203,7 @@ jobs:
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
-        rustup set profile minimal
+        rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
@@ -242,22 +239,15 @@ jobs:
         include:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
     - uses: taiki-e/install-action@cargo-binstall
 
     - name: Set up dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
-        rustup update "$BENCHMARK_RUSTC" --no-self-update
-        rustup default "$BENCHMARK_RUSTC"
-        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
-        iai_version="$(cargo metadata --format-version=1 --features icount |
-           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
-        cargo binstall -y iai-callgrind-runner --version "$iai_version"
-        sudo apt-get install valgrind
+      run: ./ci/install-bench-deps.sh
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -277,13 +267,7 @@ jobs:
         path: ${{ env.BASELINE_NAME }}.tar.xz
 
     - name: Run wall time benchmarks
-      run: |
-        # Always use the same seed for benchmarks. Ideally we should switch to a
-        # non-random generator.
-        export LIBM_SEED=benchesbenchesbenchesbencheswoo!
-        cargo bench --package libm-test \
-          --no-default-features \
-          --features short-benchmarks,build-musl,libm/force-soft-floats
+      run: ./ci/bench-runtime.sh
 
     - name: Print test logs if available
       if: always()

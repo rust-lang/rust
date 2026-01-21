@@ -16,16 +16,16 @@ fn main() {
     let _: #[attr] &'static str = "123";
     //~^ ERROR attributes cannot be applied to types
 
-    let _: Bar<#[cfg(any())] 'static> = Bar(&123);
+    let _: Bar<#[cfg(false)] 'static> = Bar(&123);
     //~^ ERROR attributes cannot be applied to generic arguments
 
-    let _: Baz<#[cfg(any())] 42> = Baz(42);
+    let _: Baz<#[cfg(false)] 42> = Baz(42);
     //~^ ERROR attributes cannot be applied to generic arguments
 
     let _: Foo<#[cfg(not(wrong))]String> = Foo(String::new());
     //~^ ERROR attributes cannot be applied to generic arguments
 
-    let _: Bar<#[cfg(any())]       'static> = Bar(&456);
+    let _: Bar<#[cfg(false)]       'static> = Bar(&456);
     //~^ ERROR attributes cannot be applied to generic arguments
 
     let _generic: Box<#[attr] i32> = Box::new(1);

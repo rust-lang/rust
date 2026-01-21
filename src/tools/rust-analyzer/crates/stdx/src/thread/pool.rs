@@ -66,7 +66,6 @@ impl Pool {
                                 job.requested_intent.apply_to_current_thread();
                                 current_intent = job.requested_intent;
                             }
-                            extant_tasks.fetch_add(1, Ordering::SeqCst);
                             // discard the panic, we should've logged the backtrace already
                             drop(panic::catch_unwind(job.f));
                             extant_tasks.fetch_sub(1, Ordering::SeqCst);
@@ -93,6 +92,7 @@ impl Pool {
         });
 
         let job = Job { requested_intent: intent, f };
+        self.extant_tasks.fetch_add(1, Ordering::SeqCst);
         self.job_sender.send(job).unwrap();
     }
 
@@ -147,6 +147,7 @@ impl<'scope> Scope<'_, 'scope> {
                 >(f)
             },
         };
+        self.pool.extant_tasks.fetch_add(1, Ordering::SeqCst);
         self.pool.job_sender.send(job).unwrap();
     }
 }

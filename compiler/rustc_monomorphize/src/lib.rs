@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
@@ -16,6 +16,7 @@ use rustc_span::ErrorGuaranteed;
 
 mod collector;
 mod errors;
+mod graph_checks;
 mod mono_checks;
 mod partitioning;
 mod util;
@@ -51,5 +52,5 @@ fn custom_coerce_unsize_info<'tcx>(
 
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
-    mono_checks::provide(providers);
+    mono_checks::provide(&mut providers.queries);
 }

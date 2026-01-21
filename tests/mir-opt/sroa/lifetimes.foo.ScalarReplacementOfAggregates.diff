@@ -152,7 +152,7 @@
           StorageDead(_22);
           StorageDead(_21);
           StorageDead(_20);
-          _10 = _eprint(move _11) -> [return: bb6, unwind unreachable];
+          _10 = std::io::_eprint(move _11) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {

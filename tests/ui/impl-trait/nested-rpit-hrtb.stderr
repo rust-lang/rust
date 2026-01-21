@@ -30,10 +30,12 @@ LL | fn two_htrb_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl for<'b
    |                          ++++
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/nested-rpit-hrtb.rs:25:69
+  --> $DIR/nested-rpit-hrtb.rs:25:56
    |
 LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
-   |                                                                     ^^
+   |                                                        ^^^^^^^^^^^^^--
+   |                                                        |
+   |                                                        `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/nested-rpit-hrtb.rs:25:36
@@ -42,10 +44,10 @@ LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
    |                                    ^^
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/nested-rpit-hrtb.rs:29:68
+  --> $DIR/nested-rpit-hrtb.rs:29:59
    |
 LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
-   |                                                                    ^^
+   |                                                           ^^^^^^^^^--^ `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/nested-rpit-hrtb.rs:29:39
@@ -54,10 +56,12 @@ LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
    |                                       ^^
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/nested-rpit-hrtb.rs:32:74
+  --> $DIR/nested-rpit-hrtb.rs:32:61
    |
 LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
-   |                                                                          ^^
+   |                                                             ^^^^^^^^^^^^^--
+   |                                                             |
+   |                                                             `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/nested-rpit-hrtb.rs:32:41
@@ -66,10 +70,10 @@ LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a
    |                                         ^^
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/nested-rpit-hrtb.rs:35:73
+  --> $DIR/nested-rpit-hrtb.rs:35:64
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
-   |                                                                         ^^
+   |                                                                ^^^^^^^^^--^ `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/nested-rpit-hrtb.rs:35:44

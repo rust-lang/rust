@@ -1,4 +1,10 @@
 //! File and span related types.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::fmt::{self, Write};
 
 mod ast_id;
@@ -8,7 +14,7 @@ mod map;
 pub use self::{
     ast_id::{
         AstIdMap, AstIdNode, ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, FileAstId,
-        ROOT_ERASED_FILE_AST_ID,
+        NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, ROOT_ERASED_FILE_AST_ID,
     },
     hygiene::{SyntaxContext, Transparency},
     map::{RealSpanMap, SpanMap},
@@ -18,8 +24,6 @@ pub use syntax::Edition;
 pub use text_size::{TextRange, TextSize};
 pub use vfs::FileId;
 
-pub type Span = SpanData<SyntaxContext>;
-
 impl Span {
     pub fn cover(self, other: Span) -> Span {
         if self.anchor != other.anchor {
@@ -28,13 +32,44 @@ impl Span {
         let range = self.range.cover(other.range);
         Span { range, ..self }
     }
+
+    pub fn join(
+        self,
+        other: Span,
+        differing_anchor: impl FnOnce(Span, Span) -> Option<Span>,
+    ) -> Option<Span> {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
+        // prefer the non-fixup span.
+        if self.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(other);
+        }
+        if other.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(self);
+        }
+        if self.anchor != other.anchor {
+            return differing_anchor(self, other);
+        }
+        // Differing context, we can't merge these so prefer the one that's root
+        if self.ctx != other.ctx {
+            if self.ctx.is_root() {
+                return Some(other);
+            } else if other.ctx.is_root() {
+                return Some(self);
+            }
+        }
+        Some(Span { range: self.range.cover(other.range), anchor: other.anchor, ctx: other.ctx })
+    }
+
+    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
+        self.anchor == other.anchor && self.range == other.range
+    }
 }
 
 /// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs
 /// together. Positions in spans are relative to some [`SpanAnchor`] to make them more incremental
 /// friendly.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SpanData<Ctx> {
+pub struct Span {
     /// The text range of this span, relative to the anchor.
     /// We need the anchor for incrementality, as storing absolute ranges will require
     /// recomputation on every change in a file at all times.
@@ -42,10 +77,10 @@ pub struct SpanData<Ctx> {
     /// The anchor this span is relative to.
     pub anchor: SpanAnchor,
     /// The syntax context of the span.
-    pub ctx: Ctx,
+    pub ctx: SyntaxContext,
 }
 
-impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
+impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             fmt::Debug::fmt(&self.anchor.file_id.file_id().index(), f)?;
@@ -62,12 +97,6 @@ impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
                 .field("ctx", &self.ctx)
                 .finish()
         }
-    }
-}
-
-impl<Ctx: Copy> SpanData<Ctx> {
-    pub fn eq_ignoring_ctx(self, other: Self) -> bool {
-        self.anchor == other.anchor && self.range == other.range
     }
 }
 

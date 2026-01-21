@@ -74,6 +74,8 @@ where
     /// Consider a clause specifically for a `dyn Trait` self type. This requires
     /// additionally checking all of the supertraits and object bounds to hold,
     /// since they're not implied by the well-formedness of the object type.
+    /// `NormalizesTo` overrides this to not check the supertraits for backwards
+    /// compatibility with the old solver. cc trait-system-refactor-initiative#245.
     fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
@@ -790,7 +792,9 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let cx = self.cx();
-        if !cx.trait_may_be_implemented_via_object(goal.predicate.trait_def_id(cx)) {
+        if cx.is_sizedness_trait(goal.predicate.trait_def_id(cx)) {
+            // `dyn MetaSized` is valid, but should get its `MetaSized` impl from
+            // being `dyn` (SizedCandidate), not from the object candidate.
             return;
         }
 

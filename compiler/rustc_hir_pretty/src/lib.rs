@@ -17,12 +17,12 @@ use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
-    BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
-    HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
-    TyPatKind,
+    BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
+    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
+    PreciseCapturingArg, RangeEnd, Term, TyPatKind,
 };
-use rustc_span::source_map::SourceMap;
-use rustc_span::{FileName, Ident, Span, Symbol, kw, sym};
+use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
@@ -136,7 +136,11 @@ impl<'a> State<'a> {
                 .path
                 .segments
                 .iter()
-                .map(|i| ast::PathSegment { ident: *i, args: None, id: DUMMY_NODE_ID })
+                .map(|i| ast::PathSegment {
+                    ident: Ident { name: *i, span: DUMMY_SP },
+                    args: None,
+                    id: DUMMY_NODE_ID,
+                })
                 .collect(),
             tokens: None,
         };
@@ -180,6 +184,8 @@ impl<'a> State<'a> {
             Node::ConstArg(a) => self.print_const_arg(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(a),
+            // FIXME(mgca): proper printing for struct exprs
+            Node::ConstArgExprField(_) => self.word("/* STRUCT EXPR */"),
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
@@ -444,11 +450,6 @@ impl<'a> State<'a> {
                 self.word("; ");
                 self.print_const_arg(length);
                 self.word("]");
-            }
-            hir::TyKind::Typeof(ref e) => {
-                self.word("typeof(");
-                self.print_anon_const(e);
-                self.word(")");
             }
             hir::TyKind::Err(_) => {
                 self.popen();
@@ -1140,11 +1141,53 @@ impl<'a> State<'a> {
 
     fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
         match &const_arg.kind {
+            ConstArgKind::Tup(exprs) => {
+                self.popen();
+                self.commasep_cmnt(
+                    Inconsistent,
+                    exprs,
+                    |s, arg| s.print_const_arg(arg),
+                    |arg| arg.span,
+                );
+                self.pclose();
+            }
+            ConstArgKind::Struct(qpath, fields) => self.print_const_struct(qpath, fields),
+            ConstArgKind::TupleCall(qpath, args) => self.print_const_ctor(qpath, args),
+            ConstArgKind::Array(..) => self.word("/* ARRAY EXPR */"),
             ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
-            ConstArgKind::Error(_, _) => self.word("/*ERROR*/"),
+            ConstArgKind::Error(_) => self.word("/*ERROR*/"),
             ConstArgKind::Infer(..) => self.word("_"),
+            ConstArgKind::Literal(node) => {
+                let span = const_arg.span;
+                self.print_literal(&Spanned { span, node: *node })
+            }
         }
+    }
+
+    fn print_const_struct(&mut self, qpath: &hir::QPath<'_>, fields: &&[&ConstArgExprField<'_>]) {
+        self.print_qpath(qpath, true);
+        self.word(" ");
+        self.word("{");
+        if !fields.is_empty() {
+            self.nbsp();
+        }
+        self.commasep(Inconsistent, *fields, |s, field| {
+            s.word(field.field.as_str().to_string());
+            s.word(":");
+            s.nbsp();
+            s.print_const_arg(field.expr);
+        });
+        self.word("}");
+    }
+
+    fn print_const_ctor(&mut self, qpath: &hir::QPath<'_>, args: &&[&ConstArg<'_, ()>]) {
+        self.print_qpath(qpath, true);
+        self.word("(");
+        self.commasep(Inconsistent, *args, |s, arg| {
+            s.print_const_arg(arg);
+        });
+        self.word(")");
     }
 
     fn print_call_post(&mut self, args: &[hir::Expr<'_>]) {
@@ -1881,7 +1924,6 @@ impl<'a> State<'a> {
                 }
                 self.print_literal(lit);
             }
-            hir::PatExprKind::ConstBlock(c) => self.print_inline_const(c),
             hir::PatExprKind::Path(qpath) => self.print_qpath(qpath, true),
         }
     }

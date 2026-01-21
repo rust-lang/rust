@@ -1,3 +1,4 @@
+//@ edition:2015
 fn main() {
     match -1 {
         0..=1 => (),

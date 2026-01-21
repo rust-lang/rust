@@ -1,5 +1,6 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+//@ edition: 2015
 
 // If we don't treat `impl Sized` as rigid, the first call would
 // resolve to the trait method, constraining the opaque, while the

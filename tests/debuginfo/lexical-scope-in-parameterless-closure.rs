@@ -1,7 +1,7 @@
 //@ compile-flags:-C debuginfo=1
 
-// gdb-command:run
-// lldb-command:run
+//@ gdb-command:run
+//@ lldb-command:run
 
 // Nothing to do here really, just make sure it compiles. See issue #8513.
 fn main() {

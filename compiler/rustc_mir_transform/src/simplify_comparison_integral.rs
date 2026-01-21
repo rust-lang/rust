@@ -9,6 +9,8 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
+use crate::ssa::SsaLocals;
+
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
 ///
@@ -27,17 +29,18 @@ pub(super) struct SimplifyComparisonIntegral;
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        sess.mir_opt_level() > 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running SimplifyComparisonIntegral on {:?}", body.source);
 
+        let typing_env = body.typing_env(tcx);
+        let ssa = SsaLocals::new(tcx, body, typing_env);
         let helper = OptimizationFinder { body };
-        let opts = helper.find_optimizations();
+        let opts = helper.find_optimizations(&ssa);
         let mut storage_deads_to_insert = vec![];
         let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
-        let typing_env = body.typing_env(tcx);
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
             // replace terminator with a switchInt that switches on the integer directly
@@ -74,7 +77,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             }
 
             // delete comparison statement if it the value being switched on was moved, which means
-            // it can not be user later on
+            // it can not be used later on
             if opt.can_remove_bin_op_stmt {
                 bb.statements[opt.bin_op_stmt_idx].make_nop(true);
             } else {
@@ -132,7 +135,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
             let terminator = bb.terminator_mut();
             terminator.kind =
-                TerminatorKind::SwitchInt { discr: Operand::Move(opt.to_switch_on), targets };
+                TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
@@ -154,19 +157,18 @@ struct OptimizationFinder<'a, 'tcx> {
 }
 
 impl<'tcx> OptimizationFinder<'_, 'tcx> {
-    fn find_optimizations(&self) -> Vec<OptimizationInfo<'tcx>> {
+    fn find_optimizations(&self, ssa: &SsaLocals) -> Vec<OptimizationInfo<'tcx>> {
         self.body
             .basic_blocks
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 // find switch
-                let (place_switched_on, targets, place_switched_on_moved) =
-                    match &bb.terminator().kind {
-                        rustc_middle::mir::TerminatorKind::SwitchInt { discr, targets, .. } => {
-                            Some((discr.place()?, targets, discr.is_move()))
-                        }
-                        _ => None,
-                    }?;
+                let (discr, targets) = bb.terminator().kind.as_switch()?;
+                let place_switched_on = discr.place()?;
+                // Make sure that the place is not modified.
+                if !ssa.is_ssa(place_switched_on.local) || !place_switched_on.is_stable_offset() {
+                    return None;
+                }
 
                 // find the statement that assigns the place being switched on
                 bb.statements.iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
@@ -180,12 +182,12 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                                     box (left, right),
                                 ) => {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
-                                        find_branch_value_info(left, right)?;
+                                        find_branch_value_info(left, right, ssa)?;
 
                                     Some(OptimizationInfo {
                                         bin_op_stmt_idx: stmt_idx,
                                         bb_idx,
-                                        can_remove_bin_op_stmt: place_switched_on_moved,
+                                        can_remove_bin_op_stmt: discr.is_move(),
                                         to_switch_on,
                                         branch_value_scalar,
                                         branch_value_ty,
@@ -207,6 +209,7 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
 fn find_branch_value_info<'tcx>(
     left: &Operand<'tcx>,
     right: &Operand<'tcx>,
+    ssa: &SsaLocals,
 ) -> Option<(Scalar, Ty<'tcx>, Place<'tcx>)> {
     // check that either left or right is a constant.
     // if any are, we can use the other to switch on, and the constant as a value in a switch
@@ -214,6 +217,10 @@ fn find_branch_value_info<'tcx>(
     match (left, right) {
         (Constant(branch_value), Copy(to_switch_on) | Move(to_switch_on))
         | (Copy(to_switch_on) | Move(to_switch_on), Constant(branch_value)) => {
+            // Make sure that the place is not modified.
+            if !ssa.is_ssa(to_switch_on.local) || !to_switch_on.is_stable_offset() {
+                return None;
+            }
             let branch_value_ty = branch_value.const_.ty();
             // we only want to apply this optimization if we are matching on integrals (and chars),
             // as it is not possible to switch on floats

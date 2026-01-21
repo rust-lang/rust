@@ -1,0 +1,14 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/adt_expr_arg_simple.rs:29:30
+   |
+LL |     foo::<{ Some::<u32> { 0: N + 1 } }>();
+   |                              ^^^^^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/adt_expr_arg_simple.rs:34:38
+   |
+LL |     foo::<{ Some::<u32> { 0: const { N + 1 } } }>();
+   |                                      ^
+
+error: aborting due to 2 previous errors
+

@@ -2008,6 +2008,30 @@ impl<T> Option<T> {
     }
 }
 
+impl<T: IntoIterator> Option<T> {
+    /// Transforms an optional iterator into an iterator.
+    ///
+    /// If `self` is `None`, the resulting iterator is empty.
+    /// Otherwise, an iterator is made from the `Some` value and returned.
+    /// # Examples
+    /// ```
+    /// #![feature(option_into_flat_iter)]
+    ///
+    /// let o1 = Some([1, 2]);
+    /// let o2 = None::<&[usize]>;
+    ///
+    /// assert_eq!(o1.into_flat_iter().collect::<Vec<_>>(), [1, 2]);
+    /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
+    /// ```
+    #[unstable(feature = "option_into_flat_iter", issue = "148441")]
+    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
+    where
+        T: IntoIterator<IntoIter = A>,
+    {
+        OptionFlatten { iter: self.map(IntoIterator::into_iter) }
+    }
+}
+
 impl<T, U> Option<(T, U)> {
     /// Unzips an option containing a tuple of two options.
     ///
@@ -2575,6 +2599,42 @@ impl<A> FusedIterator for IntoIter<A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IntoIter<A> {}
 
+/// The iterator produced by [`Option::into_flat_iter`]. See its documentation for more.
+#[derive(Clone, Debug)]
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+pub struct OptionFlatten<A> {
+    iter: Option<A>,
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: Iterator> Iterator for OptionFlatten<A> {
+    type Item = A::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.as_mut()?.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.as_ref().map(|i| i.size_hint()).unwrap_or((0, Some(0)))
+    }
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: DoubleEndedIterator> DoubleEndedIterator for OptionFlatten<A> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.as_mut()?.next_back()
+    }
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: ExactSizeIterator> ExactSizeIterator for OptionFlatten<A> {}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: FusedIterator> FusedIterator for OptionFlatten<A> {}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+unsafe impl<A: TrustedLen> TrustedLen for OptionFlatten<A> {}
+
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator
 /////////////////////////////////////////////////////////////////////////////
@@ -2732,6 +2792,95 @@ impl<T> Option<Option<T>> {
         // FIXME(const-hack): could be written with `and_then`
         match self {
             Some(inner) => inner,
+            None => None,
+        }
+    }
+}
+
+impl<'a, T> Option<&'a Option<T>> {
+    /// Converts from `Option<&Option<T>>` to `Option<&T>`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(option_reference_flattening)]
+    ///
+    /// let x: Option<&Option<u32>> = Some(&Some(6));
+    /// assert_eq!(Some(&6), x.flatten_ref());
+    ///
+    /// let x: Option<&Option<u32>> = Some(&None);
+    /// assert_eq!(None, x.flatten_ref());
+    ///
+    /// let x: Option<&Option<u32>> = None;
+    /// assert_eq!(None, x.flatten_ref());
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_reference_flattening", issue = "149221")]
+    pub const fn flatten_ref(self) -> Option<&'a T> {
+        match self {
+            Some(inner) => inner.as_ref(),
+            None => None,
+        }
+    }
+}
+
+impl<'a, T> Option<&'a mut Option<T>> {
+    /// Converts from `Option<&mut Option<T>>` to `&Option<T>`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(option_reference_flattening)]
+    ///
+    /// let y = &mut Some(6);
+    /// let x: Option<&mut Option<u32>> = Some(y);
+    /// assert_eq!(Some(&6), x.flatten_ref());
+    ///
+    /// let y: &mut Option<u32> = &mut None;
+    /// let x: Option<&mut Option<u32>> = Some(y);
+    /// assert_eq!(None, x.flatten_ref());
+    ///
+    /// let x: Option<&mut Option<u32>> = None;
+    /// assert_eq!(None, x.flatten_ref());
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_reference_flattening", issue = "149221")]
+    pub const fn flatten_ref(self) -> Option<&'a T> {
+        match self {
+            Some(inner) => inner.as_ref(),
+            None => None,
+        }
+    }
+
+    /// Converts from `Option<&mut Option<T>>` to `Option<&mut T>`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(option_reference_flattening)]
+    ///
+    /// let y: &mut Option<u32> = &mut Some(6);
+    /// let x: Option<&mut Option<u32>> = Some(y);
+    /// assert_eq!(Some(&mut 6), x.flatten_mut());
+    ///
+    /// let y: &mut Option<u32> = &mut None;
+    /// let x: Option<&mut Option<u32>> = Some(y);
+    /// assert_eq!(None, x.flatten_mut());
+    ///
+    /// let x: Option<&mut Option<u32>> = None;
+    /// assert_eq!(None, x.flatten_mut());
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_reference_flattening", issue = "149221")]
+    pub const fn flatten_mut(self) -> Option<&'a mut T> {
+        match self {
+            Some(inner) => inner.as_mut(),
             None => None,
         }
     }

@@ -86,6 +86,11 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
 
     for (ty, hir_ty) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
+        if ty.has_infer_types() {
+            let err = LayoutError::Unknown(*ty);
+            return Err((hir_ty.span, tcx.arena.alloc(err)));
+        }
+
         let layout = tcx
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))
             .map_err(|e| (hir_ty.span, e))?;
@@ -136,6 +141,11 @@ fn is_valid_cmse_output<'tcx>(
     if abi == ExternAbi::CmseNonSecureEntry && return_type.has_opaque_types() {
         dcx.emit_err(errors::CmseImplTrait { span: fn_decl.output.span(), abi });
         return Ok(());
+    }
+
+    if return_type.has_infer_types() {
+        let err = LayoutError::Unknown(return_type);
+        return Err(tcx.arena.alloc(err));
     }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();

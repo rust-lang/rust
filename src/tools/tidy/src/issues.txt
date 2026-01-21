@@ -33,8 +33,6 @@ ui/asm/issue-99122.rs
 ui/asm/x86_64/issue-82869.rs
 ui/asm/x86_64/issue-89875.rs
 ui/asm/x86_64/issue-96797.rs
-ui/associated-consts/issue-102335-const.rs
-ui/associated-consts/issue-105330.rs
 ui/associated-consts/issue-110933.rs
 ui/associated-consts/issue-24949-assoc-const-static-recursion-impl.rs
 ui/associated-consts/issue-24949-assoc-const-static-recursion-trait-default.rs
@@ -45,7 +43,6 @@ ui/associated-consts/issue-63496.rs
 ui/associated-consts/issue-69020-assoc-const-arith-overflow.rs
 ui/associated-consts/issue-88599-ref-self.rs
 ui/associated-consts/issue-93775.rs
-ui/associated-consts/issue-93835.rs
 ui/associated-inherent-types/issue-104260.rs
 ui/associated-inherent-types/issue-109071.rs
 ui/associated-inherent-types/issue-109299-1.rs
@@ -70,7 +67,6 @@ ui/associated-type-bounds/issue-73818.rs
 ui/associated-type-bounds/issue-79949.rs
 ui/associated-type-bounds/issue-81193.rs
 ui/associated-type-bounds/issue-83017.rs
-ui/associated-type-bounds/issue-99828.rs
 ui/associated-type-bounds/return-type-notation/issue-120208-higher-ranked-const.rs
 ui/associated-types/issue-18655.rs
 ui/associated-types/issue-19081.rs
@@ -379,7 +375,6 @@ ui/borrowck/issue-88434-minimal-example.rs
 ui/borrowck/issue-88434-removal-index-should-be-less.rs
 ui/borrowck/issue-91206.rs
 ui/borrowck/issue-92015.rs
-ui/borrowck/issue-92157.rs
 ui/borrowck/issue-93078.rs
 ui/borrowck/issue-93093.rs
 ui/borrowck/issue-95079-missing-move-in-nested-closure.rs
@@ -499,6 +494,9 @@ ui/confuse-field-and-method/issue-18343.rs
 ui/confuse-field-and-method/issue-2392.rs
 ui/confuse-field-and-method/issue-32128.rs
 ui/confuse-field-and-method/issue-33784.rs
+ui/const-generics/associated-const-bindings/issue-102335-const.rs
+ui/const-generics/associated-const-bindings/issue-105330.rs
+ui/const-generics/associated-const-bindings/issue-93835.rs
 ui/const-generics/generic_arg_infer/issue-91614.rs
 ui/const-generics/generic_const_exprs/const_kind_expr/issue_114151.rs
 ui/const-generics/generic_const_exprs/issue-100217.rs
@@ -930,7 +928,6 @@ ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
 ui/empty/issue-37026.rs
-ui/entry-point/issue-118772.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs
 ui/enum-discriminant/issue-104519.rs
 ui/enum-discriminant/issue-41394-rpass.rs
@@ -1015,7 +1012,6 @@ ui/for-loop-while/issue-1257.rs
 ui/for-loop-while/issue-2216.rs
 ui/for-loop-while/issue-51345.rs
 ui/for-loop-while/issue-69841.rs
-ui/for/issue-20605.rs
 ui/foreign/issue-74120-lowering-of-ffi-block-bodies.rs
 ui/foreign/issue-91370-foreign-fn-block-impl.rs
 ui/foreign/issue-99276-same-type-lifetimes.rs
@@ -1585,7 +1581,6 @@ ui/macros/issue-6596-1.rs
 ui/macros/issue-6596-2.rs
 ui/macros/issue-68058.rs
 ui/macros/issue-68060.rs
-ui/macros/issue-69396-const-no-type-in-macro.rs
 ui/macros/issue-69838-mods-relative-to-included-path.rs
 ui/macros/issue-70446.rs
 ui/macros/issue-75982-foreign-macro-weird-mod.rs
@@ -2102,7 +2097,6 @@ ui/parser/issues/issue-88770.rs
 ui/parser/issues/issue-88818.rs
 ui/parser/issues/issue-89388.rs
 ui/parser/issues/issue-89396.rs
-ui/parser/issues/issue-89574.rs
 ui/parser/issues/issue-89971-outer-attr-following-inner-attr-ice.rs
 ui/parser/issues/issue-90728.rs
 ui/parser/issues/issue-90993.rs
@@ -2882,7 +2876,6 @@ ui/type/type-check/issue-88577-check-fn-with-more-than-65535-arguments.rs
 ui/typeck/auxiliary/issue-29181.rs
 ui/typeck/auxiliary/issue-36708.rs
 ui/typeck/auxiliary/issue-81943-lib.rs
-ui/typeck/issue-100164.rs
 ui/typeck/issue-100246.rs
 ui/typeck/issue-100285.rs
 ui/typeck/issue-103899.rs
@@ -2894,7 +2887,6 @@ ui/typeck/issue-105946.rs
 ui/typeck/issue-106929.rs
 ui/typeck/issue-107087.rs
 ui/typeck/issue-107775.rs
-ui/typeck/issue-10969.rs
 ui/typeck/issue-110017-format-into-help-deletes-macro.rs
 ui/typeck/issue-110052.rs
 ui/typeck/issue-112007-leaked-writeln-macro-internals.rs
@@ -2940,7 +2932,6 @@ ui/typeck/issue-74933.rs
 ui/typeck/issue-75883.rs
 ui/typeck/issue-75889.rs
 ui/typeck/issue-7813.rs
-ui/typeck/issue-79040.rs
 ui/typeck/issue-80207-unsized-return.rs
 ui/typeck/issue-80779.rs
 ui/typeck/issue-81293.rs
@@ -2983,9 +2974,6 @@ ui/typeck/issue-96530.rs
 ui/typeck/issue-96738.rs
 ui/typeck/issue-98260.rs
 ui/typeck/issue-98982.rs
-ui/typeof/issue-100183.rs
-ui/typeof/issue-29184.rs
-ui/typeof/issue-42060.rs
 ui/unboxed-closures/issue-18652.rs
 ui/unboxed-closures/issue-18661.rs
 ui/unboxed-closures/issue-30906.rs

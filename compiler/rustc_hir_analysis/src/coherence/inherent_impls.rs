@@ -15,7 +15,7 @@ use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, sym};
+use rustc_span::ErrorGuaranteed;
 
 use crate::errors;
 
@@ -79,13 +79,15 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         if self.tcx.features().rustc_attrs() {
-            let items = self.tcx.associated_item_def_ids(impl_def_id);
-
-            if !self.tcx.has_attr(ty_def_id, sym::rustc_has_incoherent_inherent_impls) {
+            if !find_attr!(
+                self.tcx.get_all_attrs(ty_def_id),
+                AttributeKind::RustcHasIncoherentInherentImpls
+            ) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
             }
 
+            let items = self.tcx.associated_item_def_ids(impl_def_id);
             for &impl_item in items {
                 if !find_attr!(
                     self.tcx.get_all_attrs(impl_item),
@@ -195,10 +197,11 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..) => {
-                Err(self.tcx.dcx().delayed_bug("cannot define inherent `impl` for closure types"))
-            }
-            ty::Alias(ty::Free, _) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) => {
+            | ty::CoroutineWitness(..)
+            | ty::Alias(ty::Free, _)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => {
                 bug!("unexpected impl self type of impl: {:?} {:?}", id, self_ty);
             }
             // We could bail out here, but that will silence other useful errors.

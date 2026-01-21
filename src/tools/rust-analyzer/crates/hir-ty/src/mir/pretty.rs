@@ -36,8 +36,8 @@ macro_rules! wln {
     };
 }
 
-impl<'db> MirBody<'db> {
-    pub fn pretty_print(&self, db: &'db dyn HirDatabase, display_target: DisplayTarget) -> String {
+impl MirBody {
+    pub fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         let hir_body = db.body(self.owner);
         let mut ctx = MirPrettyCtx::new(self, &hir_body, db, display_target);
         ctx.for_body(|this| match ctx.body.owner {
@@ -80,7 +80,7 @@ impl<'db> MirBody<'db> {
 
     // String with lines is rendered poorly in `dbg` macros, which I use very much, so this
     // function exists to solve that.
-    pub fn dbg(&self, db: &'db dyn HirDatabase, display_target: DisplayTarget) -> impl Debug {
+    pub fn dbg(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> impl Debug {
         struct StringDbg(String);
         impl Debug for StringDbg {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -92,12 +92,12 @@ impl<'db> MirBody<'db> {
 }
 
 struct MirPrettyCtx<'a, 'db> {
-    body: &'a MirBody<'db>,
+    body: &'a MirBody,
     hir_body: &'a Body,
     db: &'db dyn HirDatabase,
     result: String,
     indent: String,
-    local_to_binding: ArenaMap<LocalId<'db>, BindingId>,
+    local_to_binding: ArenaMap<LocalId, BindingId>,
     display_target: DisplayTarget,
 }
 
@@ -113,12 +113,12 @@ impl Write for MirPrettyCtx<'_, '_> {
     }
 }
 
-enum LocalName<'db> {
-    Unknown(LocalId<'db>),
-    Binding(Name, LocalId<'db>),
+enum LocalName {
+    Unknown(LocalId),
+    Binding(Name, LocalId),
 }
 
-impl<'db> HirDisplay<'db> for LocalName<'db> {
+impl<'db> HirDisplay<'db> for LocalName {
     fn hir_fmt(
         &self,
         f: &mut crate::display::HirFormatter<'_, 'db>,
@@ -179,7 +179,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
     }
 
     fn new(
-        body: &'a MirBody<'db>,
+        body: &'a MirBody,
         hir_body: &'a Body,
         db: &'db dyn HirDatabase,
         display_target: DisplayTarget,
@@ -211,19 +211,19 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                 self,
                 "let {}: {};",
                 self.local_name(id).display_test(self.db, self.display_target),
-                self.hir_display(&local.ty)
+                self.hir_display(&local.ty.as_ref())
             );
         }
     }
 
-    fn local_name(&self, local: LocalId<'db>) -> LocalName<'db> {
+    fn local_name(&self, local: LocalId) -> LocalName {
         match self.local_to_binding.get(local) {
             Some(b) => LocalName::Binding(self.hir_body[*b].name.clone(), local),
             None => LocalName::Unknown(local),
         }
     }
 
-    fn basic_block_id(&self, basic_block_id: BasicBlockId<'db>) -> String {
+    fn basic_block_id(&self, basic_block_id: BasicBlockId) -> String {
         format!("'bb{}", u32::from(basic_block_id.into_raw()))
     }
 
@@ -311,12 +311,8 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         }
     }
 
-    fn place(&mut self, p: &Place<'db>) {
-        fn f<'db>(
-            this: &mut MirPrettyCtx<'_, 'db>,
-            local: LocalId<'db>,
-            projections: &[PlaceElem<'db>],
-        ) {
+    fn place(&mut self, p: &Place) {
+        fn f<'db>(this: &mut MirPrettyCtx<'_, 'db>, local: LocalId, projections: &[PlaceElem]) {
             let Some((last, head)) = projections.split_last() else {
                 // no projection
                 w!(this, "{}", this.local_name(local).display_test(this.db, this.display_target));
@@ -376,19 +372,21 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         f(self, p.local, p.projection.lookup(&self.body.projection_store));
     }
 
-    fn operand(&mut self, r: &Operand<'db>) {
+    fn operand(&mut self, r: &Operand) {
         match &r.kind {
             OperandKind::Copy(p) | OperandKind::Move(p) => {
                 // MIR at the time of writing doesn't have difference between move and copy, so we show them
                 // equally. Feel free to change it.
                 self.place(p);
             }
-            OperandKind::Constant { konst, .. } => w!(self, "Const({})", self.hir_display(konst)),
+            OperandKind::Constant { konst, .. } => {
+                w!(self, "Const({})", self.hir_display(&konst.as_ref()))
+            }
             OperandKind::Static(s) => w!(self, "Static({:?})", s),
         }
     }
 
-    fn rvalue(&mut self, r: &Rvalue<'db>) {
+    fn rvalue(&mut self, r: &Rvalue) {
         match r {
             Rvalue::Use(op) => self.operand(op),
             Rvalue::Ref(r, p) => {
@@ -415,7 +413,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
             Rvalue::Repeat(op, len) => {
                 w!(self, "[");
                 self.operand(op);
-                w!(self, "; {}]", len.display_test(self.db, self.display_target));
+                w!(self, "; {}]", len.as_ref().display_test(self.db, self.display_target));
             }
             Rvalue::Aggregate(AggregateKind::Adt(_, _), it) => {
                 w!(self, "Adt(");
@@ -440,7 +438,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
             Rvalue::Cast(ck, op, ty) => {
                 w!(self, "Cast({ck:?}, ");
                 self.operand(op);
-                w!(self, ", {})", self.hir_display(ty));
+                w!(self, ", {})", self.hir_display(&ty.as_ref()));
             }
             Rvalue::CheckedBinaryOp(b, o1, o2) => {
                 self.operand(o1);
@@ -478,7 +476,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         }
     }
 
-    fn operand_list(&mut self, it: &[Operand<'db>]) {
+    fn operand_list(&mut self, it: &[Operand]) {
         let mut it = it.iter();
         if let Some(first) = it.next() {
             self.operand(first);

@@ -6,34 +6,40 @@ attr_parsing_bundle_needs_static =
 
 attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
 
-attr_parsing_cfg_predicate_identifier =
-    `cfg` predicate key must be an identifier
-
 attr_parsing_deprecated_item_suggestion =
     suggestions on deprecated items are unstable
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
-attr_parsing_empty_attribute =
-    unused attribute
-    .suggestion = {$valid_without_list ->
-        [true] remove these parentheses
-        *[other] remove this attribute
-    }
-    .note = {$valid_without_list ->
-        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
-        *[other] using `{$attr_path}` with an empty list has no effect
-    }
+attr_parsing_doc_alias_bad_char =
+    {$char_} character isn't allowed in {$attr_str}
 
+attr_parsing_doc_alias_empty =
+    {$attr_str} attribute cannot have empty value
+
+attr_parsing_doc_alias_malformed =
+    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+
+attr_parsing_doc_alias_start_end =
+    {$attr_str} cannot start or end with ' '
+
+attr_parsing_doc_attr_not_crate_level =
+    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
+
+attr_parsing_doc_attribute_not_attribute =
+    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
+    .help = only existing builtin attributes are allowed in core/std
+
+attr_parsing_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
 
 attr_parsing_empty_confusables =
     expected at least one confusable name
+
 attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name
-
-attr_parsing_expected_one_cfg_pattern =
-    expected 1 cfg-pattern
 
 attr_parsing_expected_single_version_literal =
     expected single version literal
@@ -46,11 +52,6 @@ attr_parsing_expects_feature_list =
 
 attr_parsing_expects_features =
     `{$name}` expects feature names
-
-attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
-        [1] attribute must be of the form {$suggestions}
-        *[other] valid forms for the attribute are {$suggestions}
-    }
 
 attr_parsing_import_name_type_raw =
     import name type can only be used with link kind `raw-dylib`
@@ -99,6 +100,7 @@ attr_parsing_invalid_link_modifier =
 attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
     .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
     .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+    .label = {$descr}s are not allowed here
 
 attr_parsing_invalid_predicate =
     invalid predicate `{$predicate}`
@@ -119,17 +121,7 @@ attr_parsing_invalid_repr_hint_no_value =
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
 
-attr_parsing_invalid_style = {$is_used_as_inner ->
-        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
-        *[other] the `#![{$name}]` attribute can only be used at the crate root
-    }
-    .note = This attribute does not have an `!`, which means it is applied to this {$target}
-
 attr_parsing_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
-    .help = `#[{$name}]` can {$only}be applied to {$applied}
-    .suggestion = remove the attribute
-attr_parsing_invalid_target_lint = `#[{$name}]` attribute cannot be used on {$target}
-    .warn = {-attr_parsing_previously_accepted}
     .help = `#[{$name}]` can {$only}be applied to {$applied}
     .suggestion = remove the attribute
 
@@ -211,6 +203,9 @@ attr_parsing_rustc_allowed_unstable_pairing =
 attr_parsing_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
 
+attr_parsing_rustc_scalable_vector_count_out_of_range = element count in `rustc_scalable_vector` is too large: `{$n}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_soft_no_args =
     `soft` should not have any arguments
 
@@ -218,10 +213,6 @@ attr_parsing_stability_outside_std = stability attributes may not be used outsid
 
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
-
-attr_parsing_unknown_meta_item =
-    unknown meta item '{$item}'
-    .label = expected one of {$expected}
 
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
@@ -239,30 +230,17 @@ attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
 
 attr_parsing_unstable_feature_bound_incompatible_stability = item annotated with `#[unstable_feature_bound]` should not be stable
-    .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
+    .help = if this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
 
-attr_parsing_unsupported_literal_cfg_boolean =
-    literal in `cfg` predicate value must be a boolean
-attr_parsing_unsupported_literal_cfg_string =
-    literal in `cfg` predicate value must be a string
-attr_parsing_unsupported_literal_generic =
-    unsupported literal
+attr_parsing_unsupported_instruction_set = target `{$current_target}` does not support `#[instruction_set({$instruction_set}::*)]`
+
 attr_parsing_unsupported_literal_suggestion =
     consider removing the prefix
-
-attr_parsing_unused_duplicate =
-    unused attribute
-    .suggestion = remove this attribute
-    .note = attribute also specified here
-    .warn = {-attr_parsing_previously_accepted}
 
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
-
--attr_parsing_previously_accepted =
-    this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind

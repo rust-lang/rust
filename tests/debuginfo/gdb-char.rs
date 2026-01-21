@@ -8,9 +8,9 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print ch
-// gdb-check:$1 = 97 'a'
+//@ gdb-command:run
+//@ gdb-command:print ch
+//@ gdb-check:$1 = 97 'a'
 
 #![allow(unused_variables)]
 

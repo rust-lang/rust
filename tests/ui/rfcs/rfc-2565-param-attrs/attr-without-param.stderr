@@ -1,17 +1,17 @@
 error: expected parameter name, found `)`
-  --> $DIR/attr-without-param.rs:3:17
+  --> $DIR/attr-without-param.rs:4:17
    |
 LL |     fn f(#[attr]) {}
    |                 ^ expected parameter name
 
 error: expected parameter name, found `)`
-  --> $DIR/attr-without-param.rs:8:17
+  --> $DIR/attr-without-param.rs:9:17
    |
 LL |     fn f(#[attr]) {}
    |                 ^ expected parameter name
 
 error: expected argument name, found `)`
-  --> $DIR/attr-without-param.rs:13:17
+  --> $DIR/attr-without-param.rs:14:17
    |
 LL |     fn f(#[attr]);
    |                 ^ expected argument name

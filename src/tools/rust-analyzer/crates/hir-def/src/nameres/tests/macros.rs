@@ -784,7 +784,7 @@ macro_rules! foo {
 
 pub use core::clone::Clone;
 "#,
-        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 
@@ -806,7 +806,7 @@ pub macro Copy {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
-        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 2),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 2),
     );
 }
 
@@ -849,7 +849,7 @@ pub macro derive($item:item) {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
-        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 
@@ -1502,7 +1502,7 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     let krate = *db.all_crates().last().expect("no crate graph present");
     let def_map = crate_def_map(&db, krate);
 
-    let root_module = &def_map[DefMap::ROOT].scope;
+    let root_module = &def_map[def_map.root].scope;
     assert!(
         root_module.legacy_macros().count() == 0,
         "`#[macro_use]` shouldn't bring macros into textual macro scope",
@@ -1609,7 +1609,7 @@ macro_rules! derive { () => {} }
 #[derive(Clone)]
 struct S;
     "#,
-        |map| assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 
@@ -1648,6 +1648,135 @@ pub mod prelude {
             - bar : macro# (import)
             - foo : macro# (import)
             - ok : value
+        "#]],
+    );
+}
+
+#[test]
+fn macro_rules_mixed_style() {
+    check(
+        r#"
+
+macro_rules! foo {
+             () => {};
+      attr() () => {};
+    derive() () => {};
+}
+
+use foo;
+"#,
+        expect![[r#"
+    crate
+    - foo : macro!# (import)
+    - (legacy) foo : macro!#
+"#]],
+    );
+}
+
+#[test]
+fn macro_2_mixed_style() {
+    check(
+        r#"
+
+macro foo {
+             () => {};
+      attr() () => {};
+    derive() () => {};
+}
+
+use foo;
+"#,
+        expect![[r#"
+            crate
+            - foo : macro!#
+        "#]],
+    );
+}
+
+#[test]
+fn macro_rules_attr() {
+    check(
+        r#"
+
+macro_rules! my_attr {
+    attr() ($($tt:tt)*) => { fn attr_fn() {} }
+}
+
+#[my_attr]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+    crate
+    - attr_fn : value
+    - (legacy) my_attr : macro#
+"#]],
+    );
+}
+
+#[test]
+fn macro_2_attr() {
+    check(
+        r#"
+
+macro my_attr {
+    attr() ($($tt:tt)*) => { fn attr_fn() {} }
+}
+
+#[my_attr]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+    crate
+    - attr_fn : value
+    - my_attr : macro#
+"#]],
+    );
+}
+
+#[test]
+fn macro_rules_derive() {
+    check(
+        r#"
+//- minicore: derive
+
+macro_rules! MyDerive {
+    derive() ($($tt:tt)*) => { fn derived_fn() {} }
+}
+
+#[derive(MyDerive)]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+            crate
+            - MyEnum : type
+            - derived_fn : value
+            - (legacy) MyDerive : macro#
+        "#]],
+    );
+}
+
+#[test]
+fn macro_2_derive() {
+    check(
+        r#"
+//- minicore: derive
+
+macro MyDerive {
+    derive() ($($tt:tt)*) => { fn derived_fn() {} }
+}
+
+#[derive(MyDerive)]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+            crate
+            - MyDerive : macro#
+            - MyEnum : type
+            - derived_fn : value
         "#]],
     );
 }

@@ -27,7 +27,7 @@ pub(crate) fn target() -> Target {
             // and 16 D registers.
             features: "+fp-armv8d16sp".into(),
             max_atomic_width: Some(32),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

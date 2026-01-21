@@ -86,7 +86,7 @@ fn inline_attr<'gcc, 'tcx>(
 /// attributes.
 pub fn from_fn_attrs<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
-    #[cfg_attr(not(feature = "master"), allow(unused_variables))] func: Function<'gcc>,
+    #[cfg_attr(not(feature = "master"), expect(unused_variables))] func: Function<'gcc>,
     instance: ty::Instance<'tcx>,
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);

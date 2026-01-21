@@ -40,10 +40,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // leaf value for subsequent calls of `cpuinfo` in range [0,
     // 0x8000_0000]. - The vendor ID is stored in 12 u8 ascii chars,
     // returned in EBX, EDX, and   ECX (in that order):
-    let (max_basic_leaf, vendor_id) = unsafe {
+    let (max_basic_leaf, vendor_id) = {
         let CpuidResult { eax: max_basic_leaf, ebx, ecx, edx } = __cpuid(0);
         let vendor_id: [[u8; 4]; 3] = [ebx.to_ne_bytes(), edx.to_ne_bytes(), ecx.to_ne_bytes()];
-        let vendor_id: [u8; 12] = mem::transmute(vendor_id);
+        let vendor_id: [u8; 12] = unsafe { mem::transmute(vendor_id) };
         (max_basic_leaf, vendor_id)
     };
 
@@ -54,8 +54,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
     // Contains information about most x86 features.
-    let CpuidResult { ecx: proc_info_ecx, edx: proc_info_edx, .. } =
-        unsafe { __cpuid(0x0000_0001_u32) };
+    let CpuidResult { ecx: proc_info_ecx, edx: proc_info_edx, .. } = __cpuid(0x0000_0001_u32);
 
     // EAX = 7: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
@@ -66,9 +65,9 @@ pub(crate) fn detect_features() -> cache::Initializer {
         extended_features_eax_leaf_1,
         extended_features_edx_leaf_1,
     ) = if max_basic_leaf >= 7 {
-        let CpuidResult { ebx, ecx, edx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+        let CpuidResult { ebx, ecx, edx, .. } = __cpuid(0x0000_0007_u32);
         let CpuidResult { eax: eax_1, edx: edx_1, .. } =
-            unsafe { __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32) };
+            __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32);
         (ebx, ecx, edx, eax_1, edx_1)
     } else {
         (0, 0, 0, 0, 0) // CPUID does not support "Extended Features"
@@ -77,12 +76,12 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
     // - EAX returns the max leaf value for extended information, that is,
     // `cpuid` calls in range [0x8000_0000; u32::MAX]:
-    let CpuidResult { eax: extended_max_basic_leaf, .. } = unsafe { __cpuid(0x8000_0000_u32) };
+    let CpuidResult { eax: extended_max_basic_leaf, .. } = __cpuid(0x8000_0000_u32);
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
     let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
-        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
+        let CpuidResult { ecx, .. } = __cpuid(0x8000_0001_u32);
         ecx
     } else {
         0
@@ -132,7 +131,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
         // Detect if CPUID.19h available
         if bit::test(extended_features_ecx as usize, 23) {
-            let CpuidResult { ebx, .. } = unsafe { __cpuid(0x19) };
+            let CpuidResult { ebx, .. } = __cpuid(0x19);
             enable(ebx, 0, Feature::kl);
             enable(ebx, 2, Feature::widekl);
         }
@@ -223,7 +222,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     // ECX = 1):
                     if max_basic_leaf >= 0xd {
                         let CpuidResult { eax: proc_extended_state1_eax, .. } =
-                            unsafe { __cpuid_count(0xd_u32, 1) };
+                            __cpuid_count(0xd_u32, 1);
                         enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
                         enable(proc_extended_state1_eax, 1, Feature::xsavec);
                         enable(proc_extended_state1_eax, 3, Feature::xsaves);
@@ -282,7 +281,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
                     if max_basic_leaf >= 0x1e {
                         let CpuidResult { eax: amx_feature_flags_eax, .. } =
-                            unsafe { __cpuid_count(0x1e_u32, 1) };
+                            __cpuid_count(0x1e_u32, 1);
 
                         enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
                         enable(amx_feature_flags_eax, 6, Feature::amx_tf32);
@@ -297,7 +296,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
                 let avx10_1 = enable(extended_features_edx_leaf_1, 19, Feature::avx10_1);
                 if avx10_1 {
-                    let CpuidResult { ebx, .. } = unsafe { __cpuid(0x24) };
+                    let CpuidResult { ebx, .. } = __cpuid(0x24);
                     let avx10_version = ebx & 0xff;
                     if avx10_version >= 2 {
                         value.set(Feature::avx10_2 as u32);

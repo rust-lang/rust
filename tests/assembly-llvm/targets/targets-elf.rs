@@ -520,6 +520,9 @@
 //@ revisions: riscv64gc_unknown_redox
 //@ [riscv64gc_unknown_redox] compile-flags: --target riscv64gc-unknown-redox
 //@ [riscv64gc_unknown_redox] needs-llvm-components: riscv
+//@ revisions: riscv64im_unknown_none_elf
+//@ [riscv64im_unknown_none_elf] compile-flags: --target riscv64im-unknown-none-elf
+//@ [riscv64im_unknown_none_elf] needs-llvm-components: riscv
 //@ revisions: riscv64imac_unknown_none_elf
 //@ [riscv64imac_unknown_none_elf] compile-flags: --target riscv64imac-unknown-none-elf
 //@ [riscv64imac_unknown_none_elf] needs-llvm-components: riscv
@@ -670,6 +673,9 @@
 //@ revisions: x86_64_unknown_linux_gnux32
 //@ [x86_64_unknown_linux_gnux32] compile-flags: --target x86_64-unknown-linux-gnux32
 //@ [x86_64_unknown_linux_gnux32] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_linux_gnuasan
+//@ [x86_64_unknown_linux_gnuasan] compile-flags: --target x86_64-unknown-linux-gnuasan
+//@ [x86_64_unknown_linux_gnuasan] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_linux_musl
 //@ [x86_64_unknown_linux_musl] compile-flags: --target x86_64-unknown-linux-musl
 //@ [x86_64_unknown_linux_musl] needs-llvm-components: x86

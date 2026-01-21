@@ -2,7 +2,7 @@ use std::env;
 use std::process::Command;
 use std::sync::Arc;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 
 use crate::common::{Config, Debugger};
 
@@ -54,60 +54,6 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
 }
 
-/// Returns `true` if the given target is an Android target for the
-/// purposes of GDB testing.
-pub(crate) fn is_android_gdb_target(target: &str) -> bool {
-    matches!(
-        &target[..],
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
-    )
-}
-
-/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
-fn is_pc_windows_msvc_target(target: &str) -> bool {
-    target.ends_with("-pc-windows-msvc")
-}
-
-/// FIXME: this is very questionable...
-fn find_cdb(target: &str) -> Option<Utf8PathBuf> {
-    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
-        return None;
-    }
-
-    let pf86 = Utf8PathBuf::from_path_buf(
-        env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?.into(),
-    )
-    .unwrap();
-    let cdb_arch = if cfg!(target_arch = "x86") {
-        "x86"
-    } else if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "arm") {
-        "arm"
-    } else {
-        return None; // No compatible CDB.exe in the Windows 10 SDK
-    };
-
-    let mut path = pf86;
-    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-    path.push(cdb_arch);
-    path.push(r"cdb.exe");
-
-    if !path.exists() {
-        return None;
-    }
-
-    Some(path)
-}
-
-/// Returns Path to CDB
-pub(crate) fn discover_cdb(cdb: Option<String>, target: &str) -> Option<Utf8PathBuf> {
-    let cdb = cdb.map(Utf8PathBuf::from).or_else(|| find_cdb(target));
-    cdb
-}
-
 pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {
     let mut version = None;
     if let Ok(output) = Command::new(cdb).arg("/version").output() {
@@ -129,36 +75,7 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
     Some([major, minor, patch, build])
 }
 
-pub(crate) fn discover_gdb(
-    gdb: Option<String>,
-    target: &str,
-    android_cross_path: &Utf8Path,
-) -> Option<String> {
-    #[cfg(not(windows))]
-    const GDB_FALLBACK: &str = "gdb";
-    #[cfg(windows)]
-    const GDB_FALLBACK: &str = "gdb.exe";
-
-    let fallback_gdb = || {
-        if is_android_gdb_target(target) {
-            let mut gdb_path = android_cross_path.to_string();
-            gdb_path.push_str("/bin/gdb");
-            gdb_path
-        } else {
-            GDB_FALLBACK.to_owned()
-        }
-    };
-
-    let gdb = match gdb {
-        None => fallback_gdb(),
-        Some(ref s) if s.is_empty() => fallback_gdb(), // may be empty if configure found no gdb
-        Some(ref s) => s.to_owned(),
-    };
-
-    Some(gdb)
-}
-
-pub(crate) fn query_gdb_version(gdb: &str) -> Option<u32> {
+pub(crate) fn query_gdb_version(gdb: &Utf8Path) -> Option<u32> {
     let mut version_line = None;
     if let Ok(output) = Command::new(&gdb).arg("--version").output() {
         if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {

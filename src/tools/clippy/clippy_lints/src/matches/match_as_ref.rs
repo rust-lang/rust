@@ -46,6 +46,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         let cast = if input_ty == output_ty { "" } else { ".map(|x| x as _)" };
 
         let mut applicability = Applicability::MachineApplicable;
+        let ctxt = expr.span.ctxt();
         span_lint_and_then(
             cx,
             MATCH_AS_REF,
@@ -59,7 +60,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                         "use `Option::as_ref()`",
                         format!(
                             "{}.as_ref(){cast}",
-                            Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
+                            Sugg::hir_with_context(cx, ex, ctxt, "_", &mut applicability).maybe_paren(),
                         ),
                         applicability,
                     );
@@ -69,7 +70,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                         format!("use `Option::{method}()` directly"),
                         format!(
                             "{}.{method}(){cast}",
-                            Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
+                            Sugg::hir_with_context(cx, ex, ctxt, "_", &mut applicability).maybe_paren(),
                         ),
                         applicability,
                     );

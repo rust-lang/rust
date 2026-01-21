@@ -1,5 +1,7 @@
 //! File symbol extraction.
 
+use std::marker::PhantomData;
+
 use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
@@ -25,7 +27,7 @@ use crate::{HasCrate, Module, ModuleDef, Semantics};
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FileSymbol {
+pub struct FileSymbol<'db> {
     pub name: Symbol,
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
@@ -35,6 +37,7 @@ pub struct FileSymbol {
     pub is_assoc: bool,
     pub is_import: bool,
     pub do_not_complete: Complete,
+    _marker: PhantomData<&'db ()>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -61,9 +64,9 @@ struct SymbolCollectorWork {
     parent: Option<Name>,
 }
 
-pub struct SymbolCollector<'a> {
-    db: &'a dyn HirDatabase,
-    symbols: FxIndexSet<FileSymbol>,
+pub struct SymbolCollector<'db> {
+    db: &'db dyn HirDatabase,
+    symbols: FxIndexSet<FileSymbol<'db>>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<Symbol>,
     collect_pub_only: bool,
@@ -83,10 +86,10 @@ impl<'a> SymbolCollector<'a> {
     }
 
     pub fn new_module(
-        db: &dyn HirDatabase,
+        db: &'a dyn HirDatabase,
         module: Module,
         collect_pub_only: bool,
-    ) -> Box<[FileSymbol]> {
+    ) -> Box<[FileSymbol<'a>]> {
         let mut symbol_collector = SymbolCollector::new(db, collect_pub_only);
         symbol_collector.collect(module);
         symbol_collector.finish()
@@ -105,7 +108,7 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    pub fn finish(self) -> Box<[FileSymbol]> {
+    pub fn finish(self) -> Box<[FileSymbol<'a>]> {
         self.symbols.into_iter().collect()
     }
 
@@ -217,6 +220,7 @@ impl<'a> SymbolCollector<'a> {
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Complete::Yes,
+                _marker: PhantomData,
             });
         };
 
@@ -251,11 +255,12 @@ impl<'a> SymbolCollector<'a> {
                     is_assoc: false,
                     is_import: false,
                     do_not_complete: Complete::Yes,
+                    _marker: PhantomData,
                 });
             };
 
         let def_map = module_id.def_map(self.db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
 
         for impl_id in scope.impls() {
             self.collect_from_impl(impl_id);
@@ -329,10 +334,7 @@ impl<'a> SymbolCollector<'a> {
         // Descend into the blocks and enqueue collection of all modules within.
         for (_, def_map) in body.blocks(self.db) {
             for (id, _) in def_map.modules() {
-                self.work.push(SymbolCollectorWork {
-                    module_id: def_map.module_id(id),
-                    parent: name.clone(),
-                });
+                self.work.push(SymbolCollectorWork { module_id: id, parent: name.clone() });
             }
         }
     }
@@ -416,12 +418,12 @@ impl<'a> SymbolCollector<'a> {
         let mut do_not_complete = Complete::Yes;
 
         if let Some(attrs) = def.attrs(self.db) {
-            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), &attrs);
+            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), attrs.attrs);
             if let Some(trait_do_not_complete) = trait_do_not_complete {
                 do_not_complete = Complete::for_trait_item(trait_do_not_complete, do_not_complete);
             }
 
-            for alias in attrs.doc_aliases() {
+            for alias in attrs.doc_aliases(self.db) {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,
@@ -431,6 +433,7 @@ impl<'a> SymbolCollector<'a> {
                     is_assoc,
                     is_import: false,
                     do_not_complete,
+                    _marker: PhantomData,
                 });
             }
         }
@@ -444,6 +447,7 @@ impl<'a> SymbolCollector<'a> {
             is_assoc,
             is_import: false,
             do_not_complete,
+            _marker: PhantomData,
         });
 
         do_not_complete
@@ -451,7 +455,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn push_module(&mut self, module_id: ModuleId, name: &Name) {
         let def_map = module_id.def_map(self.db);
-        let module_data = &def_map[module_id.local_id];
+        let module_data = &def_map[module_id];
         let Some(declaration) = module_data.origin.declaration() else { return };
         let module = declaration.to_node(self.db);
         let Some(name_node) = module.name() else { return };
@@ -465,9 +469,9 @@ impl<'a> SymbolCollector<'a> {
 
         let mut do_not_complete = Complete::Yes;
         if let Some(attrs) = def.attrs(self.db) {
-            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), &attrs);
+            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), attrs.attrs);
 
-            for alias in attrs.doc_aliases() {
+            for alias in attrs.doc_aliases(self.db) {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,
@@ -477,6 +481,7 @@ impl<'a> SymbolCollector<'a> {
                     is_assoc: false,
                     is_import: false,
                     do_not_complete,
+                    _marker: PhantomData,
                 });
             }
         }
@@ -490,6 +495,7 @@ impl<'a> SymbolCollector<'a> {
             is_assoc: false,
             is_import: false,
             do_not_complete,
+            _marker: PhantomData,
         });
     }
 }

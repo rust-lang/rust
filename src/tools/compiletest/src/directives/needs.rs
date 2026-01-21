@@ -1,5 +1,7 @@
-use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
-use crate::directives::{DirectiveLine, IgnoreDecision, llvm_has_libzstd};
+use crate::common::{
+    Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
+};
+use crate::directives::{DirectiveLine, IgnoreDecision};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -90,6 +92,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when LLVM Enzyme is disabled or LLVM is not the default codegen backend",
         },
         Need {
+            name: "needs-offload",
+            condition: config.has_offload && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored when LLVM Offload is disabled or LLVM is not the default codegen backend",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
@@ -178,6 +185,11 @@ pub(super) fn handle_needs(
             name: "needs-std-debug-assertions",
             condition: config.with_std_debug_assertions,
             ignore_reason: "ignored if std wasn't built with debug assertions",
+        },
+        Need {
+            name: "needs-std-remap-debuginfo",
+            condition: config.with_std_remap_debuginfo,
+            ignore_reason: "ignored if std wasn't built with remapping of debuginfo",
         },
         Need {
             name: "needs-target-std",
@@ -367,7 +379,7 @@ impl CachedNeedsConditions {
             //
             // However, `rust-lld` is only located under the lib path, so we look for it there.
             rust_lld: config
-                .compile_lib_path
+                .host_compile_lib_path
                 .parent()
                 .expect("couldn't traverse to the parent of the specified --compile-lib-path")
                 .join("lib")
@@ -377,7 +389,7 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
-            llvm_zstd: llvm_has_libzstd(&config),
+            llvm_zstd: llvm_has_zstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
         }
@@ -427,4 +439,23 @@ fn has_symlinks() -> bool {
 #[cfg(not(windows))]
 fn has_symlinks() -> bool {
     true
+}
+
+fn llvm_has_zstd(config: &Config) -> bool {
+    // FIXME(#149764): This actually queries the compiler's _default_ backend,
+    // which is usually LLVM, but can be another backend depending on the value
+    // of `rust.codegen-backends` in bootstrap.toml.
+
+    // The compiler already knows whether LLVM was built with zstd or not,
+    // so compiletest can just ask the compiler.
+    let output = query_rustc_output(
+        config,
+        &["-Zunstable-options", "--print=backend-has-zstd"],
+        Default::default(),
+    );
+    match output.trim() {
+        "true" => true,
+        "false" => false,
+        _ => panic!("unexpected output from `--print=backend-has-zstd`: {output:?}"),
+    }
 }

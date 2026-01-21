@@ -8,14 +8,14 @@ use tracing::*;
 
 use crate::common::{CodegenBackend, Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
-pub(crate) use crate::directives::auxiliary::AuxProps;
 use crate::directives::auxiliary::parse_and_update_aux;
+pub(crate) use crate::directives::auxiliary::{AuxCrate, AuxProps};
 use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
-use crate::directives::line::{DirectiveLine, line_directive};
+use crate::directives::line::DirectiveLine;
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -29,17 +29,26 @@ mod directive_names;
 mod file;
 mod handlers;
 mod line;
+pub(crate) use line::line_directive;
+mod line_number;
+pub(crate) use line_number::LineNumber;
 mod needs;
 #[cfg(test)]
 mod tests;
 
 pub struct DirectivesCache {
+    /// "Conditions" used by `ignore-*` and `only-*` directives, prepared in
+    /// advance so that they don't have to be evaluated repeatedly.
+    cfg_conditions: cfg::PreparedConditions,
     needs: CachedNeedsConditions,
 }
 
 impl DirectivesCache {
     pub fn load(config: &Config) -> Self {
-        Self { needs: CachedNeedsConditions::load(config) }
+        Self {
+            cfg_conditions: cfg::prepare_conditions(config),
+            needs: CachedNeedsConditions::load(config),
+        }
     }
 }
 
@@ -543,7 +552,7 @@ fn check_directive<'a>(
 
     let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
         || match mode {
-            TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
+            TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             _ => false,
         };
@@ -585,7 +594,7 @@ fn iter_directives(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive_str in extra_directives {
-            let directive_line = line_directive(testfile, 0, directive_str)
+            let directive_line = line_directive(testfile, LineNumber::ZERO, directive_str)
                 .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
             it(&directive_line);
         }
@@ -879,107 +888,6 @@ pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Version> {
     None
 }
 
-/// For tests using the `needs-llvm-zstd` directive:
-/// - for local LLVM builds, try to find the static zstd library in the llvm-config system libs.
-/// - for `download-ci-llvm`, see if `lld` was built with zstd support.
-pub fn llvm_has_libzstd(config: &Config) -> bool {
-    // Strategy 1: works for local builds but not with `download-ci-llvm`.
-    //
-    // We check whether `llvm-config` returns the zstd library. Bootstrap's `llvm.libzstd` will only
-    // ask to statically link it when building LLVM, so we only check if the list of system libs
-    // contains a path to that static lib, and that it exists.
-    //
-    // See compiler/rustc_llvm/build.rs for more details and similar expectations.
-    fn is_zstd_in_config(llvm_bin_dir: &Utf8Path) -> Option<()> {
-        let llvm_config_path = llvm_bin_dir.join("llvm-config");
-        let output = Command::new(llvm_config_path).arg("--system-libs").output().ok()?;
-        assert!(output.status.success(), "running llvm-config --system-libs failed");
-
-        let libs = String::from_utf8(output.stdout).ok()?;
-        for lib in libs.split_whitespace() {
-            if lib.ends_with("libzstd.a") && Utf8Path::new(lib).exists() {
-                return Some(());
-            }
-        }
-
-        None
-    }
-
-    // Strategy 2: `download-ci-llvm`'s `llvm-config --system-libs` will not return any libs to
-    // use.
-    //
-    // The CI artifacts also don't contain the bootstrap config used to build them: otherwise we
-    // could have looked at the `llvm.libzstd` config.
-    //
-    // We infer whether `LLVM_ENABLE_ZSTD` was used to build LLVM as a byproduct of testing whether
-    // `lld` supports it. If not, an error will be emitted: "LLVM was not built with
-    // LLVM_ENABLE_ZSTD or did not find zstd at build time".
-    #[cfg(unix)]
-    fn is_lld_built_with_zstd(llvm_bin_dir: &Utf8Path) -> Option<()> {
-        let lld_path = llvm_bin_dir.join("lld");
-        if lld_path.exists() {
-            // We can't call `lld` as-is, it expects to be invoked by a compiler driver using a
-            // different name. Prepare a temporary symlink to do that.
-            let lld_symlink_path = llvm_bin_dir.join("ld.lld");
-            if !lld_symlink_path.exists() {
-                std::os::unix::fs::symlink(lld_path, &lld_symlink_path).ok()?;
-            }
-
-            // Run `lld` with a zstd flag. We expect this command to always error here, we don't
-            // want to link actual files and don't pass any.
-            let output = Command::new(&lld_symlink_path)
-                .arg("--compress-debug-sections=zstd")
-                .output()
-                .ok()?;
-            assert!(!output.status.success());
-
-            // Look for a specific error caused by LLVM not being built with zstd support. We could
-            // also look for the "no input files" message, indicating the zstd flag was accepted.
-            let stderr = String::from_utf8(output.stderr).ok()?;
-            let zstd_available = !stderr.contains("LLVM was not built with LLVM_ENABLE_ZSTD");
-
-            // We don't particularly need to clean the link up (so the previous commands could fail
-            // in theory but won't in practice), but we can try.
-            std::fs::remove_file(lld_symlink_path).ok()?;
-
-            if zstd_available {
-                return Some(());
-            }
-        }
-
-        None
-    }
-
-    #[cfg(not(unix))]
-    fn is_lld_built_with_zstd(_llvm_bin_dir: &Utf8Path) -> Option<()> {
-        None
-    }
-
-    if let Some(llvm_bin_dir) = &config.llvm_bin_dir {
-        // Strategy 1: for local LLVM builds.
-        if is_zstd_in_config(llvm_bin_dir).is_some() {
-            return true;
-        }
-
-        // Strategy 2: for LLVM artifacts built on CI via `download-ci-llvm`.
-        //
-        // It doesn't work for cases where the artifacts don't contain the linker, but it's
-        // best-effort: CI has `llvm.libzstd` and `lld` enabled on the x64 linux artifacts, so it
-        // will at least work there.
-        //
-        // If this can be improved and expanded to less common cases in the future, it should.
-        if config.target == "x86_64-unknown-linux-gnu"
-            && config.host == config.target
-            && is_lld_built_with_zstd(llvm_bin_dir).is_some()
-        {
-            return true;
-        }
-    }
-
-    // Otherwise, all hope is lost.
-    false
-}
-
 /// Takes a directive of the form `"<version1> [- <version2>]"`, returns the numeric representation
 /// of `<version1>` and `<version2>` as tuple: `(<version1>, <version2>)`.
 ///
@@ -1058,8 +966,8 @@ pub(crate) fn make_test_description(
                 };
             }
 
-            decision!(cfg::handle_ignore(config, ln));
-            decision!(cfg::handle_only(config, ln));
+            decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
+            decision!(cfg::handle_only(&cache.cfg_conditions, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, ln));
             decision!(ignore_backends(config, ln));

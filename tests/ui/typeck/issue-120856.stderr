@@ -2,23 +2,26 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `n`
   --> $DIR/issue-120856.rs:1:37
    |
 LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
-   |                                     ^
-   |                                     |
-   |                                     use of unresolved module or unlinked crate `n`
-   |                                     help: a trait with a similar name exists: `Fn`
+   |                                     ^ use of unresolved module or unlinked crate `n`
    |
    = help: you might be missing a crate named `n`
+help: a trait with a similar name exists
+   |
+LL | pub type Archived<T> = <m::Alias as Fn::Trait>::Archived;
+   |                                     +
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `m`
   --> $DIR/issue-120856.rs:1:25
    |
 LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
-   |                         ^
-   |                         |
-   |                         use of unresolved module or unlinked crate `m`
-   |                         help: a type parameter with a similar name exists: `T`
+   |                         ^ use of unresolved module or unlinked crate `m`
    |
    = help: you might be missing a crate named `m`
+help: a type parameter with a similar name exists
+   |
+LL - pub type Archived<T> = <m::Alias as n::Trait>::Archived;
+LL + pub type Archived<T> = <T::Alias as n::Trait>::Archived;
+   |
 
 error: aborting due to 2 previous errors
 

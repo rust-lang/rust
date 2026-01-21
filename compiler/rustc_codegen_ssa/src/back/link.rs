@@ -13,8 +13,7 @@ use find_msvc_tools;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
-use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
+use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -104,17 +103,18 @@ pub fn link_binary(
         });
 
         if outputs.outputs.should_link() {
-            let tmpdir = TempDirBuilder::new()
-                .prefix("rustc")
-                .tempdir()
-                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
-            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
             let output = out_filename(
                 sess,
                 crate_type,
                 outputs,
                 codegen_results.crate_info.local_crate_name,
             );
+            let tmpdir = TempDirBuilder::new()
+                .prefix("rustc")
+                .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
+                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
+            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
+
             let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
             let out_filename = output.file_for_writing(
                 outputs,
@@ -278,7 +278,7 @@ pub fn each_linked_rlib(
         }
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
-        if let Some((path, _)) = &used_crate_source.rlib {
+        if let Some(path) = &used_crate_source.rlib {
             f(cnum, path);
         } else if used_crate_source.rmeta.is_some() {
             return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -542,7 +542,7 @@ fn link_staticlib(
         };
         let crate_name = codegen_results.crate_info.crate_name[&cnum];
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
-        if let Some((path, _)) = &used_crate_source.dylib {
+        if let Some(path) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
         } else if used_crate_source.rmeta.is_some() {
             sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -620,7 +620,6 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
             .used_crate_source
             .items()
             .filter_map(|(_, csource)| csource.rlib.as_ref())
-            .map(|(path, _)| path)
             .into_sorted_stable_ord();
 
         for input_rlib in input_rlibs {
@@ -1763,10 +1762,6 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 
 // Returns true if linker is located within sysroot
 fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
-    // Assume `-C linker=rust-lld` as self-contained mode
-    if linker == Path::new("rust-lld") {
-        return true;
-    }
     let linker_with_extension = if cfg!(windows) && linker.extension().is_none() {
         linker.with_extension("exe")
     } else {
@@ -2178,12 +2173,7 @@ fn add_rpath_args(
             .crate_info
             .used_crates
             .iter()
-            .filter_map(|cnum| {
-                codegen_results.crate_info.used_crate_source[cnum]
-                    .dylib
-                    .as_ref()
-                    .map(|(path, _)| &**path)
-            })
+            .filter_map(|cnum| codegen_results.crate_info.used_crate_source[cnum].dylib.as_deref())
             .collect::<Vec<_>>();
         let rpath_config = RPathConfig {
             libs: &*libs,
@@ -2558,7 +2548,7 @@ fn add_order_independent_options(
         && sess.target.is_like_windows
         && let Some(s) = &codegen_results.crate_info.windows_subsystem
     {
-        cmd.subsystem(s);
+        cmd.windows_subsystem(*s);
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -2661,7 +2651,7 @@ fn add_native_libs_from_crate(
 
     if link_static && cnum != LOCAL_CRATE && !bundled_libs.is_empty() {
         // If rlib contains native libs as archives, unpack them to tmpdir.
-        let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
+        let rlib = codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap();
         archive_builder_builder
             .extract_bundled_libs(rlib, tmpdir, bundled_libs)
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
@@ -2803,11 +2793,9 @@ fn add_upstream_rust_crates(
         // We must always link crates `compiler_builtins` and `profiler_builtins` statically.
         // Even if they were already included into a dylib
         // (e.g. `libstd` when `-C prefer-dynamic` is used).
-        // FIXME: `dependency_formats` can report `profiler_builtins` as `NotLinked` for some
-        // reason, it shouldn't do that because `profiler_builtins` should indeed be linked.
         let linkage = data[cnum];
         let link_static_crate = linkage == Linkage::Static
-            || (linkage == Linkage::IncludedFromDylib || linkage == Linkage::NotLinked)
+            || linkage == Linkage::IncludedFromDylib
                 && (codegen_results.crate_info.compiler_builtins == Some(cnum)
                     || codegen_results.crate_info.profiler_runtime == Some(cnum));
 
@@ -2832,7 +2820,7 @@ fn add_upstream_rust_crates(
             }
             Linkage::Dynamic => {
                 let src = &codegen_results.crate_info.used_crate_source[&cnum];
-                add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0);
+                add_dynamic_crate(cmd, sess, src.dylib.as_ref().unwrap());
             }
         }
 
@@ -2960,7 +2948,7 @@ fn add_static_crate(
     bundled_lib_file_names: &FxIndexSet<Symbol>,
 ) {
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
-    let cratepath = &src.rlib.as_ref().unwrap().0;
+    let cratepath = src.rlib.as_ref().unwrap();
 
     let mut link_upstream =
         |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
@@ -3033,9 +3021,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
-        }
+        Some(ref cfg) => eval_config_entry(sess, cfg).as_bool(),
         None => true,
     }
 }

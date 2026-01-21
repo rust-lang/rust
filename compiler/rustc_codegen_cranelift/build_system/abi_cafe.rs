@@ -11,7 +11,7 @@ static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "abi-cafe",
 );
 
-static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe_target");
+static ABI_CAFE: CargoProject = CargoProject::new(ABI_CAFE_REPO.source_dir(), "abi_cafe_target");
 
 pub(crate) fn run(
     sysroot_kind: SysrootKind,

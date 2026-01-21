@@ -57,7 +57,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
     let current_module = ctx.sema.scope(strukt.syntax())?.module();
-    let current_edition = current_module.krate().edition(ctx.db());
+    let current_edition = current_module.krate(ctx.db()).edition(ctx.db());
 
     let (field_name, field_ty, target) = match ctx.find_node_at_offset::<ast::RecordField>() {
         Some(field) => {

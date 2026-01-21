@@ -10,22 +10,27 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItem, MetaItemInner, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unord::UnordMap;
+use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
-use rustc_hir::attrs::{AttributeKind, InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet};
+use rustc_hir::attrs::{
+    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
+    MirDialect, MirPhase, ReprAttr, SanitizerSet,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item,
-    ItemKind, MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target,
-    TraitItem, find_attr,
+    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, HirId, Item, ItemKind,
+    MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target, TraitItem,
+    find_attr,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -38,12 +43,12 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -54,6 +59,13 @@ use crate::{errors, fluent_generated as fluent};
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
 struct DiagnosticOnUnimplementedOnlyForTraits;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_const_only_for_trait_impls)]
+struct DiagnosticOnConstOnlyForTraitImpls {
+    #[label]
+    item_span: Span,
+}
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
@@ -99,21 +111,6 @@ impl IntoDiagArg for ProcMacroKind {
     }
 }
 
-#[derive(Clone, Copy)]
-enum DocFakeItemKind {
-    Attribute,
-    Keyword,
-}
-
-impl DocFakeItemKind {
-    fn name(self) -> &'static str {
-        match self {
-            Self::Attribute => "attribute",
-            Self::Keyword => "keyword",
-        }
-    }
-}
-
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -134,8 +131,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        let mut doc_aliases = FxHashMap::default();
-        let mut specified_inline = None;
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
@@ -218,14 +213,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
                     self.check_macro_export(hir_id, *span, target)
                 },
+                Attribute::Parsed(AttributeKind::RustcLegacyConstGenerics{attr_span, fn_indexes}) => {
+                    self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
+                },
+                Attribute::Parsed(AttributeKind::Doc(attr)) => self.check_doc_attrs(attr, hir_id, target),
+                Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
+                     self.check_eii_impl(impls, target)
+                },
+                Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
+                    self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
+                },
+                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
-                    AttributeKind::BodyStability { .. }
+                    AttributeKind::EiiDeclaration { .. }
+                    | AttributeKind::EiiForeignItem
+                    | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CollapseDebugInfo(..)
+                    | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::Ignore { .. }
+                    | AttributeKind::InstructionSet(..)
                     | AttributeKind::Path(..)
                     | AttributeKind::NoImplicitPrelude(..)
                     | AttributeKind::AutomaticallyDerived(..)
@@ -233,7 +244,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
                     | AttributeKind::DenyExplicitImpl(..)
-                    | AttributeKind::DoNotImplementViaObject(..)
+                    | AttributeKind::DynIncompatibleTrait(..)
                     | AttributeKind::SpecializationTrait(..)
                     | AttributeKind::UnsafeSpecializationMarker(..)
                     | AttributeKind::ParenSugar(..)
@@ -251,10 +262,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::NoLink
+                    | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLintOptDenyFieldAccess { .. }
+                    | AttributeKind::RustcLintOptTy
+                    | AttributeKind::RustcLintQueryInstability
+                    | AttributeKind::RustcLintUntrackedQueryInformation
+                    | AttributeKind::RustcNeverReturnsNullPointer
+                    | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
+                    | AttributeKind::RustcVariance
+                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ExportStable
                     | AttributeKind::FfiConst(..)
                     | AttributeKind::UnstableFeatureBound(..)
@@ -277,66 +298,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::NoMain
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
-                    | AttributeKind::PinV2(..),
+                    | AttributeKind::PinV2(..)
+                    | AttributeKind::WindowsSubsystem(..)
+                    | AttributeKind::CfgAttrTrace
+                    | AttributeKind::ThreadLocal
+                    | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::MustNotSupend { .. }
+                    | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::NeedsAllocator
+                    | AttributeKind::RustcAllocator
+                    | AttributeKind::RustcAllocatorZeroed
+                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
+                    | AttributeKind::RustcDeallocator
+                    | AttributeKind::RustcReallocator
+                    | AttributeKind::RustcNounwind
+                    | AttributeKind::RustcOffloadKernel
+                    | AttributeKind::PatchableFunctionEntry { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::do_not_recommend, ..] => {
-                            self.check_do_not_recommend(attr.span(), hir_id, target, attr, item)
-                        }
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
-                        [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::doc, ..] => self.check_doc_attrs(
-                            attr,
-                            attr.span(),
-                            attr_item.style,
-                            hir_id,
-                            target,
-                            &mut specified_inline,
-                            &mut doc_aliases,
-                        ),
-                        [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
-                        [sym::rustc_no_implicit_autorefs, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_never_returns_null_ptr, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_legacy_const_generics, ..] => {
-                            self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
-                        }
-                        [sym::rustc_lint_query_instability, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_untracked_query_information, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_diagnostics, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
-                        [sym::rustc_lint_opt_deny_field_access, ..] => {
-                            self.check_rustc_lint_opt_deny_field_access(attr, span, target)
+                        [sym::diagnostic, sym::on_const, ..] => {
+                            self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
                         }
                         [sym::rustc_clean, ..]
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::rustc_must_implement_one_of, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
-                        [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
-                        [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_has_incoherent_inherent_impls, ..] => {
-                            self.check_has_incoherent_inherent_impls(attr, span, target)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -347,28 +350,65 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::warn
                             | sym::deny
                             | sym::forbid
-                            | sym::cfg
-                            | sym::cfg_attr
-                            | sym::cfg_trace
-                            | sym::cfg_attr_trace
                             // need to be fixed
-                            | sym::cfi_encoding // FIXME(cfi_encoding)
-                            | sym::instruction_set // broken on stable!!!
-                            | sym::windows_subsystem // broken on stable!!!
-                            | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
                             | sym::prelude_import
                             | sym::panic_handler
                             | sym::lang
-                            | sym::needs_allocator
-                            | sym::default_lib_allocator,
+                            | sym::default_lib_allocator
+                            | sym::rustc_diagnostic_item
+                            | sym::rustc_no_mir_inline
+                            | sym::rustc_insignificant_dtor
+                            | sym::rustc_nonnull_optimization_guaranteed
+                            | sym::rustc_intrinsic
+                            | sym::rustc_inherit_overflow_checks
+                            | sym::rustc_intrinsic_const_stable_indirect
+                            | sym::rustc_trivial_field_reads
+                            | sym::rustc_on_unimplemented
+                            | sym::rustc_do_not_const_check
+                            | sym::rustc_reservation_impl
+                            | sym::rustc_doc_primitive
+                            | sym::rustc_conversion_suggestion
+                            | sym::rustc_deprecated_safe_2024
+                            | sym::rustc_test_marker
+                            | sym::rustc_abi
+                            | sym::rustc_layout
+                            | sym::rustc_proc_macro_decls
+                            | sym::rustc_never_type_options
+                            | sym::rustc_autodiff
+                            | sym::rustc_capture_analysis
+                            | sym::rustc_regions
+                            | sym::rustc_strict_coherence
+                            | sym::rustc_hidden_type_of_opaques
+                            | sym::rustc_mir
+                            | sym::rustc_effective_visibility
+                            | sym::rustc_outlives
+                            | sym::rustc_symbol_name
+                            | sym::rustc_evaluate_where_clauses
+                            | sym::rustc_delayed_bug_from_inside_query
+                            | sym::rustc_def_path
+                            | sym::rustc_partition_reused
+                            | sym::rustc_partition_codegened
+                            | sym::rustc_expected_cgu_reuse
+                            // crate-level attrs, are checked below
+                            | sym::feature
+                            | sym::register_tool
+                            | sym::rustc_no_implicit_bounds
+                            | sym::test_runner
+                            | sym::reexport_test_harness_main
+                            | sym::no_main
+                            | sym::no_builtins
+                            | sym::crate_type
+                            | sym::compiler_builtins
+                            | sym::profiler_runtime
+                            | sym::needs_panic_runtime
+                            | sym::panic_runtime
+                            | sym::rustc_preserve_ub_checks,
                             ..
                         ] => {}
                         [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
-                                // checked below
-                                Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
                                 Some(_) => {
                                     if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
                                         // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
@@ -377,15 +417,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                         continue
                                     }
 
-                                    // FIXME: differentiate between unstable and internal attributes just
-                                    // like we do with features instead of just accepting `rustc_`
-                                    // attributes by name. That should allow trimming the above list, too.
-                                    if !name.as_str().starts_with("rustc_") {
-                                        span_bug!(
-                                            attr.span(),
-                                            "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
-                                        )
-                                    }
+                                    span_bug!(
+                                        attr.span(),
+                                        "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
+                                    )
                                 }
                                 None => (),
                             }
@@ -405,7 +440,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             attr.path
                                 .segments
                                 .first()
-                                .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                                .and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
                         {
                             match attr.style {
                                 ast::AttrStyle::Outer => {
@@ -442,7 +477,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             if let Attribute::Unparsed(unparsed_attr) = attr
                 && let Some(BuiltinAttribute { duplicates, .. }) =
-                    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                    attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
             {
                 check_duplicates(
                     self.tcx,
@@ -462,23 +497,94 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_mix_no_mangle_export(hir_id, attrs);
     }
 
-    fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr_span: Span, sym: &str) {
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::IgnoredAttrWithMacro { sym },
-        );
+    fn check_rustc_must_implement_one_of(
+        &self,
+        attr_span: Span,
+        list: &ThinVec<Ident>,
+        hir_id: HirId,
+        target: Target,
+    ) {
+        // Ignoring invalid targets because TyCtxt::associated_items emits bug if the target isn't valid
+        // the parser has already produced an error for the target being invalid
+        if !matches!(target, Target::Trait) {
+            return;
+        }
+
+        let def_id = hir_id.owner.def_id;
+
+        let items = self.tcx.associated_items(def_id);
+        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
+        // functions in the trait with default implementations
+        for ident in list {
+            let item = items
+                .filter_by_name_unhygienic(ident.name)
+                .find(|item| item.ident(self.tcx) == *ident);
+
+            match item {
+                Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
+                    if !item.defaultness(self.tcx).has_value() {
+                        self.tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
+                            span: self.tcx.def_span(item.def_id),
+                            note_span: attr_span,
+                        });
+                    }
+                }
+                Some(item) => {
+                    self.dcx().emit_err(errors::MustImplementNotFunction {
+                        span: self.tcx.def_span(item.def_id),
+                        span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
+                        note: errors::MustImplementNotFunctionNote {},
+                    });
+                }
+                None => {
+                    self.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                }
+            }
+        }
+        // Check for duplicates
+
+        let mut set: UnordMap<Symbol, Span> = Default::default();
+
+        for ident in &*list {
+            if let Some(dup) = set.insert(ident.name, ident.span) {
+                self.tcx
+                    .dcx()
+                    .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
+            }
+        }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
-    /// arguments.
+    fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
+        for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
+            match target {
+                Target::Fn => {}
+                _ => {
+                    self.dcx().emit_err(errors::EiiImplNotFunction { span: *span });
+                }
+            }
+
+            if let EiiImplResolution::Macro(eii_macro) = resolution
+                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && !impl_marked_unsafe
+            {
+                self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
+                    span: *span,
+                    name: self.tcx.item_name(*eii_macro),
+                    suggestion: errors::EiiImplRequiresUnsafeSuggestion {
+                        left: inner_span.shrink_to_lo(),
+                        right: inner_span.shrink_to_hi(),
+                    },
+                });
+            }
+        }
+    }
+
+    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
     fn check_do_not_recommend(
         &self,
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
         if !matches!(target, Target::Impl { .. })
@@ -495,14 +601,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 errors::IncorrectDoNotRecommendLocation,
             );
         }
-        if !attr.is_word() {
-            self.tcx.emit_node_span_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::DoNotRecommendDoesNotExpectArgs,
-            );
-        }
     }
 
     /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
@@ -515,6 +613,32 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 DiagnosticOnUnimplementedOnlyForTraits,
             );
         }
+    }
+
+    /// Checks if `#[diagnostic::on_const]` is applied to a trait impl
+    fn check_diagnostic_on_const(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) {
+        if target == (Target::Impl { of_trait: true }) {
+            match item.unwrap() {
+                ItemLike::Item(it) => match it.expect_impl().constness {
+                    Constness::Const => {}
+                    Constness::NotConst => return,
+                },
+                ItemLike::ForeignItem => {}
+            }
+        }
+        let item_span = self.tcx.hir_span(hir_id);
+        self.tcx.emit_node_span_lint(
+            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+            hir_id,
+            attr_span,
+            DiagnosticOnConstOnlyForTraitImpls { item_span },
+        );
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.
@@ -633,18 +757,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
     }
-    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
-    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::MacroDef => {}
-            _ => {
-                self.tcx.dcx().emit_err(errors::CollapseDebuginfo {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
-            }
-        }
-    }
 
     /// Checks if a `#[track_caller]` is applied to a function.
     fn check_track_caller(
@@ -669,6 +781,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpls(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        let name = match i.resolution {
+                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
+                            EiiImplResolution::Known(decl) => decl.name.name,
+                            EiiImplResolution::Error(_eg) => continue,
+                        };
+                        self.dcx().emit_err(errors::EiiWithTrackCaller {
+                            attr_span,
+                            name,
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             _ => {}
@@ -733,55 +861,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if the `#[thread_local]` attribute on `item` is valid.
-    fn check_thread_local(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ForeignStatic | Target::Static => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToStatic {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
-            }
-        }
-    }
-
-    fn doc_attr_str_error(&self, meta: &MetaItemInner, attr_name: &str) {
-        self.dcx().emit_err(errors::DocExpectStr { attr_span: meta.span(), attr_name });
-    }
-
-    fn check_doc_alias_value(
-        &self,
-        meta: &MetaItemInner,
-        doc_alias: Symbol,
-        hir_id: HirId,
-        target: Target,
-        is_list: bool,
-        aliases: &mut FxHashMap<String, Span>,
-    ) {
-        let tcx = self.tcx;
-        let span = meta.name_value_literal_span().unwrap_or_else(|| meta.span());
-        let attr_str =
-            &format!("`#[doc(alias{})]`", if is_list { "(\"...\")" } else { " = \"...\"" });
-        if doc_alias == sym::empty {
-            tcx.dcx().emit_err(errors::DocAliasEmpty { span, attr_str });
-            return;
-        }
-
-        let doc_alias_str = doc_alias.as_str();
-        if let Some(c) = doc_alias_str
-            .chars()
-            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
-        {
-            tcx.dcx().emit_err(errors::DocAliasBadChar { span, attr_str, char_: c });
-            return;
-        }
-        if doc_alias_str.starts_with(' ') || doc_alias_str.ends_with(' ') {
-            tcx.dcx().emit_err(errors::DocAliasStartEnd { span, attr_str });
-            return;
-        }
-
-        let span = meta.span();
+    fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy => {
                 if let DefKind::Impl { .. } =
@@ -838,123 +918,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::MacroCall
             | Target::Delegation { .. } => None,
         } {
-            tcx.dcx().emit_err(errors::DocAliasBadLocation { span, attr_str, location });
+            self.tcx.dcx().emit_err(errors::DocAliasBadLocation { span, location });
             return;
         }
-        if self.tcx.hir_opt_name(hir_id) == Some(doc_alias) {
-            tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str });
+        if self.tcx.hir_opt_name(hir_id) == Some(alias) {
+            self.tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str: alias });
             return;
         }
-        if let Err(entry) = aliases.try_insert(doc_alias_str.to_owned(), span) {
-            self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                span,
-                errors::DocAliasDuplicated { first_defn: *entry.entry.get() },
-            );
-        }
     }
 
-    fn check_doc_alias(
-        &self,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-        target: Target,
-        aliases: &mut FxHashMap<String, Span>,
-    ) {
-        if let Some(values) = meta.meta_item_list() {
-            for v in values {
-                match v.lit() {
-                    Some(l) => match l.kind {
-                        LitKind::Str(s, _) => {
-                            self.check_doc_alias_value(v, s, hir_id, target, true, aliases);
-                        }
-                        _ => {
-                            self.tcx
-                                .dcx()
-                                .emit_err(errors::DocAliasNotStringLiteral { span: v.span() });
-                        }
-                    },
-                    None => {
-                        self.tcx
-                            .dcx()
-                            .emit_err(errors::DocAliasNotStringLiteral { span: v.span() });
-                    }
-                }
-            }
-        } else if let Some(doc_alias) = meta.value_str() {
-            self.check_doc_alias_value(meta, doc_alias, hir_id, target, false, aliases)
-        } else {
-            self.dcx().emit_err(errors::DocAliasMalformed { span: meta.span() });
-        }
-    }
-
-    fn check_doc_keyword_and_attribute(
-        &self,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-        attr_kind: DocFakeItemKind,
-    ) {
-        fn is_doc_keyword(s: Symbol) -> bool {
-            // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
-            // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
-            // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
-        }
-
-        // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
-        fn is_builtin_attr(s: Symbol) -> bool {
-            rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&s)
-        }
-
-        let value = match meta.value_str() {
-            Some(value) if value != sym::empty => value,
-            _ => return self.doc_attr_str_error(meta, attr_kind.name()),
-        };
-
-        let item_kind = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(item) => Some(&item.kind),
-            _ => None,
-        };
-        match item_kind {
-            Some(ItemKind::Mod(_, module)) => {
-                if !module.item_ids.is_empty() {
-                    self.dcx().emit_err(errors::DocKeywordAttributeEmptyMod {
-                        span: meta.span(),
-                        attr_name: attr_kind.name(),
-                    });
-                    return;
-                }
-            }
-            _ => {
-                self.dcx().emit_err(errors::DocKeywordAttributeNotMod {
-                    span: meta.span(),
-                    attr_name: attr_kind.name(),
-                });
-                return;
-            }
-        }
-        match attr_kind {
-            DocFakeItemKind::Keyword => {
-                if !is_doc_keyword(value) {
-                    self.dcx().emit_err(errors::DocKeywordNotKeyword {
-                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                        keyword: value,
-                    });
-                }
-            }
-            DocFakeItemKind::Attribute => {
-                if !is_builtin_attr(value) {
-                    self.dcx().emit_err(errors::DocAttributeNotAttribute {
-                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                        attribute: value,
-                    });
-                }
-            }
-        }
-    }
-
-    fn check_doc_fake_variadic(&self, meta: &MetaItemInner, hir_id: HirId) {
+    fn check_doc_fake_variadic(&self, span: Span, hir_id: HirId) {
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
@@ -972,18 +945,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         false
                     };
                 if !is_valid {
-                    self.dcx().emit_err(errors::DocFakeVariadicNotValid { span: meta.span() });
+                    self.dcx().emit_err(errors::DocFakeVariadicNotValid { span });
                 }
             }
             _ => {
-                self.dcx().emit_err(errors::DocKeywordOnlyImpl { span: meta.span() });
+                self.dcx().emit_err(errors::DocKeywordOnlyImpl { span });
             }
         }
     }
 
-    fn check_doc_search_unbox(&self, meta: &MetaItemInner, hir_id: HirId) {
+    fn check_doc_search_unbox(&self, span: Span, hir_id: HirId) {
         let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
-            self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });
+            self.dcx().emit_err(errors::DocSearchUnboxInvalid { span });
             return;
         };
         match item.kind {
@@ -996,7 +969,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }) => {}
             ItemKind::TyAlias(_, generics, _) if generics.params.len() != 0 => {}
             _ => {
-                self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });
+                self.dcx().emit_err(errors::DocSearchUnboxInvalid { span });
             }
         }
     }
@@ -1010,60 +983,49 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// already seen an inlining attribute for this item.
     /// If so, `specified_inline` holds the value and the span of
     /// the first `inline`/`no_inline` attribute.
-    fn check_doc_inline(
-        &self,
-        style: AttrStyle,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-        target: Target,
-        specified_inline: &mut Option<(bool, Span)>,
-    ) {
-        match target {
-            Target::Use | Target::ExternCrate => {
-                let do_inline = meta.has_name(sym::inline);
-                if let Some((prev_inline, prev_span)) = *specified_inline {
-                    if do_inline != prev_inline {
-                        let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                        spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
-                        spans.push_span_label(
-                            meta.span(),
-                            fluent::passes_doc_inline_conflict_second,
-                        );
-                        self.dcx().emit_err(errors::DocKeywordConflict { spans });
+    fn check_doc_inline(&self, hir_id: HirId, target: Target, inline: &[(DocInline, Span)]) {
+        let span = match inline {
+            [] => return,
+            [(_, span)] => *span,
+            [(inline, span), rest @ ..] => {
+                for (inline2, span2) in rest {
+                    if inline2 != inline {
+                        let mut spans = MultiSpan::from_spans(vec![*span, *span2]);
+                        spans.push_span_label(*span, fluent::passes_doc_inline_conflict_first);
+                        spans.push_span_label(*span2, fluent::passes_doc_inline_conflict_second);
+                        self.dcx().emit_err(errors::DocInlineConflict { spans });
+                        return;
                     }
-                } else {
-                    *specified_inline = Some((do_inline, meta.span()));
                 }
+                *span
             }
+        };
+
+        match target {
+            Target::Use | Target::ExternCrate => {}
             _ => {
                 self.tcx.emit_node_span_lint(
                     INVALID_DOC_ATTRIBUTES,
                     hir_id,
-                    meta.span(),
+                    span,
                     errors::DocInlineOnlyUse {
-                        attr_span: meta.span(),
-                        item_span: (style == AttrStyle::Outer).then(|| self.tcx.hir_span(hir_id)),
+                        attr_span: span,
+                        item_span: self.tcx.hir_span(hir_id),
                     },
                 );
             }
         }
     }
 
-    fn check_doc_masked(
-        &self,
-        style: AttrStyle,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-        target: Target,
-    ) {
+    fn check_doc_masked(&self, span: Span, hir_id: HirId, target: Target) {
         if target != Target::ExternCrate {
             self.tcx.emit_node_span_lint(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
-                meta.span(),
+                span,
                 errors::DocMaskedOnlyExternCrate {
-                    attr_span: meta.span(),
-                    item_span: (style == AttrStyle::Outer).then(|| self.tcx.hir_span(hir_id)),
+                    attr_span: span,
+                    item_span: self.tcx.hir_span(hir_id),
                 },
             );
             return;
@@ -1073,177 +1035,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.tcx.emit_node_span_lint(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
-                meta.span(),
+                span,
                 errors::DocMaskedNotExternCrateSelf {
-                    attr_span: meta.span(),
-                    item_span: (style == AttrStyle::Outer).then(|| self.tcx.hir_span(hir_id)),
+                    attr_span: span,
+                    item_span: self.tcx.hir_span(hir_id),
                 },
             );
         }
     }
 
-    /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
-    fn check_attr_not_crate_level(
-        &self,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-        attr_name: &str,
-    ) -> bool {
-        if CRATE_HIR_ID == hir_id {
-            self.dcx().emit_err(errors::DocAttrNotCrateLevel { span: meta.span(), attr_name });
-            return false;
-        }
-        true
-    }
-
-    /// Checks that an attribute is used at the crate level. Returns `true` if valid.
-    fn check_attr_crate_level(
-        &self,
-        attr_span: Span,
-        style: AttrStyle,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-    ) -> bool {
-        if hir_id != CRATE_HIR_ID {
-            // insert a bang between `#` and `[...`
-            let bang_span = attr_span.lo() + BytePos(1);
-            let sugg = (style == AttrStyle::Outer
-                && self.tcx.hir_get_parent_item(hir_id) == CRATE_OWNER_ID)
-                .then_some(errors::AttrCrateLevelOnlySugg {
-                    attr: attr_span.with_lo(bang_span).with_hi(bang_span),
-                });
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::AttrCrateLevelOnly { sugg },
-            );
-            return false;
-        }
-        true
-    }
-
-    fn check_doc_attr_string_value(&self, meta: &MetaItemInner, hir_id: HirId) {
-        if meta.value_str().is_none() {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocAttrExpectsString { attr_name: meta.name().unwrap() },
-            );
-        }
-    }
-
-    fn check_doc_attr_no_value(&self, meta: &MetaItemInner, hir_id: HirId) {
-        if !meta.is_word() {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocAttrExpectsNoValue { attr_name: meta.name().unwrap() },
-            );
-        }
-    }
-
-    /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
-    fn check_test_attr(
-        &self,
-        attr_span: Span,
-        style: AttrStyle,
-        meta: &MetaItemInner,
-        hir_id: HirId,
-    ) {
-        if let Some(metas) = meta.meta_item_list() {
-            for i_meta in metas {
-                match (i_meta.name(), i_meta.meta_item()) {
-                    (Some(sym::attr), _) => {
-                        // Allowed everywhere like `#[doc]`
-                    }
-                    (Some(sym::no_crate_inject), _) => {
-                        self.check_attr_crate_level(attr_span, style, meta, hir_id);
-                    }
-                    (_, Some(m)) => {
-                        self.tcx.emit_node_span_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            hir_id,
-                            i_meta.span(),
-                            errors::DocTestUnknown {
-                                path: rustc_ast_pretty::pprust::path_to_string(&m.path),
-                            },
-                        );
-                    }
-                    (_, None) => {
-                        self.tcx.emit_node_span_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            hir_id,
-                            i_meta.span(),
-                            errors::DocTestLiteral,
-                        );
-                    }
+    fn check_doc_keyword_and_attribute(&self, span: Span, hir_id: HirId, attr_name: &'static str) {
+        let item_kind = match self.tcx.hir_node(hir_id) {
+            hir::Node::Item(item) => Some(&item.kind),
+            _ => None,
+        };
+        match item_kind {
+            Some(ItemKind::Mod(_, module)) => {
+                if !module.item_ids.is_empty() {
+                    self.dcx().emit_err(errors::DocKeywordAttributeEmptyMod { span, attr_name });
+                    return;
                 }
             }
-        } else {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocTestTakesList,
-            );
-        }
-    }
-
-    /// Check that the `#![doc(auto_cfg)]` attribute has the expected input.
-    fn check_doc_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) {
-        match &meta.kind {
-            MetaItemKind::Word => {}
-            MetaItemKind::NameValue(lit) => {
-                if !matches!(lit.kind, LitKind::Bool(_)) {
-                    self.tcx.emit_node_span_lint(
-                        INVALID_DOC_ATTRIBUTES,
-                        hir_id,
-                        meta.span,
-                        errors::DocAutoCfgWrongLiteral,
-                    );
-                }
-            }
-            MetaItemKind::List(list) => {
-                for item in list {
-                    let Some(attr_name @ (sym::hide | sym::show)) = item.name() else {
-                        self.tcx.emit_node_span_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            hir_id,
-                            meta.span,
-                            errors::DocAutoCfgExpectsHideOrShow,
-                        );
-                        continue;
-                    };
-                    if let Some(list) = item.meta_item_list() {
-                        for item in list {
-                            let valid = item.meta_item().is_some_and(|meta| {
-                                meta.path.segments.len() == 1
-                                    && matches!(
-                                        &meta.kind,
-                                        MetaItemKind::Word | MetaItemKind::NameValue(_)
-                                    )
-                            });
-                            if !valid {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    item.span(),
-                                    errors::DocAutoCfgHideShowUnexpectedItem { attr_name },
-                                );
-                            }
-                        }
-                    } else {
-                        self.tcx.emit_node_span_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            hir_id,
-                            meta.span,
-                            errors::DocAutoCfgHideShowExpectsList { attr_name },
-                        );
-                    }
-                }
+            _ => {
+                self.dcx().emit_err(errors::DocKeywordAttributeNotMod { span, attr_name });
+                return;
             }
         }
     }
@@ -1254,183 +1069,80 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// of one item. Read the documentation of [`check_doc_inline`] for more information.
     ///
     /// [`check_doc_inline`]: Self::check_doc_inline
-    fn check_doc_attrs(
-        &self,
-        attr: &Attribute,
-        attr_span: Span,
-        style: AttrStyle,
-        hir_id: HirId,
-        target: Target,
-        specified_inline: &mut Option<(bool, Span)>,
-        aliases: &mut FxHashMap<String, Span>,
-    ) {
-        if let Some(list) = attr.meta_item_list() {
-            for meta in &list {
-                if let Some(i_meta) = meta.meta_item() {
-                    match i_meta.name() {
-                        Some(sym::alias) => {
-                            if self.check_attr_not_crate_level(meta, hir_id, "alias") {
-                                self.check_doc_alias(meta, hir_id, target, aliases);
-                            }
-                        }
+    fn check_doc_attrs(&self, attr: &DocAttribute, hir_id: HirId, target: Target) {
+        let DocAttribute {
+            aliases,
+            // valid pretty much anywhere, not checked here?
+            // FIXME: should we?
+            hidden: _,
+            inline,
+            // FIXME: currently unchecked
+            cfg: _,
+            // already checked in attr_parsing
+            auto_cfg: _,
+            // already checked in attr_parsing
+            auto_cfg_change: _,
+            fake_variadic,
+            keyword,
+            masked,
+            // FIXME: currently unchecked
+            notable_trait: _,
+            search_unbox,
+            // already checked in attr_parsing
+            html_favicon_url: _,
+            // already checked in attr_parsing
+            html_logo_url: _,
+            // already checked in attr_parsing
+            html_playground_url: _,
+            // already checked in attr_parsing
+            html_root_url: _,
+            // already checked in attr_parsing
+            html_no_source: _,
+            // already checked in attr_parsing
+            issue_tracker_base_url: _,
+            rust_logo,
+            // allowed anywhere
+            test_attrs: _,
+            // already checked in attr_parsing
+            no_crate_inject: _,
+            attribute,
+        } = attr;
 
-                        Some(sym::keyword) => {
-                            if self.check_attr_not_crate_level(meta, hir_id, "keyword") {
-                                self.check_doc_keyword_and_attribute(
-                                    meta,
-                                    hir_id,
-                                    DocFakeItemKind::Keyword,
-                                );
-                            }
-                        }
-
-                        Some(sym::attribute) => {
-                            if self.check_attr_not_crate_level(meta, hir_id, "attribute") {
-                                self.check_doc_keyword_and_attribute(
-                                    meta,
-                                    hir_id,
-                                    DocFakeItemKind::Attribute,
-                                );
-                            }
-                        }
-
-                        Some(sym::fake_variadic) => {
-                            if self.check_attr_not_crate_level(meta, hir_id, "fake_variadic") {
-                                self.check_doc_fake_variadic(meta, hir_id);
-                            }
-                        }
-
-                        Some(sym::search_unbox) => {
-                            if self.check_attr_not_crate_level(meta, hir_id, "fake_variadic") {
-                                self.check_doc_search_unbox(meta, hir_id);
-                            }
-                        }
-
-                        Some(sym::test) => {
-                            self.check_test_attr(attr_span, style, meta, hir_id);
-                        }
-
-                        Some(
-                            sym::html_favicon_url
-                            | sym::html_logo_url
-                            | sym::html_playground_url
-                            | sym::issue_tracker_base_url
-                            | sym::html_root_url,
-                        ) => {
-                            self.check_attr_crate_level(attr_span, style, meta, hir_id);
-                            self.check_doc_attr_string_value(meta, hir_id);
-                        }
-
-                        Some(sym::html_no_source) => {
-                            self.check_attr_crate_level(attr_span, style, meta, hir_id);
-                            self.check_doc_attr_no_value(meta, hir_id);
-                        }
-
-                        Some(sym::auto_cfg) => {
-                            self.check_doc_auto_cfg(i_meta, hir_id);
-                        }
-
-                        Some(sym::inline | sym::no_inline) => {
-                            self.check_doc_inline(style, meta, hir_id, target, specified_inline)
-                        }
-
-                        Some(sym::masked) => self.check_doc_masked(style, meta, hir_id, target),
-
-                        Some(sym::cfg | sym::hidden | sym::notable_trait) => {}
-
-                        Some(sym::rust_logo) => {
-                            if self.check_attr_crate_level(attr_span, style, meta, hir_id)
-                                && !self.tcx.features().rustdoc_internals()
-                            {
-                                feature_err(
-                                    &self.tcx.sess,
-                                    sym::rustdoc_internals,
-                                    meta.span(),
-                                    fluent::passes_doc_rust_logo,
-                                )
-                                .emit();
-                            }
-                        }
-
-                        _ => {
-                            let path = rustc_ast_pretty::pprust::path_to_string(&i_meta.path);
-                            if i_meta.has_name(sym::spotlight) {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownSpotlight { path, span: i_meta.span },
-                                );
-                            } else if i_meta.has_name(sym::include)
-                                && let Some(value) = i_meta.value_str()
-                            {
-                                let applicability = if list.len() == 1 {
-                                    Applicability::MachineApplicable
-                                } else {
-                                    Applicability::MaybeIncorrect
-                                };
-                                // If there are multiple attributes, the suggestion would suggest
-                                // deleting all of them, which is incorrect.
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownInclude {
-                                        path,
-                                        value: value.to_string(),
-                                        inner: match style {
-                                            AttrStyle::Inner => "!",
-                                            AttrStyle::Outer => "",
-                                        },
-                                        sugg: (attr.span(), applicability),
-                                    },
-                                );
-                            } else if i_meta.has_name(sym::passes)
-                                || i_meta.has_name(sym::no_default_passes)
-                            {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownPasses { path, span: i_meta.span },
-                                );
-                            } else if i_meta.has_name(sym::plugins) {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownPlugins { path, span: i_meta.span },
-                                );
-                            } else {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownAny { path },
-                                );
-                            }
-                        }
-                    }
-                } else {
-                    self.tcx.emit_node_span_lint(
-                        INVALID_DOC_ATTRIBUTES,
-                        hir_id,
-                        meta.span(),
-                        errors::DocInvalid,
-                    );
-                }
-            }
+        for (alias, span) in aliases {
+            self.check_doc_alias_value(*span, hir_id, target, *alias);
         }
-    }
 
-    fn check_has_incoherent_inherent_impls(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
-            }
+        if let Some((_, span)) = keyword {
+            self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
+        }
+        if let Some((_, span)) = attribute {
+            self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
+        }
+
+        if let Some(span) = fake_variadic {
+            self.check_doc_fake_variadic(*span, hir_id);
+        }
+
+        if let Some(span) = search_unbox {
+            self.check_doc_search_unbox(*span, hir_id);
+        }
+
+        self.check_doc_inline(hir_id, target, inline);
+
+        if let Some(span) = rust_logo
+            && !self.tcx.features().rustdoc_internals()
+        {
+            feature_err(
+                &self.tcx.sess,
+                sym::rustdoc_internals,
+                *span,
+                fluent::passes_doc_rust_logo,
+            )
+            .emit();
+        }
+
+        if let Some(span) = masked {
+            self.check_doc_masked(*span, hir_id, target);
         }
     }
 
@@ -1438,16 +1150,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
-        }
-    }
-
-    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
-    fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct | Target::Enum | Target::Union | Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::MustNotSuspend { attr_span: attr.span(), span });
-            }
         }
     }
 
@@ -1490,53 +1192,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
     }
 
-    /// Checks if `#[no_link]` is applied to an `extern crate`.
-    fn check_no_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ExternCrate => {}
-            // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[no_link]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to be compatible
-            // with crates depending on them, we can't throw an error here.
-            Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_link");
-            }
-            _ => {
-                self.dcx().emit_err(errors::NoLink { attr_span: attr.span(), span });
-            }
-        }
-    }
-
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_rustc_legacy_const_generics(
         &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
         item: Option<ItemLike<'_>>,
+        attr_span: Span,
+        index_list: &ThinVec<(usize, Span)>,
     ) {
-        let is_function = matches!(target, Target::Fn);
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span: attr.span(),
-                defn_span: span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-            return;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            // The attribute form is validated on AST.
-            return;
-        };
-
         let Some(ItemLike::Item(Item {
             kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. },
             ..
         })) = item
         else {
-            bug!("should be a function item");
+            // No error here, since it's already given by the parser
+            return;
         };
 
         for param in generics.params {
@@ -1544,7 +1213,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
                     self.dcx().emit_err(errors::RustcLegacyConstGenericsOnly {
-                        attr_span: attr.span(),
+                        attr_span,
                         param_span: param.span,
                     });
                     return;
@@ -1552,73 +1221,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
 
-        if list.len() != generics.params.len() {
+        if index_list.len() != generics.params.len() {
             self.dcx().emit_err(errors::RustcLegacyConstGenericsIndex {
-                attr_span: attr.span(),
+                attr_span,
                 generics_span: generics.span,
             });
             return;
         }
 
-        let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
-        let mut invalid_args = vec![];
-        for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
-                if *val >= arg_count {
-                    let span = meta.span();
-                    self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
-                        span,
-                        arg_count: arg_count as usize,
-                    });
-                    return;
-                }
-            } else {
-                invalid_args.push(meta.span());
-            }
-        }
-
-        if !invalid_args.is_empty() {
-            self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexNegative { invalid_args });
-        }
-    }
-
-    /// Helper function for checking that the provided attribute is only applied to a function or
-    /// method.
-    fn check_applied_to_fn_or_method(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        defn_span: Span,
-        target: Target,
-    ) {
-        let is_function = matches!(target, Target::Fn | Target::Method(..));
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span,
-                defn_span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
-    fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct => {}
-            _ => {
-                self.dcx().emit_err(errors::RustcLintOptTy { attr_span: attr.span(), span });
-            }
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_deny_field_access]` attribute is only applied to a field.
-    fn check_rustc_lint_opt_deny_field_access(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Field => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcLintOptDenyFieldAccess { attr_span: attr.span(), span });
+        let arg_count = decl.inputs.len() + generics.params.len();
+        for (index, span) in index_list {
+            if *index >= arg_count {
+                self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
+                    span: *span,
+                    arg_count,
+                });
             }
         }
     }
@@ -1628,16 +1245,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_dirty_clean(&self, attr: &Attribute) {
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
             self.dcx().emit_err(errors::RustcDirtyClean { span: attr.span() });
-        }
-    }
-
-    /// Checks if the attribute is applied to a trait.
-    fn check_must_be_applied_to_trait(&self, attr_span: Span, defn_span: Span, target: Target) {
-        match target {
-            Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait { attr_span, defn_span });
-            }
         }
     }
 
@@ -1913,10 +1520,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
         match target {
             Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if matches!(
-                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id)),
-                    DefKind::Impl { of_trait: true }
-                ) =>
+                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                    == DefKind::Impl { of_trait: true } =>
             {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
@@ -2086,7 +1691,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             let hir_sig = tcx.hir_fn_sig_by_hir_id(hir_id);
             if let Some(hir_sig) = hir_sig {
-                #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
                         if let Some(ty) = hir_sig.decl.inputs.get(idx) {
@@ -2312,13 +1916,18 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg_trace, sym::cfg_attr_trace];
         let spans = self
             .tcx
             .hir_attrs(where_predicate.hir_id)
             .iter()
-            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
-            .filter(|attr| !attr.is_parsed_attr())
+            // FIXME: We shouldn't need to special-case `doc`!
+            .filter(|attr| {
+                matches!(
+                    attr,
+                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
+                        | Attribute::Unparsed(_)
+                )
+            })
             .map(|attr| attr.span())
             .collect::<Vec<_>>();
         if !spans.is_empty() {

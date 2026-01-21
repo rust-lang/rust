@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_lint_defs::EditionFcw;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
@@ -264,9 +265,16 @@ fn explain_lint_level_source(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
                 if matches!(orig_level, Level::Warn | Level::Deny) {
-                    err.help_once(format!(
-                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
-                    ));
+                    let help = if name == "dead_code" {
+                        format!(
+                            "to override `{flag} {hyphen_case_flag_val}` add `#[expect({name})]` or `#[allow({name})]`"
+                        )
+                    } else {
+                        format!(
+                            "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                        )
+                    };
+                    err.help_once(help);
                 }
             }
         }
@@ -395,45 +403,52 @@ pub fn lint_level(
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = match future_incompatible.reason {
-                FutureIncompatibilityReason::FutureReleaseError => {
+                FutureIncompatibilityReason::FutureReleaseError(_) => {
                     "this was previously accepted by the compiler but is being phased out; \
                          it will become a hard error in a future release!"
                         .to_owned()
                 }
-                FutureIncompatibilityReason::FutureReleaseSemanticsChange => {
+                FutureIncompatibilityReason::FutureReleaseSemanticsChange(_) => {
                     "this will change its meaning in a future release!".to_owned()
                 }
-                FutureIncompatibilityReason::EditionError(edition) => {
+                FutureIncompatibilityReason::EditionError(EditionFcw { edition, .. }) => {
                     let current_edition = sess.edition();
                     format!(
                         "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
                     )
                 }
-                FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
+                FutureIncompatibilityReason::EditionSemanticsChange(EditionFcw {
+                    edition, ..
+                }) => {
                     format!("this changes meaning in Rust {edition}")
                 }
-                FutureIncompatibilityReason::EditionAndFutureReleaseError(edition) => {
+                FutureIncompatibilityReason::EditionAndFutureReleaseError(EditionFcw {
+                    edition,
+                    ..
+                }) => {
                     format!(
                         "this was previously accepted by the compiler but is being phased out; \
                          it will become a hard error in Rust {edition} and in a future release in all editions!"
                     )
                 }
-                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(edition) => {
+                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(
+                    EditionFcw { edition, .. },
+                ) => {
                     format!(
                         "this changes meaning in Rust {edition} and in a future release in all editions!"
                     )
                 }
-                FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
+                FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
+                FutureIncompatibilityReason::Unreachable => unreachable!(),
             };
 
             if future_incompatible.explain_reason {
                 err.warn(explanation);
             }
-            if !future_incompatible.reference.is_empty() {
-                let citation =
-                    format!("for more information, see {}", future_incompatible.reference);
-                err.note(citation);
-            }
+
+            let citation =
+                format!("for more information, see {}", future_incompatible.reason.reference());
+            err.note(citation);
         }
 
         // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),

@@ -46,6 +46,12 @@ impl Default for TestDB {
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         this.set_all_crates(Arc::new(Box::new([])));
+        _ = base_db::LibraryRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&this);
+        _ = base_db::LocalRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&this);
         CrateGraphBuilder::default().set_in_db(&mut this);
         this
     }
@@ -138,9 +144,9 @@ impl TestDB {
         let file_id = file_id.into();
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
-            for (local_id, data) in crate_def_map.modules() {
+            for (module_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
-                    return Some(crate_def_map.module_id(local_id));
+                    return Some(module_id);
                 }
             }
         }

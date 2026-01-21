@@ -11,7 +11,13 @@ error: cannot find attribute `macro_reexport` in this scope
   --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)]
-   |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
+   |   ^^^^^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[macro_reexport(macro_one)]
+LL + #[macro_export(macro_one)]
+   |
 
 error: aborting due to 2 previous errors
 

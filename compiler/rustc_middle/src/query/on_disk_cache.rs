@@ -20,7 +20,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos,
+    BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
     SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
 
@@ -652,7 +652,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
                 let dto = u32::decode(self);
 
                 let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
-                (enclosing.lo + BytePos::from_u32(dlo), enclosing.lo + BytePos::from_u32(dto))
+                (
+                    BytePos(enclosing.lo.0.wrapping_add(dlo)),
+                    BytePos(enclosing.lo.0.wrapping_add(dto)),
+                )
             }
             TAG_FULL_SPAN => {
                 let file_lo_index = SourceFileIndex::decode(self);
@@ -672,34 +675,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         Span::new(lo, hi, ctxt, parent)
     }
 
-    fn decode_symbol(&mut self) -> Symbol {
-        self.decode_symbol_or_byte_symbol(
-            Symbol::new,
-            |this| Symbol::intern(this.read_str()),
-            |opaque| Symbol::intern(opaque.read_str()),
-        )
-    }
-
-    fn decode_byte_symbol(&mut self) -> ByteSymbol {
-        self.decode_symbol_or_byte_symbol(
-            ByteSymbol::new,
-            |this| ByteSymbol::intern(this.read_byte_str()),
-            |opaque| ByteSymbol::intern(opaque.read_byte_str()),
-        )
-    }
-
     fn decode_crate_num(&mut self) -> CrateNum {
         let stable_id = StableCrateId::decode(self);
         let cnum = self.tcx.stable_crate_id_to_crate_num(stable_id);
         cnum
-    }
-
-    // This impl makes sure that we get a runtime error when we try decode a
-    // `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
-    // because we would not know how to transform the `DefIndex` to the current
-    // context.
-    fn decode_def_index(&mut self) -> DefIndex {
-        panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
 
     // Both the `CrateNum` and the `DefIndex` of a `DefId` can change in between two
@@ -722,6 +701,32 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
 
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
         panic!("cannot decode `AttrId` with `CacheDecoder`");
+    }
+}
+
+impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
+    fn decode_symbol(&mut self) -> Symbol {
+        self.decode_symbol_or_byte_symbol(
+            Symbol::new,
+            |this| Symbol::intern(this.read_str()),
+            |opaque| Symbol::intern(opaque.read_str()),
+        )
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        self.decode_symbol_or_byte_symbol(
+            ByteSymbol::new,
+            |this| ByteSymbol::intern(this.read_byte_str()),
+            |opaque| ByteSymbol::intern(opaque.read_byte_str()),
+        )
+    }
+
+    // This impl makes sure that we get a runtime error when we try decode a
+    // `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
+    // because we would not know how to transform the `DefIndex` to the current
+    // context.
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
 }
 
@@ -774,6 +779,13 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Spanned<MonoItem<'tc
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx crate::traits::specialization_graph::Graph
 {
+    #[inline]
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx rustc_ast::tokenstream::TokenStream {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
@@ -892,30 +904,33 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
             return TAG_PARTIAL_SPAN.encode(self);
         }
 
-        if let Some(parent) = span_data.parent {
-            let enclosing = self.tcx.source_span_untracked(parent).data_untracked();
-            if enclosing.contains(span_data) {
-                TAG_RELATIVE_SPAN.encode(self);
-                (span_data.lo - enclosing.lo).to_u32().encode(self);
-                (span_data.hi - enclosing.lo).to_u32().encode(self);
-                return;
-            }
+        let parent =
+            span_data.parent.map(|parent| self.tcx.source_span_untracked(parent).data_untracked());
+        if let Some(parent) = parent
+            && parent.contains(span_data)
+        {
+            TAG_RELATIVE_SPAN.encode(self);
+            (span_data.lo.0.wrapping_sub(parent.lo.0)).encode(self);
+            (span_data.hi.0.wrapping_sub(parent.lo.0)).encode(self);
+            return;
         }
 
-        let pos = self.source_map.byte_pos_to_line_and_col(span_data.lo);
-        let partial_span = match &pos {
-            Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),
-            None => true,
+        let Some((file_lo, line_lo, col_lo)) =
+            self.source_map.byte_pos_to_line_and_col(span_data.lo)
+        else {
+            return TAG_PARTIAL_SPAN.encode(self);
         };
 
-        if partial_span {
-            return TAG_PARTIAL_SPAN.encode(self);
+        if let Some(parent) = parent
+            && file_lo.contains(parent.lo)
+        {
+            TAG_RELATIVE_SPAN.encode(self);
+            (span_data.lo.0.wrapping_sub(parent.lo.0)).encode(self);
+            (span_data.hi.0.wrapping_sub(parent.lo.0)).encode(self);
+            return;
         }
 
-        let (file_lo, line_lo, col_lo) = pos.unwrap();
-
         let len = span_data.hi - span_data.lo;
-
         let source_file_index = self.source_file_index(file_lo);
 
         TAG_FULL_SPAN.encode(self);

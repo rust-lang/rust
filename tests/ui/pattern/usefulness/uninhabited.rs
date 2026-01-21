@@ -1,10 +1,10 @@
 //@ check-pass
+//@ edition: 2024
 //@ aux-build:empty.rs
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `Ty::is_inhabited_from` function.
 #![feature(never_type)]
-#![feature(never_type_fallback)]
 #![deny(unreachable_patterns)]
 
 macro_rules! assert_empty {

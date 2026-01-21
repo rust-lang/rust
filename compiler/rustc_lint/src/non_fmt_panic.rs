@@ -4,9 +4,8 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -38,7 +37,7 @@ declare_lint! {
     Warn,
     "detect single-argument panic!() invocations in which the argument is not a format string",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
+        reason: fcw!(EditionSemanticsChange 2021 "panic-macro-consistency"),
         explain_reason: false,
     };
     report_in_external_macro
@@ -121,7 +120,6 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
-    #[allow(rustc::diagnostic_outside_of_impl)]
     cx.span_lint(NON_FMT_PANICS, arg_span, |lint| {
         lint.primary_message(fluent::lint_non_fmt_panic);
         lint.arg("name", symbol);

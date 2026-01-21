@@ -1,4 +1,5 @@
 //@ revisions: normal exhaustive_patterns never_pats
+//@ edition: 2024
 //
 // This tests correct handling of empty types in exhaustiveness checking.
 //
@@ -6,8 +7,6 @@
 // valid data, namely dereferences and union field accesses. In these cases, empty arms can
 // generally not be omitted, except with `exhaustive_patterns` which ignores this..
 #![feature(never_type)]
-// This feature is useful to avoid `!` falling back to `()` all the time.
-#![feature(never_type_fallback)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(never_pats, feature(never_patterns))]
 //[never_pats]~^ WARN the feature `never_patterns` is incomplete

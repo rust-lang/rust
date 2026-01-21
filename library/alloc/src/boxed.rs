@@ -184,7 +184,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::borrow::{Borrow, BorrowMut};
-#[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::error::{self, Error};
@@ -733,6 +732,128 @@ impl<T, A: Allocator> Box<T, A> {
     }
 }
 
+impl<T: ?Sized + CloneToUninit> Box<T> {
+    /// Allocates memory on the heap then clones `src` into it.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    ///
+    /// let hello: Box<str> = Box::clone_from_ref("hello");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    #[must_use]
+    #[inline]
+    pub fn clone_from_ref(src: &T) -> Box<T> {
+        Box::clone_from_ref_in(src, Global)
+    }
+
+    /// Allocates memory on the heap then clones `src` into it, returning an error if allocation fails.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// let hello: Box<str> = Box::try_clone_from_ref("hello")?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn try_clone_from_ref(src: &T) -> Result<Box<T>, AllocError> {
+        Box::try_clone_from_ref_in(src, Global)
+    }
+}
+
+impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
+    /// Allocates memory in the given allocator then clones `src` into it.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let hello: Box<str, System> = Box::clone_from_ref_in("hello", System);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn clone_from_ref_in(src: &T, alloc: A) -> Box<T, A> {
+        let layout = Layout::for_value::<T>(src);
+        match Box::try_clone_from_ref_in(src, alloc) {
+            Ok(bx) => bx,
+            Err(_) => handle_alloc_error(layout),
+        }
+    }
+
+    /// Allocates memory in the given allocator then clones `src` into it, returning an error if allocation fails.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let hello: Box<str, System> = Box::try_clone_from_ref_in("hello", System)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn try_clone_from_ref_in(src: &T, alloc: A) -> Result<Box<T, A>, AllocError> {
+        struct DeallocDropGuard<'a, A: Allocator>(Layout, &'a A, NonNull<u8>);
+        impl<'a, A: Allocator> Drop for DeallocDropGuard<'a, A> {
+            fn drop(&mut self) {
+                let &mut DeallocDropGuard(layout, alloc, ptr) = self;
+                // Safety: `ptr` was allocated by `*alloc` with layout `layout`
+                unsafe {
+                    alloc.deallocate(ptr, layout);
+                }
+            }
+        }
+        let layout = Layout::for_value::<T>(src);
+        let (ptr, guard) = if layout.size() == 0 {
+            (layout.dangling_ptr(), None)
+        } else {
+            // Safety: layout is non-zero-sized
+            let ptr = alloc.allocate(layout)?.cast();
+            (ptr, Some(DeallocDropGuard(layout, &alloc, ptr)))
+        };
+        let ptr = ptr.as_ptr();
+        // Safety: `*ptr` is newly allocated, correctly aligned to `align_of_val(src)`,
+        // and is valid for writes for `size_of_val(src)`.
+        // If this panics, then `guard` will deallocate for us (if allocation occuured)
+        unsafe {
+            <T as CloneToUninit>::clone_to_uninit(src, ptr);
+        }
+        // Defuse the deallocate guard
+        core::mem::forget(guard);
+        // Safety: We just initialized `*ptr` as a clone of `src`
+        Ok(unsafe { Box::from_raw_in(ptr.with_metadata_of(src), alloc) })
+    }
+}
+
 impl<T> Box<[T]> {
     /// Constructs a new boxed slice with uninitialized contents.
     ///
@@ -1192,7 +1313,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
@@ -1310,7 +1431,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
         // SAFETY: `Box` is guaranteed to be non-null.
@@ -1419,7 +1540,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
@@ -1534,7 +1655,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
@@ -2132,7 +2253,7 @@ impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.

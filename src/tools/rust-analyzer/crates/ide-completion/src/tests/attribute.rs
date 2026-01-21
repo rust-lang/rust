@@ -1508,3 +1508,55 @@ extern crate dep;
         )
     }
 }
+
+#[test]
+fn builtin_macro_completed_only_as_its_kind() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+pub macro define_opaque($($tt:tt)*) {
+    /* compiler built-in */
+}
+
+fn foo() {
+    def$0
+}
+    "#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}

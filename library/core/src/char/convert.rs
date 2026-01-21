@@ -45,6 +45,7 @@ impl const From<char> for u32 {
     /// ```
     /// let c = 'c';
     /// let u = u32::from(c);
+    ///
     /// assert!(4 == size_of_val(&u))
     /// ```
     #[inline]
@@ -63,6 +64,7 @@ impl const From<char> for u64 {
     /// ```
     /// let c = '👤';
     /// let u = u64::from(c);
+    ///
     /// assert!(8 == size_of_val(&u))
     /// ```
     #[inline]
@@ -83,6 +85,7 @@ impl const From<char> for u128 {
     /// ```
     /// let c = '⚙';
     /// let u = u128::from(c);
+    ///
     /// assert!(16 == size_of_val(&u))
     /// ```
     #[inline]
@@ -93,8 +96,8 @@ impl const From<char> for u128 {
     }
 }
 
-/// Maps a `char` with code point in U+0000..=U+00FF to a byte in 0x00..=0xFF with same value,
-/// failing if the code point is greater than U+00FF.
+/// Maps a `char` with a code point from U+0000 to U+00FF (inclusive) to a byte in `0x00..=0xFF` with
+/// the same value, failing if the code point is greater than U+00FF.
 ///
 /// See [`impl From<u8> for char`](char#impl-From<u8>-for-char) for details on the encoding.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
@@ -109,6 +112,7 @@ impl const TryFrom<char> for u8 {
     /// ```
     /// let a = 'ÿ'; // U+00FF
     /// let b = 'Ā'; // U+0100
+    ///
     /// assert_eq!(u8::try_from(a), Ok(0xFF_u8));
     /// assert!(u8::try_from(b).is_err());
     /// ```
@@ -122,8 +126,8 @@ impl const TryFrom<char> for u8 {
     }
 }
 
-/// Maps a `char` with code point in U+0000..=U+FFFF to a `u16` in 0x0000..=0xFFFF with same value,
-/// failing if the code point is greater than U+FFFF.
+/// Maps a `char` with a code point from U+0000 to U+FFFF (inclusive) to a `u16` in `0x0000..=0xFFFF`
+/// with the same value, failing if the code point is greater than U+FFFF.
 ///
 /// This corresponds to the UCS-2 encoding, as specified in ISO/IEC 10646:2003.
 #[stable(feature = "u16_from_char", since = "1.74.0")]
@@ -138,6 +142,7 @@ impl const TryFrom<char> for u16 {
     /// ```
     /// let trans_rights = '⚧'; // U+26A7
     /// let ninjas = '🥷'; // U+1F977
+    ///
     /// assert_eq!(u16::try_from(trans_rights), Ok(0x26A7_u16));
     /// assert!(u16::try_from(ninjas).is_err());
     /// ```
@@ -151,7 +156,45 @@ impl const TryFrom<char> for u16 {
     }
 }
 
-/// Maps a byte in 0x00..=0xFF to a `char` whose code point has the same value, in U+0000..=U+00FF.
+/// Maps a `char` with a code point from U+0000 to U+10FFFF (inclusive) to a `usize` in
+/// `0x0000..=0x10FFFF` with the same value, failing if the final value is unrepresentable by
+/// `usize`.
+///
+/// Generally speaking, this conversion can be seen as obtaining the character's corresponding
+/// UTF-32 code point to the extent representable by pointer addresses.
+#[stable(feature = "usize_try_from_char", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const TryFrom<char> for usize {
+    type Error = TryFromCharError;
+
+    /// Tries to convert a [`char`] into a [`usize`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = '\u{FFFF}'; // Always succeeds.
+    /// let b = '\u{10FFFF}'; // Conditionally succeeds.
+    ///
+    /// assert_eq!(usize::try_from(a), Ok(0xFFFF));
+    ///
+    /// if size_of::<usize>() >= size_of::<u32>() {
+    ///     assert_eq!(usize::try_from(b), Ok(0x10FFFF));
+    /// } else {
+    ///     assert!(matches!(usize::try_from(b), Err(_)));
+    /// }
+    /// ```
+    #[inline]
+    fn try_from(c: char) -> Result<usize, Self::Error> {
+        // FIXME(const-hack): this should use map_err instead
+        match usize::try_from(u32::from(c)) {
+            Ok(x) => Ok(x),
+            Err(_) => Err(TryFromCharError(())),
+        }
+    }
+}
+
+/// Maps a byte in `0x00..=0xFF` to a `char` whose code point has the same value from U+0000 to U+00FF
+/// (inclusive).
 ///
 /// Unicode is designed such that this effectively decodes bytes
 /// with the character encoding that IANA calls ISO-8859-1.
@@ -179,6 +222,7 @@ impl const From<u8> for char {
     /// ```
     /// let u = 32 as u8;
     /// let c = char::from(u);
+    ///
     /// assert!(4 == size_of_val(&c))
     /// ```
     #[inline]
@@ -246,7 +290,6 @@ const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
     // Subtracting 0x800 causes 0x0000..0x0800 to wrap, meaning that a single
     // unsigned comparison against 0x110000 - 0x800 will detect both the wrapped
     // surrogate range as well as the numbers originally larger than 0x110000.
-    //
     if (i ^ 0xD800).wrapping_sub(0x800) >= 0x110000 - 0x800 {
         Err(CharTryFromError(()))
     } else {

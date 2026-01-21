@@ -1,14 +1,15 @@
 // ignore-tidy-filelength
 
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use rustc_ast::token::Token;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
-    SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
+    Level, Subdiagnostic, SuggestionStyle,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -820,6 +821,12 @@ pub(crate) struct FrontmatterLengthMismatch {
     pub close: Span,
     pub len_opening: usize,
     pub len_close: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_too_many_dashes)]
+pub(crate) struct FrontmatterTooManyDashes {
+    pub len_opening: usize,
 }
 
 #[derive(Diagnostic)]
@@ -2362,6 +2369,8 @@ pub(crate) struct UnknownTokenStart {
     pub null: Option<UnknownTokenNull>,
     #[subdiagnostic]
     pub repeat: Option<UnknownTokenRepeat>,
+    #[subdiagnostic]
+    pub invisible: Option<InvisibleCharacter>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2401,6 +2410,10 @@ pub(crate) enum TokenSubstitution {
 pub(crate) struct UnknownTokenRepeat {
     pub repeats: usize,
 }
+
+#[derive(Subdiagnostic)]
+#[help(parse_help_invisible_char)]
+pub(crate) struct InvisibleCharacter;
 
 #[derive(Subdiagnostic)]
 #[help(parse_help_null)]
@@ -3335,6 +3348,24 @@ pub(crate) struct KwBadCase<'a> {
     #[suggestion(code = "{kw}", style = "verbose", applicability = "machine-applicable")]
     pub span: Span,
     pub kw: &'a str,
+    pub case: Case,
+}
+
+pub(crate) enum Case {
+    Upper,
+    Lower,
+    Mixed,
+}
+
+impl IntoDiagArg for Case {
+    fn into_diag_arg(self, path: &mut Option<PathBuf>) -> DiagArgValue {
+        match self {
+            Case::Upper => "uppercase",
+            Case::Lower => "lowercase",
+            Case::Mixed => "the correct case",
+        }
+        .into_diag_arg(path)
+    }
 }
 
 #[derive(Diagnostic)]
@@ -3644,5 +3675,12 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
 #[diag(parse_varargs_without_pattern)]
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(code = "_: ...", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_delegation_non_trait_impl_reuse)]
+pub(crate) struct ImplReuseInherentImpl {
+    #[primary_span]
     pub span: Span,
 }

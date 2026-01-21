@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ revisions: powerpc powerpc64 powerpc64le aix64
+//@ revisions: powerpc powerpc64 powerpc64le aix64 powerpcspe
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //@[powerpc] needs-llvm-components: powerpc
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
@@ -8,6 +8,8 @@
 //@[powerpc64le] needs-llvm-components: powerpc
 //@[aix64] compile-flags: --target powerpc64-ibm-aix
 //@[aix64] needs-llvm-components: powerpc
+//@[powerpcspe] compile-flags: --target powerpc-unknown-linux-gnuspe
+//@[powerpcspe] needs-llvm-components: powerpc
 //@ ignore-backends: gcc
 // ignore-tidy-linelength
 
@@ -40,7 +42,7 @@ fn f() {
         asm!("", out("r13") _);
         //~^ ERROR cannot use register `r13`: r13 is a reserved register on this target
         asm!("", out("r29") _);
-        //[powerpc]~^ ERROR cannot use register `r29`: r29 is used internally by LLVM and cannot be used as an operand for inline asm
+        //[powerpc,powerpcspe]~^ ERROR cannot use register `r29`: r29 is used internally by LLVM and cannot be used as an operand for inline asm
         asm!("", out("r30") _);
         //~^ ERROR invalid register `r30`: r30 is used internally by LLVM and cannot be used as an operand for inline asm
         asm!("", out("fp") _);
@@ -51,31 +53,31 @@ fn f() {
         // vreg
         asm!("", out("v0") _); // always ok
         asm!("", in("v0") v32x4); // requires altivec
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         asm!("", out("v0") v32x4); // requires altivec
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         asm!("", in("v0") v64x2); // requires vsx
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
         asm!("", out("v0") v64x2); // requires vsx
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
         asm!("", in("v0") x); // FIXME: should be ok if vsx is available
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("", out("v0") x); // FIXME: should be ok if vsx is available
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", in(vreg) v32x4); // requires altivec
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         asm!("/* {} */", in(vreg) v64x2); // requires vsx
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
         asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is available
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(vreg) _); // requires altivec
-        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
         // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI (this ABI is not currently used in Rust's builtin AIX targets).
         asm!("", out("v20") _);
         asm!("", out("v21") _);
@@ -94,28 +96,28 @@ fn f() {
         // vsreg
         asm!("", out("vs0") _); // always ok
         asm!("", in("vs0") v32x4); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("", out("vs0") v32x4); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("", in("vs0") v64x2); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("", out("vs0") v64x2); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("", in("vs0") x); // FIXME: should be ok if vsx is available
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         //[powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("", out("vs0") x); // FIXME: should be ok if vsx is available
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         //[powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", in(vsreg) v32x4); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("/* {} */", in(vsreg) v64x2); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         asm!("/* {} */", in(vsreg) x); // FIXME: should be ok if vsx is available
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
         //[powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(vsreg) _); // requires vsx
-        //[powerpc,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
+        //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
 
         // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI (this ABI is not currently used in Rust's builtin AIX targets).
         asm!("", out("vs52") _);
@@ -331,5 +333,11 @@ fn f() {
         //~^ ERROR register `v30` conflicts with register `vs62`
         asm!("", out("vs63") _, out("v31") _);
         //~^ ERROR register `v31` conflicts with register `vs63`
+
+        // powerpc-*spe target specific tests
+        asm!("", out("spe_acc") _);
+        //[aix64,powerpc,powerpc64,powerpc64le]~^ ERROR cannot use register `spe_acc`: spe_acc is only available on spe targets
+        asm!("/* {} */", out(spe_acc) _);
+        //~^ ERROR can only be used as a clobber
     }
 }

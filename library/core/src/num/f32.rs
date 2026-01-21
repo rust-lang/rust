@@ -292,12 +292,12 @@ pub mod consts {
     pub const TAU: f32 = 6.28318530717958647692528676655900577_f32;
 
     /// The golden ratio (φ)
-    #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const PHI: f32 = 1.618033988749894848204586834365638118_f32;
+    #[stable(feature = "euler_gamma_golden_ratio", since = "CURRENT_RUSTC_VERSION")]
+    pub const GOLDEN_RATIO: f32 = 1.618033988749894848204586834365638118_f32;
 
     /// The Euler-Mascheroni constant (γ)
-    #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const EGAMMA: f32 = 0.577215664901532860606512090082402431_f32;
+    #[stable(feature = "euler_gamma_golden_ratio", since = "CURRENT_RUSTC_VERSION")]
+    pub const EULER_GAMMA: f32 = 0.577215664901532860606512090082402431_f32;
 
     /// π/2
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -897,17 +897,22 @@ impl f32 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN (quiet or signaling), then the other argument is
+    /// returned. If both arguments are NaN, the return value is NaN, with the bit pattern picked
+    /// using the usual [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs
+    /// compare equal (such as for the case of `+0.0` and `-0.0`), either input may be returned
+    /// non-deterministically.
+    ///
+    /// The handling of NaNs follows the IEEE 754-2019 semantics for `maximumNumber`, treating all
+    /// NaNs the same way to ensure the operation is associative. The handling of signed zeros
+    /// follows the IEEE 754-2008 semantics for `maxNum`.
     ///
     /// ```
     /// let x = 1.0f32;
     /// let y = 2.0f32;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f32::NAN), x);
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -919,17 +924,22 @@ impl f32 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN (quiet or signaling), then the other argument is
+    /// returned. If both arguments are NaN, the return value is NaN, with the bit pattern picked
+    /// using the usual [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs
+    /// compare equal (such as for the case of `+0.0` and `-0.0`), either input may be returned
+    /// non-deterministically.
+    ///
+    /// The handling of NaNs follows the IEEE 754-2019 semantics for `minimumNumber`, treating all
+    /// NaNs the same way to ensure the operation is associative. The handling of signed zeros
+    /// follows the IEEE 754-2008 semantics for `minNum`.
     ///
     /// ```
     /// let x = 1.0f32;
     /// let y = 2.0f32;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f32::NAN), x);
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -941,8 +951,15 @@ impl f32 {
 
     /// Returns the maximum of the two numbers, propagating NaN.
     ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f32::max`] which only returns NaN when *both* arguments are NaN.
+    /// If at least one of the arguments is NaN, the return value is NaN, with the bit pattern
+    /// picked using the usual [rules for arithmetic operations](f32#nan-bit-patterns). Furthermore,
+    /// `-0.0` is considered to be less than `+0.0`, making this function fully deterministic for
+    /// non-NaN inputs.
+    ///
+    /// This is in contrast to [`f32::max`] which only returns NaN when *both* arguments are NaN,
+    /// and which does not reliably order `-0.0` and `+0.0`.
+    ///
+    /// This follows the IEEE 754-2019 semantics for `maximum`.
     ///
     /// ```
     /// #![feature(float_minimum_maximum)]
@@ -952,13 +969,6 @@ impl f32 {
     /// assert_eq!(x.maximum(y), y);
     /// assert!(x.maximum(f32::NAN).is_nan());
     /// ```
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -968,8 +978,15 @@ impl f32 {
 
     /// Returns the minimum of the two numbers, propagating NaN.
     ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f32::min`] which only returns NaN when *both* arguments are NaN.
+    /// If at least one of the arguments is NaN, the return value is NaN, with the bit pattern
+    /// picked using the usual [rules for arithmetic operations](f32#nan-bit-patterns). Furthermore,
+    /// `-0.0` is considered to be less than `+0.0`, making this function fully deterministic for
+    /// non-NaN inputs.
+    ///
+    /// This is in contrast to [`f32::min`] which only returns NaN when *both* arguments are NaN,
+    /// and which does not reliably order `-0.0` and `+0.0`.
+    ///
+    /// This follows the IEEE 754-2019 semantics for `minimum`.
     ///
     /// ```
     /// #![feature(float_minimum_maximum)]
@@ -979,13 +996,6 @@ impl f32 {
     /// assert_eq!(x.minimum(y), x);
     /// assert!(x.minimum(f32::NAN).is_nan());
     /// ```
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -1395,7 +1405,8 @@ impl f32 {
     /// less than `min`. Otherwise this returns `self`.
     ///
     /// Note that this function returns NaN if the initial value was NaN as
-    /// well.
+    /// well. If the result is zero and among the three inputs `self`, `min`, and `max` there are
+    /// zeros with different sign, either `0.0` or `-0.0` is returned non-deterministically.
     ///
     /// # Panics
     ///
@@ -1408,6 +1419,12 @@ impl f32 {
     /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
     /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
+    ///
+    /// // These always returns zero, but the sign (which is ignored by `==`) is non-deterministic.
+    /// assert!((0.0f32).clamp(-0.0, -0.0) == 0.0);
+    /// assert!((1.0f32).clamp(-0.0, 0.0) == 0.0);
+    /// // This is definitely a negative zero.
+    /// assert!((-1.0f32).clamp(-0.0, 1.0).is_sign_negative());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
@@ -1429,6 +1446,35 @@ impl f32 {
             self = max;
         }
         self
+    }
+
+    /// Clamps this number to a symmetric range centered around zero.
+    ///
+    /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+    ///
+    /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+    /// explicit about the intent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is negative or NaN, as this indicates a logic error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_magnitude)]
+    /// assert_eq!(5.0f32.clamp_magnitude(3.0), 3.0);
+    /// assert_eq!((-5.0f32).clamp_magnitude(3.0), -3.0);
+    /// assert_eq!(2.0f32.clamp_magnitude(3.0), 2.0);
+    /// assert_eq!((-2.0f32).clamp_magnitude(3.0), -2.0);
+    /// ```
+    #[must_use = "this returns the clamped value and does not modify the original"]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[inline]
+    pub fn clamp_magnitude(self, limit: f32) -> f32 {
+        assert!(limit >= 0.0, "limit must be non-negative");
+        let limit = limit.abs(); // Canonicalises -0.0 to 0.0
+        self.clamp(-limit, limit)
     }
 
     /// Computes the absolute value of `self`.
@@ -1799,7 +1845,6 @@ pub mod math {
     #[doc(alias = "fmaf", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
     pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
         intrinsics::fmaf32(x, y, z)
     }

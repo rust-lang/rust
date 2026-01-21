@@ -6,5 +6,6 @@ enforced-import-renames = [
     { path = "std::clone", rename = "foo" },
     { path = "std::thread::sleep", rename = "thread_sleep" },
     { path = "std::any::type_name", rename = "ident" },
-    { path = "std::sync::Mutex", rename = "StdMutie" }
+    { path = "std::sync::Mutex", rename = "StdMutie" },
+    { path = "std::io::Write", rename = "to_test_rename_as_underscore" }
 ]

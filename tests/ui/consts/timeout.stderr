@@ -1,5 +1,10 @@
 error: constant evaluation is taking a long time
+  --> $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+   |
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/num/mod.rs:LL:COL
+   |
+   = note: in this macro invocation
    |
    = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
            If your compilation actually takes a long time, you can safely allow the lint.

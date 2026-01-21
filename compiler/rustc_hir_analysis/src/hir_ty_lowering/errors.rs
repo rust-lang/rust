@@ -359,12 +359,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None
         };
 
-        // FIXME(associated_const_equality): This has quite a few false positives and negatives.
+        // FIXME(mgca): This has quite a few false positives and negatives.
         let wrap_in_braces_sugg = if let Some(constraint) = constraint
             && let Some(hir_ty) = constraint.ty()
             && let ty = self.lower_ty(hir_ty)
             && (ty.is_enum() || ty.references_error())
-            && tcx.features().associated_const_equality()
+            && tcx.features().min_generic_const_args()
         {
             Some(errors::AssocKindMismatchWrapInBracesSugg {
                 lo: hir_ty.span.shrink_to_lo(),
@@ -381,7 +381,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let span = match term {
                 hir::Term::Ty(ty) => ty.span,
-                hir::Term::Const(ct) => ct.span(),
+                hir::Term::Const(ct) => ct.span,
             };
             (span, Some(ident.span), assoc_item.as_tag(), assoc_tag)
         } else {
@@ -1466,7 +1466,7 @@ pub fn prohibit_assoc_item_constraint(
                     hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(c) },
                     GenericParamDefKind::Const { .. },
                 ) => {
-                    suggest_direct_use(&mut err, c.span());
+                    suggest_direct_use(&mut err, c.span);
                 }
                 (hir::AssocItemConstraintKind::Bound { bounds }, _) => {
                     // Suggest `impl<T: Bound> Trait<T> for Foo` when finding
@@ -1749,10 +1749,8 @@ fn generics_args_err_extend<'a>(
         GenericsArgsErrExtend::SelfTyAlias { def_id, span } => {
             let ty = tcx.at(span).type_of(def_id).instantiate_identity();
             let span_of_impl = tcx.span_of_impl(def_id);
-            let def_id = match *ty.kind() {
-                ty::Adt(self_def, _) => self_def.did(),
-                _ => return,
-            };
+            let ty::Adt(self_def, _) = *ty.kind() else { return };
+            let def_id = self_def.did();
 
             let type_name = tcx.item_name(def_id);
             let span_of_ty = tcx.def_ident_span(def_id);

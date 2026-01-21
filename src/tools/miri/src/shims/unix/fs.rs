@@ -118,7 +118,7 @@ impl UnixFileDescription for FileHandle {
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn macos_fbsd_solarish_write_stat_buf(
+    fn write_stat_buf(
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
@@ -130,7 +130,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
         let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
+        // We do *not* use `deref_pointer_as` here since determining the right pointee type
+        // is highly non-trivial: it depends on which exact alias of the function was invoked
+        // (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also depends on the ABI level
+        // which can be different between the libc used by std and the libc used by everyone else.
+        let buf = this.deref_pointer(buf_op)?;
         this.write_int_fields_named(
             &[
                 ("st_dev", metadata.dev.into()),
@@ -141,8 +145,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("st_gid", metadata.gid.into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
+                ("st_atime_nsec", access_nsec.into()),
                 ("st_mtime", modified_sec.into()),
+                ("st_mtime_nsec", modified_nsec.into()),
                 ("st_ctime", 0),
+                ("st_ctime_nsec", 0),
                 ("st_size", metadata.size.into()),
                 ("st_blocks", 0),
                 ("st_blksize", 0),
@@ -153,9 +160,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
             this.write_int_fields_named(
                 &[
-                    ("st_atime_nsec", access_nsec.into()),
-                    ("st_mtime_nsec", modified_nsec.into()),
-                    ("st_ctime_nsec", 0),
                     ("st_birthtime", created_sec.into()),
                     ("st_birthtime_nsec", created_nsec.into()),
                     ("st_flags", 0),
@@ -523,15 +527,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_solarish_stat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn stat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
@@ -550,19 +552,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_solarish_lstat(
-        &mut self,
-        path_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn lstat(&mut self, path_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+        ) {
             panic!(
                 "`macos_fbsd_solaris_lstat` should not be called on {}",
                 this.tcx.sess.target.os
@@ -583,22 +583,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
-    fn macos_fbsd_solarish_fstat(
-        &mut self,
-        fd_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
-            panic!(
-                "`macos_fbsd_solaris_fstat` should not be called on {}",
-                this.tcx.sess.target.os
-            );
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux | Os::Android
+        ) {
+            panic!("`fstat` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -614,7 +609,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -907,9 +902,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::Linux | Os::Solaris | Os::Illumos | Os::FreeBsd)
-        {
-            panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
+        ) {
+            panic!("`readdir64` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -1031,7 +1028,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_maybe_pointer(entry.unwrap_or_else(Pointer::null), this))
     }
 
-    fn macos_fbsd_readdir_r(
+    fn macos_readdir_r(
         &mut self,
         dirp_op: &OpTy<'tcx>,
         entry_op: &OpTy<'tcx>,
@@ -1039,9 +1036,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
-            panic!("`macos_fbsd_readdir_r` should not be called on {}", this.tcx.sess.target.os);
-        }
+        this.assert_target_os(Os::MacOs, "readdir_r");
 
         let dirp = this.read_target_usize(dirp_op)?;
         let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
@@ -1097,39 +1092,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                // Common fields.
                 this.write_int_fields_named(
                     &[
                         ("d_reclen", 0),
                         ("d_namlen", file_name_len.into()),
                         ("d_type", file_type.into()),
+                        ("d_ino", ino.into()),
+                        ("d_seekoff", 0),
                     ],
                     &entry_place,
                 )?;
-                // Special fields.
-                match this.tcx.sess.target.os {
-                    Os::MacOs => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_ino", ino.into()),
-                                ("d_seekoff", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    Os::FreeBsd => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_fileno", ino.into()),
-                                ("d_off", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    _ => unreachable!(),
-                }
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 Scalar::from_i32(0)
@@ -1183,10 +1155,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
-        // FIXME: Support ftruncate64 for all FDs
-        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
-            err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
-        })?;
+        let Some(file) = fd.downcast::<FileHandle>() else {
+            // The docs say that EINVAL is returned when the FD "does not reference a regular file
+            // or a POSIX shared memory object" (and we don't support shmem objects).
+            return interp_ok(this.eval_libc("EINVAL"));
+        };
 
         if file.writable {
             if let Ok(length) = length.try_into() {
@@ -1199,6 +1172,64 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             // The file is not writable
             this.set_last_error_and_return_i32(LibcError("EINVAL"))
+        }
+    }
+
+    /// NOTE: According to the man page of `possix_fallocate`, it returns the error code instead
+    /// of setting `errno`.
+    fn posix_fallocate(
+        &mut self,
+        fd_num: i32,
+        offset: i64,
+        len: i64,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`posix_fallocate`", reject_with)?;
+            // Return error code "EBADF" (bad fd).
+            return interp_ok(this.eval_libc("EBADF"));
+        }
+
+        // EINVAL is returned when: "offset was less than 0, or len was less than or equal to 0".
+        if offset < 0 || len <= 0 {
+            return interp_ok(this.eval_libc("EINVAL"));
+        }
+
+        // Get the file handle.
+        let Some(fd) = this.machine.fds.get(fd_num) else {
+            return interp_ok(this.eval_libc("EBADF"));
+        };
+        let Some(file) = fd.downcast::<FileHandle>() else {
+            // Man page specifies to return ENODEV if `fd` is not a regular file.
+            return interp_ok(this.eval_libc("ENODEV"));
+        };
+
+        if !file.writable {
+            // The file is not writable.
+            return interp_ok(this.eval_libc("EBADF"));
+        }
+
+        let current_size = match file.file.metadata() {
+            Ok(metadata) => metadata.len(),
+            Err(err) => return this.io_error_to_errnum(err),
+        };
+        // Checked i64 addition, to ensure the result does not exceed the max file size.
+        let new_size = match offset.checked_add(len) {
+            // `new_size` is definitely non-negative, so we can cast to `u64`.
+            Some(new_size) => u64::try_from(new_size).unwrap(),
+            None => return interp_ok(this.eval_libc("EFBIG")), // new size too big
+        };
+        // If the size of the file is less than offset+size, then the file is increased to this size;
+        // otherwise the file size is left unchanged.
+        if current_size < new_size {
+            interp_ok(match file.file.set_len(new_size) {
+                Ok(()) => Scalar::from_i32(0),
+                Err(e) => this.io_error_to_errnum(e)?,
+            })
+        } else {
+            interp_ok(Scalar::from_i32(0))
         }
     }
 

@@ -11,17 +11,16 @@ use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
     eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
 };
-use span::{AstIdMap, Edition, SyntaxContext};
+use span::{AstIdMap, SyntaxContext};
 use syntax::ast::HasAttrs;
 use syntax::{AstNode, Parse, ast};
 use triomphe::Arc;
 use tt::TextRange;
 
-use crate::attr::Attrs;
-use crate::expr_store::HygieneId;
-use crate::macro_call_as_call_id;
-use crate::nameres::DefMap;
-use crate::{MacroId, UnresolvedMacro, db::DefDatabase};
+use crate::{
+    MacroId, UnresolvedMacro, attrs::AttrFlags, db::DefDatabase, expr_store::HygieneId,
+    macro_call_as_call_id, nameres::DefMap,
+};
 
 #[derive(Debug)]
 pub(super) struct Expander {
@@ -62,7 +61,7 @@ impl Expander {
     pub(super) fn hygiene_for_range(&self, db: &dyn DefDatabase, range: TextRange) -> HygieneId {
         match self.span_map.as_ref() {
             hir_expand::span_map::SpanMapRef::ExpansionSpanMap(span_map) => {
-                HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semitransparent(db))
+                HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semiopaque(db))
             }
             hir_expand::span_map::SpanMapRef::RealSpanMap(_) => HygieneId::ROOT,
         }
@@ -70,16 +69,10 @@ impl Expander {
 
     pub(super) fn is_cfg_enabled(
         &self,
-        db: &dyn DefDatabase,
-        has_attrs: &dyn HasAttrs,
+        owner: &dyn HasAttrs,
         cfg_options: &CfgOptions,
     ) -> Result<(), cfg::CfgExpr> {
-        Attrs::is_cfg_enabled_for(db, has_attrs, self.span_map.as_ref(), cfg_options)
-    }
-
-    pub(super) fn call_syntax_ctx(&self) -> SyntaxContext {
-        // FIXME:
-        SyntaxContext::root(Edition::CURRENT_FIXME)
+        AttrFlags::is_cfg_enabled_for(owner, cfg_options)
     }
 
     pub(super) fn enter_expand<T: ast::AstNode>(

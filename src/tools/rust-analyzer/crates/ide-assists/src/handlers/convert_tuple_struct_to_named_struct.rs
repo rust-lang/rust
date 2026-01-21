@@ -1197,4 +1197,57 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_issue_21020() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+pub struct S$0(pub ());
+
+trait T {
+    fn id(&self) -> usize;
+}
+
+trait T2 {
+    fn foo(&self) -> usize;
+}
+
+impl T for S {
+    fn id(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl T2 for S {
+    fn foo(&self) -> usize {
+        self.0.len()
+    }
+}
+            "#,
+            r#"
+pub struct S { pub field1: () }
+
+trait T {
+    fn id(&self) -> usize;
+}
+
+trait T2 {
+    fn foo(&self) -> usize;
+}
+
+impl T for S {
+    fn id(&self) -> usize {
+        self.field1.len()
+    }
+}
+
+impl T2 for S {
+    fn foo(&self) -> usize {
+        self.field1.len()
+    }
+}
+            "#,
+        );
+    }
 }

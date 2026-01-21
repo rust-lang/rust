@@ -786,3 +786,13 @@ pub mod tooltips {
         Vec::new()
     }
 }
+
+pub mod tyalias {
+    pub struct X<T>(pub T);
+
+    impl<T: std::fmt::Debug> X<T> {
+        pub fn blob(&self) {}
+    }
+
+    pub type Y = X<u8>;
+}

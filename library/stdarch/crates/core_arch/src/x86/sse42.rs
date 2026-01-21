@@ -563,7 +563,8 @@ pub fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpgtq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2())) }
 }
 
@@ -609,6 +610,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -617,18 +619,17 @@ mod tests {
     // Currently one cannot `load` a &[u8] that is less than 16
     // in length. This makes loading strings less than 16 in length
     // a bit difficult. Rather than `load` and mutate the __m128i,
-    // it is easier to memcpy the given string to a local slice with
-    // length 16 and `load` the local slice.
-    #[target_feature(enable = "sse4.2")]
-    unsafe fn str_to_m128i(s: &[u8]) -> __m128i {
+    // it is easier to memcpy the given string to a zero-padded
+    // 16-byte array and transmute it to `__m128i`.
+    fn str_to_m128i(s: &[u8]) -> __m128i {
         assert!(s.len() <= 16);
-        let slice = &mut [0u8; 16];
-        ptr::copy_nonoverlapping(s.as_ptr(), slice.as_mut_ptr(), s.len());
-        _mm_loadu_si128(slice.as_ptr() as *const _)
+        let mut array = [0u8; 16];
+        array[..s.len()].copy_from_slice(s);
+        unsafe { transmute(array) }
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistrm() {
+    fn test_mm_cmpistrm() {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
         let i = _mm_cmpistrm::<_SIDD_UNIT_MASK>(a, b);
@@ -641,7 +642,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistri() {
+    fn test_mm_cmpistri() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"   Hello        ");
         let i = _mm_cmpistri::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
@@ -649,7 +650,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistrz() {
+    fn test_mm_cmpistrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
         let i = _mm_cmpistrz::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
@@ -657,7 +658,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistrc() {
+    fn test_mm_cmpistrc() {
         let a = str_to_m128i(b"                ");
         let b = str_to_m128i(b"       !        ");
         let i = _mm_cmpistrc::<_SIDD_UNIT_MASK>(a, b);
@@ -665,7 +666,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistrs() {
+    fn test_mm_cmpistrs() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"");
         let i = _mm_cmpistrs::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
@@ -673,7 +674,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistro() {
+    fn test_mm_cmpistro() {
         #[rustfmt::skip]
         let a_bytes = _mm_setr_epi8(
             0x00, 0x47, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
@@ -691,7 +692,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpistra() {
+    fn test_mm_cmpistra() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello!!!!!!!!!!!");
         let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(a, b);
@@ -699,7 +700,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestrm() {
+    fn test_mm_cmpestrm() {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
         let i = _mm_cmpestrm::<_SIDD_UNIT_MASK>(a, 5, b, 5);
@@ -712,7 +713,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestri() {
+    fn test_mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
         let i = _mm_cmpestri::<_SIDD_CMP_EQUAL_ORDERED>(a, 3, b, 6);
@@ -720,7 +721,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestrz() {
+    fn test_mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
         let i = _mm_cmpestrz::<_SIDD_CMP_EQUAL_ORDERED>(a, 16, b, 6);
@@ -728,7 +729,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestrc() {
+    fn test_mm_cmpestrc() {
         let va = str_to_m128i(b"!!!!!!!!");
         let vb = str_to_m128i(b"        ");
         let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(va, 7, vb, 7);
@@ -736,7 +737,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestrs() {
+    fn test_mm_cmpestrs() {
         #[rustfmt::skip]
         let a_bytes = _mm_setr_epi8(
             0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
@@ -749,7 +750,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestro() {
+    fn test_mm_cmpestro() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"World");
         let i = _mm_cmpestro::<_SIDD_UBYTE_OPS>(a, 5, b, 5);
@@ -757,7 +758,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpestra() {
+    fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
         let i = _mm_cmpestra::<{ _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK }>(a, 14, b, 16);
@@ -765,7 +766,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_crc32_u8() {
+    fn test_mm_crc32_u8() {
         let crc = 0x2aa1e72b;
         let v = 0x2a;
         let i = _mm_crc32_u8(crc, v);
@@ -773,7 +774,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_crc32_u16() {
+    fn test_mm_crc32_u16() {
         let crc = 0x8ecec3b5;
         let v = 0x22b;
         let i = _mm_crc32_u16(crc, v);
@@ -781,7 +782,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_crc32_u32() {
+    fn test_mm_crc32_u32() {
         let crc = 0xae2912c8;
         let v = 0x845fed;
         let i = _mm_crc32_u32(crc, v);
@@ -789,7 +790,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpgt_epi64() {
+    const fn test_mm_cmpgt_epi64() {
         let a = _mm_setr_epi64x(0, 0x2a);
         let b = _mm_set1_epi64x(0x00);
         let i = _mm_cmpgt_epi64(a, b);

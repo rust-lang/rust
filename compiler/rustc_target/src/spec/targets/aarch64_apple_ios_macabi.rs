@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch,
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a12".into(),
+            features: "+neon,+apple-a12".into(),
             max_atomic_width: Some(128),
             supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD,
             ..opts

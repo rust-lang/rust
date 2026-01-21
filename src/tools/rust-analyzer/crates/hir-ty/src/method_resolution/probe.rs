@@ -14,7 +14,7 @@ use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
-    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -27,7 +27,7 @@ use crate::{
     lower::GenericPredicates,
     method_resolution::{
         CandidateId, CandidateSource, InherentImpls, MethodError, MethodResolutionContext,
-        incoherent_inherent_impls, simplified_type_module,
+        simplified_type_module, with_incoherent_inherent_impls,
     },
     next_solver::{
         Binder, Canonical, ClauseKind, DbInterner, FnSig, GenericArg, GenericArgs, Goal, ParamEnv,
@@ -334,7 +334,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                     .infcx
                     .instantiate_query_response_and_region_obligations(
                         &ObligationCause::new(),
-                        self.env.env,
+                        self.param_env,
                         &orig_values,
                         ty,
                     )
@@ -394,7 +394,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
             // converted to, in order to find out which of those methods might actually
             // be callable.
             let mut autoderef_via_deref =
-                Autoderef::new(infcx, self.env, self_ty).include_raw_pointers();
+                Autoderef::new(infcx, self.param_env, self_ty).include_raw_pointers();
 
             let mut reached_raw_pointer = false;
             let arbitrary_self_types_enabled = self.unstable_features.arbitrary_self_types
@@ -403,7 +403,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                 let reachable_via_deref =
                     autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
 
-                let mut autoderef_via_receiver = Autoderef::new(infcx, self.env, self_ty)
+                let mut autoderef_via_receiver = Autoderef::new(infcx, self.param_env, self_ty)
                     .include_raw_pointers()
                     .use_receiver_trait();
                 let steps = autoderef_via_receiver
@@ -835,7 +835,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     #[inline]
     fn param_env(&self) -> ParamEnv<'db> {
-        self.ctx.env.env
+        self.ctx.param_env
     }
 
     /// When we're looking up a method by path (UFCS), we relate the receiver
@@ -965,9 +965,11 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         else {
             panic!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in incoherent_inherent_impls(self.db(), simp) {
-            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
-        }
+        with_incoherent_inherent_impls(self.db(), self.ctx.resolver.krate(), &simp, |impls| {
+            for &impl_def_id in impls {
+                self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
+            }
+        });
     }
 
     fn assemble_inherent_impl_candidates_for_type(
@@ -980,8 +982,8 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         };
         InherentImpls::for_each_crate_and_block(
             self.db(),
-            module.krate(),
-            module.containing_block(),
+            module.krate(self.db()),
+            module.block(self.db()),
             &mut |impls| {
                 for &impl_def_id in impls.for_self_ty(self_ty) {
                     self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
@@ -999,7 +1001,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         self.with_impl_item(impl_def_id, |this, item| {
             if !this.has_applicable_self(item) {
                 // No receiver declared. Not a candidate.
-                this.record_static_candidate(CandidateSource::Impl(impl_def_id));
+                this.record_static_candidate(CandidateSource::Impl(impl_def_id.into()));
                 return;
             }
             this.push_candidate(
@@ -1488,7 +1490,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// so do not use to make a decision that may lead to a successful compilation.
     fn candidate_source(&self, candidate: &Candidate<'db>, self_ty: Ty<'db>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id),
+            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id.into()),
             ObjectCandidate(trait_ref) | WhereClauseCandidate(trait_ref) => {
                 CandidateSource::Trait(trait_ref.def_id().0)
             }
@@ -1522,7 +1524,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     fn candidate_source_from_pick(&self, pick: &Pick<'db>) -> CandidateSource {
         match pick.kind {
-            InherentImplPick(impl_) => CandidateSource::Impl(impl_),
+            InherentImplPick(impl_) => CandidateSource::Impl(impl_.into()),
             ObjectPick(trait_) | TraitPick(trait_) => CandidateSource::Trait(trait_),
             WhereClausePick(trait_ref) => CandidateSource::Trait(trait_ref.skip_binder().def_id.0),
         }
@@ -1975,7 +1977,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             && self.mode == Mode::MethodCall
         {
             let sig = self.xform_method_sig(item, args);
-            (sig.inputs().as_slice()[0], Some(sig.output()))
+            (sig.inputs()[0], Some(sig.output()))
         } else {
             (impl_ty, None)
         }

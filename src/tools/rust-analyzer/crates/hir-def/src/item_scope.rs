@@ -9,26 +9,25 @@ use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 use thin_vec::ThinVec;
 
 use crate::{
-    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinDeriveImplId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap,
+    HasModule, ImplId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
-    nameres::MacroSubNs,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
 
 #[derive(Debug, Default)]
 pub struct PerNsGlobImports {
-    types: FxHashSet<(LocalModuleId, Name)>,
-    values: FxHashSet<(LocalModuleId, Name)>,
-    macros: FxHashSet<(LocalModuleId, Name)>,
+    types: FxHashSet<(ModuleId, Name)>,
+    values: FxHashSet<(ModuleId, Name)>,
+    macros: FxHashSet<(ModuleId, Name)>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -134,13 +133,13 @@ pub struct GlobId {
 }
 
 impl PerNsGlobImports {
-    pub(crate) fn contains_type(&self, module_id: LocalModuleId, name: Name) -> bool {
+    pub(crate) fn contains_type(&self, module_id: ModuleId, name: Name) -> bool {
         self.types.contains(&(module_id, name))
     }
-    pub(crate) fn contains_value(&self, module_id: LocalModuleId, name: Name) -> bool {
+    pub(crate) fn contains_value(&self, module_id: ModuleId, name: Name) -> bool {
         self.values.contains(&(module_id, name))
     }
-    pub(crate) fn contains_macro(&self, module_id: LocalModuleId, name: Name) -> bool {
+    pub(crate) fn contains_macro(&self, module_id: ModuleId, name: Name) -> bool {
         self.macros.contains(&(module_id, name))
     }
 }
@@ -159,7 +158,8 @@ pub struct ItemScope {
     /// declared.
     declarations: ThinVec<ModuleDefId>,
 
-    impls: ThinVec<ImplId>,
+    impls: ThinVec<(ImplId, /* trait impl */ bool)>,
+    builtin_derive_impls: ThinVec<BuiltinDeriveImplId>,
     extern_blocks: ThinVec<ExternBlockId>,
     unnamed_consts: ThinVec<ConstId>,
     /// Traits imported via `use Trait as _;`.
@@ -262,14 +262,12 @@ impl ItemScope {
     pub fn fully_resolve_import(&self, db: &dyn DefDatabase, mut import: ImportId) -> PerNs {
         let mut res = PerNs::none();
 
-        let mut def_map;
         let mut scope = self;
         while let Some(&m) = scope.use_imports_macros.get(&ImportOrExternCrate::Import(import)) {
             match m {
                 ImportOrDef::Import(i) => {
                     let module_id = i.use_.lookup(db).container;
-                    def_map = module_id.def_map(db);
-                    scope = &def_map[module_id.local_id].scope;
+                    scope = &module_id.def_map(db)[module_id].scope;
                     import = i;
                 }
                 ImportOrDef::Def(ModuleDefId::MacroId(def)) => {
@@ -284,8 +282,7 @@ impl ItemScope {
             match m {
                 ImportOrDef::Import(i) => {
                     let module_id = i.use_.lookup(db).container;
-                    def_map = module_id.def_map(db);
-                    scope = &def_map[module_id.local_id].scope;
+                    scope = &module_id.def_map(db)[module_id].scope;
                     import = i;
                 }
                 ImportOrDef::Def(def) => {
@@ -300,8 +297,7 @@ impl ItemScope {
             match m {
                 ImportOrDef::Import(i) => {
                     let module_id = i.use_.lookup(db).container;
-                    def_map = module_id.def_map(db);
-                    scope = &def_map[module_id.local_id].scope;
+                    scope = &module_id.def_map(db)[module_id].scope;
                     import = i;
                 }
                 ImportOrDef::Def(def) => {
@@ -331,7 +327,19 @@ impl ItemScope {
     }
 
     pub fn impls(&self) -> impl ExactSizeIterator<Item = ImplId> + '_ {
-        self.impls.iter().copied()
+        self.impls.iter().map(|&(id, _)| id)
+    }
+
+    pub fn trait_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls.iter().filter(|&&(_, is_trait_impl)| is_trait_impl).map(|&(id, _)| id)
+    }
+
+    pub fn inherent_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls.iter().filter(|&&(_, is_trait_impl)| !is_trait_impl).map(|&(id, _)| id)
+    }
+
+    pub fn builtin_derive_impls(&self) -> impl ExactSizeIterator<Item = BuiltinDeriveImplId> + '_ {
+        self.builtin_derive_impls.iter().copied()
     }
 
     pub fn all_macro_calls(&self) -> impl Iterator<Item = MacroCallId> + '_ {
@@ -472,8 +480,12 @@ impl ItemScope {
         self.legacy_macros.get(name).map(|it| &**it)
     }
 
-    pub(crate) fn define_impl(&mut self, imp: ImplId) {
-        self.impls.push(imp);
+    pub(crate) fn define_impl(&mut self, imp: ImplId, is_trait_impl: bool) {
+        self.impls.push((imp, is_trait_impl));
+    }
+
+    pub(crate) fn define_builtin_derive_impl(&mut self, imp: BuiltinDeriveImplId) {
+        self.builtin_derive_impls.push(imp);
     }
 
     pub(crate) fn define_extern_block(&mut self, extern_block: ExternBlockId) {
@@ -527,12 +539,13 @@ impl ItemScope {
         adt: AstId<ast::Adt>,
         attr_id: AttrId,
         attr_call_id: MacroCallId,
-        len: usize,
+        mut derive_call_ids: SmallVec<[Option<MacroCallId>; 4]>,
     ) {
+        derive_call_ids.shrink_to_fit();
         self.derive_macros.entry(adt).or_default().push(DeriveMacroInvocation {
             attr_id,
             attr_call_id,
-            derive_call_ids: smallvec![None; len],
+            derive_call_ids,
         });
     }
 
@@ -579,7 +592,7 @@ impl ItemScope {
     pub(crate) fn push_res_with_import(
         &mut self,
         glob_imports: &mut PerNsGlobImports,
-        lookup: (LocalModuleId, Name),
+        lookup: (ModuleId, Name),
         def: PerNs,
         import: Option<ImportOrExternCrate>,
     ) -> bool {
@@ -740,11 +753,15 @@ impl ItemScope {
         let mut entries: Vec<_> = self.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
 
-        let print_macro_sub_ns =
-            |buf: &mut String, macro_id: MacroId| match MacroSubNs::from_id(db, macro_id) {
-                MacroSubNs::Bang => buf.push('!'),
-                MacroSubNs::Attr => buf.push('#'),
-            };
+        let print_macro_sub_ns = |buf: &mut String, macro_id: MacroId| {
+            let styles = crate::nameres::macro_styles_from_id(db, macro_id);
+            if styles.contains(MacroCallStyles::FN_LIKE) {
+                buf.push('!');
+            }
+            if styles.contains(MacroCallStyles::ATTR) || styles.contains(MacroCallStyles::DERIVE) {
+                buf.push('#');
+            }
+        };
 
         for (name, def) in entries {
             let display_name: &dyn fmt::Display = match &name {
@@ -812,6 +829,7 @@ impl ItemScope {
             unresolved,
             declarations,
             impls,
+            builtin_derive_impls,
             unnamed_consts,
             unnamed_trait_imports,
             legacy_macros,
@@ -835,6 +853,7 @@ impl ItemScope {
         unresolved.shrink_to_fit();
         declarations.shrink_to_fit();
         impls.shrink_to_fit();
+        builtin_derive_impls.shrink_to_fit();
         unnamed_consts.shrink_to_fit();
         unnamed_trait_imports.shrink_to_fit();
         legacy_macros.shrink_to_fit();
@@ -919,10 +938,7 @@ impl ItemInNs {
 
     /// Returns the crate defining this item (or `None` if `self` is built-in).
     pub fn krate(&self, db: &dyn DefDatabase) -> Option<Crate> {
-        match self {
-            ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db).map(|m| m.krate),
-            ItemInNs::Macros(id) => Some(id.module(db).krate),
-        }
+        self.module(db).map(|module_id| module_id.krate(db))
     }
 
     pub fn module(&self, db: &dyn DefDatabase) -> Option<ModuleId> {

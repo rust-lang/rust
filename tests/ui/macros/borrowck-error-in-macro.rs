@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ aux-build: borrowck-error-in-macro.rs
 //@ error-pattern: a call in this macro requires a mutable binding due to mutable borrow of `d`
 //FIXME: remove error-pattern (see #141896)

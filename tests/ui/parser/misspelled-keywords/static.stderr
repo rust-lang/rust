@@ -1,13 +1,13 @@
-error: expected one of `!` or `::`, found `a`
-  --> $DIR/static.rs:1:8
+error: keyword `static` is written in the wrong case
+  --> $DIR/static.rs:1:1
    |
-LL | Static a = 0;
-   |        ^ expected one of `!` or `::`
+LL | Static a: u32 = 0;
+   | ^^^^^^
    |
-help: write keyword `static` in lowercase (notice the capitalization)
+help: write it in lowercase (notice the capitalization)
    |
-LL - Static a = 0;
-LL + static a = 0;
+LL - Static a: u32 = 0;
+LL + static a: u32 = 0;
    |
 
 error: aborting due to 1 previous error

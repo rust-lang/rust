@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `XXX` in this scope
+error[E0425]: cannot find type `XXX` in this scope
   --> $DIR/trait-fn-generic-mismatch.rs:5:11
    |
 LL | impl Core<XXX> {
@@ -28,5 +28,5 @@ LL +     core.spawn();
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0061, E0412.
+Some errors have detailed explanations: E0061, E0425.
 For more information about an error, try `rustc --explain E0061`.

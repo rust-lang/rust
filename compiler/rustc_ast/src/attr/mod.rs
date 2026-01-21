@@ -1,5 +1,8 @@
 //! Functions dealing with attributes and meta items.
 
+pub mod data_structures;
+pub mod version;
+
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -8,12 +11,15 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::AttrItemKind;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
+use crate::token::{
+    self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
+};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
@@ -60,6 +66,15 @@ impl Attribute {
         }
     }
 
+    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`.
+    /// This is useful for making this attribute into a trace attribute, and should otherwise be avoided.
+    pub fn replace_args(&mut self, new_args: AttrItemKind) {
+        match &mut self.kind {
+            AttrKind::Normal(normal) => normal.item.args = new_args,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(normal) => normal.item,
@@ -75,7 +90,7 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args {
+            AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
@@ -94,11 +109,11 @@ impl AttributeExt for Attribute {
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    fn ident(&self) -> Option<Ident> {
+    fn name(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => {
                 if let [ident] = &*normal.item.path.segments {
-                    Some(ident.ident)
+                    Some(ident.ident.name)
                 } else {
                     None
                 }
@@ -107,9 +122,18 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self.kind {
-            AttrKind::Normal(p) => Some(p.item.path.segments.iter().map(|i| i.ident).collect()),
+            AttrKind::Normal(p) => {
+                Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
+            }
+            AttrKind::DocComment(_, _) => None,
+        }
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        match &self.kind {
+            AttrKind::Normal(attr) => Some(attr.item.path.span),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -136,7 +160,7 @@ impl AttributeExt for Attribute {
 
     fn is_word(&self) -> bool {
         if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, AttrArgs::Empty)
+            matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
         } else {
             false
         }
@@ -179,15 +203,21 @@ impl AttributeExt for Attribute {
     }
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
-    /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
-    /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
+    /// * `///doc` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Line)))`.
+    /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block)))`.
+    /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
-            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                normal.item.value_str().map(|s| (s, CommentKind::Line))
+                if let Some(value) = normal.item.value_str()
+                    && let Some(value_span) = normal.item.value_span()
+                {
+                    Some((value, DocFragmentKind::Raw(value_span)))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -201,6 +231,34 @@ impl AttributeExt for Attribute {
         match &self.kind {
             AttrKind::DocComment(.., data) => Some(*data),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
+            _ => None,
+        }
+    }
+
+    fn deprecation_note(&self) -> Option<Ident> {
+        match &self.kind {
+            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
+                let meta = &normal.item;
+
+                // #[deprecated = "..."]
+                if let Some(s) = meta.value_str() {
+                    return Some(Ident { name: s, span: meta.span() });
+                }
+
+                // #[deprecated(note = "...")]
+                if let Some(list) = meta.meta_item_list() {
+                    for nested in list {
+                        if let Some(mi) = nested.meta_item()
+                            && mi.path == sym::note
+                            && let Some(s) = mi.value_str()
+                        {
+                            return Some(Ident { name: s, span: mi.span });
+                        }
+                    }
+                }
+
+                None
+            }
             _ => None,
         }
     }
@@ -220,6 +278,24 @@ impl AttributeExt for Attribute {
     fn is_automatically_derived_attr(&self) -> bool {
         self.has_name(sym::automatically_derived)
     }
+
+    fn is_doc_hidden(&self) -> bool {
+        self.has_name(sym::doc)
+            && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
+    }
+
+    fn is_doc_keyword_or_attribute(&self) -> bool {
+        if self.has_name(sym::doc)
+            && let Some(items) = self.meta_item_list()
+        {
+            for item in items {
+                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 impl Attribute {
@@ -229,6 +305,7 @@ impl Attribute {
 
     pub fn may_have_doc_links(&self) -> bool {
         self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
+            || self.deprecation_note().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
 
     /// Extracts the MetaItem from inside this Attribute.
@@ -268,7 +345,7 @@ impl AttrItem {
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.args {
+        match &self.args.unparsed_ref()? {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
@@ -289,13 +366,32 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_str(&self) -> Option<Symbol> {
-        match &self.args {
+        match &self.args.unparsed_ref()? {
             AttrArgs::Eq { expr, .. } => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
                 }
                 _ => None,
             },
+            AttrArgs::Delimited(_) | AttrArgs::Empty => None,
+        }
+    }
+
+    /// Returns the span in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases like:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
+    fn value_span(&self) -> Option<Span> {
+        match &self.args.unparsed_ref()? {
+            AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
     }
@@ -310,7 +406,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_attr_args(&self.args)
+        MetaItemKind::from_attr_args(self.args.unparsed_ref()?)
     }
 }
 
@@ -402,20 +498,17 @@ impl MetaItem {
                     thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
+                    let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
                         iter.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
-                    {
-                        segments.push(PathSegment::from_ident(Ident::new(name, span)));
-                    } else {
+                    else {
                         return None;
-                    }
-                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
-                        iter.peek()
-                    {
-                        iter.next();
-                    } else {
+                    };
+                    segments.push(PathSegment::from_ident(Ident::new(name, span)));
+                    let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) = iter.peek()
+                    else {
                         break;
-                    }
+                    };
+                    iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
@@ -648,7 +741,13 @@ fn mk_attr(
     args: AttrArgs,
     span: Span,
 ) -> Attribute {
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, tokens: None }, None, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
+        None,
+        style,
+        span,
+    )
 }
 
 pub fn mk_attr_from_item(
@@ -752,9 +851,7 @@ pub trait AttributeExt: Debug {
 
     /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
     /// return the name of the attribute; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol> {
-        self.ident().map(|ident| ident.name)
-    }
+    fn name(&self) -> Option<Symbol>;
 
     /// Get the meta item list, `#[attr(meta item list)]`
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
@@ -764,9 +861,6 @@ pub trait AttributeExt: Debug {
 
     /// Gets the span of the value literal, as string, when using `#[attr = value]`
     fn value_span(&self) -> Option<Span>;
-
-    /// For a single-segment attribute, returns its ident; otherwise, returns `None`.
-    fn ident(&self) -> Option<Ident>;
 
     /// Checks whether the path of this attribute matches the name.
     ///
@@ -780,7 +874,7 @@ pub trait AttributeExt: Debug {
 
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
-        self.ident().map(|x| x.name == name).unwrap_or(false)
+        self.name().map(|x| x == name).unwrap_or(false)
     }
 
     #[inline]
@@ -794,19 +888,24 @@ pub trait AttributeExt: Debug {
     fn is_word(&self) -> bool;
 
     fn path(&self) -> SmallVec<[Symbol; 1]> {
-        self.ident_path()
-            .map(|i| i.into_iter().map(|i| i.name).collect())
-            .unwrap_or(smallvec![sym::doc])
+        self.symbol_path().unwrap_or(smallvec![sym::doc])
     }
 
+    fn path_span(&self) -> Option<Span>;
+
     /// Returns None for doc comments
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>>;
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
 
     /// Returns the documentation if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some("doc")`.
     /// * `#[doc = "doc"]` returns `Some("doc")`.
     /// * `#[doc(...)]` returns `None`.
     fn doc_str(&self) -> Option<Symbol>;
+
+    /// Returns the deprecation note if this is deprecation attribute.
+    /// * `#[deprecated = "note"]` returns `Some("note")`.
+    /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
+    fn deprecation_note(&self) -> Option<Ident>;
 
     fn is_proc_macro_attr(&self) -> bool {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
@@ -820,7 +919,7 @@ pub trait AttributeExt: Debug {
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)>;
 
     /// Returns outer or inner if this is a doc attribute or a sugared doc
     /// comment, otherwise None.
@@ -830,6 +929,12 @@ pub trait AttributeExt: Debug {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
+
+    /// Returns `true` if this attribute contains `doc(hidden)`.
+    fn is_doc_hidden(&self) -> bool;
+
+    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
+    fn is_doc_keyword_or_attribute(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
@@ -853,10 +958,6 @@ impl Attribute {
 
     pub fn value_span(&self) -> Option<Span> {
         AttributeExt::value_span(self)
-    }
-
-    pub fn ident(&self) -> Option<Ident> {
-        AttributeExt::ident(self)
     }
 
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
@@ -890,10 +991,6 @@ impl Attribute {
         AttributeExt::path(self)
     }
 
-    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        AttributeExt::ident_path(self)
-    }
-
     pub fn doc_str(&self) -> Option<Symbol> {
         AttributeExt::doc_str(self)
     }
@@ -902,7 +999,7 @@ impl Attribute {
         AttributeExt::is_proc_macro_attr(self)
     }
 
-    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        AttributeExt::doc_str_and_comment_kind(self)
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }

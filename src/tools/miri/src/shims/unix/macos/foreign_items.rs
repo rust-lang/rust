@@ -46,30 +46,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.close(result)?;
                 this.write_scalar(result, dest)?;
             }
-            "stat" | "stat64" | "stat$INODE64" => {
+            "stat" | "stat$INODE64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_stat(path, buf)?;
+                let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
-            "lstat" | "lstat64" | "lstat$INODE64" => {
+            "lstat" | "lstat$INODE64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_lstat(path, buf)?;
+                let result = this.lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
-            "fstat" | "fstat64" | "fstat$INODE64" => {
+            "fstat$INODE64" => {
                 let [fd, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_fstat(fd, buf)?;
+                let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [name] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir_r" | "readdir_r$INODE64" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [dirp, entry, result] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
+                let result = this.macos_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
             "realpath$DARWIN_EXTSN" => {
@@ -87,6 +91,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Environment related shims
             "_NSGetEnviron" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let environ = this.machine.env_vars.unix().environ();
                 this.write_pointer(environ, dest)?;
@@ -111,21 +116,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "mach_timebase_info" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [info] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.mach_timebase_info(info)?;
                 this.write_scalar(result, dest)?;
             }
 
+            // FIXME: add a test that directly calls this function.
+            "mach_wait_until" => {
+                let [deadline] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.mach_wait_until(deadline)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Access to command-line arguments
             "_NSGetArgc" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.write_pointer(this.machine.argc.expect("machine must be initialized"), dest)?;
             }
             "_NSGetArgv" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.write_pointer(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
             "_NSGetExecutablePath" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [buf, bufsize] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.check_no_isolation("`_NSGetExecutablePath`")?;
@@ -158,17 +174,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?;
                 let active_thread = this.active_thread();
-                this.machine.tls.add_macos_thread_dtor(active_thread, dtor, data)?;
+                this.machine.tls.add_macos_thread_dtor(
+                    active_thread,
+                    dtor,
+                    data,
+                    this.machine.current_user_relevant_span(),
+                )?;
             }
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [thread] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.read_target_usize(thread)?;
                 let stack_addr = Scalar::from_uint(this.machine.stack_addr, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [thread] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.read_target_usize(thread)?;
                 let stack_size = Scalar::from_uint(this.machine.stack_size, this.pointer_size());

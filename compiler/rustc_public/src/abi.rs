@@ -225,6 +225,10 @@ pub enum ValueAbi {
         element: Scalar,
         count: u64,
     },
+    ScalableVector {
+        element: Scalar,
+        count: u64,
+    },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
@@ -235,7 +239,15 @@ impl ValueAbi {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            ValueAbi::Scalar(_) | ValueAbi::ScalarPair(..) | ValueAbi::Vector { .. } => false,
+            ValueAbi::Scalar(_)
+            | ValueAbi::ScalarPair(..)
+            | ValueAbi::Vector { .. }
+            // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
+            // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
+            // fully implemented, scalable vectors will remain `Sized`, they just won't be
+            // `const Sized` - whether `is_unsized` continues to return `false` at that point will
+            // need to be revisited and will depend on what `is_unsized` is used for.
+            | ValueAbi::ScalableVector { .. } => false,
             ValueAbi::Aggregate { sized } => !sized,
         }
     }

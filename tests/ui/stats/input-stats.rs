@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ check-pass
 //@ compile-flags: -Zinput-stats
 //@ only-64bit

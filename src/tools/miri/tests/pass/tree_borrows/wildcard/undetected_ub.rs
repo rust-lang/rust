@@ -4,7 +4,7 @@
 pub fn main() {
     uncertain_provenance();
     protected_exposed();
-    protected_wildcard();
+    cross_tree_update_older_invalid_exposed();
 }
 
 /// Currently, if we do not know for a tag if an access is local or foreign,
@@ -101,45 +101,61 @@ pub fn protected_exposed() {
     }
     protect(ref1);
 
-    // ref2 is disabled, so this read causes UB, but we currently don't protect this.
+    // ref2 should be disabled, so this read causes UB, but we currently don't detect this.
     let _fail = *ref2;
 }
 
-/// Currently, we do not assign protectors to wildcard references.
-/// This test has UB because it does a foreign write to a protected reference.
-/// However, that reference is a wildcard, so this doesn't get detected.
-#[allow(unused_variables)]
-pub fn protected_wildcard() {
-    let mut x: u32 = 32;
-    let ref1 = &mut x;
-    let ref2 = &mut *ref1;
+/// Checks how accesses from one subtree affect other subtrees.
+/// This test shows an example where we don't update a node whose exposed
+/// children are greater than `max_local_tag`.
+pub fn cross_tree_update_older_invalid_exposed() {
+    let mut x: [u32; 2] = [42, 43];
 
-    let int = ref2 as *mut u32 as usize;
-    let wild = int as *mut u32;
-    let wild_ref = unsafe { &mut *wild };
+    let ref_base = &mut x;
 
-    let mut protect = |arg: &mut u32| {
-        // arg is a protected pointer with wildcard provenance.
+    let int0 = ref_base as *mut u32 as usize;
+    let wild = int0 as *mut u32;
 
-        //    ┌────────────┐
-        //    │            │
-        //    │ ref1(Res)  │
-        //    │            │
-        //    └──────┬─────┘
-        //           │
-        //           │
-        //           ▼
-        //    ┌────────────┐
-        //    │            │
-        //    │ ref2(Res)* │
-        //    │            │
-        //    └────────────┘
+    let reb1 = unsafe { &mut *wild };
+    *reb1 = 44;
 
-        // Writes to ref1, disabling ref2, i.e. disabling all exposed references.
-        // Since a wildcard reference is protected, this is UB. But we currently don't detect this.
-        *ref1 = 13;
-    };
+    // We need this reference to be at a different location,
+    // so that creating it doesn't freeze reb1.
+    let reb2 = unsafe { &mut *wild.wrapping_add(1) };
+    let reb2_ptr = (reb2 as *mut u32).wrapping_sub(1);
 
-    // We pass a pointer with wildcard provenance to the function.
-    protect(wild_ref);
+    let ref3 = &mut *reb1;
+    let _int3 = ref3 as *mut u32 as usize;
+
+    //    ┌──────────────┐
+    //    │              │
+    //    │ptr_base(Res)*│        *                *
+    //    │              │        │                │
+    //    └──────────────┘        │                │
+    //                            │                │
+    //                            │                │
+    //                            ▼                ▼
+    //                      ┌────────────┐   ┌────────────┐
+    //                      │            │   │            │
+    //                      │ reb1(Act)  │   │ reb2(Res)  │
+    //                      │            │   │            │
+    //                      └──────┬─────┘   └────────────┘
+    //                             │
+    //                             │
+    //                             ▼
+    //                      ┌────────────┐
+    //                      │            │
+    //                      │ ref3(Res)* │
+    //                      │            │
+    //                      └────────────┘
+
+    // This access doesn't freeze reb1 even though no access could have come from its
+    // child ref3 (since ref3>reb2). This is because ref3 doesnt get disabled during this
+    // access.
+    //
+    // ref3 doesn't get frozen because it's still reserved.
+    let _y = unsafe { *reb2_ptr };
+
+    // reb1 should be frozen so a write should be UB. But we currently don't detect this.
+    *reb1 = 4;
 }

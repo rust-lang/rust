@@ -243,6 +243,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
+                // FIXME(#149379): This operation results in expected input
+                // types which are potentially not well-formed or for whom the
+                // function where-bounds don't actually hold. This results
+                // in weird bugs when later treating these expectations as if
+                // they were actually correct.
                 self.fudge_inference_if_ok(|| {
                     let ocx = ObligationCtxt::new(self);
 
@@ -252,6 +257,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No argument expectations are produced if unification fails.
                     let origin = self.misc(call_span);
                     ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
+
+                    let formal_input_tys_ns;
+                    let formal_input_tys = if self.next_trait_solver() {
+                        // In the new solver, the normalizations are done lazily.
+                        // Because of this, if we encounter unnormalized alias types inside this
+                        // fudge scope, we might lose the relationships between them and other vars
+                        // when fudging inference variables created here.
+                        // So, we utilize generalization to normalize aliases by adding a new
+                        // inference var and equating it with the type we want to pull out of the
+                        // fudge scope.
+                        formal_input_tys_ns = formal_input_tys
+                            .iter()
+                            .map(|&ty| {
+                                // If we replace a (unresolved) inference var with a new inference
+                                // var, it will be eventually resolved to itself and this will
+                                // weaken type inferences as the new inference var will be fudged
+                                // out and lose all relationships with other vars while the former
+                                // will not be fudged.
+                                if ty.is_ty_var() {
+                                    return ty;
+                                }
+
+                                let generalized_ty = self.next_ty_var(call_span);
+                                ocx.eq(&origin, self.param_env, ty, generalized_ty).unwrap();
+                                generalized_ty
+                            })
+                            .collect_vec();
+
+                        formal_input_tys_ns.as_slice()
+                    } else {
+                        formal_input_tys
+                    };
+
                     if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
@@ -995,11 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // break 'a 22; }` would not force the type of the block
         // to be `()`).
         let coerce_to_ty = expected.coercion_target_type(self, blk.span);
-        let coerce = if blk.targeted_by_break {
-            CoerceMany::new(coerce_to_ty)
-        } else {
-            CoerceMany::with_coercion_sites(coerce_to_ty, blk.expr.as_slice())
-        };
+        let coerce = CoerceMany::new(coerce_to_ty);
 
         let prev_diverges = self.diverges.get();
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
@@ -1429,11 +1463,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => None,
                         }
                     });
-                    if let Some(new_def_id) = new_def_id {
-                        def_id = new_def_id;
-                    } else {
-                        return;
-                    }
+                    let Some(new_def_id) = new_def_id else { return };
+                    def_id = new_def_id;
                 }
             }
         }

@@ -732,8 +732,7 @@ declare_lint! {
     Allow,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
+        reason: fcw!(EditionError 2018 "slug-of-edition-guide-page")
     };
 }
 ```

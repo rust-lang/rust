@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
+use std::ops::Bound;
 use std::time::Duration;
 
 use rustc_abi::FieldIdx;
@@ -611,8 +612,12 @@ fn return_ready_list<'tcx>(
     }
 
     // While there is a slot to store another event, and an event to store, deliver that event.
+    // We can't use an iterator over `ready_set` as we want to remove elements as we go,
+    // so we track the most recently delivered event to find the next one. We track it as a lower
+    // bound that we can pass to `BTreeSet::range`.
+    let mut event_lower_bound = Bound::Unbounded;
     while let Some(slot) = array_iter.next(ecx)?
-        && let Some(&key) = ready_set.first()
+        && let Some(&key) = ready_set.range((event_lower_bound, Bound::Unbounded)).next()
     {
         let interest = interest_list.get_mut(&key).expect("non-existent event in ready set");
         // Deliver event to caller.
@@ -623,9 +628,10 @@ fn return_ready_list<'tcx>(
         num_of_events = num_of_events.strict_add(1);
         // Synchronize receiving thread with the event of interest.
         ecx.acquire_clock(&interest.clock)?;
-        // Since currently, all events are edge-triggered, we remove them from the ready set when
-        // they get delivered.
+        // This was an edge-triggered event, so remove it from the ready set.
         ready_set.remove(&key);
+        // Go find the next event.
+        event_lower_bound = Bound::Excluded(key);
     }
     ecx.write_int(num_of_events, dest)?;
     interp_ok(num_of_events)

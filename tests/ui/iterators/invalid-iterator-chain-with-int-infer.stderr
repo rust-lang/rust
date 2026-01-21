@@ -10,9 +10,13 @@ LL |     let x = Some(()).iter().map(|()| 1).sum::<f32>();
 help: the following other types implement trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `f32` implements `Sum<&f32>`
-   |
    = note: `f32` implements `Sum`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `f32` implements `Sum<&f32>`
+  ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: in this macro invocation
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-with-int-infer.rs:2:29
    |

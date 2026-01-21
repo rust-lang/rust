@@ -8,9 +8,7 @@ use crate::os::motor::ffi::OsStrExt;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::map_motor_error;
-use crate::sys::pipe::AnonPipe;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner, map_motor_error};
 use crate::{fmt, io};
 
 pub enum Stdio {
@@ -98,6 +96,10 @@ impl Command {
         self.env.iter()
     }
 
+    pub fn get_env_clear(&self) -> bool {
+        self.env.does_clear()
+    }
+
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(Path::new)
     }
@@ -146,17 +148,23 @@ impl Command {
         Ok((
             Process { handle },
             StdioPipes {
-                stdin: if stdin >= 0 { Some(stdin.into()) } else { None },
-                stdout: if stdout >= 0 { Some(stdout.into()) } else { None },
-                stderr: if stderr >= 0 { Some(stderr.into()) } else { None },
+                stdin: if stdin >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stdin) })
+                } else {
+                    None
+                },
+                stdout: if stdout >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stdout) })
+                } else {
+                    None
+                },
+                stderr: if stderr >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stderr) })
+                } else {
+                    None
+                },
             },
         ))
-    }
-}
-
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
-        unsafe { Stdio::Fd(crate::sys::fd::FileDesc::from_raw_fd(pipe.into_raw_fd())) }
     }
 }
 
@@ -257,10 +265,7 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        match moto_rt::process::kill(self.handle) {
-            moto_rt::E_OK => Ok(()),
-            err => Err(map_motor_error(err)),
-        }
+        moto_rt::process::kill(self.handle).map_err(map_motor_error)
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
@@ -271,7 +276,7 @@ impl Process {
         match moto_rt::process::try_wait(self.handle) {
             Ok(s) => Ok(Some(ExitStatus(s))),
             Err(err) => match err {
-                moto_rt::E_NOT_READY => Ok(None),
+                moto_rt::Error::NotReady => Ok(None),
                 err => Err(map_motor_error(err)),
             },
         }
@@ -310,4 +315,15 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    _out: ChildPipe,
+    _stdout: &mut Vec<u8>,
+    _err: ChildPipe,
+    _stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    Err(io::Error::from_raw_os_error(moto_rt::E_NOT_IMPLEMENTED.into()))
 }

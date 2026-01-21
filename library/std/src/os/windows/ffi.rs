@@ -60,7 +60,7 @@ use crate::fmt;
 use crate::iter::FusedIterator;
 use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner};
 
 /// Windows-specific extensions to [`OsString`].
 ///

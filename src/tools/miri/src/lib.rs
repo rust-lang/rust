@@ -17,7 +17,6 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
-#![cfg_attr(bootstrap, feature(duration_from_nanos_u128))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -39,13 +38,16 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
-    // We don't use translatable diagnostics
-    rustc::diagnostic_outside_of_impl,
+    clippy::len_zero,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
-    rustc::untranslatable_diagnostic,
 )]
-#![warn(rust_2018_idioms, unqualified_local_imports, clippy::as_conversions)]
+#![warn(
+    rust_2018_idioms,
+    unqualified_local_imports,
+    clippy::as_conversions,
+    clippy::manual_let_else
+)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
@@ -57,7 +59,6 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_hash;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_log;
@@ -165,7 +166,6 @@ pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 /// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
 /// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
-    "-Zcodegen-backend=dummy",
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",

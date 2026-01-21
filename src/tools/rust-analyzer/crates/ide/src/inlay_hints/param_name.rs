@@ -11,6 +11,7 @@ use hir::{EditionedFileId, Semantics};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use stdx::to_lower_snake_case;
+use syntax::T;
 use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
@@ -88,7 +89,73 @@ pub(super) fn hints(
         });
 
     acc.extend(hints);
+
+    // Show hint for the next expected (missing) argument if enabled
+    if config.parameter_hints_for_missing_arguments {
+        let provided_args_count = arg_list.args().count();
+        let params = callable.params();
+        let total_params = params.len();
+
+        if provided_args_count < total_params
+            && let Some(next_param) = params.get(provided_args_count)
+            && let Some(param_name) = next_param.name(sema.db)
+        {
+            // Apply heuristics to hide obvious parameter hints
+            if should_hide_missing_param_hint(unary_function, function_name, param_name.as_str()) {
+                return Some(());
+            }
+
+            // Determine the position for the hint
+            if let Some(hint_range) = missing_arg_hint_position(&arg_list) {
+                let colon = if config.render_colons { ":" } else { "" };
+                let label = InlayHintLabel::simple(
+                    format!("{}{}", param_name.display(sema.db, krate.edition(sema.db)), colon),
+                    None,
+                    config.lazy_location_opt(|| {
+                        let source = sema.source(next_param.clone())?;
+                        let name_syntax = match source.value.as_ref() {
+                            Either::Left(pat) => pat.name(),
+                            Either::Right(param) => match param.pat()? {
+                                ast::Pat::IdentPat(it) => it.name(),
+                                _ => None,
+                            },
+                        }?;
+                        sema.original_range_opt(name_syntax.syntax()).map(|frange| {
+                            ide_db::FileRange {
+                                file_id: frange.file_id.file_id(sema.db),
+                                range: frange.range,
+                            }
+                        })
+                    }),
+                );
+                acc.push(InlayHint {
+                    range: hint_range,
+                    kind: InlayKind::Parameter,
+                    label,
+                    text_edit: None,
+                    position: InlayHintPosition::Before,
+                    pad_left: true,
+                    pad_right: false,
+                    resolve_parent: Some(expr.syntax().text_range()),
+                });
+            }
+        }
+    }
+
     Some(())
+}
+
+/// Determines the position where the hint for a missing argument should be placed.
+/// Returns the range of the token where the hint should appear.
+fn missing_arg_hint_position(arg_list: &ast::ArgList) -> Option<syntax::TextRange> {
+    // Always place the hint on the closing paren, so it appears before `)`.
+    // This way `foo()` becomes `foo(a)` visually with the hint.
+    arg_list
+        .syntax()
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|t| t.kind() == T![')'])
+        .map(|t| t.text_range())
 }
 
 fn get_callable<'db>(
@@ -151,6 +218,37 @@ fn should_hide_param_name_hint(
     }
 
     is_argument_expr_similar_to_param_name(sema, argument, param_name)
+}
+
+/// Determines whether to hide the parameter hint for a missing argument.
+/// This is a simplified version of `should_hide_param_name_hint` that doesn't
+/// require an actual argument expression.
+fn should_hide_missing_param_hint(
+    unary_function: bool,
+    function_name: Option<&str>,
+    param_name: &str,
+) -> bool {
+    let param_name = param_name.trim_matches('_');
+    if param_name.is_empty() {
+        return true;
+    }
+
+    if param_name.starts_with("ra_fixture") {
+        return true;
+    }
+
+    if unary_function {
+        if let Some(function_name) = function_name
+            && is_param_name_suffix_of_fn_name(param_name, function_name)
+        {
+            return true;
+        }
+        if is_obvious_param(param_name) {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Hide the parameter name of a unary function if it is a `_` - prefixed suffix of the function's name, or equal.
@@ -606,6 +704,103 @@ fn main() {
      // ^^^^^^ a_d_e
     baz(a.d.ec);
      // ^^^^^^ a_d_e
+}"#,
+        );
+    }
+
+    #[track_caller]
+    fn check_missing_params(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                parameter_hints_for_missing_arguments: true,
+                ..DISABLED_CONFIG
+            },
+            ra_fixture,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_empty_call() {
+        // When calling foo() with no args, show hint for first param on the closing paren
+        check_missing_params(
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    foo();
+      //^ a
+}"#,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_after_first_arg() {
+        // foo(1,) - show hint for 'a' on '1', and 'b' on the trailing comma
+        check_missing_params(
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    foo(1,);
+      //^ a
+        //^ b
+}"#,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_partial_args() {
+        // foo(1, 2,) - show hints for a, b on args, and c on trailing comma
+        check_missing_params(
+            r#"
+fn foo(a: i32, b: i32, c: i32) -> i32 { a + b + c }
+fn main() {
+    foo(1, 2,);
+      //^ a
+         //^ b
+           //^ c
+}"#,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_method_call() {
+        // S.foo(1,) - show hint for 'a' on '1', and 'b' on trailing comma
+        check_missing_params(
+            r#"
+struct S;
+impl S {
+    fn foo(&self, a: i32, b: i32) -> i32 { a + b }
+}
+fn main() {
+    S.foo(1,);
+        //^ a
+          //^ b
+}"#,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_no_hint_when_complete() {
+        // When all args provided, no missing hint - just regular param hints
+        check_missing_params(
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    foo(1, 2);
+      //^ a
+         //^ b
+}"#,
+        );
+    }
+
+    #[test]
+    fn missing_param_hint_respects_heuristics() {
+        // The hint should be hidden if it matches heuristics (e.g., single param unary fn with same name)
+        check_missing_params(
+            r#"
+fn foo(foo: i32) -> i32 { foo }
+fn main() {
+    foo();
 }"#,
         );
     }

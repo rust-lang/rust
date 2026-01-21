@@ -184,6 +184,20 @@ where
         then(ecx)
     }
 
+    // Hack for trait-system-refactor-initiative#245.
+    // FIXME(-Zhigher-ranked-assumptions): this impl differs from trait goals and we should unify
+    // them again once we properly support binders.
+    fn probe_and_consider_object_bound_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        source: CandidateSource<I>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<Candidate<I>, NoSolution> {
+        Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
     fn consider_additional_alias_assumptions(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -431,17 +445,15 @@ where
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
-        let tupled_inputs_and_output =
-            match structural_traits::extract_tupled_inputs_and_output_from_callable(
+        let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
                 cx,
                 goal.predicate.self_ty(),
                 goal_kind,
-            )? {
-                Some(tupled_inputs_and_output) => tupled_inputs_and_output,
-                None => {
-                    return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-                }
-            };
+            )?
+        else {
+            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+        };
         let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.

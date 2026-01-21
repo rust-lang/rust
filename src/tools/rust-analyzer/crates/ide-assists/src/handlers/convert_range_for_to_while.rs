@@ -113,7 +113,7 @@ fn extract_range(iterable: &ast::Expr) -> Option<(ast::Expr, Option<ast::Expr>, 
             (range.start()?, range.end(), make::expr_literal("1").into(), inclusive)
         }
         ast::Expr::MethodCallExpr(call) if call.name_ref()?.text() == "step_by" => {
-            let [step] = call.arg_list()?.args().collect_array()?;
+            let [step] = Itertools::collect_array(call.arg_list()?.args())?;
             let (start, end, _, inclusive) = extract_range(&call.receiver()?)?;
             (start, end, step, inclusive)
         }

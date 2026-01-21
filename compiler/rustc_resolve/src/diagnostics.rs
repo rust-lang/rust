@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use itertools::Itertools as _;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -9,7 +11,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
-    report_ambiguity_error, struct_span_code_err,
+    struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
@@ -20,17 +22,19 @@ use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
-use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::{
+    BytePos, DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 
@@ -42,11 +46,11 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
-    ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError, errors as errs, path_names_to_string,
+    AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
+    Finalize, ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module,
+    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError,
+    Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs,
+    path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -143,21 +147,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            let diag = self.ambiguity_diagnostics(ambiguity_error);
-            if ambiguity_error.warning {
-                let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
-                    unreachable!()
+            let diag = self.ambiguity_diagnostic(ambiguity_error);
+
+            if let Some(ambiguity_warning) = ambiguity_error.warning {
+                let node_id = match ambiguity_error.b1.0.kind {
+                    DeclKind::Import { import, .. } => import.root_id,
+                    DeclKind::Def(_) => CRATE_NODE_ID,
                 };
-                self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
-                    import.root_id,
-                    ambiguity_error.ident.span,
-                    BuiltinLintDiag::AmbiguousGlobImports { diag },
-                );
+
+                let lint = match ambiguity_warning {
+                    AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
+                    AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
+                };
+
+                self.lint_buffer.buffer_lint(lint, node_id, diag.ident.span, diag);
             } else {
-                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
-                report_ambiguity_error(&mut err, diag);
-                err.emit();
+                self.dcx().emit_err(diag);
             }
         }
 
@@ -207,21 +212,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn report_conflict(
         &mut self,
-        parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: NameBinding<'ra>,
-        old_binding: NameBinding<'ra>,
+        old_binding: Decl<'ra>,
+        new_binding: Decl<'ra>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
-            return self.report_conflict(parent, ident, ns, old_binding, new_binding);
+            return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
-        let container = match parent.kind {
+        let container = match old_binding.parent_module.unwrap().kind {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
+            ModuleKind::Def(kind, def_id, _) => kind.descr(def_id),
             ModuleKind::Block => "block",
         };
 
@@ -286,8 +290,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .with_code(code);
 
         // See https://github.com/rust-lang/rust/issues/32354
-        use NameBindingKind::Import;
-        let can_suggest = |binding: NameBinding<'_>, import: self::Import<'_>| {
+        use DeclKind::Import;
+        let can_suggest = |binding: Decl<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
                 && !matches!(import.kind, ImportKind::MacroUse { .. } | ImportKind::MacroExport)
         };
@@ -471,7 +475,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         finalize: Finalize,
         path: &[Segment],
-        second_binding: Option<NameBinding<'_>>,
+        second_binding: Option<Decl<'_>>,
     ) {
         let Finalize { node_id, root_span, .. } = finalize;
 
@@ -504,7 +508,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // `ExternCrate` (also used for `crate::...`) then no need to issue a
         // warning, this looks all good!
         if let Some(binding) = second_binding
-            && let NameBindingKind::Import { import, .. } = binding.kind
+            && let DeclKind::Import { import, .. } = binding.kind
             // Careful: we still want to rewrite paths from renamed extern crates.
             && let ImportKind::ExternCrate { source: None, .. } = import.kind
         {
@@ -1176,6 +1180,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ctxt: SyntaxContext,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
+        let ctxt = DUMMY_SP.with_ctxt(ctxt);
         self.cm().visit_scopes(scope_set, ps, ctxt, None, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
@@ -1186,7 +1191,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(*ident, res)),
+                                .map(|(ident, _)| TypoSuggestion::typo_from_ident(ident.0, res)),
                         );
                     }
                 }
@@ -1194,18 +1199,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope.get() {
-                        let res = macro_rules_binding.binding.res();
+                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                        let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
-                            suggestions.push(TypoSuggestion::typo_from_ident(
-                                macro_rules_binding.ident,
-                                res,
-                            ))
+                            suggestions
+                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident.0, res))
                         }
                     }
                 }
-                Scope::Module(module, _) => {
+                Scope::ModuleNonGlobs(module, _) => {
                     this.add_module_candidates(module, suggestions, filter_fn, None);
+                }
+                Scope::ModuleGlobs(..) => {
+                    // Already handled in `ModuleNonGlobs`.
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -1261,7 +1267,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
 
-            None::<()>
+            ControlFlow::<()>::Continue(())
         });
     }
 
@@ -1336,7 +1342,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 let child_accessible =
-                    accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
+                    accessible && this.is_accessible_from(name_binding.vis(), parent_scope.module);
 
                 // do not venture inside inaccessible items of other crates
                 if in_module_is_extern && !child_accessible {
@@ -1355,9 +1361,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // #90113: Do not count an inaccessible reexported item as a candidate.
-                if let NameBindingKind::Import { binding, .. } = name_binding.kind
-                    && this.is_accessible_from(binding.vis, parent_scope.module)
-                    && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                if let DeclKind::Import { source_decl, .. } = name_binding.kind
+                    && this.is_accessible_from(source_decl.vis(), parent_scope.module)
+                    && !this.is_accessible_from(name_binding.vis(), parent_scope.module)
                 {
                     return;
                 }
@@ -1464,8 +1470,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident.0));
 
-                    let alias_import = if let NameBindingKind::Import { import, .. } =
-                        name_binding.kind
+                    let alias_import = if let DeclKind::Import { import, .. } = name_binding.kind
                         && let ImportKind::ExternCrate { source: Some(_), .. } = import.kind
                         && import.parent_scope.expansion == parent_scope.expansion
                     {
@@ -1578,9 +1583,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == ident
-                                && let Some(binding) = name_resolution.borrow().best_binding()
+                                && let Some(decl) = name_resolution.borrow().best_decl()
                             {
-                                match binding.res() {
+                                match decl.res() {
                                     // No disambiguation needed if the identically named item we
                                     // found in scope actually refers to the crate in question.
                                     Res::Def(_, def_id) => def_id != crate_def_id,
@@ -1749,7 +1754,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     macro_kind.descr_expected(),
                 ),
             };
-            if let crate::NameBindingKind::Import { import, .. } = binding.kind
+            if let crate::DeclKind::Import { import, .. } = binding.kind
                 && !import.span.is_dummy()
             {
                 let note = errors::IdentImporterHereButItIsDesc {
@@ -1900,7 +1905,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if span.overlaps(def_span) {
                 // Don't suggest typo suggestion for itself like in the following:
                 // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
-                //   --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14
+                //   --> $DIR/unicode-string-literal-syntax-error-64792.rs:4:14
                 //    |
                 // LL | struct X {}
                 //    | ----------- `X` defined here
@@ -1962,27 +1967,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             (span, msg, suggestion.candidate.to_ident_string())
         };
-        err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+        err.span_suggestion_verbose(span, msg, sugg, Applicability::MaybeIncorrect);
         true
     }
 
-    fn binding_description(&self, b: NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+    fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
-            // These already contain the "built-in" prefix or look bad with it.
-            let add_built_in =
-                !matches!(b.res(), Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod);
-            let (built_in, from) = if from_prelude {
-                ("", " from prelude")
-            } else if b.is_extern_crate()
-                && !b.is_import()
-                && self.tcx.sess.opts.externs.get(ident.as_str()).is_some()
-            {
-                ("", " passed with `--extern`")
-            } else if add_built_in {
-                (" built-in", "")
-            } else {
-                ("", "")
+            let (built_in, from) = match scope {
+                Scope::StdLibPrelude | Scope::MacroUsePrelude => ("", " from prelude"),
+                Scope::ExternPreludeFlags
+                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some() =>
+                {
+                    ("", " passed with `--extern`")
+                }
+                _ => {
+                    if matches!(res, Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod) {
+                        // These already contain the "built-in" prefix or look bad with it.
+                        ("", "")
+                    } else {
+                        (" built-in", "")
+                    }
+                }
             };
 
             let a = if built_in.is_empty() { res.article() } else { "a" };
@@ -1993,23 +1999,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn ambiguity_diagnostics(&self, ambiguity_error: &AmbiguityError<'ra>) -> AmbiguityErrorDiag {
-        let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
+    fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
+        let AmbiguityError { kind, ident, b1, b2, scope1, scope2, .. } = *ambiguity_error;
         let extern_prelude_ambiguity = || {
-            self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
-                entry.item_binding.map(|(b, _)| b) == Some(b1)
-                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().0.binding()) == Some(b2)
-            })
+            // Note: b1 may come from a module scope, as an extern crate item in module.
+            matches!(scope2, Scope::ExternPreludeFlags)
+                && self
+                    .extern_prelude
+                    .get(&Macros20NormalizedIdent::new(ident))
+                    .is_some_and(|entry| entry.item_decl.map(|(b, _)| b) == Some(b1))
         };
-        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+        let (b1, b2, scope1, scope2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
-            (b2, b1, misc2, misc1, true)
+            (b2, b1, scope2, scope1, true)
         } else {
-            (b1, b2, misc1, misc2, false)
+            (b1, b2, scope1, scope2, false)
         };
 
-        let could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
-            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
+        let could_refer_to = |b: Decl<'_>, scope: Scope<'ra>, also: &str| {
+            let what = self.decl_description(b, ident, scope);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
             let thing = b.res().descr();
@@ -2027,17 +2035,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
-            match misc {
-                AmbiguityErrorMisc::SuggestCrate => help_msgs
-                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously")),
-                AmbiguityErrorMisc::SuggestSelf => help_msgs
-                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously")),
-                AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
+
+            if kind != AmbiguityKind::GlobVsGlob {
+                if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
+                    if module == self.graph_root {
+                        help_msgs.push(format!(
+                            "use `crate::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    } else if module.is_normal() {
+                        help_msgs.push(format!(
+                            "use `self::{ident}` to refer to this {thing} unambiguously"
+                        ));
+                    }
+                }
             }
 
             (
-                b.span,
-                note_msg,
+                Spanned { node: note_msg, span: b.span },
                 help_msgs
                     .iter()
                     .enumerate()
@@ -2048,31 +2062,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .collect::<Vec<_>>(),
             )
         };
-        let (b1_span, b1_note_msg, b1_help_msgs) = could_refer_to(b1, misc1, "");
-        let (b2_span, b2_note_msg, b2_help_msgs) = could_refer_to(b2, misc2, " also");
+        let (b1_note, b1_help_msgs) = could_refer_to(b1, scope1, "");
+        let (b2_note, b2_help_msgs) = could_refer_to(b2, scope2, " also");
+        let help = if kind == AmbiguityKind::GlobVsGlob
+            && b1
+                .parent_module
+                .and_then(|m| m.opt_def_id())
+                .map(|d| !d.is_local())
+                .unwrap_or_default()
+        {
+            Some(&[
+                "consider updating this dependency to resolve this error",
+                "if updating the dependency does not resolve the problem report the problem to the author of the relevant crate",
+            ] as &[_])
+        } else {
+            None
+        };
 
-        AmbiguityErrorDiag {
-            msg: format!("`{ident}` is ambiguous"),
-            span: ident.span,
-            label_span: ident.span,
-            label_msg: "ambiguous name".to_string(),
-            note_msg: format!("ambiguous because of {}", kind.descr()),
-            b1_span,
-            b1_note_msg,
+        errors::Ambiguity {
+            ident,
+            help,
+            kind: kind.descr(),
+            b1_note,
             b1_help_msgs,
-            b2_span,
-            b2_note_msg,
+            b2_note,
             b2_help_msgs,
         }
     }
 
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
-    fn ctor_fields_span(&self, binding: NameBinding<'_>) -> Option<Span> {
-        let NameBindingKind::Res(Res::Def(
-            DefKind::Ctor(CtorOf::Struct, CtorKind::Fn),
-            ctor_def_id,
-        )) = binding.kind
+    fn ctor_fields_span(&self, decl: Decl<'_>) -> Option<Span> {
+        let DeclKind::Def(Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id)) =
+            decl.kind
         else {
             return None;
         };
@@ -2084,7 +2106,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError {
             ident,
-            binding,
+            decl,
             outermost_res,
             parent_scope,
             single_nested,
@@ -2092,17 +2114,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ref source,
         } = *privacy_error;
 
-        let res = binding.res();
-        let ctor_fields_span = self.ctor_fields_span(binding);
+        let res = decl.res();
+        let ctor_fields_span = self.ctor_fields_span(decl);
         let plain_descr = res.descr().to_string();
         let nonimport_descr =
             if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
         let import_descr = nonimport_descr.clone() + " import";
-        let get_descr =
-            |b: NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+        let get_descr = |b: Decl<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
         // Print the primary message.
-        let ident_descr = get_descr(binding);
+        let ident_descr = get_descr(decl);
         let mut err =
             self.dcx().create_err(errors::IsPrivate { span: ident.span, ident_descr, ident });
 
@@ -2202,46 +2223,50 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Print the whole import chain to make it easier to see what happens.
-        let first_binding = binding;
-        let mut next_binding = Some(binding);
+        let first_binding = decl;
+        let mut next_binding = Some(decl);
         let mut next_ident = ident;
         let mut path = vec![];
         while let Some(binding) = next_binding {
             let name = next_ident;
             next_binding = match binding.kind {
                 _ if res == Res::Err => None,
-                NameBindingKind::Import { binding, import, .. } => match import.kind {
-                    _ if binding.span.is_dummy() => None,
+                DeclKind::Import { source_decl, import, .. } => match import.kind {
+                    _ if source_decl.span.is_dummy() => None,
                     ImportKind::Single { source, .. } => {
                         next_ident = source;
-                        Some(binding)
+                        Some(source_decl)
                     }
                     ImportKind::Glob { .. }
                     | ImportKind::MacroUse { .. }
-                    | ImportKind::MacroExport => Some(binding),
+                    | ImportKind::MacroExport => Some(source_decl),
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,
             };
 
             match binding.kind {
-                NameBindingKind::Import { import, .. } => {
+                DeclKind::Import { import, .. } => {
                     for segment in import.module_path.iter().skip(1) {
-                        path.push(segment.ident);
+                        // Don't include `{{root}}` in suggestions - it's an internal symbol
+                        // that should never be shown to users.
+                        if segment.ident.name != kw::PathRoot {
+                            path.push(segment.ident);
+                        }
                     }
                     sugg_paths.push((
                         path.iter().cloned().chain(std::iter::once(ident)).collect::<Vec<_>>(),
                         true, // re-export
                     ));
                 }
-                NameBindingKind::Res(_) => {}
+                DeclKind::Def(_) => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
-            if !first && binding.vis.is_public() {
+            if !first && binding.vis().is_public() {
                 let desc = match binding.kind {
-                    NameBindingKind::Import { .. } => "re-export",
+                    DeclKind::Import { .. } => "re-export",
                     _ => "directly",
                 };
                 note_span.push_span_label(def_span, format!("you could import this {desc}"));
@@ -2407,7 +2432,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'ra>,
         ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
-        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
         module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
@@ -2503,7 +2528,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ns_to_try,
                             parent_scope,
                             None,
-                            ignore_binding,
+                            ignore_decl,
                             ignore_import,
                         )
                         .ok()
@@ -2517,11 +2542,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         parent_scope,
                         None,
                         &ribs[ns_to_try],
-                        ignore_binding,
+                        ignore_decl,
                         diag_metadata,
                     ) {
                         // we found a locally-imported or available item/module
-                        Some(LexicalScopeBinding::Item(binding)) => Some(binding),
+                        Some(LateDecl::Decl(binding)) => Some(binding),
                         _ => None,
                     }
                 } else {
@@ -2532,7 +2557,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             parent_scope,
                             None,
                             false,
-                            ignore_binding,
+                            ignore_decl,
                             ignore_import,
                         )
                         .ok()
@@ -2568,7 +2593,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     parent_scope,
                     None,
                     &ribs[ValueNS],
-                    ignore_binding,
+                    ignore_decl,
                     diag_metadata,
                 )
             } else {
@@ -2583,7 +2608,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // variable `Foo`.
                 // }
                 // ```
-                Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                Some(LateDecl::RibDef(Res::Local(id))) => {
                     Some(*self.pat_span_map.get(&id).unwrap())
                 }
                 // Name matches item from a local name binding
@@ -2597,7 +2622,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // binding `Foo`.
                 // }
                 // ```
-                Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
+                Some(LateDecl::Decl(name_binding)) => Some(name_binding.span),
                 _ => None,
             };
             let suggestion = match_span.map(|span| {
@@ -2636,7 +2661,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 parent_scope,
                 None,
                 false,
-                ignore_binding,
+                ignore_decl,
                 ignore_import,
             ) {
                 let descr = binding.res().descr();
@@ -2888,7 +2913,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let binding_key = BindingKey::new(ident, MacroNS);
+        let binding_key = BindingKey::new(Macros20NormalizedIdent::new(ident), MacroNS);
         let binding = self.resolution(crate_module, binding_key)?.binding()?;
         let Res::Def(DefKind::Macro(kinds), _) = binding.res() else {
             return None;
@@ -3075,7 +3100,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let item_was = if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+            let item_was = if let CfgEntry::NameValue { value: Some(feature), .. } = cfg.0 {
                 errors::ItemWas::BehindFeature { feature, span: cfg.1 }
             } else {
                 errors::ItemWas::CfgOut { span: cfg.1 }

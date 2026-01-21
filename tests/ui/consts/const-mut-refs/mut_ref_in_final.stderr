@@ -4,9 +4,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | const B: *mut i32 = &mut 4;
    |                     ^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:21:35
@@ -14,9 +14,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                                   ^^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/mut_ref_in_final.rs:24:42
@@ -86,9 +86,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                     ^^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:73:54
@@ -96,9 +96,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                      ^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:75:52
@@ -106,9 +106,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                    ^^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:77:53
@@ -116,11 +116,55 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                     ^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error: aborting due to 12 previous errors
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+  --> $DIR/mut_ref_in_final.rs:86:5
+   |
+LL |     const INT2PTR: Option<&mut i32> = helper_int2ptr();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+  --> $DIR/mut_ref_in_final.rs:87:5
+   |
+LL |     static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (use-after-free)
+  --> $DIR/mut_ref_in_final.rs:93:5
+   |
+LL |     const DANGLING: Option<&mut i32> = helper_dangling();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (use-after-free)
+  --> $DIR/mut_ref_in_final.rs:94:5
+   |
+LL |     static DANGLING_STATIC: Option<&mut i32> = helper_dangling();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 16 previous errors
 
 Some errors have detailed explanations: E0080, E0716, E0764.
 For more information about an error, try `rustc --explain E0080`.

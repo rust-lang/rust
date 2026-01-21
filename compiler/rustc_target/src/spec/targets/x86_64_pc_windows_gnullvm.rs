@@ -3,7 +3,7 @@ use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnullvm::opts();
     base.cpu = "x86-64".into();
-    base.features = "+cx16,+sse3,+sahf".into();
+    base.features = "+cmpxchg16b,+sse3,+lahfsahf".into();
     base.plt_by_default = false;
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pep"]);

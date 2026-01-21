@@ -260,7 +260,7 @@ fn validate_method_call_expr(
     let receiver = method_call.receiver()?;
     let it_type = sema.type_of_expr(&receiver)?.adjusted();
     let module = sema.scope(receiver.syntax())?.module();
-    let krate = module.krate();
+    let krate = module.krate(ctx.db());
 
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
     it_type.impls_trait(sema.db, iter_trait, &[]).then_some((name_ref, arg_expr))

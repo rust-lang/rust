@@ -5,6 +5,7 @@
 //@[aarch32] build-pass
 //@[aarch32] needs-llvm-components: arm
 //@[aarch32] compile-flags: --target=thumbv7m-none-eabi
+//@ ignore-backends: gcc
 
 // We should fail to compute alignment for types aligned higher than usize::MAX.
 // We can't handle alignments that require all 32 bits, so this only affects 16-bit.

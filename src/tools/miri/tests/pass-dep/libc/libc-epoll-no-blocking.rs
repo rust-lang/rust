@@ -4,6 +4,8 @@ use std::convert::TryInto;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+use libc_utils::epoll::*;
+use libc_utils::*;
 
 fn main() {
     test_epoll_socketpair();
@@ -30,9 +32,6 @@ fn main() {
     test_issue_4374_reads();
 }
 
-// Using `as` cast since `EPOLLET` wraps around
-const EPOLL_IN_OUT_ET: u32 = (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _;
-
 #[track_caller]
 fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u64)]) {
     let epoll_event = libc::epoll_event { events: 0, u64: 0 };
@@ -51,56 +50,41 @@ fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u
 
 fn test_epoll_socketpair() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
-    let fds = [fds[1], fds[0]];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    write_all_from_slice(fds[0], b"abcde").unwrap();
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
-        u64: u64::try_from(fds[1]).unwrap(),
-    };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP).unwrap();
 
     // Check result from epoll_wait.
-    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
-    let expected_value = u64::try_from(fds[1]).unwrap();
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_noblock::<8>(epfd, &[Ev { data: fds[1], events: EPOLLIN | EPOLLOUT }]);
 
     // Check that this is indeed using "ET" (edge-trigger) semantics: a second epoll should return nothing.
-    check_epoll_wait::<8>(epfd, &[]);
+    check_epoll_wait_noblock::<8>(epfd, &[]);
 
     // Write some more to fd[0].
-    let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    write_all_from_slice(fds[0], b"abcde").unwrap();
 
     // This did not change the readiness of fd[1], so we should get no event.
     // However, Linux seems to always deliver spurious events to the peer on each write,
     // so we match that.
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_noblock::<8>(epfd, &[Ev { data: fds[1], events: EPOLLIN | EPOLLOUT }]);
 
     // Close the peer socketpair.
-    let res = unsafe { libc::close(fds[0]) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(fds[0]) });
 
-    // Check result from epoll_wait.
-    // We expect to get a read, write, HUP notification from the close since closing an FD always unblocks reads and writes on its peer.
-    let expected_event =
-        u32::try_from(libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLHUP | libc::EPOLLRDHUP).unwrap();
-    let expected_value = u64::try_from(fds[1]).unwrap();
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    // Check result from epoll_wait. We expect to get a read, write, HUP notification from the close
+    // since closing an FD always unblocks reads and writes on its peer.
+    check_epoll_wait_noblock::<8>(
+        epfd,
+        &[Ev { data: fds[1], events: EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLRDHUP }],
+    );
 }
 
 // This test first registers a file description with a flag that does not lead to notification,
@@ -108,77 +92,60 @@ fn test_epoll_socketpair() {
 // Also check that the new data value set via MOD is applied properly.
 fn test_epoll_ctl_mod() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register fd[1] with EPOLLIN|EPOLLET, and data of "0".
-    let mut ev = libc::epoll_event { events: (libc::EPOLLIN | libc::EPOLLET) as _, u64: 0 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl(epfd, EPOLL_CTL_ADD, fds[1], Ev { events: EPOLLIN | EPOLLET, data: 0 }).unwrap();
 
     // Check result from epoll_wait. No notification would be returned.
-    check_epoll_wait::<8>(epfd, &[]);
+    check_epoll_wait_noblock::<8>(epfd, &[]);
 
     // Use EPOLL_CTL_MOD to change to EPOLLOUT flag and data.
-    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 1 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl(epfd, EPOLL_CTL_MOD, fds[1], Ev { events: EPOLLOUT | EPOLLET, data: 1 }).unwrap();
 
     // Check result from epoll_wait. EPOLLOUT notification and new data is expected.
-    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
-    let expected_value = 1;
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_noblock::<8>(epfd, &[Ev { events: EPOLLOUT, data: 1 }]);
 
     // Write to fds[1] and read from fds[0] to make the notification ready again
     // (relying on there always being an event when the buffer gets emptied).
-    let data = "abc".as_bytes();
-    let res = unsafe { libc_utils::write_all(fds[1], data.as_ptr().cast(), data.len()) };
-    assert_eq!(res, 3);
-    let mut buf = [0u8; 3];
-    let res = unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len()) };
-    assert_eq!(res, 3);
+    write_all_from_slice(fds[1], "abc".as_bytes()).unwrap();
+    read_all_into_array::<3>(fds[0]).unwrap();
 
     // Now that the event is already ready, change the "data" value.
-    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 2 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl(epfd, EPOLL_CTL_MOD, fds[1], Ev { events: EPOLLOUT | EPOLLET, data: 2 }).unwrap();
 
     // Receive event, with latest data value.
-    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
-    let expected_value = 2;
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_noblock::<8>(epfd, &[Ev { events: EPOLLOUT, data: 2 }]);
 
     // Do another update that changes nothing.
-    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 2 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl(epfd, EPOLL_CTL_MOD, fds[1], Ev { events: EPOLLOUT | EPOLLET, data: 2 }).unwrap();
 
     // This re-triggers the event, even if it's the same flags as before.
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_noblock::<8>(epfd, &[Ev { events: EPOLLOUT, data: 2 }]);
 }
 
 fn test_epoll_ctl_del() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: u64::try_from(fds[1]).unwrap() };
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as u32,
+        u64: u64::try_from(fds[1]).unwrap(),
+    };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
@@ -198,20 +165,16 @@ fn test_two_epoll_instance() {
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to the socketpair.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Register one side of the socketpair with EPOLLIN | EPOLLOUT | EPOLLET.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: u64::try_from(fds[1]).unwrap() };
-    let res = unsafe { libc::epoll_ctl(epfd1, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
-    let res = unsafe { libc::epoll_ctl(epfd2, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd1, fds[1], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
+    epoll_ctl_add(epfd2, fds[1], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Notification should be received from both instance of epoll.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
@@ -224,33 +187,34 @@ fn test_two_epoll_instance() {
 // Notification should be provided for both.
 fn test_two_same_fd_in_same_epoll_instance() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Dup the fd.
     let newfd = unsafe { libc::dup(fds[1]) };
     assert_ne!(newfd, -1);
 
     // Register both fd to the same epoll instance.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: 5 as u64 };
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
+        u64: 5u64,
+    };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, newfd, &mut ev) };
     assert_eq!(res, 0);
 
     // Write to the socketpair.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Two notification should be received.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
-    let expected_value = 5 as u64;
+    let expected_value = 5u64;
     check_epoll_wait::<8>(
         epfd,
         &[(expected_event, expected_value), (expected_event, expected_value)],
@@ -260,19 +224,16 @@ fn test_two_same_fd_in_same_epoll_instance() {
 fn test_epoll_eventfd() {
     // Create an eventfd instance.
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Write 1 to the eventfd instance.
     libc_utils::write_all_from_slice(fd, &1_u64.to_ne_bytes()).unwrap();
 
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Register eventfd with EPOLLIN | EPOLLOUT | EPOLLET
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: u64::try_from(fd).unwrap() };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Check result from epoll_wait.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
@@ -308,26 +269,20 @@ fn test_epoll_eventfd() {
 // When read/write happened on one side of the socketpair, only the other side will be notified.
 fn test_epoll_socketpair_both_sides() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register both fd to the same epoll instance.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[1] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fds[1], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Write to fds[1].
     // (We do the write after the register here, unlike in `test_epoll_socketpair`, to ensure
     // we cover both orders in which this could be done.)
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -346,7 +301,7 @@ fn test_epoll_socketpair_both_sides() {
     let res =
         unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 5);
-    assert_eq!(buf, "abcde".as_bytes());
+    assert_eq!(buf, *b"abcde");
 
     // The state of fds[1] does not change (was writable, is writable).
     // However, we force a spurious wakeup as the read buffer just got emptied.
@@ -358,17 +313,14 @@ fn test_epoll_socketpair_both_sides() {
 // that file description.
 fn test_closed_fd() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create an eventfd instance.
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Register eventfd with EPOLLIN | EPOLLOUT | EPOLLET
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: u64::try_from(fd).unwrap() };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
@@ -376,8 +328,7 @@ fn test_closed_fd() {
     assert_eq!(res, 8);
 
     // Close the eventfd.
-    let res = unsafe { libc::close(fd) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(fd) });
 
     // No notification should be provided because the file description is closed.
     check_epoll_wait::<8>(epfd, &[]);
@@ -391,25 +342,20 @@ fn test_closed_fd() {
 // referring to the underlying open file description have been closed.
 fn test_not_fully_closed_fd() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create an eventfd instance.
-    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd =
+        errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
 
     // Dup the fd.
-    let newfd = unsafe { libc::dup(fd) };
-    assert_ne!(newfd, -1);
+    let newfd = errno_result(unsafe { libc::dup(fd) }).unwrap();
 
     // Register eventfd with EPOLLIN | EPOLLOUT | EPOLLET
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: u64::try_from(fd).unwrap() };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Close the original fd that being used to register with epoll.
-    let res = unsafe { libc::close(fd) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(fd) });
 
     // Notification should still be provided because the file description is not closed.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -423,8 +369,7 @@ fn test_not_fully_closed_fd() {
     assert_eq!(res, 8);
 
     // Close the dupped fd.
-    let res = unsafe { libc::close(newfd) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(newfd) });
 
     // No notification should be provided.
     check_epoll_wait::<1>(epfd, &[]);
@@ -434,8 +379,8 @@ fn test_not_fully_closed_fd() {
 // at the moment the latest event occurred.
 fn test_event_overwrite() {
     // Create an eventfd instance.
-    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd =
+        errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
@@ -443,12 +388,11 @@ fn test_event_overwrite() {
     assert_eq!(res, 8);
 
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Register eventfd with EPOLLIN | EPOLLOUT | EPOLLET
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _,
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
         u64: u64::try_from(fd).unwrap(),
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
@@ -469,23 +413,21 @@ fn test_event_overwrite() {
 // This behaviour differs from the real system.
 fn test_socketpair_read() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register both fd to the same epoll instance.
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _,
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
         u64: fds[0] as u64,
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
     assert_eq!(res, 0);
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _,
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
         u64: fds[1] as u64,
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
@@ -533,24 +475,22 @@ fn test_socketpair_read() {
 // This is to test whether flag that we don't register won't trigger notification.
 fn test_no_notification_for_unregister_flag() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register fd[0] with EPOLLOUT|EPOLLET.
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLOUT | libc::EPOLLET) as _,
+        events: (libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
         u64: u64::try_from(fds[0]).unwrap(),
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
     assert_eq!(res, 0);
 
     // Write to fd[1].
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res: i32 = unsafe {
         libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
     };
@@ -565,8 +505,7 @@ fn test_no_notification_for_unregister_flag() {
 
 fn test_epoll_wait_maxevent_zero() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
     // It is ok to use a dangling pointer here because it will error out before the
     // pointer actually gets accessed.
     let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
@@ -578,38 +517,31 @@ fn test_epoll_wait_maxevent_zero() {
 
 fn test_socketpair_epollerr() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Close fds[1].
     // EPOLLERR will be triggered if we close peer fd that still has data in its read buffer.
-    let res = unsafe { libc::close(fds[1]) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(fds[1]) });
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
-        u64: u64::try_from(fds[1]).unwrap(),
-    };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_ne!(res, -1);
+    epoll_ctl_add(epfd, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP)
+        .unwrap();
 
     // Check result from epoll_wait.
     let expected_event = u32::try_from(
         libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLHUP | libc::EPOLLRDHUP | libc::EPOLLERR,
     )
     .unwrap();
-    let expected_value = u64::try_from(fds[1]).unwrap();
+    let expected_value = u64::try_from(fds[0]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
@@ -617,21 +549,15 @@ fn test_socketpair_epollerr() {
 // epoll can lose events if they don't fit in the output buffer.
 fn test_epoll_lost_events() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register both fd to the same epoll instance.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[1] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fds[1], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Two notification should be received. But we only provide buffer for one event.
     let expected_event0 = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -649,25 +575,19 @@ fn test_epoll_lost_events() {
 // Related discussion in https://github.com/rust-lang/miri/pull/3818#discussion_r1720679440.
 fn test_ready_list_fetching_logic() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create two eventfd instances.
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd0 = unsafe { libc::eventfd(0, flags) };
-    let fd1 = unsafe { libc::eventfd(0, flags) };
+    let fd0 = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
+    let fd1 = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Register both fd to the same epoll instance. At this point, both of them are on the ready list.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd0 as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd0, &mut ev) };
-    assert_eq!(res, 0);
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd1 as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd1, &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fd0, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fd1, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Close fd0 so the first entry in the ready list will be empty.
-    let res = unsafe { libc::close(fd0) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(fd0) });
 
     // Notification for fd1 should be returned.
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -679,8 +599,7 @@ fn test_ready_list_fetching_logic() {
 // (The docs say loops cause EINVAL, but experiments show it is EFAULT.)
 fn test_epoll_ctl_epfd_equal_fd() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, epfd, array_ptr) };
@@ -699,13 +618,10 @@ fn test_epoll_ctl_notification() {
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Register one side of the socketpair with epoll.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd0, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // epoll_wait to clear notification for epfd0.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -717,9 +633,7 @@ fn test_epoll_ctl_notification() {
     assert_ne!(epfd1, -1);
 
     // Register the same file description for epfd1.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd1, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd1, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
     check_epoll_wait::<1>(epfd1, &[(expected_event, expected_value)]);
 
     // Previously this epoll_wait will receive a notification, but we shouldn't return notification
@@ -736,15 +650,14 @@ fn test_epoll_ctl_notification() {
 fn test_issue_3858() {
     // Create an eventfd instance.
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = unsafe { libc::eventfd(0, flags) };
+    let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Register eventfd with EPOLLIN | EPOLLET.
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLET) as _,
+        events: (libc::EPOLLIN | libc::EPOLLET).cast_unsigned(),
         u64: u64::try_from(fd).unwrap(),
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
@@ -755,8 +668,7 @@ fn test_issue_3858() {
     assert_ne!(newfd, -1);
 
     // Close the old epoll instance, so the new FD is now the only FD.
-    let res = unsafe { libc::close(epfd) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::close(epfd) });
 
     // Write to the eventfd instance.
     let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
@@ -772,15 +684,12 @@ fn test_issue_4374() {
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     assert_eq!(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
     assert_eq!(unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
 
     // Register fds[0] with epoll while it is writable (but not readable).
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd0, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Fill up fds[0] so that it is not writable any more.
     let zeros = [0u8; 512];
@@ -805,22 +714,19 @@ fn test_issue_4374_reads() {
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     assert_eq!(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
     assert_eq!(unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
 
     // Write to fds[1] so that fds[0] becomes readable.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res: i32 = unsafe {
         libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
     };
     assert_eq!(res, 5);
 
     // Register fds[0] with epoll while it is readable.
-    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd0, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Read fds[0] so it is no longer readable.
     let mut buf = [0u8; 512];

@@ -249,6 +249,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         cx.def_name(did, trimmed)
     }
 
+    /// Returns the parent of the given `DefId`.
+    pub(crate) fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.def_parent(did).map(|did| tables.create_def_id(did))
+    }
+
     /// Return registered tool attributes with the given attribute name.
     ///
     /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
@@ -835,6 +843,8 @@ impl<'tcx> CompilerInterface<'tcx> {
 // A thread local variable that stores a pointer to [`CompilerInterface`].
 scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
+// remove this cfg when we have a stable driver.
+#[cfg(feature = "rustc_internal")]
 pub(crate) fn run<'tcx, F, T>(interface: &CompilerInterface<'tcx>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,

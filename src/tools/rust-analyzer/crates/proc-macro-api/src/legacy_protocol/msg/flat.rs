@@ -85,7 +85,7 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
         .collect()
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FlatTree {
     subtree: Vec<u32>,
     literal: Vec<u32>,
@@ -123,7 +123,7 @@ struct IdentRepr {
 
 impl FlatTree {
     pub fn from_subtree(
-        subtree: tt::SubtreeView<'_, Span>,
+        subtree: tt::SubtreeView<'_>,
         version: u32,
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
@@ -168,7 +168,7 @@ impl FlatTree {
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
-    ) -> tt::TopSubtree<Span> {
+    ) -> tt::TopSubtree {
         Reader::<Span> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -216,16 +216,7 @@ impl FlatTree {
             text: Vec::new(),
             version,
         };
-        let group = proc_macro_srv::Group {
-            delimiter: proc_macro_srv::Delimiter::None,
-            stream: Some(tokenstream),
-            span: proc_macro_srv::DelimSpan {
-                open: call_site,
-                close: call_site,
-                entire: call_site,
-            },
-        };
-        w.write_tokenstream(&group);
+        w.write_tokenstream(call_site, &tokenstream);
 
         FlatTree {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -267,16 +258,7 @@ impl FlatTree {
             text: Vec::new(),
             version,
         };
-        let group = proc_macro_srv::Group {
-            delimiter: proc_macro_srv::Delimiter::None,
-            stream: Some(tokenstream),
-            span: proc_macro_srv::DelimSpan {
-                open: call_site,
-                close: call_site,
-                entire: call_site,
-            },
-        };
-        w.write_tokenstream(&group);
+        w.write_tokenstream(call_site, &tokenstream);
 
         FlatTree {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -303,6 +285,7 @@ impl FlatTree {
     pub fn to_tokenstream_unresolved<T: SpanTransformer<Table = ()>>(
         self,
         version: u32,
+        span_join: impl Fn(T::Span, T::Span) -> T::Span,
     ) -> proc_macro_srv::TokenStream<T::Span> {
         Reader::<T> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -326,13 +309,14 @@ impl FlatTree {
             span_data_table: &(),
             version,
         }
-        .read_tokenstream()
+        .read_tokenstream(span_join)
     }
 
     pub fn to_tokenstream_resolved(
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
+        span_join: impl Fn(Span, Span) -> Span,
     ) -> proc_macro_srv::TokenStream<Span> {
         Reader::<Span> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -356,7 +340,7 @@ impl FlatTree {
             span_data_table,
             version,
         }
-        .read_tokenstream()
+        .read_tokenstream(span_join)
     }
 }
 
@@ -489,7 +473,7 @@ impl SpanTransformer for Span {
 }
 
 struct Writer<'a, 'span, S: SpanTransformer, W> {
-    work: VecDeque<(usize, W)>,
+    work: VecDeque<(usize, usize, W)>,
     string_table: FxHashMap<std::borrow::Cow<'a, str>, u32>,
     span_data_table: &'span mut S::Table,
     version: u32,
@@ -502,18 +486,17 @@ struct Writer<'a, 'span, S: SpanTransformer, W> {
     text: Vec<String>,
 }
 
-impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
-    fn write_subtree(&mut self, root: tt::SubtreeView<'a, T::Span>) {
+impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIter<'a>> {
+    fn write_subtree(&mut self, root: tt::SubtreeView<'a>) {
         let subtree = root.top_subtree();
-        self.enqueue(subtree, root.iter());
-        while let Some((idx, subtree)) = self.work.pop_front() {
-            self.subtree(idx, subtree);
+        self.enqueue(&subtree, root.iter());
+        while let Some((idx, len, subtree)) = self.work.pop_front() {
+            self.subtree(idx, len, subtree);
         }
     }
 
-    fn subtree(&mut self, idx: usize, subtree: tt::iter::TtIter<'a, T::Span>) {
+    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a>) {
         let mut first_tt = self.token_tree.len();
-        let n_tt = subtree.clone().count(); // FIXME: `count()` walks over the entire iterator.
         self.token_tree.resize(first_tt + n_tt, !0);
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
@@ -521,7 +504,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         for child in subtree {
             let idx_tag = match child {
                 tt::iter::TtElement::Subtree(subtree, subtree_iter) => {
-                    let idx = self.enqueue(subtree, subtree_iter);
+                    let idx = self.enqueue(&subtree, subtree_iter);
                     idx << 2
                 }
                 tt::iter::TtElement::Leaf(leaf) => match leaf {
@@ -529,9 +512,14 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
                         let idx = self.literal.len() as u32;
                         let id = self.token_id_of(lit.span);
                         let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
+                            let (text, suffix) = lit.text_and_suffix();
                             (
-                                self.intern(lit.symbol.as_str()),
-                                lit.suffix.as_ref().map(|s| self.intern(s.as_str())).unwrap_or(!0),
+                                self.intern_owned(text.to_owned()),
+                                if suffix.is_empty() {
+                                    !0
+                                } else {
+                                    self.intern_owned(suffix.to_owned())
+                                },
                             )
                         } else {
                             (self.intern_owned(format!("{lit}")), !0)
@@ -566,11 +554,11 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
                         let idx = self.ident.len() as u32;
                         let id = self.token_id_of(ident.span);
                         let text = if self.version >= EXTENDED_LEAF_DATA {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         } else if ident.is_raw.yes() {
                             self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
                         (idx << 2) | 0b11
@@ -582,17 +570,14 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         }
     }
 
-    fn enqueue(
-        &mut self,
-        subtree: &'a tt::Subtree<T::Span>,
-        contents: tt::iter::TtIter<'a, T::Span>,
-    ) -> u32 {
+    fn enqueue(&mut self, subtree: &tt::Subtree, contents: tt::iter::TtIter<'a>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(subtree.delimiter.open);
         let close = self.token_id_of(subtree.delimiter.close);
         let delimiter_kind = subtree.delimiter.kind;
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
-        self.work.push_back((idx, contents));
+        // FIXME: `count()` walks over the entire iterator.
+        self.work.push_back((idx, contents.clone().count(), contents));
         idx as u32
     }
 }
@@ -602,6 +587,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
         T::token_id_of(self.span_data_table, span)
     }
 
+    #[cfg(feature = "sysroot-abi")]
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
         *self.string_table.entry(text.into()).or_insert_with(|| {
@@ -622,26 +608,46 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
 }
 
 #[cfg(feature = "sysroot-abi")]
-impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span>> {
-    fn write_tokenstream(&mut self, root: &'a proc_macro_srv::Group<T::Span>) {
-        self.enqueue_group(root);
-
-        while let Some((idx, group)) = self.work.pop_front() {
-            self.group(idx, group);
+impl<'a, T: SpanTransformer>
+    Writer<'a, '_, T, Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>>
+{
+    fn write_tokenstream(
+        &mut self,
+        call_site: T::Span,
+        root: &'a proc_macro_srv::TokenStream<T::Span>,
+    ) {
+        let call_site = self.token_id_of(call_site);
+        if let Some(group) = root.as_single_group() {
+            self.enqueue(group);
+        } else {
+            self.subtree.push(SubtreeRepr {
+                open: call_site,
+                close: call_site,
+                kind: tt::DelimiterKind::Invisible,
+                tt: [!0, !0],
+            });
+            self.work.push_back((0, root.len(), Some(root.iter())));
+        }
+        while let Some((idx, len, group)) = self.work.pop_front() {
+            self.group(idx, len, group);
         }
     }
 
-    fn group(&mut self, idx: usize, group: &'a proc_macro_srv::Group<T::Span>) {
+    fn group(
+        &mut self,
+        idx: usize,
+        n_tt: usize,
+        group: Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>,
+    ) {
         let mut first_tt = self.token_tree.len();
-        let n_tt = group.stream.as_ref().map_or(0, |it| it.len());
         self.token_tree.resize(first_tt + n_tt, !0);
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for tt in group.stream.iter().flat_map(|it| it.iter()) {
+        for tt in group.into_iter().flatten() {
             let idx_tag = match tt {
                 proc_macro_srv::TokenTree::Group(group) => {
-                    let idx = self.enqueue_group(group);
+                    let idx = self.enqueue(group);
                     idx << 2
                 }
                 proc_macro_srv::TokenTree::Literal(lit) => {
@@ -704,7 +710,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span
         }
     }
 
-    fn enqueue_group(&mut self, group: &'a proc_macro_srv::Group<T::Span>) -> u32 {
+    fn enqueue(&mut self, group: &'a proc_macro_srv::Group<T::Span>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(group.span.open);
         let close = self.token_id_of(group.span.close);
@@ -715,7 +721,11 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span
             proc_macro_srv::Delimiter::None => tt::DelimiterKind::Invisible,
         };
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
-        self.work.push_back((idx, group));
+        self.work.push_back((
+            idx,
+            group.stream.as_ref().map_or(0, |stream| stream.len()),
+            group.stream.as_ref().map(|ts| ts.iter()),
+        ));
         idx as u32
     }
 }
@@ -731,9 +741,9 @@ struct Reader<'span, S: SpanTransformer> {
     span_data_table: &'span S::Table,
 }
 
-impl<T: SpanTransformer> Reader<'_, T> {
-    pub(crate) fn read_subtree(self) -> tt::TopSubtree<T::Span> {
-        let mut res: Vec<Option<(tt::Delimiter<T::Span>, Vec<tt::TokenTree<T::Span>>)>> =
+impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
+    pub(crate) fn read_subtree(self) -> tt::TopSubtree {
+        let mut res: Vec<Option<(tt::Delimiter, Vec<tt::TokenTree>)>> =
             vec![None; self.subtree.len()];
         let read_span = |id| T::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
@@ -766,10 +776,10 @@ impl<T: SpanTransformer> Reader<'_, T> {
                         let span = read_span(repr.id);
                         s.push(
                             tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
-                                tt::Literal {
-                                    symbol: Symbol::intern(text),
+                                tt::Literal::new(
+                                    text,
                                     span,
-                                    kind: match u16::to_le_bytes(repr.kind) {
+                                    match u16::to_le_bytes(repr.kind) {
                                         [0, _] => Err(()),
                                         [1, _] => Byte,
                                         [2, _] => Char,
@@ -783,14 +793,12 @@ impl<T: SpanTransformer> Reader<'_, T> {
                                         [10, r] => CStrRaw(r),
                                         _ => unreachable!(),
                                     },
-                                    suffix: if repr.suffix != !0 {
-                                        Some(Symbol::intern(
-                                            self.text[repr.suffix as usize].as_str(),
-                                        ))
+                                    if repr.suffix != !0 {
+                                        self.text[repr.suffix as usize].as_str()
                                     } else {
-                                        None
+                                        ""
                                     },
-                                }
+                                )
                             } else {
                                 tt::token_to_literal(text, span)
                             })
@@ -836,13 +844,16 @@ impl<T: SpanTransformer> Reader<'_, T> {
 
         let (delimiter, mut res) = res[0].take().unwrap();
         res.insert(0, tt::TokenTree::Subtree(tt::Subtree { delimiter, len: res.len() as u32 }));
-        tt::TopSubtree(res.into_boxed_slice())
+        tt::TopSubtree::from_serialized(res)
     }
 }
 
 #[cfg(feature = "sysroot-abi")]
 impl<T: SpanTransformer> Reader<'_, T> {
-    pub(crate) fn read_tokenstream(self) -> proc_macro_srv::TokenStream<T::Span> {
+    pub(crate) fn read_tokenstream(
+        self,
+        span_join: impl Fn(T::Span, T::Span) -> T::Span,
+    ) -> proc_macro_srv::TokenStream<T::Span> {
         let mut res: Vec<Option<proc_macro_srv::Group<T::Span>>> = vec![None; self.subtree.len()];
         let read_span = |id| T::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
@@ -935,6 +946,8 @@ impl<T: SpanTransformer> Reader<'_, T> {
                     }
                 })
                 .collect::<Vec<_>>();
+            let open = read_span(repr.open);
+            let close = read_span(repr.close);
             let g = proc_macro_srv::Group {
                 delimiter: match repr.kind {
                     tt::DelimiterKind::Parenthesis => proc_macro_srv::Delimiter::Parenthesis,
@@ -944,17 +957,19 @@ impl<T: SpanTransformer> Reader<'_, T> {
                 },
                 stream: if stream.is_empty() { None } else { Some(TokenStream::new(stream)) },
                 span: proc_macro_srv::DelimSpan {
-                    open: read_span(repr.open),
-                    close: read_span(repr.close),
-                    // FIXME
-                    entire: read_span(repr.close),
+                    open,
+                    close,
+                    // FIXME: The protocol does not yet encode entire spans ...
+                    entire: span_join(open, close),
                 },
             };
             res[i] = Some(g);
         }
-        // FIXME: double check this
-        proc_macro_srv::TokenStream::new(vec![proc_macro_srv::TokenTree::Group(
-            res[0].take().unwrap(),
-        )])
+        let group = res[0].take().unwrap();
+        if group.delimiter == proc_macro_srv::Delimiter::None {
+            group.stream.unwrap_or_default()
+        } else {
+            TokenStream::new(vec![proc_macro_srv::TokenTree::Group(group)])
+        }
     }
 }

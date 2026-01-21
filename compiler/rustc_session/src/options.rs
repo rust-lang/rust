@@ -10,9 +10,10 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{Decodable, Encodable};
+use rustc_hir::attrs::CollapseMacroDebuginfo;
+use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
-use rustc_span::{RealFileName, SourceFileHashAlgorithm};
+use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
@@ -75,7 +76,7 @@ pub struct ExtendedTargetModifierInfo {
 
 /// A recorded -Zopt_name=opt_value (or -Copt_name=opt_value)
 /// which alter the ABI or effectiveness of exploit mitigations.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct TargetModifier {
     /// Option enum value
     pub opt: OptionsTargetModifiers,
@@ -248,7 +249,7 @@ macro_rules! top_level_tmod_enum {
         ($user_value:ident){$($pout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, Decodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
         pub enum OptionsTargetModifiers {
             $($variant($substruct_enum)),*
         }
@@ -397,7 +398,6 @@ top_level_options!(
         /// can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
-        debuginfo_compression: DebugInfoCompression [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED_NO_CRATE_HASH],
         lint_cap: Option<lint::Level> [TRACKED_NO_CRATE_HASH],
         describe_lints: bool [UNTRACKED],
@@ -454,6 +454,8 @@ top_level_options!(
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
+        /// Defines which scopes of paths should be remapped by `--remap-path-prefix`.
+        remap_path_scope: RemapPathScopeComponents [TRACKED_NO_CRATE_HASH],
 
         /// Base directory containing the `library/` directory for the Rust standard library.
         /// Right now it's always `$sysroot/lib/rustlib/src/rust`
@@ -492,7 +494,9 @@ top_level_options!(
         pretty: Option<PpMode> [UNTRACKED],
 
         /// The (potentially remapped) working directory
+        #[rustc_lint_opt_deny_field_access("use `SourceMap::working_dir` instead of this field")]
         working_dir: RealFileName [TRACKED],
+
         color: ColorConfig [UNTRACKED],
 
         verbose: bool [TRACKED_NO_CRATE_HASH],
@@ -520,7 +524,7 @@ macro_rules! tmod_enum {
         ($user_value:ident){$($pout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, Decodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
         pub enum $tmod_enum_name {
             $($eout),*
         }
@@ -722,7 +726,6 @@ impl<O> OptionDesc<O> {
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn build_options<O: Default>(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -793,7 +796,8 @@ mod desc {
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
-    pub(crate) const parse_offload: &str = "a comma separated list of settings: `Enable`";
+    pub(crate) const parse_offload: &str =
+        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -806,7 +810,6 @@ mod desc {
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
-    pub(crate) const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
@@ -871,7 +874,6 @@ mod desc {
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
-    pub(crate) const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `coverage`, `object`, `all`";
     pub(crate) const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
@@ -1242,15 +1244,6 @@ pub mod parse {
         false
     }
 
-    pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
-        match v {
-            Some("panic") => *slot = OomStrategy::Panic,
-            Some("abort") => *slot = OomStrategy::Abort,
-            _ => return false,
-        }
-        true
-    }
-
     pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
         match v {
             Some(s) => match s.parse::<RelroLevel>() {
@@ -1459,8 +1452,34 @@ pub mod parse {
         let mut v: Vec<&str> = v.split(",").collect();
         v.sort_unstable();
         for &val in v.iter() {
-            let variant = match val {
-                "Enable" => Offload::Enable,
+            // Split each entry on '=' if it has an argument
+            let (key, arg) = match val.split_once('=') {
+                Some((k, a)) => (k, Some(a)),
+                None => (val, None),
+            };
+
+            let variant = match key {
+                "Host" => {
+                    if let Some(p) = arg {
+                        Offload::Host(p.to_string())
+                    } else {
+                        return false;
+                    }
+                }
+                "Device" => {
+                    if let Some(_) = arg {
+                        // Device does not accept a value
+                        return false;
+                    }
+                    Offload::Device
+                }
+                "Test" => {
+                    if let Some(_) = arg {
+                        // Test does not accept a value
+                        return false;
+                    }
+                    Offload::Test
+                }
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized
                     return false;
@@ -1717,29 +1736,6 @@ pub mod parse {
             _ => return false,
         }
         true
-    }
-
-    pub(crate) fn parse_remap_path_scope(
-        slot: &mut RemapPathScopeComponents,
-        v: Option<&str>,
-    ) -> bool {
-        if let Some(v) = v {
-            *slot = RemapPathScopeComponents::empty();
-            for s in v.split(',') {
-                *slot |= match s {
-                    "macro" => RemapPathScopeComponents::MACRO,
-                    "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
-                    "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
-                    "coverage" => RemapPathScopeComponents::COVERAGE,
-                    "object" => RemapPathScopeComponents::OBJECT,
-                    "all" => RemapPathScopeComponents::all(),
-                    _ => return false,
-                }
-            }
-            true
-        } else {
-            false
-        }
     }
 
     pub(crate) fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
@@ -2107,6 +2103,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of unwind tables"),
+    help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
@@ -2259,6 +2256,8 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
+    cache_proc_macros: bool = (false, parse_bool, [TRACKED],
+        "cache the results of derive proc macro invocations (potentially unsound!) (default: no"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
@@ -2338,7 +2337,7 @@ options! {
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
         "emit the bc module with thin LTO info (default: yes)"),
-    emscripten_wasm_eh: bool = (false, parse_bool, [TRACKED],
+    emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
@@ -2377,6 +2376,7 @@ options! {
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
+    help: bool = (false, parse_no_value, [UNTRACKED], "Print unstable compiler options"),
     higher_ranked_assumptions: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
@@ -2529,8 +2529,6 @@ options! {
         Currently the only option available"),
     on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
         "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
-    oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
-        "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
@@ -2594,8 +2592,6 @@ options! {
         "whether ELF relocations can be relaxed"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
-    remap_path_scope: RemapPathScopeComponents = (RemapPathScopeComponents::all(), parse_remap_path_scope, [TRACKED],
-        "remap path scope (default: all)"),
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),

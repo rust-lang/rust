@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, DocFragmentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -381,15 +381,24 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 }
 
 pub fn doc_comment_to_string(
-    comment_kind: CommentKind,
+    fragment_kind: DocFragmentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,
 ) -> String {
-    match (comment_kind, attr_style) {
-        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
-        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
-        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
-        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
+    match fragment_kind {
+        DocFragmentKind::Sugared(comment_kind) => match (comment_kind, attr_style) {
+            (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
+            (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
+            (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
+            (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
+        },
+        DocFragmentKind::Raw(_) => {
+            format!(
+                "#{}[doc = {:?}]",
+                if attr_style == ast::AttrStyle::Inner { "!" } else { "" },
+                data.to_string(),
+            )
+        }
     }
 }
 
@@ -665,7 +674,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.word("]");
             }
             ast::AttrKind::DocComment(comment_kind, data) => {
-                self.word(doc_comment_to_string(*comment_kind, attr.style, *data));
+                self.word(doc_comment_to_string(
+                    DocFragmentKind::Sugared(*comment_kind),
+                    attr.style,
+                    *data,
+                ));
                 self.hardbreak()
             }
         }
@@ -681,7 +694,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args {
+        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,
@@ -852,6 +865,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
+        if let Some(eii_decl) = &macro_def.eii_declaration {
+            self.word("#[eii_declaration(");
+            self.print_path(&eii_decl.foreign_item, false, 0);
+            if eii_decl.impl_unsafe {
+                self.word(",");
+                self.space();
+                self.word("unsafe");
+            }
+            self.word(")]");
+            self.hardbreak();
+        }
         let (kw, has_bang) = if macro_def.macro_rules {
             ("macro_rules", true)
         } else {
@@ -1029,7 +1053,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
-                doc_comment_to_string(comment_kind, attr_style, data).into()
+                doc_comment_to_string(DocFragmentKind::Sugared(comment_kind), attr_style, data)
+                    .into()
             }
             token::Eof => "<eof>".into(),
         }
@@ -1324,11 +1349,6 @@ impl<'a> State<'a> {
                 self.word("; ");
                 self.print_expr(&length.value, FixupContext::default());
                 self.word("]");
-            }
-            ast::TyKind::Typeof(e) => {
-                self.word("typeof(");
-                self.print_expr(&e.value, FixupContext::default());
-                self.word(")");
             }
             ast::TyKind::Infer => {
                 self.word("_");
@@ -2153,6 +2173,15 @@ impl<'a> State<'a> {
 
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         let ib = self.ibox(INDENT_UNIT);
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => {
+                self.word("unsafe");
+                self.popen();
+            }
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         match &item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(value) => {
@@ -2168,6 +2197,12 @@ impl<'a> State<'a> {
                 self.pclose();
             }
         }
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => self.pclose(),
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         self.end(ib);
     }
 

@@ -23,9 +23,9 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -57,7 +57,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
@@ -84,7 +83,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
             cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
             return None;
@@ -135,7 +134,7 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -164,7 +163,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "ClassName");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -196,7 +195,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "methodName");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -343,7 +342,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: false })), // `#[track_caller]` is inherited from trait methods
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
         Warn(Target::MacroDef),
@@ -472,13 +471,13 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
     }
 }
 
-fn parse_tf_attribute<'c, S: Stage>(
-    cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser<'_>,
-) -> impl IntoIterator<Item = (Symbol, Span)> + 'c {
+fn parse_tf_attribute<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser,
+) -> impl IntoIterator<Item = (Symbol, Span)> {
     let mut features = Vec::new();
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return features;
     };
     if list.is_empty() {
@@ -529,10 +528,10 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
     }
 
@@ -567,10 +566,10 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
     }
 }
@@ -599,9 +598,9 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -691,6 +690,16 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     }
 }
 
+pub(crate) struct ThreadLocalParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for ThreadLocalParser {
+    const PATH: &[Symbol] = &[sym::thread_local];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ThreadLocal;
+}
+
 pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisParser {
@@ -698,4 +707,110 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisPa
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
+}
+
+pub(crate) struct EiiForeignItemParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for EiiForeignItemParser {
+    const PATH: &[Symbol] = &[sym::rustc_eii_foreign_item];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::EiiForeignItem;
+}
+
+pub(crate) struct PatchableFunctionEntryParser;
+
+impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
+    const PATH: &[Symbol] = &[sym::patchable_function_entry];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(meta_item_list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let mut prefix = None;
+        let mut entry = None;
+
+        if meta_item_list.len() == 0 {
+            cx.expected_list(meta_item_list.span, args);
+            return None;
+        }
+
+        let mut errored = false;
+
+        for item in meta_item_list.mixed() {
+            let Some(meta_item) = item.meta_item() else {
+                errored = true;
+                cx.expected_name_value(item.span(), None);
+                continue;
+            };
+
+            let Some(name_value_lit) = meta_item.args().name_value() else {
+                errored = true;
+                cx.expected_name_value(item.span(), None);
+                continue;
+            };
+
+            let attrib_to_write = match meta_item.ident().map(|ident| ident.name) {
+                Some(sym::prefix_nops) => {
+                    // Duplicate prefixes are not allowed
+                    if prefix.is_some() {
+                        errored = true;
+                        cx.duplicate_key(meta_item.path().span(), sym::prefix_nops);
+                        continue;
+                    }
+                    &mut prefix
+                }
+                Some(sym::entry_nops) => {
+                    // Duplicate entries are not allowed
+                    if entry.is_some() {
+                        errored = true;
+                        cx.duplicate_key(meta_item.path().span(), sym::entry_nops);
+                        continue;
+                    }
+                    &mut entry
+                }
+                _ => {
+                    errored = true;
+                    cx.expected_specific_argument(
+                        meta_item.path().span(),
+                        &[sym::prefix_nops, sym::entry_nops],
+                    );
+                    continue;
+                }
+            };
+
+            let rustc_ast::LitKind::Int(val, _) = name_value_lit.value_as_lit().kind else {
+                errored = true;
+                cx.expected_integer_literal(name_value_lit.value_span);
+                continue;
+            };
+
+            let Ok(val) = val.get().try_into() else {
+                errored = true;
+                cx.expected_integer_literal_in_range(
+                    name_value_lit.value_span,
+                    u8::MIN as isize,
+                    u8::MAX as isize,
+                );
+                continue;
+            };
+
+            *attrib_to_write = Some(val);
+        }
+
+        if errored {
+            None
+        } else {
+            Some(AttributeKind::PatchableFunctionEntry {
+                prefix: prefix.unwrap_or(0),
+                entry: entry.unwrap_or(0),
+            })
+        }
+    }
 }

@@ -153,8 +153,8 @@ pub struct Registry {
     terminate_count: AtomicUsize,
 }
 
-/// ////////////////////////////////////////////////////////////////////////
-/// Initialization
+///////////////////////////////////////////////////////////////////////////
+// Initialization
 
 static mut THE_REGISTRY: Option<Arc<Registry>> = None;
 static THE_REGISTRY_SET: Once = Once::new();
@@ -407,12 +407,12 @@ impl Registry {
         }
     }
 
-    /// ////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
     /// MAIN LOOP
     ///
     /// So long as all of the worker threads are hanging out in their
     /// top-level loop, there is no work to be done.
-
+    ///
     /// Push a job into the given `registry`. If we are running on a
     /// worker thread for the registry, this will push onto the
     /// deque. Else, it will inject from the outside (which is slower).
@@ -668,8 +668,8 @@ impl ThreadInfo {
     }
 }
 
-/// ////////////////////////////////////////////////////////////////////////
-/// WorkerThread identifiers
+///////////////////////////////////////////////////////////////////////////
+// WorkerThread identifiers
 
 pub(super) struct WorkerThread {
     /// the "worker" half of our local deque
@@ -1018,8 +1018,6 @@ impl WorkerThread {
         }
     }
 }
-
-/// ////////////////////////////////////////////////////////////////////////
 
 unsafe fn main_loop(thread: ThreadBuilder) {
     let worker_thread = &WorkerThread::from(thread);

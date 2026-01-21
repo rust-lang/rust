@@ -405,7 +405,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
                         OperandValue::Immediate(lladdr)
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
@@ -615,21 +615,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef {
                     val: OperandValue::Immediate(discr),
                     layout: self.cx.layout_of(discr_ty),
-                    move_annotation: None,
-                }
-            }
-
-            mir::Rvalue::NullaryOp(ref null_op) => {
-                let val = match null_op {
-                    mir::NullOp::RuntimeChecks(kind) => {
-                        let val = kind.value(bx.tcx().sess);
-                        bx.cx().const_bool(val)
-                    }
-                };
-                let tcx = self.cx.tcx();
-                OperandRef {
-                    val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(null_op.ty(tcx)),
                     move_annotation: None,
                 }
             }

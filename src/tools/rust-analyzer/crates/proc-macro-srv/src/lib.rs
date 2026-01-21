@@ -53,10 +53,11 @@ use temp_dir::TempDir;
 pub use crate::server_impl::token_id::SpanId;
 
 pub use proc_macro::Delimiter;
+pub use span;
 
 pub use crate::bridge::*;
 pub use crate::server_impl::literal_from_str;
-pub use crate::token_stream::{TokenStream, literal_to_string};
+pub use crate::token_stream::{TokenStream, TokenStreamIter, literal_to_string};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ProcMacroKind {
@@ -81,6 +82,22 @@ impl<'env> ProcMacroSrv<'env> {
             temp_dir: TempDir::with_prefix("proc-macro-srv").unwrap(),
         }
     }
+
+    pub fn join_spans(&self, first: Span, second: Span) -> Option<Span> {
+        first.join(second, |_, _| {
+            // FIXME: Once we can talk back to the client, implement a "long join" request for anchors
+            // that differ in [AstId]s as joining those spans requires resolving the AstIds.
+            None
+        })
+    }
+}
+
+pub type ProcMacroClientHandle<'a> = &'a mut (dyn ProcMacroClientInterface + Sync + Send);
+
+pub trait ProcMacroClientInterface {
+    fn file(&mut self, file_id: span::FileId) -> String;
+    fn source_text(&mut self, span: Span) -> Option<String>;
+    fn local_file(&mut self, file_id: span::FileId) -> Option<String>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -97,6 +114,7 @@ impl ProcMacroSrv<'_> {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
@@ -112,8 +130,10 @@ impl ProcMacroSrv<'_> {
                 .stack_size(EXPANDER_STACK_SIZE)
                 .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
-                    expander
-                        .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
+                    expander.expand(
+                        macro_name, macro_body, attribute, def_site, call_site, mixed_site,
+                        callback,
+                    )
                 });
             match thread.unwrap().join() {
                 Ok(res) => res,
@@ -161,24 +181,48 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
+    type Server<'a>: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
+    fn make_server<'a>(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a>;
 }
 
 impl ProcMacroSrvSpan for SpanId {
-    type Server = server_impl::token_id::SpanIdServer;
+    type Server<'a> = server_impl::token_id::SpanIdServer<'a>;
 
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
-        Self::Server { call_site, def_site, mixed_site }
-    }
-}
-impl ProcMacroSrvSpan for Span {
-    type Server = server_impl::rust_analyzer_span::RaSpanServer;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+    fn make_server<'a>(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a> {
         Self::Server {
             call_site,
             def_site,
             mixed_site,
+            callback,
+            tracked_env_vars: Default::default(),
+            tracked_paths: Default::default(),
+        }
+    }
+}
+
+impl ProcMacroSrvSpan for Span {
+    type Server<'a> = server_impl::rust_analyzer_span::RaSpanServer<'a>;
+    fn make_server<'a>(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a> {
+        Self::Server {
+            call_site,
+            def_site,
+            mixed_site,
+            callback,
             tracked_env_vars: Default::default(),
             tracked_paths: Default::default(),
         }

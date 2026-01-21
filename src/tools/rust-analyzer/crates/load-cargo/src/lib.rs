@@ -2,12 +2,21 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
-use hir_expand::proc_macro::{
-    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-    ProcMacrosBuilder,
+use hir_expand::{
+    db::ExpandDatabase,
+    proc_macro::{
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+        ProcMacrosBuilder,
+    },
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
@@ -15,11 +24,18 @@ use ide_db::{
     prime_caches,
 };
 use itertools::Itertools;
-use proc_macro_api::{MacroDylib, ProcMacroClient};
+use proc_macro_api::{
+    MacroDylib, ProcMacroClient,
+    bidirectional_protocol::{
+        msg::{SubRequest, SubResponse},
+        reject_subrequests,
+    },
+};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
-use span::Span;
+use span::{Span, SpanAnchor, SyntaxContext};
+use tt::{TextRange, TextSize};
 use vfs::{
-    AbsPath, AbsPathBuf, VfsPath,
+    AbsPath, AbsPathBuf, FileId, VfsPath,
     file_set::FileSetConfig,
     loader::{Handle, LoadingProgress},
 };
@@ -96,12 +112,13 @@ pub fn load_workspace_into_db(
     tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
-            it.and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into)).map_err(
-                |e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()),
-            )
+            it.and_then(|it| {
+                ProcMacroClient::spawn(&it, extra_env, ws.toolchain.as_ref()).map_err(Into::into)
+            })
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
         }),
         ProcMacroServerChoice::Explicit(path) => {
-            Some(ProcMacroClient::spawn(path, extra_env).map_err(|e| {
+            Some(ProcMacroClient::spawn(path, extra_env, ws.toolchain.as_ref()).map_err(|e| {
                 ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
             }))
         }
@@ -418,7 +435,7 @@ pub fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib).map_err(|e| {
+        let vec = server.load_dylib(dylib, Some(&mut reject_subrequests)).map_err(|e| {
             ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
         })?;
         if vec.is_empty() {
@@ -515,14 +532,56 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::TopSubtree<Span>,
-        attrs: Option<&tt::TopSubtree<Span>>,
+        db: &dyn ExpandDatabase,
+        subtree: &tt::TopSubtree,
+        attrs: Option<&tt::TopSubtree>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
-    ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
+        let mut cb = |req| match req {
+            SubRequest::LocalFilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                let name = source_root
+                    .path_for_file(&file_id)
+                    .and_then(|path| path.as_path())
+                    .map(|path| path.to_string());
+
+                Ok(SubResponse::LocalFilePathResult { name })
+            }
+            SubRequest::SourceText { file_id, ast_id, start, end } => {
+                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
+                    ctx: SyntaxContext::root(editioned_file_id.edition()),
+                };
+                let range = db.resolve_span(span);
+                let source = db.file_text(range.file_id.file_id(db)).text(db);
+                let text = source
+                    .get(usize::from(range.range.start())..usize::from(range.range.end()))
+                    .map(ToOwned::to_owned);
+
+                Ok(SubResponse::SourceTextResult { text })
+            }
+            SubRequest::FilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                let name = source_root
+                    .path_for_file(&file_id)
+                    .and_then(|path| path.as_path())
+                    .map(|path| path.to_string())
+                    .unwrap_or_default();
+
+                Ok(SubResponse::FilePathResult { name })
+            }
+        };
         match self.0.expand(
             subtree.view(),
             attrs.map(|attrs| attrs.view()),
@@ -531,6 +590,7 @@ impl ProcMacroExpander for Expander {
             call_site,
             mixed_site,
             current_dir,
+            Some(&mut cb),
         ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err)),

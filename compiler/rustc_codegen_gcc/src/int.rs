@@ -287,51 +287,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): remove duplication with intrinsic?
         let name = if self.is_native_int_type(lhs.get_type()) {
             match oop {
-                OverflowOp::Add => match new_kind {
-                    Int(I8) => "__builtin_add_overflow",
-                    Int(I16) => "__builtin_add_overflow",
-                    Int(I32) => "__builtin_sadd_overflow",
-                    Int(I64) => "__builtin_saddll_overflow",
-                    Int(I128) => "__builtin_add_overflow",
-
-                    Uint(U8) => "__builtin_add_overflow",
-                    Uint(U16) => "__builtin_add_overflow",
-                    Uint(U32) => "__builtin_uadd_overflow",
-                    Uint(U64) => "__builtin_uaddll_overflow",
-                    Uint(U128) => "__builtin_add_overflow",
-
-                    _ => unreachable!(),
-                },
-                OverflowOp::Sub => match new_kind {
-                    Int(I8) => "__builtin_sub_overflow",
-                    Int(I16) => "__builtin_sub_overflow",
-                    Int(I32) => "__builtin_ssub_overflow",
-                    Int(I64) => "__builtin_ssubll_overflow",
-                    Int(I128) => "__builtin_sub_overflow",
-
-                    Uint(U8) => "__builtin_sub_overflow",
-                    Uint(U16) => "__builtin_sub_overflow",
-                    Uint(U32) => "__builtin_usub_overflow",
-                    Uint(U64) => "__builtin_usubll_overflow",
-                    Uint(U128) => "__builtin_sub_overflow",
-
-                    _ => unreachable!(),
-                },
-                OverflowOp::Mul => match new_kind {
-                    Int(I8) => "__builtin_mul_overflow",
-                    Int(I16) => "__builtin_mul_overflow",
-                    Int(I32) => "__builtin_smul_overflow",
-                    Int(I64) => "__builtin_smulll_overflow",
-                    Int(I128) => "__builtin_mul_overflow",
-
-                    Uint(U8) => "__builtin_mul_overflow",
-                    Uint(U16) => "__builtin_mul_overflow",
-                    Uint(U32) => "__builtin_umul_overflow",
-                    Uint(U64) => "__builtin_umulll_overflow",
-                    Uint(U128) => "__builtin_mul_overflow",
-
-                    _ => unreachable!(),
-                },
+                OverflowOp::Add => "__builtin_add_overflow",
+                OverflowOp::Sub => "__builtin_sub_overflow",
+                OverflowOp::Mul => "__builtin_mul_overflow",
             }
         } else {
             let (func_name, width) = match oop {

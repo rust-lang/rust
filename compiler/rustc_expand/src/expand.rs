@@ -7,12 +7,16 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, DUMMY_NODE_ID,
-    ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
+    DUMMY_NODE_ID, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline,
+    ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind,
+    TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{AttributeParser, Early, EvalConfigResult, ShouldEmit, validate_attr};
+use rustc_attr_parsing::{
+    AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, eval_config_entry,
+    parse_cfg, validate_attr,
+};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
@@ -470,7 +474,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
-            other => PathBuf::from(other.prefer_local().to_string()),
+            other => PathBuf::from(other.prefer_local_unconditionally().to_string()),
         };
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
         self.cx.root_path = dir_path.clone();
@@ -813,10 +817,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.get_normal_item();
                     let safety = attr_item.unsafety;
-                    if let AttrArgs::Eq { .. } = attr_item.args {
+                    if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.inner_tokens();
+                    let inner_tokens = attr_item.args.unparsed_ref().unwrap().inner_tokens();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
@@ -995,7 +999,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let kind = match item {
             Annotatable::Item(_)
@@ -2110,7 +2113,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
             if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
-                let name = attr.ident().map(|ident| ident.name);
+                let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
@@ -2158,11 +2161,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(
-                &self.cx.sess.psess,
-                attr,
-                self.cx.current_expansion.lint_node_id,
-            );
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
             AttributeParser::parse_limited_all(
                 self.cx.sess,
                 slice::from_ref(attr),
@@ -2181,7 +2180,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.is_doc_comment() {
+            if attr.doc_str_and_fragment_kind().is_some() {
                 self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,
@@ -2191,22 +2190,18 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             } else if rustc_attr_parsing::is_builtin_attr(attr)
                 && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
             {
-                let attr_name = attr.ident().unwrap().name;
-                // `#[cfg]` and `#[cfg_attr]` are special - they are
-                // eagerly evaluated.
-                if attr_name != sym::cfg_trace && attr_name != sym::cfg_attr_trace {
-                    self.cx.sess.psess.buffer_lint(
-                        UNUSED_ATTRIBUTES,
-                        attr.span,
-                        self.cx.current_expansion.lint_node_id,
-                        crate::errors::UnusedBuiltinAttribute {
-                            attr_name,
-                            macro_name: pprust::path_to_string(&call.path),
-                            invoc_span: call.path.span,
-                            attr_span: attr.span,
-                        },
-                    );
-                }
+                let attr_name = attr.name().unwrap();
+                self.cx.sess.psess.buffer_lint(
+                    UNUSED_ATTRIBUTES,
+                    attr.span,
+                    self.cx.current_expansion.lint_node_id,
+                    crate::errors::UnusedBuiltinAttribute {
+                        attr_name,
+                        macro_name: pprust::path_to_string(&call.path),
+                        invoc_span: call.path.span,
+                        attr_span: attr.span,
+                    },
+                );
             }
         }
     }
@@ -2217,11 +2212,28 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr: ast::Attribute,
         pos: usize,
     ) -> EvalConfigResult {
-        let res = self.cfg().cfg_true(&attr, node.node_id(), ShouldEmit::ErrorsAndLints);
+        let Some(cfg) = AttributeParser::parse_single(
+            self.cfg().sess,
+            &attr,
+            attr.span,
+            self.cfg().lint_node_id,
+            // Target doesn't matter for `cfg` parsing.
+            Target::Crate,
+            self.cfg().features,
+            ShouldEmit::ErrorsAndLints,
+            parse_cfg,
+            &CFG_TEMPLATE,
+        ) else {
+            // Cfg attribute was not parsable, give up
+            return EvalConfigResult::True;
+        };
+
+        let res = eval_config_entry(self.cfg().sess, &cfg);
         if res.as_bool() {
             // A trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
-            let trace_attr = attr_into_trace(attr, sym::cfg_trace);
+            let mut trace_attr = attr_into_trace(attr, sym::cfg_trace);
+            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 

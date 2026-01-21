@@ -1,8 +1,7 @@
-use rustc_errors::DiagArgValue;
-use rustc_hir::attrs::MacroUseArgs;
+use rustc_hir::attrs::{CollapseMacroDebuginfo, MacroUseArgs};
+use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
 use super::prelude::*;
-use crate::session_diagnostics::IllFormedAttributeInputLint;
 
 pub(crate) struct MacroEscapeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
@@ -100,15 +99,8 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                         }
                     }
                 }
-                ArgParser::NameValue(_) => {
-                    let suggestions = cx.suggestions();
-                    cx.emit_err(IllFormedAttributeInputLint {
-                        num_suggestions: suggestions.len(),
-                        suggestions: DiagArgValue::StrListSepByAnd(
-                            suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                        ),
-                        span,
-                    });
+                ArgParser::NameValue(nv) => {
+                    cx.expected_list_or_no_args(nv.args_span());
                 }
             }
         },
@@ -147,45 +139,70 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         Error(Target::Crate),
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    let span = cx.attr_span;
-                    let suggestions = cx.suggestions();
-                    cx.emit_lint(
-                        AttributeLintKind::InvalidMacroExportArguments { suggestions },
-                        span,
-                    );
+                    cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
                 match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::local_inner_macros) => true,
                     _ => {
-                        let span = cx.attr_span;
-                        let suggestions = cx.suggestions();
-                        cx.emit_lint(
-                            AttributeLintKind::InvalidMacroExportArguments { suggestions },
-                            span,
-                        );
+                        cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                         return None;
                     }
                 }
             }
-            ArgParser::NameValue(_) => {
-                let span = cx.attr_span;
-                let suggestions = cx.suggestions();
-                cx.emit_err(IllFormedAttributeInputLint {
-                    num_suggestions: suggestions.len(),
-                    suggestions: DiagArgValue::StrListSepByAnd(
-                        suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                    ),
-                    span,
-                });
+            ArgParser::NameValue(nv) => {
+                cx.expected_list_or_no_args(nv.args_span());
                 return None;
             }
         };
         Some(AttributeKind::MacroExport { span: cx.attr_span, local_inner_macros })
+    }
+}
+
+pub(crate) struct CollapseDebugInfoParser;
+
+impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
+    const PATH: &[Symbol] = &[sym::collapse_debuginfo];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["no", "external", "yes"],
+        "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
+    );
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+        let Some(single) = list.single() else {
+            cx.expected_single_argument(list.span);
+            return None;
+        };
+        let Some(mi) = single.meta_item() else {
+            cx.unexpected_literal(single.span());
+            return None;
+        };
+        if let Err(err) = mi.args().no_args() {
+            cx.expected_no_args(err);
+        }
+        let path = mi.path().word_sym();
+        let info = match path {
+            Some(sym::yes) => CollapseMacroDebuginfo::Yes,
+            Some(sym::no) => CollapseMacroDebuginfo::No,
+            Some(sym::external) => CollapseMacroDebuginfo::External,
+            _ => {
+                cx.expected_specific_argument(mi.span(), &[sym::yes, sym::no, sym::external]);
+                return None;
+            }
+        };
+
+        Some(AttributeKind::CollapseDebugInfo(info))
     }
 }

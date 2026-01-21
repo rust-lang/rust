@@ -13,7 +13,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
         template!(List: &[r#""name1", "name2", ..."#]),
         |this, cx, args| {
             let Some(list) = args.list() else {
-                cx.expected_list(cx.attr_span);
+                cx.expected_list(cx.attr_span, args);
                 return;
             };
 

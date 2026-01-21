@@ -178,7 +178,7 @@ fn make_constructors(
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
     let (db, sema) = (ctx.db(), &ctx.sema);
-    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate(ctx.sema.db)));
     types
         .iter()
         .map(|ty| {
@@ -187,7 +187,7 @@ fn make_constructors(
                 return Some(make::expr_tuple([]).into());
             }
             let item_in_ns = ModuleDef::Adt(ty.as_adt()?).into();
-            let edition = module.krate().edition(db);
+            let edition = module.krate(db).edition(db);
 
             let ty_path = module.find_path(db, item_for_path_search(db, item_in_ns)?, cfg)?;
 
@@ -220,7 +220,7 @@ fn from_impl_exists(
     let strukt = sema.to_def(strukt)?;
     let krate = strukt.krate(db);
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
-    let interner = DbInterner::new_with(db, Some(krate.base()), None);
+    let interner = DbInterner::new_with(db, krate.base());
     use hir::next_solver::infer::DbInternerInferExt;
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 

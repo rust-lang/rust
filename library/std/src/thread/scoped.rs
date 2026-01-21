@@ -1,4 +1,8 @@
-use super::{Builder, JoinInner, Result, Thread, current_or_unnamed};
+use super::Result;
+use super::builder::Builder;
+use super::current::current_or_unnamed;
+use super::lifecycle::{JoinInner, spawn_unchecked};
+use super::thread::Thread;
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
@@ -206,8 +210,6 @@ impl Builder {
     /// Unlike [`Scope::spawn`], this method yields an [`io::Result`] to
     /// capture any failure to create the thread at the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
-    ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
@@ -257,7 +259,10 @@ impl Builder {
         F: FnOnce() -> T + Send + 'scope,
         T: Send + 'scope,
     {
-        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(scope.data.clone())) }?))
+        let Builder { name, stack_size, no_hooks } = self;
+        Ok(ScopedJoinHandle(unsafe {
+            spawn_unchecked(name, stack_size, no_hooks, Some(scope.data.clone()), f)
+        }?))
     }
 }
 
@@ -279,7 +284,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     #[must_use]
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn thread(&self) -> &Thread {
-        &self.0.thread
+        self.0.thread()
     }
 
     /// Waits for the associated thread to finish.
@@ -325,7 +330,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// to return quickly, without blocking for any significant amount of time.
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn is_finished(&self) -> bool {
-        Arc::strong_count(&self.0.packet) == 1
+        self.0.is_finished()
     }
 }
 

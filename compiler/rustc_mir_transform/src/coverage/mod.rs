@@ -17,7 +17,6 @@ pub(super) mod query;
 mod spans;
 #[cfg(test)]
 mod tests;
-mod unexpand;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
@@ -74,12 +73,13 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
     let ExtractedMappings { mappings } =
-        mappings::extract_mappings_from_mir(tcx, mir_body, &hir_info, &graph);
-    if mappings.is_empty() {
-        // No spans could be converted into valid mappings, so skip this function.
-        debug!("no spans could be converted into valid mappings; skipping");
-        return;
-    }
+        match mappings::extract_mappings_from_mir(tcx, mir_body, &hir_info, &graph) {
+            Ok(m) => m,
+            Err(error) => {
+                tracing::debug!(?error, "mapping extraction failed; skipping this function");
+                return;
+            }
+        };
 
     // Use the coverage graph to prepare intermediate data that will eventually
     // be used to assign physical counters and counter expressions to points in

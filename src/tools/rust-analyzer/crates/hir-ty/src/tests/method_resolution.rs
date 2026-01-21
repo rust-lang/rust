@@ -2229,3 +2229,32 @@ fn test(x: *mut u8) {
 "#,
     );
 }
+
+#[test]
+fn unsized_struct() {
+    check_types(
+        r#"
+//- minicore: sized, phantom_data
+use core::marker::PhantomData;
+
+const UI_DEV_CREATE: Ioctl = Ioctl(PhantomData);
+
+struct Ioctl<T: ?Sized = NoArgs>(PhantomData<T>);
+
+struct NoArgs([u8]);
+
+impl<T> Ioctl<T> {
+    fn ioctl(self) {}
+}
+
+impl Ioctl<NoArgs> {
+    fn ioctl(self) -> u32 { 0 }
+}
+
+fn main() {
+    UI_DEV_CREATE.ioctl();
+ // ^^^^^^^^^^^^^^^^^^^^^ u32
+}
+    "#,
+    );
+}

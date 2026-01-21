@@ -13,15 +13,11 @@ use crate::errors;
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
         if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
-            // FIXME: make this translatable
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            #[allow(rustc::untranslatable_diagnostic)]
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};
@@ -31,13 +27,11 @@ macro_rules! gate {
 macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr, $notes: expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             let mut diag = feature_err(&$visitor.sess, $name, $span, $explain);
             for note in $notes {
                 diag.note(*note);
@@ -160,7 +154,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
+        let attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
         // Check feature gates for built-in attributes.
         if let Some(BuiltinAttribute {
             gate: AttributeGate::Gated { feature, message, check, notes, .. },
@@ -301,17 +295,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_generics(&mut self, g: &'a ast::Generics) {
-        for predicate in &g.where_clause.predicates {
-            match &predicate.kind {
-                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
-                    // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
-                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
-                }
-                _ => {}
-            }
+    fn visit_where_predicate_kind(&mut self, kind: &'a ast::WherePredicateKind) {
+        if let ast::WherePredicateKind::BoundPredicate(bound) = kind {
+            // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
+            self.check_late_bound_lifetime_defs(&bound.bound_generic_params);
         }
-        visit::walk_generics(self, g);
+        visit::walk_where_predicate_kind(self, kind);
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
@@ -339,8 +328,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::TryBlock(_) => {
+            ast::ExprKind::TryBlock(_, None) => {
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
+            }
+            ast::ExprKind::TryBlock(_, Some(_)) => {
+                gate!(
+                    &self,
+                    try_blocks_heterogeneous,
+                    e.span,
+                    "`try bikeshed` expression is experimental"
+                );
             }
             ast::ExprKind::Lit(token::Lit {
                 kind: token::LitKind::Float | token::LitKind::Integer,
@@ -488,7 +485,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
                 && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
             {
-                #[allow(rustc::untranslatable_diagnostic)]
                 // Emit yield_expr as the error, since that will be sufficient. You can think of it
                 // as coroutines and gen_blocks imply yield_expr.
                 feature_err(&visitor.sess, sym::yield_expr, *span, "yield syntax is experimental")
@@ -502,7 +498,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
     );
-    gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
@@ -514,6 +509,23 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
+    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
+    // associated_const_equality is stabilized as part of min_generic_const_args
+    if let Some(spans) = spans.get(&sym::associated_const_equality) {
+        for span in spans {
+            if !visitor.features.min_generic_const_args()
+                && !span.allows_unstable(sym::min_generic_const_args)
+            {
+                feature_err(
+                    &visitor.sess,
+                    sym::min_generic_const_args,
+                    *span,
+                    "associated const equality is incomplete",
+                )
+                .emit();
+            }
+        }
+    }
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
@@ -539,7 +551,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 if let Ok(snippet) = sm.span_to_snippet(span)
                     && snippet == "!"
                 {
-                    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
                     feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
                         .emit();
                 } else {

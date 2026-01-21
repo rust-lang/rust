@@ -351,7 +351,7 @@ pub const trait Eq: [const] PartialEq<Self> + PointeeSized {
 /// Derive macro generating an impl of the trait [`Eq`].
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[allow_internal_unstable(core_intrinsics, derive_eq_internals, structural_match)]
 #[allow_internal_unstable(coverage_attribute)]
 pub macro Eq($item:item) {
     /* compiler built-in */
@@ -363,7 +363,11 @@ pub macro Eq($item:item) {
 // This struct should never appear in user code.
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "derive_eq", reason = "deriving hack, should not be public", issue = "none")]
+#[unstable(
+    feature = "derive_eq_internals",
+    reason = "deriving hack, should not be public",
+    issue = "none"
+)]
 pub struct AssertParamIsEq<T: Eq + PointeeSized> {
     _field: crate::marker::PhantomData<T>,
 }
@@ -1186,7 +1190,7 @@ pub macro Ord($item:item) {
 /// every `a`. This isn't always the case for types that implement `PartialOrd`, for example:
 ///
 /// ```
-/// let a = f64::sqrt(-1.0);
+/// let a = f64::NAN;
 /// assert_eq!(a <= a, false);
 /// ```
 ///
@@ -1855,6 +1859,7 @@ mod impls {
     use crate::hint::unreachable_unchecked;
     use crate::marker::PointeeSized;
     use crate::ops::ControlFlow::{self, Break, Continue};
+    use crate::panic::const_assert;
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
@@ -1996,6 +2001,26 @@ mod impls {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
+                }
+
+                #[inline]
+                #[track_caller]
+                fn clamp(self, min: Self, max: Self) -> Self
+                {
+                    const_assert!(
+                        min <= max,
+                        "min > max",
+                        "min > max. min = {min:?}, max = {max:?}",
+                        min: $t,
+                        max: $t,
+                    );
+                    if self < min {
+                        min
+                    } else if self > max {
+                        max
+                    } else {
+                        self
+                    }
                 }
             }
         )*)

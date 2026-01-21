@@ -115,6 +115,31 @@ use crate::{cmp, ptr};
 ///   Whether allocations happen or not is not part of the program behavior, even if it
 ///   could be detected via an allocator that tracks allocations by printing or otherwise
 ///   having side effects.
+///
+/// # Re-entrance
+///
+/// When implementing a global allocator one has to be careful not to create an infinitely recursive
+/// implementation by accident, as many constructs in the Rust standard library may allocate in
+/// their implementation. For example, on some platforms [`std::sync::Mutex`] may allocate, so using
+/// it is highly problematic in a global allocator.
+///
+/// Generally speaking for this reason one should stick to library features available through
+/// [`core`], and avoid using [`std`] in a global allocator. A few features from [`std`] are
+/// guaranteed to not use `#[global_allocator]` to allocate:
+///
+///  - [`std::thread_local`],
+///  - [`std::thread::current`],
+///  - [`std::thread::park`] and [`std::thread::Thread`]'s [`unpark`] method and
+/// [`Clone`] implementation.
+///
+/// [`std`]: ../../std/index.html
+/// [`std::sync::Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`std::thread_local`]: ../../std/macro.thread_local.html
+/// [`std::thread::current`]: ../../std/thread/fn.current.html
+/// [`std::thread::park`]: ../../std/thread/fn.park.html
+/// [`std::thread::Thread`]: ../../std/thread/struct.Thread.html
+/// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocates memory as described by the given `layout`.

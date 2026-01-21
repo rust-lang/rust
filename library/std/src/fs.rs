@@ -46,8 +46,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom,
 use crate::path::{Path, PathBuf};
 use crate::sealed::Sealed;
 use crate::sync::Arc;
-use crate::sys::fs as fs_imp;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
 
@@ -151,6 +150,43 @@ pub enum TryLockError {
     Error(io::Error),
     /// The lock could not be acquired at this time because it is held by another handle/process.
     WouldBlock,
+}
+
+/// An object providing access to a directory on the filesystem.
+///
+/// Directories are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.
+///
+/// # Platform-specific behavior
+///
+/// On supported systems (including Windows and some UNIX-based OSes), this function acquires a
+/// handle/file descriptor for the directory. This allows functions like [`Dir::open_file`] to
+/// avoid [TOCTOU] errors when the directory itself is being moved.
+///
+/// On other systems, it stores an absolute path (see [`canonicalize()`]). In the latter case, no
+/// [TOCTOU] guarantees are made.
+///
+/// # Examples
+///
+/// Opens a directory and then a file inside it.
+///
+/// ```no_run
+/// #![feature(dirfd)]
+/// use std::{fs::Dir, io};
+///
+/// fn main() -> std::io::Result<()> {
+///     let dir = Dir::open("foo")?;
+///     let mut file = dir.open_file("bar.txt")?;
+///     let contents = io::read_to_string(file)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
+/// ```
+///
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
+#[unstable(feature = "dirfd", issue = "120426")]
+pub struct Dir {
+    inner: fs_imp::Dir,
 }
 
 /// Metadata information about a file.
@@ -1324,7 +1360,7 @@ impl Read for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
@@ -1385,7 +1421,7 @@ impl Write for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
@@ -1552,6 +1588,87 @@ impl Seek for Arc<File> {
     }
     fn stream_position(&mut self) -> io::Result<u64> {
         (&**self).stream_position()
+    }
+}
+
+impl Dir {
+    /// Attempts to open a directory at `path` in read-only mode.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::open(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a file in read-only mode relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_file<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        self.inner
+            .open_file(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|f| File { inner: f })
+    }
+}
+
+impl AsInner<fs_imp::Dir> for Dir {
+    #[inline]
+    fn as_inner(&self) -> &fs_imp::Dir {
+        &self.inner
+    }
+}
+impl FromInner<fs_imp::Dir> for Dir {
+    fn from_inner(f: fs_imp::Dir) -> Dir {
+        Dir { inner: f }
+    }
+}
+impl IntoInner<fs_imp::Dir> for Dir {
+    fn into_inner(self) -> fs_imp::Dir {
+        self.inner
+    }
+}
+
+#[unstable(feature = "dirfd", issue = "120426")]
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
@@ -3329,30 +3446,48 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") {
+        // if path's parent is None, it is "/" path, which should
+        // return Ok immediately
+        if path == Path::new("") || path.parent() == None {
             return Ok(());
         }
 
-        match self.inner.mkdir(path) {
-            Ok(()) => return Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
-            Err(e) => return Err(e),
-        }
-        match path.parent() {
-            Some(p) => self.create_dir_all(p)?,
-            None => {
-                return Err(io::const_error!(
-                    io::ErrorKind::Uncategorized,
-                    "failed to create whole tree",
-                ));
+        let ancestors = path.ancestors();
+        let mut uncreated_dirs = 0;
+
+        for ancestor in ancestors {
+            // for relative paths like "foo/bar", the parent of
+            // "foo" will be "" which there's no need to invoke
+            // a mkdir syscall on
+            if ancestor == Path::new("") || ancestor.parent() == None {
+                break;
+            }
+
+            match self.inner.mkdir(ancestor) {
+                Ok(()) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => uncreated_dirs += 1,
+                // we check if the err is AlreadyExists for two reasons
+                //    - in case the path exists as a *file*
+                //    - and to avoid calls to .is_dir() in case of other errs
+                //      (i.e. PermissionDenied)
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && ancestor.is_dir() => break,
+                Err(e) => return Err(e),
             }
         }
-        match self.inner.mkdir(path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
-            Err(e) => Err(e),
+
+        // collect only the uncreated directories w/o letting the vec resize
+        let mut uncreated_dirs_vec = Vec::with_capacity(uncreated_dirs);
+        uncreated_dirs_vec.extend(ancestors.take(uncreated_dirs));
+
+        for uncreated_dir in uncreated_dirs_vec.iter().rev() {
+            if let Err(e) = self.inner.mkdir(uncreated_dir) {
+                if e.kind() != io::ErrorKind::AlreadyExists || !uncreated_dir.is_dir() {
+                    return Err(e);
+                }
+            }
         }
+
+        Ok(())
     }
 }
 

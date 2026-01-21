@@ -14,8 +14,10 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
+use build_helper::exit;
 use build_helper::git::PathFreshness;
 
+use crate::core::build_steps::llvm;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
@@ -60,6 +62,25 @@ impl LlvmBuildStatus {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
             LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
         }
+    }
+}
+
+/// Allows each step to add C/Cxx flags which are only used for a specific cmake invocation.
+#[derive(Debug, Clone, Default)]
+struct CcFlags {
+    /// Additional values for CMAKE_CC_FLAGS, to be added before all other values.
+    cflags: OsString,
+    /// Additional values for CMAKE_CXX_FLAGS, to be added before all other values.
+    cxxflags: OsString,
+}
+
+impl CcFlags {
+    fn push_all(&mut self, s: impl AsRef<OsStr>) {
+        let s = s.as_ref();
+        self.cflags.push(" ");
+        self.cflags.push(s);
+        self.cxxflags.push(" ");
+        self.cxxflags.push(s);
     }
 }
 
@@ -206,18 +227,19 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("aarch64-unknown-linux-gnu", false),
         ("aarch64-apple-darwin", false),
         ("aarch64-pc-windows-msvc", false),
-        ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
         ("x86_64-unknown-linux-gnu", true),
         ("x86_64-apple-darwin", true),
-        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-gnu", false),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
         ("aarch64-unknown-linux-musl", false),
+        ("aarch64-pc-windows-gnullvm", false),
         ("arm-unknown-linux-gnueabi", false),
         ("arm-unknown-linux-gnueabihf", false),
         ("armv7-unknown-linux-gnueabihf", false),
+        ("i686-pc-windows-gnu", false),
         ("loongarch64-unknown-linux-gnu", false),
         ("loongarch64-unknown-linux-musl", false),
         ("powerpc-unknown-linux-gnu", false),
@@ -226,6 +248,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
         ("s390x-unknown-linux-gnu", false),
+        ("x86_64-pc-windows-gnullvm", false),
         ("x86_64-unknown-freebsd", false),
         ("x86_64-unknown-illumos", false),
         ("x86_64-unknown-linux-musl", false),
@@ -282,8 +305,7 @@ impl Step for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() && !target.ends_with("windows-gnullvm")
-        {
+        if builder.llvm_link_shared() && target.is_windows() && !target.is_windows_gnullvm() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -453,16 +475,6 @@ impl Step for Llvm {
             enabled_llvm_runtimes.push("compiler-rt");
         }
 
-        // This is an experimental flag, which likely builds more than necessary.
-        // We will optimize it when we get closer to releasing it on nightly.
-        if builder.config.llvm_offload {
-            enabled_llvm_runtimes.push("offload");
-            //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
-            //Remove this line once they achieved it.
-            enabled_llvm_runtimes.push("openmp");
-            enabled_llvm_projects.push("compiler-rt");
-        }
-
         if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();
             enabled_llvm_projects.dedup();
@@ -526,7 +538,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -632,6 +644,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
+    ccflags: CcFlags,
     suppressed_compiler_flag_prefixes: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
@@ -760,23 +773,21 @@ fn configure_cmake(
         .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    let mut cflags = ccflags.cflags.clone();
     // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
     // our flags via `.cflag`/`.cxxflag` instead.
     //
     // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
     // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
-    let mut cflags: OsString = builder
+    for flag in builder
         .cc_handled_clags(target, CLang::C)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
-        .filter(|flag| {
-            !suppressed_compiler_flag_prefixes
-                .iter()
-                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
-        })
-        .collect::<Vec<String>>()
-        .join(" ")
-        .into();
+        .filter(|flag| !suppressed_compiler_flag_prefixes.iter().any(|p| flag.starts_with(p)))
+    {
+        cflags.push(" ");
+        cflags.push(flag);
+    }
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -788,7 +799,8 @@ fn configure_cmake(
         cflags.push(format!(" --target={target}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags: OsString = builder
+    let mut cxxflags = ccflags.cxxflags.clone();
+    for flag in builder
         .cc_handled_clags(target, CLang::Cxx)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
@@ -797,9 +809,10 @@ fn configure_cmake(
                 .iter()
                 .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
         })
-        .collect::<Vec<String>>()
-        .join(" ")
-        .into();
+    {
+        cxxflags.push(" ");
+        cxxflags.push(flag);
+    }
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
@@ -810,6 +823,7 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(format!(" --target={target}"));
     }
+
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target)
         && ar.is_absolute()
@@ -895,13 +909,197 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
         .or_else(|| env::var_os(var_base))
 }
 
+#[derive(Clone)]
+pub struct BuiltOmpOffload {
+    /// Path to the omp and offload dylibs.
+    offload: Vec<PathBuf>,
+}
+
+impl BuiltOmpOffload {
+    pub fn offload_paths(&self) -> Vec<PathBuf> {
+        self.offload.clone()
+    }
+}
+
+// FIXME(offload): In an ideal world, we would just enable the offload runtime in our previous LLVM
+// build step. For now, we still depend on the openmp runtime since we use some of it's API, so we
+// build both. However, when building those runtimes as part of the LLVM step, then LLVM's cmake
+// implicitly assumes that Clang has also been build and will try to use it. In the Rust CI, we
+// don't always build clang (due to compile times), but instead use a slightly older external clang.
+// LLVM tries to remove this build dependency of offload/openmp on Clang for LLVM-22, so in the
+// future we might be able to integrate this step into the LLVM step. For now, we instead introduce
+// a Clang_DIR bootstrap option, which allows us tell CMake to use an external clang for these two
+// runtimes. This external clang will try to use it's own (older) include dirs when building our
+// in-tree LLVM submodule, which will cause build failures. To prevent those, we now also
+// explicitly set our include dirs.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct OmpOffload {
+    pub target: TargetSelection,
+}
+
+impl Step for OmpOffload {
+    type Output = BuiltOmpOffload;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/offload")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(OmpOffload { target: run.target });
+    }
+
+    /// Compile OpenMP offload runtimes for `target`.
+    #[allow(unused)]
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run() {
+            return BuiltOmpOffload {
+                offload: vec![builder.config.tempdir().join("llvm-offload-dry-run")],
+            };
+        }
+        let target = self.target;
+
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } =
+            builder.ensure(Llvm { target: self.target });
+
+        // Running cmake twice in the same folder is known to cause issues, like deleting existing
+        // binaries. We therefore write our offload artifacts into it's own folder, instead of
+        // using the llvm build dir.
+        let out_dir = builder.offload_out(target);
+
+        let mut files = vec![];
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
+        files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
+        files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
+
+        // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/offload"),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            )
+        });
+        let stamp = BuildStamp::new(&out_dir).with_prefix("offload").add_stamp(smart_stamp_hash);
+
+        trace!("checking build stamp to see if we need to rebuild offload/openmp artifacts");
+        if stamp.is_up_to_date() {
+            trace!(?out_dir, "offload/openmp build artifacts are up to date");
+            if stamp.stamp().is_empty() {
+                builder.info(
+                    "Could not determine the Offload submodule commit hash. \
+                     Assuming that an Offload rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force Offload/OpenMP to rebuild, remove the file `{}`",
+                    stamp.path().display()
+                ));
+            }
+            return BuiltOmpOffload { offload: files };
+        }
+
+        trace!(?target, "(re)building offload/openmp artifacts");
+        builder.info(&format!("Building OpenMP/Offload for {target}"));
+        t!(stamp.remove());
+        let _time = helpers::timeit(builder);
+        t!(fs::create_dir_all(&out_dir));
+
+        builder.config.update_submodule("src/llvm-project");
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
+
+        // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+        // come with it's own set of default include directories, which are based on a potentially older
+        // LLVM. This can cause issues, so we overwrite it to include headers based on our
+        // `src/llvm-project` submodule instead.
+        // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
+        let mut cflags = CcFlags::default();
+        if !builder.config.llvm_clang {
+            let base = builder.llvm_out(target).join("include");
+            let inc_dir = base.display();
+            cflags.push_all(format!(" -I {inc_dir}"));
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for offload.
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+        trace!(?profile);
+
+        // OpenMP/Offload builds currently (LLVM-21) still depend on Clang, although there are
+        // intentions to loosen this requirement for LLVM-22. If we were to
+        let clang_dir = if !builder.config.llvm_clang {
+            // We must have an external clang to use.
+            assert!(&builder.build.config.llvm_clang_dir.is_some());
+            builder.build.config.llvm_clang_dir.clone()
+        } else {
+            // No need to specify it, since we use the in-tree clang
+            None
+        };
+
+        // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
+        // runtime to simplify our build. We should also re-evaluate the LLVM_Root and try to get
+        // rid of the Clang_DIR, once we upgrade to LLVM-22.
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .define("LLVM_ENABLE_ASSERTIONS", "ON")
+            .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+            .define("OPENMP_STANDALONE_BUILD", "ON")
+            .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
+            .define("LLVM_DIR", llvm_cmake_dir);
+        if let Some(p) = clang_dir {
+            cfg.define("Clang_DIR", p);
+        }
+        cfg.build();
+
+        t!(stamp.write());
+
+        for p in &files {
+            // At this point, `out_dir` should contain the built <offload-filename>.<dylib-ext>
+            // files.
+            if !p.exists() {
+                eprintln!(
+                    "`{p:?}` not found in `{}`. Either the build has failed or Offload was built with a wrong version of LLVM",
+                    out_dir.display()
+                );
+                exit!(1);
+            }
+        }
+        BuiltOmpOffload { offload: files }
+    }
+}
+
+#[derive(Clone)]
+pub struct BuiltEnzyme {
+    /// Path to the libEnzyme dylib.
+    enzyme: PathBuf,
+}
+
+impl BuiltEnzyme {
+    pub fn enzyme_path(&self) -> PathBuf {
+        self.enzyme.clone()
+    }
+    pub fn enzyme_filename(&self) -> String {
+        self.enzyme.file_name().unwrap().to_str().unwrap().to_owned()
+    }
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Enzyme {
     pub target: TargetSelection,
 }
 
 impl Step for Enzyme {
-    type Output = PathBuf;
+    type Output = BuiltEnzyme;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -913,18 +1111,18 @@ impl Step for Enzyme {
     }
 
     /// Compile Enzyme for `target`.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.require_submodule(
             "src/tools/enzyme",
             Some("The Enzyme sources are required for autodiff."),
         );
-        if builder.config.dry_run() {
-            let out_dir = builder.enzyme_out(self.target);
-            return out_dir;
-        }
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+        if builder.config.dry_run() {
+            return BuiltEnzyme { enzyme: builder.config.tempdir().join("enzyme-dryrun") };
+        }
+
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -937,6 +1135,12 @@ impl Step for Enzyme {
 
         let out_dir = builder.enzyme_out(target);
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
+
+        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        let libenzyme = format!("libEnzyme-{llvm_version_major}");
+        let build_dir = out_dir.join("lib");
+        let dylib = build_dir.join(&libenzyme).with_extension(lib_ext);
 
         trace!("checking build stamp to see if we need to rebuild enzyme artifacts");
         if stamp.is_up_to_date() {
@@ -951,7 +1155,14 @@ impl Step for Enzyme {
                     stamp.path().display()
                 ));
             }
-            return out_dir;
+            return BuiltEnzyme { enzyme: dylib };
+        }
+
+        if !builder.config.dry_run() && !llvm_cmake_dir.is_dir() {
+            builder.info(&format!(
+                "WARNING: {} does not exist, Enzyme build will likely fail",
+                llvm_cmake_dir.display()
+            ));
         }
 
         trace!(?target, "(re)building enzyme artifacts");
@@ -960,11 +1171,13 @@ impl Step for Enzyme {
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
-        builder
-            .config
-            .update_submodule(Path::new("src").join("tools").join("enzyme").to_str().unwrap());
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
+        // Enzyme devs maintain upstream compatibility, but only fix deprecations when they are about
+        // to turn into a hard error. As such, Enzyme generates various warnings which could make it
+        // hard to spot more relevant issues.
+        let mut cflags = CcFlags::default();
+        cflags.push_all("-Wno-deprecated");
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
 
         // Re-use the same flags as llvm to control the level of debug information
         // generated by Enzyme.
@@ -982,12 +1195,22 @@ impl Step for Enzyme {
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
-            .define("LLVM_DIR", builder.llvm_out(target));
+            .define("LLVM_DIR", llvm_cmake_dir);
 
         cfg.build();
 
+        // At this point, `out_dir` should contain the built libEnzyme-<LLVM-version>.<dylib-ext>
+        // file.
+        if !dylib.exists() {
+            eprintln!(
+                "`{libenzyme}` not found in `{}`. Either the build has failed or Enzyme was built with a wrong version of LLVM",
+                build_dir.display()
+            );
+            exit!(1);
+        }
+
         t!(stamp.write());
-        out_dir
+        BuiltEnzyme { enzyme: dylib }
     }
 }
 
@@ -1084,7 +1307,7 @@ impl Step for Lld {
             ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1207,6 +1430,7 @@ impl Step for Sanitizers {
             &mut cfg,
             use_compiler_launcher,
             LdFlags::default(),
+            CcFlags::default(),
             suppressed_compiler_flag_prefixes,
         );
 
@@ -1291,6 +1515,7 @@ fn supported_sanitizers(
             "x86_64",
             &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
         ),
+        "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }

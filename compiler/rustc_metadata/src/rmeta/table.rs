@@ -1,6 +1,7 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
+use crate::rmeta::decoder::Metadata;
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -22,24 +23,6 @@ impl IsDefault for AttrFlags {
 impl IsDefault for bool {
     fn is_default(&self) -> bool {
         !self
-    }
-}
-
-impl IsDefault for ty::Asyncness {
-    fn is_default(&self) -> bool {
-        match self {
-            ty::Asyncness::Yes => false,
-            ty::Asyncness::No => true,
-        }
-    }
-}
-
-impl IsDefault for hir::Constness {
-    fn is_default(&self) -> bool {
-        match self {
-            rustc_hir::Constness::Const => false,
-            rustc_hir::Constness::NotConst => true,
-        }
     }
 }
 
@@ -130,6 +113,43 @@ macro_rules! fixed_size_enum {
     }
 }
 
+macro_rules! defaulted_enum {
+    ($ty:ty { $(($($pat:tt)*))* } $( unreachable { $(($($upat:tt)*))+ } )?) => {
+        impl FixedSizeEncoding for $ty {
+            type ByteArray = [u8; 1];
+
+            #[inline]
+            fn from_bytes(b: &[u8; 1]) -> Self {
+                use $ty::*;
+                let val = match b[0] {
+                    $(${index()} => $($pat)*,)*
+                    _ => panic!("Unexpected {} code: {:?}", stringify!($ty), b[0]),
+                };
+                // Make sure the first entry is always the default value,
+                // and none of the other values are the default value
+                debug_assert_ne!((b[0] != 0), IsDefault::is_default(&val));
+                val
+            }
+
+            #[inline]
+            fn write_to_bytes(self, b: &mut [u8; 1]) {
+                debug_assert!(!IsDefault::is_default(&self));
+                use $ty::*;
+                b[0] = match self {
+                    $($($pat)* => ${index()},)*
+                    $($($($upat)*)|+ => unreachable!(),)?
+                };
+                debug_assert_ne!(b[0], 0);
+            }
+        }
+        impl IsDefault for $ty {
+            fn is_default(&self) -> bool {
+                <$ty as Default>::default() == *self
+            }
+        }
+    }
+}
+
 // Workaround; need const traits to construct bitflags in a const
 macro_rules! const_macro_kinds {
     ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
@@ -196,14 +216,7 @@ fixed_size_enum! {
     }
 }
 
-fixed_size_enum! {
-    hir::Constness {
-        ( NotConst )
-        ( Const    )
-    }
-}
-
-fixed_size_enum! {
+defaulted_enum! {
     hir::Defaultness {
         ( Final                        )
         ( Default { has_value: false } )
@@ -211,17 +224,24 @@ fixed_size_enum! {
     }
 }
 
-fixed_size_enum! {
-    hir::Safety {
-        ( Unsafe )
-        ( Safe   )
+defaulted_enum! {
+    ty::Asyncness {
+        ( No  )
+        ( Yes )
     }
 }
 
-fixed_size_enum! {
-    ty::Asyncness {
-        ( Yes )
-        ( No  )
+defaulted_enum! {
+    hir::Constness {
+        ( Const    )
+        ( NotConst )
+    }
+}
+
+defaulted_enum! {
+    hir::Safety {
+        ( Unsafe )
+        ( Safe   )
     }
 }
 
@@ -310,50 +330,6 @@ impl FixedSizeEncoding for bool {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = self as u8
-    }
-}
-
-impl FixedSizeEncoding for ty::Asyncness {
-    type ByteArray = [u8; 1];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 1]) -> Self {
-        match b[0] {
-            0 => ty::Asyncness::No,
-            1 => ty::Asyncness::Yes,
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 1]) {
-        debug_assert!(!self.is_default());
-        b[0] = match self {
-            ty::Asyncness::No => 0,
-            ty::Asyncness::Yes => 1,
-        }
-    }
-}
-
-impl FixedSizeEncoding for hir::Constness {
-    type ByteArray = [u8; 1];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 1]) -> Self {
-        match b[0] {
-            0 => hir::Constness::NotConst,
-            1 => hir::Constness::Const,
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 1]) {
-        debug_assert!(!self.is_default());
-        b[0] = match self {
-            hir::Constness::NotConst => 0,
-            hir::Constness::Const => 1,
-        }
     }
 }
 
@@ -547,7 +523,7 @@ where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();

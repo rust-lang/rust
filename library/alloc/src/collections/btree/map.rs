@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use core::error::Error;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::FusedIterator;
+use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
@@ -1181,6 +1181,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// If a key from `other` is already present in `self`, the respective
     /// value from `self` will be overwritten with the respective value from `other`.
+    /// Similar to [`insert`], though, the key is not overwritten,
+    /// which matters for types that can be `==` without being identical.
+    ///
+    /// [`insert`]: BTreeMap::insert
     ///
     /// # Examples
     ///
@@ -1624,6 +1628,9 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V> TrustedLen for Iter<'_, K, V> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Iter<'_, K, V> {
     fn clone(&self) -> Self {
@@ -1695,6 +1702,9 @@ impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
         self.length
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V> TrustedLen for IterMut<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for IterMut<'_, K, V> {}
@@ -1817,6 +1827,9 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoIter<K, V, A> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V, A: Allocator + Clone> TrustedLen for IntoIter<K, V, A> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoIter<K, V, A> {}
 
@@ -1864,6 +1877,9 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V> TrustedLen for Keys<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for Keys<'_, K, V> {}
@@ -1919,6 +1935,9 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V> TrustedLen for Values<'_, K, V> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for Values<'_, K, V> {}
@@ -2160,6 +2179,9 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V> TrustedLen for ValuesMut<'_, K, V> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
@@ -2222,6 +2244,9 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V, A: Allocator + Clone> TrustedLen for IntoKeys<K, V, A> {}
+
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
@@ -2272,6 +2297,9 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<K, V, A: Allocator + Clone> TrustedLen for IntoValues<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
@@ -2416,7 +2444,7 @@ impl<K, V> Default for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq, A: Allocator + Clone> PartialEq for BTreeMap<K, V, A> {
     fn eq(&self, other: &BTreeMap<K, V, A>) -> bool {
-        self.iter().eq(other)
+        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 

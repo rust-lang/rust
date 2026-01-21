@@ -310,6 +310,7 @@ LL |         "name", 5, "x", 0.01
 help: try
    |
 LL -         "Hello {}: {2} is {3:.*} (which {3} with {1} places)",
+LL -         "name", 5, "x", 0.01
 LL +         "Hello name: x is {1:.*} (which {1} with {0} places)", 5, 0.01
    |
 

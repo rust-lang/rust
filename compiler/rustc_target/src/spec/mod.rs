@@ -52,7 +52,7 @@ use rustc_abi::{
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_fs_util::try_canonicalize;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
@@ -830,7 +830,7 @@ impl LinkerFeatures {
 }
 
 crate::target_spec_enum! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
+    #[derive(Encodable, BlobDecodable, HashStable_Generic)]
     pub enum PanicStrategy {
         Unwind = "unwind",
         Abort = "abort",
@@ -840,7 +840,7 @@ crate::target_spec_enum! {
     parse_error_type = "panic strategy";
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, BlobDecodable, HashStable_Generic)]
 pub enum OnBrokenPipe {
     Default,
     Kill,
@@ -1686,6 +1686,7 @@ supported_targets! {
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
     ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
+    ("riscv64im-unknown-none-elf", riscv64im_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
@@ -1800,6 +1801,8 @@ supported_targets! {
     ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
+
+    ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1872,7 +1875,6 @@ crate::target_spec_enum! {
         Nvptx64 = "nvptx64",
         PowerPC = "powerpc",
         PowerPC64 = "powerpc64",
-        PowerPC64LE = "powerpc64le",
         RiscV32 = "riscv32",
         RiscV64 = "riscv64",
         S390x = "s390x",
@@ -1910,7 +1912,6 @@ impl Arch {
             Self::Nvptx64 => sym::nvptx64,
             Self::PowerPC => sym::powerpc,
             Self::PowerPC64 => sym::powerpc64,
-            Self::PowerPC64LE => sym::powerpc64le,
             Self::RiscV32 => sym::riscv32,
             Self::RiscV64 => sym::riscv64,
             Self::S390x => sym::s390x,
@@ -1923,6 +1924,24 @@ impl Arch {
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
             Self::Other(name) => rustc_span::Symbol::intern(name),
+        }
+    }
+
+    pub fn supports_c_variadic_definitions(&self) -> bool {
+        use Arch::*;
+
+        match self {
+            // These targets just do not support c-variadic definitions.
+            Bpf | SpirV => false,
+
+            // We don't know if the target supports c-variadic definitions, but we don't want
+            // to needlessly restrict custom target.json configurations.
+            Other(_) => true,
+
+            AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
+            | X86_64 | Xtensa => true,
         }
     }
 }
@@ -2246,10 +2265,10 @@ pub struct TargetOptions {
     /// Whether a cpu needs to be explicitly set.
     /// Set to true if there is no default cpu. Defaults to false.
     pub need_explicit_cpu: bool,
-    /// Default target features to pass to LLVM. These features overwrite
-    /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
-    /// Corresponds to `llc -mattr=$features`.
-    /// Note that these are LLVM feature names, not Rust feature names!
+    /// Default (Rust) target features to enable for this target. These features
+    /// overwrite `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
+    /// Corresponds to `llc -mattr=$llvm_features` where `$llvm_features` is the
+    /// result of mapping the Rust features in this field to LLVM features.
     ///
     /// Generally it is a bad idea to use negative target features because they often interact very
     /// poorly with how `-Ctarget-cpu` works. Instead, try to use a lower "base CPU" and enable the
@@ -2375,6 +2394,9 @@ pub struct TargetOptions {
     pub archive_format: StaticCow<str>,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
+    /// Static initializers must be acyclic.
+    /// Defaults to false
+    pub static_initializer_must_be_acyclic: bool,
     /// Whether the runtime startup code requires the `main` function be passed
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
@@ -2615,6 +2637,10 @@ impl TargetOptions {
         // XCOFF and MachO don't support COMDAT.
         !self.is_like_aix && !self.is_like_darwin
     }
+
+    pub fn uses_pdb_debuginfo(&self) -> bool {
+        self.debuginfo_kind == DebuginfoKind::Pdb
+    }
 }
 
 impl TargetOptions {
@@ -2754,6 +2780,7 @@ impl Default for TargetOptions {
             archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
+            static_initializer_must_be_acyclic: false,
             has_thread_local: false,
             obj_is_bitcode: false,
             min_atomic_width: None,
@@ -2932,11 +2959,6 @@ impl Target {
             self.arch == Arch::Bpf,
             matches!(self.linker_flavor, LinkerFlavor::Bpf),
             "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
-        );
-        check_eq!(
-            self.arch == Arch::Nvptx64,
-            matches!(self.linker_flavor, LinkerFlavor::Ptx),
-            "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
         );
 
         for args in [
@@ -3276,10 +3298,19 @@ impl Target {
     pub fn search(
         target_tuple: &TargetTuple,
         sysroot: &Path,
+        unstable_options: bool,
     ) -> Result<(Target, TargetWarnings), String> {
         use std::{env, fs};
 
-        fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
+        fn load_file(
+            path: &Path,
+            unstable_options: bool,
+        ) -> Result<(Target, TargetWarnings), String> {
+            if !unstable_options {
+                return Err(
+                    "custom targets are unstable and require `-Zunstable-options`".to_string()
+                );
+            }
             let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
             Target::from_json(&contents)
         }
@@ -3303,7 +3334,7 @@ impl Target {
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
                     if p.is_file() {
-                        return load_file(&p);
+                        return load_file(&p, unstable_options);
                     }
                 }
 
@@ -3316,7 +3347,7 @@ impl Target {
                     Path::new("target.json"),
                 ]);
                 if p.is_file() {
-                    return load_file(&p);
+                    return load_file(&p, unstable_options);
                 }
 
                 Err(format!("could not find specification for target {target_tuple:?}"))
@@ -3414,7 +3445,6 @@ impl Target {
             Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
             Arch::AmdGpu
             | Arch::Nvptx64
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64

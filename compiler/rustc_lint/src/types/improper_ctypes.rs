@@ -669,7 +669,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => {
+                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_unsafe_binder, help: None }
+            }
 
             ty::Param(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)

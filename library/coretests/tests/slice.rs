@@ -433,6 +433,13 @@ fn test_chunks_exact_mut_zip_aliasing() {
 }
 
 #[test]
+fn test_chunks_zst() {
+    const SIZE: usize = 16;
+    let mut it = [(); usize::MAX].chunks(SIZE);
+    assert_eq!(it.nth_back(0), Some(&[(); SIZE - 1][..]));
+}
+
+#[test]
 fn test_rchunks_mut_zip_aliasing() {
     let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];

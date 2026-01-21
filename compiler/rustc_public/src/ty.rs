@@ -876,6 +876,9 @@ pub struct VariantDef {
 }
 
 impl VariantDef {
+    /// The name of the variant, struct or union.
+    ///
+    /// This will not include the name of the enum or qualified path.
     pub fn name(&self) -> Symbol {
         with(|cx| cx.variant_name(*self))
     }
@@ -1392,7 +1395,7 @@ pub struct TraitDecl {
     pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
-    pub implement_via_object: bool,
+    pub force_dyn_incompatible: Option<Span>,
     pub deny_explicit_impl: bool,
 }
 

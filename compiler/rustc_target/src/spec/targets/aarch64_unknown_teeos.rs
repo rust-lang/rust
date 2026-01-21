@@ -2,7 +2,7 @@ use crate::spec::{Arch, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::teeos::opts();
-    base.features = "+strict-align,+neon,+fp-armv8".into();
+    base.features = "+strict-align,+neon".into();
     base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
 

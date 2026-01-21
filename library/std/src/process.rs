@@ -166,10 +166,8 @@ use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
-use crate::sys::pipe::{AnonPipe, read2};
-use crate::sys::process as imp;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use crate::{fmt, fs, str};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, process as imp};
+use crate::{fmt, format_args_nl, fs, str};
 
 /// Representation of a running or exited child process.
 ///
@@ -300,9 +298,9 @@ impl fmt::Debug for Child {
 ///
 /// Used to pass pipe handles between this module and [`imp`].
 pub(crate) struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
+    pub stdin: Option<imp::ChildPipe>,
+    pub stdout: Option<imp::ChildPipe>,
+    pub stderr: Option<imp::ChildPipe>,
 }
 
 /// A handle to a child process's standard input (stdin).
@@ -317,7 +315,7 @@ pub(crate) struct StdioPipes {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStdin` also has `impl`s for
@@ -366,21 +364,21 @@ impl Write for &ChildStdin {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdin {
+impl AsInner<imp::ChildPipe> for ChildStdin {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStdin {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStdin {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStdin {
-    fn from_inner(pipe: AnonPipe) -> ChildStdin {
+impl FromInner<imp::ChildPipe> for ChildStdin {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStdin {
         ChildStdin { inner: pipe }
     }
 }
@@ -403,7 +401,7 @@ impl fmt::Debug for ChildStdin {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStdout` also has `impl`s for
@@ -436,21 +434,21 @@ impl Read for ChildStdout {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdout {
+impl AsInner<imp::ChildPipe> for ChildStdout {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStdout {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStdout {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStdout {
-    fn from_inner(pipe: AnonPipe) -> ChildStdout {
+impl FromInner<imp::ChildPipe> for ChildStdout {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStdout {
         ChildStdout { inner: pipe }
     }
 }
@@ -473,7 +471,7 @@ impl fmt::Debug for ChildStdout {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStderr` also has `impl`s for
@@ -506,21 +504,21 @@ impl Read for ChildStderr {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStderr {
+impl AsInner<imp::ChildPipe> for ChildStderr {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStderr {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStderr {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStderr {
-    fn from_inner(pipe: AnonPipe) -> ChildStderr {
+impl FromInner<imp::ChildPipe> for ChildStderr {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStderr {
         ChildStderr { inner: pipe }
     }
 }
@@ -1205,6 +1203,30 @@ impl Command {
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
+    }
+
+    /// Returns whether the environment will be cleared for the child process.
+    ///
+    /// This returns `true` if [`Command::env_clear`] was called, and `false` otherwise.
+    /// When `true`, the child process will not inherit any environment variables from
+    /// its parent process.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(command_resolved_envs)]
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// assert_eq!(cmd.get_env_clear(), false);
+    ///
+    /// cmd.env_clear();
+    /// assert_eq!(cmd.get_env_clear(), true);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "command_resolved_envs", issue = "149070")]
+    pub fn get_env_clear(&self) -> bool {
+        self.inner.get_env_clear()
     }
 }
 
@@ -2356,7 +2378,7 @@ impl Child {
                 res.unwrap();
             }
             (Some(out), Some(err)) => {
-                let res = read2(out.inner, &mut stdout, err.inner, &mut stderr);
+                let res = imp::read_output(out.inner, &mut stdout, err.inner, &mut stderr);
                 res.unwrap();
             }
         }

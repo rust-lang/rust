@@ -2,57 +2,56 @@
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 
-// gdb-command:run
-// gdb-command:whatis unit
-// gdb-check:type = ()
-// gdb-command:whatis b
-// gdb-check:type = bool
-// gdb-command:whatis i
-// gdb-check:type = isize
-// gdb-command:whatis c
-// gdb-check:type = char
-// gdb-command:whatis i8
-// gdb-check:type = i8
-// gdb-command:whatis i16
-// gdb-check:type = i16
-// gdb-command:whatis i32
-// gdb-check:type = i32
-// gdb-command:whatis i64
-// gdb-check:type = i64
-// gdb-command:whatis u
-// gdb-check:type = usize
-// gdb-command:whatis u8
-// gdb-check:type = u8
-// gdb-command:whatis u16
-// gdb-check:type = u16
-// gdb-command:whatis u32
-// gdb-check:type = u32
-// gdb-command:whatis u64
-// gdb-check:type = u64
-// gdb-command:whatis f16
-// gdb-check:type = f16
-// gdb-command:whatis f32
-// gdb-check:type = f32
-// gdb-command:whatis f64
-// gdb-check:type = f64
-// gdb-command:whatis fnptr
-// gdb-check:type = *mut fn ()
-// gdb-command:info functions _yyy
-// gdb-check:static fn basic_types_metadata::_yyy();
-// gdb-command:ptype closure_0
-// gdb-check: type = struct basic_types_metadata::main::{closure_env#0}
-// gdb-command:ptype closure_1
-// gdb-check: type = struct basic_types_metadata::main::{closure_env#1} {
-// gdb-check:     *mut bool,
-// gdb-check: }
-// gdb-command:ptype closure_2
-// gdb-check: type = struct basic_types_metadata::main::{closure_env#2} {
-// gdb-check:     *mut bool,
-// gdb-check:     *mut isize,
-// gdb-check: }
+//@ gdb-command:run
+//@ gdb-command:whatis unit
+//@ gdb-check:type = ()
+//@ gdb-command:whatis b
+//@ gdb-check:type = bool
+//@ gdb-command:whatis i
+//@ gdb-check:type = isize
+//@ gdb-command:whatis c
+//@ gdb-check:type = char
+//@ gdb-command:whatis i8
+//@ gdb-check:type = i8
+//@ gdb-command:whatis i16
+//@ gdb-check:type = i16
+//@ gdb-command:whatis i32
+//@ gdb-check:type = i32
+//@ gdb-command:whatis i64
+//@ gdb-check:type = i64
+//@ gdb-command:whatis u
+//@ gdb-check:type = usize
+//@ gdb-command:whatis u8
+//@ gdb-check:type = u8
+//@ gdb-command:whatis u16
+//@ gdb-check:type = u16
+//@ gdb-command:whatis u32
+//@ gdb-check:type = u32
+//@ gdb-command:whatis u64
+//@ gdb-check:type = u64
+//@ gdb-command:whatis f16
+//@ gdb-check:type = f16
+//@ gdb-command:whatis f32
+//@ gdb-check:type = f32
+//@ gdb-command:whatis f64
+//@ gdb-check:type = f64
+//@ gdb-command:whatis fnptr
+//@ gdb-check:type = *mut fn ()
+//@ gdb-command:info functions _yyy
+//@ gdb-check:static fn basic_types_metadata::_yyy();
+//@ gdb-command:ptype closure_0
+//@ gdb-check: type = struct basic_types_metadata::main::{closure_env#0}
+//@ gdb-command:ptype closure_1
+//@ gdb-check: type = struct basic_types_metadata::main::{closure_env#1} {
+//@ gdb-check:     *mut bool,
+//@ gdb-check: }
+//@ gdb-command:ptype closure_2
+//@ gdb-check: type = struct basic_types_metadata::main::{closure_env#2} {
+//@ gdb-check:     *mut bool,
+//@ gdb-check:     *mut isize,
+//@ gdb-check: }
 
-//
-// gdb-command:continue
+//@ gdb-command:continue
 
 #![allow(unused_variables)]
 #![feature(f16)]

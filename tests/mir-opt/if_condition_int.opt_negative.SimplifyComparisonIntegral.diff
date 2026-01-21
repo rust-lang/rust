@@ -11,10 +11,10 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
--         _2 = Eq(move _3, const -42_i32);
+-         _2 = Eq(copy _1, const -42_i32);
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
 +         nop;
-+         switchInt(move _3) -> [4294967254: bb1, otherwise: bb2];
++         switchInt(copy _1) -> [4294967254: bb1, otherwise: bb2];
       }
   
       bb1: {

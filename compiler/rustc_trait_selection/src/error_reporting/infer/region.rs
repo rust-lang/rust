@@ -980,7 +980,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_sub_sup_conflict(
         &self,
         generic_param_scope: LocalDefId,
-        var_origin: RegionVariableOrigin,
+        var_origin: RegionVariableOrigin<'tcx>,
         sub_origin: SubregionOrigin<'tcx>,
         sub_region: Region<'tcx>,
         sup_origin: SubregionOrigin<'tcx>,
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
     }
 
-    fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
+    fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BoundRegionKind::Named(def_id) => self.tcx.item_name(def_id).to_string(),

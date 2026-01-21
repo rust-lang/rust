@@ -1,7 +1,6 @@
-use std::assert_matches::debug_assert_matches;
-
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_data_structures::debug_assert_matches;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
@@ -11,7 +10,9 @@ use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf,
     LayoutOfHelpers, TyAndLayout,
 };
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
+};
 use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
@@ -84,10 +85,31 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
     #[inline]
     fn handle_layout_err(
         &self,
-        err: LayoutError<'tcx>,
+        mut err: LayoutError<'tcx>,
         _: Span,
         _: Ty<'tcx>,
     ) -> InterpErrorKind<'tcx> {
+        // FIXME(#149283): This is really hacky and is only used to hide type
+        // system bugs. We use it as a temporary fix for #149081.
+        //
+        // While it's expected that we sometimes get ambiguity errors when
+        // entering another generic environment while the current environment
+        // itself is still generic, we should never fail to entirely prove
+        // something.
+        match err {
+            LayoutError::NormalizationFailure(ty, _) => {
+                if ty.has_non_region_param() {
+                    err = LayoutError::TooGeneric(ty);
+                }
+            }
+
+            LayoutError::Unknown(_)
+            | LayoutError::SizeOverflow(_)
+            | LayoutError::InvalidSimd { .. }
+            | LayoutError::TooGeneric(_)
+            | LayoutError::ReferencesError(_)
+            | LayoutError::Cycle(_) => {}
+        }
         err_inval!(Layout(err))
     }
 }
@@ -112,7 +134,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
     /// See [LayoutOf::layout_of] for the original documentation.
     #[inline(always)]
-    pub fn layout_of(&self, ty: Ty<'tcx>) -> <Self as LayoutOfHelpers<'tcx>>::LayoutOfResult {
+    pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
         let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
         LayoutOf::layout_of(self, ty)
     }
@@ -210,7 +232,6 @@ pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tc
     backtrace.print_backtrace();
     // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
     // label and arguments from the InterpError.
-    #[allow(rustc::untranslatable_diagnostic)]
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
     e.add_args(&mut diag);

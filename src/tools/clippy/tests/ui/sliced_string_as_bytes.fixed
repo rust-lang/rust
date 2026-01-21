@@ -32,6 +32,12 @@ fn main() {
     let bytes = &"consectetur adipiscing".as_bytes()[..=5];
     //~^ sliced_string_as_bytes
 
+    // this lint is a perf lint meant to catch utf-8 alignment checks.
+    // while the slicing here *is* redundant, it's more like a needless borrow, and shouldn't affect
+    // perf
+    let bytes = s[..].as_bytes();
+    let bytes = string[..].as_bytes();
+
     let f = Foo;
     let bytes = f[0..4].as_bytes();
 }

@@ -372,6 +372,8 @@ macro_rules! int_impl {
         ///
         /// On big endian this is a no-op. On little endian the bytes are swapped.
         ///
+        /// See also [from_be_bytes()](Self::from_be_bytes).
+        ///
         /// # Examples
         ///
         /// ```
@@ -402,6 +404,8 @@ macro_rules! int_impl {
         ///
         /// On little endian this is a no-op. On big endian the bytes are swapped.
         ///
+        /// See also [from_le_bytes()](Self::from_le_bytes).
+        ///
         /// # Examples
         ///
         /// ```
@@ -428,9 +432,15 @@ macro_rules! int_impl {
             }
         }
 
-        /// Converts `self` to big endian from the target's endianness.
+        /// Swaps bytes of `self` on little endian targets.
         ///
-        /// On big endian this is a no-op. On little endian the bytes are swapped.
+        /// On big endian this is a no-op.
+        ///
+        /// The returned value has the same type as `self`, and will be interpreted
+        /// as (a potentially different) value of a native-endian
+        #[doc = concat!("`", stringify!($SelfT), "`.")]
+        ///
+        /// See [`to_be_bytes()`](Self::to_be_bytes) for a type-safe alternative.
         ///
         /// # Examples
         ///
@@ -459,9 +469,15 @@ macro_rules! int_impl {
             }
         }
 
-        /// Converts `self` to little endian from the target's endianness.
+        /// Swaps bytes of `self` on big endian targets.
         ///
-        /// On little endian this is a no-op. On big endian the bytes are swapped.
+        /// On little endian this is a no-op.
+        ///
+        /// The returned value has the same type as `self`, and will be interpreted
+        /// as (a potentially different) value of a native-endian
+        #[doc = concat!("`", stringify!($SelfT), "`.")]
+        ///
+        /// See [`to_le_bytes()`](Self::to_le_bytes) for a type-safe alternative.
         ///
         /// # Examples
         ///
@@ -1259,11 +1275,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_neg`] would return `None`.
         ///
         #[doc = concat!("[`checked_neg`]: ", stringify!($SelfT), "::checked_neg")]
-        #[unstable(
-            feature = "unchecked_neg",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[stable(feature = "unchecked_neg", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_neg", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1379,11 +1392,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shl`] would return `None`.
         ///
         #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
-        #[unstable(
-            feature = "unchecked_shifts",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1411,8 +1421,15 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
@@ -1554,11 +1571,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shr`] would return `None`.
         ///
         #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
-        #[unstable(
-            feature = "unchecked_shifts",
-            reason = "niche optimization path",
-            issue = "85122",
-        )]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1587,9 +1601,16 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(129), 0);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(0), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(1), 0b101);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(2), 0b10);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shr(", stringify!($BITS), "), -1);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), -1);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
@@ -2281,6 +2302,13 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`, where `mask` removes
         /// any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
         ///
+        /// Beware that, unlike most other `wrapping_*` methods on integers, this
+        /// does *not* give the same result as doing the shift in infinite precision
+        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// do on many processors, and is what the `<<` operator does when overflow
+        /// checks are disabled, but numerically it's weird.  Consider, instead,
+        /// using [`Self::unbounded_shl`] which has nicer behaviour.
+        ///
         /// Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
         /// the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
         /// The primitive integer types all implement a [`rotate_left`](Self::rotate_left) function,
@@ -2289,8 +2317,11 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(7), -128);")]
-        #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(128), -1);")]
+        #[doc = concat!("assert_eq!((-1_", stringify!($SelfT), ").wrapping_shl(7), -128);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 42);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(1).wrapping_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        #[doc = concat!("assert_eq!((-1_", stringify!($SelfT), ").wrapping_shl(128), -1);")]
+        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".wrapping_shl(1025), 10);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -2308,6 +2339,13 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`, where `mask`
         /// removes any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
         ///
+        /// Beware that, unlike most other `wrapping_*` methods on integers, this
+        /// does *not* give the same result as doing the shift in infinite precision
+        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// do on many processors, and is what the `>>` operator does when overflow
+        /// checks are disabled, but numerically it's weird.  Consider, instead,
+        /// using [`Self::unbounded_shr`] which has nicer behaviour.
+        ///
         /// Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
         /// to the range of the type, rather than the bits shifted out of the LHS being returned to the other
         /// end. The primitive integer types all implement a [`rotate_right`](Self::rotate_right) function,
@@ -2316,8 +2354,11 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!((-128", stringify!($SelfT), ").wrapping_shr(7), -1);")]
-        /// assert_eq!((-128i16).wrapping_shr(64), -128);
+        #[doc = concat!("assert_eq!((-128_", stringify!($SelfT), ").wrapping_shr(7), -1);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(", stringify!($BITS), "), 42);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shr(1).wrapping_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        /// assert_eq!((-128_i16).wrapping_shr(64), -128);
+        #[doc = concat!("assert_eq!(10_", stringify!($SelfT), ".wrapping_shr(1025), 5);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -3140,7 +3181,8 @@ macro_rules! int_impl {
         }
 
 
-        /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+        /// Calculates the least nonnegative remainder of `self` when
+        /// divided by `rhs`.
         ///
         /// This is done as if by the Euclidean division algorithm -- given
         /// `r = self.rem_euclid(rhs)`, the result satisfies
@@ -3520,11 +3562,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            if self > 0 {
-                Some(int_log10::$ActualT(self as $ActualT))
-            } else {
-                None
-            }
+            int_log10::$ActualT(self as $ActualT)
         }
 
         /// Computes the absolute value of `self`.
@@ -3870,6 +3908,33 @@ macro_rules! int_impl {
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX
+        }
+
+        /// Clamps this number to a symmetric range centred around zero.
+        ///
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// explicit about the intent.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(clamp_magnitude)]
+        #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
+        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
+        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        /// ```
+        #[must_use = "this returns the clamped value and does not modify the original"]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[inline]
+        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+            if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
+                self.clamp(-limit, limit)
+            } else {
+                self
+            }
         }
     }
 }

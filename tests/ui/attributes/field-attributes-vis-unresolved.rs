@@ -1,3 +1,4 @@
+//@ edition:2015
 // Non-builtin attributes do not mess with field visibility resolution (issue #67006).
 
 mod internal {

@@ -125,7 +125,7 @@ impl TestCx<'_> {
             // `extern run_make_support;`.
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path))
-            .arg("--edition=2021")
+            .arg("--edition=2024")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
 
@@ -172,10 +172,10 @@ impl TestCx<'_> {
             .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
             // Provide the directory to libraries that are needed to run the *compiler* invoked
             // by the recipe.
-            .env("HOST_RUSTC_DYLIB_PATH", &self.config.compile_lib_path)
+            .env("HOST_RUSTC_DYLIB_PATH", &self.config.host_compile_lib_path)
             // Provide the directory to libraries that might be needed to run binaries created
             // by a compiler invoked by the recipe.
-            .env("TARGET_EXE_DYLIB_PATH", &self.config.run_lib_path)
+            .env("TARGET_EXE_DYLIB_PATH", &self.config.target_run_lib_path)
             // Provide the target.
             .env("TARGET", &self.config.target)
             // Some tests unfortunately still need Python, so provide path to a Python interpreter.
@@ -190,8 +190,8 @@ impl TestCx<'_> {
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
-        // Only `run-make-cargo` test suite gets an in-tree `cargo`, not `run-make`.
-        if self.config.suite == TestSuite::RunMakeCargo {
+        // The `run-make-cargo` and `build-std` suites need an in-tree `cargo`, `run-make` does not.
+        if matches!(self.config.suite, TestSuite::RunMakeCargo | TestSuite::BuildStd) {
             cmd.env(
                 "CARGO",
                 self.config.cargo_path.as_ref().expect("cargo must be built and made available"),
@@ -242,6 +242,15 @@ impl TestCx<'_> {
             // Used for `run_make_support::env::std_debug_assertions_enabled`.
             cmd.env("__STD_DEBUG_ASSERTIONS_ENABLED", "1");
         }
+
+        cmd.env_remove("__STD_REMAP_DEBUGINFO_ENABLED");
+        if self.config.with_std_remap_debuginfo {
+            // Used for `run_make_support::env::std_remap_debuginfo_enabled`.
+            cmd.env("__STD_REMAP_DEBUGINFO_ENABLED", "1");
+        }
+
+        // Used for `run_make_support::env::jobs`.
+        cmd.env("__BOOTSTRAP_JOBS", self.config.jobs.to_string());
 
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:

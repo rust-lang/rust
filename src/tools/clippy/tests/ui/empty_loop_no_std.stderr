@@ -1,5 +1,5 @@
 error: empty `loop {}` wastes CPU cycles
-  --> tests/ui/empty_loop_no_std.rs:10:5
+  --> tests/ui/empty_loop_no_std.rs:8:5
    |
 LL |     loop {}
    |     ^^^^^^^

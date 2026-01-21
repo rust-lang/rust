@@ -11,6 +11,17 @@ LL |             atomic_ref.load(Ordering::SeqCst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/data_race/atomic_read_na_write_race2.rs:LL:CC
+   |
+LL |   ...   let j2 = spawn(move || {
+   |  ________________^
+LL | | ...       let c = c; // avoid field capturing
+LL | | ...       let atomic_ref = &mut *c.0;
+LL | | ...       *atomic_ref.get_mut() = 32;
+LL | | ...   });
+   | |________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

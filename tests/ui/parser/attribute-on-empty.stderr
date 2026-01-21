@@ -1,7 +1,7 @@
 error: attributes cannot be applied here
   --> $DIR/attribute-on-empty.rs:7:16
    |
-LL |     let _: Baz<#[cfg(any())]> = todo!();
+LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          -     ^^^^^^^^^^^^^ attributes are not allowed here
    |          |
    |          while parsing the type for `_`

@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // This test illustrates a case where full NLL (enabled by the feature
 // switch below) produces superior diagnostics to the NLL-migrate
 // mode.

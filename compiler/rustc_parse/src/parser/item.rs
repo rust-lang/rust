@@ -117,6 +117,11 @@ impl<'a> Parser<'a> {
     }
 }
 
+enum ReuseKind {
+    Path,
+    Impl,
+}
+
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode =
@@ -227,9 +232,10 @@ impl<'a> Parser<'a> {
                 contract,
                 body,
                 define_opaque: None,
+                eii_impls: ThinVec::new(),
             }))
-        } else if self.eat_keyword(exp!(Extern)) {
-            if self.eat_keyword(exp!(Crate)) {
+        } else if self.eat_keyword_case(exp!(Extern), case) {
+            if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
                 self.parse_item_extern_crate()?
             } else {
@@ -241,19 +247,17 @@ impl<'a> Parser<'a> {
             let safety = self.parse_safety(Case::Sensitive);
             self.expect_keyword(exp!(Extern))?;
             self.parse_item_foreign_mod(attrs, safety)?
-        } else if self.is_static_global() {
-            let safety = self.parse_safety(Case::Sensitive);
+        } else if let Some(safety) = self.parse_global_static_front_matter(case) {
             // STATIC ITEM
-            self.bump(); // `static`
             let mutability = self.parse_mutability();
             self.parse_static_item(safety, mutability)?
-        } else if self.check_keyword(exp!(Trait)) || self.check_trait_front_matter() {
+        } else if self.check_keyword_case(exp!(Trait), case) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
-        } else if self.check_impl_frontmatter() {
+        } else if self.check_impl_frontmatter(0) {
             // IMPL ITEM
-            self.parse_item_impl(attrs, def_())?
-        } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
+            self.parse_item_impl(attrs, def_(), false)?
+        } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
@@ -266,20 +270,20 @@ impl<'a> Parser<'a> {
                 rhs,
                 define_opaque: None,
             }))
-        } else if self.is_reuse_path_item() {
-            self.parse_item_delegation()?
-        } else if self.check_keyword(exp!(Mod))
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Mod])
+        } else if let Some(kind) = self.is_reuse_item() {
+            self.parse_item_delegation(attrs, def_(), kind)?
+        } else if self.check_keyword_case(exp!(Mod), case)
+            || self.check_keyword_case(exp!(Unsafe), case) && self.is_keyword_ahead(1, &[kw::Mod])
         {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
-        } else if self.eat_keyword(exp!(Type)) {
+        } else if self.eat_keyword_case(exp!(Type), case) {
             // TYPE ITEM
             self.parse_type_alias(def_())?
-        } else if self.eat_keyword(exp!(Enum)) {
+        } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
-        } else if self.eat_keyword(exp!(Struct)) {
+        } else if self.eat_keyword_case(exp!(Struct), case) {
             // STRUCT ITEM
             self.parse_item_struct()?
         } else if self.is_kw_followed_by_ident(kw::Union) {
@@ -289,7 +293,7 @@ impl<'a> Parser<'a> {
         } else if self.is_builtin() {
             // BUILTIN# ITEM
             return self.parse_item_builtin();
-        } else if self.eat_keyword(exp!(Macro)) {
+        } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
         } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
@@ -368,16 +372,25 @@ impl<'a> Parser<'a> {
     /// When parsing a statement, would the start of a path be an item?
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
-        || self.is_reuse_path_item()
+        || self.is_reuse_item().is_some() // yes: `reuse impl Trait for Struct { self.0 }`, yes: `reuse some_path::foo;`
         || self.check_trait_front_matter() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
 
-    fn is_reuse_path_item(&mut self) -> bool {
+    fn is_reuse_item(&mut self) -> Option<ReuseKind> {
+        if !self.token.is_keyword(kw::Reuse) {
+            return None;
+        }
+
         // no: `reuse ::path` for compatibility reasons with macro invocations
-        self.token.is_keyword(kw::Reuse)
-            && self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep)
+        if self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep) {
+            Some(ReuseKind::Path)
+        } else if self.check_impl_frontmatter(1) {
+            Some(ReuseKind::Impl)
+        } else {
+            None
+        }
     }
 
     /// Are we sure this could not possibly be a macro invocation?
@@ -399,7 +412,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| {
                 matches!(t.kind, token::Lt | token::OpenBrace | token::OpenParen)
             }) {
-            self.parse_ident().unwrap()
+            self.parse_ident_common(true).unwrap()
         } else {
             return Ok(());
         };
@@ -561,6 +574,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         defaultness: Defaultness,
+        is_reuse: bool,
     ) -> PResult<'a, ItemKind> {
         let mut constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
@@ -629,7 +643,11 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
+        let impl_items = if is_reuse {
+            Default::default()
+        } else {
+            self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?
+        };
 
         let (of_trait, self_ty) = match ty_second {
             Some(ty_second) => {
@@ -700,10 +718,76 @@ impl<'a> Parser<'a> {
         Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items, constness }))
     }
 
-    fn parse_item_delegation(&mut self) -> PResult<'a, ItemKind> {
+    fn parse_item_delegation(
+        &mut self,
+        attrs: &mut AttrVec,
+        defaultness: Defaultness,
+        kind: ReuseKind,
+    ) -> PResult<'a, ItemKind> {
         let span = self.token.span;
         self.expect_keyword(exp!(Reuse))?;
 
+        let item_kind = match kind {
+            ReuseKind::Path => self.parse_path_like_delegation(),
+            ReuseKind::Impl => self.parse_impl_delegation(span, attrs, defaultness),
+        }?;
+
+        self.psess.gated_spans.gate(sym::fn_delegation, span.to(self.prev_token.span));
+
+        Ok(item_kind)
+    }
+
+    fn parse_delegation_body(&mut self) -> PResult<'a, Option<Box<Block>>> {
+        Ok(if self.check(exp!(OpenBrace)) {
+            Some(self.parse_block()?)
+        } else {
+            self.expect(exp!(Semi))?;
+            None
+        })
+    }
+
+    fn parse_impl_delegation(
+        &mut self,
+        span: Span,
+        attrs: &mut AttrVec,
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemKind> {
+        let mut impl_item = self.parse_item_impl(attrs, defaultness, true)?;
+        let ItemKind::Impl(Impl { items, of_trait, .. }) = &mut impl_item else { unreachable!() };
+
+        let until_expr_span = span.to(self.prev_token.span);
+
+        let Some(of_trait) = of_trait else {
+            return Err(self
+                .dcx()
+                .create_err(errors::ImplReuseInherentImpl { span: until_expr_span }));
+        };
+
+        let body = self.parse_delegation_body()?;
+        let whole_reuse_span = span.to(self.prev_token.span);
+
+        items.push(Box::new(AssocItem {
+            id: DUMMY_NODE_ID,
+            attrs: Default::default(),
+            span: whole_reuse_span,
+            tokens: None,
+            vis: Visibility {
+                kind: VisibilityKind::Inherited,
+                span: whole_reuse_span,
+                tokens: None,
+            },
+            kind: AssocItemKind::DelegationMac(Box::new(DelegationMac {
+                qself: None,
+                prefix: of_trait.trait_ref.path.clone(),
+                suffixes: None,
+                body,
+            })),
+        }));
+
+        Ok(impl_item)
+    }
+
+    fn parse_path_like_delegation(&mut self) -> PResult<'a, ItemKind> {
         let (qself, path) = if self.eat_lt() {
             let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
             (Some(qself), path)
@@ -714,43 +798,35 @@ impl<'a> Parser<'a> {
         let rename = |this: &mut Self| {
             Ok(if this.eat_keyword(exp!(As)) { Some(this.parse_ident()?) } else { None })
         };
-        let body = |this: &mut Self| {
-            Ok(if this.check(exp!(OpenBrace)) {
-                Some(this.parse_block()?)
-            } else {
-                this.expect(exp!(Semi))?;
-                None
-            })
-        };
 
-        let item_kind = if self.eat_path_sep() {
+        Ok(if self.eat_path_sep() {
             let suffixes = if self.eat(exp!(Star)) {
                 None
             } else {
                 let parse_suffix = |p: &mut Self| Ok((p.parse_path_segment_ident()?, rename(p)?));
                 Some(self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), parse_suffix)?.0)
             };
-            let deleg = DelegationMac { qself, prefix: path, suffixes, body: body(self)? };
-            ItemKind::DelegationMac(Box::new(deleg))
+
+            ItemKind::DelegationMac(Box::new(DelegationMac {
+                qself,
+                prefix: path,
+                suffixes,
+                body: self.parse_delegation_body()?,
+            }))
         } else {
             let rename = rename(self)?;
             let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
-            let deleg = Delegation {
+
+            ItemKind::Delegation(Box::new(Delegation {
                 id: DUMMY_NODE_ID,
                 qself,
                 path,
                 ident,
                 rename,
-                body: body(self)?,
+                body: self.parse_delegation_body()?,
                 from_glob: false,
-            };
-            ItemKind::Delegation(Box::new(deleg))
-        };
-
-        let span = span.to(self.prev_token.span);
-        self.psess.gated_spans.gate(sym::fn_delegation, span);
-
-        Ok(item_kind)
+            }))
+        })
     }
 
     fn parse_item_list<T>(
@@ -1324,19 +1400,28 @@ impl<'a> Parser<'a> {
             == Some(true)
     }
 
-    fn is_static_global(&mut self) -> bool {
-        if self.check_keyword(exp!(Static)) {
+    fn parse_global_static_front_matter(&mut self, case: Case) -> Option<Safety> {
+        let is_global_static = if self.check_keyword_case(exp!(Static), case) {
             // Check if this could be a closure.
             !self.look_ahead(1, |token| {
-                if token.is_keyword(kw::Move) || token.is_keyword(kw::Use) {
+                if token.is_keyword_case(kw::Move, case) || token.is_keyword_case(kw::Use, case) {
                     return true;
                 }
                 matches!(token.kind, token::Or | token::OrOr)
             })
         } else {
             // `$qual static`
-            (self.check_keyword(exp!(Unsafe)) || self.check_keyword(exp!(Safe)))
-                && self.look_ahead(1, |t| t.is_keyword(kw::Static))
+            (self.check_keyword_case(exp!(Unsafe), case)
+                || self.check_keyword_case(exp!(Safe), case))
+                && self.look_ahead(1, |t| t.is_keyword_case(kw::Static, case))
+        };
+
+        if is_global_static {
+            let safety = self.parse_safety(case);
+            let _ = self.eat_keyword_case(exp!(Static), case);
+            Some(safety)
+        } else {
+            None
         }
     }
 
@@ -1424,7 +1509,7 @@ impl<'a> Parser<'a> {
 
         let rhs = if self.eat(exp!(Eq)) {
             if attr::contains_name(attrs, sym::type_const) {
-                Some(ConstItemRhs::TypeConst(self.parse_expr_anon_const()?))
+                Some(ConstItemRhs::TypeConst(self.parse_const_arg()?))
             } else {
                 Some(ConstItemRhs::Body(self.parse_expr()?))
             }
@@ -1643,8 +1728,11 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             };
 
-            let disr_expr =
-                if this.eat(exp!(Eq)) { Some(this.parse_expr_anon_const()?) } else { None };
+            let disr_expr = if this.eat(exp!(Eq)) {
+                Some(this.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?)
+            } else {
+                None
+            };
 
             let vr = ast::Variant {
                 ident,
@@ -1857,7 +1945,7 @@ impl<'a> Parser<'a> {
                 if p.token == token::Eq {
                     let mut snapshot = p.create_snapshot_for_diagnostic();
                     snapshot.bump();
-                    match snapshot.parse_expr_anon_const() {
+                    match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
                         Ok(const_expr) => {
                             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
                             p.psess.gated_spans.gate(sym::default_field_values, sp);
@@ -2059,7 +2147,7 @@ impl<'a> Parser<'a> {
         }
         let default = if self.token == token::Eq {
             self.bump();
-            let const_expr = self.parse_expr_anon_const()?;
+            let const_expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.psess.gated_spans.gate(sym::default_field_values, sp);
             Some(const_expr)
@@ -2083,7 +2171,7 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis =
@@ -2193,7 +2281,10 @@ impl<'a> Parser<'a> {
         };
 
         self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
-        Ok(ItemKind::MacroDef(ident, ast::MacroDef { body, macro_rules: false }))
+        Ok(ItemKind::MacroDef(
+            ident,
+            ast::MacroDef { body, macro_rules: false, eii_declaration: None },
+        ))
     }
 
     /// Is this a possibly malformed start of a `macro_rules! foo` item definition?
@@ -2240,7 +2331,10 @@ impl<'a> Parser<'a> {
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
-        Ok(ItemKind::MacroDef(ident, ast::MacroDef { body, macro_rules: true }))
+        Ok(ItemKind::MacroDef(
+            ident,
+            ast::MacroDef { body, macro_rules: true, eii_declaration: None },
+        ))
     }
 
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
@@ -2577,7 +2671,7 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    fn check_impl_frontmatter(&mut self) -> bool {
+    fn check_impl_frontmatter(&mut self, look_ahead: usize) -> bool {
         const ALL_QUALS: &[Symbol] = &[kw::Const, kw::Unsafe];
         // In contrast to the loop below, this call inserts `impl` into the
         // list of expected tokens shown in diagnostics.
@@ -2586,7 +2680,7 @@ impl<'a> Parser<'a> {
         }
         let mut i = 0;
         while i < ALL_QUALS.len() {
-            let action = self.look_ahead(i, |token| {
+            let action = self.look_ahead(i + look_ahead, |token| {
                 if token.is_keyword(kw::Impl) {
                     return Some(true);
                 }
@@ -2601,6 +2695,7 @@ impl<'a> Parser<'a> {
             }
             i += 1;
         }
+
         self.is_keyword_ahead(i, &[kw::Impl])
     }
 

@@ -50,7 +50,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
     //
     // For instance, `//@ ignore-stage1` will not work at all.
     Config {
-        mode: TestMode::Rustdoc,
+        mode: TestMode::RustdocHtml,
         // E.g. this has no sensible default tbh.
         suite: TestSuite::Ui,
 
@@ -58,8 +58,8 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         edition: Default::default(),
         bless: Default::default(),
         fail_fast: Default::default(),
-        compile_lib_path: Utf8PathBuf::default(),
-        run_lib_path: Utf8PathBuf::default(),
+        host_compile_lib_path: Utf8PathBuf::default(),
+        target_run_lib_path: Utf8PathBuf::default(),
         rustc_path: Utf8PathBuf::default(),
         cargo_path: Default::default(),
         stage0_rustc_path: Default::default(),
@@ -83,6 +83,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         run_ignored: Default::default(),
         with_rustc_debug_assertions: Default::default(),
         with_std_debug_assertions: Default::default(),
+        with_std_remap_debuginfo: Default::default(),
         filters: Default::default(),
         skip: Default::default(),
         filter_exact: Default::default(),
@@ -108,12 +109,11 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         adb_test_dir: Default::default(),
         adb_device_status: Default::default(),
         verbose: Default::default(),
-        color: Default::default(),
         remote_test_client: Default::default(),
         compare_mode: Default::default(),
         rustfix_coverage: Default::default(),
-        has_html_tidy: Default::default(),
         has_enzyme: Default::default(),
+        has_offload: Default::default(),
         channel: Default::default(),
         git_hash: Default::default(),
         cc: Default::default(),
@@ -130,7 +130,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         target_cfgs: Default::default(),
         builtin_cfg_names: Default::default(),
         supported_crate_types: Default::default(),
-        nocapture: Default::default(),
+        capture: Default::default(),
         nightly_branch: Default::default(),
         git_merge_commit_email: Default::default(),
         profiler_runtime: Default::default(),
@@ -139,5 +139,6 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         default_codegen_backend: CodegenBackend::Llvm,
         override_codegen_backend: None,
         bypass_ignore_backends: Default::default(),
+        jobs: Default::default(),
     }
 }

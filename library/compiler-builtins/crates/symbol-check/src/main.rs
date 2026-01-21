@@ -7,9 +7,10 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use object::read::archive::{ArchiveFile, ArchiveMember};
+use object::read::archive::ArchiveFile;
 use object::{
-    File as ObjFile, Object, ObjectSection, ObjectSymbol, Symbol, SymbolKind, SymbolScope,
+    File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult, Symbol, SymbolKind,
+    SymbolScope,
 };
 use serde_json::Value;
 
@@ -24,6 +25,11 @@ Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
 `compiler_builtins*.rlib` files will be checked.
 
 If TARGET is not specified, the host target is used.
+
+    check PATHS ...
+
+Run the same checks on the given set of paths, without invoking Cargo. Paths
+may be either archives or object files.
 ";
 
 fn main() {
@@ -33,12 +39,14 @@ fn main() {
 
     match &args_ref[1..] {
         ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
-            check_cargo_args(args);
             run_build_and_check(target, args);
         }
         ["build-and-check", "--", args @ ..] if !args.is_empty() => {
-            check_cargo_args(args);
-            run_build_and_check(&host_target(), args);
+            let target = &host_target();
+            run_build_and_check(target, args);
+        }
+        ["check", paths @ ..] if !paths.is_empty() => {
+            check_paths(paths);
         }
         _ => {
             println!("{USAGE}");
@@ -47,22 +55,25 @@ fn main() {
     }
 }
 
-/// Make sure `--target` isn't passed to avoid confusion (since it should be proivded only once,
-/// positionally).
-fn check_cargo_args(args: &[&str]) {
+fn run_build_and_check(target: &str, args: &[&str]) {
+    // Make sure `--target` isn't passed to avoid confusion (since it should be
+    // proivded only once, positionally).
     for arg in args {
         assert!(
             !arg.contains("--target"),
             "target must be passed positionally. {USAGE}"
         );
     }
+
+    let paths = exec_cargo_with_args(target, args);
+    check_paths(&paths);
 }
 
-fn run_build_and_check(target: &str, args: &[&str]) {
-    let paths = exec_cargo_with_args(target, args);
+fn check_paths<P: AsRef<Path>>(paths: &[P]) {
     for path in paths {
+        let path = path.as_ref();
         println!("Checking {}", path.display());
-        let archive = Archive::from_path(&path);
+        let archive = BinFile::from_path(path);
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
@@ -165,7 +176,7 @@ struct SymInfo {
 }
 
 impl SymInfo {
-    fn new(sym: &Symbol, obj: &ObjFile, member: &ArchiveMember) -> Self {
+    fn new(sym: &Symbol, obj: &ObjFile, obj_path: &str) -> Self {
         // Include the section name if possible. Fall back to the `Section` debug impl if not.
         let section = sym.section();
         let section_name = sym
@@ -187,7 +198,7 @@ impl SymInfo {
             is_weak: sym.is_weak(),
             is_common: sym.is_common(),
             address: sym.address(),
-            object: String::from_utf8_lossy(member.name()).into_owned(),
+            object: obj_path.to_owned(),
         }
     }
 }
@@ -197,7 +208,7 @@ impl SymInfo {
 /// Note that this will also locate cases where a symbol is weakly defined in more than one place.
 /// Technically there are no linker errors that will come from this, but it keeps our binary more
 /// straightforward and saves some distribution size.
-fn verify_no_duplicates(archive: &Archive) {
+fn verify_no_duplicates(archive: &BinFile) {
     let mut syms = BTreeMap::<String, SymInfo>::new();
     let mut dups = Vec::new();
     let mut found_any = false;
@@ -254,7 +265,7 @@ fn verify_no_duplicates(archive: &Archive) {
 }
 
 /// Ensure that there are no references to symbols from `core` that aren't also (somehow) defined.
-fn verify_core_symbols(archive: &Archive) {
+fn verify_core_symbols(archive: &BinFile) {
     let mut defined = BTreeSet::new();
     let mut undefined = Vec::new();
     let mut has_symbols = false;
@@ -289,39 +300,63 @@ fn verify_core_symbols(archive: &Archive) {
 }
 
 /// Thin wrapper for owning data used by `object`.
-struct Archive {
+struct BinFile {
+    path: PathBuf,
     data: Vec<u8>,
 }
 
-impl Archive {
+impl BinFile {
     fn from_path(path: &Path) -> Self {
         Self {
+            path: path.to_owned(),
             data: fs::read(path).expect("reading file failed"),
         }
     }
 
-    fn file(&self) -> ArchiveFile<'_> {
-        ArchiveFile::parse(self.data.as_slice()).expect("archive parse failed")
+    fn as_archive_file(&self) -> ObjResult<ArchiveFile<'_>> {
+        ArchiveFile::parse(self.data.as_slice())
     }
 
-    /// For a given archive, do something with each object file.
-    fn for_each_object(&self, mut f: impl FnMut(ObjFile, &ArchiveMember)) {
-        let archive = self.file();
+    fn as_obj_file(&self) -> ObjResult<ObjFile<'_>> {
+        ObjFile::parse(self.data.as_slice())
+    }
 
-        for member in archive.members() {
-            let member = member.expect("failed to access member");
-            let obj_data = member
-                .data(self.data.as_slice())
-                .expect("failed to access object");
-            let obj = ObjFile::parse(obj_data).expect("failed to parse object");
-            f(obj, &member);
+    /// For a given archive, do something with each object file. For an object file, do
+    /// something once.
+    fn for_each_object(&self, mut f: impl FnMut(ObjFile, &str)) {
+        // Try as an archive first.
+        let as_archive = self.as_archive_file();
+        if let Ok(archive) = as_archive {
+            for member in archive.members() {
+                let member = member.expect("failed to access member");
+                let obj_data = member
+                    .data(self.data.as_slice())
+                    .expect("failed to access object");
+                let obj = ObjFile::parse(obj_data).expect("failed to parse object");
+                f(obj, &String::from_utf8_lossy(member.name()));
+            }
+
+            return;
         }
+
+        // Fall back to parsing as an object file.
+        let as_obj = self.as_obj_file();
+        if let Ok(obj) = as_obj {
+            f(obj, &self.path.to_string_lossy());
+            return;
+        }
+
+        panic!(
+            "failed to parse as either archive or object file: {:?}, {:?}",
+            as_archive.unwrap_err(),
+            as_obj.unwrap_err(),
+        );
     }
 
-    /// For a given archive, do something with each symbol.
-    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ObjFile, &ArchiveMember)) {
-        self.for_each_object(|obj, member| {
-            obj.symbols().for_each(|sym| f(sym, &obj, member));
+    /// D something with each symbol in an archive or object file.
+    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ObjFile, &str)) {
+        self.for_each_object(|obj, obj_path| {
+            obj.symbols().for_each(|sym| f(sym, &obj, obj_path));
         });
     }
 }

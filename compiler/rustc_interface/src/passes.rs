@@ -26,7 +26,6 @@ use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_sto
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
@@ -40,8 +39,7 @@ use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
-    Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
@@ -595,7 +593,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .filter(|fmap| !fmap.is_imported())
             .map(|fmap| {
                 (
-                    escape_dep_filename(&fmap.name.prefer_local().to_string()),
+                    escape_dep_filename(&fmap.name.prefer_local_unconditionally().to_string()),
                     // This needs to be unnormalized,
                     // as external tools wouldn't know how rustc normalizes them
                     fmap.unnormalized_source_len as u64,
@@ -610,10 +608,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.psess.file_depinfo.borrow();
 
-        let normalize_path = |path: PathBuf| {
-            let file = FileName::from(path);
-            escape_dep_filename(&file.prefer_local().to_string())
-        };
+        let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
         // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
@@ -684,19 +679,19 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
             for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
-                if let Some((path, _)) = &source.dylib {
+                if let Some(path) = &source.dylib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rlib {
+                if let Some(path) = &source.rlib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rmeta {
+                if let Some(path) = &source.rmeta {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
@@ -884,36 +879,37 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
-    providers.analysis = analysis;
-    providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.resolver_for_lowering_raw = resolver_for_lowering_raw;
-    providers.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
-    providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
-    providers.early_lint_checks = early_lint_checks;
-    providers.env_var_os = env_var_os;
-    limits::provide(providers);
-    proc_macro_decls::provide(providers);
+    providers.queries.analysis = analysis;
+    providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
+    providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
+    providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
+    providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
+    providers.queries.early_lint_checks = early_lint_checks;
+    providers.queries.env_var_os = env_var_os;
+    limits::provide(&mut providers.queries);
+    proc_macro_decls::provide(&mut providers.queries);
+    rustc_expand::provide(&mut providers.queries);
     rustc_const_eval::provide(providers);
-    rustc_middle::hir::provide(providers);
-    rustc_borrowck::provide(providers);
+    rustc_middle::hir::provide(&mut providers.queries);
+    rustc_borrowck::provide(&mut providers.queries);
     rustc_incremental::provide(providers);
     rustc_mir_build::provide(providers);
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
-    rustc_privacy::provide(providers);
+    rustc_privacy::provide(&mut providers.queries);
     rustc_query_impl::provide(providers);
-    rustc_resolve::provide(providers);
-    rustc_hir_analysis::provide(providers);
-    rustc_hir_typeck::provide(providers);
-    ty::provide(providers);
-    traits::provide(providers);
-    solve::provide(providers);
-    rustc_passes::provide(providers);
-    rustc_traits::provide(providers);
-    rustc_ty_utils::provide(providers);
+    rustc_resolve::provide(&mut providers.queries);
+    rustc_hir_analysis::provide(&mut providers.queries);
+    rustc_hir_typeck::provide(&mut providers.queries);
+    ty::provide(&mut providers.queries);
+    traits::provide(&mut providers.queries);
+    solve::provide(&mut providers.queries);
+    rustc_passes::provide(&mut providers.queries);
+    rustc_traits::provide(&mut providers.queries);
+    rustc_ty_utils::provide(&mut providers.queries);
     rustc_metadata::provide(providers);
-    rustc_lint::provide(providers);
-    rustc_symbol_mangling::provide(providers);
+    rustc_lint::provide(&mut providers.queries);
+    rustc_symbol_mangling::provide(&mut providers.queries);
     rustc_codegen_ssa::provide(providers);
     *providers
 });
@@ -943,8 +939,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
 
-    let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
-    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id, &dep_type);
+    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -1061,6 +1056,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         parallel!(
             {
                 sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
+                sess.time("check_externally_implementable_items", || {
+                    tcx.ensure_ok().check_externally_implementable_items(())
+                });
 
                 sess.time("looking_for_derive_registrar", || {
                     tcx.ensure_ok().proc_macro_decls_static(())

@@ -19,23 +19,23 @@ impl Drop for NotCopy {
 // CHECK-LABEL: @iter_repeat_n_next
 pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCopy> {
     // CHECK-NEXT: start:
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK: %[[COUNT:.+]] = load i64
     // CHECK-NEXT: %[[COUNT_ZERO:.+]] = icmp eq i64 %[[COUNT]], 0
     // CHECK-NEXT: br i1 %[[COUNT_ZERO]], label %[[EMPTY:.+]], label %[[NOT_EMPTY:.+]]
 
     // CHECK: [[NOT_EMPTY]]:
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK: %[[DEC:.+]] = add i64 %[[COUNT]], -1
     // CHECK-NEXT: %[[VAL:.+]] = load i16
     // CHECK-NEXT: store i64 %[[DEC]]
     // CHECK-NEXT: br label %[[EMPTY]]
 
     // CHECK: [[EMPTY]]:
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK: phi i16
     // CHECK-SAME: [ %[[VAL]], %[[NOT_EMPTY]] ]
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK: ret
 
     it.next()

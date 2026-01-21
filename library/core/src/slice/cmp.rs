@@ -13,12 +13,9 @@ impl<T, U> const PartialEq<[U]> for [T]
 where
     T: [const] PartialEq<U>,
 {
+    #[inline]
     fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
-    }
-
-    fn ne(&self, other: &[U]) -> bool {
-        SlicePartialEq::not_equal(self, other)
     }
 }
 
@@ -99,10 +96,6 @@ impl<T: PartialOrd> PartialOrd for [T] {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
-
-    fn not_equal(&self, other: &[B]) -> bool {
-        !self.equal(other)
-    }
 }
 
 // Generic slice equality
@@ -111,6 +104,11 @@ impl<A, B> const SlicePartialEq<B> for [A]
 where
     A: [const] PartialEq<B>,
 {
+    // It's not worth trying to inline the loops underneath here *in MIR*,
+    // and preventing it encourages more useful inlining upstream,
+    // such as in `<str as PartialEq>::eq`.
+    // The codegen backend can still inline it later if needed.
+    #[rustc_no_mir_inline]
     default fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
             return false;
@@ -140,6 +138,16 @@ impl<A, B> const SlicePartialEq<B> for [A]
 where
     A: [const] BytewiseEq<B>,
 {
+    // This is usually a pretty good backend inlining candidate because the
+    // intrinsic tends to just be `memcmp`.  However, as of 2025-12 letting
+    // MIR inline this makes reuse worse because it means that, for example,
+    // `String::eq` doesn't inline, whereas by keeping this from inling all
+    // the wrappers until the call to this disappear.  If the heuristics have
+    // changed and this is no longer fruitful, though, please do remove it.
+    // In the mean time, it's fine to not inline it in MIR because the backend
+    // will still inline it if it things it's important to do so.
+    #[rustc_no_mir_inline]
+    #[inline]
     fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
             return false;

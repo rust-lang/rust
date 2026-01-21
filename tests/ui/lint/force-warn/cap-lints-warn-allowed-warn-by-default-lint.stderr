@@ -1,5 +1,5 @@
 warning: `...` range patterns are deprecated
-  --> $DIR/cap-lints-warn-allowed-warn-by-default-lint.rs:10:10
+  --> $DIR/cap-lints-warn-allowed-warn-by-default-lint.rs:11:10
    |
 LL |         0...100 => true,
    |          ^^^ help: use `..=` for an inclusive range

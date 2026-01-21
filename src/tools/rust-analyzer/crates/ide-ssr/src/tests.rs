@@ -1,9 +1,8 @@
 use expect_test::{Expect, expect};
 use hir::{FilePosition, FileRange};
 use ide_db::{
-    EditionedFileId, FxHashSet,
+    EditionedFileId, FxHashSet, LocalRoots,
     base_db::{SourceDatabase, salsa::Setter},
-    symbol_index::LocalRoots,
 };
 use test_utils::RangeOrOffset;
 

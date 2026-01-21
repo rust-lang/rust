@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-ignore-leaks -Zmiri-genmc -Zmiri-disable-stacked-borrows
-//@normalize-stderr-test: "\n *= note: inside `std::.*" -> ""
 
 use std::alloc::{Layout, alloc};
 use std::cell::Cell;

@@ -110,7 +110,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
     /// you first find which scc it is a part of.
-    scc_values: RegionValues<ConstraintSccIndex>,
+    scc_values: RegionValues<'tcx, ConstraintSccIndex>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -125,7 +125,7 @@ pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
     /// variable? etc. (See the `NllRegionVariableOrigin` for more
     /// info.)
-    pub(crate) origin: NllRegionVariableOrigin,
+    pub(crate) origin: NllRegionVariableOrigin<'tcx>,
 
     /// Which universe is this region variable defined in? This is
     /// most often `ty::UniverseIndex::ROOT`, but when we encounter
@@ -453,7 +453,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns `true` if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
-    pub(crate) fn region_contains(&self, r: RegionVid, p: impl ToElementIndex) -> bool {
+    pub(crate) fn region_contains(&self, r: RegionVid, p: impl ToElementIndex<'tcx>) -> bool {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.contains(scc, p)
     }
@@ -481,7 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn placeholders_contained_in(
         &self,
         r: RegionVid,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.placeholders_contained_in(scc)
     }
@@ -1275,29 +1275,81 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         shorter_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
     ) -> RegionRelationCheckResult {
-        if let Some(propagated_outlives_requirements) = propagated_outlives_requirements
-            // Shrink `longer_fr` until we find a non-local region (if we do).
-            // We'll call it `fr-` -- it's ever so slightly smaller than
+        if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
+            // Shrink `longer_fr` until we find some non-local regions.
+            // We'll call them `longer_fr-` -- they are ever so slightly smaller than
             // `longer_fr`.
-            && let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
-        {
-            debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
+            let longer_fr_minus = self.universal_region_relations.non_local_lower_bounds(longer_fr);
+
+            debug!("try_propagate_universal_region_error: fr_minus={:?}", longer_fr_minus);
+
+            // If we don't find a any non-local regions, we should error out as there is nothing
+            // to propagate.
+            if longer_fr_minus.is_empty() {
+                return RegionRelationCheckResult::Error;
+            }
 
             let blame_constraint = self
                 .best_blame_constraint(longer_fr, NllRegionVariableOrigin::FreeRegion, shorter_fr)
                 .0;
 
-            // Grow `shorter_fr` until we find some non-local regions. (We
-            // always will.)  We'll call them `shorter_fr+` -- they're ever
-            // so slightly larger than `shorter_fr`.
+            // Grow `shorter_fr` until we find some non-local regions.
+            // We will always find at least one: `'static`. We'll call
+            // them `shorter_fr+` -- they're ever so slightly larger
+            // than `shorter_fr`.
             let shorter_fr_plus =
                 self.universal_region_relations.non_local_upper_bounds(shorter_fr);
             debug!("try_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus);
-            for fr in shorter_fr_plus {
-                // Push the constraint `fr-: shorter_fr+`
+
+            // We then create constraints `longer_fr-: shorter_fr+` that may or may not
+            // be propagated (see below).
+            let mut constraints = vec![];
+            for fr_minus in longer_fr_minus {
+                for shorter_fr_plus in &shorter_fr_plus {
+                    constraints.push((fr_minus, *shorter_fr_plus));
+                }
+            }
+
+            // We only need to propagate at least one of the constraints for
+            // soundness. However, we want to avoid arbitrary choices here
+            // and currently don't support returning OR constraints.
+            //
+            // If any of the `shorter_fr+` regions are already outlived by `longer_fr-`,
+            // we propagate only those.
+            //
+            // Consider this example (`'b: 'a` == `a -> b`), where we try to propagate `'d: 'a`:
+            // a --> b --> d
+            //  \
+            //   \-> c
+            // Here, `shorter_fr+` of `'a` == `['b, 'c]`.
+            // Propagating `'d: 'b` is correct and should occur; `'d: 'c` is redundant because of
+            // `'d: 'b` and could reject valid code.
+            //
+            // So we filter the constraints to regions already outlived by `longer_fr-`, but if
+            // the filter yields an empty set, we fall back to the original one.
+            let subset: Vec<_> = constraints
+                .iter()
+                .filter(|&&(fr_minus, shorter_fr_plus)| {
+                    self.eval_outlives(fr_minus, shorter_fr_plus)
+                })
+                .copied()
+                .collect();
+            let propagated_constraints = if subset.is_empty() { constraints } else { subset };
+            debug!(
+                "try_propagate_universal_region_error: constraints={:?}",
+                propagated_constraints
+            );
+
+            assert!(
+                !propagated_constraints.is_empty(),
+                "Expected at least one constraint to propagate here"
+            );
+
+            for (fr_minus, fr_plus) in propagated_constraints {
+                // Push the constraint `long_fr-: shorter_fr+`
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     subject: ClosureOutlivesSubject::Region(fr_minus),
-                    outlived_free_region: fr,
+                    outlived_free_region: fr_plus,
                     blame_span: blame_constraint.cause.span,
                     category: blame_constraint.category,
                 });
@@ -1311,7 +1363,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_bound_universal_region(
         &self,
         longer_fr: RegionVid,
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
@@ -1523,7 +1575,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn region_from_element(
         &self,
         longer_fr: RegionVid,
-        element: &RegionElement,
+        element: &RegionElement<'tcx>,
     ) -> RegionVid {
         match *element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
@@ -1564,7 +1616,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn best_blame_constraint(
         &self,
         from_region: RegionVid,
-        from_region_origin: NllRegionVariableOrigin,
+        from_region_origin: NllRegionVariableOrigin<'tcx>,
         to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         assert!(from_region != to_region, "Trying to blame a region for itself!");
@@ -1697,6 +1749,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // should be as limited as possible; the note is prone to false positives and this
                 // constraint usually isn't best to blame.
                 ConstraintCategory::Cast {
+                    is_raw_ptr_dyn_type_cast: _,
                     unsize_to: Some(unsize_ty),
                     is_implicit_coercion: true,
                 } if to_region == self.universal_regions().fr_static

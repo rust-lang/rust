@@ -43,7 +43,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
         (Range(lf, lt, le), Range(rf, rt, re)) => {
             eq_expr_opt(lf.as_deref(), rf.as_deref())
                 && eq_expr_opt(lt.as_deref(), rt.as_deref())
-                && eq_range_end(&le.node, &re.node)
+                && eq_range_end(le.node, re.node)
         },
         (Box(l), Box(r)) => eq_pat(l, r),
         (Ref(l, l_pin, l_mut), Ref(r, r_pin, r_mut)) => l_pin == r_pin && l_mut == r_mut && eq_pat(l, r),
@@ -64,7 +64,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
     }
 }
 
-pub fn eq_range_end(l: &RangeEnd, r: &RangeEnd) -> bool {
+pub fn eq_range_end(l: RangeEnd, r: RangeEnd) -> bool {
     match (l, r) {
         (RangeEnd::Excluded, RangeEnd::Excluded) => true,
         (RangeEnd::Included(l), RangeEnd::Included(r)) => {
@@ -199,7 +199,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => eq_label(ll.as_ref(), rl.as_ref()) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt) && lk == rk,
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
-        (TryBlock(l), TryBlock(r)) => eq_block(l, r),
+        (TryBlock(lb, lt), TryBlock(rb, rt)) => eq_block(lb, rb) && both(lt.as_deref(), rt.as_deref(), eq_ty),
         (Yield(l), Yield(r)) => eq_expr_opt(l.expr().map(Box::as_ref), r.expr().map(Box::as_ref)) && l.same_kind(r),
         (Ret(l), Ret(r)) => eq_expr_opt(l.as_deref(), r.as_deref()),
         (Break(ll, le), Break(rl, re)) => {
@@ -382,6 +382,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -391,6 +392,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -554,6 +556,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -563,6 +566,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -638,6 +642,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -647,6 +652,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -875,7 +881,6 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq.as_deref(), rq.as_deref(), eq_qself) && eq_path(lp, rp),
         (TraitObject(lg, ls), TraitObject(rg, rs)) => ls == rs && over(lg, rg, eq_generic_bound),
         (ImplTrait(_, lg), ImplTrait(_, rg)) => over(lg, rg, eq_generic_bound),
-        (Typeof(l), Typeof(r)) => eq_expr(&l.value, &r.value),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
     }
@@ -971,9 +976,19 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
+            (Normal(l), Normal(r)) => {
+                eq_path(&l.item.path, &r.item.path) && eq_attr_item_kind(&l.item.args, &r.item.args)
+            },
             _ => false,
         }
+}
+
+pub fn eq_attr_item_kind(l: &AttrItemKind, r: &AttrItemKind) -> bool {
+    match (l, r) {
+        (AttrItemKind::Unparsed(l), AttrItemKind::Unparsed(r)) => eq_attr_args(l, r),
+        (AttrItemKind::Parsed(_l), AttrItemKind::Parsed(_r)) => todo!(),
+        _ => false,
+    }
 }
 
 pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {

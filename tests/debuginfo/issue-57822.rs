@@ -8,23 +8,23 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print g
-// gdb-check:$1 = issue_57822::main::{closure_env#1} {f: issue_57822::main::{closure_env#0} {x: 1}}
+//@ gdb-command:print g
+//@ gdb-check:$1 = issue_57822::main::{closure_env#1} {f: issue_57822::main::{closure_env#0} {x: 1}}
 
-// gdb-command:print b
-// gdb-check:$2 = issue_57822::main::{coroutine_env#3}::Unresumed{a: issue_57822::main::{coroutine_env#2}::Unresumed{y: 2}}
+//@ gdb-command:print b
+//@ gdb-check:$2 = issue_57822::main::{coroutine_env#3}::Unresumed{a: issue_57822::main::{coroutine_env#2}::Unresumed{y: 2}}
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v g
-// lldb-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
+//@ lldb-command:v g
+//@ lldb-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
 
-// lldb-command:v b
-// lldb-check:(issue_57822::main::{coroutine_env#3}) b = 2{a:2{y:2}} { a = 2{y:2} { y = 2 } }
+//@ lldb-command:v b
+//@ lldb-check:(issue_57822::main::{coroutine_env#3}) b = 2{a:2{y:2}} { a = 2{y:2} { y = 2 } }
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 

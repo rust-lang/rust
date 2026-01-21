@@ -1,3 +1,7 @@
+// This is a test for various ways in which the change to the never type
+// fallback can break things and for the `dependency_on_unit_never_type_fallback`
+// lint.
+//
 //@ revisions: e2021 e2024
 //
 //@[e2021] edition: 2021

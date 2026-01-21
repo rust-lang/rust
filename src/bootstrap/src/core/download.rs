@@ -381,7 +381,7 @@ impl Config {
         }
         let base = &self.stage0_metadata.config.artifacts_server;
         let version = self.artifact_version_part(gcc_sha);
-        let filename = format!("gcc-{version}-{}.tar.xz", self.host_target.triple);
+        let filename = format!("gcc-dev-{version}-{}.tar.xz", self.host_target.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci
@@ -396,7 +396,7 @@ impl Config {
     ";
             self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
         }
-        self.unpack(&tarball, root_dir, "gcc");
+        self.unpack(&tarball, root_dir, "gcc-dev");
     }
 }
 
@@ -447,6 +447,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
     // All tier 1 targets and tier 2 targets with host tools.
     const SUPPORTED_PLATFORMS: &[&str] = &[
         "aarch64-apple-darwin",
+        "aarch64-pc-windows-gnullvm",
         "aarch64-pc-windows-msvc",
         "aarch64-unknown-linux-gnu",
         "aarch64-unknown-linux-musl",
@@ -465,6 +466,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
         "s390x-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "x86_64-pc-windows-gnu",
+        "x86_64-pc-windows-gnullvm",
         "x86_64-pc-windows-msvc",
         "x86_64-unknown-freebsd",
         "x86_64-unknown-illumos",

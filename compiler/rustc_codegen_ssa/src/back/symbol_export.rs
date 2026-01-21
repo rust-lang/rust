@@ -14,7 +14,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, OomStrategy};
+use rustc_session::config::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
@@ -126,7 +126,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER),
                 rustc_std_internal_symbol: codegen_attrs
                     .flags
-                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL),
+                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                    || codegen_attrs
+                        .flags
+                        .contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM),
             };
             (def_id.to_def_id(), info)
         })
@@ -459,15 +462,16 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.reachable_non_generics = reachable_non_generics_provider;
-    providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
-    providers.exported_non_generic_symbols = exported_non_generic_symbols_provider_local;
-    providers.exported_generic_symbols = exported_generic_symbols_provider_local;
-    providers.upstream_monomorphizations = upstream_monomorphizations_provider;
-    providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
-    providers.wasm_import_module_map = wasm_import_module_map;
+    providers.queries.reachable_non_generics = reachable_non_generics_provider;
+    providers.queries.is_reachable_non_generic = is_reachable_non_generic_provider_local;
+    providers.queries.exported_non_generic_symbols = exported_non_generic_symbols_provider_local;
+    providers.queries.exported_generic_symbols = exported_generic_symbols_provider_local;
+    providers.queries.upstream_monomorphizations = upstream_monomorphizations_provider;
+    providers.queries.is_unreachable_local_definition = is_unreachable_local_definition_provider;
+    providers.queries.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
-    providers.upstream_monomorphizations_of_crate = upstream_monomorphizations_of_crate_provider;
+    providers.queries.upstream_monomorphizations_of_crate =
+        upstream_monomorphizations_of_crate_provider;
 }
 
 pub(crate) fn allocator_shim_symbols(
@@ -478,7 +482,6 @@ pub(crate) fn allocator_shim_symbols(
         .map(move |method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
         .chain([
             mangle_internal_symbol(tcx, global_fn_name(ALLOC_ERROR_HANDLER).as_str()),
-            mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
             mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
         ])
         .map(move |symbol_name| {
@@ -505,10 +508,12 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
     let is_extern = codegen_fn_attrs.contains_extern_indicator();
     let std_internal =
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+    let eii = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM);
 
-    if is_extern && !std_internal {
+    if is_extern && !std_internal && !eii {
         let target = &tcx.sess.target.llvm_target;
         // WebAssembly cannot export data symbols, so reduce their export level
+        // FIXME(jdonszelmann) don't do a substring match here.
         if target.contains("emscripten") {
             if let DefKind::Static { .. } = tcx.def_kind(sym_def_id) {
                 return SymbolExportLevel::Rust;

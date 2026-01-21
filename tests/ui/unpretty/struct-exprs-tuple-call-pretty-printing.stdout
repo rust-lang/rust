@@ -1,0 +1,38 @@
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+
+#![feature(min_generic_const_args, adt_const_params)]
+#![expect(incomplete_features)]
+#![allow(dead_code)]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+use std::marker::ConstParamTy;
+
+struct Point(u32, u32);
+
+struct Point3();
+
+struct Point1 {
+    a: u32,
+    b: u32,
+}
+
+struct Point2 {
+}
+
+fn with_point<const P: Point>() { }
+fn with_point1<const P: Point1>() { }
+fn with_point2<const P: Point2>() { }
+fn with_point3<const P: Point3>() { }
+
+fn test<const N:
+    u32>() {
+    with_point::<Point(N, N)>();
+    with_point1::<Point1 { a: N, b: N}>();
+    with_point2::<Point2 {}>();
+    with_point3::<Point3()>();
+}
+
+fn main() { }

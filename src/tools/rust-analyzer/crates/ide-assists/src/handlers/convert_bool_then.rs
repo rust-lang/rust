@@ -163,7 +163,8 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
     let name_ref = ctx.find_node_at_offset::<ast::NameRef>()?;
     let mcall = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
     let receiver = mcall.receiver()?;
-    let closure_body = mcall.arg_list()?.args().exactly_one().ok()?;
+    // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+    let closure_body = Itertools::exactly_one(mcall.arg_list()?.args()).ok()?;
     let closure_body = match closure_body {
         ast::Expr::ClosureExpr(expr) => expr.body()?,
         _ => return None,

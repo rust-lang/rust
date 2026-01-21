@@ -1,5 +1,5 @@
-error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-35075.rs:2:12
+error[E0425]: cannot find type `Foo` in this scope
+  --> $DIR/issue-35075.rs:3:12
    |
 LL |     inner: Foo<T>
    |            ^^^ not found in this scope
@@ -10,8 +10,8 @@ LL -     inner: Foo<T>
 LL +     inner: Baz
    |
 
-error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-35075.rs:6:9
+error[E0425]: cannot find type `Foo` in this scope
+  --> $DIR/issue-35075.rs:7:9
    |
 LL |     Foo(Foo<T>)
    |         ^^^ not found in this scope
@@ -24,4 +24,4 @@ LL +     Foo(Baz)
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

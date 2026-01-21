@@ -354,7 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             return;
                         }
 
-                        let sugg = snippet(cx, recv.span, "<expr>").into_owned();
+                        let mut applicability = Applicability::MachineApplicable;
+                        let sugg = snippet_with_context(cx, recv.span, e.span.ctxt(), "<expr>", &mut applicability)
+                            .0
+                            .into_owned();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
@@ -453,12 +456,24 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
 
 fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
     let mut prefix = String::new();
-    for adj in cx.typeck_results().expr_adjustments(expr) {
+
+    let adjustments = cx.typeck_results().expr_adjustments(expr);
+
+    let [.., last] = adjustments else { return prefix };
+    let target = last.target;
+
+    for adj in adjustments {
         match adj.kind {
             Adjust::Deref(_) => prefix = format!("*{prefix}"),
             Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })) => prefix = format!("&mut {prefix}"),
             Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)) => prefix = format!("&{prefix}"),
             _ => {},
+        }
+
+        // Stop once we reach the final target type.
+        // This prevents over-adjusting (e.g. suggesting &**y instead of *y).
+        if adj.target == target {
+            break;
         }
     }
     prefix

@@ -47,6 +47,89 @@ fn arm_rhs_expr_3() -> i32 {
     }
 }
 
+fn expand_to_statements() -> i32 {
+    cfg_select! {
+        true => {
+            let a = 1;
+            a + 1
+        }
+        false => {
+            let b = 2;
+            b + 1
+        }
+    }
+}
+
+type ExpandToType = cfg_select! {
+    unix => u32,
+    _ => i32,
+};
+
+fn expand_to_pattern(x: Option<i32>) -> bool {
+    match x {
+        (cfg_select! {
+            unix => Some(n),
+            _ => None,
+        }) => true,
+        _ => false,
+    }
+}
+
+cfg_select! {
+    true => {
+        fn foo() {}
+    }
+    _ => {
+        fn bar() {}
+    }
+}
+
+struct S;
+
+impl S {
+    cfg_select! {
+        true => {
+            fn foo() {}
+        }
+        _ => {
+            fn bar() {}
+        }
+    }
+}
+
+trait T {
+    cfg_select! {
+        true => {
+            fn a();
+        }
+        _ => {
+            fn b();
+        }
+    }
+}
+
+impl T for S {
+    cfg_select! {
+        true => {
+            fn a() {}
+        }
+        _ => {
+            fn b() {}
+        }
+    }
+}
+
+extern "C" {
+    cfg_select! {
+        true => {
+            fn puts(s: *const i8) -> i32;
+        }
+        _ => {
+            fn printf(fmt: *const i8, ...) -> i32;
+        }
+    }
+}
+
 cfg_select! {
     _ => {}
     true => {}
@@ -68,7 +151,7 @@ cfg_select! {
 
 cfg_select! {
     () => {}
-    //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `(`
+    //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
 }
 
 cfg_select! {
@@ -89,9 +172,11 @@ cfg_select! {
 cfg_select! {
     a + 1 => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `+`
+    //~| WARN unexpected `cfg` condition name
 }
 
 cfg_select! {
     cfg!() => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `!`
+    //~| WARN unexpected `cfg` condition name
 }

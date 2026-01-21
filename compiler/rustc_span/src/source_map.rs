@@ -105,6 +105,9 @@ pub trait FileLoader {
     /// Read the contents of a potentially non-UTF-8 file into memory.
     /// We don't normalize binary files, so we can start in an Arc.
     fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>>;
+
+    /// Current working directory
+    fn current_directory(&self) -> io::Result<PathBuf>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -170,6 +173,10 @@ impl FileLoader for RealFileLoader {
         file.read_to_end(&mut bytes)?;
         Ok(bytes.into())
     }
+
+    fn current_directory(&self) -> io::Result<PathBuf> {
+        std::env::current_dir()
+    }
 }
 
 // _____________________________________________________________________________
@@ -198,6 +205,9 @@ pub struct SourceMap {
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
 
+    /// Current working directory
+    working_dir: RealFileName,
+
     /// The algorithm used for hashing the contents of each source file.
     hash_kind: SourceFileHashAlgorithm,
 
@@ -221,8 +231,14 @@ impl SourceMap {
     pub fn with_inputs(
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind }: SourceMapInputs,
     ) -> SourceMap {
+        let cwd = file_loader
+            .current_directory()
+            .expect("expecting a current working directory to exist");
+        let working_dir = path_mapping.to_real_filename(&RealFileName::empty(), &cwd);
+        debug!(?working_dir);
         SourceMap {
             files: Default::default(),
+            working_dir,
             file_loader: IntoDynSyncSend(file_loader),
             path_mapping,
             hash_kind,
@@ -234,13 +250,17 @@ impl SourceMap {
         &self.path_mapping
     }
 
+    pub fn working_dir(&self) -> &RealFileName {
+        &self.working_dir
+    }
+
     pub fn file_exists(&self, path: &Path) -> bool {
         self.file_loader.file_exists(path)
     }
 
     pub fn load_file(&self, path: &Path) -> io::Result<Arc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
-        let filename = path.to_owned().into();
+        let filename = FileName::Real(self.path_mapping.to_real_filename(&self.working_dir, path));
         Ok(self.new_source_file(filename, src))
     }
 
@@ -257,7 +277,8 @@ impl SourceMap {
         // via `mod`, so we try to use real file contents and not just an
         // empty string.
         let text = std::str::from_utf8(&bytes).unwrap_or("").to_string();
-        let file = self.new_source_file(path.to_owned().into(), text);
+        let filename = FileName::Real(self.path_mapping.to_real_filename(&self.working_dir, path));
+        let file = self.new_source_file(filename, text);
         Ok((
             bytes,
             Span::new(
@@ -325,7 +346,6 @@ impl SourceMap {
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
-        let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
 
         let stable_id = StableSourceFileId::from_filename_in_current_crate(&filename);
         match self.source_file_by_stable_id(stable_id) {
@@ -424,25 +444,36 @@ impl SourceMap {
         }
     }
 
-    pub fn span_to_string(
+    pub fn span_to_string(&self, sp: Span, display_scope: RemapPathScopeComponents) -> String {
+        self.span_to_string_ext(sp, display_scope, false)
+    }
+
+    pub fn span_to_short_string(
         &self,
         sp: Span,
-        filename_display_pref: FileNameDisplayPreference,
+        display_scope: RemapPathScopeComponents,
+    ) -> String {
+        self.span_to_string_ext(sp, display_scope, true)
+    }
+
+    fn span_to_string_ext(
+        &self,
+        sp: Span,
+        display_scope: RemapPathScopeComponents,
+        short: bool,
     ) -> String {
         let (source_file, lo_line, lo_col, hi_line, hi_col) = self.span_to_location_info(sp);
 
         let file_name = match source_file {
-            Some(sf) => sf.name.display(filename_display_pref).to_string(),
+            Some(sf) => {
+                if short { sf.name.short() } else { sf.name.display(display_scope) }.to_string()
+            }
             None => return "no-location".to_string(),
         };
 
         format!(
             "{file_name}:{lo_line}:{lo_col}{}",
-            if let FileNameDisplayPreference::Short = filename_display_pref {
-                String::new()
-            } else {
-                format!(": {hi_line}:{hi_col}")
-            }
+            if short { String::new() } else { format!(": {hi_line}:{hi_col}") }
         )
     }
 
@@ -459,16 +490,11 @@ impl SourceMap {
         (Some(lo.file), lo.line, lo.col.to_usize() + 1, hi.line, hi.col.to_usize() + 1)
     }
 
-    /// Format the span location suitable for embedding in build artifacts
-    pub fn span_to_embeddable_string(&self, sp: Span) -> String {
-        self.span_to_string(sp, FileNameDisplayPreference::Remapped)
-    }
-
     /// Format the span location to be printed in diagnostics. Must not be emitted
     /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
     /// for string suitable for embedding.
     pub fn span_to_diagnostic_string(&self, sp: Span) -> String {
-        self.span_to_string(sp, self.path_mapping.filename_display_for_diagnostics)
+        self.span_to_string(sp, RemapPathScopeComponents::DIAGNOSTICS)
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
@@ -476,7 +502,7 @@ impl SourceMap {
     }
 
     pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
-        filename.display(self.path_mapping.filename_display_for_diagnostics)
+        filename.display(RemapPathScopeComponents::DIAGNOSTICS)
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -1025,10 +1051,8 @@ impl SourceMap {
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Arc<SourceFile>> {
-        // Remap filename before lookup
-        let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
-            if filename == sf.name {
+            if *filename == sf.name {
                 return Some(Arc::clone(&sf));
             }
         }
@@ -1060,16 +1084,20 @@ impl SourceMap {
                 return None;
             };
 
-            let local_path: Cow<'_, Path> = match name {
-                RealFileName::LocalPath(local_path) => local_path.into(),
-                RealFileName::Remapped { local_path: Some(local_path), .. } => local_path.into(),
-                RealFileName::Remapped { local_path: None, virtual_name } => {
+            let local_path: Cow<'_, Path> = match name.local_path() {
+                Some(local) => local.into(),
+                None => {
                     // The compiler produces better error messages if the sources of dependencies
                     // are available. Attempt to undo any path mapping so we can find remapped
                     // dependencies.
+                    //
                     // We can only use the heuristic because `add_external_src` checks the file
                     // content hash.
-                    self.path_mapping.reverse_map_prefix_heuristically(virtual_name)?.into()
+                    let maybe_remapped_path = name.path(RemapPathScopeComponents::DIAGNOSTICS);
+                    self.path_mapping
+                        .reverse_map_prefix_heuristically(maybe_remapped_path)
+                        .map(Cow::from)
+                        .unwrap_or(maybe_remapped_path.into())
                 }
             };
 
@@ -1115,35 +1143,25 @@ pub fn get_source_map() -> Option<Arc<SourceMap>> {
 #[derive(Clone)]
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
-    filename_display_for_diagnostics: FileNameDisplayPreference,
-    filename_embeddable_preference: FileNameEmbeddablePreference,
+    filename_remapping_scopes: RemapPathScopeComponents,
 }
 
 impl FilePathMapping {
     pub fn empty() -> FilePathMapping {
-        FilePathMapping::new(
-            Vec::new(),
-            FileNameDisplayPreference::Local,
-            FileNameEmbeddablePreference::RemappedOnly,
-        )
+        FilePathMapping::new(Vec::new(), RemapPathScopeComponents::empty())
     }
 
     pub fn new(
         mapping: Vec<(PathBuf, PathBuf)>,
-        filename_display_for_diagnostics: FileNameDisplayPreference,
-        filename_embeddable_preference: FileNameEmbeddablePreference,
+        filename_remapping_scopes: RemapPathScopeComponents,
     ) -> FilePathMapping {
-        FilePathMapping {
-            mapping,
-            filename_display_for_diagnostics,
-            filename_embeddable_preference,
-        }
+        FilePathMapping { mapping, filename_remapping_scopes }
     }
 
     /// Applies any path prefix substitution as defined by the mapping.
     /// The return value is the remapped path and a boolean indicating whether
     /// the path was affected by the mapping.
-    pub fn map_prefix<'a>(&'a self, path: impl Into<Cow<'a, Path>>) -> (Cow<'a, Path>, bool) {
+    fn map_prefix<'a>(&'a self, path: impl Into<Cow<'a, Path>>) -> (Cow<'a, Path>, bool) {
         let path = path.into();
         if path.as_os_str().is_empty() {
             // Exit early if the path is empty and therefore there's nothing to remap.
@@ -1189,138 +1207,68 @@ impl FilePathMapping {
         }
     }
 
-    fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
-        match file {
-            FileName::Real(realfile) if let RealFileName::LocalPath(local_path) = realfile => {
-                let (mapped_path, mapped) = self.map_prefix(local_path);
-                let realfile = if mapped {
-                    RealFileName::Remapped {
-                        local_path: Some(local_path.clone()),
-                        virtual_name: mapped_path.into_owned(),
-                    }
-                } else {
-                    realfile.clone()
-                };
-                (FileName::Real(realfile), mapped)
-            }
-            FileName::Real(_) => unreachable!("attempted to remap an already remapped filename"),
-            other => (other.clone(), false),
-        }
-    }
-
     /// Applies any path prefix substitution as defined by the mapping.
-    /// The return value is the local path with a "virtual path" representing the remapped
-    /// part if any remapping was performed.
-    pub fn to_real_filename<'a>(&self, local_path: impl Into<Cow<'a, Path>>) -> RealFileName {
-        let local_path = local_path.into();
-        if let (remapped_path, true) = self.map_prefix(&*local_path) {
-            RealFileName::Remapped {
-                virtual_name: remapped_path.into_owned(),
-                local_path: Some(local_path.into_owned()),
-            }
-        } else {
-            RealFileName::LocalPath(local_path.into_owned())
-        }
-    }
-
-    /// Expand a relative path to an absolute path with remapping taken into account.
-    /// Use this when absolute paths are required (e.g. debuginfo or crate metadata).
     ///
-    /// The resulting `RealFileName` will have its `local_path` portion erased if
-    /// possible (i.e. if there's also a remapped path).
-    pub fn to_embeddable_absolute_path(
+    /// The returned filename contains the a remapped path representing the remapped
+    /// part if any remapping was performed.
+    pub fn to_real_filename<'a>(
         &self,
-        file_path: RealFileName,
         working_directory: &RealFileName,
+        local_path: impl Into<Cow<'a, Path>>,
     ) -> RealFileName {
-        match file_path {
-            // Anything that's already remapped we don't modify, except for erasing
-            // the `local_path` portion (if desired).
-            RealFileName::Remapped { local_path, virtual_name } => {
-                RealFileName::Remapped {
-                    local_path: match self.filename_embeddable_preference {
-                        FileNameEmbeddablePreference::RemappedOnly => None,
-                        FileNameEmbeddablePreference::LocalAndRemapped => local_path,
-                    },
-                    // We use the remapped name verbatim, even if it looks like a relative
-                    // path. The assumption is that the user doesn't want us to further
-                    // process paths that have gone through remapping.
-                    virtual_name,
-                }
-            }
+        let local_path = local_path.into();
 
-            RealFileName::LocalPath(unmapped_file_path) => {
-                // If no remapping has been applied yet, try to do so
-                let (new_path, was_remapped) = self.map_prefix(&unmapped_file_path);
-                if was_remapped {
-                    // It was remapped, so don't modify further
-                    return RealFileName::Remapped {
-                        virtual_name: new_path.into_owned(),
-                        // But still provide the local path if desired
-                        local_path: match self.filename_embeddable_preference {
-                            FileNameEmbeddablePreference::RemappedOnly => None,
-                            FileNameEmbeddablePreference::LocalAndRemapped => {
-                                Some(unmapped_file_path)
-                            }
-                        },
-                    };
-                }
+        let (remapped_path, mut was_remapped) = self.map_prefix(&*local_path);
+        debug!(?local_path, ?remapped_path, ?was_remapped, ?self.filename_remapping_scopes);
 
-                if new_path.is_absolute() {
-                    // No remapping has applied to this path and it is absolute,
-                    // so the working directory cannot influence it either, so
-                    // we are done.
-                    return RealFileName::LocalPath(new_path.into_owned());
-                }
+        // Always populate the local part, even if we just remapped it and the scopes are
+        // total, so that places that load the file from disk still have access to it.
+        let local = InnerRealFileName {
+            name: local_path.to_path_buf(),
+            working_directory: working_directory
+                .local_path()
+                .expect("working directory should be local")
+                .to_path_buf(),
+            embeddable_name: if local_path.is_absolute() {
+                local_path.to_path_buf()
+            } else {
+                working_directory
+                    .local_path()
+                    .expect("working directory should be local")
+                    .to_path_buf()
+                    .join(&local_path)
+            },
+        };
 
-                debug_assert!(new_path.is_relative());
-                let unmapped_file_path_rel = new_path;
+        RealFileName {
+            maybe_remapped: InnerRealFileName {
+                working_directory: working_directory.maybe_remapped.name.clone(),
+                embeddable_name: if remapped_path.is_absolute() || was_remapped {
+                    // The current directory may have been remapped so we take that
+                    // into account, otherwise we'll forget to include the scopes
+                    was_remapped = was_remapped || working_directory.was_remapped();
 
-                match working_directory {
-                    RealFileName::LocalPath(unmapped_working_dir_abs) => {
-                        let unmapped_file_path_abs =
-                            unmapped_working_dir_abs.join(unmapped_file_path_rel);
+                    remapped_path.to_path_buf()
+                } else {
+                    // Create an absolute path and remap it as well.
+                    let (abs_path, abs_was_remapped) = self.map_prefix(
+                        working_directory.maybe_remapped.name.clone().join(&remapped_path),
+                    );
 
-                        // Although neither `working_directory` nor the file name were subject
-                        // to path remapping, the concatenation between the two may be. Hence
-                        // we need to do a remapping here.
-                        let (file_path_abs, was_remapped) =
-                            self.map_prefix(&unmapped_file_path_abs);
-                        if was_remapped {
-                            RealFileName::Remapped {
-                                virtual_name: file_path_abs.into_owned(),
-                                local_path: match self.filename_embeddable_preference {
-                                    FileNameEmbeddablePreference::RemappedOnly => None,
-                                    FileNameEmbeddablePreference::LocalAndRemapped => {
-                                        Some(unmapped_file_path_abs)
-                                    }
-                                },
-                            }
-                        } else {
-                            // No kind of remapping applied to this path, so
-                            // we leave it as it is.
-                            RealFileName::LocalPath(file_path_abs.into_owned())
-                        }
-                    }
-                    RealFileName::Remapped {
-                        local_path,
-                        virtual_name: remapped_working_dir_abs,
-                    } => {
-                        // If working_directory has been remapped, then we emit
-                        // Remapped variant as the expanded path won't be valid
-                        RealFileName::Remapped {
-                            virtual_name: Path::new(remapped_working_dir_abs)
-                                .join(&unmapped_file_path_rel),
-                            local_path: match self.filename_embeddable_preference {
-                                FileNameEmbeddablePreference::RemappedOnly => None,
-                                FileNameEmbeddablePreference::LocalAndRemapped => local_path
-                                    .as_ref()
-                                    .map(|local_path| local_path.join(unmapped_file_path_rel)),
-                            },
-                        }
-                    }
-                }
-            }
+                    // If either the embeddable name or the working directory was
+                    // remapped, then the filename was remapped
+                    was_remapped = abs_was_remapped || working_directory.was_remapped();
+
+                    abs_path.to_path_buf()
+                },
+                name: remapped_path.to_path_buf(),
+            },
+            local: Some(local),
+            scopes: if was_remapped {
+                self.filename_remapping_scopes
+            } else {
+                RemapPathScopeComponents::empty()
+            },
         }
     }
 
