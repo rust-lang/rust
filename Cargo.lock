@@ -1298,8 +1298,8 @@ dependencies = [
 
 [[package]]
 name = "ena"
-version = "0.14.3"
-source = "git+https://github.com/ShoyuVanilla/ena.git?rev=3c11561d5327c6df45d59e1931eba16f006000d5#3c11561d5327c6df45d59e1931eba16f006000d5"
+version = "0.14.4"
+source = "git+https://github.com/ShoyuVanilla/ena.git?rev=6adb30a6b8aa0d1863439983173be5ef2e14aecb#6adb30a6b8aa0d1863439983173be5ef2e14aecb"
 dependencies = [
  "log",
 ]
