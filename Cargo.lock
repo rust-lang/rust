@@ -1670,9 +1670,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
+ "foldhash 0.2.0",
+]
 
 [[package]]
 name = "heck"
@@ -1950,12 +1953,12 @@ checksum = "964de6e86d545b246d84badc0fef527924ace5134f30641c203ef52ba83f58d5"
 
 [[package]]
 name = "indexmap"
-version = "2.12.0"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6717a8d2a5a929a1a2eb43a12812498ed141a0bcfb7e8f7844fbdbe4303bba9f"
+checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.0",
+ "hashbrown 0.16.1",
  "serde",
  "serde_core",
 ]
@@ -3334,6 +3337,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde_json",
  "similar",
+ "tempfile",
  "wasmparser 0.236.1",
 ]
 
@@ -3730,7 +3734,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "indexmap",
  "jobserver",
  "libc",
@@ -4350,7 +4354,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "itertools",
  "rustc_abi",
  "rustc_arena",
@@ -4561,7 +4565,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "parking_lot",
  "rustc_abi",
  "rustc_ast",

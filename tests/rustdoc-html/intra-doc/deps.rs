@@ -6,7 +6,7 @@
 //@ compile-flags: --extern-html-root-url=empty=https://empty.example/
 // This one is to ensure that we don't link to any item we see which has
 // an external html root URL unless it actually exists.
-//@ compile-flags: --extern-html-root-url=non_existant=https://non-existant.example/
+//@ compile-flags: --extern-html-root-url=non_existent=https://non-existent.example/
 //@ aux-build: empty.rs
 
 #![crate_name = "foo"]
@@ -14,10 +14,10 @@
 
 //@ has 'foo/index.html'
 //@ has - '//a[@href="https://empty.example/empty/index.html"]' 'empty'
-// There should only be one intra doc links, we should not link `non_existant`.
+// There should only be one intra doc links, we should not link `non_existent`.
 //@ count - '//*[@class="docblock"]//a' 1
 //! [`empty`]
 //!
-//! [`non_existant`]
+//! [`non_existent`]
 
 extern crate empty;

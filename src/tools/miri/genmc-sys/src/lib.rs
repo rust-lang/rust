@@ -379,7 +379,7 @@ mod ffi {
         /// This function must be called at the start of any execution, before any events are reported to GenMC.
         fn handle_execution_start(self: Pin<&mut MiriGenmcShim>);
         /// This function must be called at the end of any execution, even if an error was found during the execution.
-        /// Returns `null`, or a string containing an error message if an error occured.
+        /// Returns `null`, or a string containing an error message if an error occurred.
         fn handle_execution_end(self: Pin<&mut MiriGenmcShim>) -> UniquePtr<CxxString>;
 
         /***** Functions for handling events encountered during program execution. *****/

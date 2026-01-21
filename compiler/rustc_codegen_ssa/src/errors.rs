@@ -137,39 +137,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_name_value_pair)]
-pub(crate) struct ExpectedNameValuePair {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_unexpected_parameter_name)]
-pub(crate) struct UnexpectedParameterName {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub prefix_nops: Symbol,
-    pub entry_nops: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_literal_value)]
-pub(crate) struct InvalidLiteralValue {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_out_of_range_integer)]
-pub(crate) struct OutOfRangeInteger {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,

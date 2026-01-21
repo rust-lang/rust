@@ -711,7 +711,8 @@ impl FromClean<clean::PolyTrait> for PolyTrait {
 impl FromClean<clean::Impl> for Impl {
     fn from_clean(impl_: &clean::Impl, renderer: &JsonRenderer<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(renderer.tcx);
-        let clean::Impl { safety, generics, trait_, for_, items, polarity, kind } = impl_;
+        let clean::Impl { safety, generics, trait_, for_, items, polarity, kind, is_deprecated: _ } =
+            impl_;
         // FIXME: use something like ImplKind in JSON?
         let (is_synthetic, blanket_impl) = match kind {
             clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),

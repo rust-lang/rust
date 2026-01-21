@@ -216,6 +216,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_name
         | sym::type_of
         | sym::ub_checks
+        | sym::va_copy
         | sym::variant_count
         | sym::vtable_for
         | sym::wrapping_add
@@ -629,14 +630,13 @@ pub(crate) fn check_intrinsic_type(
             )
         }
 
-        sym::va_start | sym::va_end => {
-            (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
-        }
-
         sym::va_copy => {
             let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
-            let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
-            (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
+            (0, 0, vec![va_list_ref_ty], va_list_ty)
+        }
+
+        sym::va_start | sym::va_end => {
+            (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
         }
 
         sym::va_arg => (1, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], param(0)),
