@@ -1008,7 +1008,7 @@ impl Step for Analysis {
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target)
-            .join(builder.cargo_dir())
+            .join(builder.cargo_dir(Mode::Std))
             .join("deps")
             .join("save-analysis");
 
