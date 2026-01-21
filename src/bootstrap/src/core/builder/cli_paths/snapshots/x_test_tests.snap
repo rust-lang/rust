@@ -5,6 +5,9 @@ expression: test tests
 [Test] test::AssemblyLlvm
     targets: [aarch64-unknown-linux-gnu]
     - Suite(test::tests/assembly-llvm)
+[Test] test::BuildStd
+    targets: [aarch64-unknown-linux-gnu]
+    - Suite(test::tests/build-std)
 [Test] test::CodegenLlvm
     targets: [aarch64-unknown-linux-gnu]
     - Suite(test::tests/codegen-llvm)

@@ -97,7 +97,7 @@ for two reasons:
   additional rebuilds in some cases.
 
 To avoid these problems:
-- Add `--build-dir=build/rust-analyzer` to all of the custom `x` commands in
+- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
   your editor's rust-analyzer configuration.
   (Feel free to choose a different directory name if desired.)
 - Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points

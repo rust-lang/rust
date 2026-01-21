@@ -28,7 +28,6 @@ use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffect};
 
-#[derive(Clone)]
 pub struct DepGraph<D: Deps> {
     data: Option<Arc<DepGraphData<D>>>,
 
@@ -37,6 +36,17 @@ pub struct DepGraph<D: Deps> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Arc<AtomicU32>,
+}
+
+/// Manual clone impl that does not require `D: Clone`.
+impl<D: Deps> Clone for DepGraph<D> {
+    fn clone(&self) -> Self {
+        let Self { data, virtual_dep_node_index } = self;
+        Self {
+            data: Option::<Arc<_>>::clone(data),
+            virtual_dep_node_index: Arc::clone(virtual_dep_node_index),
+        }
+    }
 }
 
 rustc_index::newtype_index! {

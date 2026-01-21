@@ -47,59 +47,6 @@ fn try_fn_sig<'tcx>(
     }
 }
 
-// FIXME(jdonszelmann): remove when patchable_function_entry becomes a parsed attr
-fn parse_patchable_function_entry(
-    tcx: TyCtxt<'_>,
-    attr: &Attribute,
-) -> Option<PatchableFunctionEntry> {
-    attr.meta_item_list().and_then(|l| {
-        let mut prefix = None;
-        let mut entry = None;
-        for item in l {
-            let Some(meta_item) = item.meta_item() else {
-                tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
-                continue;
-            };
-
-            let Some(name_value_lit) = meta_item.name_value_literal() else {
-                tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
-                continue;
-            };
-
-            let attrib_to_write = match meta_item.name() {
-                Some(sym::prefix_nops) => &mut prefix,
-                Some(sym::entry_nops) => &mut entry,
-                _ => {
-                    tcx.dcx().emit_err(errors::UnexpectedParameterName {
-                        span: item.span(),
-                        prefix_nops: sym::prefix_nops,
-                        entry_nops: sym::entry_nops,
-                    });
-                    continue;
-                }
-            };
-
-            let rustc_ast::LitKind::Int(val, _) = name_value_lit.kind else {
-                tcx.dcx().emit_err(errors::InvalidLiteralValue { span: name_value_lit.span });
-                continue;
-            };
-
-            let Ok(val) = val.get().try_into() else {
-                tcx.dcx().emit_err(errors::OutOfRangeInteger { span: name_value_lit.span });
-                continue;
-            };
-
-            *attrib_to_write = Some(val);
-        }
-
-        if let (None, None) = (prefix, entry) {
-            tcx.dcx().span_err(attr.span(), "must specify at least one parameter");
-        }
-
-        Some(PatchableFunctionEntry::from_prefix_and_entry(prefix.unwrap_or(0), entry.unwrap_or(0)))
-    })
-}
-
 /// Spans that are collected when processing built-in attributes,
 /// that are useful for emitting diagnostics later.
 #[derive(Default)]
@@ -121,250 +68,235 @@ fn process_builtin_attrs(
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    for attr in attrs.iter() {
-        if let hir::Attribute::Parsed(p) = attr {
-            match p {
-                AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
-                AttributeKind::ExportName { name, .. } => {
-                    codegen_fn_attrs.symbol_name = Some(*name)
+    let parsed_attrs = attrs
+        .iter()
+        .filter_map(|attr| if let hir::Attribute::Parsed(attr) = attr { Some(attr) } else { None });
+    for attr in parsed_attrs {
+        match attr {
+            AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+            AttributeKind::ExportName { name, .. } => codegen_fn_attrs.symbol_name = Some(*name),
+            AttributeKind::Inline(inline, span) => {
+                codegen_fn_attrs.inline = *inline;
+                interesting_spans.inline = Some(*span);
+            }
+            AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
+            AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+            AttributeKind::LinkName { name, .. } => {
+                // FIXME Remove check for foreign functions once #[link_name] on non-foreign
+                // functions is a hard error
+                if tcx.is_foreign_item(did) {
+                    codegen_fn_attrs.symbol_name = Some(*name);
                 }
-                AttributeKind::Inline(inline, span) => {
-                    codegen_fn_attrs.inline = *inline;
-                    interesting_spans.inline = Some(*span);
+            }
+            AttributeKind::LinkOrdinal { ordinal, span } => {
+                codegen_fn_attrs.link_ordinal = Some(*ordinal);
+                interesting_spans.link_ordinal = Some(*span);
+            }
+            AttributeKind::LinkSection { name, .. } => codegen_fn_attrs.link_section = Some(*name),
+            AttributeKind::NoMangle(attr_span) => {
+                interesting_spans.no_mangle = Some(*attr_span);
+                if tcx.opt_item_name(did.to_def_id()).is_some() {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                } else {
+                    tcx.dcx()
+                        .span_delayed_bug(*attr_span, "no_mangle should be on a named function");
                 }
-                AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-                AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
-                AttributeKind::LinkName { name, .. } => {
-                    // FIXME Remove check for foreign functions once #[link_name] on non-foreign
-                    // functions is a hard error
-                    if tcx.is_foreign_item(did) {
-                        codegen_fn_attrs.symbol_name = Some(*name);
-                    }
-                }
-                AttributeKind::LinkOrdinal { ordinal, span } => {
-                    codegen_fn_attrs.link_ordinal = Some(*ordinal);
-                    interesting_spans.link_ordinal = Some(*span);
-                }
-                AttributeKind::LinkSection { name, .. } => {
-                    codegen_fn_attrs.link_section = Some(*name)
-                }
-                AttributeKind::NoMangle(attr_span) => {
-                    interesting_spans.no_mangle = Some(*attr_span);
-                    if tcx.opt_item_name(did.to_def_id()).is_some() {
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+            }
+            AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
+            AttributeKind::TargetFeature { features, attr_span, was_forced } => {
+                let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
+                    tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
+                    continue;
+                };
+                let safe_target_features =
+                    matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
+                codegen_fn_attrs.safe_target_features = safe_target_features;
+                if safe_target_features && !was_forced {
+                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                        // The `#[target_feature]` attribute is allowed on
+                        // WebAssembly targets on all functions. Prior to stabilizing
+                        // the `target_feature_11` feature, `#[target_feature]` was
+                        // only permitted on unsafe functions because on most targets
+                        // execution of instructions that are not supported is
+                        // considered undefined behavior. For WebAssembly which is a
+                        // 100% safe target at execution time it's not possible to
+                        // execute undefined instructions, and even if a future
+                        // feature was added in some form for this it would be a
+                        // deterministic trap. There is no undefined behavior when
+                        // executing WebAssembly so `#[target_feature]` is allowed
+                        // on safe functions (but again, only for WebAssembly)
+                        //
+                        // Note that this is also allowed if `actually_rustdoc` so
+                        // if a target is documenting some wasm-specific code then
+                        // it's not spuriously denied.
+                        //
+                        // Now that `#[target_feature]` is permitted on safe functions,
+                        // this exception must still exist for allowing the attribute on
+                        // `main`, `start`, and other functions that are not usually
+                        // allowed.
                     } else {
-                        tcx.dcx().span_delayed_bug(
-                            *attr_span,
-                            "no_mangle should be on a named function",
-                        );
+                        check_target_feature_trait_unsafe(tcx, did, *attr_span);
                     }
                 }
-                AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
-                AttributeKind::TargetFeature { features, attr_span, was_forced } => {
-                    let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
-                        tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
-                        continue;
+                from_target_feature_attr(
+                    tcx,
+                    did,
+                    features,
+                    *was_forced,
+                    rust_target_features,
+                    &mut codegen_fn_attrs.target_features,
+                );
+            }
+            AttributeKind::TrackCaller(attr_span) => {
+                let is_closure = tcx.is_closure_like(did.to_def_id());
+
+                if !is_closure
+                    && let Some(fn_sig) = try_fn_sig(tcx, did, *attr_span)
+                    && fn_sig.skip_binder().abi() != ExternAbi::Rust
+                {
+                    tcx.dcx().emit_err(errors::RequiresRustAbi { span: *attr_span });
+                }
+                if is_closure
+                    && !tcx.features().closure_track_caller()
+                    && !attr_span.allows_unstable(sym::closure_track_caller)
+                {
+                    feature_err(
+                        &tcx.sess,
+                        sym::closure_track_caller,
+                        *attr_span,
+                        "`#[track_caller]` on closures is currently unstable",
+                    )
+                    .emit();
+                }
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
+            }
+            AttributeKind::Used { used_by, .. } => match used_by {
+                UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
+                UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
+                UsedBy::Default => {
+                    let used_form = if tcx.sess.target.os == Os::Illumos {
+                        // illumos' `ld` doesn't support a section header that would represent
+                        // `#[used(linker)]`, see
+                        // https://github.com/rust-lang/rust/issues/146169. For that target,
+                        // downgrade as if `#[used(compiler)]` was requested and hope for the
+                        // best.
+                        CodegenFnAttrFlags::USED_COMPILER
+                    } else {
+                        CodegenFnAttrFlags::USED_LINKER
                     };
-                    let safe_target_features =
-                        matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
-                    codegen_fn_attrs.safe_target_features = safe_target_features;
-                    if safe_target_features && !was_forced {
-                        if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
-                            // The `#[target_feature]` attribute is allowed on
-                            // WebAssembly targets on all functions. Prior to stabilizing
-                            // the `target_feature_11` feature, `#[target_feature]` was
-                            // only permitted on unsafe functions because on most targets
-                            // execution of instructions that are not supported is
-                            // considered undefined behavior. For WebAssembly which is a
-                            // 100% safe target at execution time it's not possible to
-                            // execute undefined instructions, and even if a future
-                            // feature was added in some form for this it would be a
-                            // deterministic trap. There is no undefined behavior when
-                            // executing WebAssembly so `#[target_feature]` is allowed
-                            // on safe functions (but again, only for WebAssembly)
-                            //
-                            // Note that this is also allowed if `actually_rustdoc` so
-                            // if a target is documenting some wasm-specific code then
-                            // it's not spuriously denied.
-                            //
-                            // Now that `#[target_feature]` is permitted on safe functions,
-                            // this exception must still exist for allowing the attribute on
-                            // `main`, `start`, and other functions that are not usually
-                            // allowed.
-                        } else {
-                            check_target_feature_trait_unsafe(tcx, did, *attr_span);
+                    codegen_fn_attrs.flags |= used_form;
+                }
+            },
+            AttributeKind::FfiConst(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
+            AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
+            AttributeKind::StdInternalSymbol(_) => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+            }
+            AttributeKind::Linkage(linkage, span) => {
+                let linkage = Some(*linkage);
+
+                if tcx.is_foreign_item(did) {
+                    codegen_fn_attrs.import_linkage = linkage;
+
+                    if tcx.is_mutable_static(did.into()) {
+                        let mut diag = tcx.dcx().struct_span_err(
+                            *span,
+                            "extern mutable statics are not allowed with `#[linkage]`",
+                        );
+                        diag.note(
+                            "marking the extern static mutable would allow changing which \
+                            symbol the static references rather than make the target of the \
+                            symbol mutable",
+                        );
+                        diag.emit();
+                    }
+                } else {
+                    codegen_fn_attrs.linkage = linkage;
+                }
+            }
+            AttributeKind::Sanitize { span, .. } => {
+                interesting_spans.sanitize = Some(*span);
+            }
+            AttributeKind::ObjcClass { classname, .. } => {
+                codegen_fn_attrs.objc_class = Some(*classname);
+            }
+            AttributeKind::ObjcSelector { methname, .. } => {
+                codegen_fn_attrs.objc_selector = Some(*methname);
+            }
+            AttributeKind::EiiForeignItem => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+            }
+            AttributeKind::EiiImpls(impls) => {
+                for i in impls {
+                    let foreign_item = match i.resolution {
+                        EiiImplResolution::Macro(def_id) => {
+                            let Some(extern_item) = find_attr!(
+                                tcx.get_all_attrs(def_id),
+                                AttributeKind::EiiDeclaration(target) => target.foreign_item
+                            ) else {
+                                tcx.dcx().span_delayed_bug(
+                                    i.span,
+                                    "resolved to something that's not an EII",
+                                );
+                                continue;
+                            };
+                            extern_item
                         }
-                    }
-                    from_target_feature_attr(
-                        tcx,
-                        did,
-                        features,
-                        *was_forced,
-                        rust_target_features,
-                        &mut codegen_fn_attrs.target_features,
-                    );
-                }
-                AttributeKind::TrackCaller(attr_span) => {
-                    let is_closure = tcx.is_closure_like(did.to_def_id());
+                        EiiImplResolution::Known(decl) => decl.foreign_item,
+                        EiiImplResolution::Error(_eg) => continue,
+                    };
 
-                    if !is_closure
-                        && let Some(fn_sig) = try_fn_sig(tcx, did, *attr_span)
-                        && fn_sig.skip_binder().abi() != ExternAbi::Rust
+                    // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                    // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                    // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                    // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                    // the default implementation is used while an explicit implementation is given.
+                    if
+                    // if this is a default impl
+                    i.is_default
+                        // iterate over all implementations *in the current crate*
+                        // (this is ok since we generate codegen fn attrs in the local crate)
+                        // if any of them is *not default* then don't emit the alias.
+                        && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
                     {
-                        tcx.dcx().emit_err(errors::RequiresRustAbi { span: *attr_span });
+                        continue;
                     }
-                    if is_closure
-                        && !tcx.features().closure_track_caller()
-                        && !attr_span.allows_unstable(sym::closure_track_caller)
-                    {
-                        feature_err(
-                            &tcx.sess,
-                            sym::closure_track_caller,
-                            *attr_span,
-                            "`#[track_caller]` on closures is currently unstable",
-                        )
-                        .emit();
-                    }
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
-                }
-                AttributeKind::Used { used_by, .. } => match used_by {
-                    UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
-                    UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
-                    UsedBy::Default => {
-                        let used_form = if tcx.sess.target.os == Os::Illumos {
-                            // illumos' `ld` doesn't support a section header that would represent
-                            // `#[used(linker)]`, see
-                            // https://github.com/rust-lang/rust/issues/146169. For that target,
-                            // downgrade as if `#[used(compiler)]` was requested and hope for the
-                            // best.
-                            CodegenFnAttrFlags::USED_COMPILER
-                        } else {
-                            CodegenFnAttrFlags::USED_LINKER
-                        };
-                        codegen_fn_attrs.flags |= used_form;
-                    }
-                },
-                AttributeKind::FfiConst(_) => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST
-                }
-                AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
-                AttributeKind::StdInternalSymbol(_) => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
-                }
-                AttributeKind::Linkage(linkage, span) => {
-                    let linkage = Some(*linkage);
 
-                    if tcx.is_foreign_item(did) {
-                        codegen_fn_attrs.import_linkage = linkage;
-
-                        if tcx.is_mutable_static(did.into()) {
-                            let mut diag = tcx.dcx().struct_span_err(
-                                *span,
-                                "extern mutable statics are not allowed with `#[linkage]`",
-                            );
-                            diag.note(
-                                "marking the extern static mutable would allow changing which \
-                                symbol the static references rather than make the target of the \
-                                symbol mutable",
-                            );
-                            diag.emit();
-                        }
-                    } else {
-                        codegen_fn_attrs.linkage = linkage;
-                    }
-                }
-                AttributeKind::Sanitize { span, .. } => {
-                    interesting_spans.sanitize = Some(*span);
-                }
-                AttributeKind::ObjcClass { classname, .. } => {
-                    codegen_fn_attrs.objc_class = Some(*classname);
-                }
-                AttributeKind::ObjcSelector { methname, .. } => {
-                    codegen_fn_attrs.objc_selector = Some(*methname);
-                }
-                AttributeKind::EiiForeignItem => {
+                    codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                        foreign_item,
+                        if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
+                        Visibility::Default,
+                    ));
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
                 }
-                AttributeKind::EiiImpls(impls) => {
-                    for i in impls {
-                        let foreign_item = match i.resolution {
-                            EiiImplResolution::Macro(def_id) => {
-                                let Some(extern_item) = find_attr!(
-                                    tcx.get_all_attrs(def_id),
-                                    AttributeKind::EiiDeclaration(target) => target.foreign_item
-                                ) else {
-                                    tcx.dcx().span_delayed_bug(
-                                        i.span,
-                                        "resolved to something that's not an EII",
-                                    );
-                                    continue;
-                                };
-                                extern_item
-                            }
-                            EiiImplResolution::Known(decl) => decl.foreign_item,
-                            EiiImplResolution::Error(_eg) => continue,
-                        };
-
-                        // this is to prevent a bug where a single crate defines both the default and explicit implementation
-                        // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
-                        // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
-                        // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
-                        // the default implementation is used while an explicit implementation is given.
-                        if
-                        // if this is a default impl
-                        i.is_default
-                            // iterate over all implementations *in the current crate*
-                            // (this is ok since we generate codegen fn attrs in the local crate)
-                            // if any of them is *not default* then don't emit the alias.
-                            && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
-                        {
-                            continue;
-                        }
-
-                        codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                            foreign_item,
-                            if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
-                            Visibility::Default,
-                        ));
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
-                    }
-                }
-                AttributeKind::ThreadLocal => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL
-                }
-                AttributeKind::InstructionSet(instruction_set) => {
-                    codegen_fn_attrs.instruction_set = Some(*instruction_set)
-                }
-                AttributeKind::RustcAllocator => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR
-                }
-                AttributeKind::RustcDeallocator => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR
-                }
-                AttributeKind::RustcReallocator => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR
-                }
-                AttributeKind::RustcAllocatorZeroed => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
-                }
-                AttributeKind::RustcNounwind => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND
-                }
-                AttributeKind::RustcOffloadKernel => {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::OFFLOAD_KERNEL
-                }
-                _ => {}
             }
-        }
-
-        let Some(name) = attr.name() else {
-            continue;
-        };
-
-        match name {
-            sym::patchable_function_entry => {
+            AttributeKind::ThreadLocal => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL
+            }
+            AttributeKind::InstructionSet(instruction_set) => {
+                codegen_fn_attrs.instruction_set = Some(*instruction_set)
+            }
+            AttributeKind::RustcAllocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR
+            }
+            AttributeKind::RustcDeallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR
+            }
+            AttributeKind::RustcReallocator => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR
+            }
+            AttributeKind::RustcAllocatorZeroed => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
+            }
+            AttributeKind::RustcNounwind => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND
+            }
+            AttributeKind::RustcOffloadKernel => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::OFFLOAD_KERNEL
+            }
+            AttributeKind::PatchableFunctionEntry { prefix, entry } => {
                 codegen_fn_attrs.patchable_function_entry =
-                    parse_patchable_function_entry(tcx, attr);
+                    Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
             }
             _ => {}
         }

@@ -223,7 +223,12 @@ extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
   return true;
 }
 
-extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
+// Clone OldFn into NewFn, remapping its arguments to RebuiltArgs.
+// Each arg of OldFn is replaced with the corresponding value in RebuiltArgs.
+// For scalars, RebuiltArgs contains the value cast and/or truncated to the
+// original type.
+extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn,
+                                      const LLVMValueRef *RebuiltArgs) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
 
@@ -232,15 +237,25 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::ValueToValueMapTy vmap;
   auto newArgIt = newFn->arg_begin();
   newArgIt->setName("dyn_ptr");
-  ++newArgIt; // skip %dyn_ptr
+
+  unsigned i = 0;
   for (auto &oldArg : oldFn->args()) {
-    vmap[&oldArg] = &*newArgIt++;
+    vmap[&oldArg] = unwrap<Value>(RebuiltArgs[i++]);
   }
 
   llvm::SmallVector<llvm::ReturnInst *, 8> returns;
   llvm::CloneFunctionInto(newFn, oldFn, vmap,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
+
+  BasicBlock &entry = newFn->getEntryBlock();
+  BasicBlock &clonedEntry = *std::next(newFn->begin());
+
+  if (entry.getTerminator())
+    entry.getTerminator()->eraseFromParent();
+
+  IRBuilder<> B(&entry);
+  B.CreateBr(&clonedEntry);
 }
 #endif
 
@@ -1743,6 +1758,10 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
     return true;
   }
   return false;
+}
+
+extern "C" LLVMValueRef LLVMRustStripPointerCasts(LLVMValueRef V) {
+  return wrap(unwrap(V)->stripPointerCasts());
 }
 
 extern "C" bool LLVMRustLLVMHasZlibCompression() {

@@ -2904,6 +2904,9 @@ fn clean_impl<'tcx>(
             )),
             _ => None,
         });
+    let is_deprecated = tcx
+        .lookup_deprecation(def_id.to_def_id())
+        .is_some_and(|deprecation| deprecation.is_in_effect());
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
             safety: match impl_.of_trait {
@@ -2924,6 +2927,7 @@ fn clean_impl<'tcx>(
             } else {
                 ImplKind::Normal
             },
+            is_deprecated,
         }));
         Item::from_def_id_and_parts(def_id.to_def_id(), None, kind, cx)
     };
