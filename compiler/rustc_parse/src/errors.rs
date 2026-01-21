@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
 
-use rustc_ast::token::Token;
+use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
@@ -17,7 +17,6 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::parser::TokenDescription;
 
 #[derive(Diagnostic)]
 #[diag(parse_maybe_report_ambiguous_plus)]
@@ -3734,4 +3733,33 @@ pub(crate) struct MisspelledKw {
     #[primary_span]
     pub span: Span,
     pub is_incorrect_case: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum TokenDescription {
+    ReservedIdentifier,
+    Keyword,
+    ReservedKeyword,
+    DocComment,
+
+    // Expanded metavariables are wrapped in invisible delimiters which aren't
+    // pretty-printed. In error messages we must handle these specially
+    // otherwise we get confusing things in messages like "expected `(`, found
+    // ``". It's better to say e.g. "expected `(`, found type metavariable".
+    MetaVar(MetaVarKind),
+}
+
+impl TokenDescription {
+    pub(super) fn from_token(token: &Token) -> Option<Self> {
+        match token.kind {
+            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
+            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
+            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
+            token::DocComment(..) => Some(TokenDescription::DocComment),
+            token::OpenInvisible(InvisibleOrigin::MetaVar(kind)) => {
+                Some(TokenDescription::MetaVar(kind))
+            }
+            _ => None,
+        }
+    }
 }

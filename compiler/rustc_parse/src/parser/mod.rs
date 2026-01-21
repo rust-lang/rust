@@ -49,7 +49,7 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral};
+use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral, TokenDescription};
 use crate::exp;
 
 #[cfg(test)]
@@ -304,35 +304,6 @@ pub enum Trailing {
 impl From<bool> for Trailing {
     fn from(b: bool) -> Trailing {
         if b { Trailing::Yes } else { Trailing::No }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum TokenDescription {
-    ReservedIdentifier,
-    Keyword,
-    ReservedKeyword,
-    DocComment,
-
-    // Expanded metavariables are wrapped in invisible delimiters which aren't
-    // pretty-printed. In error messages we must handle these specially
-    // otherwise we get confusing things in messages like "expected `(`, found
-    // ``". It's better to say e.g. "expected `(`, found type metavariable".
-    MetaVar(MetaVarKind),
-}
-
-impl TokenDescription {
-    pub(super) fn from_token(token: &Token) -> Option<Self> {
-        match token.kind {
-            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
-            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
-            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
-            token::DocComment(..) => Some(TokenDescription::DocComment),
-            token::OpenInvisible(InvisibleOrigin::MetaVar(kind)) => {
-                Some(TokenDescription::MetaVar(kind))
-            }
-            _ => None,
-        }
     }
 }
 
