@@ -707,35 +707,17 @@ pub const unsafe fn zeroed<T>() -> T {
 ///
 /// # Safety
 ///
+/// This function is highly unsafe, as calling this function on nearly all types causes
+/// undefined behavior. You should **always** prefer using [`MaybeUninit<T>`] instead.
+///
+/// If you absolutely must use this function, the following conditions must be upheld:
+///
 /// - `T` must be *valid* with any sequence of bytes of the appropriate length,
-///   initialized or uninitialized (e.g. `T` can be [`MaybeUninit`] or `()`).
+///   initialized or uninitialized.
 /// - `T` must be *[inhabited]*, i.e. possible to construct. This means that types
 ///   like zero-variant enums and [`!`] are unsound to construct with this function.
 /// - You must use the value only in ways which do not violate any *safety*
 ///   invariants of the type.
-///
-/// # Examples
-///
-/// Correct usage of this function: constructing an uninitialized array of [`MaybeUninit`].
-///
-/// ```
-/// use std::mem::{self, MaybeUninit};
-///
-/// // SAFETY: an array of `MaybeUninit<u8>` is always valid, even if uninitialized.
-/// # #[allow(deprecated, deprecated_in_future)]
-/// let array: [MaybeUninit<u8>; 10] = unsafe { mem::uninitialized() };
-/// ```
-///
-/// *Incorrect* usage of this function: constructing an uninitialized `bool`.
-///
-/// ```rust,no_run
-/// use std::mem;
-///
-/// # #[allow(deprecated, deprecated_in_future)]
-/// let b: bool = unsafe { mem::uninitialized() };
-/// // bool does not permit to have an uninitialized state,
-/// // so this last line caused undefined behavior. ⚠️
-/// ```
 ///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
