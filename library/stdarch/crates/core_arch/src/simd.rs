@@ -60,13 +60,14 @@ impl<T: SimdElement, const N: usize> Simd<T, N> {
         unsafe { simd_shuffle!(one, one, [0; N]) }
     }
 
-    /// Extract the element at position `index`.
-    /// `index` is not a constant so this is not efficient!
-    /// Use for testing only.
-    // FIXME: Workaround rust@60637
-    #[inline(always)]
-    pub(crate) const fn extract(&self, index: usize) -> T {
-        self.as_array()[index]
+    /// Extract the element at position `index`. Note that `index` is not a constant so this
+    /// operation is not efficient on most platforms. Use for testing only.
+    #[inline]
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    pub(crate) const fn extract_dyn(&self, index: usize) -> T {
+        assert!(index < N);
+        // SAFETY: self is a vector, T its element type.
+        unsafe { crate::intrinsics::simd::simd_extract_dyn(*self, index as u32) }
     }
 
     #[inline]

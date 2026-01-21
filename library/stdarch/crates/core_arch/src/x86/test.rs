@@ -78,38 +78,45 @@ pub(crate) const fn assert_eq_m512h(a: __m512h, b: __m512h) {
 }
 
 #[target_feature(enable = "sse2")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m128d(a: __m128d, idx: usize) -> f64 {
-    a.as_f64x2().extract(idx)
+    a.as_f64x2().extract_dyn(idx)
 }
 
 #[target_feature(enable = "sse")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m128(a: __m128, idx: usize) -> f32 {
-    a.as_f32x4().extract(idx)
+    a.as_f32x4().extract_dyn(idx)
 }
 
 #[target_feature(enable = "avx")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m256d(a: __m256d, idx: usize) -> f64 {
-    a.as_f64x4().extract(idx)
+    a.as_f64x4().extract_dyn(idx)
 }
 
 #[target_feature(enable = "avx")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m256(a: __m256, idx: usize) -> f32 {
-    a.as_f32x8().extract(idx)
+    a.as_f32x8().extract_dyn(idx)
 }
 
 #[target_feature(enable = "avx512f")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m512(a: __m512, idx: usize) -> f32 {
-    a.as_f32x16().extract(idx)
+    a.as_f32x16().extract_dyn(idx)
 }
 
 #[target_feature(enable = "avx512f")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m512d(a: __m512d, idx: usize) -> f64 {
-    a.as_f64x8().extract(idx)
+    a.as_f64x8().extract_dyn(idx)
 }
 
 #[target_feature(enable = "avx512f")]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const fn get_m512i(a: __m512i, idx: usize) -> i64 {
-    a.as_i64x8().extract(idx)
+    a.as_i64x8().extract_dyn(idx)
 }
 
 // not actually an intrinsic but useful in various tests as we ported from
