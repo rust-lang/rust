@@ -93,7 +93,10 @@ fn dyn_compatibility_violations_for_trait(
         // We don't want to include the requirement from `Sized` itself to be `Sized` in the list.
         let spans = get_sized_bounds(tcx, trait_def_id);
         violations.push(DynCompatibilityViolation::SizedSelf(spans));
+    } else if let Some(span) = tcx.trait_def(trait_def_id).force_dyn_incompatible {
+        violations.push(DynCompatibilityViolation::ExplicitlyDynIncompatible([span].into()));
     }
+
     let spans = predicates_reference_self(tcx, trait_def_id, false);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitSelf(spans));

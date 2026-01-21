@@ -103,7 +103,7 @@ pub trait Deps: DynSync {
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>);
 
-    fn name(&self, dep_kind: DepKind) -> &'static str;
+    fn name(dep_kind: DepKind) -> &'static str;
 
     /// We use this for most things when incr. comp. is turned off.
     const DEP_KIND_NULL: DepKind;

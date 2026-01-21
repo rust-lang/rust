@@ -24,15 +24,6 @@ macro_rules! define_dep_nodes {
             ($mod:ident) => {[ $($mod::$variant()),* ]};
         }
 
-        #[macro_export]
-        macro_rules! make_dep_kind_name_array {
-            ($mod:ident) => {
-                vec! {
-                    $(*$mod::$variant().name),*
-                }
-            };
-        }
-
         /// This enum serves as an index into arrays built by `make_dep_kind_array`.
         // This enum has more than u8::MAX variants so we need some kind of multi-byte
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
@@ -68,20 +59,24 @@ macro_rules! define_dep_nodes {
             deps.len() as u16
         };
 
+        /// List containing the name of each dep kind as a static string,
+        /// indexable by `DepKind`.
+        pub(crate) const DEP_KIND_NAMES: &[&str] = &[
+            $( self::label_strs::$variant, )*
+        ];
+
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
-                $(stringify!($variant) => Ok(dep_kinds::$variant),)*
+                $( self::label_strs::$variant => Ok(self::dep_kinds::$variant), )*
                 _ => Err(()),
             }
         }
 
         /// Contains variant => str representations for constructing
         /// DepNode groups for tests.
-        #[allow(dead_code, non_upper_case_globals)]
+        #[expect(non_upper_case_globals)]
         pub mod label_strs {
-           $(
-                pub const $variant: &str = stringify!($variant);
-            )*
+            $( pub const $variant: &str = stringify!($variant); )*
         }
     };
 }

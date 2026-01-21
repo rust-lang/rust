@@ -66,7 +66,7 @@ use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
-pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
