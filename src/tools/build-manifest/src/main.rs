@@ -31,8 +31,16 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
 
 static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
-    &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift, PkgType::RustcCodegenGcc];
+fn is_nightly_only(pkg: &PkgType) -> bool {
+    match pkg {
+        PkgType::Miri
+        | PkgType::JsonDocs
+        | PkgType::RustcCodegenCranelift
+        | PkgType::RustcCodegenGcc
+        | PkgType::Gcc { .. } => true,
+        _ => false,
+    }
+}
 
 macro_rules! t {
     ($e:expr) => {
@@ -375,7 +383,7 @@ impl Builder {
         let mut is_present = version_info.present;
 
         // Never ship nightly-only components for other trains.
-        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkg) {
+        if self.versions.channel() != "nightly" && is_nightly_only(&pkg) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
