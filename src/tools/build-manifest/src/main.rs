@@ -31,8 +31,16 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
 
 static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
-    &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift];
+fn is_nightly_only(pkg: &PkgType) -> bool {
+    match pkg {
+        PkgType::Miri
+        | PkgType::JsonDocs
+        | PkgType::RustcCodegenCranelift
+        | PkgType::RustcCodegenGcc
+        | PkgType::Gcc { .. } => true,
+        _ => false,
+    }
+}
 
 macro_rules! t {
     ($e:expr) => {
@@ -158,7 +166,7 @@ impl Builder {
     }
 
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
-        for pkg in PkgType::all() {
+        for pkg in &PkgType::all() {
             self.package(pkg, &mut manifest.pkg);
         }
     }
@@ -227,7 +235,7 @@ impl Builder {
         };
         for pkg in PkgType::all() {
             if pkg.is_preview() {
-                rename(pkg.tarball_component_name(), &pkg.manifest_component_name());
+                rename(&pkg.tarball_component_name(), &pkg.manifest_component_name());
             }
         }
     }
@@ -263,7 +271,7 @@ impl Builder {
 
         let host_component = |pkg: &_| Component::from_pkg(pkg, host);
 
-        for pkg in PkgType::all() {
+        for pkg in &PkgType::all() {
             match pkg {
                 // rustc/rust-std/cargo/docs are all required
                 PkgType::Rustc | PkgType::Cargo | PkgType::HtmlDocs => {
@@ -303,6 +311,8 @@ impl Builder {
                 | PkgType::JsonDocs
                 | PkgType::RustcDocs
                 | PkgType::RustcCodegenCranelift
+                | PkgType::RustcCodegenGcc
+                | PkgType::Gcc { .. }
                 | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
@@ -374,7 +384,7 @@ impl Builder {
         let mut is_present = version_info.present;
 
         // Never ship nightly-only components for other trains.
-        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkg) {
+        if self.versions.channel() != "nightly" && is_nightly_only(&pkg) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
