@@ -697,14 +697,12 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.max(y), y);
     /// assert_eq!(x.max(f16::NAN), x);
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -728,14 +726,12 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.min(y), x);
     /// assert_eq!(x.min(f16::NAN), x);
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -760,14 +756,12 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.maximum(y), y);
     /// assert!(x.maximum(f16::NAN).is_nan());
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -792,14 +786,12 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.minimum(y), x);
     /// assert!(x.minimum(f16::NAN).is_nan());
-    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
@@ -818,11 +810,9 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
-    /// # }
     /// ```
     #[inline]
     #[doc(alias = "average")]
