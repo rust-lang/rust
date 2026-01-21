@@ -1298,7 +1298,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 3.5_f16;
     /// let y = -3.5_f16;
@@ -1314,8 +1314,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        // FIXME(f16_f128): replace with `intrinsics::fabsf16` when available
-        Self::from_bits(self.to_bits() & !(1 << 15))
+        intrinsics::fabsf16(self)
     }
 
     /// Returns a number that represents the sign of `self`.
