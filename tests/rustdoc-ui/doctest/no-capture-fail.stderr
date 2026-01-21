@@ -14,5 +14,12 @@ LL |     Input: 123
 LL ~ } }
    |
 
-error: aborting due to 1 previous error
+error[E0601]: `main` function not found in crate `rust_out`
+  --> $DIR/nocapture-fail.rs:10:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/nocapture-fail.rs`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.
