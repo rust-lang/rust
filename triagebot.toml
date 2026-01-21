@@ -499,6 +499,7 @@ trigger_files = [
     "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
+    "src/tools/build-manifest",
     "src/tools/rust-installer",
     "src/tools/x",
     "src/stage0",
