@@ -21,7 +21,6 @@ use rustc_ast::{
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_literal_escaper::unescape_char;
-use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
@@ -2770,7 +2769,7 @@ impl<'a> Parser<'a> {
         let recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
-                reason: ForbiddenLetReason::OtherForbidden,
+                reason: errors::ForbiddenLetReason::OtherForbidden,
                 missing_let: None,
                 comparison: None,
             };
@@ -4169,22 +4168,6 @@ pub(crate) fn could_be_unclosed_char_literal(ident: Ident) -> bool {
         && unescape_char(ident.without_first_quote().name.as_str()).is_ok()
 }
 
-/// Used to forbid `let` expressions in certain syntactic locations.
-#[derive(Clone, Copy, Subdiagnostic)]
-pub(crate) enum ForbiddenLetReason {
-    /// `let` is not valid and the source environment is not important
-    OtherForbidden,
-    /// A let chain with the `||` operator
-    #[note(parse_not_supported_or)]
-    NotSupportedOr(#[primary_span] Span),
-    /// A let chain with invalid parentheses
-    ///
-    /// For example, `let 1 = 1 && (expr && expr)` is allowed
-    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    #[note(parse_not_supported_parentheses)]
-    NotSupportedParentheses(#[primary_span] Span),
-}
-
 /// Whether let chains are allowed on all editions, or it's edition dependent (allowed only on
 /// 2024 and later). In case of edition dependence, specify the currently present edition.
 pub enum LetChainsPolicy {
@@ -4205,7 +4188,7 @@ struct CondChecker<'a> {
     parser: &'a Parser<'a>,
     let_chains_policy: LetChainsPolicy,
     depth: u32,
-    forbid_let_reason: Option<ForbiddenLetReason>,
+    forbid_let_reason: Option<errors::ForbiddenLetReason>,
     missing_let: Option<errors::MaybeMissingLet>,
     comparison: Option<errors::MaybeComparison>,
 }
@@ -4226,14 +4209,13 @@ impl<'a> CondChecker<'a> {
 impl MutVisitor for CondChecker<'_> {
     fn visit_expr(&mut self, e: &mut Expr) {
         self.depth += 1;
-        use ForbiddenLetReason::*;
 
         let span = e.span;
         match e.kind {
             ExprKind::Let(_, _, _, ref mut recovered @ Recovered::No) => {
                 if let Some(reason) = self.forbid_let_reason {
                     let error = match reason {
-                        NotSupportedOr(or_span) => {
+                        errors::ForbiddenLetReason::NotSupportedOr(or_span) => {
                             self.parser.dcx().emit_err(errors::OrInLetChain { span: or_span })
                         }
                         _ => self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
@@ -4260,24 +4242,27 @@ impl MutVisitor for CondChecker<'_> {
                 mut_visit::walk_expr(self, e);
             }
             ExprKind::Binary(Spanned { node: BinOpKind::Or, span: or_span }, _, _)
-                if let None | Some(NotSupportedOr(_)) = self.forbid_let_reason =>
+                if let None | Some(errors::ForbiddenLetReason::NotSupportedOr(_)) =
+                    self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(NotSupportedOr(or_span));
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::NotSupportedOr(or_span));
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Paren(ref inner)
-                if let None | Some(NotSupportedParentheses(_)) = self.forbid_let_reason =>
+                if let None | Some(errors::ForbiddenLetReason::NotSupportedParentheses(_)) =
+                    self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(NotSupportedParentheses(inner.span));
+                self.forbid_let_reason =
+                    Some(errors::ForbiddenLetReason::NotSupportedParentheses(inner.span));
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Assign(ref lhs, _, span) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 let missing_let = self.missing_let;
                 if let ExprKind::Binary(_, _, rhs) = &lhs.kind
                     && let ExprKind::Path(_, _)
@@ -4310,7 +4295,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Tup(_)
             | ExprKind::Paren(_) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
@@ -4318,7 +4303,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Type(ref mut op, _)
             | ExprKind::UnsafeBinderCast(_, ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(OtherForbidden);
+                self.forbid_let_reason = Some(errors::ForbiddenLetReason::OtherForbidden);
                 self.visit_expr(op);
                 self.forbid_let_reason = forbid_let_reason;
             }

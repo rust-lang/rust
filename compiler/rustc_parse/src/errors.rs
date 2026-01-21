@@ -17,7 +17,7 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::parser::{ForbiddenLetReason, TokenDescription};
+use crate::parser::TokenDescription;
 
 #[derive(Diagnostic)]
 #[diag(parse_maybe_report_ambiguous_plus)]
@@ -3702,4 +3702,36 @@ pub(crate) struct StructLiteralWithoutPathLate {
     pub span: Span,
     #[suggestion(applicability = "has-placeholders", code = "/* Type */ ", style = "verbose")]
     pub suggestion_span: Span,
+}
+
+/// Used to forbid `let` expressions in certain syntactic locations.
+#[derive(Clone, Copy, Subdiagnostic)]
+pub(crate) enum ForbiddenLetReason {
+    /// `let` is not valid and the source environment is not important
+    OtherForbidden,
+    /// A let chain with the `||` operator
+    #[note(parse_not_supported_or)]
+    NotSupportedOr(#[primary_span] Span),
+    /// A let chain with invalid parentheses
+    ///
+    /// For example, `let 1 = 1 && (expr && expr)` is allowed
+    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
+    #[note(parse_not_supported_parentheses)]
+    NotSupportedParentheses(#[primary_span] Span),
+}
+
+#[derive(Debug, rustc_macros::Subdiagnostic)]
+#[suggestion(
+    parse_misspelled_kw,
+    applicability = "machine-applicable",
+    code = "{similar_kw}",
+    style = "verbose"
+)]
+pub(crate) struct MisspelledKw {
+    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
+    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
+    pub similar_kw: String,
+    #[primary_span]
+    pub span: Span,
+    pub is_incorrect_case: bool,
 }
