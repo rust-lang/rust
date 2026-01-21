@@ -342,22 +342,18 @@ macro_rules! define_callbacks {
             })*
         }
 
+        /// Holds per-query arenas for queries with the `arena_cache` modifier.
+        #[derive(Default)]
         pub struct QueryArenas<'tcx> {
-            $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
-                ()
-            ),)*
-        }
-
-        impl Default for QueryArenas<'_> {
-            fn default() -> Self {
-                Self {
-                    $($name: query_if_arena!([$($modifiers)*]
-                        (Default::default())
-                        ()
-                    ),)*
-                }
-            }
+            $(
+                $(#[$attr])*
+                pub $name: query_if_arena!([$($modifiers)*]
+                    // Use the `ArenaCached` helper trait to determine the arena's value type.
+                    (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
+                    // No arena for this query, so the field type is `()`.
+                    ()
+                ),
+            )*
         }
 
         #[derive(Default)]
