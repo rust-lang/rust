@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
-use rustc_ast as ast;
-use rustc_attr_parsing::{AttributeParser, ShouldEmit};
+use rustc_ast::{self as ast, CRATE_NODE_ID};
+use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::jobserver::Proxy;
@@ -17,6 +17,7 @@ use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
@@ -35,7 +36,7 @@ use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::{collect_crate_types, filename_for_input};
+use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
@@ -927,6 +928,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         &compiler.codegen_backend.supported_crate_types(sess),
         compiler.codegen_backend.name(),
         &pre_configured_attrs,
+        krate.spans.inner_span,
     );
     let stable_crate_id = StableCrateId::new(
         crate_name,
@@ -1343,6 +1345,94 @@ pub(crate) fn parse_crate_name(
     };
 
     Some((name, name_span))
+}
+
+pub fn collect_crate_types(
+    session: &Session,
+    backend_crate_types: &[CrateType],
+    codegen_backend_name: &'static str,
+    attrs: &[ast::Attribute],
+    crate_span: Span,
+) -> Vec<CrateType> {
+    // If we're generating a test executable, then ignore all other output
+    // styles at all other locations
+    if session.opts.test {
+        if !session.target.executables {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+                crate_type: CrateType::Executable,
+                target_triple: &session.opts.target_triple,
+            });
+            return Vec::new();
+        }
+        return vec![CrateType::Executable];
+    }
+
+    // Shadow `sdylib` crate type in interface build.
+    if session.opts.unstable_opts.build_sdylib_interface {
+        return vec![CrateType::Rlib];
+    }
+
+    // Only check command line flags if present. If no types are specified by
+    // command line, then reuse the empty `base` Vec to hold the types that
+    // will be found in crate attributes.
+    // JUSTIFICATION: before wrapper fn is available
+    #[allow(rustc::bad_opt_access)]
+    let mut base = session.opts.crate_types.clone();
+    if base.is_empty() {
+        if let Some(Attribute::Parsed(AttributeKind::CrateType(crate_type))) =
+            AttributeParser::<Early>::parse_limited_should_emit(
+                session,
+                attrs,
+                sym::crate_type,
+                crate_span,
+                CRATE_NODE_ID,
+                None,
+                ShouldEmit::EarlyFatal { also_emit_lints: false },
+            )
+        {
+            base.extend(crate_type);
+        }
+
+        if base.is_empty() {
+            base.push(default_output_for_target(session));
+        } else {
+            base.sort();
+            base.dedup();
+        }
+    }
+
+    base.retain(|crate_type| {
+        if invalid_output_for_target(session, *crate_type) {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+                crate_type: *crate_type,
+                target_triple: &session.opts.target_triple,
+            });
+            false
+        } else if !backend_crate_types.contains(crate_type) {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForCodegenBackend {
+                crate_type: *crate_type,
+                codegen_backend: codegen_backend_name,
+            });
+            false
+        } else {
+            true
+        }
+    });
+
+    base
+}
+
+/// Returns default crate type for target
+///
+/// Default crate type is used when crate type isn't provided neither
+/// through cmd line arguments nor through crate attributes
+///
+/// It is CrateType::Executable for all platforms but iOS as there is no
+/// way to run iOS binaries anyway without jailbreaking and
+/// interaction with Rust code through static library is the only
+/// option for now
+fn default_output_for_target(sess: &Session) -> CrateType {
+    if !sess.target.executables { CrateType::StaticLib } else { CrateType::Executable }
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {

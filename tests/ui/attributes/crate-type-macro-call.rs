@@ -1,6 +1,5 @@
 #![crate_type = foo!()]
-//~^ ERROR cannot find macro `foo`
-//~| WARN this was previously accepted
+//~^ ERROR attribute value must be a literal
 
 macro_rules! foo {
     () => {"rlib"};

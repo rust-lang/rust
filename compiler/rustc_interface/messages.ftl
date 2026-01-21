@@ -48,3 +48,9 @@ interface_proc_macro_crate_panic_abort =
 
 interface_temps_dir_error =
     failed to find or create the directory specified by `--temps-dir`
+
+interface_unsupported_crate_type_for_codegen_backend =
+    dropping unsupported crate type `{$crate_type}` for codegen backend `{$codegen_backend}`
+
+interface_unsupported_crate_type_for_target =
+    dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`

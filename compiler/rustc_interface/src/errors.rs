@@ -1,8 +1,10 @@
 use std::io;
 use std::path::Path;
 
+use rustc_hir::attrs::CrateType;
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTuple;
 
 #[derive(Diagnostic)]
 #[diag(interface_crate_name_does_not_match)]
@@ -107,4 +109,18 @@ pub struct MultipleOutputTypesToStdout;
 pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface_unsupported_crate_type_for_codegen_backend)]
+pub(crate) struct UnsupportedCrateTypeForCodegenBackend {
+    pub(crate) crate_type: CrateType,
+    pub(crate) codegen_backend: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface_unsupported_crate_type_for_target)]
+pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
+    pub(crate) crate_type: CrateType,
+    pub(crate) target_triple: &'a TargetTuple,
 }
