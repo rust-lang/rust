@@ -114,7 +114,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "readdir64" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.readdir64("dirent64", dirp)?;
                 this.write_scalar(result, dest)?;
