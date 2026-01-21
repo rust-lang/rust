@@ -1315,13 +1315,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_deny_explicit_impl]` enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
-        rustc_do_not_implement_via_object,
+        rustc_dyn_incompatible_trait,
         AttributeType::Normal,
         template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
-        "`#[rustc_do_not_implement_via_object]` opts out of the automatic trait impl for trait objects \
-        (`impl Trait for dyn Trait`)"
+        "`#[rustc_dyn_incompatible_trait]` marks a trait as dyn-incompatible, \
+        even if it otherwise satisfies the requirements to be dyn-compatible."
     ),
     rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
