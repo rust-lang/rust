@@ -2040,12 +2040,52 @@ impl HumanEmitter {
         debug!(?suggestions);
 
         if suggestions.is_empty() {
-            // Here we check if there are suggestions that have actual code changes. We sometimes
-            // suggest the same code that is already there, instead of changing how we produce the
-            // suggestions and filtering there, we just don't emit the suggestion.
-            // Suggestions coming from macros can also have malformed spans. This is a heavy handed
-            // approach to avoid ICEs by ignoring the suggestion outright.
-            return Ok(());
+            // Check if this is because source file is unavailable
+            let has_unavailable_source =
+                suggestion.substitutions.iter().flat_map(|sub| &sub.parts).any(|part| {
+                    if let Ok(lines) = sm.span_to_lines(part.span) {
+                        !sm.ensure_source_file_source_present(&lines.file)
+                    } else {
+                        false
+                    }
+                });
+            // Only when source unavailable, use the original suggestion spans for proper location display
+            if has_unavailable_source {
+                // When source is unavailable, use the original suggestion spans for proper location display
+                let suggestion_span = if !suggestion.substitutions.is_empty() {
+                    // Use the span from the first substitution part
+                    let parts: Vec<_> = suggestion
+                        .substitutions
+                        .iter()
+                        .flat_map(|sub| &sub.parts)
+                        .map(|part| part.span)
+                        .collect();
+                    if !parts.is_empty() { MultiSpan::from_spans(parts) } else { span.clone() }
+                } else {
+                    span.clone()
+                };
+
+                return self.emit_messages_default_inner(
+                    &suggestion_span,
+                    &[(suggestion.msg.to_owned(), Style::HeaderMsg)],
+                    args,
+                    &None,
+                    level,
+                    max_line_num_len,
+                    true,
+                    false,
+                );
+            } else {
+                // If source is available but suggestions are empty
+                // this is because of some reason in `splice_lines`, skip
+                //
+                // Here we check if there are suggestions that have actual code changes.
+                // We sometimes suggest the same code that is already there, instead of changing how we produce the
+                // suggestions and filtering there, we just don't emit the suggestion.
+                // Suggestions coming from macros can also have malformed spans. This is a heavy handed
+                // approach to avoid ICEs by ignoring the suggestion outright.
+                return Ok(());
+            }
         }
 
         let mut buffer = StyledBuffer::new();
