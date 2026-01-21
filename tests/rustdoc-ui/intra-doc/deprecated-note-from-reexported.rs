@@ -14,3 +14,20 @@ pub mod bar {
     //~| ERROR: unresolved link
     pub fn sql_function_proc() {}
 }
+
+// From here, this is a regression test for <https://github.com/rust-lang/rust/issues/151411>.
+pub use fuzz_test_helpers::*;
+
+/// A type referenced in the deprecation note.
+pub struct Env;
+
+impl Env {
+    pub fn try_invoke(&self) {}
+}
+
+mod fuzz_test_helpers {
+    #[deprecated(note = "use [Env::try_invoke] instead")]
+    //~^ ERROR: unresolved link
+    //~| ERROR: unresolved link
+    pub fn fuzz_catch_panic() {}
+}
