@@ -443,8 +443,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
@@ -472,8 +471,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = 7.0_f16;
     /// let g = -7.0_f16;
@@ -507,8 +505,7 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): ABI issues on MSVC
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// // f16::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f16.next_up(), 1.0 + f16::EPSILON);
@@ -562,8 +559,7 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): ABI issues on MSVC
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
     /// // Clamp value into range [0, 1).
@@ -606,8 +602,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
@@ -633,8 +628,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let angle = std::f16::consts::PI;
     ///
@@ -663,8 +657,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let angle = 180.0f16;
     ///
@@ -697,7 +690,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
@@ -728,7 +721,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
@@ -760,7 +753,7 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
@@ -792,7 +785,7 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
     /// let y = 2.0f16;
@@ -818,7 +811,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
@@ -965,8 +958,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let bytes = 12.5f16.to_be_bytes();
     /// assert_eq!(bytes, [0x4a, 0x40]);
@@ -989,8 +981,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let bytes = 12.5f16.to_le_bytes();
     /// assert_eq!(bytes, [0x40, 0x4a]);
@@ -1019,8 +1010,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): LLVM crashes on s390x, llvm/llvm-project#50374
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let bytes = 12.5f16.to_ne_bytes();
     /// assert_eq!(
@@ -1150,8 +1140,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// struct GoodBoy {
     ///     name: &'static str,
