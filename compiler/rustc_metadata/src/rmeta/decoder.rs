@@ -17,7 +17,7 @@ use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
@@ -33,8 +33,9 @@ use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
-    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
-    SpanDecoder, Symbol, SyntaxContext, kw,
+    AttrId, BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, ExpnId, IdentRef, Pos,
+    RemapPathScopeComponents, Span, SpanData, SpanDecoder, SpanRef, SpanResolver, Symbol,
+    SyntaxContext, kw,
 };
 use tracing::debug;
 
@@ -72,6 +73,61 @@ impl MetadataBlob {
     }
 }
 
+/// A reference to the raw binary version of span file data (.spans files).
+/// Similar to [`MetadataBlob`] but for separate span files.
+pub(crate) struct SpanBlob(OwnedSlice);
+
+impl std::ops::Deref for SpanBlob {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl SpanBlob {
+    /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`SpanBlob`].
+    pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
+        if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
+    }
+
+    /// Checks if this span blob has a valid header.
+    pub(crate) fn check_header(&self) -> bool {
+        self.starts_with(SPAN_HEADER)
+    }
+
+    /// Parses the root position from the blob header.
+    fn root_pos(&self) -> Result<NonZero<usize>, &'static str> {
+        // Check minimum length: header + root position (8 bytes)
+        let min_len = SPAN_HEADER.len() + 8;
+        if self.len() < min_len {
+            return Err("span file too short to contain header and root position");
+        }
+
+        let offset = SPAN_HEADER.len();
+        let pos_bytes: [u8; 8] = match self[offset..].get(..8) {
+            Some(bytes) => bytes.try_into().unwrap(),
+            None => return Err("span file too short to read root position"),
+        };
+        let pos = u64::from_le_bytes(pos_bytes) as usize;
+
+        let pos = NonZero::new(pos).ok_or("span file has zero root position")?;
+
+        if pos.get() >= self.len() {
+            return Err("span file root position points past end of file");
+        }
+
+        Ok(pos)
+    }
+
+    /// Parses and returns the SpanFileRoot from the blob.
+    pub(crate) fn get_root(&self) -> Result<SpanFileRoot, &'static str> {
+        let pos = self.root_pos()?;
+        Ok(LazyValue::<SpanFileRoot>::from_position(pos).decode_span(self))
+    }
+}
+
 /// A map from external crate numbers (as decoded from some crate file) to
 /// local crate numbers (as generated during this session). Each external
 /// crate may refer to types in other external crates, and each has their
@@ -81,9 +137,21 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 /// Target modifiers - abi or exploit mitigations flags
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
+/// Lazily-loaded span file data. Contains the span blob and decoded source_map table.
+struct SpanFileData {
+    blob: SpanBlob,
+    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+}
+
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
+
+    /// Path to the span file (.spans), if one exists for this crate.
+    /// The span file is loaded lazily on first span resolution.
+    span_file_path: Option<PathBuf>,
+    /// Lazily-loaded span file data. Populated on first access when span_file_path is Some.
+    span_file_data: OnceLock<Option<SpanFileData>>,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Data about the top-level items in a crate, as well as various crate-level metadata.
@@ -100,6 +168,7 @@ pub(crate) struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
+    /// `None` means not yet loaded; `Some(imported)` means successfully loaded.
     source_map_import_info: Lock<Vec<Option<ImportedSourceFile>>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
@@ -153,6 +222,15 @@ struct ImportedSourceFile {
     /// The imported SourceFile's representation within the local source_map
     translated_source_file: Arc<rustc_span::SourceFile>,
 }
+
+/// Cached result of importing a source file.
+/// We use `Option<ImportedSourceFile>` in the cache Vec, where:
+/// - `None` means not yet attempted
+/// - `Some(imported)` means successfully imported
+///
+/// Note: Import failures now indicate a bug (either corrupted metadata or
+/// the crate was compiled with `-Z stable-crate-hash` but the `.spans` file
+/// is missing, which should have been caught at crate load time).
 
 /// Decode context used when we just have a blob of metadata from which we have to decode a header
 /// and [`CrateRoot`]. After that, [`MetadataDecodeContext`] can be used.
@@ -295,9 +373,58 @@ impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
+/// Decode context for span files (.spans).
+/// Similar to [`BlobDecodeContext`] but works with [`SpanBlob`] instead of [`MetadataBlob`].
+pub(super) struct SpanBlobDecodeContext<'a> {
+    opaque: MemDecoder<'a>,
+    lazy_state: LazyState,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a> LazyDecoder for SpanBlobDecodeContext<'a> {
+    fn set_lazy_state(&mut self, state: LazyState) {
+        self.lazy_state = state;
+    }
+
+    fn get_lazy_state(&self) -> LazyState {
+        self.lazy_state
+    }
+}
+
+/// Trait for decoding from span file blobs.
+/// Similar to [`Metadata`] but for [`SpanBlob`].
+pub(super) trait SpanMetadata<'a>: Copy {
+    type Context: BlobDecoder + LazyDecoder;
+
+    fn decoder(self, pos: usize) -> Self::Context;
+}
+
+impl<'a> SpanMetadata<'a> for &'a SpanBlob {
+    type Context = SpanBlobDecodeContext<'a>;
+
+    fn decoder(self, pos: usize) -> Self::Context {
+        SpanBlobDecodeContext {
+            opaque: MemDecoder::new(self, pos).unwrap(),
+            lazy_state: LazyState::NoNode,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
     fn decode<'a, 'tcx, M: Metadata<'a>>(self, metadata: M) -> T::Value<'tcx>
+    where
+        T::Value<'tcx>: Decodable<M::Context>,
+    {
+        let mut dcx = metadata.decoder(self.position.get());
+        dcx.set_lazy_state(LazyState::NodeStart(self.position));
+        T::Value::decode(&mut dcx)
+    }
+
+    /// Decode from a span file blob using SpanMetadata.
+    #[inline]
+    fn decode_span<'a, 'tcx, M: SpanMetadata<'a>>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -523,6 +650,14 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
         };
         data.span()
     }
+
+    fn decode_span_ref_as_span(&mut self) -> Span {
+        // Decode the SpanRef from metadata
+        let span_ref = SpanRef::decode(self);
+        // Resolve it to an absolute Span using the TyCtxt resolver
+        let resolver = TyCtxtSpanResolver::new(self.tcx);
+        resolver.resolve_span_ref(span_ref)
+    }
 }
 
 impl<'a, 'tcx> BlobDecoder for MetadataDecodeContext<'a, 'tcx> {
@@ -556,6 +691,84 @@ impl<'a> BlobDecoder for BlobDecodeContext<'a> {
             |this| ByteSymbol::intern(this.read_byte_str()),
             |opaque| ByteSymbol::intern(opaque.read_byte_str()),
         )
+    }
+}
+
+/// BlobDecoder impl for SpanBlobDecodeContext.
+/// Symbols in span files use simple string encoding (no offset tables).
+impl<'a> BlobDecoder for SpanBlobDecodeContext<'a> {
+    fn decode_def_index(&mut self) -> DefIndex {
+        DefIndex::from_u32(self.read_u32())
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        // Span files use simple string encoding
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        ByteSymbol::intern(self.read_byte_str())
+    }
+}
+
+/// Minimal SpanDecoder impl for SpanBlobDecodeContext.
+/// Similar to BlobDecodeContext's SpanDecoder impl - methods requiring hygiene will panic.
+impl<'a> SpanDecoder for SpanBlobDecodeContext<'a> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
+        Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `SpanBlobDecodeContext`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `SpanBlobDecodeContext`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `SpanBlobDecodeContext`");
+    }
+}
+
+/// Minimal SpanDecoder impl for BlobDecodeContext to support decoding types like SourceFile
+/// from the span blob. This is only used for span file decoding where full hygiene context
+/// is not available. Methods that require hygiene context will panic.
+impl<'a> SpanDecoder for BlobDecodeContext<'a> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
+        Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `BlobDecodeContext`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `BlobDecodeContext`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `BlobDecodeContext`");
     }
 }
 
@@ -632,6 +845,10 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
             foreign_data.imported_source_file(tcx, metadata_index)
         };
 
+        // Source file should always be available - missing files are caught at crate load time
+        // for crates compiled with -Z stable-crate-hash, and should never happen otherwise.
+        let source_file = source_file.expect("source file should be available");
+
         // Make sure our span is well-formed.
         debug_assert!(
             lo + source_file.original_start_pos <= source_file.original_end_pos,
@@ -693,6 +910,10 @@ mod meta {
 mod blob {
     use super::*;
     implement_ty_decoder!(BlobDecodeContext<'a>);
+}
+mod span_blob {
+    use super::*;
+    implement_ty_decoder!(SpanBlobDecodeContext<'a>);
 }
 
 impl MetadataBlob {
@@ -959,6 +1180,10 @@ impl CrateRoot {
     ) -> impl ExactSizeIterator<Item = TargetModifier> {
         self.target_modifiers.decode(metadata)
     }
+
+    pub(crate) fn has_stable_crate_hash(&self) -> bool {
+        self.has_stable_crate_hash
+    }
 }
 
 impl<'a> CrateMetadataRef<'a> {
@@ -999,13 +1224,15 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn opt_item_ident(self, tcx: TyCtxt<'_>, item_index: DefIndex) -> Option<Ident> {
         let name = self.opt_item_name(item_index)?;
-        let span = self
+        let span_ref = self
             .root
             .tables
             .def_ident_span
             .get((self, tcx), item_index)
             .unwrap_or_else(|| self.missing("def_ident_span", item_index))
             .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        let span = resolver.resolve_span_ref(span_ref);
         Some(Ident::new(name, span))
     }
 
@@ -1027,12 +1254,15 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_span(self, tcx: TyCtxt<'_>, index: DefIndex) -> Span {
-        self.root
+        let span_ref = self
+            .root
             .tables
             .def_span
             .get((self, tcx), index)
             .unwrap_or_else(|| self.missing("def_span", index))
-            .decode((self, tcx))
+            .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        resolver.resolve_span_ref(span_ref)
     }
 
     fn load_proc_macro<'tcx>(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
@@ -1314,7 +1544,7 @@ impl<'a> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, tcx))
             .nth(0)
-            .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))
+            .is_some_and(|ident| matches!(ident, Some(IdentRef { name: kw::SelfLower, .. })))
     }
 
     fn get_associated_item_or_field_def_ids(
@@ -1460,12 +1690,15 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_proc_macro_quoted_span(self, tcx: TyCtxt<'_>, index: usize) -> Span {
-        self.root
+        let span_ref = self
+            .root
             .tables
             .proc_macro_quoted_spans
             .get((self, tcx), index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
-            .decode((self, tcx))
+            .decode((self, tcx));
+        let resolver = TyCtxtSpanResolver::new(tcx);
+        resolver.resolve_span_ref(span_ref)
     }
 
     fn get_foreign_modules(self, tcx: TyCtxt<'_>) -> impl Iterator<Item = ForeignModule> {
@@ -1633,7 +1866,18 @@ impl<'a> CrateMetadataRef<'a> {
     ///
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
-    fn imported_source_file(self, tcx: TyCtxt<'_>, source_file_index: u32) -> ImportedSourceFile {
+    /// Imports a source file from this crate's metadata.
+    ///
+    /// Returns `None` if the source file index doesn't exist in the source map table
+    /// (sparse table entry). This can happen when iterating through all indices.
+    ///
+    /// Note: For crates compiled with `-Z stable-crate-hash`, missing `.spans` files
+    /// are detected and errored at crate load time, before this function is called.
+    fn imported_source_file(
+        self,
+        tcx: TyCtxt<'_>,
+        source_file_index: u32,
+    ) -> Option<ImportedSourceFile> {
         fn filter<'a>(
             tcx: TyCtxt<'_>,
             real_source_base_dir: &Option<PathBuf>,
@@ -1736,110 +1980,188 @@ impl<'a> CrateMetadataRef<'a> {
         for _ in import_info.len()..=(source_file_index as usize) {
             import_info.push(None);
         }
-        import_info[source_file_index as usize]
-            .get_or_insert_with(|| {
-                let source_file_to_import = self
-                    .root
-                    .source_map
-                    .get((self, tcx), source_file_index)
-                    .expect("missing source file")
-                    .decode((self, tcx));
 
-                // We can't reuse an existing SourceFile, so allocate a new one
-                // containing the information we need.
-                let original_end_pos = source_file_to_import.end_position();
-                let rustc_span::SourceFile {
-                    mut name,
-                    src_hash,
-                    checksum_hash,
-                    start_pos: original_start_pos,
-                    normalized_source_len,
-                    unnormalized_source_len,
-                    lines,
-                    multibyte_chars,
-                    normalized_pos,
-                    stable_id,
-                    ..
-                } = source_file_to_import;
+        // Check if we already have a cached result for this source file index.
+        if let Some(cached) = &import_info[source_file_index as usize] {
+            return Some(cached.clone());
+        }
 
-                // If this file is under $sysroot/lib/rustlib/src/
-                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
-                // then we change `name` to a similar state as if the rust was bootstrapped
-                // with `remap-debuginfo = true`.
-                // This is useful for testing so that tests about the effects of
-                // `try_to_translate_virtual_to_real` don't have to worry about how the
-                // compiler is bootstrapped.
-                try_to_translate_real_to_virtual(
-                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rust_source_base_dir,
-                    "library",
-                    &mut name,
-                );
+        let source_file_to_import = if self.root.has_stable_crate_hash() {
+            let span_data = self
+                .cdata
+                .span_file_data()
+                .expect("span file should be loaded for crate compiled with -Z stable-crate-hash");
+            span_data
+                .source_map
+                .get_from_span_blob(&span_data.blob, source_file_index)
+                .map(|lazy| lazy.decode_span(&span_data.blob))
+        } else if let Some(span_data) = self.cdata.span_file_data() {
+            span_data
+                .source_map
+                .get_from_span_blob(&span_data.blob, source_file_index)
+                .map(|lazy| lazy.decode_span(&span_data.blob))
+        } else {
+            self.root
+                .source_map
+                .get((self, tcx), source_file_index)
+                .map(|lazy| lazy.decode((self, tcx)))
+        };
 
-                // If this file is under $sysroot/lib/rustlib/rustc-src/
-                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
-                // then we change `name` to a similar state as if the rust was bootstrapped
-                // with `remap-debuginfo = true`.
-                try_to_translate_real_to_virtual(
-                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rustc_dev_source_base_dir,
-                    "compiler",
-                    &mut name,
-                );
+        // Return None for sparse table entries. This can happen when:
+        // - Searching through all source file indices (some may be empty)
+        //
+        // Note: For crates compiled with -Z stable-crate-hash, missing .spans files
+        // are now detected and errored at crate load time, so that case no longer
+        // reaches here.
+        let Some(source_file_to_import) = source_file_to_import else {
+            return None;
+        };
 
-                // If this file's path has been remapped to `/rustc/$hash`,
-                // we might be able to reverse that.
-                //
-                // NOTE: if you update this, you might need to also update bootstrap's code for generating
-                // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-                try_to_translate_virtual_to_real(
-                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rust_source_base_dir,
-                    &mut name,
-                );
+        // We can't reuse an existing SourceFile, so allocate a new one
+        // containing the information we need.
+        let original_end_pos = source_file_to_import.end_position();
+        let rustc_span::SourceFile {
+            mut name,
+            src_hash,
+            checksum_hash,
+            start_pos: original_start_pos,
+            normalized_source_len,
+            unnormalized_source_len,
+            lines,
+            multibyte_chars,
+            normalized_pos,
+            stable_id,
+            ..
+        } = source_file_to_import;
 
-                // If this file's path has been remapped to `/rustc-dev/$hash`,
-                // we might be able to reverse that.
-                //
-                // NOTE: if you update this, you might need to also update bootstrap's code for generating
-                // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
-                try_to_translate_virtual_to_real(
-                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
-                    &tcx.sess.opts.real_rustc_dev_source_base_dir,
-                    &mut name,
-                );
+        // If this file is under $sysroot/lib/rustlib/src/
+        // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+        // then we change `name` to a similar state as if the rust was bootstrapped
+        // with `remap-debuginfo = true`.
+        // This is useful for testing so that tests about the effects of
+        // `try_to_translate_virtual_to_real` don't have to worry about how the
+        // compiler is bootstrapped.
+        try_to_translate_real_to_virtual(
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rust_source_base_dir,
+            "library",
+            &mut name,
+        );
 
-                let local_version = tcx.sess.source_map().new_imported_source_file(
-                    name,
-                    src_hash,
-                    checksum_hash,
-                    stable_id,
-                    normalized_source_len.to_u32(),
-                    unnormalized_source_len,
-                    self.cnum,
-                    lines,
-                    multibyte_chars,
-                    normalized_pos,
-                    source_file_index,
-                );
+        // If this file is under $sysroot/lib/rustlib/rustc-src/
+        // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+        // then we change `name` to a similar state as if the rust was bootstrapped
+        // with `remap-debuginfo = true`.
+        try_to_translate_real_to_virtual(
+            option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rustc_dev_source_base_dir,
+            "compiler",
+            &mut name,
+        );
+
+        // If this file's path has been remapped to `/rustc/$hash`,
+        // we might be able to reverse that.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
+        try_to_translate_virtual_to_real(
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rust_source_base_dir,
+            &mut name,
+        );
+
+        // If this file's path has been remapped to `/rustc-dev/$hash`,
+        // we might be able to reverse that.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
+        try_to_translate_virtual_to_real(
+            option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+            &tcx.sess.opts.real_rustc_dev_source_base_dir,
+            &mut name,
+        );
+
+        let local_version = tcx.sess.source_map().new_imported_source_file(
+            name,
+            src_hash,
+            checksum_hash,
+            stable_id,
+            normalized_source_len.to_u32(),
+            unnormalized_source_len,
+            self.cnum,
+            lines,
+            multibyte_chars,
+            normalized_pos,
+            source_file_index,
+        );
+        debug!(
+            "CrateMetaData::imported_source_files alloc \
+                 source_file {:?} original (start_pos {:?} source_len {:?}) \
+                 translated (start_pos {:?} source_len {:?})",
+            local_version.name,
+            original_start_pos,
+            normalized_source_len,
+            local_version.start_pos,
+            local_version.normalized_source_len
+        );
+
+        let imported = ImportedSourceFile {
+            original_start_pos,
+            original_end_pos,
+            translated_source_file: local_version,
+        };
+        import_info[source_file_index as usize] = Some(imported.clone());
+        Some(imported)
+    }
+
+    /// Finds a source file by its `StableSourceFileId` and imports it into the local source map.
+    ///
+    /// This is used by `SpanResolver` to lazily load source files from external crates
+    /// when resolving `SpanRef::FileRelative` spans.
+    ///
+    /// Returns the imported source file if found, or `None` if the file doesn't belong
+    /// to this crate or couldn't be loaded.
+    fn find_and_import_source_file_by_stable_id(
+        self,
+        tcx: TyCtxt<'_>,
+        target_stable_id: rustc_span::StableSourceFileId,
+    ) -> Option<ImportedSourceFile> {
+        let num_files = if let Some(span_data) = self.cdata.span_file_data() {
+            span_data.source_map.size()
+        } else {
+            self.root.source_map.size()
+        };
+        debug!(
+            ?target_stable_id,
+            crate_name = ?self.cdata.root.header.name,
+            num_files,
+            "find_and_import_source_file_by_stable_id: searching"
+        );
+
+        for file_index in 0..num_files {
+            // Try to get the source file - it may already be cached
+            if let Some(imported) = self.imported_source_file(tcx, file_index as u32) {
+                let file_stable_id = imported.translated_source_file.stable_id;
                 debug!(
-                    "CrateMetaData::imported_source_files alloc \
-                         source_file {:?} original (start_pos {:?} source_len {:?}) \
-                         translated (start_pos {:?} source_len {:?})",
-                    local_version.name,
-                    original_start_pos,
-                    normalized_source_len,
-                    local_version.start_pos,
-                    local_version.normalized_source_len
+                    file_index,
+                    name = ?imported.translated_source_file.name,
+                    ?file_stable_id,
+                    "find_and_import_source_file_by_stable_id: checking file"
                 );
 
-                ImportedSourceFile {
-                    original_start_pos,
-                    original_end_pos,
-                    translated_source_file: local_version,
+                if file_stable_id == target_stable_id {
+                    debug!("find_and_import_source_file_by_stable_id: FOUND");
+                    return Some(imported);
                 }
-            })
-            .clone()
+            }
+        }
+
+        debug!(
+            ?target_stable_id,
+            crate_name = ?self.cdata.root.header.name,
+            "find_and_import_source_file_by_stable_id: NOT FOUND"
+        );
+        None
     }
 
     fn get_attr_flags(self, tcx: TyCtxt<'_>, index: DefIndex) -> AttrFlags {
@@ -1901,6 +2223,8 @@ impl CrateMetadata {
 
         let mut cdata = CrateMetadata {
             blob,
+            span_file_path: source.spans.clone(),
+            span_file_data: OnceLock::new(),
             root,
             trait_impls,
             incoherent_impls: Default::default(),
@@ -1933,6 +2257,73 @@ impl CrateMetadata {
             .collect();
 
         cdata
+    }
+
+    /// Loads the span file, returning an error on failure.
+    pub(crate) fn ensure_span_file_loaded(&self) -> Result<(), String> {
+        let Some(path) = self.span_file_path.as_ref() else {
+            return Err(format!("span file path not set for crate '{}'", self.root.header.name));
+        };
+        let data = self.load_span_file(path)?;
+        let _ = self.span_file_data.set(Some(data));
+        Ok(())
+    }
+
+    /// Pre-imports all source files to ensure deterministic `BytePos` values for
+    /// diagnostic output ordering.
+    pub(crate) fn preload_all_source_files(&self, tcx: TyCtxt<'_>, cstore: &CStore) {
+        let cref = CrateMetadataRef { cdata: self, cstore };
+        let num_files = if let Some(span_data) = self.span_file_data() {
+            span_data.source_map.size()
+        } else {
+            self.root.source_map.size()
+        };
+        debug!(
+            crate_name = ?self.root.header.name,
+            num_files,
+            "preload_all_source_files: importing all source files"
+        );
+        for file_index in 0..num_files {
+            let _ = cref.imported_source_file(tcx, file_index as u32);
+        }
+    }
+
+    /// Lazily loads the span file data if a span file path is configured.
+    /// Returns None if no span file exists or if loading fails.
+    fn span_file_data(&self) -> Option<&SpanFileData> {
+        self.span_file_data
+            .get_or_init(|| {
+                let path = self.span_file_path.as_ref()?;
+                self.load_span_file(path).ok()
+            })
+            .as_ref()
+    }
+
+    /// Loads and parses the span file from disk.
+    fn load_span_file(&self, path: &Path) -> Result<SpanFileData, String> {
+        use crate::locator::get_span_metadata_section;
+
+        let blob = get_span_metadata_section(path)?;
+
+        if !blob.check_header() {
+            return Err(format!("invalid span file header in '{}'", path.display()));
+        }
+
+        let root = blob
+            .get_root()
+            .map_err(|e| format!("failed to parse span file '{}': {}", path.display(), e))?;
+
+        // Verify the rmeta hash matches
+        if root.header.rmeta_hash != self.root.header.hash {
+            return Err(format!(
+                "span file hash mismatch: expected {:?}, found {:?} in '{}'",
+                self.root.header.hash,
+                root.header.rmeta_hash,
+                path.display()
+            ));
+        }
+
+        Ok(SpanFileData { blob, source_map: root.source_map })
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
@@ -2067,5 +2458,150 @@ impl CrateMetadata {
         }
 
         None
+    }
+}
+
+// =============================================================================
+// SpanResolver implementation
+// =============================================================================
+
+/// Resolves `SpanRef` values to concrete `Span`s using the compilation context.
+///
+/// This is the core infrastructure for RDR (Relink, Don't Rebuild).
+/// When metadata stores spans as `SpanRef` with relative positions, this resolver
+/// converts them back to absolute `Span` positions for diagnostics and debugging.
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+pub(crate) struct TyCtxtSpanResolver<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+impl<'tcx> TyCtxtSpanResolver<'tcx> {
+    /// Creates a new span resolver using the given type context.
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        TyCtxtSpanResolver { tcx }
+    }
+}
+
+#[allow(dead_code)] // Infrastructure for RDR span resolution
+impl SpanResolver for TyCtxtSpanResolver<'_> {
+    fn resolve_span_ref(&self, span_ref: SpanRef) -> Span {
+        match span_ref {
+            SpanRef::Opaque { ctxt } => {
+                // Opaque spans have no position info - return dummy with context
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::FileRelative { source_crate, file, lo, hi, ctxt } => {
+                debug!(?source_crate, ?file, lo, hi, "resolve_span_ref: FileRelative");
+
+                // First, try to look up the source file by its stable ID in the current source map.
+                // This works when the file has already been imported from the source crate.
+                let source_map = self.tcx.sess.source_map();
+                if let Some(source_file) = source_map.source_file_by_stable_id(file) {
+                    debug!(
+                        name = ?source_file.name,
+                        start_pos = ?source_file.start_pos,
+                        "resolve_span_ref: found file in source map"
+                    );
+                    let abs_lo = source_file.start_pos + BytePos(lo);
+                    let abs_hi = source_file.start_pos + BytePos(hi);
+                    return Span::new(abs_lo, abs_hi, ctxt, None);
+                }
+
+                debug!("resolve_span_ref: file not in source map, trying to import from crate");
+
+                // File not in source map - find the source crate and import from its metadata.
+                // This mirrors how the original span encoding works: we know exactly which
+                // crate's metadata contains the source file.
+
+                // Safely look up the crate - it may not exist in stale incremental state
+                // or if a dependency was removed.
+                let source_cnum = if source_crate == self.tcx.stable_crate_id(LOCAL_CRATE) {
+                    LOCAL_CRATE
+                } else {
+                    match self.tcx.untracked().stable_crate_ids.read().get(&source_crate).copied() {
+                        Some(cnum) => cnum,
+                        None => {
+                            debug!(
+                                ?source_crate,
+                                ?file,
+                                "resolve_span_ref: unknown crate, falling back to dummy span"
+                            );
+                            return DUMMY_SP.with_ctxt(ctxt);
+                        }
+                    }
+                };
+
+                let cstore = CStore::from_tcx(self.tcx);
+                debug!(?source_crate, ?source_cnum, "resolve_span_ref: converted stable crate id");
+                let cref = cstore.get_crate_data(source_cnum);
+
+                // Try to import the source file from that crate's metadata
+                if let Some(imported) =
+                    cref.find_and_import_source_file_by_stable_id(self.tcx, file)
+                {
+                    debug!(
+                        name = ?imported.translated_source_file.name,
+                        start_pos = ?imported.translated_source_file.start_pos,
+                        "resolve_span_ref: imported file"
+                    );
+                    let abs_lo = imported.translated_source_file.start_pos + BytePos(lo);
+                    let abs_hi = imported.translated_source_file.start_pos + BytePos(hi);
+                    return Span::new(abs_lo, abs_hi, ctxt, None);
+                }
+
+                // File not found in source crate - fall back to dummy span
+                debug!(
+                    ?file,
+                    ?source_crate,
+                    ?source_cnum,
+                    "resolve_span_ref: source file not found in crate"
+                );
+                DUMMY_SP.with_ctxt(ctxt)
+            }
+            SpanRef::DefRelative { def_id, lo, hi, ctxt } => {
+                // Look up the definition's span and add relative offsets
+                let def_span = self.tcx.def_span(def_id);
+                let def_data = def_span.data();
+                let abs_lo = def_data.lo + BytePos(lo);
+                let abs_hi = def_data.lo + BytePos(hi);
+                Span::new(abs_lo, abs_hi, ctxt, None)
+            }
+        }
+    }
+
+    fn span_ref_from_span(&self, span: Span) -> SpanRef {
+        let data = span.data();
+
+        // Dummy spans become opaque
+        if span.is_dummy() {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        let source_map = self.tcx.sess.source_map();
+
+        // Look up the source file containing this span
+        let source_file = source_map.lookup_source_file(data.lo);
+
+        // If the span crosses file boundaries, make it opaque
+        let end_file = source_map.lookup_source_file(data.hi);
+        if source_file.start_pos != end_file.start_pos {
+            return SpanRef::Opaque { ctxt: data.ctxt };
+        }
+
+        // Compute relative offsets from the file's start position
+        let rel_lo = (data.lo - source_file.start_pos).0;
+        let rel_hi = (data.hi - source_file.start_pos).0;
+
+        // Get the source crate's stable ID
+        let source_crate = self.tcx.stable_crate_id(source_file.cnum);
+
+        SpanRef::FileRelative {
+            source_crate,
+            file: source_file.stable_id,
+            lo: rel_lo,
+            hi: rel_hi,
+            ctxt: data.ctxt,
+        }
     }
 }

@@ -326,6 +326,7 @@ fn check_opaque_meets_bounds<'tcx>(
     for (predicate, pred_span) in
         tcx.explicit_item_bounds(def_id).iter_instantiated_copied(tcx, args)
     {
+        let pred_span = tcx.resolve_span_ref(pred_span);
         let predicate = predicate.fold_with(&mut BottomUpFolder {
             tcx,
             ty_op: |ty| if ty == opaque_ty { hidden_ty } else { ty },

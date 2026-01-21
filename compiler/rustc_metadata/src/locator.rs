@@ -236,7 +236,7 @@ use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
 use crate::errors;
-use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, SpanBlob, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -543,7 +543,18 @@ impl<'a> CrateLocator<'a> {
             return Err(CrateError::FullMetadataNotFound(self.crate_name, CrateFlavor::SDylib));
         }
 
-        let source = CrateSource { rmeta, rlib, dylib, sdylib_interface };
+        // Look for .spans file adjacent to rmeta/rlib/dylib (in priority order).
+        let mut spans = None;
+        for candidate in [&rmeta, &rlib, &dylib] {
+            let Some(path) = candidate else { continue };
+            let span_path = path.with_extension("spans");
+            if span_path.exists() {
+                spans = Some(span_path);
+                break;
+            }
+        }
+
+        let source = CrateSource { rmeta, rlib, dylib, sdylib_interface, spans };
         Ok(slot.map(|(svh, metadata, _, _)| (svh, Library { source, metadata })))
     }
 
@@ -950,6 +961,19 @@ fn get_rmeta_metadata_section<'a, 'p>(filename: &'p Path) -> Result<OwnedSlice, 
     Ok(slice_owned(mmap, Deref::deref))
 }
 
+/// Loads a span metadata file (.spans) that accompanies rmeta files compiled with -Z stable-crate-hash.
+pub(crate) fn get_span_metadata_section(filename: &Path) -> Result<SpanBlob, String> {
+    // mmap the file, because only a small fraction of it is read.
+    let file = std::fs::File::open(filename)
+        .map_err(|e| format!("failed to open span metadata '{}': {}", filename.display(), e))?;
+    let mmap = unsafe { Mmap::map(file) }
+        .map_err(|e| format!("failed to mmap span metadata '{}': {}", filename.display(), e))?;
+
+    let raw_bytes = slice_owned(mmap, Deref::deref);
+    SpanBlob::new(raw_bytes)
+        .map_err(|()| format!("corrupt span metadata in '{}'", filename.display()))
+}
+
 /// A diagnostic function for dumping crate metadata to an output stream.
 pub fn list_file_metadata(
     target: &Target,
@@ -1022,6 +1046,7 @@ pub(crate) enum CrateError {
     DlSym(String, String),
     LocatorCombined(Box<CombinedLocatorError>),
     NotFound(Symbol),
+    MissingSpanFile(Symbol, String),
 }
 
 enum MetadataError<'a> {
@@ -1230,6 +1255,9 @@ impl CrateError {
                 } else {
                     dcx.emit_err(error);
                 }
+            }
+            CrateError::MissingSpanFile(crate_name, reason) => {
+                dcx.emit_err(errors::MissingSpanFile { span, crate_name, reason });
             }
         }
     }

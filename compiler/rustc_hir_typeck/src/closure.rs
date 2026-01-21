@@ -312,7 +312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
-                        .map(|(c, s)| (c.as_predicate(), s)),
+                        .map(|(c, s)| (c.as_predicate(), self.tcx.resolve_span_ref(s))),
                 ),
             ty::Dynamic(object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
@@ -1028,7 +1028,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
+                .find_map(|(p, s)| {
+                    get_future_output(p.as_predicate(), self.tcx.resolve_span_ref(s))
+                })?,
             ty::Error(_) => return Some(ret_ty),
             _ => {
                 span_bug!(closure_span, "invalid async fn coroutine return type: {ret_ty:?}")

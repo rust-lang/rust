@@ -71,6 +71,7 @@ use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -97,7 +98,7 @@ use rustc_session::cstore::{
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Symbol};
+use rustc_span::{DUMMY_SP, LocalExpnId, Span, SpanRef, Symbol};
 use rustc_target::spec::PanicStrategy;
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
@@ -506,7 +507,7 @@ rustc_queries! {
     /// fn function() -> impl Debug + Display { /*...*/ }
     /// //                    ^^^^^^^^^^^^^^^
     /// ```
-    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -519,7 +520,7 @@ rustc_queries! {
     /// like closure signature deduction.
     ///
     /// [explicit item bounds]: Self::explicit_item_bounds
-    query explicit_item_self_bounds(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    query explicit_item_self_bounds(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -849,7 +850,7 @@ rustc_queries! {
     ///
     /// **Tip**: You can use `#[rustc_outlives]` on an item to basically print the
     /// result of this query for use in UI tests or for debugging purposes.
-    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
+    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, SpanRef)] {
         desc { |tcx| "computing inferred outlives-predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -863,7 +864,7 @@ rustc_queries! {
     /// This is a subset of the full list of predicates. We store these in a separate map
     /// because we must evaluate them even during type conversion, often before the full
     /// predicates are available (note that super-predicates must not be cyclic).
-    query explicit_super_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    query explicit_super_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -875,7 +876,7 @@ rustc_queries! {
     /// of the trait. For regular traits, this includes all super-predicates and their
     /// associated type bounds. For trait aliases, currently, this includes all of the
     /// predicates of the trait alias.
-    query explicit_implied_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    query explicit_implied_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "computing the implied predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -886,7 +887,7 @@ rustc_queries! {
     /// cycles in resolving type-dependent associated item paths like `T::Item`.
     query explicit_supertraits_containing_assoc_item(
         key: (DefId, rustc_span::Ident)
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "computing the super traits of `{}` with associated type name `{}`",
             tcx.def_path_str(key.0),
             key.1
@@ -929,7 +930,7 @@ rustc_queries! {
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(
         key: (LocalDefId, LocalDefId, rustc_span::Ident)
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
         desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir_ty_param_name(key.1) }
     }
 
@@ -1179,13 +1180,13 @@ rustc_queries! {
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
     /// this can not be used to check whether these types are well formed.
-    query assumed_wf_types(key: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
+    query assumed_wf_types(key: LocalDefId) -> &'tcx [(Ty<'tcx>, SpanRef)] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
     }
 
     /// We need to store the assumed_wf_types for an RPITIT so that impls of foreign
     /// traits with return-position impl trait in traits can inherit the right wf types.
-    query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [(Ty<'tcx>, Span)] {
+    query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [(Ty<'tcx>, SpanRef)] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -2049,6 +2050,12 @@ rustc_queries! {
     /// Finds the `rustc_proc_macro_decls` item of a crate.
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the proc macro declarations for a crate" }
+    }
+
+    /// Computes a hash of only the publicly-reachable API.
+    /// This hash is stable when private items change.
+    query public_api_hash(_: ()) -> Fingerprint {
+        desc { "computing public API hash" }
     }
 
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.

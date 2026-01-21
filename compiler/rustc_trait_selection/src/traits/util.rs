@@ -52,9 +52,10 @@ pub fn expand_trait_aliases<'tcx>(
                     queue.extend(
                         tcx.explicit_super_predicates_of(trait_pred.def_id())
                             .iter_identity_copied()
-                            .map(|(super_clause, span)| {
+                            .map(|(super_clause, span_ref)| {
                                 let mut spans = spans.clone();
-                                spans.push(span);
+                                // Resolve SpanRef to Span for diagnostic purposes
+                                spans.push(tcx.resolve_span_ref(span_ref));
                                 (
                                     super_clause.instantiate_supertrait(
                                         tcx,

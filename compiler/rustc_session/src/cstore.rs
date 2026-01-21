@@ -25,6 +25,8 @@ pub struct CrateSource {
     pub rlib: Option<PathBuf>,
     pub rmeta: Option<PathBuf>,
     pub sdylib_interface: Option<PathBuf>,
+    /// Path to `.spans` file for crates compiled with `-Z stable-crate-hash`.
+    pub spans: Option<PathBuf>,
 }
 
 impl CrateSource {

@@ -1,21 +1,38 @@
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::TempDirBuilder;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
+use tracing::debug;
 
 use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
-use crate::{EncodedMetadata, encode_metadata};
+use crate::rmeta::MetadataBlob;
+use crate::{EncodedMetadata, encode_metadata, encode_spans};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
+
+/// Reads the SVH (Strict Version Hash) from an existing .rmeta file.
+/// Returns `None` if the file doesn't exist or can't be read.
+fn read_existing_metadata_hash(path: &Path) -> Option<Svh> {
+    let file = fs::File::open(path).ok()?;
+    let mmap = unsafe { Mmap::map(file) }.ok()?;
+    let owned: OwnedSlice = slice_owned(mmap, Deref::deref);
+    let blob = MetadataBlob::new(owned).ok()?;
+    Some(blob.get_header().hash)
+}
 
 /// We use a temp directory here to avoid races between concurrent rustc processes,
 /// such as builds in the same directory using the same filename for metadata while
@@ -54,8 +71,8 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         None
     };
 
-    if tcx.needs_metadata() {
-        encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref());
+    let required_source_files = if tcx.needs_metadata() {
+        encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref())
     } else {
         // Always create a file at `metadata_filename`, even if we have nothing to write to it.
         // This simplifies the creation of the output `out_filename` when requested.
@@ -67,7 +84,19 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
                 tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
             });
         }
-    }
+        None
+    };
+
+    // When -Z stable-crate-hash is enabled, encode spans to a separate .spans file
+    let spans_tmp_filename = if let Some(required_source_files) = required_source_files
+        && tcx.sess.opts.unstable_opts.stable_crate_hash
+    {
+        let spans_tmp_filename = metadata_tmpdir.as_ref().join("lib.spans");
+        encode_spans(tcx, &spans_tmp_filename, tcx.crate_hash(LOCAL_CRATE), required_source_files);
+        Some(spans_tmp_filename)
+    } else {
+        None
+    };
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
@@ -78,7 +107,24 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {
-                if let Err(err) = non_durable_rename(&metadata_filename, path) {
+                // RDR optimization: when -Z stable-crate-hash is enabled, skip writing
+                // the .rmeta file if its content hash (SVH) hasn't changed. This
+                // preserves the file's mtime, preventing cargo from rebuilding
+                // dependent crates when only span positions changed.
+                let new_hash = tcx.crate_hash(LOCAL_CRATE);
+                let skip_write = tcx.sess.opts.unstable_opts.stable_crate_hash
+                    && read_existing_metadata_hash(path).is_some_and(|old_hash| {
+                        let matches = old_hash == new_hash;
+                        if matches {
+                            debug!("skipping .rmeta write: SVH unchanged ({:?})", new_hash);
+                        }
+                        matches
+                    });
+
+                if skip_write {
+                    // Remove the temp file since we're keeping the existing one
+                    let _ = fs::remove_file(&metadata_filename);
+                } else if let Err(err) = non_durable_rename(&metadata_filename, path) {
                     tcx.dcx().emit_fatal(FailedWriteError { filename: path.to_path_buf(), err });
                 }
                 path.clone()
@@ -100,6 +146,21 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     } else {
         (metadata_filename, Some(metadata_tmpdir))
     };
+
+    // Write spans file adjacent to where the rmeta would be output.
+    // This uses out_filename (the intended rmeta output path) rather than metadata_filename
+    // because metadata_filename may be a temp path when not producing standalone metadata.
+    if let Some(spans_tmp_filename) = spans_tmp_filename {
+        let spans_filename = match &out_filename {
+            OutFileName::Real(path) => path.with_extension("spans"),
+            OutFileName::Stdout => spans_tmp_filename.clone(),
+        };
+        if spans_tmp_filename != spans_filename {
+            if let Err(err) = non_durable_rename(&spans_tmp_filename, &spans_filename) {
+                tcx.dcx().emit_fatal(FailedWriteError { filename: spans_filename, err });
+            }
+        }
+    }
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =

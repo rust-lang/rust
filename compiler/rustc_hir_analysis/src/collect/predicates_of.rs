@@ -10,7 +10,16 @@ use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, SpanRef};
+
+fn convert_to_span_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &[(ty::Clause<'tcx>, Span)],
+) -> &'tcx [(ty::Clause<'tcx>, SpanRef)] {
+    tcx.arena.alloc_from_iter(
+        predicates.iter().map(|(clause, span)| (*clause, tcx.span_ref_from_span(*span))),
+    )
+}
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
@@ -33,8 +42,9 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
         debug!("predicates_of: inferred_outlives_of({:?}) = {:?}", def_id, inferred_outlives,);
-        let inferred_outlives_iter =
-            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
+        let inferred_outlives_iter = inferred_outlives
+            .iter()
+            .map(|(clause, span)| ((*clause).upcast(tcx), tcx.resolve_span_ref(*span)));
         if result.predicates.is_empty() {
             result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
         } else {
@@ -602,14 +612,14 @@ pub(super) fn explicit_predicates_of<'tcx>(
 pub(super) fn explicit_super_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
     implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
 }
 
 pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     (trait_def_id, assoc_ident): (DefId, Ident),
-) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
     implied_predicates_with_filter(
         tcx,
         trait_def_id,
@@ -620,7 +630,7 @@ pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
 pub(super) fn explicit_implied_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
     implied_predicates_with_filter(
         tcx,
         trait_def_id.to_def_id(),
@@ -639,7 +649,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     filter: PredicateFilter,
-) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_ident` is None, then the query should've been redirected to an
         // external provider
@@ -731,7 +741,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     assert_only_contains_predicates_from(filter, implied_bounds, tcx.types.self_param);
 
-    ty::EarlyBinder::bind(implied_bounds)
+    ty::EarlyBinder::bind(convert_to_span_ref(tcx, implied_bounds))
 }
 
 // Make sure when elaborating supertraits, probing for associated types, etc.,
@@ -875,7 +885,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
 pub(super) fn type_param_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     (item_def_id, def_id, assoc_ident): (LocalDefId, LocalDefId, Ident),
-) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, SpanRef)]> {
     match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             return tcx.type_param_predicates((opaque_def_id.expect_local(), def_id, assoc_ident));
@@ -932,8 +942,13 @@ pub(super) fn type_param_predicates<'tcx>(
         PredicateFilter::SelfTraitThatDefines(assoc_ident),
     ));
 
-    let bounds =
-        &*tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates));
+    let bounds = &*tcx.arena.alloc_from_iter(
+        result
+            .skip_binder()
+            .iter()
+            .map(|(clause, span)| (*clause, tcx.resolve_span_ref(*span)))
+            .chain(extra_predicates),
+    );
 
     // Double check that the bounds *only* contain `SelfTy: Trait` preds.
     let self_ty = match tcx.def_kind(def_id) {
@@ -953,7 +968,7 @@ pub(super) fn type_param_predicates<'tcx>(
         self_ty,
     );
 
-    ty::EarlyBinder::bind(bounds)
+    ty::EarlyBinder::bind(convert_to_span_ref(tcx, bounds))
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -1173,7 +1188,7 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
                     }) => trait_ref,
                     _ => bug!("converted {clause:?}"),
                 }),
-                span,
+                tcx.resolve_span_ref(span),
             )
         }))
     })

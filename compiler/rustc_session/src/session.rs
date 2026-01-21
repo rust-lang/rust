@@ -1,8 +1,9 @@
 use std::any::Any;
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, OnceLock};
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -10,6 +11,7 @@ use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
@@ -21,9 +23,10 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_hashes::Hash64;
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
-pub use rustc_span::def_id::StableCrateId;
+pub use rustc_span::def_id::{LOCAL_CRATE, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
@@ -105,6 +108,8 @@ pub struct Session {
 
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
+
+    diagnostic_spans_hash: OnceLock<Option<u64>>,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     pub lint_store: Option<Arc<dyn DynLintStore>>,
@@ -277,6 +282,24 @@ impl Session {
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
         self.psess.source_map()
+    }
+
+    pub fn diagnostic_spans_hash(&self) -> Option<u64> {
+        if !self.opts.unstable_opts.stable_crate_hash {
+            return None;
+        }
+
+        *self.diagnostic_spans_hash.get_or_init(|| {
+            let mut hasher = StableHasher::new();
+            for source_file in self.source_map().files().iter() {
+                if source_file.cnum != LOCAL_CRATE {
+                    continue;
+                }
+                source_file.stable_id.hash(&mut hasher);
+                source_file.src_hash.hash(&mut hasher);
+            }
+            Some(hasher.finish::<Hash64>().as_u64())
+        })
     }
 
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
@@ -1080,6 +1103,7 @@ pub fn build_session(
         prof,
         timings,
         code_stats: Default::default(),
+        diagnostic_spans_hash: OnceLock::new(),
         lint_store: None,
         driver_lint_caps,
         ctfe_backtrace,

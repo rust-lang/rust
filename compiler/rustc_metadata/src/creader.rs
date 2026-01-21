@@ -133,7 +133,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
+            let CrateSource { dylib, rlib, rmeta, sdylib_interface, spans } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.display())?;
             }
@@ -145,6 +145,9 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             }
             if let Some(sdylib_interface) = sdylib_interface {
                 writeln!(fmt, "   sdylib interface: {}", sdylib_interface.display())?;
+            }
+            if let Some(spans) = spans {
+                writeln!(fmt, "   spans: {}", spans.display())?;
             }
         }
         Ok(())
@@ -220,7 +223,13 @@ impl CStore {
         root: &CrateRoot,
     ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateError> {
         assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
-        let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
+        let stable_crate_id = root.stable_crate_id();
+        debug!(
+            crate_name = ?root.name(),
+            ?stable_crate_id,
+            "intern_stable_crate_id: registering crate"
+        );
+        let num = tcx.create_crate_num(stable_crate_id).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
                 CrateError::SymbolConflictsCurrent(root.name())
@@ -622,6 +631,13 @@ impl CStore {
             None
         };
 
+        let has_stable_crate_hash = crate_root.has_stable_crate_hash();
+        let crate_name = crate_root.name();
+
+        if has_stable_crate_hash && source.spans.is_none() {
+            return Err(CrateError::MissingSpanFile(crate_name, "file not found".to_string()));
+        }
+
         let crate_metadata = CrateMetadata::new(
             tcx,
             self,
@@ -635,6 +651,14 @@ impl CStore {
             private_dep,
             host_hash,
         );
+
+        if has_stable_crate_hash {
+            crate_metadata
+                .ensure_span_file_loaded()
+                .map_err(|err| CrateError::MissingSpanFile(crate_name, err))?;
+        }
+
+        crate_metadata.preload_all_source_files(tcx, self);
 
         self.set_crate_data(cnum, crate_metadata);
 

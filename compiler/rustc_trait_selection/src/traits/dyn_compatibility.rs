@@ -173,22 +173,33 @@ fn predicates_reference_self(
     supertraits_only: bool,
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
-    let predicates = if supertraits_only {
-        tcx.explicit_super_predicates_of(trait_def_id).skip_binder()
+    if supertraits_only {
+        // explicit_super_predicates_of returns SpanRef - resolve to Span
+        tcx.explicit_super_predicates_of(trait_def_id)
+            .skip_binder()
+            .iter()
+            .map(|&(predicate, sp_ref)| {
+                (predicate.instantiate_supertrait(tcx, trait_ref), tcx.resolve_span_ref(sp_ref))
+            })
+            .filter_map(|(clause, sp)| {
+                // Super predicates cannot allow self projections, since they're
+                // impossible to make into existential bounds without eager resolution
+                // or something.
+                // e.g. `trait A: B<Item = Self::Assoc>`.
+                predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
+            })
+            .collect()
     } else {
-        tcx.predicates_of(trait_def_id).predicates
-    };
-    predicates
-        .iter()
-        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
-        .filter_map(|(clause, sp)| {
-            // Super predicates cannot allow self projections, since they're
-            // impossible to make into existential bounds without eager resolution
-            // or something.
-            // e.g. `trait A: B<Item = Self::Assoc>`.
-            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
-        })
-        .collect()
+        // predicates_of still returns Span, handle it separately
+        tcx.predicates_of(trait_def_id)
+            .predicates
+            .iter()
+            .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
+            .filter_map(|(clause, sp)| {
+                predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
+            })
+            .collect()
+    }
 }
 
 fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
@@ -199,9 +210,11 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         // Ignore GATs with `Self: Sized`
         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
-        .filter_map(|(clause, sp)| {
+        .filter_map(|(clause, sp_ref)| {
             // Item bounds *can* have self projections, since they never get
             // their self type erased.
+            // Resolve SpanRef to Span for diagnostic purposes
+            let sp = tcx.resolve_span_ref(sp_ref);
             predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::Yes)
         })
         .collect()
@@ -256,7 +269,10 @@ fn super_predicates_have_non_lifetime_binders(
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
-        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
+        .filter_map(|(pred, span_ref)| {
+            // Resolve SpanRef to Span for diagnostic purposes
+            pred.has_non_region_bound_vars().then(|| tcx.resolve_span_ref(span_ref))
+        })
         .collect()
 }
 
@@ -269,9 +285,10 @@ fn super_predicates_are_unconditionally_const(
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
-        .filter_map(|(pred, span)| {
+        .filter_map(|(pred, span_ref)| {
             if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
-                Some(span)
+                // Resolve SpanRef to Span for diagnostic purposes
+                Some(tcx.resolve_span_ref(span_ref))
             } else {
                 None
             }

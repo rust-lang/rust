@@ -1167,6 +1167,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
     let wf_obligations = bounds.iter_identity_copied().flat_map(|(bound, bound_span)| {
+        let bound_span = wfcx.tcx().resolve_span_ref(bound_span);
         traits::wf::clause_obligations(
             wfcx.infcx,
             wfcx.param_env,

@@ -21,7 +21,7 @@ use rustc_span::hygiene::{
 use rustc_span::source_map::Spanned;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
-    SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
+    SourceFile, Span, SpanDecoder, SpanEncoder, SpanRef, StableSourceFileId, Symbol,
 };
 
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
@@ -756,6 +756,20 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
+    #[inline]
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, SpanRef)] {
+    #[inline]
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(Ty<'tcx>, SpanRef)] {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)

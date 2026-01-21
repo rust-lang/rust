@@ -839,6 +839,7 @@ where
                 .explicit_item_bounds(proj.def_id)
                 .iter_instantiated_copied(self.cx(), proj.args)
             {
+                let pred_span = self.cx().resolve_span_ref(pred_span);
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -2413,6 +2414,7 @@ pub(super) fn check_type_bounds<'tcx>(
         tcx,
         tcx.explicit_item_bounds(trait_ty.def_id).iter_instantiated_copied(tcx, rebased_args).map(
             |(concrete_ty_bound, span)| {
+                let span = tcx.resolve_span_ref(span);
                 debug!(?concrete_ty_bound);
                 traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
             },

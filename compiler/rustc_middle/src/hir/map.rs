@@ -20,6 +20,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 
@@ -1123,8 +1124,12 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
+    // Use public_api_hash for the SVH - this is what downstream crates use to decide
+    // whether to rebuild. By only hashing public API items, downstream crates won't
+    // rebuild when private items change.
+    // Internal incremental compilation uses the dep graph's fine-grained fingerprinting,
+    // which is separate from the SVH.
+    let body_hash = tcx.public_api_hash(());
 
     let upstream_crates = upstream_crates(tcx);
 
@@ -1162,7 +1167,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        body_hash.hash_stable(&mut hcx, &mut stable_hasher);
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
@@ -1209,6 +1214,176 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
         .collect();
     upstream_crates.sort_unstable_by_key(|&(stable_crate_id, _)| stable_crate_id);
     upstream_crates
+}
+
+/// Hashes an item's public signature (types, bounds, etc.)
+fn hash_item_signature(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    hcx: &mut rustc_query_system::ich::StableHashingContext<'_>,
+    hasher: &mut StableHasher,
+) {
+    let def_kind = tcx.def_kind(def_id);
+    def_kind.hash_stable(hcx, hasher);
+
+    match def_kind {
+        DefKind::Fn | DefKind::AssocFn => {
+            tcx.fn_sig(def_id).instantiate_identity().hash_stable(hcx, hasher);
+            tcx.generics_of(def_id).hash_stable(hcx, hasher);
+            tcx.predicates_of(def_id).hash_stable(hcx, hasher);
+        }
+        DefKind::Struct | DefKind::Enum | DefKind::Union => {
+            tcx.adt_def(def_id).hash_stable(hcx, hasher);
+            tcx.generics_of(def_id).hash_stable(hcx, hasher);
+            tcx.predicates_of(def_id).hash_stable(hcx, hasher);
+        }
+        DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
+            tcx.type_of(def_id).instantiate_identity().hash_stable(hcx, hasher);
+        }
+        DefKind::TyAlias => {
+            tcx.type_of(def_id).instantiate_identity().hash_stable(hcx, hasher);
+            tcx.generics_of(def_id).hash_stable(hcx, hasher);
+        }
+        DefKind::Trait => {
+            tcx.generics_of(def_id).hash_stable(hcx, hasher);
+            tcx.explicit_super_predicates_of(def_id).hash_stable(hcx, hasher);
+            for assoc in tcx.associated_items(def_id).in_definition_order() {
+                assoc.def_id.hash_stable(hcx, hasher);
+                assoc.kind.hash_stable(hcx, hasher);
+            }
+        }
+        DefKind::Impl { .. } => {
+            if let Some(trait_ref) = tcx.impl_opt_trait_ref(def_id) {
+                trait_ref.instantiate_identity().hash_stable(hcx, hasher);
+            }
+            tcx.type_of(def_id).instantiate_identity().hash_stable(hcx, hasher);
+        }
+        DefKind::Macro(_) => {
+            // Macro presence is hashed via DefPathHash; body hashing deferred for now
+        }
+        _ => {}
+    }
+}
+
+/// Hashes bodies of functions that may be used by downstream crates.
+/// This includes generic functions (monomorphized downstream) and #[inline] functions.
+/// We use the HIR body hash to avoid query cycles with MIR.
+fn hash_inlinable_bodies(
+    tcx: TyCtxt<'_>,
+    _effective_vis: &EffectiveVisibilities,
+    hcx: &mut rustc_query_system::ich::StableHashingContext<'_>,
+    hasher: &mut StableHasher,
+) {
+    let reachable_set = tcx.reachable_set(());
+
+    // Collect functions whose bodies may be used by downstream crates:
+    // - Generic functions (monomorphized downstream)
+    // - #[inline] functions (inlined downstream)
+    let mut inlinable_bodies: Vec<_> = tcx
+        .hir_crate_items(())
+        .definitions()
+        .filter_map(|def_id| {
+            if !reachable_set.contains(&def_id) {
+                return None;
+            }
+
+            let def_kind = tcx.def_kind(def_id);
+            let is_fn_like = matches!(
+                def_kind,
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(..)
+            );
+            if !is_fn_like {
+                return None;
+            }
+
+            // Include if generic (requires monomorphization) or cross-crate inlinable
+            let dominated = tcx.generics_of(def_id).requires_monomorphization(tcx)
+                || tcx.cross_crate_inlinable(def_id);
+            if !dominated {
+                return None;
+            }
+
+            // Get the HIR body hash for this item
+            let def_path_hash = tcx.def_path_hash(def_id.into());
+            let body_hash =
+                tcx.opt_hir_owner_nodes(def_id).and_then(|nodes| nodes.opt_hash_including_bodies);
+
+            Some((def_path_hash, body_hash))
+        })
+        .collect();
+
+    // Sort for deterministic hashing
+    inlinable_bodies.sort_unstable_by_key(|item| item.0);
+
+    // Hash both the identity and body of inlinable functions
+    for (def_path_hash, body_hash) in inlinable_bodies {
+        def_path_hash.hash_stable(hcx, hasher);
+        body_hash.hash_stable(hcx, hasher);
+    }
+}
+
+/// Hashes all trait implementations.
+fn hash_trait_impls(
+    tcx: TyCtxt<'_>,
+    hcx: &mut rustc_query_system::ich::StableHashingContext<'_>,
+    hasher: &mut StableHasher,
+) {
+    let mut impl_hashes: Vec<_> = tcx
+        .all_local_trait_impls(())
+        .iter()
+        .map(|(&trait_def_id, impls)| {
+            let trait_hash = tcx.def_path_hash(trait_def_id);
+            let mut impl_hasher = StableHasher::new();
+            for &impl_def_id in impls {
+                tcx.def_path_hash(impl_def_id.into()).hash_stable(hcx, &mut impl_hasher);
+                if let Some(trait_ref) = tcx.impl_opt_trait_ref(impl_def_id) {
+                    trait_ref.instantiate_identity().hash_stable(hcx, &mut impl_hasher);
+                }
+                tcx.type_of(impl_def_id).instantiate_identity().hash_stable(hcx, &mut impl_hasher);
+            }
+            (trait_hash, impl_hasher.finish::<Fingerprint>())
+        })
+        .collect();
+
+    impl_hashes.sort_unstable_by_key(|h| h.0);
+    impl_hashes.hash_stable(hcx, hasher);
+}
+
+/// Computes a hash of only the publicly-reachable API.
+/// This hash is stable when private items change.
+pub(super) fn public_api_hash(tcx: TyCtxt<'_>, _: ()) -> Fingerprint {
+    let effective_vis = tcx.effective_visibilities(());
+    let definitions = tcx.untracked().definitions.freeze();
+
+    // Collect reachable items with their type signatures
+    let mut public_items: Vec<_> = tcx
+        .hir_crate_items(())
+        .definitions()
+        .filter(|&def_id| effective_vis.is_reachable(def_id))
+        .map(|def_id| {
+            let def_path_hash = definitions.def_path_hash(def_id);
+            (def_path_hash, def_id)
+        })
+        .collect();
+
+    public_items.sort_unstable_by_key(|item| item.0);
+
+    tcx.with_stable_hashing_context(|mut hcx| {
+        let mut stable_hasher = StableHasher::new();
+
+        for (def_path_hash, def_id) in &public_items {
+            def_path_hash.hash_stable(&mut hcx, &mut stable_hasher);
+            hash_item_signature(tcx, *def_id, &mut hcx, &mut stable_hasher);
+        }
+
+        // Hash inline/generic function bodies that are encoded in metadata
+        hash_inlinable_bodies(tcx, effective_vis, &mut hcx, &mut stable_hasher);
+
+        // Hash all trait impls (affect trait resolution)
+        hash_trait_impls(tcx, &mut hcx, &mut stable_hasher);
+
+        stable_hasher.finish()
+    })
 }
 
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {

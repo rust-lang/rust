@@ -988,7 +988,8 @@ impl Span {
 
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+// Manual impls encode `call_site`/`def_site` as `SpanRef` for RDR.
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
     pub kind: ExpnKind,
@@ -1131,6 +1132,44 @@ impl ExpnData {
         let mut hasher = StableHasher::new();
         self.hash_stable(ctx, &mut hasher);
         hasher.finish()
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for ExpnData {
+    fn encode(&self, s: &mut E) {
+        self.kind.encode(s);
+        self.parent.encode(s);
+        s.encode_span_as_span_ref(self.call_site);
+        self.disambiguator.encode(s);
+        s.encode_span_as_span_ref(self.def_site);
+        self.allow_internal_unstable.encode(s);
+        self.edition.encode(s);
+        self.macro_def_id.encode(s);
+        self.parent_module.encode(s);
+        self.allow_internal_unsafe.encode(s);
+        self.local_inner_macros.encode(s);
+        self.collapse_debuginfo.encode(s);
+        self.hide_backtrace.encode(s);
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ExpnData {
+    fn decode(d: &mut D) -> Self {
+        ExpnData {
+            kind: Decodable::decode(d),
+            parent: Decodable::decode(d),
+            call_site: d.decode_span_ref_as_span(),
+            disambiguator: Decodable::decode(d),
+            def_site: d.decode_span_ref_as_span(),
+            allow_internal_unstable: Decodable::decode(d),
+            edition: Decodable::decode(d),
+            macro_def_id: Decodable::decode(d),
+            parent_module: Decodable::decode(d),
+            allow_internal_unsafe: Decodable::decode(d),
+            local_inner_macros: Decodable::decode(d),
+            collapse_debuginfo: Decodable::decode(d),
+            hide_backtrace: Decodable::decode(d),
+        }
     }
 }
 

@@ -15,7 +15,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
-use crate::{DUMMY_SP, Edition, Span, with_session_globals};
+use crate::{DUMMY_SP, Edition, Span, SpanRef, with_session_globals};
 
 #[cfg(test)]
 mod tests;
@@ -2634,6 +2634,12 @@ impl Ident {
     pub fn as_str(&self) -> &str {
         self.name.as_str()
     }
+
+    /// Converts this `Ident` to an `IdentRef` for metadata storage.
+    #[inline]
+    pub fn to_ident_ref(self) -> IdentRef {
+        IdentRef::new(self.name, self.span.to_span_ref())
+    }
 }
 
 impl PartialEq for Ident {
@@ -2663,6 +2669,56 @@ impl fmt::Debug for Ident {
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&IdentPrinter::new(self.name, self.guess_print_mode(), None), f)
+    }
+}
+
+/// An identifier without absolute span positions.
+///
+/// Used in metadata to avoid storing byte positions that cause unnecessary
+/// downstream rebuilds. The `SpanRef` preserves `SyntaxContext` for hygiene.
+#[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
+pub struct IdentRef {
+    pub name: Symbol,
+    pub span: SpanRef,
+}
+
+impl IdentRef {
+    /// Constructs a new identifier reference from a symbol and a span reference.
+    #[inline]
+    pub fn new(name: Symbol, span: SpanRef) -> IdentRef {
+        debug_assert_ne!(name, sym::empty);
+        IdentRef { name, span }
+    }
+
+    /// Access the underlying string.
+    pub fn as_str(&self) -> &str {
+        self.name.as_str()
+    }
+}
+
+impl PartialEq for IdentRef {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
+    }
+}
+
+impl Hash for IdentRef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.span.ctxt().hash(state);
+    }
+}
+
+impl fmt::Debug for IdentRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}{:?}", self.name, self.span.ctxt())
+    }
+}
+
+impl From<Ident> for IdentRef {
+    fn from(ident: Ident) -> IdentRef {
+        ident.to_ident_ref()
     }
 }
 

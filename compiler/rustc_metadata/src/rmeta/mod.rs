@@ -2,10 +2,10 @@ use std::marker::PhantomData;
 use std::num::NonZero;
 
 use decoder::LazyDecoder;
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, SpanBlob, TargetModifiers};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
-pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
+pub use encoder::{EncodedMetadata, encode_metadata, encode_spans, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
@@ -34,11 +34,12 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
+use rustc_serialize::{Decoder, Encoder};
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, IdentRef, Span, SpanRef, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -67,6 +68,53 @@ const METADATA_VERSION: u8 = 10;
 /// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+
+pub(crate) const SPAN_FILE_VERSION: u8 = 0;
+pub(crate) const SPAN_HEADER: &[u8] =
+    &[b'r', b'u', b's', b't', b's', b'p', b'a', b'n', 0, 0, 0, SPAN_FILE_VERSION];
+
+#[derive(MetadataEncodable, BlobDecodable)]
+pub(crate) struct SpanFileHeader {
+    rmeta_hash: Svh,
+}
+
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct SpanFileRoot {
+    header: SpanFileHeader,
+    /// Source file information needed to resolve SpanRef to Span.
+    /// This is the same data as CrateRoot::source_map, but stored separately
+    /// so that .rmeta can remain stable when only span positions change.
+    source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+}
+
+#[allow(dead_code)] // FIXME: used by RDR span file infrastructure
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum DefIdEncoding {
+    Direct,
+    PathHash,
+}
+
+impl<'a, 'tcx> rustc_serialize::Encodable<encoder::EncodeContext<'a, 'tcx>> for DefIdEncoding {
+    fn encode(&self, e: &mut encoder::EncodeContext<'a, 'tcx>) {
+        let tag = match self {
+            DefIdEncoding::Direct => 0,
+            DefIdEncoding::PathHash => 1,
+        };
+        e.emit_u8(tag);
+    }
+}
+
+impl<'a, 'tcx> rustc_serialize::Decodable<decoder::MetadataDecodeContext<'a, 'tcx>>
+    for DefIdEncoding
+{
+    fn decode(d: &mut decoder::MetadataDecodeContext<'a, 'tcx>) -> Self {
+        match d.read_u8() {
+            0 => DefIdEncoding::Direct,
+            1 => DefIdEncoding::PathHash,
+            tag => panic!("invalid DefIdEncoding tag {tag}"),
+        }
+    }
+}
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
@@ -295,6 +343,10 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+
+    /// Whether this crate was compiled with `-Z stable-crate-hash`.
+    /// If true, span data is in a separate `.spans` file, not in this rmeta.
+    has_stable_crate_hash: bool,
 }
 
 /// On-disk representation of `DefId`.
@@ -388,12 +440,12 @@ define_tables! {
     // Note also that this table is fully populated (no gaps) as every DefIndex should have a
     // corresponding DefPathHash.
     def_path_hashes: Table<DefIndex, u64>,
-    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_item_self_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
+    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, SpanRef)>>,
+    explicit_item_self_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, SpanRef)>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, SpanRef)>>,
+    explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, SpanRef)>>,
+    explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, SpanRef)>>,
+    explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, SpanRef)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
@@ -416,8 +468,8 @@ define_tables! {
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
-    def_span: Table<DefIndex, LazyValue<Span>>,
-    def_ident_span: Table<DefIndex, LazyValue<Span>>,
+    def_span: Table<DefIndex, LazyValue<SpanRef>>,
+    def_ident_span: Table<DefIndex, LazyValue<SpanRef>>,
     lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
     lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
     lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
@@ -445,7 +497,7 @@ define_tables! {
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
+    fn_arg_idents: Table<DefIndex, LazyArray<Option<IdentRef>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,
@@ -462,7 +514,7 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
+    proc_macro_quoted_spans: Table<usize, LazyValue<SpanRef>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, LazyValue<ty::AssocContainer>>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
@@ -471,7 +523,7 @@ define_tables! {
     trait_impl_trait_tys: Table<DefIndex, LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
-    assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
+    assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, SpanRef)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,

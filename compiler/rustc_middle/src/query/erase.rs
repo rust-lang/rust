@@ -3,6 +3,7 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 use rustc_span::source_map::Spanned;
 
@@ -75,6 +76,10 @@ impl<T> EraseType for &'_ [T] {
 
 impl EraseType for &'_ OsStr {
     type Result = [u8; size_of::<&'static OsStr>()];
+}
+
+impl EraseType for Fingerprint {
+    type Result = [u8; size_of::<Fingerprint>()];
 }
 
 impl<T> EraseType for &'_ ty::List<T> {

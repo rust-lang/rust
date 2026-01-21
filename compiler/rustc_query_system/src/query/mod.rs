@@ -61,6 +61,13 @@ impl QueryStackFrame {
     }
 }
 
+/// A diagnostic side effect stored for query replay.
+#[derive(Debug, Encodable, Decodable)]
+pub struct DiagnosticSideEffect {
+    pub diagnostic: DiagInner,
+    pub spans_hash: Option<u64>,
+}
+
 /// Tracks 'side effects' for a particular query.
 /// This struct is saved to disk along with the query result,
 /// and loaded from disk if we mark the query as green.
@@ -76,7 +83,7 @@ pub enum QuerySideEffect {
     /// This diagnostic will be re-emitted if we mark
     /// the query as green, as that query will have the side
     /// effect dep node as a dependency.
-    Diagnostic(DiagInner),
+    Diagnostic(DiagnosticSideEffect),
 }
 
 pub trait QueryContext: HasDepContext {

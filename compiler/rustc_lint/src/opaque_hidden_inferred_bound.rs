@@ -89,6 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
         for (pred, pred_span) in cx.tcx.explicit_item_bounds(def_id).iter_identity_copied() {
+            let pred_span = cx.tcx.resolve_span_ref(pred_span);
             infcx.enter_forall(pred.kind(), |predicate| {
                 let ty::ClauseKind::Projection(proj) = predicate else {
                     return;
@@ -146,6 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     .explicit_item_bounds(proj.projection_term.def_id)
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                 {
+                    let assoc_pred_span = cx.tcx.resolve_span_ref(assoc_pred_span);
                     let assoc_pred = assoc_pred.fold_with(proj_replacer);
 
                     let ocx = ObligationCtxt::new(infcx);
