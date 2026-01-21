@@ -879,6 +879,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     PassByValue(Span),
 
+    /// Represents `#[patchable_function_entry]`
+    PatchableFunctionEntry { prefix: u8, entry: u8 },
+
     /// Represents `#[path]`
     Path(Symbol, Span),
 
@@ -1006,6 +1009,12 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
+
+    /// Represents `#[rustc_variance]`
+    RustcVariance,
+
+    /// Represents `#[rustc_variance_of_opaques]`
+    RustcVarianceOfOpaques,
 
     /// Represents `#[sanitize]`
     ///

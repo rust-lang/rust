@@ -391,9 +391,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::breakpoint => {
                 unimplemented!();
             }
-            sym::va_copy => {
-                unimplemented!();
-            }
             sym::va_arg => {
                 unimplemented!();
             }

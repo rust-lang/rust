@@ -88,6 +88,7 @@ impl AttributeKind {
             Optimize(..) => No,
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
+            PatchableFunctionEntry { .. } => Yes,
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
             PinV2(..) => Yes,
@@ -129,6 +130,8 @@ impl AttributeKind {
             RustcScalableVector { .. } => Yes,
             RustcShouldNotBeCalledOnConstItems(..) => Yes,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
+            RustcVariance => No,
+            RustcVarianceOfOpaques => No,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,

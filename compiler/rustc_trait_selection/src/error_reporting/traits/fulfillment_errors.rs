@@ -1442,6 +1442,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.can_eq(param_env, goal.trait_ref, trait_assumption.trait_ref)
     }
 
+    fn can_match_host_effect(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        goal: ty::HostEffectPredicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+    ) -> bool {
+        let assumption = self.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            infer::BoundRegionConversionTime::HigherRankedType,
+            assumption,
+        );
+
+        assumption.constness.satisfies(goal.constness)
+            && self.can_eq(param_env, goal.trait_ref, assumption.trait_ref)
+    }
+
+    fn as_host_effect_clause(
+        predicate: ty::Predicate<'tcx>,
+    ) -> Option<ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>> {
+        predicate.as_clause().and_then(|clause| match clause.kind().skip_binder() {
+            ty::ClauseKind::HostEffect(pred) => Some(clause.kind().rebind(pred)),
+            _ => None,
+        })
+    }
+
     fn can_match_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -1483,6 +1508,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_trait_clause())
                     .any(|implied| self.can_match_trait(param_env, error, implied))
+            })
+        } else if let Some(error) = Self::as_host_effect_clause(error.predicate) {
+            self.enter_forall(error, |error| {
+                elaborate(self.tcx, std::iter::once(cond.predicate))
+                    .filter_map(Self::as_host_effect_clause)
+                    .any(|implied| self.can_match_host_effect(param_env, error, implied))
             })
         } else if let Some(error) = error.predicate.as_projection_clause() {
             self.enter_forall(error, |error| {

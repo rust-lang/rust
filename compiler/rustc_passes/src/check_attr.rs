@@ -274,6 +274,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
+                    | AttributeKind::RustcVariance
+                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ExportStable
                     | AttributeKind::FfiConst(..)
                     | AttributeKind::UnstableFeatureBound(..)
@@ -323,6 +325,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcReallocator
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcOffloadKernel
+                    | AttributeKind::PatchableFunctionEntry { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -348,7 +351,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::deny
                             | sym::forbid
                             // need to be fixed
-                            | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
                             | sym::prelude_import
@@ -378,8 +380,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_capture_analysis
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
-                            | sym::rustc_variance
-                            | sym::rustc_variance_of_opaques
                             | sym::rustc_hidden_type_of_opaques
                             | sym::rustc_mir
                             | sym::rustc_effective_visibility

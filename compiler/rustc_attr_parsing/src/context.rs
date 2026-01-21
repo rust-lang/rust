@@ -23,8 +23,8 @@ use crate::attributes::cfi_encoding::CfiEncodingParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, EiiForeignItemParser, ExportNameParser, ForceTargetFeatureParser,
     NakedParser, NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser,
-    RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser, TargetFeatureParser,
-    ThreadLocalParser, TrackCallerParser, UsedParser,
+    PatchableFunctionEntryParser, RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser,
+    TargetFeatureParser, ThreadLocalParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
@@ -85,7 +85,9 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
+use crate::attributes::test_attrs::{
+    IgnoreParser, RustcVarianceOfOpaquesParser, RustcVarianceParser, ShouldPanicParser,
+};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoinductiveParser, DenyExplicitImplParser,
     DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
@@ -221,6 +223,7 @@ attribute_parsers!(
         Single<ObjcClassParser>,
         Single<ObjcSelectorParser>,
         Single<OptimizeParser>,
+        Single<PatchableFunctionEntryParser>,
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
@@ -298,6 +301,8 @@ attribute_parsers!(
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
+        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
+        Single<WithoutArgs<RustcVarianceParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
@@ -499,6 +504,18 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
 
     pub(crate) fn expected_integer_literal(&self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
+    }
+
+    pub(crate) fn expected_integer_literal_in_range(
+        &self,
+        span: Span,
+        lower_bound: isize,
+        upper_bound: isize,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedIntegerLiteralInRange { lower_bound, upper_bound },
+        )
     }
 
     pub(crate) fn expected_list(&self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
