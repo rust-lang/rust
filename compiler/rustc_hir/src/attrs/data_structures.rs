@@ -1010,6 +1010,12 @@ pub enum AttributeKind {
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
 
+    /// Represents `#[rustc_variance]`
+    RustcVariance,
+
+    /// Represents `#[rustc_variance_of_opaques]`
+    RustcVarianceOfOpaques,
+
     /// Represents `#[sanitize]`
     ///
     /// the on set and off set are distjoint since there's a third option: unset.
