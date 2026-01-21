@@ -9,7 +9,7 @@ use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
-    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig,
+    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig, SharedEmitter,
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
@@ -18,7 +18,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{DiagCtxtHandle, Level};
+use rustc_errors::{DiagCtxt, DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -356,7 +356,7 @@ pub(crate) enum CodegenDiagnosticsStage {
 }
 
 pub(crate) struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'a>),
+    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a SharedEmitter),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
@@ -364,7 +364,7 @@ pub(crate) struct DiagnosticHandlers<'a> {
 impl<'a> DiagnosticHandlers<'a> {
     pub(crate) fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-        dcx: DiagCtxtHandle<'a>,
+        shared_emitter: &'a SharedEmitter,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
@@ -398,8 +398,8 @@ impl<'a> DiagnosticHandlers<'a> {
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
-        let pgo_available = cgcx.opts.cg.profile_use.is_some();
-        let data = Box::into_raw(Box::new((cgcx, dcx)));
+        let pgo_available = cgcx.module_config.pgo_use.is_some();
+        let data = Box::into_raw(Box::new((cgcx, shared_emitter)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
@@ -461,12 +461,16 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     if user.is_null() {
         return;
     }
-    let (cgcx, dcx) =
-        unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'_>)) };
+    let (cgcx, shared_emitter) =
+        unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, &SharedEmitter)) };
+
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+    let dcx = dcx.handle();
 
     match unsafe { llvm::diagnostic::Diagnostic::unpack(info) } {
         llvm::diagnostic::InlineAsm(inline) => {
-            cgcx.diag_emitter.inline_asm_error(report_inline_asm(
+            // FIXME use dcx
+            shared_emitter.inline_asm_error(report_inline_asm(
                 cgcx,
                 inline.message,
                 inline.level,
@@ -776,7 +780,7 @@ pub(crate) unsafe fn llvm_optimize(
             &*module.module_llvm.tm.raw(),
             to_pass_builder_opt_level(opt_level),
             opt_stage,
-            cgcx.opts.cg.linker_plugin_lto.enabled(),
+            cgcx.use_linker_plugin_lto,
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
             config.lint_llvm_ir,
@@ -887,14 +891,18 @@ pub(crate) unsafe fn llvm_optimize(
 // Unsafe due to LLVM calls.
 pub(crate) fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
+    shared_emitter: &SharedEmitter,
     module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+    let dcx = dcx.handle();
+
     let llcx = &*module.module_llvm.llcx;
-    let _handlers = DiagnosticHandlers::new(cgcx, dcx, llcx, module, CodegenDiagnosticsStage::Opt);
+    let _handlers =
+        DiagnosticHandlers::new(cgcx, shared_emitter, llcx, module, CodegenDiagnosticsStage::Opt);
 
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext_for_cgu(
@@ -911,7 +919,7 @@ pub(crate) fn optimize(
         let opt_stage = match cgcx.lto {
             Lto::Fat => llvm::OptStage::PreLinkFatLTO,
             Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
-            _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
+            _ if cgcx.use_linker_plugin_lto => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
 
@@ -974,19 +982,26 @@ pub(crate) fn optimize(
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    shared_emitter: &SharedEmitter,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let dcx = cgcx.create_dcx();
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
+
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let llmod = module.module_llvm.llmod();
         let llcx = &*module.module_llvm.llcx;
         let tm = &*module.module_llvm.tm;
-        let _handlers =
-            DiagnosticHandlers::new(cgcx, dcx, llcx, &module, CodegenDiagnosticsStage::Codegen);
+        let _handlers = DiagnosticHandlers::new(
+            cgcx,
+            shared_emitter,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::Codegen,
+        );
 
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);
