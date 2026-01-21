@@ -184,3 +184,39 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
         Some(AttributeKind::WindowsSubsystem(kind, cx.attr_span))
     }
 }
+
+pub(crate) struct PanicRuntimeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for PanicRuntimeParser {
+    const PATH: &[Symbol] = &[sym::panic_runtime];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PanicRuntime;
+}
+
+pub(crate) struct NeedsPanicRuntimeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NeedsPanicRuntimeParser {
+    const PATH: &[Symbol] = &[sym::needs_panic_runtime];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
+}
+
+pub(crate) struct ProfilerRuntimeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
+    const PATH: &[Symbol] = &[sym::profiler_runtime];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
+}
+
+pub(crate) struct NoBuiltinsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoBuiltinsParser {
+    const PATH: &[Symbol] = &[sym::no_builtins];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
+}
