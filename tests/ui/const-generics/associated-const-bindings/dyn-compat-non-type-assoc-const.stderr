@@ -1,0 +1,43 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/dyn-compat-non-type-assoc-const.rs:14:16
+   |
+LL |     let _: dyn Trait;
+   |                ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-compat-non-type-assoc-const.rs:9:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const K: usize;
+   |           ^ ...because it contains associated const `K` that's not marked `#[type_const]`
+   = help: consider moving `K` to another trait
+
+error: use of trait associated const without `#[type_const]`
+  --> $DIR/dyn-compat-non-type-assoc-const.rs:17:22
+   |
+LL |     let _: dyn Trait<K = 0>;
+   |                      ^^^^^
+   |
+   = note: the declaration in the trait must be marked with `#[type_const]`
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/dyn-compat-non-type-assoc-const.rs:17:16
+   |
+LL |     let _: dyn Trait<K = 0>;
+   |                ^^^^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-compat-non-type-assoc-const.rs:9:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const K: usize;
+   |           ^ ...because it contains associated const `K` that's not marked `#[type_const]`
+   = help: consider moving `K` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

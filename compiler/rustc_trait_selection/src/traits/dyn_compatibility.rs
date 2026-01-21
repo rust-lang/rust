@@ -7,8 +7,9 @@
 use std::ops::ControlFlow;
 
 use rustc_errors::FatalError;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -288,7 +289,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return false; /* No Sized trait, can't require it! */
     };
 
-    // Search for a predicate like `Self : Sized` amongst the trait bounds.
+    // Search for a predicate like `Self: Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate(tcx, predicates).any(|pred| match pred.kind().skip_binder() {
@@ -306,24 +307,35 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     })
 }
 
-/// Returns `Some(_)` if this item makes the containing trait dyn-incompatible.
 #[instrument(level = "debug", skip(tcx), ret)]
 pub fn dyn_compatibility_violations_for_assoc_item(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     item: ty::AssocItem,
 ) -> Vec<DynCompatibilityViolation> {
-    // Any item that has a `Self : Sized` requisite is otherwise
-    // exempt from the regulations.
+    // Any item that has a `Self: Sized` requisite is otherwise exempt from the regulations.
     if tcx.generics_require_sized_self(item.def_id) {
         return Vec::new();
     }
 
+    let span = || item.ident(tcx).span;
+
     match item.kind {
-        // Associated consts are never dyn-compatible, as they can't have `where` bounds yet at all,
-        // and associated const bounds in trait objects aren't a thing yet either.
         ty::AssocKind::Const { name } => {
-            vec![DynCompatibilityViolation::AssocConst(name, item.ident(tcx).span)]
+            if tcx.features().min_generic_const_args() {
+                if !tcx.generics_of(item.def_id).is_own_empty() {
+                    vec![DynCompatibilityViolation::GenericAssocConst(name, span())]
+                } else if !find_attr!(tcx.get_all_attrs(item.def_id), AttributeKind::TypeConst(_)) {
+                    vec![DynCompatibilityViolation::NonTypeAssocConst(name, span())]
+                } else {
+                    // We will permit type associated consts if they are explicitly mentioned in the
+                    // trait object type. We can't check this here, as here we only check if it is
+                    // guaranteed to not be possible.
+                    Vec::new()
+                }
+            } else {
+                vec![DynCompatibilityViolation::AssocConst(name, span())]
+            }
         }
         ty::AssocKind::Fn { name, .. } => {
             virtual_call_violations_for_method(tcx, trait_def_id, item)
@@ -338,20 +350,22 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                         (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
                             node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
                         }
-                        _ => item.ident(tcx).span,
+                        _ => span(),
                     };
 
                     DynCompatibilityViolation::Method(name, v, span)
                 })
                 .collect()
         }
-        // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
-        ty::AssocKind::Type { .. } => {
-            if !tcx.generics_of(item.def_id).is_own_empty() && !item.is_impl_trait_in_trait() {
-                vec![DynCompatibilityViolation::GAT(item.name(), item.ident(tcx).span)]
+        ty::AssocKind::Type { data } => {
+            if !tcx.generics_of(item.def_id).is_own_empty()
+                && let ty::AssocTypeData::Normal(name) = data
+            {
+                vec![DynCompatibilityViolation::GenericAssocTy(name, span())]
             } else {
-                // We will permit associated types if they are explicitly mentioned in the trait object.
-                // We can't check this here, as here we only check if it is guaranteed to not be possible.
+                // We will permit associated types if they are explicitly mentioned in the trait
+                // object type. We can't check this here, as here we only check if it is
+                // guaranteed to not be possible.
                 Vec::new()
             }
         }

@@ -148,8 +148,9 @@ impl AssocItem {
             AssocKind::Type { .. } => DefKind::AssocTy,
         }
     }
-    pub fn is_type(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Type { .. })
+
+    pub fn is_const(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Const { .. })
     }
 
     pub fn is_fn(&self) -> bool {
@@ -158,6 +159,10 @@ impl AssocItem {
 
     pub fn is_method(&self) -> bool {
         matches!(self.kind, ty::AssocKind::Fn { has_self: true, .. })
+    }
+
+    pub fn is_type(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Type { .. })
     }
 
     pub fn as_tag(&self) -> AssocTag {

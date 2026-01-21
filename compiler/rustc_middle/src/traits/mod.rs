@@ -759,7 +759,7 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub nested: ThinVec<N>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum DynCompatibilityViolation {
     /// `Self: Sized` declared on the trait.
     SizedSelf(SmallVec<[Span; 1]>),
@@ -780,11 +780,17 @@ pub enum DynCompatibilityViolation {
     /// Method has something illegal.
     Method(Symbol, MethodViolationCode, Span),
 
-    /// Associated const.
+    /// Associated constant.
     AssocConst(Symbol, Span),
 
-    /// GAT
-    GAT(Symbol, Span),
+    /// Generic associated constant.
+    GenericAssocConst(Symbol, Span),
+
+    /// Associated constant that wasn't marked `#[type_const]`.
+    NonTypeAssocConst(Symbol, Span),
+
+    /// Generic associated type.
+    GenericAssocTy(Symbol, Span),
 }
 
 impl DynCompatibilityViolation {
@@ -852,14 +858,18 @@ impl DynCompatibilityViolation {
                 MethodViolationCode::UndispatchableReceiver(_),
                 _,
             ) => format!("method `{name}`'s `self` parameter cannot be dispatched on").into(),
-            DynCompatibilityViolation::AssocConst(name, DUMMY_SP) => {
-                format!("it contains associated `const` `{name}`").into()
+            DynCompatibilityViolation::AssocConst(name, _) => {
+                format!("it contains associated const `{name}`").into()
             }
-            DynCompatibilityViolation::AssocConst(..) => {
-                "it contains this associated `const`".into()
+            DynCompatibilityViolation::GenericAssocConst(name, _) => {
+                format!("it contains generic associated const `{name}`").into()
             }
-            DynCompatibilityViolation::GAT(name, _) => {
-                format!("it contains the generic associated type `{name}`").into()
+            DynCompatibilityViolation::NonTypeAssocConst(name, _) => {
+                format!("it contains associated const `{name}` that's not marked `#[type_const]`")
+                    .into()
+            }
+            DynCompatibilityViolation::GenericAssocTy(name, _) => {
+                format!("it contains generic associated type `{name}`").into()
             }
         }
     }
@@ -888,7 +898,9 @@ impl DynCompatibilityViolation {
                 _,
             ) => DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span),
             DynCompatibilityViolation::AssocConst(name, _)
-            | DynCompatibilityViolation::GAT(name, _)
+            | DynCompatibilityViolation::GenericAssocConst(name, _)
+            | DynCompatibilityViolation::NonTypeAssocConst(name, _)
+            | DynCompatibilityViolation::GenericAssocTy(name, _)
             | DynCompatibilityViolation::Method(name, ..) => {
                 DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
             }
@@ -905,7 +917,9 @@ impl DynCompatibilityViolation {
             | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans)
             | DynCompatibilityViolation::SupertraitConst(spans) => spans.clone(),
             DynCompatibilityViolation::AssocConst(_, span)
-            | DynCompatibilityViolation::GAT(_, span)
+            | DynCompatibilityViolation::GenericAssocConst(_, span)
+            | DynCompatibilityViolation::NonTypeAssocConst(_, span)
+            | DynCompatibilityViolation::GenericAssocTy(_, span)
             | DynCompatibilityViolation::Method(_, _, span) => {
                 if *span != DUMMY_SP {
                     smallvec![*span]
@@ -972,7 +986,7 @@ impl DynCompatibilityViolationSolution {
 }
 
 /// Reasons a method might not be dyn-compatible.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`
     StaticMethod(Option<(/* add &self */ (String, Span), /* add Self: Sized */ (String, Span))>),
