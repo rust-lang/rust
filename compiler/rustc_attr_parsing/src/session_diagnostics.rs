@@ -525,6 +525,10 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         byte_string: Option<Span>,
     },
     ExpectedIntegerLiteral,
+    ExpectedIntegerLiteralInRange {
+        lower_bound: isize,
+        upper_bound: isize,
+    },
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
@@ -595,6 +599,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIntegerLiteral => {
                 diag.span_label(self.span, "expected an integer literal here");
+            }
+            AttributeParseErrorReason::ExpectedIntegerLiteralInRange {
+                lower_bound,
+                upper_bound,
+            } => {
+                diag.span_label(
+                    self.span,
+                    format!(
+                        "expected an integer literal in the range of {lower_bound}..={upper_bound}"
+                    ),
+                );
             }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
