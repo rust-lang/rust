@@ -103,18 +103,18 @@ type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
     pub(super) accepters: BTreeMap<&'static [Symbol], Vec<GroupTypeInnerAccept<S>>>,
-    pub(super) finalizers: Vec<FinalizeFn<S>>,
 }
 
 pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
+    pub(super) finalizer: FinalizeFn<S>,
 }
 
-type AcceptFn<S> =
+pub(crate) type AcceptFn<S> =
     Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser) + Send + Sync>;
-type FinalizeFn<S> =
+pub(crate) type FinalizeFn<S> =
     Box<dyn Send + Sync + Fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>>;
 
 macro_rules! attribute_parsers {
@@ -142,8 +142,7 @@ macro_rules! attribute_parsers {
         @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepts = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
-            let mut finalizes = Vec::<FinalizeFn<$stage>>::new();
+            let mut accepters = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
             $(
                 {
                     thread_local! {
@@ -151,7 +150,7 @@ macro_rules! attribute_parsers {
                     };
 
                     for (path, template, accept_fn) in <$names>::ATTRIBUTES {
-                        accepts.entry(*path).or_default().push(GroupTypeInnerAccept {
+                        accepters.entry(*path).or_default().push(GroupTypeInnerAccept {
                             template: *template,
                             accept_fn: Box::new(|cx, args| {
                                 STATE_OBJECT.with_borrow_mut(|s| {
@@ -159,17 +158,16 @@ macro_rules! attribute_parsers {
                                 })
                             }),
                             allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
+                            finalizer: Box::new(|cx| {
+                                let state = STATE_OBJECT.take();
+                                state.finalize(cx)
+                            }),
                         });
                     }
-
-                    finalizes.push(Box::new(|cx| {
-                        let state = STATE_OBJECT.take();
-                        state.finalize(cx)
-                    }));
                 }
             )*
 
-            GroupTypeInner { accepters:accepts, finalizers:finalizes }
+            GroupTypeInner { accepters }
         });
     };
 }
