@@ -242,6 +242,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Coverage (..)
                     | AttributeKind::CrateName { .. }
+                    | AttributeKind::CrateType(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::DenyExplicitImpl(..)
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
@@ -405,7 +406,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_no_implicit_bounds
                             | sym::test_runner
                             | sym::reexport_test_harness_main
-                            | sym::crate_type
                             | sym::rustc_preserve_ub_checks,
                             ..
                         ] => {}
@@ -1615,7 +1615,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .tcx
                     .crate_types()
                     .iter()
-                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
+                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib));
                 if never_needs_link {
                     errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                 } else {

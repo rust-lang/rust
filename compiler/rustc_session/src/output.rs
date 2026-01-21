@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
-use crate::config::{self, CrateType, OutFileName, OutputFilenames, OutputType};
+use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{self, CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
 
 pub fn out_filename(
@@ -101,7 +101,7 @@ pub fn filename_for_input(
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
-        CrateType::Staticlib => {
+        CrateType::StaticLib => {
             let (prefix, suffix) = sess.staticlib_components(false);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
@@ -131,7 +131,7 @@ pub fn filename_for_input(
 /// interaction with Rust code through static library is the only
 /// option for now
 pub fn default_output_for_target(sess: &Session) -> CrateType {
-    if !sess.target.executables { CrateType::Staticlib } else { CrateType::Executable }
+    if !sess.target.executables { CrateType::StaticLib } else { CrateType::Executable }
 }
 
 /// Checks if target supports crate_type as output
@@ -156,21 +156,6 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
     }
 
     false
-}
-
-pub const CRATE_TYPES: &[(Symbol, CrateType)] = &[
-    (sym::rlib, CrateType::Rlib),
-    (sym::dylib, CrateType::Dylib),
-    (sym::cdylib, CrateType::Cdylib),
-    (sym::lib, config::default_lib_output()),
-    (sym::staticlib, CrateType::Staticlib),
-    (sym::proc_dash_macro, CrateType::ProcMacro),
-    (sym::bin, CrateType::Executable),
-    (sym::sdylib, CrateType::Sdylib),
-];
-
-pub fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
-    Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
 }
 
 pub fn collect_crate_types(
@@ -208,7 +193,7 @@ pub fn collect_crate_types(
             if a.has_name(sym::crate_type)
                 && let Some(s) = a.value_str()
             {
-                categorize_crate_type(s)
+                CrateType::try_from(s).ok()
             } else {
                 None
             }

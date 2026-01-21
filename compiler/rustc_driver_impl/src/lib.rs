@@ -56,7 +56,7 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
+use rustc_session::output::{collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -849,7 +849,7 @@ fn print_crate_info(
                 }
             }
             SupportedCrateTypes => {
-                let supported_crate_types = CRATE_TYPES
+                let supported_crate_types = CrateType::all()
                     .iter()
                     .filter(|(_, crate_type)| !invalid_output_for_target(sess, *crate_type))
                     .filter(|(_, crate_type)| *crate_type != CrateType::Sdylib)

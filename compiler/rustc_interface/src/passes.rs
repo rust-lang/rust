@@ -159,8 +159,6 @@ fn configure_and_expand(
         )
     });
 
-    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer());
-
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
         // Windows dlls do not have rpaths, so they don't know how to find their

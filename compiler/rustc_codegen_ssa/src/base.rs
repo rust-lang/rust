@@ -1009,7 +1009,7 @@ impl CrateInfo {
             info.linked_symbols
                 .iter_mut()
                 .filter(|(crate_type, _)| {
-                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                    !matches!(crate_type, CrateType::Rlib | CrateType::StaticLib)
                 })
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
@@ -1041,7 +1041,7 @@ impl CrateInfo {
                 // this is a rare use case and we don't want to slow down the common case.
                 false
             }
-            CrateType::Staticlib | CrateType::Rlib => {
+            CrateType::StaticLib | CrateType::Rlib => {
                 // We don't invoke the linker for these, so we don't need to collect the NatVis for
                 // them.
                 false

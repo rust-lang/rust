@@ -1,4 +1,6 @@
-#![crate_type = foo!()] //~ ERROR malformed `crate_type` attribute
+#![crate_type = foo!()]
+//~^ ERROR cannot find macro `foo`
+//~| WARN this was previously accepted
 
 macro_rules! foo {
     () => {"rlib"};
