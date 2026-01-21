@@ -20,7 +20,6 @@ pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 
 pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
-#[derive(Clone)]
 pub struct DepsType;
 
 impl Deps for DepsType {
