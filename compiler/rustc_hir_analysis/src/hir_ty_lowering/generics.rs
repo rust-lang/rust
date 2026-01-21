@@ -609,13 +609,10 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     position: GenericArgPosition,
 ) -> ExplicitLateBound {
     let param_counts = def.own_counts();
-    let infer_lifetimes = position != GenericArgPosition::Type && !args.has_lifetime_params();
 
-    if infer_lifetimes {
-        return ExplicitLateBound::No;
-    }
-
-    if let Some(span_late) = def.has_late_bound_regions {
+    if let Some(span_late) = def.has_late_bound_regions
+        && args.has_lifetime_params()
+    {
         let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
         let note = "the late bound lifetime parameter is introduced here";
