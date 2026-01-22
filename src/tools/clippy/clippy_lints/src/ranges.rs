@@ -358,7 +358,8 @@ fn can_switch_ranges<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     original: RangeLimits,
-    inner_ty: Ty<'tcx>,
+    inner_ty_x: Ty<'tcx>,
+    inner_ty_y: Ty<'tcx>,
 ) -> bool {
     let use_ctxt = expr_use_ctxt(cx, expr);
     let (Node::Expr(parent_expr), false) = (use_ctxt.node, use_ctxt.is_ty_unified) else {
@@ -447,7 +448,7 @@ fn can_switch_ranges<'tcx>(
         && let switched_range_ty = cx
             .tcx
             .type_of(switched_range_def_id)
-            .instantiate(cx.tcx, &[inner_ty.into()])
+            .instantiate(cx.tcx, &[inner_ty_x.into(), inner_ty_y.into()])
         // Check that the switched range type can be used for indexing the original expression
         // through the `Index` or `IndexMut` trait.
         && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results().expr_ty_adjusted(outer_expr).kind()
@@ -505,7 +506,7 @@ fn check_range_switch<'tcx>(
 ) {
     if let Some(range) = higher::Range::hir(cx, expr)
         && let higher::Range {
-            start,
+            start: Some(start),
             end: Some(end),
             limits,
             span,
@@ -513,15 +514,11 @@ fn check_range_switch<'tcx>(
         && span.can_be_used_for_suggestions()
         && limits == kind
         && let Some(y) = predicate(cx, end)
-        && can_switch_ranges(cx, expr, kind, cx.typeck_results().expr_ty(y))
+        && can_switch_ranges(cx, expr, kind, cx.typeck_results().expr_ty(start), cx.typeck_results().expr_ty(y))
     {
         span_lint_and_then(cx, lint, span, msg, |diag| {
             let mut app = Applicability::MachineApplicable;
-            let start = start.map_or(String::new(), |x| {
-                Sugg::hir_with_applicability(cx, x, "<x>", &mut app)
-                    .maybe_paren()
-                    .to_string()
-            });
+            let start = Sugg::hir_with_applicability(cx, start, "<x>", &mut app).maybe_paren();
             let end = Sugg::hir_with_applicability(cx, y, "<y>", &mut app).maybe_paren();
             match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                 Some(true) => {

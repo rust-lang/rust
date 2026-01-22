@@ -1070,11 +1070,11 @@ impl<T> const IntoBounds<T> for RangeFull {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<Start> const RangeBounds<Start> for RangeFrom<Start> {
+impl<Start, End> const RangeBounds<Start, End> for RangeFrom<Start> {
     fn start_bound(&self) -> Bound<&Start> {
         Included(&self.start)
     }
-    fn end_bound(&self) -> Bound<&Start> {
+    fn end_bound(&self) -> Bound<&End> {
         Unbounded
     }
 }
@@ -1089,8 +1089,8 @@ impl<T> const IntoBounds<T> for RangeFrom<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<End> const RangeBounds<End> for RangeTo<End> {
-    fn start_bound(&self) -> Bound<&End> {
+impl<Start, End> const RangeBounds<Start, End> for RangeTo<End> {
+    fn start_bound(&self) -> Bound<&Start> {
         Unbounded
     }
     fn end_bound(&self) -> Bound<&End> {
@@ -1161,8 +1161,8 @@ impl<T> const IntoBounds<T> for RangeInclusive<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<Start, End> const RangeBounds<Start, End> for RangeToInclusive<End> {
-    fn start_bound(&self) -> Bound<&Start> {
+impl<End> const RangeBounds<End> for RangeToInclusive<End> {
+    fn start_bound(&self) -> Bound<&End> {
         Unbounded
     }
     fn end_bound(&self) -> Bound<&End> {
@@ -1228,11 +1228,11 @@ impl<'s, 'e, Start: ?Sized + 's, End: ?Sized + 'e> const RangeBounds<Start, End>
 /// i.e. replace `start..` with `(Bound::Included(start), Bound::Unbounded)`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<Start> const RangeBounds<Start> for RangeFrom<&Start> {
+impl<Start, End> const RangeBounds<Start, End> for RangeFrom<&Start> {
     fn start_bound(&self) -> Bound<&Start> {
         Included(self.start)
     }
-    fn end_bound(&self) -> Bound<&Start> {
+    fn end_bound(&self) -> Bound<&End> {
         Unbounded
     }
 }
@@ -1245,8 +1245,8 @@ impl<Start> const RangeBounds<Start> for RangeFrom<&Start> {
 /// i.e. replace `..end` with `(Bound::Unbounded, Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<End> const RangeBounds<End> for RangeTo<&End> {
-    fn start_bound(&self) -> Bound<&End> {
+impl<Start, End> const RangeBounds<Start, End> for RangeTo<&End> {
+    fn start_bound(&self) -> Bound<&Start> {
         Unbounded
     }
     fn end_bound(&self) -> Bound<&End> {
@@ -1298,8 +1298,8 @@ impl<'s, 'e, Start: 's, End: 'e> const RangeBounds<Start, End>
 /// i.e. replace `..=end` with `(Bound::Unbounded, Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<Start, End> const RangeBounds<Start, End> for RangeToInclusive<&End> {
-    fn start_bound(&self) -> Bound<&Start> {
+impl<End> const RangeBounds<End> for RangeToInclusive<&End> {
+    fn start_bound(&self) -> Bound<&End> {
         Unbounded
     }
     fn end_bound(&self) -> Bound<&End> {

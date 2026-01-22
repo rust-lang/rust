@@ -1,8 +1,133 @@
-error: expected one of `!`, `(`, `+`, `::`, or `<`, found `..`
-  --> $DIR/irrefutable-lets.rs:15:51
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:17:8
    |
-LL |     let opt: Option<Range<Option<i32>> = Some(None..Some(1));
-   |            - while parsing the type for `opt`     ^^ expected one of `!`, `(`, `+`, `::`, or `<`
+LL |     if let first = &opt && let Some(second) = first && let None = second.start {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+note: the lint level is defined here
+  --> $DIR/irrefutable-lets.rs:7:30
+   |
+LL | #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: irrefutable `if let` patterns
+  --> $DIR/irrefutable-lets.rs:23:8
+   |
+LL |     if let first = &opt && let (a, b) = (1, 2) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:26:8
+   |
+LL |     if let first = &opt && let Some(second) = first && let None = second.start && let v = 0 {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: trailing irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:26:83
+   |
+LL |     if let first = &opt && let Some(second) = first && let None = second.start && let v = 0 {}
+   |                                                                                   ^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it into the body
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:30:37
+   |
+LL |     if let Some(ref first) = opt && let second = first && let _third = second {}
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:34:8
+   |
+LL |     if let Range { start: local_start, end: _ } = (None::<Option<i32>>..Some(1))
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:38:8
+   |
+LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:41:8
+   |
+LL |     if let first = &opt && let None = Some(1) {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: irrefutable `if let` guard patterns
+  --> $DIR/irrefutable-lets.rs:50:28
+   |
+LL |         Some(ref first) if let second = first && let _third = second && let v = 4 + 4 => {},
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:65:16
+   |
+LL |             && let v = local_end && let w = v => {},
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: irrefutable `while let` patterns
+  --> $DIR/irrefutable-lets.rs:74:11
+   |
+LL |     while let first = &opt && let (a, b) = (1, 2) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the loop will never exit
+   = help: consider instead using a `loop { ... }` with a `let` inside it
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:77:40
+   |
+LL |     while let Some(ref first) = opt && let second = first && let _third = second {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: trailing irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:93:12
+   |
+LL |         && let x = &opt
+   |            ^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it into the body
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:99:12
+   |
+LL |         if let x = opt.clone().map(|_| 1)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: aborting due to 14 previous errors
 

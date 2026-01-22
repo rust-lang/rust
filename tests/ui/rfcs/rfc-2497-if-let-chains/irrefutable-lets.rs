@@ -12,7 +12,7 @@ fn main() {
     // Type explicitly given on LHS because it would obfuscate the irrefutable pattern
     // since currently Range type has difficulty inferring types with one end not being
     // a concrete type
-    let opt: Option<Range<Option<i32>> = Some(None..Some(1));
+    let opt = Some(None::<Option<i32>>..Some(1));
 
     if let first = &opt && let Some(second) = first && let None = second.start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
