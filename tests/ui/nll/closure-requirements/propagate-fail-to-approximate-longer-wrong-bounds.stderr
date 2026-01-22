@@ -1,4 +1,4 @@
-note: no external requirements
+note: external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:39:47
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
@@ -17,12 +17,16 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    = note: late-bound region is '?10
    = note: late-bound region is '?3
    = note: late-bound region is '?4
+   = note: number of external vids: 5
+   = note: where '?1: '?2
+   = note: where '?1: '?2
+   = note: where '?1: '?2
 
 error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-   |                                                ----------  ---------- has type `&'?7 Cell<&'2 &'?2 u32>`
+   |                                                ----------  ---------- has type `&'2 Cell<&'?8 &'?2 u32>`
    |                                                |
    |                                                has type `&'?5 Cell<&'1 &'?1 u32>`
 LL |         // Only works if 'x: 'y:
@@ -41,5 +45,24 @@ LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |
    = note: defining type: supply
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:39:5
+   |
+LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |             --  -- lifetime `'b` defined here
+   |             |
+   |             lifetime `'a` defined here
+LL | /     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |
+LL | |     });
+   | |______^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type `Cell<&'?11 u32>`, which makes the generic argument `&'?11 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 2 previous errors
 

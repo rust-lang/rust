@@ -23,7 +23,7 @@ error: lifetime may not live long enough
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |                                                ---------  - has type `&'?6 Cell<&'1 u32>`
    |                                                |
-   |                                                has type `&'?4 Cell<&'2 &'?1 u32>`
+   |                                                has type `&'2 Cell<&'?5 &'?1 u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
