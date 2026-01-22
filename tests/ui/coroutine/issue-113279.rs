@@ -17,7 +17,8 @@ fn foo() {
             x
         } += match { *"" }.len() {
             //~^ ERROR cannot move a value of type `str` [E0161]
-            //~^^ ERROR cannot move out of a shared reference [E0507]
+            //~| ERROR cannot move a value of type `str` [E0161]
+            //~| ERROR cannot move out of a shared reference [E0507]
             _ => 0,
         };
     };

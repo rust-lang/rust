@@ -23,6 +23,14 @@ error[E0161]: cannot move a value of type `[u8]`
 LL |     data: [u8],
    |     ^^^^^^^^^^ the size of `[u8]` cannot be statically determined
 
+error[E0161]: cannot move a value of type `[u8]`
+  --> $DIR/deriving-with-repr-packed.rs:29:5
+   |
+LL |     data: [u8],
+   |     ^^^^^^^^^^ the size of `[u8]` cannot be statically determined
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0507]: cannot move out of a shared reference
   --> $DIR/deriving-with-repr-packed.rs:29:5
    |
@@ -35,13 +43,21 @@ LL |     data: [u8],
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 
 error[E0161]: cannot move a value of type `str`
-  --> $DIR/deriving-with-repr-packed.rs:38:5
+  --> $DIR/deriving-with-repr-packed.rs:39:5
    |
 LL |     data: str,
    |     ^^^^^^^^^ the size of `str` cannot be statically determined
 
+error[E0161]: cannot move a value of type `str`
+  --> $DIR/deriving-with-repr-packed.rs:39:5
+   |
+LL |     data: str,
+   |     ^^^^^^^^^ the size of `str` cannot be statically determined
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/deriving-with-repr-packed.rs:38:5
+  --> $DIR/deriving-with-repr-packed.rs:39:5
    |
 LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
@@ -51,7 +67,7 @@ LL |     data: str,
    |
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0161, E0507.
 For more information about an error, try `rustc --explain E0161`.

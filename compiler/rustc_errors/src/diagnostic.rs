@@ -10,9 +10,10 @@ use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
 use rustc_hashes::Hash128;
-use rustc_lint_defs::Applicability;
+use rustc_lint_defs::{Applicability, FutureIncompatibilityReason};
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::Encodable;
+use rustc_span::edition::Edition;
 use rustc_span::{Span, Spanned, Symbol};
 use tracing::debug;
 
@@ -285,7 +286,7 @@ impl DiagInner {
 
     /// Hash used to determine if two diagnostics are the same. Used by
     /// `DiagCtxtInner::emitted_diagnostics`. Some fields are ignored for the hash.
-    pub(crate) fn dedup_hash(&self) -> Hash128 {
+    pub fn dedup_hash(&self) -> Hash128 {
         // Deconstruct to ensure all fields are considered.
         let DiagInner {
             level,
@@ -1238,6 +1239,26 @@ impl<'a> Diag<'a> {
             self.downgrade_to_delayed_bug();
         }
         self.emit_err()
+    }
+
+    /// Downgrades an [`Level::Error`] `Diag` into a FCW and emits it.
+    ///
+    /// ### Panic
+    ///
+    /// If `self.level` != `Level::Error` this will panic.
+    pub fn emit_fcw(
+        mut self,
+        name: impl Into<String>,
+        fcw_reason: FutureIncompatibilityReason,
+        current_edition: Edition,
+    ) {
+        assert!(self.level == Level::Error, "can only downgrade a error into a fcw warning");
+        self.level = Level::Warning(None);
+        self.warn(fcw_reason.explain(current_edition)).is_lint(name.into(), true, None);
+        self.note(format!("for more information, see {}", fcw_reason.reference()));
+        let diag = self.take_diag();
+
+        let _guar = self.dcx.emit_diagnostic(diag);
     }
 
     /// Cancel and consume the diagnostic. (A diagnostic must either be emitted or
