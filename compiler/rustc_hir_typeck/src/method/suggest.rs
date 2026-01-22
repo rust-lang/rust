@@ -3300,8 +3300,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
                 let can_derive = match diagnostic_name {
-                    sym::Default => !adt.is_enum(),
-                    sym::Eq
+                    sym::Default
+                    | sym::Eq
                     | sym::PartialEq
                     | sym::Ord
                     | sym::PartialOrd
