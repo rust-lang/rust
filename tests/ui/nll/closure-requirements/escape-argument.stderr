@@ -20,6 +20,30 @@ LL | fn test() {
    |
    = note: defining type: test
 
+note: no external requirements
+  --> $DIR/escape-argument.rs:26:38
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                      ^^^^^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 mut &'^1 i32, &'^1 i32)),
+               (),
+           ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/escape-argument.rs:20:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-argument.rs:27:25
    |

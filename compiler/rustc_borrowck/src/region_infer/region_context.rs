@@ -803,7 +803,7 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints();
 
-        let mut errors_buffer = RegionErrors::new(infcx.tcx);
+        let mut errors_buffer = RegionErrors::new();
 
         // If this is a nested body, we propagate unsatisfied
         // outlives constraints to the parent body instead of

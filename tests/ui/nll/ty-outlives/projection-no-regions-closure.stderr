@@ -22,6 +22,32 @@ LL | |     T: Iterator,
    |
    = note: defining type: no_region::<'?1, T>
 
+note: external requirements
+  --> $DIR/projection-no-regions-closure.rs:25:23
+   |
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^
+   |
+   = note: defining type: no_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?2)>,
+               (),
+           ]
+   = note: number of external vids: 3
+   = note: where <T as std::iter::Iterator>::Item: '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/projection-no-regions-closure.rs:21:1
+   |
+LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: Iterator,
+   | |________________^
+   |
+   = note: defining type: no_region::<'?1, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-closure.rs:25:31
    |
@@ -83,6 +109,32 @@ LL | |     T: 'b + Iterator,
    | |_____________________^
    |
    = note: defining type: wrong_region::<'?1, '?2, T>
+
+note: external requirements
+  --> $DIR/projection-no-regions-closure.rs:42:23
+   |
+LL |     with_signature(x, |mut y| Box::new(y.next()))
+   |                       ^^^^^^^
+   |
+   = note: defining type: wrong_region::<'?1, '?2, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?3)>,
+               (),
+           ]
+   = note: number of external vids: 4
+   = note: where <T as std::iter::Iterator>::Item: '?3
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/projection-no-regions-closure.rs:38:1
+   |
+LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
+LL | | where
+LL | |     T: 'b + Iterator,
+   | |_____________________^
+   |
+   = note: defining type: wrong_region::<'?1, '?2, T>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-closure.rs:42:31

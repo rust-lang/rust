@@ -126,11 +126,13 @@ pub fn get_bodies_with_borrowck_facts(
     options: ConsumerOptions,
 ) -> FxHashMap<LocalDefId, BodyWithBorrowckFacts<'_>> {
     let tainted_by_errors = Default::default();
+    // FIXME: run with `WfCheckClosures::FCW` as well?
     let mut root_cx = BorrowCheckRootCtxt::new(
         tcx,
         root_def_id,
         Some(BorrowckConsumer::new(options)),
         &tainted_by_errors,
+        crate::root_cx::WfCheckClosures::Yes,
     );
     root_cx.do_mir_borrowck();
     root_cx.consumer.unwrap().bodies

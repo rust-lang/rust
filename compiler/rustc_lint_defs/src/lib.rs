@@ -458,6 +458,46 @@ impl FutureIncompatibleInfo {
 }
 
 impl FutureIncompatibilityReason {
+    pub fn explain(self, current_edition: Edition) -> String {
+        match self {
+            FutureIncompatibilityReason::FutureReleaseError(_) => {
+                "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in a future release!"
+                    .to_owned()
+            }
+            FutureIncompatibilityReason::FutureReleaseSemanticsChange(_) => {
+                "this will change its meaning in a future release!".to_owned()
+            }
+            FutureIncompatibilityReason::EditionError(EditionFcw { edition, .. }) => {
+                format!(
+                    "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
+                )
+            }
+            FutureIncompatibilityReason::EditionSemanticsChange(EditionFcw { edition, .. }) => {
+                format!("this changes meaning in Rust {edition}")
+            }
+            FutureIncompatibilityReason::EditionAndFutureReleaseError(EditionFcw {
+                edition,
+                ..
+            }) => {
+                format!(
+                    "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in Rust {edition} and in a future release in all editions!"
+                )
+            }
+            FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(EditionFcw {
+                edition,
+                ..
+            }) => {
+                format!(
+                    "this changes meaning in Rust {edition} and in a future release in all editions!"
+                )
+            }
+            FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
+            FutureIncompatibilityReason::Unreachable => unreachable!(),
+        }
+    }
+
     pub fn edition(self) -> Option<Edition> {
         match self {
             Self::EditionError(e)

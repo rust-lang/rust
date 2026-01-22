@@ -6,6 +6,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
+use rustc_lint_defs::FutureIncompatibilityReason;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::ErrorGuaranteed;
@@ -46,6 +47,23 @@ pub(super) struct BorrowCheckRootCtxt<'diag, 'tcx: 'diag> {
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
     pub consumer: Option<BorrowckConsumer<'tcx>>,
+
+    pub wfck_closures_mode: WfCheckClosures<'diag, 'tcx>,
+}
+
+/// Are we WF checking closure argument and result types?
+pub(super) enum WfCheckClosures<'diag, 'tcx> {
+    Yes,
+
+    /// No, but also contains the errors of the `Yes` mode, where some of them
+    /// should be reported as FCW.
+    FCW(BorrowckDiagnosticsBuffer<'diag, 'tcx>),
+}
+
+impl WfCheckClosures<'_, '_> {
+    pub(super) fn is_yes(&self) -> bool {
+        matches!(self, WfCheckClosures::Yes)
+    }
 }
 
 impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
@@ -54,6 +72,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         root_def_id: LocalDefId,
         consumer: Option<BorrowckConsumer<'tcx>>,
         tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
+        wfck_closures_mode: WfCheckClosures<'diag, 'tcx>,
     ) -> BorrowCheckRootCtxt<'diag, 'tcx> {
         BorrowCheckRootCtxt {
             tcx,
@@ -64,6 +83,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             propagated_borrowck_results: Default::default(),
             tainted_by_errors,
             consumer,
+            wfck_closures_mode,
         }
     }
 
@@ -266,7 +286,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         }
     }
 
-    pub(super) fn do_mir_borrowck(&mut self) {
+    pub(super) fn do_mir_borrowck(&mut self) -> Option<BorrowckDiagnosticsBuffer<'diag, 'tcx>> {
         // The list of all bodies we need to borrowck. This first looks at
         // nested bodies, and then their parents. This means accessing e.g.
         // `used_mut_upvars` for a closure can assume that we've already
@@ -281,7 +301,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             self.collect_region_constraints_results.insert(def_id, result);
         }
 
-        let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
+        let mut diags_buffer = BorrowckDiagnosticsBuffer::default();
 
         // We now apply the closure requirements of nested bodies modulo
         // opaques. In case a body does not depend on opaque types, we
@@ -290,7 +310,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         //
         // We eagerly finish borrowck for bodies which don't depend on
         // opaques.
-        self.apply_closure_requirements_modulo_opaques(diags_buffer);
+        self.apply_closure_requirements_modulo_opaques(&mut diags_buffer);
 
         // We handle opaque type uses for all bodies together.
         self.handle_opaque_type_uses();
@@ -316,9 +336,27 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
                 );
             }
 
-            let result = borrowck_check_region_constraints(self, diags_buffer, input);
+            let result = borrowck_check_region_constraints(self, &mut diags_buffer, input);
             self.propagated_borrowck_results.insert(def_id, result);
         }
-        diags_buffer.emit_errors();
+
+        match self.wfck_closures_mode {
+            WfCheckClosures::Yes => Some(diags_buffer),
+            WfCheckClosures::FCW(ref mut yes_mode_errors) => {
+                // Find the errors that should be emitted as FCW.
+                yes_mode_errors.diff_errors(&diags_buffer);
+
+                diags_buffer.emit_errors();
+                yes_mode_errors.emit_errors_as_fcw(
+                    "wf_closure_checks",
+                    FutureIncompatibilityReason::FutureReleaseError(rustc_lint_defs::ReleaseFcw {
+                        issue_number: 163155,
+                    }),
+                    self.tcx.sess.edition(),
+                );
+
+                None
+            }
+        }
     }
 }

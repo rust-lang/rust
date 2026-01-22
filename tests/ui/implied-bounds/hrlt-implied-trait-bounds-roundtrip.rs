@@ -1,4 +1,5 @@
 //@ check-pass
+
 struct Foo<'a>(&'a ())
 where
     (): Trait<'a>;
@@ -21,7 +22,8 @@ where
 }
 
 fn main() {
-    let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {};
+    let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {}; //~ WARNING: lifetime may not live long enough
+                                                          //~| WARNING: this was previously accepted by the compiler but is being phased out
 
     // If `could_use_implied_bounds` were to use implied bounds,
     // keeping 'a late-bound, then we could assign that function

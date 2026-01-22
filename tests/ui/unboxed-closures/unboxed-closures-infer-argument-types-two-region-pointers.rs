@@ -16,5 +16,7 @@ pub fn main() {
     doit(0, &|x, y| {
         x.set(y);
         //~^ ERROR lifetime may not live long enough
+        //~| WARNING: lifetime may not live long enough [wf_closure_checks]
+        //~| WARNING: this was previously accepted by the compiler but is being phased out
     });
 }

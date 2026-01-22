@@ -141,9 +141,33 @@ fn mir_borrowck(
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let tainted_by_errors = Default::default();
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None, &tainted_by_errors);
-        root_cx.do_mir_borrowck();
-        root_cx.finalize()
+        let mut root_cx = BorrowCheckRootCtxt::new(
+            tcx,
+            def,
+            None,
+            &tainted_by_errors,
+            root_cx::WfCheckClosures::Yes,
+        );
+        match root_cx.do_mir_borrowck() {
+            // Don't rerun borrowck if there were no errors with `WfCheckClosures::Yes`, it
+            // produces a superset of the errors created without it.
+            Some(errors) if !errors.is_empty() => {
+                let tainted_by_errors = Default::default();
+                let mut root_cx = BorrowCheckRootCtxt::new(
+                    tcx,
+                    def,
+                    None,
+                    &tainted_by_errors,
+                    root_cx::WfCheckClosures::FCW(errors),
+                );
+
+                root_cx.do_mir_borrowck();
+                root_cx.finalize()
+            }
+
+            Some(_) => root_cx.finalize(),
+            None => unreachable!("`WfCheckClosures::Yes` always returns `Some(errors)`"),
+        }
     }
 }
 
@@ -370,6 +394,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         &mut polonius_facts,
         &move_data,
         Rc::clone(&location_map),
+        root_cx.wfck_closures_mode.is_yes(),
     );
 
     CollectRegionConstraintsResult {
@@ -537,7 +562,7 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
     };
 
     // Compute and report region errors, if any.
-    if nll_errors.is_empty() {
+    if nll_errors.is_empty() && root_cx.wfck_closures_mode.is_yes() {
         mbcx.report_opaque_type_errors(deferred_opaque_type_errors);
     } else {
         mbcx.report_region_errors(nll_errors);
