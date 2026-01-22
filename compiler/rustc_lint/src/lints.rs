@@ -1,6 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
 use rustc_errors::codes::*;
@@ -943,14 +942,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub(crate) struct LintPassByHand;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_diag_out_of_impl)]
-pub(crate) struct DiagOutOfImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_untranslatable_diag)]
-pub(crate) struct UntranslatableDiag;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
@@ -2010,6 +2001,19 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_improper_gpu_kernel_arg)]
+#[help]
+pub(crate) struct ImproperGpuKernelArg<'a> {
+    pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_missing_gpu_kernel_export_name)]
+#[help]
+#[note]
+pub(crate) struct MissingGpuKernelExportName;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_variant_size_differences)]
 pub(crate) struct VariantSizeDifferencesDiag {
     pub largest: u64,
@@ -2856,7 +2860,6 @@ pub(crate) struct AmbiguousGlobReexports {
     pub duplicate_reexport: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -2869,7 +2872,6 @@ pub(crate) struct HiddenGlobReexports {
     pub private_item: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -3299,3 +3301,12 @@ pub(crate) struct DocTestUnknown {
 #[derive(LintDiagnostic)]
 #[diag(lint_doc_test_literal)]
 pub(crate) struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_attr_crate_level)]
+#[note]
+pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_incorrect_do_not_recommend_args)]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;

@@ -9,17 +9,19 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::builder::matches::{MatchPairTree, Test, TestBranch, TestKind, TestableCase};
+use crate::builder::matches::{
+    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -32,12 +34,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let kind = match match_pair.testable_case {
             TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
-            TestableCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
-            TestableCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => {
+            TestableCase::Constant { value: _, kind: PatConstKind::Bool } => TestKind::If,
+            TestableCase::Constant { value: _, kind: PatConstKind::IntOrChar } => {
                 TestKind::SwitchInt
             }
-            TestableCase::Constant { value } => {
-                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            TestableCase::Constant { value, kind: PatConstKind::String } => {
+                TestKind::StringEq { value }
+            }
+            TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
+                TestKind::ScalarEq { value }
             }
 
             TestableCase::Range(ref range) => {
@@ -45,10 +50,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Range(Arc::clone(range))
             }
 
-            TestableCase::Slice { len, variable_length } => {
-                let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
-                TestKind::Len { len: len as u64, op }
-            }
+            TestableCase::Slice { len, op } => TestKind::SliceLen { len, op },
 
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
@@ -116,7 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let switch_targets = SwitchTargets::new(
                     target_blocks.iter().filter_map(|(&branch, &block)| {
                         if let TestBranch::Constant(value) = branch {
-                            let bits = value.valtree.unwrap_leaf().to_bits_unchecked();
+                            let bits = value.to_leaf().to_bits_unchecked();
                             Some((bits, block))
                         } else {
                             None
@@ -139,70 +141,60 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, mut cast_ty } => {
+            TestKind::StringEq { value } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let mut expect_ty = value.ty;
-                let mut expect = self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+                let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_);
+                assert!(ref_str_ty.is_imm_ref_str(), "{ref_str_ty:?}");
 
-                let mut place = place;
-                let mut block = block;
-                match cast_ty.kind() {
-                    ty::Str => {
-                        // String literal patterns may have type `str` if `deref_patterns` is
-                        // enabled, in order to allow `deref!("..."): String`. In this case, `value`
-                        // is of type `&str`, so we compare it to `&place`.
-                        if !tcx.features().deref_patterns() {
-                            span_bug!(
-                                test.span,
-                                "matching on `str` went through without enabling deref_patterns"
-                            );
-                        }
-                        let re_erased = tcx.lifetimes.re_erased;
-                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                        let ref_place = self.temp(ref_str_ty, test.span);
-                        // `let ref_place: &str = &place;`
-                        self.cfg.push_assign(
-                            block,
-                            self.source_info(test.span),
-                            ref_place,
-                            Rvalue::Ref(re_erased, BorrowKind::Shared, place),
-                        );
-                        place = ref_place;
-                        cast_ty = ref_str_ty;
-                    }
-                    ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
-                        if !tcx.features().string_deref_patterns() {
-                            span_bug!(
-                                test.span,
-                                "matching on `String` went through without enabling string_deref_patterns"
-                            );
-                        }
-                        let re_erased = tcx.lifetimes.re_erased;
-                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                        let ref_str = self.temp(ref_str_ty, test.span);
-                        let eq_block = self.cfg.start_new_block();
-                        // `let ref_str: &str = <String as Deref>::deref(&place);`
-                        self.call_deref(
-                            block,
-                            eq_block,
-                            place,
-                            Mutability::Not,
-                            cast_ty,
-                            ref_str,
-                            test.span,
-                        );
-                        // Since we generated a `ref_str = <String as Deref>::deref(&place) -> eq_block` terminator,
-                        // we need to add all further statements to `eq_block`.
-                        // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
-                        block = eq_block;
-                        place = ref_str;
-                        cast_ty = ref_str_ty;
-                    }
+                // The string constant we're testing against has type `str`, but
+                // calling `<str as PartialEq>::eq` requires `&str` operands.
+                //
+                // Because `str` and `&str` have the same valtree representation,
+                // we can "cast" to the desired type by just replacing the type.
+                assert!(value.ty.is_str(), "unexpected value type for StringEq test: {value:?}");
+                let expected_value = ty::Value { ty: ref_str_ty, valtree: value.valtree };
+                let expected_value_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, expected_value));
+
+                // Similarly, the scrutinized place has type `str`, but we need `&str`.
+                // Get a reference by doing `let actual_value_ref_place: &str = &place`.
+                let actual_value_ref_place = self.temp(ref_str_ty, test.span);
+                self.cfg.push_assign(
+                    block,
+                    self.source_info(test.span),
+                    actual_value_ref_place,
+                    Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+                );
+
+                // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
+                // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+                // on the `PartialEq` impl for `str` to be correct!)
+                self.string_compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_ref_place),
+                );
+            }
+
+            TestKind::ScalarEq { value } => {
+                let tcx = self.tcx;
+                let success_block = target_block(TestBranch::Success);
+                let fail_block = target_block(TestBranch::Failure);
+
+                let mut expected_value_ty = value.ty;
+                let mut expected_value_operand =
+                    self.literal_operand(test.span, Const::from_ty_value(tcx, value));
+
+                let mut actual_value_place = place;
+
+                match value.ty.kind() {
                     &ty::Pat(base, _) => {
-                        assert_eq!(cast_ty, value.ty);
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);
@@ -210,7 +202,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             self.source_info(scrutinee_span),
                             transmuted_place,
-                            Rvalue::Cast(CastKind::Transmute, Operand::Copy(place), base),
+                            Rvalue::Cast(
+                                CastKind::Transmute,
+                                Operand::Copy(actual_value_place),
+                                base,
+                            ),
                         );
 
                         let transmuted_expect = self.temp(base, test.span);
@@ -218,54 +214,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             self.source_info(test.span),
                             transmuted_expect,
-                            Rvalue::Cast(CastKind::Transmute, expect, base),
+                            Rvalue::Cast(CastKind::Transmute, expected_value_operand, base),
                         );
 
-                        place = transmuted_place;
-                        expect = Operand::Copy(transmuted_expect);
-                        cast_ty = base;
-                        expect_ty = base;
+                        actual_value_place = transmuted_place;
+                        expected_value_operand = Operand::Copy(transmuted_expect);
+                        expected_value_ty = base;
                     }
                     _ => {}
                 }
 
-                assert_eq!(expect_ty, cast_ty);
-                if !cast_ty.is_scalar() {
-                    // Use `PartialEq::eq` instead of `BinOp::Eq`
-                    // (the binop can only handle primitives)
-                    // Make sure that we do *not* call any user-defined code here.
-                    // The only type that can end up here is string literals, which have their
-                    // comparison defined in `core`.
-                    // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-                    // on the `PartialEq` impl for `str` to b correct!)
-                    match *cast_ty.kind() {
-                        ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ => {}
-                        _ => {
-                            span_bug!(
-                                source_info.span,
-                                "invalid type for non-scalar compare: {cast_ty}"
-                            )
-                        }
-                    };
-                    self.string_compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        expect,
-                        Operand::Copy(place),
-                    );
-                } else {
-                    self.compare(
-                        block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        BinOp::Eq,
-                        expect,
-                        Operand::Copy(place),
-                    );
-                }
+                assert!(expected_value_ty.is_scalar());
+
+                self.compare(
+                    block,
+                    success_block,
+                    fail_block,
+                    source_info,
+                    BinOp::Eq,
+                    expected_value_operand,
+                    Operand::Copy(actual_value_place),
+                );
             }
 
             TestKind::Range(ref range) => {
@@ -307,7 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Len { len, op } => {
+            TestKind::SliceLen { len, op } => {
                 let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 
@@ -327,7 +296,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     success_block,
                     fail_block,
                     source_info,
-                    op,
+                    match op {
+                        SliceLenOp::Equal => BinOp::Eq,
+                        SliceLenOp::GreaterOrEqual => BinOp::Ge,
+                    },
                     Operand::Move(actual),
                     Operand::Move(expected),
                 );
@@ -489,11 +461,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TerminatorKind::if_(Operand::Move(eq_result), success_block, fail_block),
         );
     }
-}
-
-/// Returns true if this type be used with [`TestKind::SwitchInt`].
-pub(crate) fn is_switch_ty(ty: Ty<'_>) -> bool {
-    ty.is_integral() || ty.is_char()
 }
 
 fn trait_method<'tcx>(

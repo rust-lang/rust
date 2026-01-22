@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
-use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -296,8 +296,12 @@ impl Step for Std {
             vec![],
             &stamp,
             target_deps,
-            self.is_for_mir_opt_tests, // is_check
-            false,
+            if self.is_for_mir_opt_tests {
+                ArtifactKeepMode::OnlyRmeta
+            } else {
+                // We use -Zno-embed-metadata for the standard library
+                ArtifactKeepMode::BothRlibAndRmeta
+            },
         );
 
         builder.ensure(StdLink::from_std(
@@ -354,7 +358,10 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
-            && (target.contains("linux") || target.contains("fuchsia") || target.contains("aix"))
+            && (target.contains("linux")
+                || target.contains("fuchsia")
+                || target.contains("aix")
+                || target.contains("hexagon"))
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
@@ -619,12 +626,6 @@ pub fn std_cargo(
         CompilerBuiltins::BuildRustOnly => "",
     };
 
-    // `libtest` uses this to know whether or not to support
-    // `-Zunstable-options`.
-    if !builder.unstable_features() {
-        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
-    }
-
     for krate in crates {
         cargo.args(["-p", krate]);
     }
@@ -673,13 +674,6 @@ pub fn std_cargo(
         }
     }
 
-    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
-    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
-    // built with bitcode so that the produced rlibs can be used for both LTO
-    // builds (which use bitcode) and non-LTO builds (which use object code).
-    // So we override the override here!
-    cargo.rustflag("-Cembed-bitcode=yes");
-
     if builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }
@@ -693,11 +687,6 @@ pub fn std_cargo(
     if target.contains("riscv") {
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
-
-    // Enable frame pointers by default for the library. Note that they are still controlled by a
-    // separate setting for the compiler.
-    cargo.rustflag("-Zunstable-options");
-    cargo.rustflag("-Cforce-frame-pointers=non-leaf");
 
     let html_root =
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
@@ -1164,14 +1153,28 @@ impl Step for Rustc {
             target,
         );
         let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
+
         run_cargo(
             builder,
             cargo,
             vec![],
             &stamp,
             vec![],
-            false,
-            true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
+            ArtifactKeepMode::Custom(Box::new(|filename| {
+                if filename.contains("jemalloc_sys")
+                    || filename.contains("rustc_public_bridge")
+                    || filename.contains("rustc_public")
+                {
+                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
+                    // so we need to distribute them as rlib to be able to use them.
+                    filename.ends_with(".rlib")
+                } else {
+                    // Distribute the rest of the rustc crates as rmeta files only to reduce
+                    // the tarball sizes by about 50%. The object files are linked into
+                    // librustc_driver.so, so it is still possible to link against them.
+                    filename.ends_with(".rmeta")
+                }
+            })),
         );
 
         let target_root_dir = stamp.path().parent().unwrap();
@@ -1427,10 +1430,12 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
+    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
+        builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
     }
-    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+
     cargo.env("LLVM_CONFIG", &host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
@@ -1564,21 +1569,29 @@ impl Step for RustcLink {
 }
 
 /// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
+/// `libgccjit` requires a separate build for each `(host, target)` pair.
+/// So if you are on linux-x64 and build for linux-aarch64, you will need at least:
+/// - linux-x64 -> linux-x64 libgccjit (for building host code like proc macros)
+/// - linux-x64 -> linux-aarch64 libgccjit (for the aarch64 target code)
 #[derive(Clone)]
 pub struct GccDylibSet {
     dylibs: BTreeMap<GccTargetPair, GccOutput>,
-    host_pair: GccTargetPair,
 }
 
 impl GccDylibSet {
-    /// Returns the libgccjit.so dylib that corresponds to a host target on which `cg_gcc` will be
-    /// executed, and which will target the host. So e.g. if `cg_gcc` will be executed on
-    /// x86_64-unknown-linux-gnu, the host dylib will be for compilation pair
-    /// `(x86_64-unknown-linux-gnu, x86_64-unknown-linux-gnu)`.
-    fn host_dylib(&self) -> &GccOutput {
-        self.dylibs.get(&self.host_pair).unwrap_or_else(|| {
-            panic!("libgccjit.so was not built for host target {}", self.host_pair)
-        })
+    /// Build a set of libgccjit dylibs that will be executed on `host` and will generate code for
+    /// each specified target.
+    pub fn build(
+        builder: &Builder<'_>,
+        host: TargetSelection,
+        targets: Vec<TargetSelection>,
+    ) -> Self {
+        let dylibs = targets
+            .iter()
+            .map(|t| GccTargetPair::for_target_pair(host, *t))
+            .map(|target_pair| (target_pair, builder.ensure(Gcc { target_pair })))
+            .collect();
+        Self { dylibs }
     }
 
     /// Install the libgccjit dylibs to the corresponding target directories of the given compiler.
@@ -1599,61 +1612,65 @@ impl GccDylibSet {
                 "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
                 compiler.host
             );
-            let libgccjit = libgccjit.libgccjit();
-            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+            let libgccjit_path = libgccjit.libgccjit();
 
             // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a
             // symlink, which wouldn't work.
-            let actual_libgccjit_path = t!(
-                libgccjit.canonicalize(),
-                format!("Cannot find libgccjit at {}", libgccjit.display())
+            let libgccjit_path = t!(
+                libgccjit_path.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit_path.display())
             );
 
-            // <cg-sysroot>/lib/<target>/libgccjit.so
-            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
-            t!(fs::create_dir_all(&dest_dir));
-            let dst = dest_dir.join(target_filename);
-            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+            let dst = cg_sysroot.join(libgccjit_path_relative_to_cg_dir(target_pair, libgccjit));
+            t!(std::fs::create_dir_all(dst.parent().unwrap()));
+            builder.copy_link(&libgccjit_path, &dst, FileType::NativeLibrary);
         }
     }
 }
 
+/// Returns a path where libgccjit.so should be stored, **relative** to the
+/// **codegen backend directory**.
+pub fn libgccjit_path_relative_to_cg_dir(
+    target_pair: &GccTargetPair,
+    libgccjit: &GccOutput,
+) -> PathBuf {
+    let target_filename = libgccjit.libgccjit().file_name().unwrap().to_str().unwrap();
+
+    // <cg-dir>/lib/<target>/libgccjit.so
+    Path::new("lib").join(target_pair.target()).join(target_filename)
+}
+
 /// Output of the `compile::GccCodegenBackend` step.
 ///
-/// It contains paths to all built libgccjit libraries on which this backend depends here.
+/// It contains a build stamp with the path to the built cg_gcc dylib.
 #[derive(Clone)]
 pub struct GccCodegenBackendOutput {
     stamp: BuildStamp,
-    dylib_set: GccDylibSet,
+}
+
+impl GccCodegenBackendOutput {
+    pub fn stamp(&self) -> &BuildStamp {
+        &self.stamp
+    }
 }
 
 /// Builds the GCC codegen backend (`cg_gcc`).
-/// The `cg_gcc` backend uses `libgccjit`, which requires a separate build for each
-/// `host -> target` pair. So if you are on linux-x64 and build for linux-aarch64,
-/// you will need at least:
-/// - linux-x64 -> linux-x64 libgccjit (for building host code like proc macros)
-/// - linux-x64 -> linux-aarch64 libgccjit (for the aarch64 target code)
-///
-/// We model this by having a single cg_gcc for a given host target, which contains one
-/// libgccjit per (host, target) pair.
-/// Note that the host target is taken from `self.compilers.target_compiler.host`.
+/// Note that this **does not** build libgccjit, which is a dependency of cg_gcc.
+/// That has to be built separately, because a separate copy of libgccjit is required
+/// for each (host, target) compilation pair.
+/// cg_gcc goes to great lengths to ensure that it does not *directly* link to libgccjit,
+/// so we respect that here and allow building cg_gcc without building libgccjit itself.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GccCodegenBackend {
     compilers: RustcPrivateCompilers,
-    targets: Vec<TargetSelection>,
+    target: TargetSelection,
 }
 
 impl GccCodegenBackend {
-    /// Build `cg_gcc` that will run on host `H` (`compilers.target_compiler.host`) and will be
-    /// able to produce code target pairs (`H`, `T`) for all `T` from `targets`.
-    pub fn for_targets(
-        compilers: RustcPrivateCompilers,
-        mut targets: Vec<TargetSelection>,
-    ) -> Self {
-        // Sort targets to improve step cache hits
-        targets.sort();
-        Self { compilers, targets }
+    /// Build `cg_gcc` that will run on the given host target.
+    pub fn for_target(compilers: RustcPrivateCompilers, target: TargetSelection) -> Self {
+        Self { compilers, target }
     }
 }
 
@@ -1667,10 +1684,8 @@ impl Step for GccCodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // By default, build cg_gcc that will only be able to compile native code for the given
-        // host target.
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target);
-        run.builder.ensure(GccCodegenBackend { compilers, targets: vec![run.target] });
+        run.builder.ensure(GccCodegenBackend::for_target(compilers, run.target));
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -1684,19 +1699,7 @@ impl Step for GccCodegenBackend {
             &CodegenBackendKind::Gcc,
         );
 
-        let dylib_set = GccDylibSet {
-            dylibs: self
-                .targets
-                .iter()
-                .map(|&target| {
-                    let target_pair = GccTargetPair::for_target_pair(host, target);
-                    (target_pair, builder.ensure(Gcc { target_pair }))
-                })
-                .collect(),
-            host_pair: GccTargetPair::for_native_build(host),
-        };
-
-        if builder.config.keep_stage.contains(&build_compiler.stage) {
+        if builder.config.keep_stage.contains(&build_compiler.stage) && stamp.path().exists() {
             trace!("`keep-stage` requested");
             builder.info(
                 "WARNING: Using a potentially old codegen backend. \
@@ -1704,7 +1707,7 @@ impl Step for GccCodegenBackend {
             );
             // Codegen backends are linked separately from this step today, so we don't do
             // anything here.
-            return GccCodegenBackendOutput { stamp, dylib_set };
+            return GccCodegenBackendOutput { stamp };
         }
 
         let mut cargo = builder::Cargo::new(
@@ -1718,15 +1721,12 @@ impl Step for GccCodegenBackend {
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, host);
 
-        add_cg_gcc_cargo_flags(&mut cargo, dylib_set.host_dylib());
-
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
-            dylib_set,
         }
     }
 
@@ -1799,7 +1799,7 @@ impl Step for CraneliftCodegenBackend {
             build_compiler,
             target,
         );
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
 
@@ -2274,22 +2274,30 @@ impl Step for Assemble {
             builder.compiler(target_compiler.stage - 1, builder.config.host_target);
 
         // Build enzyme
-        if builder.config.llvm_enzyme && !builder.config.dry_run() {
+        if builder.config.llvm_enzyme {
             debug!("`llvm_enzyme` requested");
-            let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
-            if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
-                let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-                let lib_ext = std::env::consts::DLL_EXTENSION;
-                let libenzyme = format!("libEnzyme-{llvm_version_major}");
-                let src_lib =
-                    enzyme_install.join("build/Enzyme").join(&libenzyme).with_extension(lib_ext);
-                let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
+            let enzyme = builder.ensure(llvm::Enzyme { target: build_compiler.host });
+            let target_libdir =
+                builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+            let target_dst_lib = target_libdir.join(enzyme.enzyme_filename());
+            builder.copy_link(&enzyme.enzyme_path(), &target_dst_lib, FileType::NativeLibrary);
+        }
+
+        if builder.config.llvm_offload && !builder.config.dry_run() {
+            debug!("`llvm_offload` requested");
+            let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
+            if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-                let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
-                let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
-                builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
+                for p in offload_install.offload_paths() {
+                    let libname = p.file_name().unwrap();
+                    let dst_lib = target_libdir.join(libname);
+                    builder.resolve_symlink_and_copy(&p, &dst_lib);
+                }
+                // FIXME(offload): Add amdgcn-amd-amdhsa and nvptx64-nvidia-cuda folder
+                // This one is slightly more tricky, since we have the same file twice, in two
+                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
+                // Intel and Spir-V support lands in offload.
             }
         }
 
@@ -2434,12 +2442,18 @@ impl Step for Assemble {
                         // GCC dylibs built below by taking a look at the current stage and whether
                         // cg_gcc is used as the default codegen backend.
 
+                        // First, the easy part: build cg_gcc
                         let compilers = prepare_compilers();
+                        let cg_gcc = builder
+                            .ensure(GccCodegenBackend::for_target(compilers, target_compiler.host));
+                        copy_codegen_backends_to_sysroot(builder, cg_gcc.stamp, target_compiler);
+
+                        // Then, the hard part: prepare all required libgccjit dylibs.
 
                         // The left side of the target pairs below is implied. It has to match the
-                        // host target on which cg_gcc will run, which is the host target of
+                        // host target on which libgccjit will be used, which is the host target of
                         // `target_compiler`. We only pass the right side of the target pairs to
-                        // the `GccCodegenBackend` constructor.
+                        // the `GccDylibSet` constructor.
                         let mut targets = HashSet::new();
                         // Add all host targets, so that we are able to build host code in this
                         // bootstrap invocation using cg_gcc.
@@ -2454,14 +2468,16 @@ impl Step for Assemble {
                         // host code (e.g. proc macros) using cg_gcc.
                         targets.insert(compilers.target_compiler().host);
 
-                        let output = builder.ensure(GccCodegenBackend::for_targets(
-                            compilers,
+                        // Now build all the required libgccjit dylibs
+                        let dylib_set = GccDylibSet::build(
+                            builder,
+                            compilers.target_compiler().host,
                             targets.into_iter().collect(),
-                        ));
-                        copy_codegen_backends_to_sysroot(builder, output.stamp, target_compiler);
-                        // Also copy all requires libgccjit dylibs to the corresponding
-                        // library sysroots, so that they are available for the codegen backend.
-                        output.dylib_set.install_to(builder, target_compiler);
+                        );
+
+                        // And then copy all the dylibs to the corresponding
+                        // library sysroots, so that they are available for cg_gcc.
+                        dylib_set.install_to(builder, target_compiler);
                     }
                     CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => continue,
                 }
@@ -2603,14 +2619,30 @@ pub fn add_to_sysroot(
     }
 }
 
+/// Specifies which rlib/rmeta artifacts outputted by Cargo should be put into the resulting
+/// build stamp, and thus be included in dist archives and copied into sysroots by default.
+/// Note that some kinds of artifacts are copied automatically (e.g. native libraries).
+pub enum ArtifactKeepMode {
+    /// Only keep .rlib files, ignore .rmeta files
+    OnlyRlib,
+    /// Only keep .rmeta files, ignore .rlib files
+    OnlyRmeta,
+    /// Keep both .rlib and .rmeta files.
+    /// This is essentially only useful when using `-Zno-embed-metadata`, in which case both the
+    /// .rlib and .rmeta files are needed for compilation/linking.
+    BothRlibAndRmeta,
+    /// Custom logic for keeping an artifact
+    /// It receives the filename of an artifact, and returns true if it should be kept.
+    Custom(Box<dyn Fn(&str) -> bool>),
+}
+
 pub fn run_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
-    is_check: bool,
-    rlib_only_metadata: bool,
+    artifact_keep_mode: ArtifactKeepMode,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.path().parent().unwrap();
@@ -2644,36 +2676,23 @@ pub fn run_cargo(
         };
         for filename in filenames_vec {
             // Skip files like executables
-            let mut keep = false;
-            if filename.ends_with(".lib")
+            let keep = if filename.ends_with(".lib")
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(Path::new(&*filename))
             {
                 // Always keep native libraries, rust dylibs and debuginfo
-                keep = true;
-            }
-            if is_check && filename.ends_with(".rmeta") {
-                // During check builds we need to keep crate metadata
-                keep = true;
-            } else if rlib_only_metadata {
-                if filename.contains("jemalloc_sys")
-                    || filename.contains("rustc_public_bridge")
-                    || filename.contains("rustc_public")
-                {
-                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
-                    // so we need to distribute them as rlib to be able to use them.
-                    keep |= filename.ends_with(".rlib");
-                } else {
-                    // Distribute the rest of the rustc crates as rmeta files only to reduce
-                    // the tarball sizes by about 50%. The object files are linked into
-                    // librustc_driver.so, so it is still possible to link against them.
-                    keep |= filename.ends_with(".rmeta");
-                }
+                true
             } else {
-                // In all other cases keep all rlibs
-                keep |= filename.ends_with(".rlib");
-            }
+                match &artifact_keep_mode {
+                    ArtifactKeepMode::OnlyRlib => filename.ends_with(".rlib"),
+                    ArtifactKeepMode::OnlyRmeta => filename.ends_with(".rmeta"),
+                    ArtifactKeepMode::BothRlibAndRmeta => {
+                        filename.ends_with(".rmeta") || filename.ends_with(".rlib")
+                    }
+                    ArtifactKeepMode::Custom(func) => func(&filename),
+                }
+            };
 
             if !keep {
                 continue;

@@ -59,8 +59,9 @@ fn assert_expand_impl(
     let input_ts_string = format!("{input_ts:?}");
     let attr_ts_string = attr_ts.as_ref().map(|it| format!("{it:?}"));
 
-    let res =
-        expander.expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site).unwrap();
+    let res = expander
+        .expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site, None)
+        .unwrap();
     expect.assert_eq(&format!(
         "{input_ts_string}{}{}{}",
         if attr_ts_string.is_some() { "\n\n" } else { "" },
@@ -91,7 +92,8 @@ fn assert_expand_impl(
     let fixture_string = format!("{fixture:?}");
     let attr_string = attr.as_ref().map(|it| format!("{it:?}"));
 
-    let res = expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site).unwrap();
+    let res =
+        expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site, None).unwrap();
     expect_spanned.assert_eq(&format!(
         "{fixture_string}{}{}{}",
         if attr_string.is_some() { "\n\n" } else { "" },

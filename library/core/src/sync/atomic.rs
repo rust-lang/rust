@@ -1151,8 +1151,8 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), true);
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
-    /// let foo = AtomicBool::new(true);
-    /// assert_eq!(foo.fetch_or(true, Ordering::SeqCst), true);
+    /// let foo = AtomicBool::new(false);
+    /// assert_eq!(foo.fetch_or(true, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(false);
@@ -1548,6 +1548,24 @@ impl<T> AtomicPtr<T> {
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
+    }
+
+    /// Creates a new `AtomicPtr` initialized with a null pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_null)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let atomic_ptr = AtomicPtr::<()>::null();
+    /// assert!(atomic_ptr.load(Ordering::Relaxed).is_null());
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "atomic_ptr_null", issue = "150733")]
+    pub const fn null() -> AtomicPtr<T> {
+        AtomicPtr::new(crate::ptr::null_mut())
     }
 
     /// Returns a mutable reference to the underlying pointer.

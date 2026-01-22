@@ -964,6 +964,52 @@ fn psadbw<'tcx>(
     interp_ok(())
 }
 
+/// Multiply packed signed 16-bit integers in `left` and `right`, producing intermediate signed 32-bit integers.
+/// Horizontally add adjacent pairs of intermediate 32-bit integers, and pack the results in `dest`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_madd_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_madd_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_madd_epi16>
+fn pmaddwd<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn  pmaddwd(a: i16x8,  b: i16x8)  -> i32x4;
+    // fn  pmaddwd(a: i16x16, b: i16x16) -> i32x8;
+    // fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
+    assert_eq!(left_len, right_len);
+    assert_eq!(dest_len.strict_mul(2), left_len);
+
+    for i in 0..dest_len {
+        let j1 = i.strict_mul(2);
+        let left1 = ecx.read_scalar(&ecx.project_index(&left, j1)?)?.to_i16()?;
+        let right1 = ecx.read_scalar(&ecx.project_index(&right, j1)?)?.to_i16()?;
+
+        let j2 = j1.strict_add(1);
+        let left2 = ecx.read_scalar(&ecx.project_index(&left, j2)?)?.to_i16()?;
+        let right2 = ecx.read_scalar(&ecx.project_index(&right, j2)?)?.to_i16()?;
+
+        let dest = ecx.project_index(&dest, i)?;
+
+        // Multiplications are i16*i16->i32, which will not overflow.
+        let mul1 = i32::from(left1).strict_mul(right1.into());
+        let mul2 = i32::from(left2).strict_mul(right2.into());
+        // However, this addition can overflow in the most extreme case
+        // (-0x8000)*(-0x8000)+(-0x8000)*(-0x8000) = 0x80000000
+        let res = mul1.wrapping_add(mul2);
+
+        ecx.write_scalar(Scalar::from_i32(res), &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Multiplies packed 8-bit unsigned integers from `left` and packed
 /// signed 8-bit integers from `right` into 16-bit signed integers. Then,
 /// the saturating sum of the products with indices `2*i` and `2*i+1`
@@ -1150,6 +1196,51 @@ fn pclmulqdq<'tcx>(
 
         let dest = ecx.project_index(&dest, i)?;
         ecx.write_scalar(Scalar::from_u128(result), &dest)?;
+    }
+
+    interp_ok(())
+}
+
+/// Shuffles bytes from `left` using `right` as pattern. Each 16-byte block is shuffled independently.
+///
+/// `left` and `right` are both vectors of type `len` x i8.
+///
+/// If the highest bit of a byte in `right` is not set, the corresponding byte in `dest` is taken
+/// from the current 16-byte block of `left` at the position indicated by the lowest 4 bits of this
+/// byte in `right`. If the highest bit of a byte in `right` is set, the corresponding byte in
+/// `dest` is set to `0`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shuffle_epi8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shuffle_epi8>
+fn pshufb<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, right_len);
+
+    for i in 0..dest_len {
+        let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?.to_u8()?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        let res = if right & 0x80 == 0 {
+            // Shuffle each 128-bit (16-byte) block independently.
+            let block_offset = i & !15; // round down to previous multiple of 16
+            let j = block_offset.strict_add((right % 16).into());
+            ecx.read_scalar(&ecx.project_index(&left, j)?)?
+        } else {
+            // If the highest bit in `right` is 1, write zero.
+            Scalar::from_u8(0)
+        };
+
+        ecx.write_scalar(res, &dest)?;
     }
 
     interp_ok(())

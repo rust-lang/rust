@@ -8,7 +8,7 @@ use std::hash::Hash;
 use std::iter::{Product, Sum};
 use std::ops::Index;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
@@ -241,10 +241,10 @@ pub struct UnordSet<V: Eq + Hash> {
 
 impl<V: Eq + Hash> UnordCollection for UnordSet<V> {}
 
-impl<V: Eq + Hash> Default for UnordSet<V> {
+impl<V: Eq + Hash> const Default for UnordSet<V> {
     #[inline]
     fn default() -> Self {
-        Self { inner: FxHashSet::default() }
+        Self { inner: FxHashSet::with_hasher(FxBuildHasher) }
     }
 }
 
@@ -438,10 +438,10 @@ pub struct UnordMap<K: Eq + Hash, V> {
 
 impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
 
-impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
+impl<K: Eq + Hash, V> const Default for UnordMap<K, V> {
     #[inline]
     fn default() -> Self {
-        Self { inner: FxHashMap::default() }
+        Self { inner: FxHashMap::with_hasher(FxBuildHasher) }
     }
 }
 

@@ -3,7 +3,7 @@
 use super::root_relative;
 use crate::ffi::{CStr, c_char, c_void};
 use crate::ptr::null_mut;
-use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::helpers::run_path_with_cstr;
 
 // MacTypes.h
 pub(super) type Boolean = u8;

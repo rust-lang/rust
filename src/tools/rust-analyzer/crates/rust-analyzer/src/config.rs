@@ -280,6 +280,9 @@ config_data! {
         /// Show function parameter name inlay hints at the call site.
         inlayHints_parameterHints_enable: bool = true,
 
+        /// Show parameter name inlay hints for missing arguments at the call site.
+        inlayHints_parameterHints_missingArguments_enable: bool = false,
+
         /// Show exclusive range inlay hints.
         inlayHints_rangeExclusiveHints_enable: bool = false,
 
@@ -722,6 +725,9 @@ config_data! {
         ///
         /// E.g. `use ::std::io::Read;`.
         imports_prefixExternPrelude: bool = false,
+
+        /// Whether to warn when a rename will cause conflicts (change the meaning of the code).
+        rename_showConflicts: bool = true,
     }
 }
 
@@ -898,8 +904,24 @@ config_data! {
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
+        /// Subcommand used for bench runnables instead of `bench`.
+        runnables_bench_command: String = "bench".to_owned(),
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = vec![],
@@ -911,6 +933,15 @@ config_data! {
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
         runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
+        /// Subcommand used for test runnables instead of `test`.
+        runnables_test_command: String = "test".to_owned(),
+        /// Override the command used for test runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -1562,6 +1593,16 @@ pub struct RunnablesConfig {
     pub cargo_extra_args: Vec<String>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
+    /// Subcommand used for doctest runnables instead of `test`.
+    pub test_command: String,
+    /// Override the command used for test runnables.
+    pub test_override_command: Option<Vec<String>>,
+    /// Subcommand used for doctest runnables instead of `bench`.
+    pub bench_command: String,
+    /// Override the command used for bench runnables.
+    pub bench_override_command: Option<Vec<String>>,
+    /// Override the command used for doctest runnables.
+    pub doc_test_override_command: Option<Vec<String>>,
 }
 
 /// Configuration for workspace symbol search requests.
@@ -1698,9 +1739,7 @@ impl Config {
     pub fn caps(&self) -> &ClientCapabilities {
         &self.caps
     }
-}
 
-impl Config {
     pub fn assist(&self, source_root: Option<SourceRootId>) -> AssistConfig {
         AssistConfig {
             snippet_cap: self.snippet_cap(),
@@ -1719,6 +1758,7 @@ impl Config {
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
             prefer_self_ty: *self.assist_preferSelf(source_root),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1727,6 +1767,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
+            show_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1826,6 +1867,7 @@ impl Config {
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1916,6 +1958,9 @@ impl Config {
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            parameter_hints_for_missing_arguments: self
+                .inlayHints_parameterHints_missingArguments_enable()
+                .to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
                 lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),
@@ -2484,6 +2529,11 @@ impl Config {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
+            test_command: self.runnables_test_command(source_root).clone(),
+            test_override_command: self.runnables_test_overrideCommand(source_root).clone(),
+            bench_command: self.runnables_bench_command(source_root).clone(),
+            bench_override_command: self.runnables_bench_overrideCommand(source_root).clone(),
+            doc_test_override_command: self.runnables_doctest_overrideCommand(source_root).clone(),
         }
     }
 

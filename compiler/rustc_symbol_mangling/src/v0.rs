@@ -755,9 +755,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 dereferenced_const.print(self)?;
             }
 
-            ty::Array(..) | ty::Tuple(..) | ty::Adt(..) | ty::Slice(_) => {
-                let contents = self.tcx.destructure_const(ct);
-                let fields = contents.fields.iter().copied();
+            ty::Array(..) | ty::Tuple(..) | ty::Slice(_) => {
+                let fields = cv.to_branch().iter().copied();
 
                 let print_field_list = |this: &mut Self| {
                     for field in fields.clone() {
@@ -776,43 +775,51 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                         self.push("T");
                         print_field_list(self)?;
                     }
-                    ty::Adt(def, args) => {
-                        let variant_idx =
-                            contents.variant.expect("destructed const of adt without variant idx");
-                        let variant_def = &def.variant(variant_idx);
-
-                        self.push("V");
-                        self.print_def_path(variant_def.def_id, args)?;
-
-                        match variant_def.ctor_kind() {
-                            Some(CtorKind::Const) => {
-                                self.push("U");
-                            }
-                            Some(CtorKind::Fn) => {
-                                self.push("T");
-                                print_field_list(self)?;
-                            }
-                            None => {
-                                self.push("S");
-                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
-                                    // HACK(eddyb) this mimics `print_path_with_simple`,
-                                    // instead of simply using `field_def.ident`,
-                                    // just to be able to handle disambiguators.
-                                    let disambiguated_field =
-                                        self.tcx.def_key(field_def.did).disambiguated_data;
-                                    let field_name = disambiguated_field.data.get_opt_name();
-                                    self.push_disambiguator(
-                                        disambiguated_field.disambiguator as u64,
-                                    );
-                                    self.push_ident(field_name.unwrap().as_str());
-
-                                    field.print(self)?;
-                                }
-                                self.push("E");
-                            }
-                        }
-                    }
                     _ => unreachable!(),
+                }
+            }
+            ty::Adt(def, args) => {
+                let contents = cv.destructure_adt_const();
+                let fields = contents.fields.iter().copied();
+
+                let print_field_list = |this: &mut Self| {
+                    for field in fields.clone() {
+                        field.print(this)?;
+                    }
+                    this.push("E");
+                    Ok(())
+                };
+
+                let variant_idx = contents.variant;
+                let variant_def = &def.variant(variant_idx);
+
+                self.push("V");
+                self.print_def_path(variant_def.def_id, args)?;
+
+                match variant_def.ctor_kind() {
+                    Some(CtorKind::Const) => {
+                        self.push("U");
+                    }
+                    Some(CtorKind::Fn) => {
+                        self.push("T");
+                        print_field_list(self)?;
+                    }
+                    None => {
+                        self.push("S");
+                        for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                            // HACK(eddyb) this mimics `print_path_with_simple`,
+                            // instead of simply using `field_def.ident`,
+                            // just to be able to handle disambiguators.
+                            let disambiguated_field =
+                                self.tcx.def_key(field_def.did).disambiguated_data;
+                            let field_name = disambiguated_field.data.get_opt_name();
+                            self.push_disambiguator(disambiguated_field.disambiguator as u64);
+                            self.push_ident(field_name.unwrap().as_str());
+
+                            field.print(self)?;
+                        }
+                        self.push("E");
+                    }
                 }
             }
             _ => {

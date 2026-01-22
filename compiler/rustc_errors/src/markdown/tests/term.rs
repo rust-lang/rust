@@ -65,7 +65,7 @@ fn test_output() {
     let bless = std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let ast = MdStream::parse_str(INPUT);
     let mut buffer = Vec::new();
-    ast.write_anstream_buf(&mut buffer).unwrap();
+    ast.write_anstream_buf(&mut buffer, None).unwrap();
 
     let mut blessed = PathBuf::new();
     blessed.extend(OUTPUT_PATH);

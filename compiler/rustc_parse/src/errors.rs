@@ -2369,6 +2369,8 @@ pub(crate) struct UnknownTokenStart {
     pub null: Option<UnknownTokenNull>,
     #[subdiagnostic]
     pub repeat: Option<UnknownTokenRepeat>,
+    #[subdiagnostic]
+    pub invisible: Option<InvisibleCharacter>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2408,6 +2410,10 @@ pub(crate) enum TokenSubstitution {
 pub(crate) struct UnknownTokenRepeat {
     pub repeats: usize,
 }
+
+#[derive(Subdiagnostic)]
+#[help(parse_help_invisible_char)]
+pub(crate) struct InvisibleCharacter;
 
 #[derive(Subdiagnostic)]
 #[help(parse_help_null)]
@@ -3669,5 +3675,12 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
 #[diag(parse_varargs_without_pattern)]
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(code = "_: ...", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_delegation_non_trait_impl_reuse)]
+pub(crate) struct ImplReuseInherentImpl {
+    #[primary_span]
     pub span: Span,
 }

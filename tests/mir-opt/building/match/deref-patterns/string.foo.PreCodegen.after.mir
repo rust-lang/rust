@@ -7,10 +7,11 @@ fn foo(_1: Option<String>) -> i32 {
     let mut _3: isize;
     let mut _4: &std::string::String;
     let mut _5: &str;
-    let mut _6: bool;
-    let _7: std::option::Option<std::string::String>;
+    let mut _6: &str;
+    let mut _7: bool;
+    let _8: std::option::Option<std::string::String>;
     scope 1 {
-        debug s => _7;
+        debug s => _8;
     }
 
     bb0: {
@@ -26,11 +27,12 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb2: {
-        _6 = <str as PartialEq>::eq(copy _5, const "a") -> [return: bb3, unwind unreachable];
+        _6 = &(*_5);
+        _7 = <str as PartialEq>::eq(copy _6, const "a") -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        switchInt(move _6) -> [0: bb5, otherwise: bb4];
+        switchInt(move _7) -> [0: bb5, otherwise: bb4];
     }
 
     bb4: {
@@ -39,15 +41,15 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb5: {
-        StorageLive(_7);
+        StorageLive(_8);
         _2 = const false;
-        _7 = move _1;
+        _8 = move _1;
         _0 = const 4321_i32;
-        drop(_7) -> [return: bb6, unwind unreachable];
+        drop(_8) -> [return: bb6, unwind unreachable];
     }
 
     bb6: {
-        StorageDead(_7);
+        StorageDead(_8);
         goto -> bb7;
     }
 

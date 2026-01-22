@@ -2683,7 +2683,6 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// # #![allow(unused)]
-    /// # #![cfg_attr(bootstrap, deny(deref_nullptr))]
     /// use std::ptr;
     /// unsafe {
     ///     let x = &*ptr::null::<i32>();

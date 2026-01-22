@@ -447,24 +447,23 @@ impl ast::UseTreeList {
 
 impl ast::Impl {
     pub fn self_ty(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), None) | (_, Some(t)) => Some(t),
-            _ => None,
-        }
+        self.target().1
     }
 
     pub fn trait_(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), Some(_)) => Some(t),
-            _ => None,
-        }
+        self.target().0
     }
 
     fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
-        let mut types = support::children(self.syntax());
-        let first = types.next();
-        let second = types.next();
-        (first, second)
+        let mut types = support::children(self.syntax()).peekable();
+        let for_kw = self.for_token();
+        let trait_ = types.next_if(|trait_: &ast::Type| {
+            for_kw.is_some_and(|for_kw| {
+                trait_.syntax().text_range().start() < for_kw.text_range().start()
+            })
+        });
+        let self_ty = types.next();
+        (trait_, self_ty)
     }
 
     pub fn for_trait_name_ref(name_ref: &ast::NameRef) -> Option<ast::Impl> {
@@ -1096,6 +1095,16 @@ impl ast::MatchGuard {
     }
 }
 
+impl ast::MatchArm {
+    pub fn parent_match(&self) -> ast::MatchExpr {
+        self.syntax()
+            .parent()
+            .and_then(|it| it.parent())
+            .and_then(ast::MatchExpr::cast)
+            .expect("MatchArms are always nested in MatchExprs")
+    }
+}
+
 impl From<ast::Item> for ast::AnyHasAttrs {
     fn from(node: ast::Item) -> Self {
         Self::new(node)
@@ -1105,6 +1114,15 @@ impl From<ast::Item> for ast::AnyHasAttrs {
 impl From<ast::AssocItem> for ast::AnyHasAttrs {
     fn from(node: ast::AssocItem) -> Self {
         Self::new(node)
+    }
+}
+
+impl ast::FormatArgsArgName {
+    /// This is not a [`ast::Name`], because the name may be a keyword.
+    pub fn name(&self) -> SyntaxToken {
+        let name = self.syntax.first_token().unwrap();
+        assert!(name.kind().is_any_identifier());
+        name
     }
 }
 

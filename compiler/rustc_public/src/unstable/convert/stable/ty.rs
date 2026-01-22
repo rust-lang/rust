@@ -597,7 +597,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
                 .must_implement_one_of
                 .as_ref()
                 .map(|idents| idents.iter().map(|ident| opaque(ident)).collect()),
-            implement_via_object: self.implement_via_object,
+            force_dyn_incompatible: self.force_dyn_incompatible.stable(tables, cx),
             deny_explicit_impl: self.deny_explicit_impl,
         }
     }

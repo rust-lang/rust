@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     type_hints: true,
                     sized_bound: false,
                     parameter_hints: true,
+                    parameter_hints_for_missing_arguments: false,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
                         lifetime_hints: false,
@@ -325,12 +326,12 @@ impl StaticIndex<'_> {
             };
             let mut visited_files = FxHashSet::default();
             for module in work {
-                let file_id = module.definition_source_file_id(db).original_file(db);
+                let file_id =
+                    module.definition_source_file_id(db).original_file(db).file_id(&analysis.db);
                 if visited_files.contains(&file_id) {
                     continue;
                 }
-                this.add_file(file_id.file_id(&analysis.db));
-                // mark the file
+                this.add_file(file_id);
                 visited_files.insert(file_id);
             }
             this

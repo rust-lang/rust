@@ -105,3 +105,32 @@ fn issue_15705(size: u64, c: &u64) {
     let _ = (size + c - 1) / c;
     //~^ manual_div_ceil
 }
+
+struct MyStruct(u32);
+impl MyStruct {
+    // Method matching name on different type should not trigger lint
+    fn next_multiple_of(self, y: u32) -> u32 {
+        self.0.next_multiple_of(y)
+    }
+}
+
+fn issue_16219() {
+    let x = 33u32;
+
+    // Lint.
+    let _ = x.next_multiple_of(8) / 8;
+    //~^ manual_div_ceil
+    let _ = u32::next_multiple_of(x, 8) / 8;
+    //~^ manual_div_ceil
+
+    let y = &x;
+    let _ = y.next_multiple_of(8) / 8;
+    //~^ manual_div_ceil
+
+    // No lint.
+    let _ = x.next_multiple_of(8) / 7;
+    let _ = x.next_multiple_of(7) / 8;
+
+    let z = MyStruct(x);
+    let _ = z.next_multiple_of(8) / 8;
+}

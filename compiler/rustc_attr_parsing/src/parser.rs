@@ -8,7 +8,9 @@ use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, StmtKind, UnOp};
+use rustc_ast::{
+    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -16,7 +18,7 @@ use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, token_descr};
 use rustc_session::errors::{create_lit_error, report_lit_error};
 use rustc_session::parse::ParseSess;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
@@ -34,7 +36,7 @@ pub type RefPathParser<'p> = PathParser<&'p Path>;
 impl<P: Borrow<Path>> PathParser<P> {
     pub fn get_attribute_path(&self) -> hir::AttrPath {
         AttrPath {
-            segments: self.segments().copied().collect::<Vec<_>>().into_boxed_slice(),
+            segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),
         }
     }
@@ -111,8 +113,12 @@ impl ArgParser {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
             AttrArgs::Delimited(args) => {
-                // The arguments of rustc_dummy are not validated if the arguments are delimited
-                if parts == &[sym::rustc_dummy] {
+                // The arguments of rustc_dummy and diagnostic::do_not_recommend are not validated
+                // if the arguments are delimited.
+                // See https://doc.rust-lang.org/reference/attributes/diagnostics.html#r-attributes.diagnostic.namespace.unknown-invalid-syntax
+                if parts == &[sym::rustc_dummy]
+                    || parts == &[sym::diagnostic, sym::do_not_recommend]
+                {
                     return Some(ArgParser::List(MetaItemListParser {
                         sub_parsers: ThinVec::new(),
                         span: args.dspan.entire(),
@@ -120,10 +126,10 @@ impl ArgParser {
                 }
 
                 if args.delim != Delimiter::Parenthesis {
-                    psess.dcx().emit_err(MetaBadDelim {
+                    should_emit.emit_err(psess.dcx().create_err(MetaBadDelim {
                         span: args.dspan.entire(),
                         sugg: MetaBadDelimSugg { open: args.dspan.open, close: args.dspan.close },
-                    });
+                    }));
                     return None;
                 }
 
@@ -190,7 +196,6 @@ impl ArgParser {
 pub enum MetaItemOrLitParser {
     MetaItemParser(MetaItemParser),
     Lit(MetaItemLit),
-    Err(Span, ErrorGuaranteed),
 }
 
 impl MetaItemOrLitParser {
@@ -208,21 +213,20 @@ impl MetaItemOrLitParser {
                 generic_meta_item_parser.span()
             }
             MetaItemOrLitParser::Lit(meta_item_lit) => meta_item_lit.span,
-            MetaItemOrLitParser::Err(span, _) => *span,
         }
     }
 
     pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
             MetaItemOrLitParser::Lit(meta_item_lit) => Some(meta_item_lit),
-            _ => None,
+            MetaItemOrLitParser::MetaItemParser(_) => None,
         }
     }
 
     pub fn meta_item(&self) -> Option<&MetaItemParser> {
         match self {
             MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
-            _ => None,
+            MetaItemOrLitParser::Lit(_) => None,
         }
     }
 }
@@ -256,6 +260,11 @@ impl Debug for MetaItemParser {
 }
 
 impl MetaItemParser {
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if let [PathSegment { ident, .. }] = self.path.0.segments[..] { Some(ident) } else { None }
+    }
+
     pub fn span(&self) -> Span {
         if let Some(other) = self.args.span() {
             self.path.borrow().span().with_hi(other.hi())
@@ -313,6 +322,13 @@ impl NameValueParser {
 
     pub fn value_as_str(&self) -> Option<Symbol> {
         self.value_as_lit().kind.str()
+    }
+
+    /// If the value is a string literal, it will return its value associated with its span (an
+    /// `Ident` in short).
+    pub fn value_as_ident(&self) -> Option<Ident> {
+        let meta_item = self.value_as_lit();
+        meta_item.kind.str().map(|name| Ident { name, span: meta_item.span })
     }
 
     pub fn args_span(&self) -> Span {

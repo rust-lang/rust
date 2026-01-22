@@ -151,7 +151,7 @@ impl Socket {
         loop {
             let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
             if result.is_minus_one() {
-                let err = crate::sys::os::errno();
+                let err = crate::sys::io::errno();
                 match err {
                     libc::EINTR => continue,
                     libc::EISCONN => return Ok(()),
@@ -614,7 +614,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> RawFd {
         self.as_raw_fd()
     }

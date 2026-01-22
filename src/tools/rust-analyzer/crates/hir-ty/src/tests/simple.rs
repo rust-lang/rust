@@ -1,5 +1,7 @@
 use expect_test::expect;
 
+use crate::tests::check_infer_with_mismatches;
+
 use super::{check, check_infer, check_no_mismatches, check_types};
 
 #[test]
@@ -2700,6 +2702,8 @@ fn box_into_vec() {
     check_infer(
         r#"
 //- /core.rs crate:core
+#![feature(lang_items)]
+
 #[lang = "sized"]
 pub trait Sized {}
 
@@ -2743,22 +2747,22 @@ struct Astruct;
 impl B for Astruct {}
 "#,
         expect![[r#"
-            614..618 'self': Box<[T], A>
-            647..679 '{     ...     }': Vec<T, A>
-            693..863 '{     ...])); }': ()
-            703..706 'vec': Vec<i32, Global>
-            709..724 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
-            709..755 '<[_]>:...i32]))': Vec<i32, Global>
-            725..754 '#[rust...1i32])': Box<[i32; 1], Global>
-            747..753 '[1i32]': [i32; 1]
-            748..752 '1i32': i32
-            765..766 'v': Vec<Box<dyn B + 'static, Global>, Global>
-            786..803 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
-            786..860 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
-            804..859 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
-            826..858 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
-            827..857 '#[rust...truct)': Box<Astruct, Global>
-            849..856 'Astruct': Astruct
+            639..643 'self': Box<[T], A>
+            672..704 '{     ...     }': Vec<T, A>
+            718..888 '{     ...])); }': ()
+            728..731 'vec': Vec<i32, Global>
+            734..749 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
+            734..780 '<[_]>:...i32]))': Vec<i32, Global>
+            750..779 '#[rust...1i32])': Box<[i32; 1], Global>
+            772..778 '[1i32]': [i32; 1]
+            773..777 '1i32': i32
+            790..791 'v': Vec<Box<dyn B + 'static, Global>, Global>
+            811..828 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
+            811..885 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
+            829..884 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
+            851..883 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
+            852..882 '#[rust...truct)': Box<Astruct, Global>
+            874..881 'Astruct': Astruct
         "#]],
     )
 }
@@ -3645,6 +3649,8 @@ fn main() {
 fn cstring_literals() {
     check_types(
         r#"
+#![feature(lang_items)]
+
 #[lang = "CStr"]
 pub struct CStr;
 
@@ -3702,7 +3708,7 @@ fn main() {
 }
 
 #[test]
-fn macro_semitransparent_hygiene() {
+fn macro_semiopaque_hygiene() {
     check_types(
         r#"
 macro_rules! m {
@@ -3954,5 +3960,26 @@ fn bar() {
     foo([0; _]);
 }
     "#,
+    );
+}
+
+#[test]
+fn cannot_coerce_capturing_closure_to_fn_ptr() {
+    check_infer_with_mismatches(
+        r#"
+fn foo() {
+    let a = 1;
+    let _: fn() -> i32 = || a;
+}
+    "#,
+        expect![[r#"
+            9..58 '{     ...| a; }': ()
+            19..20 'a': i32
+            23..24 '1': i32
+            34..35 '_': fn() -> i32
+            51..55 '|| a': impl Fn() -> i32
+            54..55 'a': i32
+            51..55: expected fn() -> i32, got impl Fn() -> i32
+        "#]],
     );
 }

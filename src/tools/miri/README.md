@@ -219,7 +219,7 @@ degree documented below):
 - We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
   - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
   - `freebsd`: maintained by @YohDeadfall and @LorrensP-2158466. Supports the entire test suite.
-  - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
+  - `android`: **maintainer wanted**. Supports the entire test suite.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs
@@ -228,7 +228,8 @@ and macOS targets are usually on par. Windows is supported less well.
 
 ### Running tests in parallel
 
-Though it implements Rust threading, Miri itself is a single-threaded interpreter.
+Though it implements Rust threading, Miri itself is a single-threaded interpreter
+(it works like a multi-threaded OS on a single-core CPU).
 This means that when running `cargo miri test`, you will probably see a dramatic
 increase in the amount of time it takes to run your whole test suite due to the
 inherent interpreter slowdown and a loss of parallelism.

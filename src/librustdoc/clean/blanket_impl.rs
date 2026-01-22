@@ -117,6 +117,9 @@ pub(crate) fn synthesize_blanket_impls(
                             None,
                             None,
                         ))),
+                        is_deprecated: tcx
+                            .lookup_deprecation(impl_def_id)
+                            .is_some_and(|deprecation| deprecation.is_in_effect()),
                     })),
                     cfg: None,
                     inline_stmt_id: None,

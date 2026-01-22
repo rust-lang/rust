@@ -111,7 +111,7 @@ impl LocationState {
             // We need to update the wildcard state, if the permission
             // of an exposed pointer changes.
             if node.is_exposed {
-                let access_type = self.permission.strongest_allowed_child_access(protected);
+                let access_type = self.permission.strongest_allowed_local_access(protected);
                 WildcardState::update_exposure(idx, access_type, nodes, wildcard_accesses);
             }
         }
@@ -661,6 +661,7 @@ impl<'tcx> Tree {
                 global,
                 ChildrenVisitMode::VisitChildrenOfAccessed,
                 &diagnostics,
+                /* min_exposed_child */ None, // only matters for protector end access,
             )?;
         }
         interp_ok(())
@@ -685,6 +686,13 @@ impl<'tcx> Tree {
         }
 
         let source_idx = self.tag_mapping.get(&tag).unwrap();
+
+        let min_exposed_child = if self.roots.len() > 1 {
+            LocationTree::get_min_exposed_child(source_idx, &self.nodes)
+        } else {
+            // There's no point in computing this when there is just one tree.
+            None
+        };
 
         // This is a special access through the entire allocation.
         // It actually only affects `accessed` locations, so we need
@@ -716,6 +724,7 @@ impl<'tcx> Tree {
                     global,
                     ChildrenVisitMode::SkipChildrenOfAccessed,
                     &diagnostics,
+                    min_exposed_child,
                 )?;
             }
         }
@@ -876,9 +885,36 @@ impl Tree {
 }
 
 impl<'tcx> LocationTree {
+    /// Returns the smallest exposed tag, if any, that is a transitive child of `root`.
+    fn get_min_exposed_child(root: UniIndex, nodes: &UniValMap<Node>) -> Option<BorTag> {
+        // We cannot use the wildcard datastructure to improve this lookup. This is because
+        // the datastructure only tracks enabled nodes and we need to also consider disabled ones.
+        let mut stack = vec![root];
+        let mut min_tag = None;
+        while let Some(idx) = stack.pop() {
+            let node = nodes.get(idx).unwrap();
+            if min_tag.is_some_and(|min| min < node.tag) {
+                // The minimum we found before is bigger than this tag, and therefore
+                // also bigger than all its children, so we can skip this subtree.
+                continue;
+            }
+            stack.extend_from_slice(node.children.as_slice());
+            if node.is_exposed {
+                min_tag = match min_tag {
+                    Some(prev) if prev < node.tag => Some(prev),
+                    _ => Some(node.tag),
+                };
+            }
+        }
+        min_tag
+    }
+
     /// Performs an access on this location.
     /// * `access_source`: The index, if any, where the access came from.
     /// * `visit_children`: Whether to skip updating the children of `access_source`.
+    /// * `min_exposed_child`: The tag of the smallest exposed (transitive) child of the accessed node.
+    ///   This is only used with `visit_children == SkipChildrenOfAccessed`, where we need to skip children
+    ///   of the accessed node.
     fn perform_access(
         &mut self,
         roots: impl Iterator<Item = UniIndex>,
@@ -888,6 +924,7 @@ impl<'tcx> LocationTree {
         global: &GlobalState,
         visit_children: ChildrenVisitMode,
         diagnostics: &DiagnosticInfo,
+        min_exposed_child: Option<BorTag>,
     ) -> InterpResult<'tcx> {
         let accessed_root = if let Some(idx) = access_source {
             Some(self.perform_normal_access(
@@ -906,11 +943,22 @@ impl<'tcx> LocationTree {
         };
 
         let accessed_root_tag = accessed_root.map(|idx| nodes.get(idx).unwrap().tag);
-        if matches!(visit_children, ChildrenVisitMode::SkipChildrenOfAccessed) {
-            // FIXME: approximate which roots could be children of the accessed node and only skip them instead of all other trees.
-            return interp_ok(());
-        }
         for root in roots {
+            let tag = nodes.get(root).unwrap().tag;
+            // On a protector release access we have to skip the children of the accessed tag.
+            // However, if the tag has exposed children then some of the wildcard subtrees could
+            // also be children of the accessed node and would also need to be skipped. We can
+            // narrow down which wildcard trees might be children by comparing their root tag to the
+            // minimum exposed child of the accessed node. As the parent tag is always smaller
+            // than the child tag this means we only need to skip subtrees with a root tag larger
+            // than `min_exposed_child`. Once we find such a root, we can leave the loop because roots
+            // are sorted by tag.
+            if matches!(visit_children, ChildrenVisitMode::SkipChildrenOfAccessed)
+                && let Some(min_exposed_child) = min_exposed_child
+                && tag > min_exposed_child
+            {
+                break;
+            }
             // We don't perform a wildcard access on the tree we already performed a
             // normal access on.
             if Some(root) == accessed_root {
@@ -1034,6 +1082,9 @@ impl<'tcx> LocationTree {
             wildcard_state.access_relatedness(access_kind, only_foreign)
         };
 
+        // Whether there is an exposed node in this tree that allows this access.
+        let mut has_valid_exposed = false;
+
         // This does a traversal across the tree updating children before their parents. The
         // difference to `perform_normal_access` is that we take the access relatedness from
         // the wildcard tracking state of the node instead of from the visitor itself.
@@ -1082,6 +1133,17 @@ impl<'tcx> LocationTree {
                     return Err(no_valid_exposed_references_error(diagnostics));
                 };
 
+                let mut entry = args.data.perms.entry(args.idx);
+                let perm = entry.or_insert(node.default_location_state());
+
+                // We only count exposed nodes through which an access could happen.
+                if node.is_exposed
+                    && perm.permission.strongest_allowed_local_access(protected).allows(access_kind)
+                    && max_local_tag.is_none_or(|max_local_tag| max_local_tag >= node.tag)
+                {
+                    has_valid_exposed = true;
+                }
+
                 let Some(relatedness) = wildcard_relatedness.to_relatedness() else {
                     // If the access type is Either, then we do not apply any transition
                     // to this node, but we still update each of its children.
@@ -1090,8 +1152,6 @@ impl<'tcx> LocationTree {
                     return Ok(());
                 };
 
-                let mut entry = args.data.perms.entry(args.idx);
-                let perm = entry.or_insert(node.default_location_state());
                 // We know the exact relatedness, so we can actually do precise checks.
                 perm.perform_transition(
                     args.idx,
@@ -1115,6 +1175,21 @@ impl<'tcx> LocationTree {
                 })
             },
         )?;
+        // If there is no exposed node in this tree that allows this access, then the
+        // access *must* be foreign. So we check if the root of this tree would allow this
+        // as a foreign access, and if not, then we can error.
+        // In practice, all wildcard trees accept foreign accesses, but the main tree does
+        // not, so this catches UB when none of the nodes in the main tree allows this access.
+        if !has_valid_exposed
+            && self
+                .wildcard_accesses
+                .get(root)
+                .unwrap()
+                .access_relatedness(access_kind, /* only_foreign */ true)
+                .is_none()
+        {
+            return Err(no_valid_exposed_references_error(diagnostics)).into();
+        }
         interp_ok(())
     }
 }

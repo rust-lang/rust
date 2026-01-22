@@ -6,7 +6,6 @@
 #![feature(lock_value_accessors)]
 #![feature(once_cell_try_insert)]
 #![feature(once_cell_try)]
-#![feature(lazy_get)]
 
 use std::sync::{Condvar, LazyLock, Mutex, Once, OnceLock, RwLock};
 use std::time::Duration;

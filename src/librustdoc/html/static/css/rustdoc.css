@@ -20,6 +20,7 @@
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
 	--sidebar-elems-left-padding: 24px;
+	--popover-top-margin: 7px;
 	/* clipboard <https://github.com/rust-lang/crates.io/commits/main/public/assets/copy.svg> */
 	--clipboard-image: url('data:image/svg+xml,<svg width="19" height="18" viewBox="0 0 24 25" \
 xmlns="http://www.w3.org/2000/svg" aria-label="Copy to clipboard">\
@@ -64,7 +65,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 }
 
-:root.sans-serif {
+:root.sans-serif-fonts {
 	--font-family: "Fira Sans", sans-serif;
 	--font-family-code: "Fira Mono", monospace;
 }
@@ -997,7 +998,7 @@ rustdoc-topbar {
 .example-wrap [data-nosnippet] {
 	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
-.example-wrap pre > code {
+.example-wrap:not(.hide-lines) pre > code {
 	padding-left: calc(
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin));
@@ -1200,9 +1201,11 @@ nav.sub {
 	display: initial;
 }
 .anchor {
+	--anchor-link-shift: 0.5em;
 	display: none;
 	position: absolute;
-	left: -0.5em;
+	left: calc(var(--anchor-link-shift) * -1);
+	padding-right: var(--anchor-link-shift);
 	background: none !important;
 }
 .anchor.field {
@@ -1433,7 +1436,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	top: 100%;
 	right: 0;
 	z-index: calc(var(--desktop-sidebar-z-index) + 1);
-	margin-top: 7px;
+	margin-top: var(--popover-top-margin);
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
 	background-color: var(--main-background-color);
@@ -2640,6 +2643,15 @@ However, it's not needed with smaller screen width because the doc/code block is
 	}
 }
 
+/* Items on module pages */
+.hide-deprecated-items dt.deprecated,
+.hide-deprecated-items dt.deprecated + dd,
+/* Items on item pages */
+.hide-deprecated-items .deprecated,
+.hide-deprecated-items .deprecated + .item-info {
+	display: none;
+}
+
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
@@ -2648,6 +2660,7 @@ in src-script.js and main.js
 @media (max-width: 700px) {
 	:root {
 		--impl-items-indent: 0.7em;
+		--topbar-height: 45px;
 	}
 
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -2655,7 +2668,7 @@ in src-script.js and main.js
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to rustdoc-topbar's size.
 	*/
 	*[id] {
-		scroll-margin-top: 45px;
+		scroll-margin-top: var(--topbar-height);
 	}
 
 	/* We don't display this button on mobile devices. */
@@ -2687,13 +2700,22 @@ in src-script.js and main.js
 		background: var(--main-background-color);
 		border-radius: 0;
 	}
-	#settings.popover {
+	#settings.popover, #help.popover {
 		top: 32px;
+		/* The `+ 1px` part is for the bottom border to be visible. */
+		height: calc(100vh - var(--topbar-height) + var(--popover-top-margin) - 1px);
+	}
+	#settings.popover {
 		--popover-arrow-offset: 48px;
 	}
 	#help.popover {
-		top: 32px;
 		--popover-arrow-offset: 12px;
+	}
+	/* The `overflow-y` property is used on an internal content instead of the top one otherwise the
+	   little arrow at the top can't be displayed. */
+	#settings.popover .settings, #help.popover .content {
+		overflow-y: scroll;
+		height: 100%;
 	}
 
 	.rustdoc {
@@ -2717,13 +2739,13 @@ in src-script.js and main.js
 
 	.sidebar {
 		position: fixed;
-		top: 45px;
+		top: var(--topbar-height);
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
-		height: calc(100vh - 45px);
+		height: calc(100vh - var(--topbar-height));
 		/* resize indicator: hide this when on touch or mobile */
 		border-right: none;
 		width: 100%;
@@ -2788,7 +2810,7 @@ in src-script.js and main.js
 		flex-direction: row;
 		position: sticky;
 		z-index: 10;
-		height: 45px;
+		height: var(--topbar-height);
 		width: 100%;
 		left: 0;
 		top: 0;

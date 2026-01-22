@@ -1,8 +1,8 @@
-use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
+use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -549,15 +549,9 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
-        });
-
-        if arg.layout.is_zst() {
-            arg.mode = PassMode::Ignore;
-        }
-
-        Ok(arg)
+        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, drop_target_pointee)
+        }))
     };
 
     let mut fn_abi = FnAbi {

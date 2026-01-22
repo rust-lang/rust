@@ -267,7 +267,8 @@ pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
     pub used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
-    // Maps every mono item to the mono items that use it.
+    // Maps each mono item with users to the mono items that use it.
+    // Be careful: subsets `used_map`, so unused items are vacant.
     user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 }
 
@@ -1582,7 +1583,7 @@ impl<'v> RootCollector<'_, 'v> {
     }
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
-        if matches!(self.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
+        if self.tcx.def_kind(id.owner_id) == DefKind::AssocFn {
             self.push_if_root(id.owner_id.def_id);
         }
     }
@@ -1720,7 +1721,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     let impl_ = tcx.impl_trait_header(item.owner_id);
 
-    if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
+    if impl_.polarity == ty::ImplPolarity::Negative {
         return;
     }
 
@@ -1824,5 +1825,5 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
-    providers.items_of_instance = items_of_instance;
+    providers.queries.items_of_instance = items_of_instance;
 }

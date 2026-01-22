@@ -40,7 +40,6 @@ intern.workspace = true
 base-db.workspace = true
 syntax.workspace = true
 hir-expand.workspace = true
-mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 span.workspace = true

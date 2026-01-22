@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use rustc_abi::Size;
-use rustc_ast as ast;
+use rustc_ast::{self as ast};
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
@@ -23,7 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = this.tcx;
         let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
         match kind {
-            ExprKind::Scope { region_scope: _, lint_level: _, value } => {
+            ExprKind::Scope { region_scope: _, hir_id: _, value } => {
                 this.as_constant(&this.thir[*value])
             }
             _ => as_constant_inner(
@@ -47,6 +47,7 @@ pub(crate) fn as_constant_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> ConstOperand<'tcx> {
     let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
+
     match *kind {
         ExprKind::Literal { lit, neg } => {
             let const_ = lit_to_mir_constant(tcx, LitToConstInput { lit: lit.node, ty, neg });
@@ -69,6 +70,13 @@ pub(crate) fn as_constant_inner<'tcx>(
         }
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
+            if tcx.is_type_const(def_id) {
+                let uneval = ty::UnevaluatedConst::new(def_id, args);
+                let ct = ty::Const::new_unevaluated(tcx, uneval);
+
+                let const_ = Const::Ty(ty, ct);
+                return ConstOperand { span, user_ty, const_ };
+            }
 
             let uneval = mir::UnevaluatedConst::new(def_id, args);
             let const_ = Const::Unevaluated(uneval, ty);
@@ -149,7 +157,9 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) if !neg => trunc(n.get()),
         (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })
+            // Unsigned "negation" has the same bitwise effect as signed negation,
+            // which gets the result we want without additional casts.
+            trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() })
         }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
             parse_float_into_constval(n, *fty, neg).unwrap()

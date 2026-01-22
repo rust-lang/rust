@@ -14,7 +14,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
-use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -114,12 +114,6 @@ pub struct Param<'tcx> {
     pub self_kind: Option<hir::ImplicitSelfKind>,
     /// HirId for lints.
     pub hir_id: Option<HirId>,
-}
-
-#[derive(Copy, Clone, Debug, HashStable)]
-pub enum LintLevel {
-    Inherited,
-    Explicit(HirId),
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -236,8 +230,8 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
-        /// The lint level for this `let` statement.
-        lint_level: LintLevel,
+        /// The [`HirId`] for this `let` statement.
+        hir_id: HirId,
 
         /// Span of the `let <PAT> = <INIT>` part.
         span: Span,
@@ -271,7 +265,7 @@ pub enum ExprKind<'tcx> {
     /// and to track the `HirId` of the expressions within the scope.
     Scope {
         region_scope: region::Scope,
-        lint_level: LintLevel,
+        hir_id: HirId,
         value: ExprId,
     },
     /// A `box <value>` expression.
@@ -579,7 +573,7 @@ pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<ExprId>,
     pub body: ExprId,
-    pub lint_level: LintLevel,
+    pub hir_id: HirId,
     pub scope: region::Scope,
     pub span: Span,
 }
@@ -643,10 +637,26 @@ pub struct FieldPat<'tcx> {
     pub pattern: Pat<'tcx>,
 }
 
+/// Additional per-node data that is not present on most THIR pattern nodes.
+#[derive(Clone, Debug, Default, HashStable, TypeVisitable)]
+pub struct PatExtra<'tcx> {
+    /// If present, this node represents a named constant that was lowered to
+    /// a pattern using `const_to_pat`.
+    ///
+    /// This is used by some diagnostics for non-exhaustive matches, to map
+    /// the pattern node back to the `DefId` of its original constant.
+    pub expanded_const: Option<DefId>,
+
+    /// User-written types that must be preserved into MIR so that they can be
+    /// checked.
+    pub ascriptions: Vec<Ascription<'tcx>>,
+}
+
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
+    pub extra: Option<Box<PatExtra<'tcx>>>,
     pub kind: PatKind<'tcx>,
 }
 
@@ -762,11 +772,6 @@ pub enum PatKind<'tcx> {
     /// A wildcard pattern: `_`.
     Wild,
 
-    AscribeUserType {
-        ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
-    },
-
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         name: Symbol,
@@ -811,11 +816,11 @@ pub enum PatKind<'tcx> {
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
         /// Whether the pattern scrutinee needs to be borrowed in order to call `Deref::deref` or
-        /// `DerefMut::deref_mut`, and if so, which. This is `ByRef::No` for deref patterns on
+        /// `DerefMut::deref_mut`, and if so, which. This is `DerefPatBorrowMode::Box` for deref patterns on
         /// boxes; they are lowered using a built-in deref rather than a method call, thus they
         /// don't borrow the scrutinee.
         #[type_visitable(ignore)]
-        borrow: ByRef,
+        borrow: DerefPatBorrowMode,
     },
 
     /// One of the following:
@@ -827,24 +832,8 @@ pub enum PatKind<'tcx> {
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     ///   error.
-    /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: ty::Value<'tcx>,
-    },
-
-    /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`. This is used for unsafety checking.
-    ExpandedConstant {
-        /// [DefId] of the constant item.
-        def_id: DefId,
-        /// The pattern that the constant lowered to.
-        ///
-        /// HACK: we need to keep the `DefId` of inline constants around for unsafety checking;
-        /// therefore when a range pattern contains inline constants, we re-wrap the range pattern
-        /// with the `ExpandedConstant` nodes that correspond to the range endpoints. Hence
-        /// `subpattern` may actually be a range pattern, and `def_id` be the constant for one of
-        /// its endpoints.
-        subpattern: Box<Pat<'tcx>>,
     },
 
     Range(Arc<PatRange<'tcx>>),
@@ -877,6 +866,12 @@ pub enum PatKind<'tcx> {
     /// An error has been encountered during lowering. We probably shouldn't report more lints
     /// related to this pattern.
     Error(ErrorGuaranteed),
+}
+
+#[derive(Copy, Clone, Debug, HashStable)]
+pub enum DerefPatBorrowMode {
+    Borrow(Mutability),
+    Box,
 }
 
 /// A range pattern.
@@ -922,7 +917,7 @@ impl<'tcx> PatRange<'tcx> {
         let lo_is_min = match self.lo {
             PatRangeBoundary::NegInfinity => true,
             PatRangeBoundary::Finite(value) => {
-                let lo = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                let lo = value.to_leaf().to_bits(size) ^ bias;
                 lo <= min
             }
             PatRangeBoundary::PosInfinity => false,
@@ -931,7 +926,7 @@ impl<'tcx> PatRange<'tcx> {
             let hi_is_max = match self.hi {
                 PatRangeBoundary::NegInfinity => false,
                 PatRangeBoundary::Finite(value) => {
-                    let hi = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                    let hi = value.to_leaf().to_bits(size) ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
                 PatRangeBoundary::PosInfinity => true,
@@ -1023,7 +1018,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     }
     pub fn to_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
-            Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
+            Self::Finite(value) => value.to_leaf().to_bits_unchecked(),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -1051,7 +1046,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
             (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
-                if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
+                if let (Some(a), Some(b)) = (a.try_to_leaf(), b.try_to_leaf()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {
                         ty::Uint(_) | ty::Char => a.to_uint(sz).cmp(&b.to_uint(sz)),
@@ -1114,7 +1109,7 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
     static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);

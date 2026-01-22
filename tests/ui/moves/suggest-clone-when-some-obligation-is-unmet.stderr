@@ -6,7 +6,7 @@ LL |     let mut copy: Vec<U> = map.clone().into_values().collect();
    |                            |
    |                            move occurs because value has type `HashMap<T, U, Hash128_1>`, which does not implement the `Copy` trait
    |
-note: `HashMap::<K, V, S>::into_values` takes ownership of the receiver `self`, which moves value
+note: `HashMap::<K, V, S, A>::into_values` takes ownership of the receiver `self`, which moves value
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 note: if `Hash128_1` implemented `Clone`, you could clone the value
   --> $DIR/suggest-clone-when-some-obligation-is-unmet.rs:8:1

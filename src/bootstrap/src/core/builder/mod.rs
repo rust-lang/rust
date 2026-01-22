@@ -880,7 +880,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::Rustdoc,
+                test::RustdocHtml,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::CodegenCranelift,
@@ -927,6 +927,7 @@ impl<'a> Builder<'a> {
                 test::CollectLicenseMetadata,
                 test::RunMake,
                 test::RunMakeCargo,
+                test::BuildStd,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
@@ -967,6 +968,7 @@ impl<'a> Builder<'a> {
                 dist::Mingw,
                 dist::Rustc,
                 dist::CraneliftCodegenBackend,
+                dist::GccCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -979,6 +981,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::LlvmBitcodeLinker,
                 dist::RustDev,
+                dist::Enzyme,
                 dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
@@ -986,8 +989,10 @@ impl<'a> Builder<'a> {
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
+                dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
+                dist::GccDev,
                 dist::Gcc
             ),
             Kind::Install => describe!(

@@ -23,7 +23,7 @@ use rustc_index::{Idx as _, IndexVec};
 use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, GenericArgKind, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
-    inherent::{GenericArg as _, IntoKind, SliceLike},
+    inherent::{GenericArg as _, IntoKind},
 };
 use tracing::{debug, instrument};
 

@@ -1,6 +1,5 @@
-use std::assert_matches::debug_assert_matches;
-
 use rustc_abi::IntegerType;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;

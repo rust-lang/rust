@@ -694,7 +694,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args {
+        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,
@@ -865,10 +865,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
-        if let Some(eii_extern_target) = &macro_def.eii_extern_target {
-            self.word("#[eii_extern_target(");
-            self.print_path(&eii_extern_target.extern_item_path, false, 0);
-            if eii_extern_target.impl_unsafe {
+        if let Some(eii_decl) = &macro_def.eii_declaration {
+            self.word("#[eii_declaration(");
+            self.print_path(&eii_decl.foreign_item, false, 0);
+            if eii_decl.impl_unsafe {
                 self.word(",");
                 self.space();
                 self.word("unsafe");

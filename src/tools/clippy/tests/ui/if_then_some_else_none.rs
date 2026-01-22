@@ -274,3 +274,26 @@ mod issue15770 {
         Ok(())
     }
 }
+
+mod issue16176 {
+    pub async fn foo() -> u32 {
+        todo!()
+    }
+
+    pub async fn bar(cond: bool) -> Option<u32> {
+        if cond { Some(foo().await) } else { None } // OK
+    }
+}
+
+fn issue16269() -> Option<i32> {
+    use std::cell::UnsafeCell;
+
+    //~v if_then_some_else_none
+    if 1 <= 3 {
+        let a = UnsafeCell::new(1);
+        // SAFETY: `bytes` bytes starting at `new_end` were just reserved.
+        Some(unsafe { *a.get() })
+    } else {
+        None
+    }
+}

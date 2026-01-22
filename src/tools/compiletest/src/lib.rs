@@ -85,7 +85,7 @@ fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc-html \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
         )
@@ -104,8 +104,10 @@ fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
+        .optflag("", "has-offload", "run tests that require offload")
         .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
         .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
+        .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
         .optmulti(
             "",
             "skip",
@@ -216,7 +218,8 @@ fn parse_config(args: Vec<String>) -> Config {
             "the codegen backend to use instead of the default one",
             "CODEGEN BACKEND [NAME | PATH]",
         )
-        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives");
+        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
+        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -295,8 +298,10 @@ fn parse_config(args: Vec<String>) -> Config {
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
+    let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_enzyme = matches.opt_present("has-enzyme");
+    let has_offload = matches.opt_present("has-offload");
     let filters = if mode == TestMode::RunMake {
         matches
             .free
@@ -359,6 +364,11 @@ fn parse_config(args: Vec<String>) -> Config {
     let build_test_suite_root = opt_path(matches, "build-test-suite-root");
     assert!(build_test_suite_root.starts_with(&build_root));
 
+    let jobs = match matches.opt_str("jobs") {
+        Some(jobs) => jobs.parse::<u32>().expect("expected `--jobs` to be an `u32`"),
+        None => panic!("`--jobs` is required"),
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -402,6 +412,7 @@ fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         with_rustc_debug_assertions,
         with_std_debug_assertions,
+        with_std_remap_debuginfo,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -441,6 +452,7 @@ fn parse_config(args: Vec<String>) -> Config {
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_enzyme,
+        has_offload,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition").as_deref().map(parse_edition),
@@ -475,6 +487,8 @@ fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend,
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
+
+        jobs,
     }
 }
 
@@ -1088,8 +1102,8 @@ fn make_test_name_and_filterable_path(
 /// of some other tests's name.
 ///
 /// For example, suppose the test suite contains these two test files:
-/// - `tests/rustdoc/primitive.rs`
-/// - `tests/rustdoc/primitive/no_std.rs`
+/// - `tests/rustdoc-html/primitive.rs`
+/// - `tests/rustdoc-html/primitive/no_std.rs`
 ///
 /// The test runner might put the output from those tests in these directories:
 /// - `$build/test/rustdoc/primitive/`

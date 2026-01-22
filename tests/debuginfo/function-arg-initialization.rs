@@ -6,8 +6,7 @@
 // function name.
 
 //@ min-lldb-version: 1800
-//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
-// SingleUseConsts shouldn't need to be disabled, see #128945
+//@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 

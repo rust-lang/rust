@@ -2,6 +2,8 @@ use std::num::NonZero;
 use std::ops::Deref;
 
 use rustc_abi::Align;
+use rustc_ast::attr::data_structures::CfgEntry;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
@@ -169,7 +171,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, u128, usize, bool, NonZero<u32>, Limit);
+print_disp!(u8, u16, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,
@@ -182,4 +184,6 @@ print_debug!(
     Transparency,
     SanitizerSet,
     DefId,
+    RustcVersion,
+    CfgEntry,
 );

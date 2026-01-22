@@ -10,6 +10,8 @@
 // Ignore non_exhaustive in the same crate
 #[non_exhaustive]
 enum L1 { A, B }
+
+#[non_exhaustive]
 enum L2 { C }
 
 extern crate match_non_exhaustive_lib;

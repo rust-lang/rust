@@ -72,5 +72,17 @@ LL -     'label: for (k, _value) in rm {
 LL +     'label: for k in rm.keys() {
    |
 
-error: aborting due to 6 previous errors
+error: you seem to want to iterate on a map's values
+  --> tests/ui/for_kv_map.rs:84:19
+   |
+LL |     for (_, v) in test_map!(wrapped) {
+   |                   ^^^^^^^^^^^^^^^^^^
+   |
+help: use the corresponding method
+   |
+LL -     for (_, v) in test_map!(wrapped) {
+LL +     for v in test_map!(wrapped).values() {
+   |
+
+error: aborting due to 7 previous errors
 

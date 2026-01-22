@@ -16,27 +16,17 @@ help: <TAG> is this argument
    |
 LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
    |                          ^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside closure
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL |             || drop(Box::from_raw(ptr)),
-   |                     ^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC}>`
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL |     dealloc();
-   |     ^^^^^^^^^
-note: inside `main`
-  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
-   |
-LL | /         dealloc_while_running(
-LL | |             Newtype(&mut *ptr, 0),
-LL | |             || drop(Box::from_raw(ptr)),
-LL | |         )
-   | |_________^
+   = note: stack backtrace:
+           0: std::boxed::Box::from_raw_in
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::boxed::Box::from_raw
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           2: main::{closure#0}
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           3: dealloc_while_running
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
+           4: main
+               at tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

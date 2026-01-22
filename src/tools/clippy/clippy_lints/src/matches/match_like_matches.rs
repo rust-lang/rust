@@ -3,7 +3,7 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::has_let_expr;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -44,6 +44,8 @@ pub(crate) fn check_if_let<'tcx>(
         {
             ex_new = ex_inner;
         }
+
+        let (snippet, _) = snippet_with_context(cx, ex_new.span, expr.span.ctxt(), "..", &mut applicability);
         span_lint_and_then(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
@@ -53,11 +55,7 @@ pub(crate) fn check_if_let<'tcx>(
                 diag.span_suggestion_verbose(
                     expr.span,
                     "use `matches!` directly",
-                    format!(
-                        "{}matches!({}, {pat})",
-                        if b0 { "" } else { "!" },
-                        snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
-                    ),
+                    format!("{}matches!({snippet}, {pat})", if b0 { "" } else { "!" }),
                     applicability,
                 );
             },
@@ -178,6 +176,8 @@ pub(super) fn check_match<'tcx>(
         {
             ex_new = ex_inner;
         }
+
+        let (snippet, _) = snippet_with_context(cx, ex_new.span, e.span.ctxt(), "..", &mut applicability);
         span_lint_and_then(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
@@ -187,11 +187,7 @@ pub(super) fn check_match<'tcx>(
                 diag.span_suggestion_verbose(
                     e.span,
                     "use `matches!` directly",
-                    format!(
-                        "{}matches!({}, {pat_and_guard})",
-                        if b0 { "" } else { "!" },
-                        snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
-                    ),
+                    format!("{}matches!({snippet}, {pat_and_guard})", if b0 { "" } else { "!" },),
                     applicability,
                 );
             },

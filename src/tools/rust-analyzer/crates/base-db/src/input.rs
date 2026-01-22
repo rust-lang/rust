@@ -351,6 +351,8 @@ pub struct CrateData<Id> {
     /// declared in source via `extern crate test`.
     pub dependencies: Vec<Dependency<Id>>,
     pub origin: CrateOrigin,
+    /// Extra crate-level attributes, including the surrounding `#![]`.
+    pub crate_attrs: Box<[Box<str>]>,
     pub is_proc_macro: bool,
     /// The working directory to run proc-macros in invoked in the context of this crate.
     /// This is the workspace root of the cargo workspace for workspace members, the crate manifest
@@ -465,7 +467,7 @@ impl Crate {
     /// including the crate itself.
     ///
     /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Box<[Crate]> {
+    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Vec<Crate> {
         // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
         // and removing that is a bit difficult.
         let mut worklist = vec![self];
@@ -480,7 +482,7 @@ impl Crate {
 
             worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
         }
-        deps.into_boxed_slice()
+        deps
     }
 
     /// Returns all transitive reverse dependencies of the given crate,
@@ -530,6 +532,7 @@ impl CrateGraphBuilder {
         mut potential_cfg_options: Option<CfgOptions>,
         mut env: Env,
         origin: CrateOrigin,
+        crate_attrs: Vec<String>,
         is_proc_macro: bool,
         proc_macro_cwd: Arc<AbsPathBuf>,
         ws_data: Arc<CrateWorkspaceData>,
@@ -539,12 +542,17 @@ impl CrateGraphBuilder {
         if let Some(potential_cfg_options) = &mut potential_cfg_options {
             potential_cfg_options.shrink_to_fit();
         }
+        let crate_attrs: Vec<_> = crate_attrs
+            .into_iter()
+            .map(|raw_attr| format!("#![{raw_attr}]").into_boxed_str())
+            .collect();
         self.arena.alloc(CrateBuilder {
             basic: CrateData {
                 root_file_id,
                 edition,
                 dependencies: Vec::new(),
                 origin,
+                crate_attrs: crate_attrs.into_boxed_slice(),
                 is_proc_macro,
                 proc_macro_cwd,
             },
@@ -648,6 +656,7 @@ impl CrateGraphBuilder {
                 edition: krate.basic.edition,
                 is_proc_macro: krate.basic.is_proc_macro,
                 origin: krate.basic.origin.clone(),
+                crate_attrs: krate.basic.crate_attrs.clone(),
                 root_file_id: krate.basic.root_file_id,
                 proc_macro_cwd: krate.basic.proc_macro_cwd.clone(),
             };
@@ -975,6 +984,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -988,6 +998,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1001,6 +1012,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1034,6 +1046,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1047,6 +1060,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1075,6 +1089,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1088,6 +1103,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1101,6 +1117,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1129,6 +1146,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
@@ -1142,6 +1160,7 @@ mod tests {
             Default::default(),
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            Vec::new(),
             false,
             Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),

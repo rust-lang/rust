@@ -80,6 +80,7 @@
 //!     offset_of:
 
 #![rustc_coherence_is_core]
+#![feature(lang_items)]
 
 pub mod marker {
     // region:sized
@@ -545,11 +546,11 @@ pub mod ptr {
     // endregion:non_null
 
     // region:addr_of
-    #[rustc_macro_transparency = "semitransparent"]
+    #[rustc_macro_transparency = "semiopaque"]
     pub macro addr_of($place:expr) {
         &raw const $place
     }
-    #[rustc_macro_transparency = "semitransparent"]
+    #[rustc_macro_transparency = "semiopaque"]
     pub macro addr_of_mut($place:expr) {
         &raw mut $place
     }

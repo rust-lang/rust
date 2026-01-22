@@ -151,7 +151,7 @@ mod tsc {
 
         // implemented like https://docs.rs/raw-cpuid/latest/src/raw_cpuid/extended.rs.html#965-967
         const LEAF: u32 = 0x80000007; // this is the leaf for "advanced power management info"
-        let cpuid = unsafe { __cpuid(LEAF) };
+        let cpuid = __cpuid(LEAF);
         (cpuid.edx & (1 << 8)) != 0 // EDX bit 8 indicates invariant TSC
     }
 

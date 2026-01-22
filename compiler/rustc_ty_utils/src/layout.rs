@@ -9,7 +9,7 @@ use rustc_abi::{
 use rustc_hashes::Hash64;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
-use rustc_index::IndexVec;
+use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
@@ -374,7 +374,7 @@ fn layout_of_uncached<'tcx>(
             // specifically care about pattern types will have to handle it.
             layout.fields = FieldsShape::Arbitrary {
                 offsets: [Size::ZERO].into_iter().collect(),
-                memory_index: [0].into_iter().collect(),
+                in_memory_order: [FieldIdx::new(0)].into_iter().collect(),
             };
             tcx.mk_layout(layout)
         }

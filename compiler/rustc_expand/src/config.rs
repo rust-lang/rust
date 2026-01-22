@@ -7,8 +7,8 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
 use rustc_ast::{
-    self as ast, AttrKind, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner,
-    NodeId, NormalAttr,
+    self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs,
+    HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{
@@ -19,6 +19,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
 };
+use rustc_hir::Target;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -288,7 +289,9 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
-        let trace_attr = attr_into_trace(cfg_attr.clone(), sym::cfg_attr_trace);
+        let mut trace_attr = cfg_attr.clone();
+        trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace));
+        let trace_attr = attr_into_trace(trace_attr, sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess, self.features)
@@ -401,6 +404,8 @@ impl<'a> StripUnconfigured<'a> {
             attr,
             attr.span,
             self.lint_node_id,
+            // Doesn't matter what the target actually is here.
+            Target::Crate,
             self.features,
             emit_errors,
             parse_cfg,

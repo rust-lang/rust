@@ -18,7 +18,7 @@ use crate::common::{
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
 };
-use crate::directives::TestProps;
+use crate::directives::{AuxCrate, TestProps};
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
@@ -269,7 +269,7 @@ impl<'test> TestCx<'test> {
             TestMode::Pretty => self.run_pretty_test(),
             TestMode::DebugInfo => self.run_debuginfo_test(),
             TestMode::Codegen => self.run_codegen_test(),
-            TestMode::Rustdoc => self.run_rustdoc_test(),
+            TestMode::RustdocHtml => self.run_rustdoc_html_test(),
             TestMode::RustdocJson => self.run_rustdoc_json_test(),
             TestMode::CodegenUnits => self.run_codegen_units_test(),
             TestMode::Incremental => self.run_incremental_test(),
@@ -1285,9 +1285,9 @@ impl<'test> TestCx<'test> {
                 }
             };
 
-        for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(&aux_path, &aux_dir, None);
-            add_extern(rustc, aux_name, aux_path, aux_type);
+        for AuxCrate { name, path } in &self.props.aux.crates {
+            let aux_type = self.build_auxiliary(&path, &aux_dir, None);
+            add_extern(rustc, name, path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
@@ -1758,7 +1758,7 @@ impl<'test> TestCx<'test> {
             }
             TestMode::Pretty
             | TestMode::DebugInfo
-            | TestMode::Rustdoc
+            | TestMode::RustdocHtml
             | TestMode::RustdocJson
             | TestMode::RunMake
             | TestMode::RustdocJs => {

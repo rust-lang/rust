@@ -15,7 +15,10 @@ doctest = false
 [dependencies]
 arrayvec.workspace = true
 text-size.workspace = true
+rustc-hash.workspace = true
+indexmap.workspace = true
 
+span = { path = "../span", version = "0.0", default-features = false }
 stdx.workspace = true
 intern.workspace = true
 ra-ap-rustc_lexer.workspace = true

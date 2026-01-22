@@ -9,12 +9,12 @@ use std::{io, iter, slice};
 use object::read::archive::ArchiveFile;
 use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_hir::attrs::SanitizerSet;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
@@ -150,17 +150,18 @@ fn get_bitcode_slice_from_object_data<'a>(
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    shared_emitter: &SharedEmitter,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
 ) -> ModuleCodegen<ModuleLlvm> {
-    let dcx = cgcx.create_dcx();
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
     let (symbols_below_threshold, upstream_modules) =
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(cgcx, dcx, modules, upstream_modules, &symbols_below_threshold)
+    fat_lto(cgcx, dcx, shared_emitter, modules, upstream_modules, &symbols_below_threshold)
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -168,18 +169,17 @@ pub(crate) fn run_fat(
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
-    let dcx = cgcx.create_dcx();
-    let dcx = dcx.handle();
     let (symbols_below_threshold, upstream_modules) =
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    if cgcx.opts.cg.linker_plugin_lto.enabled() {
+    if cgcx.use_linker_plugin_lto {
         unreachable!(
             "We should never reach this case if the LTO step \
                       is deferred to the linker"
@@ -197,6 +197,7 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBu
 fn fat_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
+    shared_emitter: &SharedEmitter,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
@@ -265,8 +266,13 @@ fn fat_lto(
         // The linking steps below may produce errors and diagnostics within LLVM
         // which we'd like to handle and print, so set up our diagnostic handlers
         // (which get unregistered when they go out of scope below).
-        let _handler =
-            DiagnosticHandlers::new(cgcx, dcx, llcx, &module, CodegenDiagnosticsStage::LTO);
+        let _handler = DiagnosticHandlers::new(
+            cgcx,
+            shared_emitter,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::LTO,
+        );
 
         // For all other modules we codegened we'll need to link them into our own
         // bitcode. All modules were codegened in their own LLVM context, however,
@@ -528,7 +534,6 @@ fn thin_lto(
     }
 }
 
-#[cfg(feature = "llvm_enzyme")]
 pub(crate) fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     let mut enzyme = llvm::EnzymeWrapper::get_instance();
 
@@ -721,10 +726,11 @@ impl Drop for ThinBuffer {
 }
 
 pub(crate) fn optimize_thin_module(
-    thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    shared_emitter: &SharedEmitter,
+    thin_module: ThinModule<LlvmCodegenBackend>,
 ) -> ModuleCodegen<ModuleLlvm> {
-    let dcx = cgcx.create_dcx();
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];

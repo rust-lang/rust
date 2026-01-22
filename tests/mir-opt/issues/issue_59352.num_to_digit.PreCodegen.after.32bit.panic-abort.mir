@@ -28,7 +28,7 @@ fn num_to_digit(_1: char) -> u32 {
         StorageLive(_3);
         _3 = discriminant(_2);
         StorageDead(_2);
-        switchInt(move _3) -> [1: bb2, otherwise: bb7];
+        switchInt(copy _3) -> [1: bb2, otherwise: bb7];
     }
 
     bb2: {

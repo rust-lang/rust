@@ -5,11 +5,11 @@ pub mod time;
 
 pub use moto_rt::futex;
 
-use crate::io as std_io;
-use crate::sys::RawOsError;
+use crate::io;
 
-pub(crate) fn map_motor_error(err: moto_rt::ErrorCode) -> crate::io::Error {
-    crate::io::Error::from_raw_os_error(err.into())
+pub(crate) fn map_motor_error(err: moto_rt::Error) -> io::Error {
+    let error_code: moto_rt::ErrorCode = err.into();
+    io::Error::from_raw_os_error(error_code.into())
 }
 
 #[cfg(not(test))]
@@ -36,50 +36,12 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {}
 
-pub fn unsupported<T>() -> std_io::Result<T> {
+pub fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::UNSUPPORTED_PLATFORM
-}
-
-pub fn is_interrupted(_code: RawOsError) -> bool {
-    false // Motor OS doesn't have signals.
-}
-
-pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
-    use moto_rt::error::*;
-    use std_io::ErrorKind;
-
-    if code < 0 || code > u16::MAX.into() {
-        return std_io::ErrorKind::Uncategorized;
-    }
-
-    match code as moto_rt::ErrorCode /* u16 */ {
-        E_UNSPECIFIED => ErrorKind::Uncategorized,
-        E_UNKNOWN => ErrorKind::Uncategorized,
-        E_NOT_READY => ErrorKind::WouldBlock,
-        E_NOT_IMPLEMENTED => ErrorKind::Unsupported,
-        E_VERSION_TOO_HIGH => ErrorKind::Unsupported,
-        E_VERSION_TOO_LOW => ErrorKind::Unsupported,
-        E_INVALID_ARGUMENT => ErrorKind::InvalidInput,
-        E_OUT_OF_MEMORY => ErrorKind::OutOfMemory,
-        E_NOT_ALLOWED => ErrorKind::PermissionDenied,
-        E_NOT_FOUND => ErrorKind::NotFound,
-        E_INTERNAL_ERROR => ErrorKind::Other,
-        E_TIMED_OUT => ErrorKind::TimedOut,
-        E_ALREADY_IN_USE => ErrorKind::AlreadyExists,
-        E_UNEXPECTED_EOF => ErrorKind::UnexpectedEof,
-        E_INVALID_FILENAME => ErrorKind::InvalidFilename,
-        E_NOT_A_DIRECTORY => ErrorKind::NotADirectory,
-        E_BAD_HANDLE => ErrorKind::InvalidInput,
-        E_FILE_TOO_LARGE => ErrorKind::FileTooLarge,
-        E_NOT_CONNECTED => ErrorKind::NotConnected,
-        E_STORAGE_FULL => ErrorKind::StorageFull,
-        E_INVALID_DATA => ErrorKind::InvalidData,
-        _ => crate::io::ErrorKind::Uncategorized,
-    }
+pub fn unsupported_err() -> io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
 }
 
 pub fn abort_internal() -> ! {

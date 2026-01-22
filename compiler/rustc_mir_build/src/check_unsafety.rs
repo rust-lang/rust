@@ -342,8 +342,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild |
                 // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
-                PatKind::ExpandedConstant { .. } |
-                PatKind::AscribeUserType { .. } |
                 PatKind::Error(_) => {}
             }
         };
@@ -409,14 +407,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 let old_inside_adt = std::mem::replace(&mut self.inside_adt, false);
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
-            }
-            PatKind::ExpandedConstant { def_id, .. } => {
-                if let Some(def) = def_id.as_local()
-                    && matches!(self.tcx.def_kind(def_id), DefKind::InlineConst)
-                {
-                    self.visit_inner_body(def);
-                }
-                visit::walk_pat(self, pat);
             }
             _ => {
                 visit::walk_pat(self, pat);
@@ -486,7 +476,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
         };
         match expr.kind {
-            ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
+            ExprKind::Scope { value, hir_id, region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
                 ensure_sufficient_stack(|| {

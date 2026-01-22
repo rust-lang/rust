@@ -4089,6 +4089,7 @@ fn foo() {
     let fo$0o = async { S };
 }
 //- /core.rs crate:core
+#![feature(lang_items)]
 pub mod future {
     #[lang = "future_trait"]
     pub trait Future {}
@@ -8199,19 +8200,31 @@ fn main() {
 
 #[test]
 fn hover_underscore_type() {
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: _$0 = 0;
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: (_$0,) = (0,);
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
 }
 

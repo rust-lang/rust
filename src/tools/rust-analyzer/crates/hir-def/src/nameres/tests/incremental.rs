@@ -76,6 +76,7 @@ pub const BAZ: u32 = 0;
                 None,
                 Env::default(),
                 CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },
+                Vec::new(),
                 false,
                 Arc::new(
                     // FIXME: This is less than ideal
@@ -117,6 +118,7 @@ pub const BAZ: u32 = 0;
         expect![[r#"
             [
                 "crate_local_def_map",
+                "file_item_tree_query",
                 "crate_local_def_map",
             ]
         "#]],

@@ -1636,19 +1636,14 @@ pub enum FieldsShape<FieldIdx: Idx> {
         // FIXME(eddyb) use small vector optimization for the common case.
         offsets: IndexVec<FieldIdx, Size>,
 
-        /// Maps source order field indices to memory order indices,
+        /// Maps memory order field indices to source order indices,
         /// depending on how the fields were reordered (if at all).
         /// This is a permutation, with both the source order and the
         /// memory order using the same (0..n) index ranges.
         ///
-        /// Note that during computation of `memory_index`, sometimes
-        /// it is easier to operate on the inverse mapping (that is,
-        /// from memory order to source order), and that is usually
-        /// named `inverse_memory_index`.
-        ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector optimization here.
-        memory_index: IndexVec<FieldIdx, u32>,
+        in_memory_order: IndexVec<u32, FieldIdx>,
     },
 }
 
@@ -1682,51 +1677,17 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
         }
     }
 
-    #[inline]
-    pub fn memory_index(&self, i: usize) -> usize {
-        match *self {
-            FieldsShape::Primitive => {
-                unreachable!("FieldsShape::memory_index: `Primitive`s have no fields")
-            }
-            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { ref memory_index, .. } => {
-                memory_index[FieldIdx::new(i)].try_into().unwrap()
-            }
-        }
-    }
-
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
     pub fn index_by_increasing_offset(&self) -> impl ExactSizeIterator<Item = usize> {
-        let mut inverse_small = [0u8; 64];
-        let mut inverse_big = IndexVec::new();
-        let use_small = self.count() <= inverse_small.len();
-
-        // We have to write this logic twice in order to keep the array small.
-        if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
-            if use_small {
-                for (field_idx, &mem_idx) in memory_index.iter_enumerated() {
-                    inverse_small[mem_idx as usize] = field_idx.index() as u8;
-                }
-            } else {
-                inverse_big = memory_index.invert_bijective_mapping();
-            }
-        }
-
         // Primitives don't really have fields in the way that structs do,
         // but having this return an empty iterator for them is unhelpful
         // since that makes them look kinda like ZSTs, which they're not.
         let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
 
-        (0..pseudofield_count).map(move |i| match *self {
+        (0..pseudofield_count).map(move |i| match self {
             FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { .. } => {
-                if use_small {
-                    inverse_small[i] as usize
-                } else {
-                    inverse_big[i as u32].index()
-                }
-            }
+            FieldsShape::Arbitrary { in_memory_order, .. } => in_memory_order[i as u32].index(),
         })
     }
 }

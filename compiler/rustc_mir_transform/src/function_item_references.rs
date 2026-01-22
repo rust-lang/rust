@@ -136,12 +136,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     }
 
     fn nth_arg_span(&self, args: &[Spanned<Operand<'tcx>>], n: usize) -> Span {
-        match &args[n].node {
-            Operand::Copy(place) | Operand::Move(place) => {
-                self.body.local_decls[place.local].source_info.span
-            }
-            Operand::Constant(constant) => constant.span,
-        }
+        args[n].node.span(&self.body.local_decls)
     }
 
     fn emit_lint(

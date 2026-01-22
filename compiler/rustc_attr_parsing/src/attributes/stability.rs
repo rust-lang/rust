@@ -1,6 +1,7 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
     StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
@@ -43,7 +44,7 @@ const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
     Allow(Target::TyAlias),
     Allow(Target::Variant),
     Allow(Target::Field),
-    Allow(Target::Param),
+    Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: true }),
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),

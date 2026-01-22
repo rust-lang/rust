@@ -79,10 +79,10 @@ if there are no local changes to the GCC sources and the given host target is av
 
 ## Providing your own GCC
 
-There are cases where you will want to provide yourself the `libgccjit.so` file.
+There are cases where you will want to provide your own `libgccjit.so` file.
 One such case is when you want to cross-compile `rustc` to another target since GCC is not a multi-target compiler.
 To support this use case, there is the bootstrap option `gcc.libgccjit-libs-dir`.
-This option override `gcc.download-ci-gcc`, meaning `libgccjit.so` won't be downloaded or built locally by bootstrap.
+This option overrides `gcc.download-ci-gcc`, meaning `libgccjit.so` won't be downloaded or built locally by bootstrap.
 The directory structure of this directory is `<host>/<target>/libgccjit.so`, for instance:
 
 ```

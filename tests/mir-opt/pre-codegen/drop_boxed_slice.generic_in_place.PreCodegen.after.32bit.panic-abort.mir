@@ -14,34 +14,38 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                 scope 4 {
                     scope 12 (inlined Layout::size) {
                     }
-                    scope 13 (inlined Unique::<[T]>::cast::<u8>) {
+                    scope 13 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
                         scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
                             scope 15 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
                     }
-                    scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
-                        scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
+                    scope 16 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
+                        scope 17 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                         }
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                        let mut _9: *mut u8;
-                        scope 19 (inlined Layout::size) {
-                        }
-                        scope 20 (inlined NonNull::<u8>::as_ptr) {
-                        }
-                        scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
-                            scope 22 (inlined Layout::size) {
-                            }
-                            scope 23 (inlined Layout::align) {
-                                scope 24 (inlined std::ptr::Alignment::as_usize) {
+                        scope 19 (inlined std::alloc::Global::deallocate_impl) {
+                            scope 20 (inlined std::alloc::Global::deallocate_impl_runtime) {
+                                let mut _9: *mut u8;
+                                scope 21 (inlined Layout::size) {
+                                }
+                                scope 22 (inlined NonNull::<u8>::as_ptr) {
+                                }
+                                scope 23 (inlined std::alloc::dealloc) {
+                                    let mut _10: usize;
+                                    scope 24 (inlined Layout::size) {
+                                    }
+                                    scope 25 (inlined Layout::align) {
+                                        scope 26 (inlined std::ptr::Alignment::as_usize) {
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                scope 5 (inlined Unique::<[T]>::as_ptr) {
+                scope 5 (inlined std::ptr::Unique::<[T]>::as_ptr) {
                     scope 6 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }

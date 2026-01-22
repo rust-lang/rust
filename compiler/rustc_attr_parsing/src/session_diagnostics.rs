@@ -9,6 +9,7 @@ use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTuple;
 
 use crate::fluent_generated as fluent;
 
@@ -44,6 +45,14 @@ pub(crate) struct DocAliasStartEnd<'a> {
     #[primary_span]
     pub span: Span,
     pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_attr_not_crate_level)]
+pub(crate) struct DocAttrNotCrateLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -516,11 +525,19 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         byte_string: Option<Span>,
     },
     ExpectedIntegerLiteral,
+    ExpectedIntegerLiteralInRange {
+        lower_bound: isize,
+        upper_bound: isize,
+    },
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
     ExpectedListOrNoArgs,
+    ExpectedListWithNumArgsOrMore {
+        args: usize,
+    },
     ExpectedNameValueOrNoArgs,
+    ExpectedNonEmptyStringLiteral,
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
@@ -583,6 +600,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             AttributeParseErrorReason::ExpectedIntegerLiteral => {
                 diag.span_label(self.span, "expected an integer literal here");
             }
+            AttributeParseErrorReason::ExpectedIntegerLiteralInRange {
+                lower_bound,
+                upper_bound,
+            } => {
+                diag.span_label(
+                    self.span,
+                    format!(
+                        "expected an integer literal in the range of {lower_bound}..={upper_bound}"
+                    ),
+                );
+            }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
@@ -596,8 +624,14 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             AttributeParseErrorReason::ExpectedListOrNoArgs => {
                 diag.span_label(self.span, "expected a list or no arguments here");
             }
+            AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args } => {
+                diag.span_label(self.span, format!("expected {args} or more items"));
+            }
             AttributeParseErrorReason::ExpectedNameValueOrNoArgs => {
                 diag.span_label(self.span, "didn't expect a list here");
+            }
+            AttributeParseErrorReason::ExpectedNonEmptyStringLiteral => {
+                diag.span_label(self.span, "string is not allowed to be empty");
             }
             AttributeParseErrorReason::DuplicateKey(key) => {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));
@@ -925,4 +959,13 @@ pub(crate) struct CfgAttrBadDelim {
 pub(crate) struct DocAliasMalformed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unsupported_instruction_set)]
+pub(crate) struct UnsupportedInstructionSet<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub instruction_set: Symbol,
+    pub current_target: &'a TargetTuple,
 }

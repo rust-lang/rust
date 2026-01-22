@@ -1,4 +1,4 @@
-error: `#[inline]` attribute cannot be used on function params
+error: `#[inline]` attribute cannot be used on const parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:6:16
    |
 LL | pub struct Foo<#[inline] const N: usize>;
@@ -6,7 +6,7 @@ LL | pub struct Foo<#[inline] const N: usize>;
    |
    = help: `#[inline]` can only be applied to functions
 
-error: `#[inline]` attribute cannot be used on function params
+error: `#[inline]` attribute cannot be used on lifetime parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:14:17
    |
 LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
@@ -14,7 +14,7 @@ LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
    |
    = help: `#[inline]` can only be applied to functions
 
-error: `#[inline]` attribute cannot be used on function params
+error: `#[inline]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:22:17
    |
 LL | pub struct Foo3<#[inline] T>(PhantomData<T>);
@@ -40,7 +40,7 @@ error[E0517]: attribute should be applied to a struct, enum, or union
 LL | pub struct Baz3<#[repr(C)] T>(PhantomData<T>);
    |                        ^   - not a struct, enum, or union
 
-error: `#[cold]` attribute cannot be used on function params
+error: `#[cold]` attribute cannot be used on const parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:8:16
    |
 LL | pub struct Bar<#[cold] const N: usize>;
@@ -54,7 +54,7 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: `#[cold]` attribute cannot be used on function params
+error: `#[cold]` attribute cannot be used on lifetime parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:16:17
    |
 LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
@@ -63,7 +63,7 @@ LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
 
-error: `#[cold]` attribute cannot be used on function params
+error: `#[cold]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:24:17
    |
 LL | pub struct Bar3<#[cold] T>(PhantomData<T>);

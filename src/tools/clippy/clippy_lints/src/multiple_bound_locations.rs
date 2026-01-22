@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MULTIPLE_BOUND_LOCATIONS,
-    suspicious,
+    style,
     "defining generic bounds in multiple locations"
 }
 

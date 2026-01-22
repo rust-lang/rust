@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
+use rustc_ast::tokenstream::TokenStream;
 use rustc_span::ErrorGuaranteed;
 use rustc_span::source_map::Spanned;
 
@@ -186,6 +187,10 @@ impl EraseType
             NormalizationErrorInMono,
         >,
     >()];
+}
+
+impl EraseType for Result<&'_ TokenStream, ()> {
+    type Result = [u8; size_of::<Result<&'static TokenStream, ()>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {
@@ -402,7 +407,7 @@ tcx_lifetime! {
     rustc_middle::ty::ClauseKind,
     rustc_middle::ty::ClosureTypeInfo,
     rustc_middle::ty::Const,
-    rustc_middle::ty::DestructuredConst,
+    rustc_middle::ty::DestructuredAdtConst,
     rustc_middle::ty::ExistentialTraitRef,
     rustc_middle::ty::FnSig,
     rustc_middle::ty::GenericArg,

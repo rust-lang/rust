@@ -17,7 +17,6 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
-#![cfg_attr(bootstrap, feature(duration_from_nanos_u128))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -40,11 +39,8 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
-    // We don't use translatable diagnostics
-    rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
-    rustc::untranslatable_diagnostic,
 )]
 #![warn(
     rust_2018_idioms,

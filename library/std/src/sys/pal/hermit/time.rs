@@ -213,9 +213,9 @@ pub struct SystemTime(Timespec);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Timespec::zero());
 
 impl SystemTime {
-    pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
+    pub const MAX: SystemTime = SystemTime(Timespec::MAX);
 
-    pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
+    pub const MIN: SystemTime = SystemTime(Timespec::MIN);
 
     pub fn new(tv_sec: i64, tv_nsec: i32) -> SystemTime {
         SystemTime(Timespec::new(tv_sec, tv_nsec))

@@ -5,6 +5,7 @@ use core::bstr::ByteStr;
 use core::clone::CloneToUninit;
 
 use crate::borrow::Cow;
+use crate::bstr::ByteStr;
 use crate::collections::TryReserveError;
 use crate::rc::Rc;
 use crate::sync::Arc;
@@ -64,7 +65,7 @@ impl fmt::Debug for Slice {
 
 impl fmt::Display for Slice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(ByteStr::from_bytes(&self.inner), f)
+        fmt::Display::fmt(ByteStr::new(&self.inner), f)
     }
 }
 

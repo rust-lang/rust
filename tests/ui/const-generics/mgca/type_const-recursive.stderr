@@ -1,0 +1,11 @@
+error[E0275]: overflow normalizing the unevaluated constant `A`
+  --> $DIR/type_const-recursive.rs:5:1
+   |
+LL | const A: u8 = A;
+   | ^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -278,14 +278,20 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
         Some(m.complete(p, OFFSET_OF_EXPR))
     } else if p.eat_contextual_kw(T![format_args]) {
+        // test format_args_named_arg_keyword
+        // fn main() {
+        //     builtin#format_args("{type}", type=1);
+        // }
         p.expect(T!['(']);
         expr(p);
         if p.eat(T![,]) {
             while !p.at(EOF) && !p.at(T![')']) {
                 let m = p.start();
-                if p.at(IDENT) && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
-                    name(p);
+                if p.current().is_any_identifier() && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
+                    let m = p.start();
+                    p.bump_any();
                     p.bump(T![=]);
+                    m.complete(p, FORMAT_ARGS_ARG_NAME);
                 }
                 if expr(p).is_none() {
                     m.abandon(p);

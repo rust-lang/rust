@@ -391,6 +391,7 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
+                            workspace_dir,
                             &targets,
                             toolchain.clone(),
                         )),
@@ -500,6 +501,7 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
+                            project_json.project_root(),
                             &targets,
                             toolchain.clone(),
                         )),
@@ -555,6 +557,7 @@ impl ProjectWorkspace {
         let loaded_sysroot = sysroot.load_workspace(
             &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                 config,
+                dir,
                 &targets,
                 toolchain.clone(),
             )),
@@ -1090,6 +1093,7 @@ fn project_json_to_crate_graph(
                     cfg,
                     target,
                     env,
+                    crate_attrs,
                     proc_macro_dylib_path,
                     is_proc_macro,
                     repository,
@@ -1160,6 +1164,7 @@ fn project_json_to_crate_graph(
                     } else {
                         CrateOrigin::Local { repo: None, name: None }
                     },
+                    crate_attrs.clone(),
                     *is_proc_macro,
                     match proc_macro_cwd {
                         Some(path) => Arc::new(path.clone()),
@@ -1464,6 +1469,7 @@ fn detached_file_to_crate_graph(
             repo: None,
             name: display_name.map(|n| n.canonical_name().to_owned()),
         },
+        Vec::new(),
         false,
         Arc::new(detached_file.parent().to_path_buf()),
         crate_ws_data,
@@ -1644,6 +1650,7 @@ fn add_target_crate_root(
         potential_cfg_options,
         env,
         origin,
+        Vec::new(),
         matches!(kind, TargetKind::Lib { is_proc_macro: true }),
         proc_macro_cwd,
         crate_ws_data,
@@ -1827,6 +1834,7 @@ fn sysroot_to_crate_graph(
                         None,
                         Env::default(),
                         CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
+                        Vec::new(),
                         false,
                         Arc::new(stitched[krate].root.parent().to_path_buf()),
                         crate_ws_data.clone(),
@@ -1907,12 +1915,28 @@ fn add_dep_inner(graph: &mut CrateGraphBuilder, from: CrateBuilderId, dep: Depen
 
 fn sysroot_metadata_config(
     config: &CargoConfig,
+    workspace_root: &AbsPath,
     targets: &[String],
     toolchain_version: Option<Version>,
 ) -> CargoMetadataConfig {
+    // If the target is a JSON path, prefix it with workspace root directory.
+    // Since `cargo metadata` command for sysroot is run inside sysroots dir, it may fail to
+    // locate the target file if it is given as a relative path.
+    let targets = targets
+        .iter()
+        .map(|target| {
+            if target.ends_with(".json") {
+                // If `target` is an absolute path, this will replace the whole path.
+                workspace_root.join(target).to_string()
+            } else {
+                target.to_owned()
+            }
+        })
+        .collect();
+
     CargoMetadataConfig {
         features: Default::default(),
-        targets: targets.to_vec(),
+        targets,
         extra_args: Default::default(),
         extra_env: config.extra_env.clone(),
         toolchain_version,

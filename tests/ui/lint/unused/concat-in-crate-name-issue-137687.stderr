@@ -17,7 +17,7 @@ error: crate-level attribute should be an inner attribute: add an exclamation ma
 LL | #[crate_name = concat !()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this macro def
+note: this attribute does not have an `!`, which means it is applied to this macro def
   --> $DIR/concat-in-crate-name-issue-137687.rs:5:1
    |
 LL | / macro_rules! a {

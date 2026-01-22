@@ -15,11 +15,20 @@ fn main() {
         .run_fail()
         .assert_stderr_contains("error loading target specification");
     rustc()
+        .arg("-Zunstable-options")
         .input("foo.rs")
         .target("my-incomplete-platform.json")
         .run_fail()
         .assert_stderr_contains("missing field `llvm-target`");
+    let test_platform = rustc()
+        .input("foo.rs")
+        .target("my-x86_64-unknown-linux-gnu-platform")
+        .crate_type("lib")
+        .emit("asm")
+        .run_fail()
+        .assert_stderr_contains("custom targets are unstable and require `-Zunstable-options`");
     rustc()
+        .arg("-Zunstable-options")
         .env("RUST_TARGET_PATH", ".")
         .input("foo.rs")
         .target("my-awesome-platform")
@@ -27,6 +36,7 @@ fn main() {
         .emit("asm")
         .run();
     rustc()
+        .arg("-Zunstable-options")
         .env("RUST_TARGET_PATH", ".")
         .input("foo.rs")
         .target("my-x86_64-unknown-linux-gnu-platform")
@@ -52,27 +62,31 @@ fn main() {
         .actual_text("test-platform-2", test_platform_2)
         .run();
     rustc()
+        .arg("-Zunstable-options")
         .input("foo.rs")
         .target("endianness-mismatch")
         .run_fail()
         .assert_stderr_contains(r#""data-layout" claims architecture is little-endian"#);
     rustc()
+        .arg("-Zunstable-options")
         .input("foo.rs")
         .target("mismatching-data-layout")
         .crate_type("lib")
         .run_fail()
         .assert_stderr_contains("data-layout for target");
     rustc()
+        .arg("-Zunstable-options")
         .input("foo.rs")
         .target("require-explicit-cpu")
         .crate_type("lib")
         .run_fail()
         .assert_stderr_contains("target requires explicitly specifying a cpu");
     rustc()
+        .arg("-Zunstable-options")
         .input("foo.rs")
         .target("require-explicit-cpu")
         .crate_type("lib")
         .arg("-Ctarget-cpu=generic")
         .run();
-    rustc().target("require-explicit-cpu").arg("--print=target-cpus").run();
+    rustc().arg("-Zunstable-options").target("require-explicit-cpu").print("target-cpus").run();
 }

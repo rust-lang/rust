@@ -62,8 +62,8 @@ impl Stability {
     /// the feature gate to actually be enabled when using a nightly compiler.)
     ///
     /// Before calling this, ensure the feature is even permitted for this use:
-    /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
-    /// - for `cfg(target_feature)`, check `in_cfg`
+    /// - for `#[target_feature]`/`-Ctarget-feature`, check `toggle_allowed()`
+    /// - for `cfg(target_feature)`, check `in_cfg()`
     pub fn requires_nightly(&self) -> Option<Symbol> {
         match *self {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
@@ -588,7 +588,7 @@ const NVPTX_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
-    ("b", Unstable(sym::riscv_target_feature), &["zba", "zbb", "zbs"]),
+    ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &["zca"]),
     ("d", Unstable(sym::riscv_target_feature), &["f"]),
     ("e", Unstable(sym::riscv_target_feature), &[]),
@@ -646,14 +646,14 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
-    ("za64rs", Unstable(sym::riscv_target_feature), &["za128rs"]), // Za64rs ⊃ Za128rs
-    ("za128rs", Unstable(sym::riscv_target_feature), &[]),
-    ("zaamo", Unstable(sym::riscv_target_feature), &[]),
-    ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
-    ("zacas", Unstable(sym::riscv_target_feature), &["zaamo"]),
-    ("zalrsc", Unstable(sym::riscv_target_feature), &[]),
-    ("zama16b", Unstable(sym::riscv_target_feature), &[]),
-    ("zawrs", Unstable(sym::riscv_target_feature), &[]),
+    ("za64rs", Stable, &["za128rs"]), // Za64rs ⊃ Za128rs
+    ("za128rs", Stable, &[]),
+    ("zaamo", Stable, &[]),
+    ("zabha", Stable, &["zaamo"]),
+    ("zacas", Stable, &["zaamo"]),
+    ("zalrsc", Stable, &[]),
+    ("zama16b", Stable, &[]),
+    ("zawrs", Stable, &[]),
     ("zba", Stable, &[]),
     ("zbb", Stable, &[]),
     ("zbc", Stable, &["zbkc"]), // Zbc ⊃ Zbkc
@@ -661,9 +661,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zbkc", Stable, &[]),
     ("zbkx", Stable, &[]),
     ("zbs", Stable, &[]),
-    ("zca", Unstable(sym::riscv_target_feature), &[]),
-    ("zcb", Unstable(sym::riscv_target_feature), &["zca"]),
-    ("zcmop", Unstable(sym::riscv_target_feature), &["zca"]),
+    ("zca", Stable, &[]),
+    ("zcb", Stable, &["zca"]),
+    ("zcmop", Stable, &["zca"]),
     ("zdinx", Unstable(sym::riscv_target_feature), &["zfinx"]),
     ("zfa", Unstable(sym::riscv_target_feature), &["f"]),
     ("zfbfmin", Unstable(sym::riscv_target_feature), &["f"]), // and a subset of Zfhmin
@@ -672,33 +672,34 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zfinx", Unstable(sym::riscv_target_feature), &["zicsr"]),
     ("zhinx", Unstable(sym::riscv_target_feature), &["zhinxmin"]),
     ("zhinxmin", Unstable(sym::riscv_target_feature), &["zfinx"]),
-    ("zic64b", Unstable(sym::riscv_target_feature), &[]),
-    ("zicbom", Unstable(sym::riscv_target_feature), &[]),
-    ("zicbop", Unstable(sym::riscv_target_feature), &[]),
-    ("zicboz", Unstable(sym::riscv_target_feature), &[]),
-    ("ziccamoa", Unstable(sym::riscv_target_feature), &[]),
-    ("ziccif", Unstable(sym::riscv_target_feature), &[]),
-    ("zicclsm", Unstable(sym::riscv_target_feature), &[]),
-    ("ziccrse", Unstable(sym::riscv_target_feature), &[]),
-    ("zicntr", Unstable(sym::riscv_target_feature), &["zicsr"]),
-    ("zicond", Unstable(sym::riscv_target_feature), &[]),
-    ("zicsr", Unstable(sym::riscv_target_feature), &[]),
-    ("zifencei", Unstable(sym::riscv_target_feature), &[]),
-    ("zihintntl", Unstable(sym::riscv_target_feature), &[]),
-    ("zihintpause", Unstable(sym::riscv_target_feature), &[]),
-    ("zihpm", Unstable(sym::riscv_target_feature), &["zicsr"]),
-    ("zimop", Unstable(sym::riscv_target_feature), &[]),
+    ("zic64b", Stable, &[]),
+    ("zicbom", Stable, &[]),
+    ("zicbop", Stable, &[]),
+    ("zicboz", Stable, &[]),
+    ("ziccamoa", Stable, &[]),
+    ("ziccif", Stable, &[]),
+    ("zicclsm", Stable, &[]),
+    ("ziccrse", Stable, &[]),
+    ("zicntr", Stable, &["zicsr"]),
+    ("zicond", Stable, &[]),
+    ("zicsr", Stable, &[]),
+    ("zifencei", Stable, &[]),
+    ("zihintntl", Stable, &[]),
+    ("zihintpause", Stable, &[]),
+    ("zihpm", Stable, &["zicsr"]),
+    ("zimop", Stable, &[]),
     ("zk", Stable, &["zkn", "zkr", "zkt"]),
     ("zkn", Stable, &["zbkb", "zbkc", "zbkx", "zkne", "zknd", "zknh"]),
-    ("zknd", Stable, &[]),
-    ("zkne", Stable, &[]),
+    ("zknd", Stable, &["zkne_or_zknd"]),
+    ("zkne", Stable, &["zkne_or_zknd"]),
+    ("zkne_or_zknd", Unstable(sym::riscv_target_feature), &[]), // Not an extension
     ("zknh", Stable, &[]),
     ("zkr", Stable, &[]),
     ("zks", Stable, &["zbkb", "zbkc", "zbkx", "zksed", "zksh"]),
     ("zksed", Stable, &[]),
     ("zksh", Stable, &[]),
     ("zkt", Stable, &[]),
-    ("ztso", Unstable(sym::riscv_target_feature), &[]),
+    ("ztso", Stable, &[]),
     ("zvbb", Unstable(sym::riscv_target_feature), &["zvkb"]), // Zvbb ⊃ Zvkb
     ("zvbc", Unstable(sym::riscv_target_feature), &["zve64x"]),
     ("zve32f", Unstable(sym::riscv_target_feature), &["zve32x", "f"]),
@@ -745,6 +746,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("bulk-memory", Stable, &[]),
     ("exception-handling", Unstable(sym::wasm_target_feature), &[]),
     ("extended-const", Stable, &[]),
+    ("gc", Unstable(sym::wasm_target_feature), &["reference-types"]),
     ("multivalue", Stable, &[]),
     ("mutable-globals", Stable, &[]),
     ("nontrapping-fptoint", Stable, &[]),
@@ -984,7 +986,6 @@ impl Target {
             Arch::AmdGpu
             | Arch::Avr
             | Arch::Msp430
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Xtensa
             | Arch::Other(_) => &[],
@@ -1013,12 +1014,7 @@ impl Target {
             Arch::CSky => CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
-            Arch::Avr
-            | Arch::Msp430
-            | Arch::PowerPC64LE
-            | Arch::SpirV
-            | Arch::Xtensa
-            | Arch::Other(_) => &[],
+            Arch::Avr | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
         }
     }
 
@@ -1139,7 +1135,7 @@ impl Target {
             Arch::AArch64 | Arch::Arm64EC => {
                 // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
                 // the use of soft-float, so all we can do here is some crude hacks.
-                if matches!(self.abi, Abi::SoftFloat) {
+                if self.abi == Abi::SoftFloat {
                     // LLVM will use float registers when `fp-armv8` is available, e.g. for
                     // calls to built-ins. The only way to ensure a consistent softfloat ABI
                     // on aarch64 is to never enable `fp-armv8`, so we enforce that.

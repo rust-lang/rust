@@ -100,7 +100,7 @@
 - [Parallel compilation](./parallel-rustc.md)
 - [Rustdoc internals](./rustdoc-internals.md)
     - [Search](./rustdoc-internals/search.md)
-	- [The `rustdoc` test suite](./rustdoc-internals/rustdoc-test-suite.md)
+	- [The `rustdoc-html` test suite](./rustdoc-internals/rustdoc-html-test-suite.md)
 	- [The `rustdoc-gui` test suite](./rustdoc-internals/rustdoc-gui-test-suite.md)
 	- [The `rustdoc-json` test suite](./rustdoc-internals/rustdoc-json-test-suite.md)
 - [GPU offload internals](./offload/internals.md)
@@ -140,7 +140,7 @@
 
 - [Command-line arguments](./cli.md)
 - [rustc_driver and rustc_interface](./rustc-driver/intro.md)
-    - [Remarks on perma-unstable features](./rustc-driver/remarks-on-perma-unstable-features.md)
+    - [External rustc_drivers](./rustc-driver/external-rustc-drivers.md)
     - [Example: Type checking](./rustc-driver/interacting-with-the-ast.md)
     - [Example: Getting diagnostics](./rustc-driver/getting-diagnostics.md)
 - [Errors and lints](diagnostics.md)

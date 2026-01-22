@@ -6,15 +6,15 @@
 
 use std::iter;
 
-use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
+use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -138,7 +138,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 {
                     // Don't transform repr(transparent) types with an user-defined CFI encoding to
                     // preserve the user-defined CFI encoding.
-                    if let Some(_) = self.tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
+                    if find_attr!(
+                        self.tcx.get_all_attrs(adt_def.did()),
+                        AttributeKind::CfiEncoding { .. }
+                    ) {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();

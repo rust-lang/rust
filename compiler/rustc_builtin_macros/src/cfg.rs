@@ -10,10 +10,10 @@ use rustc_attr_parsing::{
     AttributeParser, CFG_TEMPLATE, ParsedDescription, ShouldEmit, parse_cfg_entry,
 };
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_hir::AttrPath;
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{ErrorGuaranteed, Span, sym};
 
 use crate::errors;
 
@@ -47,11 +47,13 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         span,
         span,
         AttrStyle::Inner,
-        AttrPath { segments: vec![Ident::from_str("cfg")].into_boxed_slice(), span },
+        AttrPath { segments: vec![sym::cfg].into_boxed_slice(), span },
         None,
         ParsedDescription::Macro,
         span,
         cx.current_expansion.lint_node_id,
+        // Doesn't matter what the target actually is here.
+        Target::Crate,
         Some(cx.ecfg.features),
         ShouldEmit::ErrorsAndLints,
         &meta,

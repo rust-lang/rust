@@ -83,4 +83,9 @@ raw  { \n
 
     println!(r#"\x7B}\u8 {"#, 1);
     //~^ ERROR invalid format string: unmatched `}` found
+
+    println!("{x?}, world!",);
+    //~^ ERROR invalid format string: expected `}`, found `?`
+    println!("{x,}, world!",);
+    //~^ ERROR invalid format string: python's numeric grouping `,` is not supported in rust format strings
 }

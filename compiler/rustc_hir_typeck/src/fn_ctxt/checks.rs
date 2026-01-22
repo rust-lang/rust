@@ -1033,11 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // break 'a 22; }` would not force the type of the block
         // to be `()`).
         let coerce_to_ty = expected.coercion_target_type(self, blk.span);
-        let coerce = if blk.targeted_by_break {
-            CoerceMany::new(coerce_to_ty)
-        } else {
-            CoerceMany::with_coercion_sites(coerce_to_ty, blk.expr.as_slice())
-        };
+        let coerce = CoerceMany::new(coerce_to_ty);
 
         let prev_diverges = self.diverges.get();
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };

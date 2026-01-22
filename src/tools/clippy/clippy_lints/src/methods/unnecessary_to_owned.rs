@@ -3,7 +3,7 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet};
+use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_context};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
@@ -131,8 +131,10 @@ fn check_addr_of_expr(
         && (*referent_ty != receiver_ty
             || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
             || is_cow_into_owned(cx, method_name, method_parent_id))
-        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
+        let mut applicability = Applicability::MachineApplicable;
+        let (receiver_snippet, _) = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut applicability);
+
         if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
             span_lint_and_sugg(
                 cx,
@@ -145,7 +147,7 @@ fn check_addr_of_expr(
                     "",
                     width = n_target_refs - n_receiver_refs
                 ),
-                Applicability::MachineApplicable,
+                applicability,
             );
             return true;
         }
@@ -165,8 +167,8 @@ fn check_addr_of_expr(
                     parent.span,
                     format!("unnecessary use of `{method_name}`"),
                     "use",
-                    receiver_snippet.to_owned(),
-                    Applicability::MachineApplicable,
+                    receiver_snippet.to_string(),
+                    applicability,
                 );
             } else {
                 span_lint_and_sugg(
@@ -176,7 +178,7 @@ fn check_addr_of_expr(
                     format!("unnecessary use of `{method_name}`"),
                     "remove this",
                     String::new(),
-                    Applicability::MachineApplicable,
+                    applicability,
                 );
             }
             return true;
@@ -191,7 +193,7 @@ fn check_addr_of_expr(
                 format!("unnecessary use of `{method_name}`"),
                 "use",
                 format!("{receiver_snippet}.as_ref()"),
-                Applicability::MachineApplicable,
+                applicability,
             );
             return true;
         }
@@ -409,8 +411,10 @@ fn check_other_call_arg<'tcx>(
             None
         }
         && can_change_type(cx, maybe_arg, receiver_ty)
-        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
+        let mut applicability = Applicability::MachineApplicable;
+        let (receiver_snippet, _) = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut applicability);
+
         span_lint_and_sugg(
             cx,
             UNNECESSARY_TO_OWNED,
@@ -418,7 +422,7 @@ fn check_other_call_arg<'tcx>(
             format!("unnecessary use of `{method_name}`"),
             "use",
             format!("{:&>n_refs$}{receiver_snippet}", ""),
-            Applicability::MachineApplicable,
+            applicability,
         );
         return true;
     }

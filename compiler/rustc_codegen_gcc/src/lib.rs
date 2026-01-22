@@ -84,7 +84,7 @@ use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
@@ -286,7 +286,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
+        providers.queries.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -434,23 +435,25 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        shared_emitter: &SharedEmitter,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
-        back::lto::run_thin(cgcx, each_linked_rlib_for_lto, modules, cached_modules)
+        back::lto::run_thin(cgcx, dcx, each_linked_rlib_for_lto, modules, cached_modules)
     }
 
     fn print_pass_timings(&self) {
@@ -463,7 +466,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize(
         _cgcx: &CodegenContext<Self>,
-        _dcx: DiagCtxtHandle<'_>,
+        _shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) {
@@ -472,6 +475,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
+        _shared_emitter: &SharedEmitter,
         thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
         back::lto::optimize_thin_module(thin, cgcx)
@@ -479,10 +483,11 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn codegen(
         cgcx: &CodegenContext<Self>,
+        shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule {
-        back::write::codegen(cgcx, module, config)
+        back::write::codegen(cgcx, shared_emitter, module, config)
     }
 
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {

@@ -12,15 +12,14 @@ use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use tracing::instrument;
-
-use crate::thir::pattern::pat_from_hir;
 
 /// Query implementation for [`TyCtxt::thir_body`].
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
+    debug_assert!(!tcx.is_type_const(owner_def.to_def_id()), "thir_body queried for type_const");
+
     let body = tcx.hir_body_owned_by(owner_def);
     let mut cx = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
@@ -111,9 +110,22 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.typing_env, self.typeck_results, p)
+    fn pattern_from_hir(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+        self.pattern_from_hir_with_annotation(pat, None)
+    }
+
+    fn pattern_from_hir_with_annotation(
+        &mut self,
+        pat: &'tcx hir::Pat<'tcx>,
+        let_stmt_type: Option<&hir::Ty<'tcx>>,
+    ) -> Box<Pat<'tcx>> {
+        crate::thir::pattern::pat_from_hir(
+            self.tcx,
+            self.typing_env,
+            self.typeck_results,
+            pat,
+            let_stmt_type,
+        )
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {

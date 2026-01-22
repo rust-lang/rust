@@ -120,7 +120,6 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
-    #[allow(rustc::diagnostic_outside_of_impl)]
     cx.span_lint(NON_FMT_PANICS, arg_span, |lint| {
         lint.primary_message(fluent::lint_non_fmt_panic);
         lint.arg("name", symbol);

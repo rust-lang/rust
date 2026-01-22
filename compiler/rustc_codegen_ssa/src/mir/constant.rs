@@ -77,22 +77,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .flatten()
             .map(|val| {
                 // A SIMD type has a single field, which is an array.
-                let fields = val.unwrap_branch();
+                let fields = val.to_branch();
                 assert_eq!(fields.len(), 1);
-                let array = fields[0].unwrap_branch();
+                let array = fields[0].to_branch();
                 // Iterate over the array elements to obtain the values in the vector.
                 let values: Vec<_> = array
                     .iter()
                     .map(|field| {
-                        if let Some(prim) = field.try_to_scalar() {
-                            let layout = bx.layout_of(field_ty);
-                            let BackendRepr::Scalar(scalar) = layout.backend_repr else {
-                                bug!("from_const: invalid ByVal layout: {:#?}", layout);
-                            };
-                            bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
-                        } else {
+                        let Some(prim) = field.try_to_scalar() else {
                             bug!("field is not a scalar {:?}", field)
-                        }
+                        };
+                        let layout = bx.layout_of(field_ty);
+                        let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+                            bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                        };
+                        bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
                     })
                     .collect();
                 bx.const_vector(&values)

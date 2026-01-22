@@ -1,9 +1,7 @@
 # Coding conventions
 
-This file offers some tips on the coding conventions for rustc. This
-chapter covers [formatting](#formatting), [coding for correctness](#cc),
-[using crates from crates.io](#cio), and some tips on
-[structuring your PR for easy review](#er).
+This chapter covers [formatting](#formatting), [coding for correctness](#cc),
+[using crates from crates.io](#cio), and some tips on [structuring your PR for easy review](#er).
 
 <a id="formatting"></a>
 
@@ -15,11 +13,11 @@ However, for now we don't use stable `rustfmt`; we use a pinned version with a
 special config, so this may result in different style from normal [`rustfmt`].
 Therefore, formatting this repository using `cargo fmt` is not recommended.
 
-Instead, formatting should be done using `./x fmt`. It's a good habit to run
-`./x fmt` before every commit, as this reduces conflicts later.
+Instead, formatting should be done using `./x fmt`.
+It's a good habit to run `./x fmt` before every commit, as this reduces conflicts later.
 
-Formatting is checked by the `tidy` script. It runs automatically when you do
-`./x test` and can be run in isolation with `./x fmt --check`.
+Formatting is checked by the `tidy` script.
+It runs automatically when you do `./x test` and can be run in isolation with `./x fmt --check`.
 
 > **Note: Formatting and test suites**
 >
@@ -47,13 +45,12 @@ When modifying that code, use this command to format it:
 ./x test tidy --extra-checks cpp:fmt --bless
 ```
 
-This uses a pinned version of `clang-format`, to avoid relying on the local
-environment.
+This uses a pinned version of `clang-format`, to avoid relying on the local environment.
 
 ### Formatting and linting Python code
 
-The Rust repository contains quite a lot of Python code. We try to keep
-it both linted and formatted by the [ruff] tool.
+The Rust repository contains quite a lot of Python code.
+We try to keep it both linted and formatted by the [ruff] tool.
 
 When modifying Python code, use this command to format it:
 
@@ -78,8 +75,8 @@ These use a pinned version of `ruff`, to avoid relying on the local environment.
 ### Copyright notice
 <!-- REUSE-IgnoreEnd -->
 
-In the past, files began with a copyright and license notice. Please **omit**
-this notice for new files licensed under the standard terms (dual
+In the past, files began with a copyright and license notice.
+Please **omit** this notice for new files licensed under the standard terms (dual
 MIT/Apache-2.0).
 
 All of the copyright notices should be gone by now, but if you come across one
@@ -87,8 +84,8 @@ in the rust-lang/rust repo, feel free to open a PR to remove it.
 
 ### Line length
 
-Lines should be at most 100 characters. It's even better if you can
-keep things to 80.
+Lines should be at most 100 characters.
+It's even better if you can keep things to 80.
 
 Sometimes, and particularly for tests, it can be necessary to exempt yourself from this limit.
 In that case, you can add a comment towards the top of the file like so:
@@ -105,17 +102,15 @@ Prefer 4-space indents.
 
 ## Coding for correctness
 
-Beyond formatting, there are a few other tips that are worth
-following.
+Beyond formatting, there are a few other tips that are worth following.
 
 ### Prefer exhaustive matches
 
 Using `_` in a match is convenient, but it means that when new
 variants are added to the enum, they may not get handled correctly.
 Ask yourself: if a new variant were added to this enum, what's the
-chance that it would want to use the `_` code, versus having some
-other treatment? Unless the answer is "low", then prefer an
-exhaustive match.
+chance that it would want to use the `_` code, versus having some other treatment?
+Unless the answer is "low", then prefer an exhaustive match.
 
 The same advice applies to `if let` and `while let`,
 which are effectively tests for a single variant.
@@ -155,41 +150,39 @@ See the [crates.io dependencies][crates] section.
 
 ## How to structure your PR
 
-How you prepare the commits in your PR can make a big difference for the
-reviewer. Here are some tips.
+How you prepare the commits in your PR can make a big difference for the reviewer.
+Here are some tips.
 
 **Isolate "pure refactorings" into their own commit.** For example, if
 you rename a method, then put that rename into its own commit, along
 with the renames of all the uses.
 
 **More commits is usually better.** If you are doing a large change,
-it's almost always better to break it up into smaller steps that can
-be independently understood. The one thing to be aware of is that if
+it's almost always better to break it up into smaller steps that can be independently understood.
+The one thing to be aware of is that if
 you introduce some code following one strategy, then change it
-dramatically (versus adding to it) in a later commit, that
-'back-and-forth' can be confusing.
+dramatically (versus adding to it) in a later commit, that 'back-and-forth' can be confusing.
 
 **Format liberally.** While only the final commit of a PR must be correctly
 formatted, it is both easier to review and less noisy to format each commit
 individually using `./x fmt`.
 
-**No merges.** We do not allow merge commits into our history, other
-than those by bors. If you get a merge conflict, rebase instead via a
+**No merges.** We do not allow merge commits into our history, other than those by bors.
+If you get a merge conflict, rebase instead via a
 command like `git rebase --interactive rust-lang/main` (presuming you use the
 name `rust-lang` for your remote).
 
 **Individual commits do not have to build (but it's nice).** We do not
 require that every intermediate commit successfully builds – we only
-expect to be able to bisect at a PR level. However, if you *can* make
-individual commits build, that is always helpful.
+expect to be able to bisect at a PR level.
+However, if you *can* make individual commits build, that is always helpful.
 
 ## Naming conventions
 
-Apart from normal Rust style/naming conventions, there are also some specific
-to the compiler.
+Apart from normal Rust style/naming conventions, there are also some specific to the compiler.
 
-- `cx` tends to be short for "context" and is often used as a suffix. For
-  example, `tcx` is a common name for the [Typing Context][tcx].
+- `cx` tends to be short for "context" and is often used as a suffix.
+  For example, `tcx` is a common name for the [Typing Context][tcx].
 
 - [`'tcx`][tcx] is used as the lifetime name for the Typing Context.
 

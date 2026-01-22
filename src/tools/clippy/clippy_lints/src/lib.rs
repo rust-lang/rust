@@ -14,8 +14,6 @@
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic,
     clippy::literal_string_with_formatting_args
 )]
 #![warn(
@@ -318,6 +316,7 @@ mod replace_box;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
+mod same_length_and_capacity;
 mod same_name_method;
 mod self_named_constructors;
 mod semicolon_block;
@@ -739,7 +738,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(cargo::Cargo::new(conf))),
         Box::new(|_| Box::new(empty_with_brackets::EmptyWithBrackets::default())),
         Box::new(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings)),
-        Box::new(|_| Box::new(format_push_string::FormatPushString)),
+        {
+            let format_args = format_args_storage.clone();
+            Box::new(move |_| Box::new(format_push_string::FormatPushString::new(format_args.clone())))
+        },
         Box::new(move |_| Box::new(large_include_file::LargeIncludeFile::new(conf))),
         Box::new(|_| Box::new(strings::TrimSplitWhitespace)),
         Box::new(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit)),
@@ -852,6 +854,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
+        Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

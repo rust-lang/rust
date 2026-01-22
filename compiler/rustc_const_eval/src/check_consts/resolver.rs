@@ -198,7 +198,6 @@ where
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::BinaryOp(..)
-            | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
             | mir::Rvalue::Discriminant(..)
             | mir::Rvalue::Aggregate(..)

@@ -10,7 +10,6 @@
 // tidy-alphabetical-start
 #![allow(clippy::mut_from_ref)] // Arena allocators are one place where this pattern is fine.
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(maybe_uninit_slice))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(test(no_crate_inject, attr(deny(warnings), allow(internal_features))))]
@@ -619,7 +618,7 @@ impl DroplessArena {
 /// - Types that are `!Copy` and `Drop`: these must be specified in the
 ///   arguments. The `TypedArena` will be used for them.
 ///
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
     pub struct Arena<'tcx> {

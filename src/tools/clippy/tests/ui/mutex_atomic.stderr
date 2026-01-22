@@ -130,5 +130,13 @@ LL -     let (funky_mtx): Mutex<u64> = Mutex::new(0);
 LL +     let (funky_mtx) = std::sync::atomic::AtomicU64::new(0);
    |
 
-error: aborting due to 14 previous errors
+error: using a `Mutex` where an atomic would do
+  --> tests/ui/mutex_atomic.rs:76:13
+   |
+LL |     let _ = Mutex::new(test_expr!(1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicBool::new(test_expr!(1))`
+   |
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+
+error: aborting due to 15 previous errors
 

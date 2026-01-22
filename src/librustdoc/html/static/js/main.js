@@ -1669,7 +1669,7 @@ function preLoadCss(cssUrl) {
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
-             and <code>const</code>.",
+             and <code>constant</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
              <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
             "You can look for items with an exact name by putting double quotes around \
@@ -1692,7 +1692,7 @@ function preLoadCss(cssUrl) {
 
         const container = document.createElement("div");
         if (!isHelpPage) {
-            container.className = "popover content";
+            container.className = "popover";
         }
         container.id = "help";
 
@@ -1701,9 +1701,14 @@ function preLoadCss(cssUrl) {
         side_by_side.appendChild(div_shortcuts);
         side_by_side.appendChild(div_infos);
 
-        container.appendChild(book_info);
-        container.appendChild(side_by_side);
-        container.appendChild(rustdoc_version);
+        const content = document.createElement("div");
+        content.className = "content";
+
+        content.appendChild(book_info);
+        content.appendChild(side_by_side);
+        content.appendChild(rustdoc_version);
+
+        container.appendChild(content);
 
         if (isHelpPage) {
             const help_section = document.createElement("section");
@@ -2163,7 +2168,15 @@ function preLoadCss(cssUrl) {
             // Should never happen, but the world is a dark and dangerous place.
             return;
         }
-        copyContentToClipboard(codeElem.textContent);
+        let content = "";
+        for (const node of codeElem.childNodes) {
+            // We exclude line numbers.
+            if (node instanceof HTMLElement && node.hasAttribute("data-nosnippet")) {
+                continue;
+            }
+            content += node.textContent;
+        }
+        copyContentToClipboard(content);
     }
 
     /**

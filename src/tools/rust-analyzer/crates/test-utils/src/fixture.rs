@@ -107,6 +107,11 @@ pub struct Fixture {
     ///
     /// Syntax: `env:PATH=/bin,RUST_LOG=debug`
     pub env: FxHashMap<String, String>,
+    /// Specifies extra crate-level attributes injected at the top of the crate root file.
+    /// This must be used with `crate` meta.
+    ///
+    /// Syntax: `crate-attr:no_std crate-attr:features(f16,f128) crate-attr:cfg(target_arch="x86")`
+    pub crate_attrs: Vec<String>,
     /// Introduces a new source root. This file **and the following
     /// files** will belong the new source root. This must be used
     /// with `crate` meta.
@@ -275,6 +280,7 @@ impl FixtureWithProjectMeta {
 
         let mut krate = None;
         let mut deps = Vec::new();
+        let mut crate_attrs = Vec::new();
         let mut extern_prelude = None;
         let mut edition = None;
         let mut cfgs = Vec::new();
@@ -292,6 +298,7 @@ impl FixtureWithProjectMeta {
             match key {
                 "crate" => krate = Some(value.to_owned()),
                 "deps" => deps = value.split(',').map(|it| it.to_owned()).collect(),
+                "crate-attr" => crate_attrs.push(value.to_owned()),
                 "extern-prelude" => {
                     if value.is_empty() {
                         extern_prelude = Some(Vec::new());
@@ -334,6 +341,7 @@ impl FixtureWithProjectMeta {
             line,
             krate,
             deps,
+            crate_attrs,
             extern_prelude,
             cfgs,
             edition,
@@ -548,7 +556,7 @@ fn parse_fixture_gets_full_meta() {
 //- toolchain: nightly
 //- proc_macros: identity
 //- minicore: coerce_unsized
-//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
+//- /lib.rs crate:foo deps:bar,baz crate-attr:no_std crate-attr:features(f16,f128) crate-attr:cfg(target_arch="x86") cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
 mod m;
 "#,
     );
@@ -561,6 +569,14 @@ mod m;
     assert_eq!("mod m;\n", meta.text);
 
     assert_eq!("foo", meta.krate.as_ref().unwrap());
+    assert_eq!(
+        vec![
+            "no_std".to_owned(),
+            "features(f16,f128)".to_owned(),
+            "cfg(target_arch=\"x86\")".to_owned()
+        ],
+        meta.crate_attrs
+    );
     assert_eq!("/lib.rs", meta.path);
     assert_eq!(2, meta.env.len());
 }

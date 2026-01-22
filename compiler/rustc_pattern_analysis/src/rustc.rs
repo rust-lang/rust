@@ -440,7 +440,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
-                let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
+                let bits = value.to_leaf().to_bits_unchecked();
                 match *ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
@@ -462,8 +462,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let arity;
         let fields: Vec<_>;
         match &pat.kind {
-            PatKind::AscribeUserType { subpattern, .. }
-            | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Missing | PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
@@ -540,7 +538,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = {
-                            let bits = value.valtree.unwrap_leaf().to_bits_unchecked();
+                            let bits = value.to_leaf().to_bits_unchecked();
                             let x = match *ty.kind() {
                                 ty::Int(ity) => {
                                     let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
@@ -555,7 +553,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F16) => {
                         use rustc_apfloat::Float;
-                        let bits = value.valtree.unwrap_leaf().to_u16();
+                        let bits = value.to_leaf().to_u16();
                         let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
                         ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -563,7 +561,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F32) => {
                         use rustc_apfloat::Float;
-                        let bits = value.valtree.unwrap_leaf().to_u32();
+                        let bits = value.to_leaf().to_u32();
                         let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
                         ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -571,7 +569,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F64) => {
                         use rustc_apfloat::Float;
-                        let bits = value.valtree.unwrap_leaf().to_u64();
+                        let bits = value.to_leaf().to_u64();
                         let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
                         ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
@@ -579,25 +577,19 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(ty::FloatTy::F128) => {
                         use rustc_apfloat::Float;
-                        let bits = value.valtree.unwrap_leaf().to_u128();
+                        let bits = value.to_leaf().to_u128();
                         let value = rustc_apfloat::ieee::Quad::from_bits(bits);
                         ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
-                    ty::Ref(_, t, _) if t.is_str() => {
-                        // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
-                        // with other `Deref` patterns. This could have been done in `const_to_pat`,
-                        // but that causes issues with the rest of the matching code.
-                        // So here, the constructor for a `"foo"` pattern is `&` (represented by
-                        // `Ref`), and has one field. That field has constructor `Str(value)` and no
-                        // subfields.
-                        // Note: `t` is `str`, not `&str`.
-                        let ty = self.reveal_opaque_ty(*t);
-                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), 0, ty, pat);
-                        ctor = Ref;
-                        fields = vec![subpattern.at_index(0)];
-                        arity = 1;
+                    ty::Str => {
+                        // For constant/literal patterns of type `&str`, the THIR
+                        // pattern is a `PatKind::Deref` of type `&str` wrapping a
+                        // `PatKind::Const` of type `str`.
+                        ctor = Str(*value);
+                        fields = vec![];
+                        arity = 0;
                     }
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
@@ -623,12 +615,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
-                        let lo = lo
-                            .as_finite()
-                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
-                        let hi = hi
-                            .as_finite()
-                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
+                        let lo = lo.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
+                        let hi = hi.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
                         match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;

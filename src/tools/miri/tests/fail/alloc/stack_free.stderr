@@ -6,15 +6,15 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside `main`
-  --> tests/fail/alloc/stack_free.rs:LL:CC
-   |
-LL |     drop(bad_box);
-   |     ^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: <std::boxed::Box<i32> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           3: main
+               at tests/fail/alloc/stack_free.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

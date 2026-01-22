@@ -329,6 +329,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
+    fn mach_wait_until(&mut self, deadline_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os(Os::MacOs, "mach_wait_until");
+
+        let deadline = this.read_scalar(deadline_op)?.to_u64()?;
+        // Our mach_absolute_time "ticks" are plain nanoseconds.
+        let duration = Duration::from_nanos(deadline);
+
+        this.block_thread(
+            BlockReason::Sleep,
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, duration)),
+            callback!(
+                @capture<'tcx> {}
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
+            )
+        );
+
+        interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
+    }
+
     fn nanosleep(&mut self, duration: &OpTy<'tcx>, rem: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 

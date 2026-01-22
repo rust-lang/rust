@@ -11,16 +11,20 @@ use stdarch_test::assert_instr;
 #[inline]
 #[cfg_attr(test, assert_instr(bswap))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _bswap64(x: i64) -> i64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _bswap64(x: i64) -> i64 {
     x.swap_bytes()
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
+    use stdarch_test::simd_test;
+
     use super::*;
 
-    #[test]
-    fn test_bswap64() {
+    #[simd_test]
+    const fn test_bswap64() {
         assert_eq!(_bswap64(0x0EADBEEFFADECA0E), 0x0ECADEFAEFBEAD0E);
         assert_eq!(_bswap64(0x0000000000000000), 0x0000000000000000);
     }

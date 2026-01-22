@@ -4,9 +4,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
@@ -23,7 +21,6 @@
 
 extern crate self as rustc_errors;
 
-use std::assert_matches::assert_matches;
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -54,11 +51,11 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-use emitter::{ConfusionType, DynEmitter, Emitter, detect_confusion_type, is_different};
-use rustc_data_structures::AtomicRef;
+use emitter::{DynEmitter, Emitter};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
+use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
     DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
@@ -69,10 +66,9 @@ use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
-pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
-pub use snippet::Style;
+use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
@@ -90,8 +86,6 @@ pub mod json;
 mod lock;
 pub mod markdown;
 pub mod registry;
-mod snippet;
-mod styled_buffer;
 #[cfg(test)]
 mod tests;
 pub mod timings;
@@ -218,43 +212,6 @@ pub struct TrimmedSubstitutionPart {
     pub snippet: String,
 }
 
-/// Used to translate between `Span`s and byte positions within a single output line in highlighted
-/// code of structured suggestions.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct SubstitutionHighlight {
-    start: usize,
-    end: usize,
-}
-
-impl SubstitutionPart {
-    /// Try to turn a replacement into an addition when the span that is being
-    /// overwritten matches either the prefix or suffix of the replacement.
-    fn trim_trivial_replacements(self, sm: &SourceMap) -> TrimmedSubstitutionPart {
-        let mut trimmed_part = TrimmedSubstitutionPart {
-            original_span: self.span,
-            span: self.span,
-            snippet: self.snippet,
-        };
-        if trimmed_part.snippet.is_empty() {
-            return trimmed_part;
-        }
-        let Ok(snippet) = sm.span_to_snippet(trimmed_part.span) else {
-            return trimmed_part;
-        };
-
-        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &trimmed_part.snippet) {
-            trimmed_part.span = Span::new(
-                trimmed_part.span.lo() + BytePos(prefix as u32),
-                trimmed_part.span.hi() - BytePos(suffix as u32),
-                trimmed_part.span.ctxt(),
-                trimmed_part.span.parent(),
-            );
-            trimmed_part.snippet = substr.to_string();
-        }
-        trimmed_part
-    }
-}
-
 impl TrimmedSubstitutionPart {
     pub fn is_addition(&self, sm: &SourceMap) -> bool {
         !self.snippet.is_empty() && !self.replaces_meaningful_content(sm)
@@ -303,229 +260,6 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
         Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
     } else {
         None
-    }
-}
-
-impl CodeSuggestion {
-    /// Returns the assembled code suggestions, whether they should be shown with an underline
-    /// and whether the substitution only differs in capitalization.
-    pub(crate) fn splice_lines(
-        &self,
-        sm: &SourceMap,
-    ) -> Vec<(String, Vec<TrimmedSubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, ConfusionType)>
-    {
-        // For the `Vec<Vec<SubstitutionHighlight>>` value, the first level of the vector
-        // corresponds to the output snippet's lines, while the second level corresponds to the
-        // substrings within that line that should be highlighted.
-
-        use rustc_span::{CharPos, Pos};
-
-        /// Extracts a substring from the provided `line_opt` based on the specified low and high
-        /// indices, appends it to the given buffer `buf`, and returns the count of newline
-        /// characters in the substring for accurate highlighting. If `line_opt` is `None`, a
-        /// newline character is appended to the buffer, and 0 is returned.
-        ///
-        /// ## Returns
-        ///
-        /// The count of newline characters in the extracted substring.
-        fn push_trailing(
-            buf: &mut String,
-            line_opt: Option<&Cow<'_, str>>,
-            lo: &Loc,
-            hi_opt: Option<&Loc>,
-        ) -> usize {
-            let mut line_count = 0;
-            // Convert `CharPos` to `usize`, as `CharPos` is character offset
-            // Extract low index and high index
-            let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
-            if let Some(line) = line_opt {
-                if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
-                    // Get high index while account for rare unicode and emoji with char_indices
-                    let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
-                    match hi_opt {
-                        // If high index exist, take string from low to high index
-                        Some(hi) if hi > lo => {
-                            // count how many '\n' exist
-                            line_count = line[lo..hi].matches('\n').count();
-                            buf.push_str(&line[lo..hi])
-                        }
-                        Some(_) => (),
-                        // If high index absence, take string from low index till end string.len
-                        None => {
-                            // count how many '\n' exist
-                            line_count = line[lo..].matches('\n').count();
-                            buf.push_str(&line[lo..])
-                        }
-                    }
-                }
-                // If high index is None
-                if hi_opt.is_none() {
-                    buf.push('\n');
-                }
-            }
-            line_count
-        }
-
-        assert!(!self.substitutions.is_empty());
-
-        self.substitutions
-            .iter()
-            .filter(|subst| {
-                // Suggestions coming from macros can have malformed spans. This is a heavy
-                // handed approach to avoid ICEs by ignoring the suggestion outright.
-                let invalid = subst.parts.iter().any(|item| sm.is_valid_span(item.span).is_err());
-                if invalid {
-                    debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
-                }
-                !invalid
-            })
-            .cloned()
-            .filter_map(|mut substitution| {
-                // Assumption: all spans are in the same file, and all spans
-                // are disjoint. Sort in ascending order.
-                substitution.parts.sort_by_key(|part| part.span.lo());
-
-                // Find the bounding span.
-                let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
-                let hi = substitution.parts.iter().map(|part| part.span.hi()).max()?;
-                let bounding_span = Span::with_root_ctxt(lo, hi);
-                // The different spans might belong to different contexts, if so ignore suggestion.
-                let lines = sm.span_to_lines(bounding_span).ok()?;
-                assert!(!lines.lines.is_empty() || bounding_span.is_dummy());
-
-                // We can't splice anything if the source is unavailable.
-                if !sm.ensure_source_file_source_present(&lines.file) {
-                    return None;
-                }
-
-                let mut highlights = vec![];
-                // To build up the result, we do this for each span:
-                // - push the line segment trailing the previous span
-                //   (at the beginning a "phantom" span pointing at the start of the line)
-                // - push lines between the previous and current span (if any)
-                // - if the previous and current span are not on the same line
-                //   push the line segment leading up to the current span
-                // - splice in the span substitution
-                //
-                // Finally push the trailing line segment of the last span
-                let sf = &lines.file;
-                let mut prev_hi = sm.lookup_char_pos(bounding_span.lo());
-                prev_hi.col = CharPos::from_usize(0);
-                let mut prev_line =
-                    lines.lines.get(0).and_then(|line0| sf.get_line(line0.line_index));
-                let mut buf = String::new();
-
-                let mut line_highlight = vec![];
-                // We need to keep track of the difference between the existing code and the added
-                // or deleted code in order to point at the correct column *after* substitution.
-                let mut acc = 0;
-                let mut confusion_type = ConfusionType::None;
-
-                let trimmed_parts = substitution
-                    .parts
-                    .into_iter()
-                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
-                    // suggestion and snippet to look as if we just suggested to add
-                    // `"b"`, which is typically much easier for the user to understand.
-                    .map(|part| part.trim_trivial_replacements(sm))
-                    .collect::<Vec<_>>();
-
-                for part in &trimmed_parts {
-                    let part_confusion = detect_confusion_type(sm, &part.snippet, part.span);
-                    confusion_type = confusion_type.combine(part_confusion);
-                    let cur_lo = sm.lookup_char_pos(part.span.lo());
-                    if prev_hi.line == cur_lo.line {
-                        let mut count =
-                            push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
-                        while count > 0 {
-                            highlights.push(std::mem::take(&mut line_highlight));
-                            acc = 0;
-                            count -= 1;
-                        }
-                    } else {
-                        acc = 0;
-                        highlights.push(std::mem::take(&mut line_highlight));
-                        let mut count = push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
-                        while count > 0 {
-                            highlights.push(std::mem::take(&mut line_highlight));
-                            count -= 1;
-                        }
-                        // push lines between the previous and current span (if any)
-                        for idx in prev_hi.line..(cur_lo.line - 1) {
-                            if let Some(line) = sf.get_line(idx) {
-                                buf.push_str(line.as_ref());
-                                buf.push('\n');
-                                highlights.push(std::mem::take(&mut line_highlight));
-                            }
-                        }
-                        if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
-                            let end = match cur_line.char_indices().nth(cur_lo.col.to_usize()) {
-                                Some((i, _)) => i,
-                                None => cur_line.len(),
-                            };
-                            buf.push_str(&cur_line[..end]);
-                        }
-                    }
-                    // Add a whole line highlight per line in the snippet.
-                    let len: isize = part
-                        .snippet
-                        .split('\n')
-                        .next()
-                        .unwrap_or(&part.snippet)
-                        .chars()
-                        .map(|c| match c {
-                            '\t' => 4,
-                            _ => 1,
-                        })
-                        .sum();
-                    if !is_different(sm, &part.snippet, part.span) {
-                        // Account for cases where we are suggesting the same code that's already
-                        // there. This shouldn't happen often, but in some cases for multipart
-                        // suggestions it's much easier to handle it here than in the origin.
-                    } else {
-                        line_highlight.push(SubstitutionHighlight {
-                            start: (cur_lo.col.0 as isize + acc) as usize,
-                            end: (cur_lo.col.0 as isize + acc + len) as usize,
-                        });
-                    }
-                    buf.push_str(&part.snippet);
-                    let cur_hi = sm.lookup_char_pos(part.span.hi());
-                    // Account for the difference between the width of the current code and the
-                    // snippet being suggested, so that the *later* suggestions are correctly
-                    // aligned on the screen. Note that cur_hi and cur_lo can be on different
-                    // lines, so cur_hi.col can be smaller than cur_lo.col
-                    acc += len - (cur_hi.col.0 as isize - cur_lo.col.0 as isize);
-                    prev_hi = cur_hi;
-                    prev_line = sf.get_line(prev_hi.line - 1);
-                    for line in part.snippet.split('\n').skip(1) {
-                        acc = 0;
-                        highlights.push(std::mem::take(&mut line_highlight));
-                        let end: usize = line
-                            .chars()
-                            .map(|c| match c {
-                                '\t' => 4,
-                                _ => 1,
-                            })
-                            .sum();
-                        line_highlight.push(SubstitutionHighlight { start: 0, end });
-                    }
-                }
-                highlights.push(std::mem::take(&mut line_highlight));
-                // if the replacement already ends with a newline, don't print the next line
-                if !buf.ends_with('\n') {
-                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
-                }
-                // remove trailing newlines
-                while buf.ends_with('\n') {
-                    buf.pop();
-                }
-                if highlights.iter().all(|parts| parts.is_empty()) {
-                    None
-                } else {
-                    Some((buf, trimmed_parts, highlights, confusion_type))
-                }
-            })
-            .collect()
     }
 }
 
@@ -1217,22 +951,16 @@ impl<'a> DiagCtxtHandle<'a> {
 // Functions beginning with `struct_`/`create_` create a diagnostic. Other
 // functions create and emit a diagnostic all in one go.
 impl<'a> DiagCtxtHandle<'a> {
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn struct_bug(self, msg: impl Into<Cow<'static, str>>) -> Diag<'a, BugAbort> {
         Diag::new(self, Bug, msg.into())
     }
 
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn bug(self, msg: impl Into<Cow<'static, str>>) -> ! {
         self.struct_bug(msg).emit()
     }
 
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn struct_span_bug(
         self,
@@ -1242,8 +970,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.struct_bug(msg).with_span(span)
     }
 
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn span_bug(self, span: impl Into<MultiSpan>, msg: impl Into<Cow<'static, str>>) -> ! {
         self.struct_span_bug(span, msg.into()).emit()
@@ -1259,19 +985,16 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_bug(bug).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_fatal(self, msg: impl Into<DiagMessage>) -> Diag<'a, FatalAbort> {
         Diag::new(self, Fatal, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn fatal(self, msg: impl Into<DiagMessage>) -> ! {
         self.struct_fatal(msg).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_fatal(
         self,
@@ -1281,7 +1004,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.struct_fatal(msg).with_span(span)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal(self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
         self.struct_span_fatal(span, msg).emit()
@@ -1311,19 +1033,16 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     // FIXME: This method should be removed (every error should have an associated error code).
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Error, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn err(self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.struct_err(msg).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_err(
         self,
@@ -1333,7 +1052,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.struct_err(msg).with_span(span)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_err(
         self,
@@ -1354,9 +1072,6 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     /// Ensures that an error is printed. See [`Level::DelayedBug`].
-    //
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn delayed_bug(self, msg: impl Into<Cow<'static, str>>) -> ErrorGuaranteed {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
@@ -1366,9 +1081,6 @@ impl<'a> DiagCtxtHandle<'a> {
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
-    //
-    // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
-    // user-facing.
     #[track_caller]
     pub fn span_delayed_bug(
         self,
@@ -1378,19 +1090,16 @@ impl<'a> DiagCtxtHandle<'a> {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).with_span(sp).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Warning, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn warn(self, msg: impl Into<DiagMessage>) {
         self.struct_warn(msg).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_warn(
         self,
@@ -1400,7 +1109,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.struct_warn(msg).with_span(span)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_warn(self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_warn(span, msg).emit()
@@ -1416,19 +1124,16 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_warn(warning).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Note, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn note(&self, msg: impl Into<DiagMessage>) {
         self.struct_note(msg).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_note(
         self,
@@ -1438,7 +1143,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.struct_note(msg).with_span(span)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_note(self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
         self.struct_span_note(span, msg).emit()
@@ -1454,25 +1158,21 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_note(note).emit()
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_help(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Help, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_failure_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, FailureNote, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Allow, msg)
     }
 
-    #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_expect(self, msg: impl Into<DiagMessage>, id: LintExpectationId) -> Diag<'a, ()> {
         Diag::new(self, Expect, msg).with_lint_id(id)
@@ -1745,7 +1445,7 @@ impl DiagCtxtInner {
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> SubdiagMessage {
-        SubdiagMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+        SubdiagMessage::Str(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
@@ -1998,21 +1698,30 @@ impl Level {
     pub fn is_failure_note(&self) -> bool {
         matches!(*self, FailureNote)
     }
-
-    // Can this level be used in a subdiagnostic message?
-    fn can_be_subdiag(&self) -> bool {
-        match self {
-            Bug | DelayedBug | Fatal | Error | ForceWarning | FailureNote | Allow | Expect => false,
-
-            Warning | Note | Help | OnceNote | OnceHelp => true,
-        }
-    }
 }
 
 impl IntoDiagArg for Level {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub enum Style {
+    MainHeaderMsg,
+    HeaderMsg,
+    LineAndColumn,
+    LineNumber,
+    Quotation,
+    UnderlinePrimary,
+    UnderlineSecondary,
+    LabelPrimary,
+    LabelSecondary,
+    NoStyle,
+    Level(Level),
+    Highlight,
+    Addition,
+    Removal,
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.

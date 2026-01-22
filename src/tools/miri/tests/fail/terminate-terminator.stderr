@@ -16,31 +16,7 @@ error: abnormal termination: the program aborted execution
 LL |         crate::process::abort();
    |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
-   = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
-note: inside `has_cleanup`
-  --> tests/fail/terminate-terminator.rs:LL:CC
-   |
-LL | / fn has_cleanup() {
-LL | |     let _f = Foo;
-LL | |     panic!();
-LL | | }
-   | |_^
-note: inside `panic_abort`
-  --> tests/fail/terminate-terminator.rs:LL:CC
-   |
-LL |     has_cleanup();
-   |     ^^^^^^^^^^^^^
-note: inside `main`
-  --> tests/fail/terminate-terminator.rs:LL:CC
-   |
-LL |     panic_abort();
-   |     ^^^^^^^^^^^^^
+   = note: stack backtrace:
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

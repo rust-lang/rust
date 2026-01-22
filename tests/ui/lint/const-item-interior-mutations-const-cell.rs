@@ -4,7 +4,6 @@
 #![feature(sync_unsafe_cell)]
 #![feature(once_cell_try_insert)]
 #![feature(once_cell_try)]
-#![feature(lazy_get)]
 
 use std::cell::{Cell, RefCell, SyncUnsafeCell, UnsafeCell};
 use std::cell::{LazyCell, OnceCell};

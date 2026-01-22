@@ -36,13 +36,17 @@ fn branches<'tcx>(
     // For enums, we prepend their variant index before the variant's fields so we can figure out
     // the variant again when just seeing a valtree.
     if let Some(variant) = variant {
-        branches.push(ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into()));
+        branches.push(ty::Const::new_value(
+            *ecx.tcx,
+            ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into()),
+            ecx.tcx.types.u32,
+        ));
     }
 
     for i in 0..field_count {
         let field = ecx.project_field(&place, FieldIdx::from_usize(i)).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
-        branches.push(valtree);
+        branches.push(ty::Const::new_value(*ecx.tcx, valtree, field.layout.ty));
     }
 
     // Have to account for ZSTs here
@@ -65,7 +69,7 @@ fn slice_branches<'tcx>(
     for i in 0..n {
         let place_elem = ecx.project_index(place, i).unwrap();
         let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes)?;
-        elems.push(valtree);
+        elems.push(ty::Const::new_value(*ecx.tcx, valtree, place_elem.layout.ty));
     }
 
     Ok(ty::ValTree::from_branches(*ecx.tcx, elems))
@@ -200,8 +204,8 @@ fn reconstruct_place_meta<'tcx>(
         &ObligationCause::dummy(),
         |ty| ty,
         || {
-            let branches = last_valtree.unwrap_branch();
-            last_valtree = *branches.last().unwrap();
+            let branches = last_valtree.to_branch();
+            last_valtree = branches.last().unwrap().to_value().valtree;
             debug!(?branches, ?last_valtree);
         },
     );
@@ -212,7 +216,7 @@ fn reconstruct_place_meta<'tcx>(
     };
 
     // Get the number of elements in the unsized field.
-    let num_elems = last_valtree.unwrap_branch().len();
+    let num_elems = last_valtree.to_branch().len();
     MemPlaceMeta::Meta(Scalar::from_target_usize(num_elems as u64, &tcx))
 }
 
@@ -274,7 +278,7 @@ pub fn valtree_to_const_value<'tcx>(
             mir::ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_, _) => {
-            mir::ConstValue::Scalar(Scalar::Int(cv.valtree.unwrap_leaf()))
+            mir::ConstValue::Scalar(Scalar::Int(cv.to_leaf()))
         }
         ty::Pat(ty, _) => {
             let cv = ty::Value { valtree: cv.valtree, ty };
@@ -301,12 +305,13 @@ pub fn valtree_to_const_value<'tcx>(
                     || matches!(cv.ty.kind(), ty::Adt(def, _) if def.is_struct()))
             {
                 // A Scalar tuple/struct; we can avoid creating an allocation.
-                let branches = cv.valtree.unwrap_branch();
+                let branches = cv.to_branch();
                 // Find the non-ZST field. (There can be aligned ZST!)
                 for (i, &inner_valtree) in branches.iter().enumerate() {
                     let field = layout.field(&LayoutCx::new(tcx, typing_env), i);
                     if !field.is_zst() {
-                        let cv = ty::Value { valtree: inner_valtree, ty: field.ty };
+                        let cv =
+                            ty::Value { valtree: inner_valtree.to_value().valtree, ty: field.ty };
                         return valtree_to_const_value(tcx, typing_env, cv);
                     }
                 }
@@ -381,7 +386,7 @@ fn valtree_into_mplace<'tcx>(
             // Zero-sized type, nothing to do.
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(..) => {
-            let scalar_int = valtree.unwrap_leaf();
+            let scalar_int = valtree.to_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
             ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
@@ -391,13 +396,13 @@ fn valtree_into_mplace<'tcx>(
             ecx.write_immediate(imm, place).unwrap();
         }
         ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
-            let branches = valtree.unwrap_branch();
+            let branches = valtree.to_branch();
 
             // Need to downcast place for enums
             let (place_adjusted, branches, variant_idx) = match ty.kind() {
                 ty::Adt(def, _) if def.is_enum() => {
                     // First element of valtree corresponds to variant
-                    let scalar_int = branches[0].unwrap_leaf();
+                    let scalar_int = branches[0].to_leaf();
                     let variant_idx = VariantIdx::from_u32(scalar_int.to_u32());
                     let variant = def.variant(variant_idx);
                     debug!(?variant);
@@ -425,7 +430,7 @@ fn valtree_into_mplace<'tcx>(
                 };
 
                 debug!(?place_inner);
-                valtree_into_mplace(ecx, &place_inner, *inner_valtree);
+                valtree_into_mplace(ecx, &place_inner, inner_valtree.to_value().valtree);
                 dump_place(ecx, &place_inner);
             }
 

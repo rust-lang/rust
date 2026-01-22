@@ -1,4 +1,5 @@
 #![deny(clippy::useless_conversion)]
+#![allow(clippy::into_iter_on_ref)]
 #![allow(clippy::needless_ifs, clippy::unnecessary_wraps, unused)]
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
@@ -130,6 +131,15 @@ fn main() {
     lint_into_iter_on_const_implementing_iterator_2();
     dont_lint_into_iter_on_copy_iter();
     dont_lint_into_iter_on_static_copy_iter();
+
+    {
+        // triggers the IntoIterator trait
+        fn consume(_: impl IntoIterator) {}
+
+        // Should suggest `*items` instead of `&**items`
+        let items = &&[1, 2, 3];
+        consume(items.into_iter()); //~ useless_conversion
+    }
 
     let _: String = "foo".into();
     let _: String = From::from("foo");

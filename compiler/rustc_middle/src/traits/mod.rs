@@ -764,6 +764,9 @@ pub enum DynCompatibilityViolation {
     /// `Self: Sized` declared on the trait.
     SizedSelf(SmallVec<[Span; 1]>),
 
+    /// Trait is marked `#[rustc_dyn_incompatible_trait]`.
+    ExplicitlyDynIncompatible(SmallVec<[Span; 1]>),
+
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
     SupertraitSelf(SmallVec<[Span; 1]>),
@@ -788,6 +791,9 @@ impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
             DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            DynCompatibilityViolation::ExplicitlyDynIncompatible(_) => {
+                "it opted out of dyn-compatibility".into()
+            }
             DynCompatibilityViolation::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
@@ -861,6 +867,7 @@ impl DynCompatibilityViolation {
     pub fn solution(&self) -> DynCompatibilityViolationSolution {
         match self {
             DynCompatibilityViolation::SizedSelf(_)
+            | DynCompatibilityViolation::ExplicitlyDynIncompatible(_)
             | DynCompatibilityViolation::SupertraitSelf(_)
             | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
             | DynCompatibilityViolation::SupertraitConst(_) => {
@@ -894,6 +901,7 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SupertraitSelf(spans)
             | DynCompatibilityViolation::SizedSelf(spans)
+            | DynCompatibilityViolation::ExplicitlyDynIncompatible(spans)
             | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans)
             | DynCompatibilityViolation::SupertraitConst(spans) => spans.clone(),
             DynCompatibilityViolation::AssocConst(_, span)

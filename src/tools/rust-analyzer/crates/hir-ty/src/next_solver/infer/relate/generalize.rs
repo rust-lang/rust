@@ -16,14 +16,14 @@ use tracing::{debug, instrument, warn};
 use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
-use crate::next_solver::infer::type_variable::TypeVariableValue;
 use crate::next_solver::infer::unify_key::ConstVariableValue;
 use crate::next_solver::infer::{InferCtxt, relate};
 use crate::next_solver::util::MaxUniverse;
 use crate::next_solver::{
-    AliasTy, Binder, ClauseKind, Const, ConstKind, DbInterner, GenericArgs, PredicateKind, Region,
-    SolverDefId, Term, TermVid, Ty, TyKind, TypingMode, UnevaluatedConst,
+    AliasTy, Binder, ClauseKind, Const, ConstKind, DbInterner, PredicateKind, Region, SolverDefId,
+    Term, TermVid, Ty, TyKind, TypingMode, UnevaluatedConst,
 };
+use crate::next_solver::{GenericArgs, infer::type_variable::TypeVariableValue};
 
 impl<'db> InferCtxt<'db> {
     /// The idea is that we should ensure that the type variable `target_vid`
@@ -384,29 +384,26 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
         self.infcx.interner
     }
 
-    fn relate_item_args(
+    fn relate_ty_args(
         &mut self,
-        item_def_id: SolverDefId,
-        a_arg: GenericArgs<'db>,
-        b_arg: GenericArgs<'db>,
-    ) -> RelateResult<'db, GenericArgs<'db>> {
-        if self.ambient_variance == Variance::Invariant {
+        a_ty: Ty<'db>,
+        _: Ty<'db>,
+        def_id: SolverDefId,
+        a_args: GenericArgs<'db>,
+        b_args: GenericArgs<'db>,
+        mk: impl FnOnce(GenericArgs<'db>) -> Ty<'db>,
+    ) -> RelateResult<'db, Ty<'db>> {
+        let args = if self.ambient_variance == Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_args_invariantly(self, a_arg, b_arg)
+            relate::relate_args_invariantly(self, a_args, b_args)
         } else {
-            let tcx = self.cx();
-            let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_args_with_variances(
-                self,
-                item_def_id,
-                opt_variances,
-                a_arg,
-                b_arg,
-                false,
-            )
-        }
+            let interner = self.cx();
+            let variances = interner.variances_of(def_id);
+            relate::relate_args_with_variances(self, variances, a_args, b_args)
+        }?;
+        if args == a_args { Ok(a_ty) } else { Ok(mk(args)) }
     }
 
     #[instrument(level = "debug", skip(self, variance, b), ret)]

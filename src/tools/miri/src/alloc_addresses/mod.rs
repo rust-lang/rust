@@ -12,6 +12,7 @@ use rustc_middle::ty::TyCtxt;
 
 pub use self::address_generator::AddressGenerator;
 use self::reuse_pool::ReusePool;
+use crate::alloc::MiriAllocParams;
 use crate::concurrency::VClock;
 use crate::diagnostics::SpanDedupDiagnostic;
 use crate::*;
@@ -162,18 +163,28 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.get_alloc_bytes_unchecked_raw(alloc_id)?
                     }
                 }
-                AllocKind::Function | AllocKind::VTable => {
-                    // Allocate some dummy memory to get a unique address for this function/vtable.
-                    let alloc_bytes = MiriAllocBytes::from_bytes(
-                        &[0u8; 1],
-                        Align::from_bytes(1).unwrap(),
-                        params,
-                    );
-                    let ptr = alloc_bytes.as_ptr();
-                    // Leak the underlying memory to ensure it remains unique.
-                    std::mem::forget(alloc_bytes);
-                    ptr
+                #[cfg(all(unix, feature = "native-lib"))]
+                AllocKind::Function => {
+                    if let Some(GlobalAlloc::Function { instance, .. }) =
+                        this.tcx.try_get_global_alloc(alloc_id)
+                    {
+                        let fn_sig = this.tcx.fn_sig(instance.def_id()).skip_binder().skip_binder();
+                        let fn_ptr = crate::shims::native_lib::build_libffi_closure(this, fn_sig)?;
+
+                        #[expect(
+                            clippy::as_conversions,
+                            reason = "No better way to cast a function ptr to a ptr"
+                        )]
+                        {
+                            fn_ptr as *const _
+                        }
+                    } else {
+                        dummy_alloc(params)
+                    }
                 }
+                #[cfg(not(all(unix, feature = "native-lib")))]
+                AllocKind::Function => dummy_alloc(params),
+                AllocKind::VTable => dummy_alloc(params),
                 AllocKind::TypeId | AllocKind::Dead => unreachable!(),
             };
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
@@ -203,6 +214,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(new_addr)
         }
     }
+}
+
+fn dummy_alloc(params: MiriAllocParams) -> *const u8 {
+    // Allocate some dummy memory to get a unique address for this function/vtable.
+    let alloc_bytes = MiriAllocBytes::from_bytes(&[0u8; 1], Align::from_bytes(1).unwrap(), params);
+    let ptr = alloc_bytes.as_ptr();
+    // Leak the underlying memory to ensure it remains unique.
+    std::mem::forget(alloc_bytes);
+    ptr
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}

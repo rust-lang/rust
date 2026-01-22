@@ -19,7 +19,7 @@
                   debug _enum_without_variants => const [ZeroSized: Empty];
                   let _9: main::Str<"���">;
                   scope 4 {
-                      debug _non_utf8_str => const Str::<"���">;
+                      debug _non_utf8_str => const main::Str::<"���">;
                   }
               }
           }

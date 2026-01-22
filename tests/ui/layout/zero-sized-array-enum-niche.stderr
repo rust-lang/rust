@@ -10,7 +10,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -48,7 +48,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            offsets: [
                                Size(4 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -73,7 +73,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -118,7 +118,7 @@ error: layout_of(MultipleAlignments) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -156,7 +156,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            offsets: [
                                Size(2 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -181,7 +181,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            offsets: [
                                Size(4 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -206,7 +206,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -251,7 +251,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -289,7 +289,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            offsets: [
                                Size(4 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -314,7 +314,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -359,7 +359,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -401,7 +401,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            offsets: [
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -426,7 +426,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            offsets: [
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },

@@ -761,7 +761,9 @@ impl<'a> Parser<'a> {
         }
 
         // Check for misspelled keywords if there are no suggestions added to the diagnostic.
-        if matches!(&err.suggestions, Suggestions::Enabled(list) if list.is_empty()) {
+        if let Suggestions::Enabled(list) = &err.suggestions
+            && list.is_empty()
+        {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
@@ -2262,7 +2264,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseParen)
         {
             // `fn foo(String s) {}`
-            let ident = self.parse_ident().unwrap();
+            let ident = self.parse_ident_common(true).unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
             err.span_suggestion(
@@ -3084,22 +3086,24 @@ impl<'a> Parser<'a> {
         }
 
         let mut err = self.dcx().struct_span_fatal(spans, "encountered diff marker");
-        match middlediff3 {
+        let middle_marker = match middlediff3 {
             // We're using diff3
             Some(middlediff3) => {
                 err.span_label(
-                    start,
-                    "between this marker and `|||||||` is the code that we're merging into",
+                    middlediff3,
+                    "between this marker and `=======` is the base code (what the two refs \
+                     diverged from)",
                 );
-                err.span_label(middlediff3, "between this marker and `=======` is the base code (what the two refs diverged from)");
+                "|||||||"
             }
-            None => {
-                err.span_label(
-                    start,
-                    "between this marker and `=======` is the code that we're merging into",
-                );
-            }
+            None => "=======",
         };
+        err.span_label(
+            start,
+            format!(
+                "between this marker and `{middle_marker}` is the code that you are merging into",
+            ),
+        );
 
         if let Some(middle) = middle {
             err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
@@ -3114,16 +3118,15 @@ impl<'a> Parser<'a> {
              containing conflict markers",
         );
         err.help(
-            "if you're having merge conflicts after pulling new code:\n\
-             the top section is the code you already had and the bottom section is the remote code\n\
-             if you're in the middle of a rebase:\n\
-             the top section is the code being rebased onto and the bottom section is the code \
-             coming from the current commit being rebased",
+            "if you are in a merge, the top section is the code you already had checked out and \
+             the bottom section is the new code\n\
+             if you are in a rebase, the top section is the code being rebased onto and the bottom \
+             section is the code you had checked out which is being rebased",
         );
 
         err.note(
-            "for an explanation on these markers from the `git` documentation:\n\
-             visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
+            "for an explanation on these markers from the `git` documentation, visit \
+             <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
 
         err.emit();

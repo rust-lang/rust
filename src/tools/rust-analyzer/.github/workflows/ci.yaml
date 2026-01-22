@@ -122,6 +122,12 @@ jobs:
       - name: Run tests
         run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
 
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@cargo-machete
+
+      - name: Run cargo-machete
+        run: cargo machete
+
       - name: Run Clippy
         if: matrix.os == 'macos-latest'
         run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr

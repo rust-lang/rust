@@ -1,0 +1,12 @@
+error[E0391]: cycle detected when getting HIR ID of `Default`
+   |
+   = note: ...which requires getting the crate HIR...
+   = note: ...which requires perform lints prior to AST lowering...
+   = note: ...which requires looking up span for `Default`...
+   = note: ...which again requires getting HIR ID of `Default`, completing the cycle
+   = note: cycle used when getting the resolver for lowering
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

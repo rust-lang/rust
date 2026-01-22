@@ -1,4 +1,5 @@
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_session::errors;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
@@ -11,6 +12,52 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
+}
+
+pub(crate) struct RustcMustImplementOneOfParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
+    const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let mut fn_names = ThinVec::new();
+
+        let inputs: Vec<_> = list.mixed().collect();
+
+        if inputs.len() < 2 {
+            cx.expected_list_with_num_args_or_more(2, list.span);
+            return None;
+        }
+
+        let mut errored = false;
+        for argument in inputs {
+            let Some(meta) = argument.meta_item() else {
+                cx.expected_identifier(argument.span());
+                return None;
+            };
+
+            let Some(ident) = meta.ident() else {
+                cx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span: meta.span() });
+                errored = true;
+                continue;
+            };
+
+            fn_names.push(ident);
+        }
+        if errored {
+            return None;
+        }
+
+        Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })
+    }
 }
 
 pub(crate) struct RustcNeverReturnsNullPointerParser;
@@ -165,6 +212,22 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintQueryInstability;
 }
 
+pub(crate) struct RustcLintUntrackedQueryInformationParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_untracked_query_information];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
+}
+
 pub(crate) struct RustcObjectLifetimeDefaultParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
@@ -226,4 +289,43 @@ impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
         };
         Some(AttributeKind::RustcScalableVector { element_count: Some(n), span: cx.attr_span })
     }
+}
+
+pub(crate) struct RustcHasIncoherentInherentImplsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParser {
+    const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Trait),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::ForeignTy),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
+}
+
+pub(crate) struct RustcNounwindParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
+    const PATH: &[Symbol] = &[sym::rustc_nounwind];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
+}
+
+pub(crate) struct RustcOffloadKernelParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
+    const PATH: &[Symbol] = &[sym::rustc_offload_kernel];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
 }

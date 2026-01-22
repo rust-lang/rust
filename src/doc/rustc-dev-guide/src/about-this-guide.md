@@ -77,8 +77,7 @@ You might also find the following sites useful:
 - [std-dev-guide] -- a similar guide for developing the standard library.
 - [rust-analyzer book] -- documentation for the rust-analyzer.
 - [The t-compiler Zulip][z]
-- The [Rust Internals forum][rif], a place to ask questions and
-  discuss Rust's internals
+- The [Rust Internals forum][rif], a place to ask questions and discuss Rust's internals
 - The [Rust reference][rr], even though it doesn't specifically talk about
   Rust's internals, is a great resource nonetheless
 - Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
@@ -89,11 +88,10 @@ You might also find the following sites useful:
   the compiler, the books, the references, and the guides) to quickly find
   information about the language and compiler.
 - You can also use Rustdoc's built-in search feature to find documentation on
-  types and functions within the crates you're looking at. You can also search
-  by type signature! For example, searching for `* -> vec` should find all
-  functions that return a `Vec<T>`.
-  _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc
-  page!
+  types and functions within the crates you're looking at.
+  You can also search by type signature!
+  For example, searching for `* -> vec` should find all functions that return a `Vec<T>`.
+  _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 
 
 [rustc dev guide]: about-this-guide.md
@@ -105,9 +103,9 @@ You might also find the following sites useful:
 [tlgba]: https://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
 [rctd]: tests/intro.md
-[cheatsheet]: https://bors.rust-lang.org/
+[cheatsheet]: https://bors.rust-lang.org/help
 [Miri]: https://github.com/rust-lang/miri
-[@bors]: https://github.com/bors
+[@bors]: https://github.com/rust-lang/bors
 [a GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
 [rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
 [Forge]: https://forge.rust-lang.org/

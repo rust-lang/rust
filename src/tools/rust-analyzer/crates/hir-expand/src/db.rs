@@ -9,8 +9,8 @@ use triomphe::Arc;
 
 use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
-    EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, HirFileId, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, FileRange, HirFileId,
+    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     attrs::Meta,
     builtin::pseudo_derive_attr_expansion,
     cfg_process::attr_macro_input_to_token_tree,
@@ -60,6 +60,9 @@ pub trait ExpandDatabase: RootQueryDb {
     #[salsa::invoke(ast_id_map)]
     #[salsa::lru(1024)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
+
+    #[salsa::transparent]
+    fn resolve_span(&self, span: Span) -> FileRange;
 
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
@@ -158,6 +161,13 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
     }
 }
 
+fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
+    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
+    let anchor_offset =
+        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
+    FileRange { file_id, range: range + anchor_offset }
+}
+
 /// This expands the given macro call, but with different arguments. This is
 /// used for completion, where we want to see what 'would happen' if we insert a
 /// token. The `token_to_map` mapped down into the expansion, with the mapped
@@ -237,7 +247,8 @@ pub fn expand_speculative(
                             span,
                             DocCommentDesugarMode::ProcMacro,
                         );
-                        *tree.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
+                        tree.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                        tree.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
                         tree
                     },
                 )
@@ -255,7 +266,7 @@ pub fn expand_speculative(
                             span,
                             DocCommentDesugarMode::ProcMacro,
                         );
-                        attr_arg.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
+                        attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
                         Some(attr_arg)
                     }
                     _ => None,
@@ -270,7 +281,8 @@ pub fn expand_speculative(
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(ast, expander, _) => {
             let span = db.proc_macro_span(ast);
-            *tt.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
+            tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+            tt.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
             expander.expand(
                 db,
                 loc.def.krate,
@@ -430,7 +442,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
                 (
                     Arc::new(tt::TopSubtree::from_token_trees(
                         tt::Delimiter { open: span, close: span, kind },
-                        tt::TokenTreesView::new(&[]),
+                        tt::TokenTreesView::empty(),
                     )),
                     SyntaxFixupUndoInfo::default(),
                     span,
@@ -478,7 +490,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
             );
             if loc.def.is_proc_macro() {
                 // proc macros expect their inputs without parentheses, MBEs expect it with them included
-                tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
+                tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
@@ -512,7 +524,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
-        tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
+        tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
     }
 
     (Arc::new(tt), undo_info, span)

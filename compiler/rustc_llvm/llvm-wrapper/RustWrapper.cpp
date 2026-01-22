@@ -43,8 +43,10 @@
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.
 #ifdef OFFLOAD
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/OffloadBinary.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/Utils/ModuleUtils.h"
 #endif
 
 // for raw `write` in the bad-alloc handler
@@ -174,12 +176,13 @@ static Error writeFile(StringRef Filename, StringRef Data) {
 //  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
 // The input module is the rust code compiled for a gpu target like amdgpu.
 // Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
-extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
+                                     const char *HostOutPath) {
   std::string Storage;
   llvm::raw_string_ostream OS1(Storage);
   llvm::WriteBitcodeToFile(*unwrap(M), OS1);
   OS1.flush();
-  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "module.bc");
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
 
   SmallVector<char, 1024> BinaryData;
   raw_svector_ostream OS2(BinaryData);
@@ -188,20 +191,44 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
   ImageBinary.TheImageKind = object::IMG_Bitcode;
   ImageBinary.Image = std::move(MB);
   ImageBinary.TheOffloadKind = object::OFK_OpenMP;
-  ImageBinary.StringData["triple"] = TM.getTargetTriple().str();
-  ImageBinary.StringData["arch"] = TM.getTargetCPU();
+
+  std::string TripleStr = TM.getTargetTriple().str();
+  llvm::StringRef CPURef = TM.getTargetCPU();
+  ImageBinary.StringData["triple"] = TripleStr;
+  ImageBinary.StringData["arch"] = CPURef;
   llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
   if (Buffer.size() % OffloadBinary::getAlignment() != 0)
     // Offload binary has invalid size alignment
     return false;
   OS2 << Buffer;
-  if (Error E = writeFile("host.out",
+  if (Error E = writeFile(HostOutPath,
                           StringRef(BinaryData.begin(), BinaryData.size())))
     return false;
   return true;
 }
 
-extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
+extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
+                                                   const char *HostOutPath) {
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  if (!MBOrErr) {
+    auto E = MBOrErr.getError();
+    auto _B = errorCodeToError(E);
+    return false;
+  }
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  Module *M = unwrap(HostM);
+  StringRef SectionName = ".llvm.offloading";
+  Align Alignment = Align(8);
+  llvm::embedBufferInModule(*M, Buf, SectionName, Alignment);
+  return true;
+}
+
+// Clone OldFn into NewFn, remapping its arguments to RebuiltArgs.
+// Each arg of OldFn is replaced with the corresponding value in RebuiltArgs.
+// For scalars, RebuiltArgs contains the value cast and/or truncated to the
+// original type.
+extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn,
+                                      const LLVMValueRef *RebuiltArgs) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
 
@@ -210,15 +237,25 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::ValueToValueMapTy vmap;
   auto newArgIt = newFn->arg_begin();
   newArgIt->setName("dyn_ptr");
-  ++newArgIt; // skip %dyn_ptr
+
+  unsigned i = 0;
   for (auto &oldArg : oldFn->args()) {
-    vmap[&oldArg] = &*newArgIt++;
+    vmap[&oldArg] = unwrap<Value>(RebuiltArgs[i++]);
   }
 
   llvm::SmallVector<llvm::ReturnInst *, 8> returns;
   llvm::CloneFunctionInto(newFn, oldFn, vmap,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
+
+  BasicBlock &entry = newFn->getEntryBlock();
+  BasicBlock &clonedEntry = *std::next(newFn->begin());
+
+  if (entry.getTerminator())
+    entry.getTerminator()->eraseFromParent();
+
+  IRBuilder<> B(&entry);
+  B.CreateBr(&clonedEntry);
 }
 #endif
 
@@ -1436,39 +1473,6 @@ extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
   }
 }
 
-extern "C" LLVMValueRef LLVMRustGetInsertPoint(LLVMBuilderRef B) {
-  llvm::IRBuilderBase &IRB = *unwrap(B);
-
-  llvm::IRBuilderBase::InsertPoint ip = IRB.saveIP();
-  llvm::BasicBlock *BB = ip.getBlock();
-
-  if (!BB)
-    return nullptr;
-
-  auto it = ip.getPoint();
-
-  if (it == BB->end())
-    return nullptr;
-
-  llvm::Instruction *I = &*it;
-  return wrap(I);
-}
-
-extern "C" void LLVMRustRestoreInsertPoint(LLVMBuilderRef B,
-                                           LLVMValueRef Instr) {
-  llvm::IRBuilderBase &IRB = *unwrap(B);
-
-  if (!Instr) {
-    llvm::BasicBlock *BB = IRB.GetInsertBlock();
-    if (BB)
-      IRB.SetInsertPoint(BB);
-    return;
-  }
-
-  llvm::Instruction *I = unwrap<llvm::Instruction>(Instr);
-  IRB.SetInsertPoint(I);
-}
-
 extern "C" LLVMValueRef
 LLVMRustGetFunctionCall(LLVMValueRef Fn, const char *Name, size_t NameLen) {
   auto targetName = StringRef(Name, NameLen);
@@ -1550,16 +1554,8 @@ extern "C" uint64_t LLVMRustModuleCost(LLVMModuleRef M) {
   return std::distance(std::begin(f), std::end(f));
 }
 
-extern "C" void LLVMRustModuleInstructionStats(LLVMModuleRef M,
-                                               RustStringRef Str) {
-  auto OS = RawRustStringOstream(Str);
-  auto JOS = llvm::json::OStream(OS);
-  auto Module = unwrap(M);
-
-  JOS.object([&] {
-    JOS.attribute("module", Module->getName());
-    JOS.attribute("total", Module->getInstructionCount());
-  });
+extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
+  return unwrap(M)->getInstructionCount();
 }
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
@@ -1762,6 +1758,10 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
     return true;
   }
   return false;
+}
+
+extern "C" LLVMValueRef LLVMRustStripPointerCasts(LLVMValueRef V) {
+  return wrap(unwrap(V)->stripPointerCasts());
 }
 
 extern "C" bool LLVMRustLLVMHasZlibCompression() {

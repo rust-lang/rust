@@ -9,6 +9,7 @@
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -842,8 +843,8 @@ impl<T> [T] {
     /// Gets a reference to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -861,8 +862,8 @@ impl<T> [T] {
     /// Gets a mutable reference to the slice's underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -3244,6 +3245,219 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
+    /// Partially sorts the slice in ascending order **without** preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable(0..0);
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable(2..2);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable(2..3);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable(1..4);
+    /// assert_eq!(&v[1..4], [-3, 1, 2]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable(..);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [`sort_unstable`]: slice::sort_unstable
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable<R>(&mut self, range: R)
+    where
+        T: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, T::lt);
+    }
+
+    /// Partially sorts the slice in ascending order with a comparison function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the `compare` does not implement a total order, or if
+    /// the `compare` itself panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by(0..0, |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by(2..2, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by(2..3, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by(1..4, |a, b| b.cmp(a));
+    /// assert_eq!(&v[1..4], [2, 1, -3]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by(.., |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by`]: slice::sort_unstable_by
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by<F, R>(&mut self, range: R, mut compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| compare(a, b) == Less);
+    }
+
+    /// Partially sorts the slice in ascending order with a key extraction function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by_key`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4i32, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by_key(0..0, |k| k.abs());
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by_key(2..2, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by_key(2..3, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by_key(1..4, |k| k.abs());
+    /// assert_eq!(&v[1..4], [2, -3, 4]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by_key(.., |k| k.abs());
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by_key`]: slice::sort_unstable_by_key
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by_key<K, F, R>(&mut self, range: R, mut f: F)
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| f(a).lt(&f(b)));
+    }
+
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
     /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
     /// it.
@@ -3823,9 +4037,10 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     #[track_caller]
-    pub fn clone_from_slice(&mut self, src: &[T])
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    pub const fn clone_from_slice(&mut self, src: &[T])
     where
-        T: Clone,
+        T: [const] Clone + [const] Destruct,
     {
         self.spec_clone_from(src);
     }
@@ -4809,8 +5024,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let nums: &[u32] = &[1, 7, 1, 1];
     /// let num = &nums[2];
     ///
@@ -4819,8 +5032,6 @@ impl<T> [T] {
     /// ```
     /// Returning `None` with an unaligned element:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let arr: &[[u32; 2]] = &[[0, 1], [2, 3]];
     /// let flat_arr: &[u32] = arr.as_flattened();
     ///
@@ -4834,7 +5045,7 @@ impl<T> [T] {
     /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "element_offset", since = "CURRENT_RUSTC_VERSION")]
     pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
@@ -5158,13 +5369,17 @@ const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
     }
 }
 
-trait CloneFromSpec<T> {
-    fn spec_clone_from(&mut self, src: &[T]);
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+const trait CloneFromSpec<T> {
+    fn spec_clone_from(&mut self, src: &[T])
+    where
+        T: [const] Destruct;
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: Clone,
+    T: [const] Clone + [const] Destruct,
 {
     #[track_caller]
     default fn spec_clone_from(&mut self, src: &[T]) {
@@ -5174,15 +5389,19 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
+            self[idx].clone_from(&src[idx]);
+            idx += 1;
         }
     }
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: TrivialClone,
+    T: [const] TrivialClone + [const] Destruct,
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {

@@ -1,5 +1,5 @@
 warning: mutation of an interior mutable `const` item with call to `set`
-  --> $DIR/const-item-interior-mutations-const.rs:17:14
+  --> $DIR/const-item-interior-mutations-const.rs:16:14
    |
 LL |     let _a = A.set(1);
    |              -^^^^^^^
@@ -17,7 +17,7 @@ LL +     static A: Mutex<i32> = Mutex::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `replace`
-  --> $DIR/const-item-interior-mutations-const.rs:20:14
+  --> $DIR/const-item-interior-mutations-const.rs:19:14
    |
 LL |     let _a = A.replace(2);
    |              -^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL +     static A: Mutex<i32> = Mutex::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `lock`
-  --> $DIR/const-item-interior-mutations-const.rs:23:10
+  --> $DIR/const-item-interior-mutations-const.rs:22:10
    |
 LL |     drop(A.lock());
    |          -^^^^^^^
@@ -51,7 +51,7 @@ LL +     static A: Mutex<i32> = Mutex::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `try_lock`
-  --> $DIR/const-item-interior-mutations-const.rs:26:10
+  --> $DIR/const-item-interior-mutations-const.rs:25:10
    |
 LL |     drop(A.try_lock());
    |          -^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL +     static A: Mutex<i32> = Mutex::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `clear_poison`
-  --> $DIR/const-item-interior-mutations-const.rs:29:14
+  --> $DIR/const-item-interior-mutations-const.rs:28:14
    |
 LL |     let _a = A.clear_poison();
    |              -^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     static A: Mutex<i32> = Mutex::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `call_once`
-  --> $DIR/const-item-interior-mutations-const.rs:36:14
+  --> $DIR/const-item-interior-mutations-const.rs:35:14
    |
 LL |     let _a = A.call_once(|| {});
    |              -^^^^^^^^^^^^^^^^^
@@ -102,7 +102,7 @@ LL +     static A: Once = Once::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `call_once_force`
-  --> $DIR/const-item-interior-mutations-const.rs:39:14
+  --> $DIR/const-item-interior-mutations-const.rs:38:14
    |
 LL |     let _a = A.call_once_force(|_| {});
    |              -^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL +     static A: Once = Once::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait`
-  --> $DIR/const-item-interior-mutations-const.rs:42:14
+  --> $DIR/const-item-interior-mutations-const.rs:41:14
    |
 LL |     let _a = A.wait();
    |              -^^^^^^^
@@ -136,7 +136,7 @@ LL +     static A: Once = Once::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait_force`
-  --> $DIR/const-item-interior-mutations-const.rs:45:14
+  --> $DIR/const-item-interior-mutations-const.rs:44:14
    |
 LL |     let _a = A.wait_force();
    |              -^^^^^^^^^^^^^
@@ -153,7 +153,7 @@ LL +     static A: Once = Once::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `set`
-  --> $DIR/const-item-interior-mutations-const.rs:52:14
+  --> $DIR/const-item-interior-mutations-const.rs:51:14
    |
 LL |     let _a = A.set(1);
    |              -^^^^^^^
@@ -170,7 +170,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `replace`
-  --> $DIR/const-item-interior-mutations-const.rs:55:14
+  --> $DIR/const-item-interior-mutations-const.rs:54:14
    |
 LL |     let _a = A.replace(2);
    |              -^^^^^^^^^^^
@@ -187,7 +187,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `read`
-  --> $DIR/const-item-interior-mutations-const.rs:58:10
+  --> $DIR/const-item-interior-mutations-const.rs:57:10
    |
 LL |     drop(A.read());
    |          -^^^^^^^
@@ -204,7 +204,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `try_read`
-  --> $DIR/const-item-interior-mutations-const.rs:61:10
+  --> $DIR/const-item-interior-mutations-const.rs:60:10
    |
 LL |     drop(A.try_read());
    |          -^^^^^^^^^^^
@@ -221,7 +221,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `write`
-  --> $DIR/const-item-interior-mutations-const.rs:64:10
+  --> $DIR/const-item-interior-mutations-const.rs:63:10
    |
 LL |     drop(A.write());
    |          -^^^^^^^^
@@ -238,7 +238,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `try_write`
-  --> $DIR/const-item-interior-mutations-const.rs:67:10
+  --> $DIR/const-item-interior-mutations-const.rs:66:10
    |
 LL |     drop(A.try_write());
    |          -^^^^^^^^^^^^
@@ -255,7 +255,7 @@ LL +     static A: RwLock<i32> = RwLock::new(0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `force`
-  --> $DIR/const-item-interior-mutations-const.rs:74:14
+  --> $DIR/const-item-interior-mutations-const.rs:73:14
    |
 LL |     let _a = LazyLock::force(&A);
    |              ^^^^^^^^^^^^^^^^^-^
@@ -272,7 +272,7 @@ LL +     static A: LazyLock<i32> = LazyLock::new(|| 0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `get`
-  --> $DIR/const-item-interior-mutations-const.rs:77:14
+  --> $DIR/const-item-interior-mutations-const.rs:76:14
    |
 LL |     let _a = LazyLock::get(&A);
    |              ^^^^^^^^^^^^^^^-^
@@ -289,7 +289,7 @@ LL +     static A: LazyLock<i32> = LazyLock::new(|| 0);
    |
 
 warning: mutation of an interior mutable `const` item with call to `get`
-  --> $DIR/const-item-interior-mutations-const.rs:84:14
+  --> $DIR/const-item-interior-mutations-const.rs:83:14
    |
 LL |     let _a = A.get();
    |              -^^^^^^
@@ -306,7 +306,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait`
-  --> $DIR/const-item-interior-mutations-const.rs:87:14
+  --> $DIR/const-item-interior-mutations-const.rs:86:14
    |
 LL |     let _a = A.wait();
    |              -^^^^^^^
@@ -323,7 +323,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `set`
-  --> $DIR/const-item-interior-mutations-const.rs:90:14
+  --> $DIR/const-item-interior-mutations-const.rs:89:14
    |
 LL |     let _a = A.set(10);
    |              -^^^^^^^^
@@ -340,7 +340,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `try_insert`
-  --> $DIR/const-item-interior-mutations-const.rs:93:14
+  --> $DIR/const-item-interior-mutations-const.rs:92:14
    |
 LL |     let _a = A.try_insert(20);
    |              -^^^^^^^^^^^^^^^
@@ -357,7 +357,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `get_or_init`
-  --> $DIR/const-item-interior-mutations-const.rs:96:14
+  --> $DIR/const-item-interior-mutations-const.rs:95:14
    |
 LL |     let _a = A.get_or_init(|| 30);
    |              -^^^^^^^^^^^^^^^^^^^
@@ -374,7 +374,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `get_or_try_init`
-  --> $DIR/const-item-interior-mutations-const.rs:99:14
+  --> $DIR/const-item-interior-mutations-const.rs:98:14
    |
 LL |     let _a = A.get_or_try_init(|| Ok::<_, ()>(40));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -391,7 +391,7 @@ LL +     static A: OnceLock<i32> = OnceLock::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait`
-  --> $DIR/const-item-interior-mutations-const.rs:109:14
+  --> $DIR/const-item-interior-mutations-const.rs:108:14
    |
 LL |     let _a = A.wait(guard);
    |              -^^^^^^^^^^^^
@@ -408,7 +408,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait_while`
-  --> $DIR/const-item-interior-mutations-const.rs:114:14
+  --> $DIR/const-item-interior-mutations-const.rs:113:14
    |
 LL |     let _a = A.wait_while(guard, |x| *x == 0);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -425,7 +425,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait_timeout_ms`
-  --> $DIR/const-item-interior-mutations-const.rs:119:14
+  --> $DIR/const-item-interior-mutations-const.rs:118:14
    |
 LL |     let _a = A.wait_timeout_ms(guard, 10);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -442,7 +442,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait_timeout`
-  --> $DIR/const-item-interior-mutations-const.rs:124:14
+  --> $DIR/const-item-interior-mutations-const.rs:123:14
    |
 LL |     let _a = A.wait_timeout(guard, Duration::from_millis(10));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -459,7 +459,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `wait_timeout_while`
-  --> $DIR/const-item-interior-mutations-const.rs:129:14
+  --> $DIR/const-item-interior-mutations-const.rs:128:14
    |
 LL |     let _a = A.wait_timeout_while(guard, Duration::from_millis(10), |x| *x == 0);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -476,7 +476,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `notify_one`
-  --> $DIR/const-item-interior-mutations-const.rs:132:14
+  --> $DIR/const-item-interior-mutations-const.rs:131:14
    |
 LL |     let _a = A.notify_one();
    |              -^^^^^^^^^^^^^
@@ -493,7 +493,7 @@ LL +     static A: Condvar = Condvar::new();
    |
 
 warning: mutation of an interior mutable `const` item with call to `notify_all`
-  --> $DIR/const-item-interior-mutations-const.rs:135:14
+  --> $DIR/const-item-interior-mutations-const.rs:134:14
    |
 LL |     let _a = A.notify_all();
    |              -^^^^^^^^^^^^^

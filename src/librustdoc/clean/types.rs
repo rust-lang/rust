@@ -7,6 +7,7 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
@@ -25,7 +26,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Loc, RemapPathScopeComponents};
+use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -417,13 +418,17 @@ impl Item {
             {
                 Some(Deprecation {
                     since: DeprecatedSince::Unspecified,
-                    note: Some(note),
+                    note: Some(Ident { name: note, span: DUMMY_SP }),
                     suggestion: None,
                 })
             } else {
                 None
             }
         })
+    }
+
+    pub(crate) fn is_deprecated(&self, tcx: TyCtxt<'_>) -> bool {
+        self.deprecation(tcx).is_some_and(|deprecation| deprecation.is_in_effect())
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
@@ -450,7 +455,16 @@ impl Item {
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
+        let deprecation_notes = self
+            .attrs
+            .other_attrs
+            .iter()
+            .filter_map(|attr| attr.deprecation_note().map(|note| note.span));
+
         span_of_fragments(&self.attrs.doc_strings)
+            .into_iter()
+            .chain(deprecation_notes)
+            .reduce(|a, b| a.to(b))
             .unwrap_or_else(|| self.span(tcx).map_or(DUMMY_SP, |span| span.inner()))
     }
 
@@ -1259,6 +1273,9 @@ impl Trait {
     }
     pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_dyn_compatible(self.def_id)
+    }
+    pub(crate) fn is_deprecated(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.lookup_deprecation(self.def_id).is_some_and(|deprecation| deprecation.is_in_effect())
     }
 }
 
@@ -2244,6 +2261,7 @@ pub(crate) struct Impl {
     pub(crate) items: Vec<Item>,
     pub(crate) polarity: ty::ImplPolarity,
     pub(crate) kind: ImplKind,
+    pub(crate) is_deprecated: bool,
 }
 
 impl Impl {

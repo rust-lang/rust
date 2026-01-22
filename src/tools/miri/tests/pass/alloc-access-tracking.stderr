@@ -24,12 +24,11 @@ note: freed allocation ALLOC
 LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
-   = note: BACKTRACE:
-   = note: inside `<std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>>> - shim(Some(std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main`
-  --> tests/pass/alloc-access-tracking.rs:LL:CC
-   |
-LL |     }
-   |     ^
+   = note: stack backtrace:
+           0: <std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: main
+               at tests/pass/alloc-access-tracking.rs:LL:CC
 

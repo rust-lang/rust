@@ -58,3 +58,26 @@ fn issue15063(x: bool, y: bool) {
     }
     //~^^^^^ needless_bool_assign
 }
+
+fn wrongly_unmangled_macros(must_keep: fn(usize, usize) -> bool, x: usize, y: usize) {
+    struct Wrapper<T>(T);
+    let mut skip = Wrapper(false);
+
+    macro_rules! invoke {
+        ($func:expr, $a:expr, $b:expr) => {
+            $func($a, $b)
+        };
+    }
+    macro_rules! dot_0 {
+        ($w:expr) => {
+            $w.0
+        };
+    }
+
+    if invoke!(must_keep, x, y) {
+        dot_0!(skip) = false;
+    } else {
+        dot_0!(skip) = true;
+    }
+    //~^^^^^ needless_bool_assign
+}

@@ -124,6 +124,7 @@ use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
+use crate::graph_checks::target_specific_checks;
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -576,6 +577,16 @@ fn internalize_symbols<'tcx>(
                 {
                     // Found a user from another CGU, so skip to the next item
                     // without marking this one as internal.
+                    continue;
+                }
+            }
+
+            // When LTO inlines the caller of a naked function, it will attempt but fail to make the
+            // naked function symbol visible. To ensure that LTO works correctly, do not default
+            // naked functions to internal linkage and default visibility.
+            if let MonoItem::Fn(instance) = item {
+                let flags = cx.tcx.codegen_instance_attrs(instance.def).flags;
+                if flags.contains(CodegenFnAttrFlags::NAKED) {
                     continue;
                 }
             }
@@ -1125,6 +1136,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     };
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
+    // Perform checks that need to operate on the entire mono item graph
+    target_specific_checks(tcx, &items, &usage_map);
 
     // If there was an error during collection (e.g. from one of the constants we evaluated),
     // then we stop here. This way codegen does not have to worry about failing constants.
@@ -1300,12 +1313,12 @@ fn dump_mono_items_stats<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
+    providers.queries.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
-    providers.is_codegened_item =
+    providers.queries.is_codegened_item =
         |tcx, def_id| tcx.collect_and_partition_mono_items(()).all_mono_items.contains(&def_id);
 
-    providers.codegen_unit = |tcx, name| {
+    providers.queries.codegen_unit = |tcx, name| {
         tcx.collect_and_partition_mono_items(())
             .codegen_units
             .iter()
@@ -1313,7 +1326,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 
-    providers.size_estimate = |tcx, instance| {
+    providers.queries.size_estimate = |tcx, instance| {
         match instance.def {
             // "Normal" functions size estimate: the number of
             // statements, plus one for the terminator.
