@@ -1209,6 +1209,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.vec.push(SizedCandidate);
             }
 
+            ty::Adt(def, _) if def.is_addrspace_ptr() => {
+                candidates.vec.push(BuiltinCandidate);
+            }
+
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
 

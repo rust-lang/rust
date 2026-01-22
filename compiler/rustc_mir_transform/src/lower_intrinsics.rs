@@ -145,7 +145,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::read_via_copy => {
+                    sym::read_via_copy | sym::addrspace_ptr_read_via_copy => {
                         let Ok([arg]) = take_array(args) else {
                             span_bug!(terminator.source_info.span, "Wrong number of arguments");
                         };
@@ -177,7 +177,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             Some(target) => TerminatorKind::Goto { target },
                         }
                     }
-                    sym::write_via_move => {
+                    sym::write_via_move | sym::addrspace_ptr_write_via_move => {
                         let target = target.unwrap();
                         let Ok([ptr, val]) = take_array(args) else {
                             span_bug!(
@@ -220,7 +220,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::offset => {
+                    sym::offset | sym::addrspace_ptr_offset => {
                         let target = target.unwrap();
                         let Ok([ptr, delta]) = take_array(args) else {
                             span_bug!(

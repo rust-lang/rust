@@ -2257,6 +2257,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(args.as_coroutine_closure().upvar_tys().to_vec())
             }
 
+            ty::Adt(def, args) if def.is_addrspace_ptr() => ty::Binder::dummy(vec![]),
+
             ty::Foreign(..)
             | ty::Str
             | ty::Slice(_)

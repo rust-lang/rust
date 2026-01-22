@@ -187,7 +187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 value
             }
-            sym::arith_offset => {
+            sym::arith_offset | sym::addrspace_ptr_arith_offset => {
                 let ty = fn_args.type_at(0);
                 let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();

@@ -1178,7 +1178,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 match op {
                     Offset => {
-                        check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        if !a.is_addrspace_ptr() {
+                            check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        }
                         if b != self.tcx.types.isize && b != self.tcx.types.usize {
                             self.fail(location, format!("Cannot offset by non-isize type {b}"));
                         }

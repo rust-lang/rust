@@ -55,6 +55,7 @@
 
 use crate::ffi::va_list::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
+use crate::ptr::AddrspacePtr;
 use crate::{mem, ptr};
 
 mod bounds;
@@ -910,6 +911,138 @@ pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: D
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+/// Casts a pointer to a pointer in a different address space.
+///
+/// A pointer into one address space can sometimes be casted to a pointer into a different address space.
+/// The target defines for which combination of address spaces this is possible.
+///
+/// This intrinsic also allows casting the pointed-to type of the pointer.
+///
+/// # Safety
+///
+/// The cast must be supported by the target, casting between address spaces that do not support it
+/// is undefined behavior and can fail to compile.
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_cast<
+    T: 'static,
+    U: 'static,
+    const SOURCE_ADDRSPACE: u32,
+    const TARGET_ADDRSPACE: u32,
+>(
+    ptr: AddrspacePtr<T, SOURCE_ADDRSPACE>,
+) -> AddrspacePtr<U, TARGET_ADDRSPACE>;
+
+/// Converts a raw pointer into a pointer with an explicit address space.
+///
+/// If the targets raw pointer address space is the generic address space, this is a no-op,
+/// just casting the type.
+///
+/// # Safety
+///
+/// If the targets raw pointer address space matches the generic address space, this function
+/// is a no-op and is always safe to call.
+/// Otherwise, if the address spaces do not match, the safety conditions of [`addrspace_ptr_cast`] apply.
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_from_ptr<T: 'static>(
+    ptr: *mut T,
+) -> AddrspacePtr<T, { core::ptr::addrspace::GENERIC }>;
+
+/// Converts a pointer with an explicit address space into a raw pointer.
+///
+/// If the targets raw pointer address space is the generic address space, this is a no-op,
+/// just casting the type.
+///
+/// # Safety
+///
+/// If the targets raw pointer address space matches the generic address space, this function
+/// is a no-op and is always safe to call.
+/// Otherwise, if the address spaces do not match, the safety conditions of [`addrspace_ptr_cast`] apply.
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_to_ptr<T: 'static>(
+    ptr: AddrspacePtr<T, { core::ptr::addrspace::GENERIC }>,
+) -> *mut T;
+
+/// Gets the "address" portion of a pointer.
+///
+/// The return type `T` must be an integer of the same size as the pointer.
+/// The size depends on the target and can differ between address spaces.
+/// This does not expose the provenance of the pointer.
+///
+/// See also [`pointer::addr`] for the raw pointer equivalent.
+///
+/// # Safety
+///
+/// Not all address spaces have pointers that can be converted to integers.
+/// Calling this intrinsic for non-integral pointers results in undefined behavior.
+///
+/// The returned type must be an integer matching the size of the pointer, otherwise calling
+/// this intrinsic results in undefined behavior.
+#[must_use = "returns the address and does nothing unless used"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_to_addr<T, const ADDRSPACE: u32>(ptr: AddrspacePtr<(), ADDRSPACE>)
+-> T;
+
+/// Adds a signed offset to a pointer.
+///
+/// `count` is in units of `T`.
+///
+/// See [`pointer::offset`] for details and safety concerns.
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_offset<T: 'static, const ADDRSPACE: u32>(
+    ptr: AddrspacePtr<T, ADDRSPACE>,
+    count: isize,
+) -> AddrspacePtr<T, ADDRSPACE>;
+
+/// Adds a signed offset to a pointer using wrapping arithmetic.
+///
+/// `count` is in units of `T`.
+///
+/// See [`pointer::wrapping_offset`] for details and safety concerns.
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_arith_offset<T: 'static, const ADDRSPACE: u32>(
+    ptr: AddrspacePtr<T, ADDRSPACE>,
+    count: isize,
+) -> AddrspacePtr<T, ADDRSPACE>;
+
+/// Reads the value from `self` without moving it. This leaves the memory in `self` unchanged.
+///
+/// See [`ptr::read`] for safety concerns and examples.
+#[must_use = "returns the read value and does nothing unless used"]
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_read_via_copy<T: 'static, const ADDRSPACE: u32>(
+    ptr: AddrspacePtr<T, ADDRSPACE>,
+) -> T;
+
+/// Overwrites a memory location with the given value without reading or dropping the old value.
+///
+/// See [`ptr::write`] for safety concerns and examples.
+#[unstable(feature = "ptr_addrspace", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn addrspace_ptr_write_via_move<T: 'static, const ADDRSPACE: u32>(
+    ptr: AddrspacePtr<T, ADDRSPACE>,
+    value: T,
+);
 
 /// Projects to the `index`-th element of `slice_ptr`, as the same kind of pointer
 /// as the slice was provided -- so `&mut [T] → &mut T`, `&[T] → &T`,

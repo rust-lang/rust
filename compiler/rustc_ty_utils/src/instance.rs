@@ -266,6 +266,7 @@ fn resolve_associated_item<'tcx>(
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
                         | ty::Tuple(..) => {}
+                        ty::Adt(def, _) if def.is_addrspace_ptr() => {}
                         _ => return Ok(None),
                     };
 

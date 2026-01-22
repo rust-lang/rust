@@ -242,8 +242,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub(crate) fn check_intrinsic_type(
-    tcx: TyCtxt<'_>,
+pub(crate) fn check_intrinsic_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
@@ -256,6 +256,15 @@ pub(crate) fn check_intrinsic_type(
             Ty::new_param(tcx, n, name)
         } else {
             Ty::new_error_with_message(tcx, span, "expected param")
+        }
+    };
+    let const_param = |n| {
+        if let &ty::GenericParamDef { name, kind: ty::GenericParamDefKind::Const { .. }, .. } =
+            generics.param_at(n as usize, tcx)
+        {
+            Const::new_param(tcx, ty::ParamConst::new(n, name))
+        } else {
+            Const::new_error_with_message(tcx, span, "expected const param")
         }
     };
 
@@ -283,9 +292,49 @@ pub(crate) fn check_intrinsic_type(
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
+    let mk_u32_const =
+        |i: u32| Const::new_value(tcx, ty::ValTree::from_scalar_int(tcx, i.into()), tcx.types.u32);
+    let mk_addrspace_ptr = |t: Ty<'tcx>, addrspace: Const<'tcx>| {
+        tcx.type_of(tcx.lang_items().addrspace_ptr_type().unwrap())
+            .instantiate(tcx, &[t.into(), addrspace.into()])
+    };
+
     let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
     let n_lts = 0;
     let (n_tps, n_cts, inputs, output) = match intrinsic_name {
+        sym::addrspace_ptr_arith_offset | sym::addrspace_ptr_offset => (
+            1,
+            1,
+            vec![mk_addrspace_ptr(param(0), const_param(1)), tcx.types.isize],
+            mk_addrspace_ptr(param(0), const_param(1)),
+        ),
+        sym::addrspace_ptr_cast => (
+            2,
+            2,
+            vec![mk_addrspace_ptr(param(0), const_param(2))],
+            mk_addrspace_ptr(param(1), const_param(3)),
+        ),
+        sym::addrspace_ptr_to_addr => {
+            (1, 1, vec![mk_addrspace_ptr(tcx.types.unit, const_param(1))], param(0))
+        }
+        sym::addrspace_ptr_from_ptr => (
+            1,
+            0,
+            vec![Ty::new_mut_ptr(tcx, param(0).into())],
+            mk_addrspace_ptr(param(0), mk_u32_const(0)),
+        ),
+        sym::addrspace_ptr_to_ptr => (
+            1,
+            0,
+            vec![mk_addrspace_ptr(param(0), mk_u32_const(0))],
+            Ty::new_mut_ptr(tcx, param(0)),
+        ),
+        sym::addrspace_ptr_read_via_copy => {
+            (1, 1, vec![mk_addrspace_ptr(param(0), const_param(1))], param(0))
+        }
+        sym::addrspace_ptr_write_via_move => {
+            (1, 1, vec![mk_addrspace_ptr(param(0), const_param(1)), param(0)], tcx.types.unit)
+        }
         sym::autodiff => (4, 0, vec![param(0), param(1), param(2)], param(3)),
         sym::abort => (0, 0, vec![], tcx.types.never),
         sym::amdgpu_dispatch_ptr => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),

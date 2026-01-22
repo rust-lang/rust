@@ -202,6 +202,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[ptr, args[1].immediate()],
                 )
             }
+            sym::addrspace_ptr_cast | sym::addrspace_ptr_from_ptr | sym::addrspace_ptr_to_ptr => {
+                self.pointercast(args[0].immediate(), result.layout.immediate_llvm_type(self.cx))
+            }
+            sym::addrspace_ptr_to_addr => {
+                self.ptrtoint(args[0].immediate(), result.layout.immediate_llvm_type(self.cx))
+            }
             sym::autodiff => {
                 codegen_autodiff(self, tcx, instance, args, result);
                 return Ok(());

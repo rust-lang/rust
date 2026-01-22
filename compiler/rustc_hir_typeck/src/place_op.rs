@@ -23,7 +23,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         oprnd_expr: &'tcx hir::Expr<'tcx>,
         oprnd_ty: Ty<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        if let Some(ty) = oprnd_ty.builtin_deref(true) {
+        // AddrspacePtr deref is used internally but it should not be accessed from the Rust,
+        // so exclude it here.
+        if let Some(ty) = oprnd_ty.builtin_deref(true)
+            && !oprnd_ty.is_addrspace_ptr()
+        {
             return Some(ty);
         }
 

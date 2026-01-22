@@ -468,6 +468,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }
+                if def.is_addrspace_ptr() {
+                    return FfiSafe;
+                }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         if let Some(sym::cstring_type | sym::cstr_type) =

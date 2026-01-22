@@ -1344,6 +1344,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn is_addrspace_ptr(self) -> bool {
+        match self.kind() {
+            Adt(def, _) => def.is_addrspace_ptr(),
+            _ => false,
+        }
+    }
+
     /// Tests whether this is a Box definitely using the global allocator.
     ///
     /// If the allocator is still generic, the answer is `false`, but it may
@@ -1367,6 +1375,13 @@ impl<'tcx> Ty<'tcx> {
     pub fn boxed_ty(self) -> Option<Ty<'tcx>> {
         match self.kind() {
             Adt(def, args) if def.is_box() => Some(args.type_at(0)),
+            _ => None,
+        }
+    }
+
+    pub fn addrspace_ptr_ty(self) -> Option<Ty<'tcx>> {
+        match self.kind() {
+            Adt(def, args) if def.is_addrspace_ptr() => Some(args.type_at(0)),
             _ => None,
         }
     }
@@ -1571,6 +1586,11 @@ impl<'tcx> Ty<'tcx> {
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
             _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
+            _ if let Some(ty) = self.addrspace_ptr_ty()
+                && explicit =>
+            {
+                Some(ty)
+            }
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
             _ => None,

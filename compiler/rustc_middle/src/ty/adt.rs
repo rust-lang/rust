@@ -59,6 +59,8 @@ bitflags::bitflags! {
         const IS_PIN                        = 1 << 11;
         /// Indicates whether the type is `#[pin_project]`.
         const IS_PIN_PROJECT                = 1 << 12;
+        /// Indicates whether the type is `AddrspacePtr`.
+        const IS_ADDRSPACE_PTR              = 1 << 13;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -324,6 +326,9 @@ impl AdtDefData {
         if tcx.is_lang_item(did, LangItem::Pin) {
             flags |= AdtFlags::IS_PIN;
         }
+        if tcx.is_lang_item(did, LangItem::AddrspacePtr) {
+            flags |= AdtFlags::IS_ADDRSPACE_PTR;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -443,6 +448,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_pin(self) -> bool {
         self.flags().contains(AdtFlags::IS_PIN)
+    }
+
+    /// Returns `true` if this is `AddrspacePtr<T, ADDRSPACE>`.
+    #[inline]
+    pub fn is_addrspace_ptr(self) -> bool {
+        self.flags().contains(AdtFlags::IS_ADDRSPACE_PTR)
     }
 
     /// Returns `true` is this is `#[pin_v2]` for the purposes
