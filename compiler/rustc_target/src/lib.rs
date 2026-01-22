@@ -98,8 +98,8 @@ macro_rules! target_spec_enum {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Ok(match s {
-                    $( 
-                        $string => Self::$Variant, 
+                    $(
+                        $string => Self::$Variant,
                         $($alias => Self::$Variant,)*
                     )*
                     _ => {
@@ -170,8 +170,8 @@ macro_rules! target_spec_enum {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Ok(match s {
-                    $( 
-                        $string => Self::$Variant, 
+                    $(
+                        $string => Self::$Variant,
                         $($alias => Self::$Variant,)*
                     )*
                     _ => Self::$OtherVariant(s.to_owned().into()),

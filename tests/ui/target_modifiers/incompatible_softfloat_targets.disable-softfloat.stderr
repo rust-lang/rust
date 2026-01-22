@@ -1,0 +1,12 @@
+error[E0461]: couldn't find crate `enabled_softfloat` with expected target triple s390x-unknown-linux-gnu
+  --> $DIR/incompatible_softfloat_targets.rs:15:1
+   |
+LL | extern crate enabled_softfloat;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the following crate versions were found:
+           crate `enabled_softfloat`, target triple s390x-unknown-none-softfloat: $TEST_BUILD_DIR/auxiliary/libenabled_softfloat.rlib
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0461`.
