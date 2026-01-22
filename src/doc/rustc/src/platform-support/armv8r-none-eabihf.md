@@ -5,8 +5,9 @@
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the Armv8-R architecture family, supporting dual
-ARM/Thumb mode. The `armv8r-none-eabi` target uses Arm mode by default and
-the `thumbv8r-none-eabihf` target uses Thumb mode by default.
+ARM/Thumb mode. The `armv8r-none-eabihf` target uses Arm mode by default and
+the `thumbv8r-none-eabihf` target uses Thumb mode by default. Both targets
+use a hard-float ABI and require an FPU.
 
 Processors in this family include the Arm [Cortex-R52][cortex-r52]
 and [Cortex-R52+][cortex-r52-plus].
