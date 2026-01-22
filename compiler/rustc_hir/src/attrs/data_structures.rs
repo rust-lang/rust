@@ -690,6 +690,49 @@ impl IntoDiagArg for CrateType {
     }
 }
 
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct CustomMir {
+    pub dialect: Option<(MirDialect, Span)>,
+    pub phase: Option<(MirPhase, Span)>,
+    pub attr_span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct DocComment {
+    pub style: AttrStyle,
+    pub kind: DocFragmentKind,
+    pub span: Span,
+    pub comment: Symbol,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct LimitAttribute {
+    pub attr_span: Span,
+    pub limit_span: Span,
+    pub limit: Limit,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct ProcMacroDerive {
+    pub trait_name: Symbol,
+    pub helper_attrs: ThinVec<Symbol>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct RustcBuiltinMacro {
+    pub builtin_name: Option<Symbol>,
+    pub helper_attrs: ThinVec<Symbol>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct TargetFeature {
+    pub features: ThinVec<(Symbol, Span)>,
+    pub attr_span: Span,
+    pub was_forced: bool,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -766,7 +809,7 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
-        stability: DefaultBodyStability,
+        stability: Box<DefaultBodyStability>,
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
@@ -804,7 +847,7 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     ConstStability {
-        stability: PartialConstStability,
+        stability: Box<PartialConstStability>,
         /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
         span: Span,
     },
@@ -825,7 +868,7 @@ pub enum AttributeKind {
     CrateType(ThinVec<CrateType>),
 
     /// Represents `#[custom_mir]`.
-    CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
+    CustomMir(Box<CustomMir>),
 
     /// Represents `#[debugger_visualizer]`.
     DebuggerVisualizer(ThinVec<DebugVisualizer>),
@@ -834,7 +877,7 @@ pub enum AttributeKind {
     DenyExplicitImpl(Span),
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
-    Deprecation { deprecation: Deprecation, span: Span },
+    Deprecation { deprecation: Box<Deprecation>, span: Span },
 
     /// Represents `#[diagnostic::do_not_recommend]`.
     DoNotRecommend { attr_span: Span },
@@ -846,7 +889,7 @@ pub enum AttributeKind {
 
     /// Represents specifically [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     /// i.e. doc comments.
-    DocComment { style: AttrStyle, kind: DocFragmentKind, span: Span, comment: Symbol },
+    DocComment(Box<DocComment>),
 
     /// Represents `#[rustc_dummy]`.
     Dummy,
@@ -933,7 +976,7 @@ pub enum AttributeKind {
     MayDangle(Span),
 
     /// Represents `#[move_size_limit]`
-    MoveSizeLimit { attr_span: Span, limit_span: Span, limit: Limit },
+    MoveSizeLimit(Box<LimitAttribute>),
 
     /// Represents `#[must_not_suspend]`
     MustNotSupend { reason: Option<Symbol> },
@@ -1003,7 +1046,7 @@ pub enum AttributeKind {
     Path(Symbol, Span),
 
     /// Represents `#[pattern_complexity_limit]`
-    PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
+    PatternComplexityLimit(Box<LimitAttribute>),
 
     /// Represents `#[pin_v2]`
     PinV2(Span),
@@ -1018,7 +1061,7 @@ pub enum AttributeKind {
     ProcMacroAttribute(Span),
 
     /// Represents `#[proc_macro_derive]`
-    ProcMacroDerive { trait_name: Symbol, helper_attrs: ThinVec<Symbol>, span: Span },
+    ProcMacroDerive(Box<ProcMacroDerive>),
 
     /// Represents `#[profiler_runtime]`
     ProfilerRuntime,
@@ -1027,7 +1070,7 @@ pub enum AttributeKind {
     PubTransparent(Span),
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
-    RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
+    RecursionLimit(Box<LimitAttribute>),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
@@ -1042,7 +1085,7 @@ pub enum AttributeKind {
     RustcAllocatorZeroedVariant { name: Symbol },
 
     /// Represents `#[rustc_builtin_macro]`.
-    RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
+    RustcBuiltinMacro(Box<RustcBuiltinMacro>),
 
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
@@ -1159,7 +1202,7 @@ pub enum AttributeKind {
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
-        stability: Stability,
+        stability: Box<Stability>,
         /// Span of the attribute.
         span: Span,
     },
@@ -1169,7 +1212,7 @@ pub enum AttributeKind {
 
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
-    TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
+    TargetFeature(Box<TargetFeature>),
 
     /// Represents `#[thread_local]`
     ThreadLocal,
@@ -1181,7 +1224,7 @@ pub enum AttributeKind {
     TypeConst(Span),
 
     /// Represents `#[type_length_limit]`
-    TypeLengthLimit { attr_span: Span, limit_span: Span, limit: Limit },
+    TypeLengthLimit(Box<LimitAttribute>),
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),
