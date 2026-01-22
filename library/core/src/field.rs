@@ -9,7 +9,7 @@
 #[lang = "field"]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_deny_explicit_impl]
-#[rustc_do_not_implement_via_object]
+#[rustc_dyn_incompatible_trait]
 pub unsafe trait Field: Sized {
     /// The type of the base where this field exists in.
     #[lang = "field_base"]
