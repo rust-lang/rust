@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
