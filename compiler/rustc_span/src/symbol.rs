@@ -362,6 +362,7 @@ symbols! {
         Send,
         SeqCst,
         Sized,
+        Slice,
         SliceIndex,
         SliceIter,
         Some,

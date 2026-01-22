@@ -588,6 +588,108 @@ pub enum CollapseMacroDebuginfo {
     Yes = 3,
 }
 
+/// Crate type, as specified by `#![crate_type]`
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Default, PartialOrd, Eq, Ord)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum CrateType {
+    /// `#![crate_type = "bin"]`
+    Executable,
+    /// `#![crate_type = "dylib"]`
+    Dylib,
+    /// `#![crate_type = "rlib"]` or `#![crate_type = "lib"]`
+    #[default]
+    Rlib,
+    /// `#![crate_type = "staticlib"]`
+    StaticLib,
+    /// `#![crate_type = "cdylib"]`
+    Cdylib,
+    /// `#![crate_type = "proc-macro"]`
+    ProcMacro,
+    /// `#![crate_type = "sdylib"]`
+    // Unstable; feature(export_stable)
+    Sdylib,
+}
+
+impl CrateType {
+    /// Pairs of each `#[crate_type] = "..."` value and the crate type it resolves to
+    pub fn all() -> &'static [(Symbol, Self)] {
+        debug_assert_eq!(CrateType::default(), CrateType::Rlib);
+        &[
+            (rustc_span::sym::lib, CrateType::Rlib),
+            (rustc_span::sym::rlib, CrateType::Rlib),
+            (rustc_span::sym::dylib, CrateType::Dylib),
+            (rustc_span::sym::cdylib, CrateType::Cdylib),
+            (rustc_span::sym::staticlib, CrateType::StaticLib),
+            (rustc_span::sym::proc_dash_macro, CrateType::ProcMacro),
+            (rustc_span::sym::bin, CrateType::Executable),
+            (rustc_span::sym::sdylib, CrateType::Sdylib),
+        ]
+    }
+
+    /// Same as [`CrateType::all`], but does not include unstable options.
+    /// Used for diagnostics.
+    pub fn all_stable() -> &'static [(Symbol, Self)] {
+        debug_assert_eq!(CrateType::default(), CrateType::Rlib);
+        &[
+            (rustc_span::sym::lib, CrateType::Rlib),
+            (rustc_span::sym::rlib, CrateType::Rlib),
+            (rustc_span::sym::dylib, CrateType::Dylib),
+            (rustc_span::sym::cdylib, CrateType::Cdylib),
+            (rustc_span::sym::staticlib, CrateType::StaticLib),
+            (rustc_span::sym::proc_dash_macro, CrateType::ProcMacro),
+            (rustc_span::sym::bin, CrateType::Executable),
+        ]
+    }
+
+    pub fn has_metadata(self) -> bool {
+        match self {
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+            CrateType::Executable
+            | CrateType::Cdylib
+            | CrateType::StaticLib
+            | CrateType::Sdylib => false,
+        }
+    }
+}
+
+impl TryFrom<Symbol> for CrateType {
+    type Error = ();
+
+    fn try_from(value: Symbol) -> Result<Self, Self::Error> {
+        Ok(match value {
+            rustc_span::sym::bin => CrateType::Executable,
+            rustc_span::sym::dylib => CrateType::Dylib,
+            rustc_span::sym::staticlib => CrateType::StaticLib,
+            rustc_span::sym::cdylib => CrateType::Cdylib,
+            rustc_span::sym::rlib => CrateType::Rlib,
+            rustc_span::sym::lib => CrateType::default(),
+            rustc_span::sym::proc_dash_macro => CrateType::ProcMacro,
+            rustc_span::sym::sdylib => CrateType::Sdylib,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl std::fmt::Display for CrateType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            CrateType::Executable => "bin".fmt(f),
+            CrateType::Dylib => "dylib".fmt(f),
+            CrateType::Rlib => "rlib".fmt(f),
+            CrateType::StaticLib => "staticlib".fmt(f),
+            CrateType::Cdylib => "cdylib".fmt(f),
+            CrateType::ProcMacro => "proc-macro".fmt(f),
+            CrateType::Sdylib => "sdylib".fmt(f),
+        }
+    }
+}
+
+impl IntoDiagArg for CrateType {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
+    }
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -718,6 +820,9 @@ pub enum AttributeKind {
 
     /// Represents `#[crate_name = ...]`
     CrateName { name: Symbol, name_span: Span, attr_span: Span },
+
+    /// Represents `#![crate_type = ...]`
+    CrateType(ThinVec<CrateType>),
 
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),

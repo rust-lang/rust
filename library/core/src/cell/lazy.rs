@@ -175,7 +175,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "lazy_get", since = "1.94.0")]
     pub fn force_mut(this: &mut LazyCell<T, F>) -> &mut T {
         #[cold]
         /// # Safety
@@ -273,7 +273,7 @@ impl<T, F> LazyCell<T, F> {
     /// assert_eq!(*lazy, 44);
     /// ```
     #[inline]
-    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "lazy_get", since = "1.94.0")]
     pub fn get_mut(this: &mut LazyCell<T, F>) -> Option<&mut T> {
         let state = this.state.get_mut();
         match state {
@@ -297,7 +297,7 @@ impl<T, F> LazyCell<T, F> {
     /// assert_eq!(LazyCell::get(&lazy), Some(&92));
     /// ```
     #[inline]
-    #[stable(feature = "lazy_get", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "lazy_get", since = "1.94.0")]
     pub fn get(this: &LazyCell<T, F>) -> Option<&T> {
         // SAFETY:
         // This is sound for the same reason as in `force`: once the state is

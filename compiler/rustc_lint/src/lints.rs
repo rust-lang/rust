@@ -3310,3 +3310,18 @@ pub(crate) struct AttrCrateLevelOnly;
 #[derive(LintDiagnostic)]
 #[diag(lint_incorrect_do_not_recommend_args)]
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_crate_type_value)]
+pub(crate) struct UnknownCrateTypes {
+    #[subdiagnostic]
+    pub sugg: Option<UnknownCrateTypesSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(lint_suggestion, code = r#""{snippet}""#, applicability = "maybe-incorrect")]
+pub(crate) struct UnknownCrateTypesSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: Symbol,
+}

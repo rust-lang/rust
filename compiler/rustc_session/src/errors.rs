@@ -11,7 +11,6 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
-use crate::config::CrateType;
 use crate::parse::ParseSess;
 
 #[derive(Diagnostic)]
@@ -374,20 +373,6 @@ struct BinaryFloatLiteralNotSupported {
     #[primary_span]
     #[label(session_not_supported)]
     span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_unsupported_crate_type_for_codegen_backend)]
-pub(crate) struct UnsupportedCrateTypeForCodegenBackend {
-    pub(crate) crate_type: CrateType,
-    pub(crate) codegen_backend: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_unsupported_crate_type_for_target)]
-pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
-    pub(crate) crate_type: CrateType,
-    pub(crate) target_triple: &'a TargetTuple,
 }
 
 pub fn report_lit_error(
