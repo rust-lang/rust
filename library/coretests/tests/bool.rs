@@ -82,16 +82,16 @@ pub fn test_bool_not() {
     }
 }
 
+const fn zero() -> i32 {
+    0
+}
+
 #[test]
 fn test_bool_to_option() {
     assert_eq!(false.then_some(0), None);
     assert_eq!(true.then_some(0), Some(0));
     assert_eq!(false.then(|| 0), None);
     assert_eq!(true.then(|| 0), Some(0));
-
-    const fn zero() -> i32 {
-        0
-    }
 
     const A: Option<i32> = false.then_some(0);
     const B: Option<i32> = true.then_some(0);
