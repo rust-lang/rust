@@ -51,7 +51,7 @@ impl ::core::default::Default for Empty {
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {}
 }
 #[automatically_derived]
 impl ::core::marker::StructuralPartialEq for Empty { }
@@ -65,7 +65,7 @@ impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {}
+    fn assert_receiver_is_total_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
@@ -123,7 +123,7 @@ impl ::core::default::Default for Point {
 #[automatically_derived]
 impl ::core::hash::Hash for Point {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.x, state);
         ::core::hash::Hash::hash(&self.y, state)
     }
@@ -142,7 +142,7 @@ impl ::core::cmp::Eq for Point {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -211,7 +211,7 @@ impl ::core::default::Default for PackedPoint {
 #[automatically_derived]
 impl ::core::hash::Hash for PackedPoint {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&{ self.x }, state);
         ::core::hash::Hash::hash(&{ self.y }, state)
     }
@@ -230,7 +230,7 @@ impl ::core::cmp::Eq for PackedPoint {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -297,7 +297,7 @@ impl ::core::convert::From<u32> for TupleSingleField {
 #[automatically_derived]
 impl ::core::hash::Hash for TupleSingleField {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.0, state)
     }
 }
@@ -313,7 +313,7 @@ impl ::core::cmp::Eq for TupleSingleField {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -372,7 +372,7 @@ impl ::core::convert::From<bool> for SingleField {
 #[automatically_derived]
 impl ::core::hash::Hash for SingleField {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.foo, state)
     }
 }
@@ -388,7 +388,7 @@ impl ::core::cmp::Eq for SingleField {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<bool>;
     }
 }
@@ -465,7 +465,7 @@ impl ::core::default::Default for Big {
 #[automatically_derived]
 impl ::core::hash::Hash for Big {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.b1, state);
         ::core::hash::Hash::hash(&self.b2, state);
         ::core::hash::Hash::hash(&self.b3, state);
@@ -493,7 +493,7 @@ impl ::core::cmp::Eq for Big {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -741,7 +741,7 @@ impl ::core::convert::From<[u32]> for Unsized {
 #[automatically_derived]
 impl ::core::hash::Hash for Unsized {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.0, state)
     }
 }
@@ -757,7 +757,7 @@ impl ::core::cmp::Eq for Unsized {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<[u32]>;
     }
 }
@@ -829,7 +829,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
 impl<T: ::core::hash::Hash + Trait, U: ::core::hash::Hash> ::core::hash::Hash
     for Generic<T, U> where T::A: ::core::hash::Hash {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&self.t, state);
         ::core::hash::Hash::hash(&self.ta, state);
         ::core::hash::Hash::hash(&self.u, state)
@@ -852,7 +852,7 @@ impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
         let _: ::core::cmp::AssertParamIsEq<U>;
@@ -946,7 +946,7 @@ impl<T: ::core::hash::Hash + ::core::marker::Copy + Trait,
     PackedGeneric<T, U> where T::A: ::core::hash::Hash + ::core::marker::Copy
     {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         ::core::hash::Hash::hash(&{ self.0 }, state);
         ::core::hash::Hash::hash(&{ self.1 }, state);
         ::core::hash::Hash::hash(&{ self.2 }, state)
@@ -974,7 +974,7 @@ impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
         let _: ::core::cmp::AssertParamIsEq<U>;
@@ -1043,7 +1043,7 @@ impl ::core::fmt::Debug for Enum0 {
 #[automatically_derived]
 impl ::core::hash::Hash for Enum0 {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         match *self {}
     }
 }
@@ -1059,7 +1059,7 @@ impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {}
+    fn assert_receiver_is_total_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
@@ -1105,7 +1105,7 @@ impl ::core::fmt::Debug for Enum1 {
 #[automatically_derived]
 impl ::core::hash::Hash for Enum1 {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         match self {
             Enum1::Single { x: __self_0 } =>
                 ::core::hash::Hash::hash(__self_0, state),
@@ -1129,7 +1129,7 @@ impl ::core::cmp::Eq for Enum1 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -1181,7 +1181,7 @@ impl ::core::default::Default for Fieldless1 {
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless1 {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {}
 }
 #[automatically_derived]
 impl ::core::marker::StructuralPartialEq for Fieldless1 { }
@@ -1195,7 +1195,7 @@ impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {}
+    fn assert_receiver_is_total_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
@@ -1251,7 +1251,7 @@ impl ::core::default::Default for Fieldless {
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state)
     }
@@ -1272,7 +1272,7 @@ impl ::core::cmp::Eq for Fieldless {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {}
+    fn assert_receiver_is_total_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
@@ -1345,7 +1345,7 @@ impl ::core::default::Default for Mixed {
 #[automatically_derived]
 impl ::core::hash::Hash for Mixed {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
         match self {
@@ -1382,7 +1382,7 @@ impl ::core::cmp::Eq for Mixed {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1545,7 +1545,7 @@ impl ::core::fmt::Debug for Fielded {
 #[automatically_derived]
 impl ::core::hash::Hash for Fielded {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
         match self {
@@ -1580,7 +1580,7 @@ impl ::core::cmp::Eq for Fielded {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<bool>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1666,7 +1666,7 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
 impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
     EnumGeneric<T, U> {
     #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
         match self {
@@ -1702,7 +1702,7 @@ impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) -> () {
+    fn assert_receiver_is_total_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<U>;
     }
