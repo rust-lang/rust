@@ -45,6 +45,8 @@ pub enum TypeKind {
     Tuple(Tuple),
     /// Arrays.
     Array(Array),
+    /// Slices.
+    Slice(Slice),
     /// Primitive boolean type.
     Bool(Bool),
     /// Primitive character type.
@@ -92,6 +94,15 @@ pub struct Array {
     pub element_ty: TypeId,
     /// The length of the array.
     pub len: usize,
+}
+
+/// Compile-time type information about slices.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Slice {
+    /// The type of each element in the slice.
+    pub element_ty: TypeId,
 }
 
 /// Compile-time type information about `bool`.
