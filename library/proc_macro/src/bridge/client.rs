@@ -25,7 +25,7 @@ impl !Sync for TokenStream {}
 // Forward `Drop::drop` to the inherent `drop` method.
 impl Drop for TokenStream {
     fn drop(&mut self) {
-        FreeFunctions::tt_drop(TokenStream { handle: self.handle });
+        Methods::tt_drop(TokenStream { handle: self.handle });
     }
 }
 
@@ -75,7 +75,7 @@ impl<S> Decode<'_, '_, S> for Span {
 
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
-        FreeFunctions::tt_clone(self)
+        Methods::tt_clone(self)
     }
 }
 
@@ -95,21 +95,21 @@ impl Span {
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&FreeFunctions::span_debug(*self))
+        f.write_str(&Methods::span_debug(*self))
     }
 }
 
-pub(crate) use super::FreeFunctions;
+pub(crate) use super::Methods;
 pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     (
-        FreeFunctions {
+        Methods {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         },
         $($name:ident),* $(,)?
     ) => {
-        impl FreeFunctions {
+        impl Methods {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {
                 Bridge::with(|bridge| {
                     let mut buf = bridge.cached_buffer.take();

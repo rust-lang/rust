@@ -21,7 +21,7 @@ use crate::{Delimiter, Level, Spacing};
 /// `with_api!(MySelf, my_self, my_macro)` expands to:
 /// ```rust,ignore (pseudo-code)
 /// my_macro! {
-///     FreeFunctions {
+///     Methods {
 ///         // ...
 ///         fn lit_character(ch: char) -> MySelf::Literal;
 ///         // ...
@@ -49,7 +49,7 @@ use crate::{Delimiter, Level, Spacing};
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
-            FreeFunctions {
+            Methods {
                 fn injected_env_var(var: &str) -> Option<String>;
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
@@ -103,7 +103,7 @@ macro_rules! with_api {
     };
 }
 
-pub(crate) struct FreeFunctions;
+pub(crate) struct Methods;
 
 #[allow(unsafe_code)]
 mod arena;
@@ -158,7 +158,7 @@ mod api_tags {
 
     macro_rules! declare_tags {
         (
-            FreeFunctions {
+            Methods {
                 $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
             },
             $($name:ident),* $(,)?

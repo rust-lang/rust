@@ -431,8 +431,6 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub(crate) struct FreeFunctions;
-
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
     def_site: Span,
@@ -461,13 +459,28 @@ impl<'a, 'b> Rustc<'a, 'b> {
 }
 
 impl server::Types for Rustc<'_, '_> {
-    type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type Span = Span;
     type Symbol = Symbol;
 }
 
-impl server::FreeFunctions for Rustc<'_, '_> {
+impl server::Server for Rustc<'_, '_> {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
+            def_site: self.def_site,
+            call_site: self.call_site,
+            mixed_site: self.mixed_site,
+        }
+    }
+
+    fn intern_symbol(string: &str) -> Self::Symbol {
+        Symbol::intern(string)
+    }
+
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(symbol.as_str())
+    }
+
     fn injected_env_var(&mut self, var: &str) -> Option<String> {
         self.ecx.sess.opts.logical_env.get(var).cloned()
     }
@@ -841,23 +854,5 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     fn symbol_normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
         let sym = nfc_normalize(string);
         if rustc_lexer::is_ident(sym.as_str()) { Ok(sym) } else { Err(()) }
-    }
-}
-
-impl server::Server for Rustc<'_, '_> {
-    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
-        ExpnGlobals {
-            def_site: self.def_site,
-            call_site: self.call_site,
-            mixed_site: self.mixed_site,
-        }
-    }
-
-    fn intern_symbol(string: &str) -> Self::Symbol {
-        Symbol::intern(string)
-    }
-
-    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(symbol.as_str())
     }
 }
