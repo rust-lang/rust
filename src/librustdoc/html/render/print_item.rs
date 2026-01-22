@@ -217,6 +217,10 @@ fn toggle_close(mut w: impl fmt::Write) {
 }
 
 fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> impl fmt::Display {
+    fn deprecation_class_attr(is_deprecated: bool) -> &'static str {
+        if is_deprecated { " class=\"deprecated\"" } else { "" }
+    }
+
     fmt::from_fn(|w| {
         write!(w, "{}", document(cx, item, None, HeadingOffset::H2))?;
 
@@ -340,15 +344,38 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             }
 
             for (_, myitem) in &not_stripped_items[&type_] {
+                let visibility_and_hidden = |item: &clean::Item| match item.visibility(tcx) {
+                    Some(ty::Visibility::Restricted(_)) => {
+                        if item.is_doc_hidden() {
+                            // Don't separate with a space when there are two of them
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                        } else {
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        }
+                    }
+                    _ if item.is_doc_hidden() => "<span title=\"Hidden item\">&nbsp;👻</span> ",
+                    _ => "",
+                };
+
                 match myitem.kind {
                     clean::ExternCrateItem { ref src } => {
                         use crate::html::format::print_anchor;
 
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
+                        // Module listings use the hidden marker, so skip doc(hidden) here.
+                        super::render_attributes_in_code_with_options(
+                            w,
+                            myitem,
+                            "",
+                            cx,
+                            false,
+                            "<dt><code>",
+                        )?;
                         match *src {
                             Some(src) => {
                                 write!(
                                     w,
-                                    "<dt><code>{}extern crate {} as {};",
+                                    "{}extern crate {} as {};",
                                     visibility_print_with_space(myitem, cx),
                                     print_anchor(myitem.item_id.expect_def_id(), src, cx),
                                     EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
@@ -357,7 +384,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             None => {
                                 write!(
                                     w,
-                                    "<dt><code>{}extern crate {};",
+                                    "{}extern crate {};",
                                     visibility_print_with_space(myitem, cx),
                                     print_anchor(
                                         myitem.item_id.expect_def_id(),
@@ -367,14 +394,22 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 )?;
                             }
                         }
-                        write!(w, "</code></dt>")?
+                        write!(w, "</code>{visibility_and_hidden}</dt>")?
                     }
                     clean::ImportItem(ref import) => {
-                        let stab_tags =
-                            import.source.did.map_or_else(String::new, |import_def_id| {
-                                print_extra_info_tags(tcx, myitem, item, Some(import_def_id))
-                                    .to_string()
-                            });
+                        let (stab_tags, deprecation) = match import.source.did {
+                            Some(import_def_id) => {
+                                let stab_tags =
+                                    print_extra_info_tags(tcx, myitem, item, Some(import_def_id))
+                                        .to_string();
+                                let deprecation = tcx
+                                    .lookup_deprecation(import_def_id)
+                                    .is_some_and(|deprecation| deprecation.is_in_effect());
+                                (stab_tags, deprecation)
+                            }
+                            None => (String::new(), item.is_deprecated(tcx)),
+                        };
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
                         let id = match import.kind {
                             clean::ImportKind::Simple(s) => {
                                 format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
@@ -383,22 +418,20 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         };
                         write!(
                             w,
-                            "<dt{id}>\
-                                <code>"
+                            "<dt{id}{deprecation_attr}><code>",
+                            deprecation_attr = deprecation_class_attr(deprecation)
                         )?;
-                        render_attributes_in_code(w, myitem, "", cx)?;
                         write!(
                             w,
-                            "{vis}{imp}</code>{stab_tags}\
+                            "{vis}{imp}</code>{visibility_and_hidden}{stab_tags}\
                             </dt>",
                             vis = visibility_print_with_space(myitem, cx),
                             imp = print_import(import, cx),
+                            visibility_and_hidden = visibility_and_hidden,
                         )?;
                     }
                     _ => {
-                        if myitem.name.is_none() {
-                            continue;
-                        }
+                        let Some(item_name) = myitem.name else { continue };
 
                         let unsafety_flag = match myitem.kind {
                             clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
@@ -412,28 +445,16 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             }
                             _ => "",
                         };
-                        let visibility_and_hidden = match myitem.visibility(tcx) {
-                            Some(ty::Visibility::Restricted(_)) => {
-                                if myitem.is_doc_hidden() {
-                                    // Don't separate with a space when there are two of them
-                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
-                                } else {
-                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
-                                }
-                            }
-                            _ if myitem.is_doc_hidden() => {
-                                "<span title=\"Hidden item\">&nbsp;👻</span> "
-                            }
-                            _ => "",
-                        };
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
 
                         let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
                             .into_string();
                         let (docs_before, docs_after) =
                             if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
+                        let deprecation_attr = deprecation_class_attr(myitem.is_deprecated(tcx));
                         write!(
                             w,
-                            "<dt>\
+                            "<dt{deprecation_attr}>\
                                 <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
                                 {name}\
                                 </a>\
@@ -442,12 +463,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 {stab_tags}\
                             </dt>\
                             {docs_before}{docs}{docs_after}",
-                            name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
+                            name = EscapeBodyTextWithWbr(item_name.as_str()),
                             visibility_and_hidden = visibility_and_hidden,
                             stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                             class = type_,
                             unsafety_flag = unsafety_flag,
-                            href = print_item_path(type_, myitem.name.unwrap().as_str()),
+                            href = print_item_path(type_, item_name.as_str()),
                             title1 = myitem.type_(),
                             title2 = full_path(cx, myitem),
                         )?;
@@ -778,15 +799,24 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
 
                 let content = document_full(m, cx, HeadingOffset::H5).to_string();
 
+                let mut deprecation_class =
+                    if m.is_deprecated(cx.tcx()) { " deprecated" } else { "" };
+
                 let toggled = !content.is_empty();
                 if toggled {
                     let method_toggle_class =
                         if item_type.is_method() { " method-toggle" } else { "" };
-                    write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>")?;
+                    write!(
+                        w,
+                        "<details \
+                            class=\"toggle{method_toggle_class}{deprecation_class}\" \
+                            open><summary>"
+                    )?;
+                    deprecation_class = "";
                 }
                 write!(
                     w,
-                    "<section id=\"{id}\" class=\"method\">\
+                    "<section id=\"{id}\" class=\"method{deprecation_class}\">\
                     {}\
                     <h4 class=\"code-header\">{}</h4></section>",
                     render_rightside(cx, m, RenderMode::Normal),
@@ -1849,7 +1879,6 @@ fn item_variants(
 fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
-            // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
             render_attributes_in_code(w, it, "", cx)?;
             if !t.macro_rules {
                 write!(w, "{}", visibility_print_with_space(it, cx))?;

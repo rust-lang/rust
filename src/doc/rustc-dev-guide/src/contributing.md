@@ -283,7 +283,7 @@ this can take a while and the queue can sometimes be long.
 Also, note that PRs are never merged by hand.
 
 [@rustbot]: https://github.com/rustbot
-[@bors]: https://github.com/bors
+[@bors]: https://github.com/rust-lang/bors
 
 ### Opening a PR
 

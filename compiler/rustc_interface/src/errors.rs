@@ -1,8 +1,10 @@
 use std::io;
 use std::path::Path;
 
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_hir::attrs::CrateType;
+use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTuple;
 
 #[derive(Diagnostic)]
 #[diag(interface_crate_name_does_not_match)]
@@ -109,17 +111,16 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub enabled: &'a str,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(interface_invalid_crate_type_value)]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSub>,
+#[derive(Diagnostic)]
+#[diag(interface_unsupported_crate_type_for_codegen_backend)]
+pub(crate) struct UnsupportedCrateTypeForCodegenBackend {
+    pub(crate) crate_type: CrateType,
+    pub(crate) codegen_backend: &'static str,
 }
 
-#[derive(Subdiagnostic)]
-#[suggestion(interface_suggestion, code = r#""{snippet}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSub {
-    #[primary_span]
-    pub span: Span,
-    pub snippet: Symbol,
+#[derive(Diagnostic)]
+#[diag(interface_unsupported_crate_type_for_target)]
+pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
+    pub(crate) crate_type: CrateType,
+    pub(crate) target_triple: &'a TargetTuple,
 }

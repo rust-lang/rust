@@ -648,7 +648,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                         p.push_ident(name.as_str());
                         match projection.term.kind() {
                             ty::TermKind::Ty(ty) => ty.print(p),
-                            ty::TermKind::Const(c) => c.print(p),
+                            ty::TermKind::Const(c) => {
+                                p.push("K");
+                                c.print(p)
+                            }
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {

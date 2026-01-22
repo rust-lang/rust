@@ -40,6 +40,8 @@ note: `issue_114682_5_extern_1` could refer to the module defined here
    |
 LL |     pub use crate::types::*;
    |             ^^^^^^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `issue_114682_5_extern_1` could also refer to the crate defined here
   --> $DIR/auxiliary/issue-114682-5-extern-2.rs:7:13
    |
@@ -67,6 +69,8 @@ note: `issue_114682_5_extern_1` could refer to the module defined here
    |
 LL |     pub use crate::types::*;
    |             ^^^^^^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `issue_114682_5_extern_1` could also refer to the crate defined here
   --> $DIR/auxiliary/issue-114682-5-extern-2.rs:7:13
    |

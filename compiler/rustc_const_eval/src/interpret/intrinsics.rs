@@ -4,10 +4,9 @@
 
 mod simd;
 
-use std::assert_matches::assert_matches;
-
 use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};

@@ -20,6 +20,7 @@ pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
         &[
             // tidy-alphabetical-start
             "tests/assembly-llvm",
+            "tests/build-std",
             "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/coverage",

@@ -77,6 +77,7 @@ string_enum! {
         RustdocUi => "rustdoc-ui",
         Ui => "ui",
         UiFullDeps => "ui-fulldeps",
+        BuildStd => "build-std",
     }
 }
 

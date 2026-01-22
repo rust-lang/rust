@@ -1,7 +1,7 @@
-use std::assert_matches::assert_matches;
 use std::{fmt, iter};
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;

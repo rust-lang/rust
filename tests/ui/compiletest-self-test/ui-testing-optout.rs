@@ -1,4 +1,4 @@
-//@ compile-flags: -Z ui-testing=no
+//@ compile-flags: -Z ui-testing=no --diagnostic-width=80
 
 // Line number < 10
 type A = B; //~ ERROR

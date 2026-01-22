@@ -1,5 +1,5 @@
 use super::PidFd as InternalPidFd;
-use crate::assert_matches::assert_matches;
+use crate::assert_matches;
 use crate::os::fd::AsRawFd;
 use crate::os::linux::process::{ChildExt, CommandExt as _};
 use crate::os::unix::process::{CommandExt as _, ExitStatusExt};

@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::ptr;
@@ -13,6 +12,7 @@ use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphizati
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
@@ -269,14 +269,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
-            sym::va_copy => {
-                let dest = args[0].immediate();
-                self.call_intrinsic(
-                    "llvm.va_copy",
-                    &[self.val_ty(dest)],
-                    &[dest, args[1].immediate()],
-                )
-            }
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
@@ -558,6 +550,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::amdgpu_dispatch_ptr => {
+                let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
+                // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
+                self.pointercast(val, self.type_ptr())
             }
 
             _ if name.as_str().starts_with("simd_") => {
@@ -1388,7 +1386,8 @@ fn codegen_offload<'ll, 'tcx>(
     let args = get_args_from_tuple(bx, args[3], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
-    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
+    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder();
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
@@ -1403,7 +1402,7 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
+    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
     gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
 }
 

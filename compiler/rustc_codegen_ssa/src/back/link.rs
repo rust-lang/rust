@@ -136,7 +136,7 @@ pub fn link_binary(
                     )
                     .build(&out_filename);
                 }
-                CrateType::Staticlib => {
+                CrateType::StaticLib => {
                     link_staticlib(
                         sess,
                         archive_builder_builder,
@@ -474,7 +474,7 @@ fn link_staticlib(
 
     let res = each_linked_rlib(
         &codegen_results.crate_info,
-        Some(CrateType::Staticlib),
+        Some(CrateType::StaticLib),
         &mut |cnum, path| {
             let lto = are_upstream_rust_objects_already_included(sess)
                 && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
@@ -532,7 +532,7 @@ fn link_staticlib(
     let fmts = codegen_results
         .crate_info
         .dependency_formats
-        .get(&CrateType::Staticlib)
+        .get(&CrateType::StaticLib)
         .expect("no dependency formats for staticlib");
 
     let mut all_rust_dylibs = vec![];
@@ -1210,7 +1210,7 @@ fn add_sanitizer_libraries(
         return;
     }
 
-    if matches!(crate_type, CrateType::Rlib | CrateType::Staticlib) {
+    if matches!(crate_type, CrateType::Rlib | CrateType::StaticLib) {
         return;
     }
 

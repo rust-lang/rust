@@ -499,6 +499,7 @@ trigger_files = [
     "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
+    "src/tools/build-manifest",
     "src/tools/rust-installer",
     "src/tools/x",
     "src/stage0",
@@ -1458,7 +1459,6 @@ compiler = [
     "@jieyouxu",
     "@jdonszelmann",
     "@JonathanBrouwer",
-    "@lcnr",
     "@madsmtm",
     "@mati865",
     "@Nadrieril",
@@ -1466,6 +1466,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@tiif",
     "@WaffleLapkin",
     "@wesleywiser",
 ]
@@ -1656,6 +1657,7 @@ dep-bumps = [
 "/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
+"/src/tools/build-manifest" =                            ["bootstrap"]
 "/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]

@@ -12,6 +12,8 @@ note: `C` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `C` could also refer to the type alias defined here
   --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
    |
@@ -58,6 +60,8 @@ note: `C` could refer to the type alias defined here
    |
 LL | pub use a::*;
    |         ^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `C` could also refer to the type alias defined here
   --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
    |

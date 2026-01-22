@@ -96,9 +96,9 @@ Once you have made a number of individual PRs to rustc, we will often
 offer r+ privileges. This means that you have the right to instruct
 "bors" (the robot that manages which PRs get landed into rustc) to
 merge a PR
-([here are some instructions for how to talk to bors][homu-guide]).
+([here are some instructions for how to talk to bors][bors-guide]).
 
-[homu-guide]: https://bors.rust-lang.org/
+[bors-guide]: https://bors.rust-lang.org/
 
 The guidelines for reviewers are as follows:
 

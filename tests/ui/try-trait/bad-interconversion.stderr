@@ -18,7 +18,7 @@ help: the following other types implement trait `From<T>`
    = note: in this macro invocation
   --> $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
-   = note: `u8` implements `From<Char>`
+   = note: `u8` implements `From<std::ascii::Char>`
   ::: $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
    = note: in this macro invocation

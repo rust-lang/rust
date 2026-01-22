@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 
-use rustc_abi::{Align, CanonAbi, Size};
+use rustc_abi::{Align, CanonAbi, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::either::Either;
 use rustc_hir::attrs::Linkage;
@@ -434,6 +434,40 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_path_to_c_str(Path::new(&path), out, out_size)?;
                 // Return value: 0 on success, otherwise the size it would have needed.
                 this.write_int(if success { 0 } else { needed_size }, dest)?;
+            }
+            "miri_thread_spawn" => {
+                // FIXME: `check_shim_sig` does not work with function pointers.
+                let [start_routine, func_arg] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let start_routine = this.read_pointer(start_routine)?;
+                let func_arg = this.read_immediate(func_arg)?;
+
+                this.start_regular_thread(
+                    Some(dest.clone()),
+                    start_routine,
+                    ExternAbi::Rust,
+                    func_arg,
+                    this.machine.layouts.unit,
+                )?;
+            }
+            "miri_thread_join" => {
+                let [thread_id] = this.check_shim_sig(
+                    shim_sig!(extern "Rust" fn(usize) -> bool),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                let thread = this.read_target_usize(thread_id)?;
+                if let Ok(thread) = this.thread_id_try_from(thread) {
+                    this.join_thread_exclusive(
+                        thread,
+                        /* success_retval */ Scalar::from_bool(true),
+                        dest,
+                    )?;
+                } else {
+                    this.write_scalar(Scalar::from_bool(false), dest)?;
+                }
             }
             // Hint that a loop is spinning indefinitely.
             "miri_spin_loop" => {

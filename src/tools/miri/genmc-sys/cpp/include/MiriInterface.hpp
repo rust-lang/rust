@@ -79,7 +79,7 @@ struct MiriGenmcShim : private GenMCDriver {
     void handle_execution_start();
     // This function must be called at the end of any execution, even if an error was found
     // during the execution.
-    // Returns `null`, or a string containing an error message if an error occured.
+    // Returns `null`, or a string containing an error message if an error occurred.
     std::unique_ptr<std::string> handle_execution_end();
 
     /***** Functions for handling events encountered during program execution. *****/

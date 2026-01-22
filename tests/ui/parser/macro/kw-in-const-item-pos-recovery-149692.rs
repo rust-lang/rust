@@ -6,6 +6,7 @@ macro_rules! m {
 }
 
 m!(const Self());
-//~^ ERROR expected one of `!` or `::`, found `(`
+//~^ ERROR expected identifier, found keyword `Self`
+//~^^ ERROR missing `fn` or `struct` for function or struct definition
 
 fn main() {}

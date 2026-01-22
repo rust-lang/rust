@@ -1,0 +1,18 @@
+error[E0393]: the const parameter `N` must be explicitly specified
+  --> $DIR/dyn-compat-const-param-default-mentions-self.rs:20:16
+   |
+LL | trait X<const N: usize = { <Self as Y>::N }> {}
+   | -------------------------------------------- const parameter `N` must be specified for this
+...
+LL |     let _: dyn X;
+   |                ^
+   |
+   = note: because the parameter default references `Self`, the parameter must be specified on the trait object type
+help: explicitly specify the const parameter
+   |
+LL |     let _: dyn X</* N */>;
+   |                 +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0393`.

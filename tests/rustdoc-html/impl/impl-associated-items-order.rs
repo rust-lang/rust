@@ -16,7 +16,7 @@ impl Bar {
     // 'pub fn foo()'
     pub fn foo() {}
     //@ has - '//*[@id="implementations-list"]//*[@class="impl-items"]/section[1]/h4' \
-    // 'pub const X: u8 = 12u8'
+    // 'pub const X: u8 = 12'
     pub const X: u8 = 12;
     //@ has - '//*[@id="implementations-list"]//*[@class="impl-items"]/section[2]/h4' \
     // 'pub type Y = u8'
@@ -34,7 +34,7 @@ impl Foo for Bar {
     // 'type Z = u8'
     type Z = u8;
     //@ has - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]/section[1]/h4' \
-    // 'const W: u32 = 12u32'
+    // 'const W: u32 = 12'
     const W: u32 = 12;
     //@ has - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]/section[3]/h4' \
     // 'fn yeay()'

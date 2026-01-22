@@ -1,7 +1,6 @@
-use std::assert_matches::debug_assert_matches;
-
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_data_structures::debug_assert_matches;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
@@ -233,7 +232,6 @@ pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tc
     backtrace.print_backtrace();
     // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
     // label and arguments from the InterpError.
-    #[allow(rustc::untranslatable_diagnostic)]
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
     e.add_args(&mut diag);

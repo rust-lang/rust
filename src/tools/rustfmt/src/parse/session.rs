@@ -3,7 +3,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+use rustc_errors::emitter::{DynEmitter, Emitter, SilentEmitter, stderr_destination};
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
@@ -108,7 +109,7 @@ fn default_dcx(
 
     let emitter: Box<DynEmitter> = if show_parse_errors {
         Box::new(
-            HumanEmitter::new(stderr_destination(emit_color), translator)
+            AnnotateSnippetEmitter::new(stderr_destination(emit_color), translator)
                 .sm(Some(source_map.clone())),
         )
     } else {
@@ -349,7 +350,6 @@ mod tests {
         }
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> DiagInner {
-            #[allow(rustc::untranslatable_diagnostic)] // no translation needed for empty string
             let mut diag = DiagInner::new(level, "");
             diag.messages.clear();
             if let Some(span) = span {

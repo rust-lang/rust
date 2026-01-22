@@ -1,4 +1,4 @@
-//@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]
@@ -48,7 +48,6 @@ fn main() {
     test_nofollow_not_symlink();
     #[cfg(target_os = "macos")]
     test_ioctl();
-    test_close_stdout();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -578,13 +577,5 @@ fn test_ioctl() {
 
         let fd = libc::open(name_ptr, libc::O_RDONLY);
         assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
-    }
-}
-
-fn test_close_stdout() {
-    // This is std library UB, but that's not relevant since we're
-    // only interacting with libc here.
-    unsafe {
-        libc::close(1);
     }
 }

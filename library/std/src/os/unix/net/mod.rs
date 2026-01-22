@@ -47,5 +47,5 @@ pub use self::stream::*;
     target_vendor = "apple",
     target_os = "cygwin",
 ))]
-#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+#[unstable(feature = "peer_credentials_unix_socket", issue = "42839")]
 pub use self::ucred::*;

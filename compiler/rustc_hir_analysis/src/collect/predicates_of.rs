@@ -1,6 +1,5 @@
-use std::assert_matches::assert_matches;
-
 use hir::Node;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;

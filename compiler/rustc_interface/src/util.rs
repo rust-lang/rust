@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 use std::{env, thread};
 
 use rustc_ast as ast;
-use rustc_attr_parsing::{ShouldEmit, validate_attr};
+use rustc_attr_parsing::ShouldEmit;
 use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
@@ -15,16 +15,13 @@ use rustc_codegen_ssa::{CodegenResults, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
-use rustc_errors::LintBuffer;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
-use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
-use rustc_session::{EarlyDiagCtxt, Session, filesearch, lint};
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
@@ -119,8 +116,6 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
             // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
             .map(|s| {
                 let s = s.trim();
-                // FIXME(workingjubilee): add proper diagnostics when we factor out "pre-run" setup
-                #[allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
                 s.parse::<usize>().unwrap_or_else(|_| {
                     let mut err = early_dcx.early_struct_fatal(format!(
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
@@ -301,7 +296,6 @@ pub(crate) fn run_in_thread_pool_with_globals<
     })
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     match unsafe { load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend") } {
         Ok(backend_sym) => backend_sym,
@@ -434,8 +428,6 @@ impl CodegenBackend for DummyCodegenBackend {
             .find(|&&crate_type| crate_type != CrateType::Rlib)
             && outputs.outputs.should_link()
         {
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal(format!(
                 "crate type {crate_type} not supported by the dummy codegen backend"
             ));
@@ -491,7 +483,6 @@ pub fn rustc_path<'a>(sysroot: &Sysroot) -> Option<&'a Path> {
         .as_deref()
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn get_codegen_sysroot(
     early_dcx: &EarlyDiagCtxt,
     sysroot: &Sysroot,
@@ -577,54 +568,6 @@ fn get_codegen_sysroot(
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
             early_dcx.early_fatal(err);
-        }
-    }
-}
-
-pub(crate) fn check_attr_crate_type(
-    sess: &Session,
-    attrs: &[ast::Attribute],
-    lint_buffer: &mut LintBuffer,
-) {
-    // Unconditionally collect crate types from attributes to make them used
-    for a in attrs.iter() {
-        if a.has_name(sym::crate_type) {
-            if let Some(n) = a.value_str() {
-                if categorize_crate_type(n).is_some() {
-                    return;
-                }
-
-                if let ast::MetaItemKind::NameValue(spanned) = a.meta_kind().unwrap() {
-                    let span = spanned.span;
-                    let candidate = find_best_match_for_name(
-                        &CRATE_TYPES.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
-                        n,
-                        None,
-                    );
-                    lint_buffer.buffer_lint(
-                        lint::builtin::UNKNOWN_CRATE_TYPES,
-                        ast::CRATE_NODE_ID,
-                        span,
-                        errors::UnknownCrateTypes {
-                            sugg: candidate
-                                .map(|cand| errors::UnknownCrateTypesSub { span, snippet: cand }),
-                        },
-                    );
-                }
-            } else {
-                // This is here mainly to check for using a macro, such as
-                // `#![crate_type = foo!()]`. That is not supported since the
-                // crate type needs to be known very early in compilation long
-                // before expansion. Otherwise, validation would normally be
-                // caught during semantic analysis via `TyCtxt::check_mod_attrs`,
-                // but by the time that runs the macro is expanded, and it doesn't
-                // give an error.
-                validate_attr::emit_fatal_malformed_builtin_attribute(
-                    &sess.psess,
-                    a,
-                    sym::crate_type,
-                );
-            }
         }
     }
 }
