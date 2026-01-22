@@ -1,6 +1,6 @@
 //! Proc macro ABI
 use crate::{ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
-use proc_macro::bridge;
+use rustc_proc_macro::bridge;
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
