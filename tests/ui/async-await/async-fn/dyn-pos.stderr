@@ -8,7 +8,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
-   = note: the trait is not dyn compatible because it contains the generic associated type `CallRefFuture`
+   = note: the trait is not dyn compatible because it contains generic associated type `CallRefFuture`
 
 error: aborting due to 1 previous error
 

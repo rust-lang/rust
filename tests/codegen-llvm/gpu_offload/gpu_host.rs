@@ -104,3 +104,5 @@ pub fn _kernel_1(x: &mut [f32; 256]) {
 // CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   ret void
 // CHECK-NEXT: }
+
+// CHECK: !{i32 7, !"openmp", i32 51}

@@ -1,5 +1,5 @@
 //! Provider for the `implied_outlives_bounds` query.
-//! Do not call this query directory. See
+//! Do not call this query directly. See
 //! [`rustc_trait_selection::traits::query::type_op::implied_outlives_bounds`].
 
 use rustc_infer::infer::TyCtxtInferExt;

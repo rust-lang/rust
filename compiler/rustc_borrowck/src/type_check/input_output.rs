@@ -7,9 +7,8 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use std::assert_matches::assert_matches;
-
 use itertools::Itertools;
+use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;

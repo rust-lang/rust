@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
@@ -52,5 +51,5 @@ fn custom_coerce_unsize_info<'tcx>(
 
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
-    mono_checks::provide(providers);
+    mono_checks::provide(&mut providers.queries);
 }

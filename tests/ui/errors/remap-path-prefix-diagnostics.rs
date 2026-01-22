@@ -1,4 +1,4 @@
-// This test exercises `-Zremap-path-scope`, diagnostics printing paths and dependency.
+// This test exercises `--remap-path-scope`, diagnostics printing paths and dependency.
 //
 // We test different combinations with/without remap in deps, with/without remap in this
 // crate but always in deps and always here but never in deps.
@@ -12,10 +12,10 @@
 //@[with-debuginfo-in-deps] compile-flags: --remap-path-prefix={{src-base}}=remapped
 //@[not-diag-in-deps] compile-flags: --remap-path-prefix={{src-base}}=remapped
 
-//@[with-diag-in-deps] compile-flags: -Zremap-path-scope=diagnostics
-//@[with-macro-in-deps] compile-flags: -Zremap-path-scope=macro
-//@[with-debuginfo-in-deps] compile-flags: -Zremap-path-scope=debuginfo
-//@[not-diag-in-deps] compile-flags: -Zremap-path-scope=diagnostics
+//@[with-diag-in-deps] compile-flags: --remap-path-scope=diagnostics
+//@[with-macro-in-deps] compile-flags: --remap-path-scope=macro
+//@[with-debuginfo-in-deps] compile-flags: --remap-path-scope=debuginfo
+//@[not-diag-in-deps] compile-flags: --remap-path-scope=diagnostics
 
 //@[with-diag-in-deps] aux-build:trait-diag.rs
 //@[with-macro-in-deps] aux-build:trait-macro.rs

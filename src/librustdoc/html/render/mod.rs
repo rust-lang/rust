@@ -141,7 +141,7 @@ pub(crate) struct IndexItem {
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
-    pub(crate) deprecation: Option<Deprecation>,
+    pub(crate) is_deprecated: bool,
 }
 
 /// A type used for the search index.
@@ -1050,14 +1050,11 @@ fn assoc_const(
             ty = print_type(ty, cx),
         )?;
         if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
-            // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
-            //        hood which adds noisy underscores and a type suffix to number literals.
-            //        This hurts readability in this context especially when more complex expressions
-            //        are involved and it doesn't add much of value.
-            //        Find a way to print constants here without all that jazz.
-            let repr = konst.value(tcx).unwrap_or_else(|| konst.expr(tcx));
+            let repr = konst.expr(tcx);
             if match value {
                 AssocConstValue::TraitDefault(_) => true, // always show
+                // FIXME: Comparing against the special string "_" denoting overly complex const exprs
+                //        is rather hacky; `ConstKind::expr` should have a richer return type.
                 AssocConstValue::Impl(_) => repr != "_", // show if there is a meaningful value to show
                 AssocConstValue::None => unreachable!(),
             } {
@@ -1078,6 +1075,7 @@ fn assoc_type(
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
+        render_attributes_in_code(w, it, &" ".repeat(indent), cx)?;
         write!(
             w,
             "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
@@ -1794,12 +1792,14 @@ fn render_impl(
             let mut info_buffer = String::new();
             let mut short_documented = true;
 
+            let mut trait_item_deprecated = false;
             if render_method_item {
                 if !is_default_item {
                     if let Some(t) = trait_ {
                         // The trait item may have been stripped so we might not
                         // find any documentation or stability for it.
                         if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
+                            trait_item_deprecated = it.is_deprecated(cx.tcx());
                             // We need the stability of the item from the trait
                             // because impls can't have a stability.
                             if !item.doc_value().is_empty() {
@@ -1839,10 +1839,20 @@ fn render_impl(
                 Either::Right(boring)
             };
 
+            let mut deprecation_class = if trait_item_deprecated || item.is_deprecated(cx.tcx()) {
+                " deprecated"
+            } else {
+                ""
+            };
+
             let toggled = !doc_buffer.is_empty();
             if toggled {
                 let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-                write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>")?;
+                write!(
+                    w,
+                    "<details class=\"toggle{method_toggle_class}{deprecation_class}\" open><summary>"
+                )?;
+                deprecation_class = "";
             }
             match &item.kind {
                 clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
@@ -1859,7 +1869,7 @@ fn render_impl(
                             .map(|item| format!("{}.{name}", item.type_()));
                         write!(
                             w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                                 {}",
                             render_rightside(cx, item, render_mode)
                         )?;
@@ -1885,7 +1895,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode)
                     )?;
@@ -1912,7 +1922,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1944,7 +1954,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1971,7 +1981,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -2143,11 +2153,18 @@ fn render_impl(
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
+            let deprecation_attr = if impl_.is_deprecated
+                || trait_.is_some_and(|trait_| trait_.is_deprecated(cx.tcx()))
+            {
+                " deprecated"
+            } else {
+                ""
+            };
             if toggled {
                 close_tags.push("</details>");
                 write!(
                     w,
-                    "<details class=\"toggle implementors-toggle\"{}>\
+                    "<details class=\"toggle implementors-toggle{deprecation_attr}\"{}>\
                         <summary>",
                     if rendering_params.toggle_open_by_default { " open" } else { "" }
                 )?;
@@ -2915,6 +2932,21 @@ fn render_attributes_in_code(
     prefix: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
+    render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
+}
+
+pub(super) fn render_attributes_in_code_with_options(
+    w: &mut impl fmt::Write,
+    item: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+    render_doc_hidden: bool,
+    open_tag: &str,
+) -> fmt::Result {
+    w.write_str(open_tag)?;
+    if render_doc_hidden && item.is_doc_hidden() {
+        render_code_attribute(prefix, "#[doc(hidden)]", w)?;
+    }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {

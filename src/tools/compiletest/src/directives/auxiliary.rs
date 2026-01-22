@@ -7,6 +7,16 @@ use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC
 use crate::common::Config;
 use crate::directives::DirectiveLine;
 
+/// The value of an `aux-crate` directive.
+#[derive(Clone, Debug, Default)]
+pub struct AuxCrate {
+    /// With `aux-crate: foo=bar.rs` this will be `foo`.
+    /// With `aux-crate: noprelude:foo=bar.rs` this will be `noprelude:foo`.
+    pub name: String,
+    /// With `aux-crate: foo=bar.rs` this will be `bar.rs`.
+    pub path: String,
+}
+
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AuxProps {
@@ -17,7 +27,7 @@ pub(crate) struct AuxProps {
     pub(crate) bins: Vec<String>,
     /// Similar to `builds`, but a list of NAME=somelib.rs of dependencies
     /// to build and pass with the `--extern` flag.
-    pub(crate) crates: Vec<(String, String)>,
+    pub(crate) crates: Vec<AuxCrate>,
     /// Same as `builds`, but for proc-macros.
     pub(crate) proc_macros: Vec<String>,
     /// Similar to `builds`, but also uses the resulting dylib as a
@@ -34,7 +44,7 @@ impl AuxProps {
         iter::empty()
             .chain(builds.iter().map(String::as_str))
             .chain(bins.iter().map(String::as_str))
-            .chain(crates.iter().map(|(_, path)| path.as_str()))
+            .chain(crates.iter().map(|c| c.path.as_str()))
             .chain(proc_macros.iter().map(String::as_str))
             .chain(codegen_backend.iter().map(String::as_str))
     }
@@ -63,10 +73,10 @@ pub(super) fn parse_and_update_aux(
     }
 }
 
-fn parse_aux_crate(r: String) -> (String, String) {
+fn parse_aux_crate(r: String) -> AuxCrate {
     let mut parts = r.trim().splitn(2, '=');
-    (
-        parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
-        parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
-    )
+    AuxCrate {
+        name: parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
+        path: parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
+    }
 }

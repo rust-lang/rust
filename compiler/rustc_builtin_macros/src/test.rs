@@ -1,12 +1,12 @@
 //! The expansion from a test function to the appropriate test struct for libtest
 //! Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
-use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
 use rustc_hir::Attribute;

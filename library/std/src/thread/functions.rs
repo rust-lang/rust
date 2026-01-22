@@ -318,6 +318,7 @@ pub fn sleep(dur: Duration) {
 /// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Apple     | `mach_wait_until`                                                    |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
 ///
 /// [currently]: crate::io#platform-specific-behavior

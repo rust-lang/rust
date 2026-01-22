@@ -2,6 +2,7 @@ use std::ffi::CString;
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::bug;
@@ -54,6 +55,10 @@ impl<'ll> OffloadGlobals<'ll> {
         let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
         let init_ty = cx.type_func(&[], cx.type_void());
         let init_rtls = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
+
+        // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
+        // openmp and offload optimizations.
+        llvm::add_module_flag_u32(cx.llmod(), llvm::ModuleFlagMergeBehavior::Max, "openmp", 51);
 
         OffloadGlobals {
             launcher_fn,
@@ -357,7 +362,6 @@ pub(crate) fn add_global<'ll>(
 pub(crate) fn gen_define_handling<'ll>(
     cx: &CodegenCx<'ll, '_>,
     metadata: &[OffloadMetadata],
-    types: &[&'ll Type],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
 ) -> OffloadKernelGlobals<'ll> {
@@ -367,25 +371,18 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let offload_entry_ty = offload_globals.offload_entry_ty;
 
-    // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
-    // reference) types.
-    let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
-        rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
-        _ => None,
-    });
-
     // FIXME(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
-    let (ptr_sizes, ptr_transfer): (Vec<_>, Vec<_>) =
-        ptr_meta.map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
+    let (sizes, transfer): (Vec<_>, Vec<_>) =
+        metadata.iter().map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
 
-    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
+    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
     // will be 2. For now, everything is 3, until we have our frontend set up.
     // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
     let memtransfer_types =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &ptr_transfer);
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &transfer);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
@@ -441,13 +438,25 @@ fn declare_offload_fn<'ll>(
     )
 }
 
+pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
+    match cx.type_kind(ty) {
+        TypeKind::Half
+        | TypeKind::Float
+        | TypeKind::Double
+        | TypeKind::X86_FP80
+        | TypeKind::FP128
+        | TypeKind::PPC_FP128 => cx.float_width(ty) as u64,
+        TypeKind::Integer => cx.int_width(ty),
+        other => bug!("scalar_width was called on a non scalar type {other:?}"),
+    }
+}
+
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
 // the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
 // Since in our frontend users (by default) don't have to specify data transfer, this is something
-// we should optimize in the future! We also assume that everything should be copied back and forth,
-// but sometimes we can directly zero-allocate on the device and only move back, or if something is
-// immutable, we might only copy it to the device, but not back.
+// we should optimize in the future! In some cases we can directly zero-allocate on the device and
+// only move data back, or if something is immutable, we might only copy it to the device.
 //
 // Current steps:
 // 0. Alloca some variables for the following steps
@@ -534,8 +543,34 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
     for &v in args {
-        let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
-        vals.push(v);
+        let ty = cx.val_ty(v);
+        let ty_kind = cx.type_kind(ty);
+        let (base_val, gep_base) = match ty_kind {
+            TypeKind::Pointer => (v, v),
+            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                // FIXME(Sa4dUs): check for `f128` support, latest NVIDIA cards support it
+                let num_bits = scalar_width(cx, ty);
+
+                let bb = builder.llbb();
+                unsafe {
+                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, builder.llfn());
+                }
+                let addr = builder.direct_alloca(cx.type_i64(), Align::EIGHT, "addr");
+                unsafe {
+                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder, bb);
+                }
+
+                let cast = builder.bitcast(v, cx.type_ix(num_bits));
+                let value = builder.zext(cast, cx.type_i64());
+                builder.store(value, addr, Align::EIGHT);
+                (value, addr)
+            }
+            other => bug!("offload does not support {other:?}"),
+        };
+
+        let gep = builder.inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
+
+        vals.push(base_val);
         geps.push(gep);
     }
 

@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
@@ -14,8 +13,6 @@
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic,
     clippy::literal_string_with_formatting_args
 )]
 #![warn(

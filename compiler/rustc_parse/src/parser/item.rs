@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| {
                 matches!(t.kind, token::Lt | token::OpenBrace | token::OpenParen)
             }) {
-            self.parse_ident().unwrap()
+            self.parse_ident_common(true).unwrap()
         } else {
             return Ok(());
         };

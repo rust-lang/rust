@@ -1670,9 +1670,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
+ "foldhash 0.2.0",
+]
 
 [[package]]
 name = "heck"
@@ -1950,12 +1953,12 @@ checksum = "964de6e86d545b246d84badc0fef527924ace5134f30641c203ef52ba83f58d5"
 
 [[package]]
 name = "indexmap"
-version = "2.12.0"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6717a8d2a5a929a1a2eb43a12812498ed141a0bcfb7e8f7844fbdbe4303bba9f"
+checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.0",
+ "hashbrown 0.16.1",
  "serde",
  "serde_core",
 ]
@@ -3334,6 +3337,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde_json",
  "similar",
+ "tempfile",
  "wasmparser 0.236.1",
 ]
 
@@ -3352,9 +3356,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56f7d92ca342cea22a06f2121d944b4fd82af56988c270852495420f961d4ace"
+checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
 
 [[package]]
 name = "rustc-hash"
@@ -3730,7 +3734,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "indexmap",
  "jobserver",
  "libc",
@@ -3767,6 +3771,7 @@ dependencies = [
 name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
+ "anstyle",
  "ctrlc",
  "jiff",
  "libc",
@@ -3792,6 +3797,7 @@ dependencies = [
  "rustc_index",
  "rustc_infer",
  "rustc_interface",
+ "rustc_lexer",
  "rustc_lint",
  "rustc_log",
  "rustc_macros",
@@ -3859,7 +3865,6 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_hashes",
  "rustc_index",
- "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
@@ -3887,11 +3892,13 @@ dependencies = [
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
+ "rustc_middle",
  "rustc_parse",
  "rustc_proc_macro",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "scoped-tls",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -4346,7 +4353,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "itertools",
  "rustc_abi",
  "rustc_arena",
@@ -4557,7 +4564,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "parking_lot",
  "rustc_abi",
  "rustc_ast",

@@ -9,8 +9,6 @@
 #![allow(
     clippy::must_use_candidate,
     clippy::missing_panics_doc,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 #![deny(clippy::derive_deserialize_allowing_unknown)]
 

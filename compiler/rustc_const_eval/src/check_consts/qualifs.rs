@@ -343,17 +343,18 @@ where
 
     // Check the qualifs of the value of `const` items.
     let uneval = match constant.const_ {
-        Const::Ty(_, ct)
-            if matches!(
-                ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
-            ) =>
-        {
-            None
-        }
-        Const::Ty(_, c) => {
-            bug!("expected ConstKind::Param or ConstKind::Value here, found {:?}", c)
-        }
+        Const::Ty(_, ct) => match ct.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
+            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `#[type_const]`).
+            ty::ConstKind::Unevaluated(_) => None,
+            // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
+            // strict, and if instead we should be doing some kind of value-based analysis.
+            ty::ConstKind::Value(_) => None,
+            _ => bug!(
+                "expected ConstKind::Param, ConstKind::Value, ConstKind::Unevaluated, or ConstKind::Error here, found {:?}",
+                ct
+            ),
+        },
         Const::Unevaluated(uv, _) => Some(uv),
         Const::Val(..) => None,
     };
@@ -364,10 +365,8 @@ where
         // check performed after the promotion. Verify that with an assertion.
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
-        // Don't peak inside trait associated constants, also `#[type_const] const` items
-        // don't have bodies so there's nothing to look at
-        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() && !cx.tcx.is_type_const(def)
-        {
+        // Don't peak inside trait associated constants.
+        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() {
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {

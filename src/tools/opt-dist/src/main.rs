@@ -442,11 +442,12 @@ fn main() -> anyhow::Result<()> {
     // Skip components that are not needed for fast try builds to speed them up
     if is_fast_try_build() {
         log::info!("Skipping building of unimportant components for a fast try build");
+        // Note for future onlookers: do not ignore rust-dev here. We need it for try builds when
+        // a PR makes a change to how LLVM is built.
         for target in [
             "rust-docs",
             "rustc-docs",
             "rustc-dev",
-            "rust-dev",
             "rust-docs-json",
             "rust-analyzer",
             "rustc-src",

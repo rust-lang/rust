@@ -40,21 +40,17 @@ pub unsafe fn read_all(
     return read_so_far as libc::ssize_t;
 }
 
-/// Try to fill the given slice by reading from `fd`. Error if that many bytes could not be read.
+/// Try to fill the given slice by reading from `fd`. Panic if that many bytes could not be read.
 #[track_caller]
-pub fn read_all_into_slice(fd: libc::c_int, buf: &mut [u8]) -> Result<(), libc::ssize_t> {
-    let res = unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) };
-    if res >= 0 {
-        assert_eq!(res as usize, buf.len());
-        Ok(())
-    } else {
-        Err(res)
-    }
+pub fn read_all_into_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<()> {
+    let res = errno_result(unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+    assert_eq!(res as usize, buf.len());
+    Ok(())
 }
 
 /// Read exactly `N` bytes from `fd`. Error if that many bytes could not be read.
 #[track_caller]
-pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> Result<[u8; N], libc::ssize_t> {
+pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> io::Result<[u8; N]> {
     let mut buf = [0; N];
     read_all_into_slice(fd, &mut buf)?;
     Ok(buf)
@@ -63,12 +59,20 @@ pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> Result<[u8; N], l
 /// Do a single read from `fd` and return the part of the buffer that was written into,
 /// and the rest.
 #[track_caller]
-pub fn read_into_slice(
+pub fn read_into_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &mut [u8])> {
+    let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+    Ok(buf.split_at_mut(res as usize))
+}
+
+/// Read from `fd` until we get EOF and return the part of the buffer that was written into,
+/// and the rest.
+#[track_caller]
+pub fn read_until_eof_into_slice(
     fd: libc::c_int,
     buf: &mut [u8],
-) -> Result<(&mut [u8], &mut [u8]), libc::ssize_t> {
-    let res = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
-    if res >= 0 { Ok(buf.split_at_mut(res as usize)) } else { Err(res) }
+) -> io::Result<(&mut [u8], &mut [u8])> {
+    let res = errno_result(unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+    Ok(buf.split_at_mut(res as usize))
 }
 
 pub unsafe fn write_all(
@@ -89,16 +93,12 @@ pub unsafe fn write_all(
     return written_so_far as libc::ssize_t;
 }
 
-/// Write the entire `buf` to `fd`. Error if not all bytes could be written.
+/// Write the entire `buf` to `fd`. Panic if not all bytes could be written.
 #[track_caller]
-pub fn write_all_from_slice(fd: libc::c_int, buf: &[u8]) -> Result<(), libc::ssize_t> {
-    let res = unsafe { write_all(fd, buf.as_ptr().cast(), buf.len()) };
-    if res >= 0 {
-        assert_eq!(res as usize, buf.len());
-        Ok(())
-    } else {
-        Err(res)
-    }
+pub fn write_all_from_slice(fd: libc::c_int, buf: &[u8]) -> io::Result<()> {
+    let res = errno_result(unsafe { write_all(fd, buf.as_ptr().cast(), buf.len()) })?;
+    assert_eq!(res as usize, buf.len());
+    Ok(())
 }
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "illumos"))]
@@ -113,7 +113,7 @@ pub mod epoll {
 
     /// The libc epoll_event type doesn't fit to the EPOLLIN etc constants, so we have our
     /// own type. We also make the data field an int since we typically want to store FDs there.
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone, Copy)]
     pub struct Ev {
         pub events: c_int,
         pub data: c_int,
@@ -138,10 +138,10 @@ pub mod epoll {
     }
 
     #[track_caller]
-    pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
+    pub fn check_epoll_wait<const N: usize>(epfd: i32, expected: &[Ev], timeout: i32) {
         let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
         let num = errno_result(unsafe {
-            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
+            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), timeout)
         })
         .expect("epoll_wait returned an error");
         let got = &mut array[..num.try_into().unwrap()];
@@ -150,5 +150,10 @@ pub mod epoll {
             .map(|e| Ev { events: e.events.cast_signed(), data: e.u64.try_into().unwrap() })
             .collect::<Vec<_>>();
         assert_eq!(got, expected, "got wrong notifications");
+    }
+
+    #[track_caller]
+    pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
+        check_epoll_wait::<N>(epfd, expected, 0);
     }
 }

@@ -300,13 +300,16 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
     if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
         && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
         && import1 == import2
-        && d1.warn_ambiguity.get() == d2.warn_ambiguity.get()
     {
-        assert_eq!(d1.ambiguity.get(), d2.ambiguity.get());
-        assert!(!d1.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
-        assert_eq!(d1.vis(), d2.vis());
+        if d1.ambiguity.get() != d2.ambiguity.get() {
+            assert!(d1.ambiguity.get().is_some());
+            assert!(d2.ambiguity.get().is_none());
+        }
+        // Visibility of the new import declaration may be different,
+        // because it already incorporates the visibility of the source binding.
+        // `warn_ambiguity` of a re-fetched glob can also change in both directions.
         remove_same_import(d1_next, d2_next)
     } else {
         (d1, d2)
@@ -340,6 +343,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             span: import.span,
             vis: CmCell::new(vis),
             expansion: import.parent_scope.expansion,
+            parent_module: Some(import.parent_scope.module),
         })
     }
 
@@ -347,8 +351,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// decide which one to keep.
     fn select_glob_decl(
         &self,
-        glob_decl: Decl<'ra>,
         old_glob_decl: Decl<'ra>,
+        glob_decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Decl<'ra> {
         assert!(glob_decl.is_glob_import());
@@ -368,7 +372,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // with the re-fetched decls.
         // This is probably incorrect in corner cases, and the outdated decls still get
         // propagated to other places and get stuck there, but that's what we have at the moment.
-        let (deep_decl, old_deep_decl) = remove_same_import(glob_decl, old_glob_decl);
+        let (old_deep_decl, deep_decl) = remove_same_import(old_glob_decl, glob_decl);
         if deep_decl != glob_decl {
             // Some import layers have been removed, need to overwrite.
             assert_ne!(old_deep_decl, old_glob_decl);
@@ -376,6 +380,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
             assert!(!deep_decl.is_glob_import());
+            if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
+                // Do not lose glob ambiguities when re-fetching the glob.
+                glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
+            }
             if glob_decl.is_ambiguity_recursive() {
                 glob_decl.warn_ambiguity.set_unchecked(true);
             }
@@ -409,15 +417,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// and return existing declaration if there is a collision.
     pub(crate) fn try_plant_decl_into_local_module(
         &mut self,
-        module: Module<'ra>,
         ident: Macros20NormalizedIdent,
         ns: Namespace,
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
+        let module = decl.parent_module.unwrap();
         let res = decl.res();
         self.check_reserved_macro_name(ident.0, res);
-        self.set_decl_parent_module(decl, module);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
@@ -436,7 +443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 match (old_decl.is_glob_import(), decl.is_glob_import()) {
                     (true, true) => {
                         resolution.glob_decl =
-                            Some(this.select_glob_decl(decl, old_decl, warn_ambiguity));
+                            Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_decl, non_glob_decl) =
@@ -446,7 +453,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && old_glob_decl != glob_decl
                         {
                             resolution.glob_decl =
-                                Some(this.select_glob_decl(glob_decl, old_glob_decl, false));
+                                Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
                         } else {
                             resolution.glob_decl = Some(glob_decl);
                         }
@@ -511,7 +518,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, *import);
                 let _ = self.try_plant_decl_into_local_module(
-                    import.parent_scope.module,
                     ident,
                     key.ns,
                     import_decl,
@@ -535,7 +541,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
                 let ident = Macros20NormalizedIdent::new(target);
-                let _ = this.try_plant_decl_into_local_module(module, ident, ns, dummy_decl, false);
+                let _ = this.try_plant_decl_into_local_module(ident, ns, dummy_decl, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(ident, ns);
@@ -916,7 +922,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We need the `target`, `source` can be extracted.
                         let import_decl = this.new_import_decl(binding, import);
                         this.get_mut_unchecked().plant_decl_into_local_module(
-                            parent,
                             Macros20NormalizedIdent::new(target),
                             ns,
                             import_decl,
@@ -959,8 +964,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { decls, .. } => decls[TypeNS].get().decl(),
             _ => None,
         };
-        let ambiguity_errors_len =
-            |errors: &Vec<AmbiguityError<'_>>| errors.iter().filter(|error| !error.warning).count();
+        let ambiguity_errors_len = |errors: &Vec<AmbiguityError<'_>>| {
+            errors.iter().filter(|error| error.warning.is_none()).count()
+        };
         let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
 
@@ -983,7 +989,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = import.imported_module.get() {
-                    if module != initial_module && no_ambiguity {
+                    if module != initial_module && no_ambiguity && !self.issue_145575_hack_applied {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
@@ -1176,7 +1182,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         });
                         let res = binding.res();
                         let has_ambiguity_error =
-                            this.ambiguity_errors.iter().any(|error| !error.warning);
+                            this.ambiguity_errors.iter().any(|error| error.warning.is_none());
                         if res == Res::Err || has_ambiguity_error {
                             this.dcx()
                                 .span_delayed_bug(import.span, "some error happened for an import");
@@ -1541,7 +1547,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .and_then(|r| r.binding())
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_plant_decl_into_local_module(
-                    import.parent_scope.module,
                     key.ident,
                     key.ns,
                     import_decl,

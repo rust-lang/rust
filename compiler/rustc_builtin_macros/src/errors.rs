@@ -503,10 +503,6 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        #[expect(
-            rustc::untranslatable_diagnostic,
-            reason = "cannot translate user-provided messages"
-        )]
         let mut diag = Diag::new(dcx, level, self.msg_from_user.to_string());
         diag.span(self.span);
         diag
@@ -1037,6 +1033,16 @@ pub(crate) struct EiiSharedMacroExpectedFunction {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_in_statement_position)]
+pub(crate) struct EiiSharedMacroInStatementPosition {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+    #[label]
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]

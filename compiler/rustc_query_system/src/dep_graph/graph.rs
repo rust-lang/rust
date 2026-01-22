@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -7,12 +6,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::{assert_matches, outline};
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
@@ -29,7 +28,6 @@ use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffect};
 
-#[derive(Clone)]
 pub struct DepGraph<D: Deps> {
     data: Option<Arc<DepGraphData<D>>>,
 
@@ -38,6 +36,17 @@ pub struct DepGraph<D: Deps> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Arc<AtomicU32>,
+}
+
+/// Manual clone impl that does not require `D: Clone`.
+impl<D: Deps> Clone for DepGraph<D> {
+    fn clone(&self) -> Self {
+        let Self { data, virtual_dep_node_index } = self;
+        Self {
+            data: Option::<Arc<_>>::clone(data),
+            virtual_dep_node_index: Arc::clone(virtual_dep_node_index),
+        }
+    }
 }
 
 rustc_index::newtype_index! {
@@ -793,6 +802,18 @@ impl<D: Deps> DepGraph<D> {
 
     pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode) -> bool {
         self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
+    }
+
+    pub fn debug_dep_kind_was_loaded_from_disk(&self, dep_kind: DepKind) -> bool {
+        // We only check if we have a dep node corresponding to the given dep kind.
+        #[allow(rustc::potential_query_instability)]
+        self.data
+            .as_ref()
+            .unwrap()
+            .debug_loaded_from_disk
+            .lock()
+            .iter()
+            .any(|node| node.kind == dep_kind)
     }
 
     #[cfg(debug_assertions)]

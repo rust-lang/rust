@@ -29,11 +29,6 @@ passes_attr_application_struct_union =
     attribute should be applied to a struct or union
     .label = not a struct or union
 
-passes_attr_crate_level =
-    this attribute can only be applied at the crate level
-    .suggestion = to apply to the crate, use an inner attribute
-    .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function
     .label = not a function
@@ -107,9 +102,6 @@ passes_doc_alias_bad_location =
 
 passes_doc_alias_not_an_alias =
     `#[doc(alias = "{$attr_str}"]` is the same as the item's name
-
-passes_doc_attr_not_crate_level =
-    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
@@ -254,9 +246,6 @@ passes_implied_feature_not_exist =
 
 passes_incorrect_crate_type = lang items are not allowed in stable dylibs
 
-passes_incorrect_do_not_recommend_args =
-    `#[diagnostic::do_not_recommend]` does not expect any arguments
-
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 
@@ -376,10 +365,6 @@ passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` a
 
 passes_must_implement_not_function_span_note = required by this annotation
 
-passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
-    .label = is not a struct, enum, union, or trait
-
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`
     .here_is_main = here is a function named `main`
@@ -391,7 +376,7 @@ passes_no_main_function =
     }
     .consider_adding_main_to_file = consider adding a `main` function to `{$filename}`
     .consider_adding_main_at_crate = consider adding a `main` function at the crate level
-    .teach_note = If you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
+    .teach_note = if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
     .non_function_main = non-function item at `crate::main` is found
 
 passes_non_exhaustive_with_default_field_values =

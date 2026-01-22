@@ -1,4 +1,4 @@
 //@ compile-flags: --remap-path-prefix={{src-base}}=remapped
-//@ compile-flags: -Zremap-path-scope=macro
+//@ compile-flags: --remap-path-scope=macro
 
 pub trait Trait: std::fmt::Display {}

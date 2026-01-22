@@ -4,7 +4,6 @@
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
@@ -45,9 +44,9 @@ impl Trait for S {
                 fn foo0(arg0: _) -> _ { to_reuse::foo(self + 1) }
 
                 // Check that #[inline(hint)] is added when other attributes present in inner reuse
-                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
-                #[attr = MustUse]
                 #[attr = Cold]
+                #[attr = MustUse]
+                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
                 #[attr = Inline(Hint)]
                 fn foo1(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
@@ -60,18 +59,18 @@ impl Trait for S {
                 fn foo3(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
                 // Check that #[inline(never)] is preserved when there are other attributes in inner reuse
-                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
-                #[attr = Inline(Never)]
-                #[attr = MustUse]
                 #[attr = Cold]
+                #[attr = MustUse]
+                #[attr = Inline(Never)]
+                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
                 fn foo4(arg0: _) -> _ { to_reuse::foo(self / 2) }
             }.foo()
     }
 
     // Check that #[inline(hint)] is added when there are other attributes present in trait reuse
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
-    #[attr = MustUse]
     #[attr = Cold]
+    #[attr = MustUse]
+    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     #[attr = Inline(Hint)]
     fn foo1(self: _) -> _ { self.0.foo1() }
 
@@ -84,10 +83,10 @@ impl Trait for S {
     fn foo3(self: _) -> _ { self.0.foo3() }
 
     // Check that #[inline(never)] is preserved when there are other attributes in trait reuse
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
-    #[attr = Inline(Never)]
-    #[attr = MustUse]
     #[attr = Cold]
+    #[attr = MustUse]
+    #[attr = Inline(Never)]
+    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     fn foo4(self: _) -> _ { self.0.foo4() }
 }
 

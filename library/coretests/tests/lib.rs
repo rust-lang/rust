@@ -1,7 +1,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![cfg_attr(test, feature(cfg_select))]
-#![feature(alloc_layout_extra)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_try_map)]
@@ -115,6 +114,7 @@
 #![feature(try_blocks)]
 #![feature(try_find)]
 #![feature(try_trait_v2)]
+#![feature(type_info)]
 #![feature(uint_bit_width)]
 #![feature(uint_gather_scatter_bits)]
 #![feature(unsize)]

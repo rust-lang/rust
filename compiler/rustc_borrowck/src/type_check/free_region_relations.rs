@@ -229,8 +229,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //   not ready to process them yet.
         // - Then compute the implied bounds. This will adjust
         //   the `region_bound_pairs` and so forth.
-        // - After this is done, we'll process the constraints, once
-        //   the `relations` is built.
+        // - After this is done, we'll register the constraints in
+        //   the `BorrowckInferCtxt`. Checking these constraints is
+        //   handled later by actual borrow checking.
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         for ty in unnormalized_input_output_tys {
@@ -254,6 +255,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 constraints.push(c)
             }
 
+            // Currently `implied_outlives_bounds` will normalize the provided
+            // `Ty`, despite this it's still important to normalize the ty ourselves
+            // as normalization may introduce new region variables (#136547).
+            //
+            // If we do not add implied bounds for the type involving these new
+            // region variables then we'll wind up with the normalized form of
+            // the signature having not-wf types due to unsatisfied region
+            // constraints.
+            //
             // Note: we need this in examples like
             // ```
             // trait Foo {
@@ -262,7 +272,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // }
             // impl Foo for () {
             //   type Bar = ();
-            //   fn foo(&self) ->&() {}
+            //   fn foo(&self) -> &() {}
             // }
             // ```
             // Both &Self::Bar and &() are WF
@@ -277,6 +287,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         // Add implied bounds from impl header.
+        //
+        // We don't use `assumed_wf_types` to source the entire set of implied bounds for
+        // a few reasons:
+        // - `DefiningTy` for closure has the `&'env Self` type while `assumed_wf_types` doesn't
+        // - We compute implied bounds from the unnormalized types in the `DefiningTy` but do not
+        //   do so for types in impl headers
+        // - We must compute the normalized signature and then compute implied bounds from that
+        //   in order to connect any unconstrained region vars created during normalization to
+        //   the types of the locals corresponding to the inputs and outputs of the item. (#136547)
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
                 let result: Result<_, ErrorGuaranteed> = param_env
@@ -352,10 +371,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         known_type_outlives_obligations.push(outlives);
     }
 
-    /// Update the type of a single local, which should represent
-    /// either the return type of the MIR or one of its arguments. At
-    /// the same time, compute and add any implied bounds that come
-    /// from this local.
+    /// Compute and add any implied bounds that come from a given type.
     #[instrument(level = "debug", skip(self))]
     fn add_implied_bounds(
         &mut self,

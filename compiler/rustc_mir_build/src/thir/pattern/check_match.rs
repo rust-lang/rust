@@ -43,7 +43,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         typeck_results,
         // FIXME(#132279): We're in a body, should handle opaques.
         typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
-        lint_level: tcx.local_def_id_to_hir_id(def_id),
+        hir_source: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
         dropless_arena: &dropless_arena,
@@ -92,7 +92,7 @@ struct MatchVisitor<'p, 'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     thir: &'p Thir<'tcx>,
-    lint_level: HirId,
+    hir_source: HirId,
     let_source: LetSource,
     pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
     dropless_arena: &'p DroplessArena,
@@ -111,7 +111,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn visit_arm(&mut self, arm: &'p Arm<'tcx>) {
-        self.with_lint_level(arm.lint_level, |this| {
+        self.with_hir_source(arm.hir_id, |this| {
             if let Some(expr) = arm.guard {
                 this.with_let_source(LetSource::IfLetGuard, |this| {
                     this.visit_expr(&this.thir[expr])
@@ -125,8 +125,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, ex: &'p Expr<'tcx>) {
         match ex.kind {
-            ExprKind::Scope { value, lint_level, .. } => {
-                self.with_lint_level(lint_level, |this| {
+            ExprKind::Scope { value, hir_id, .. } => {
+                self.with_hir_source(hir_id, |this| {
                     this.visit_expr(&this.thir[value]);
                 });
                 return;
@@ -181,10 +181,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'p Stmt<'tcx>) {
         match stmt.kind {
-            StmtKind::Let {
-                box ref pattern, initializer, else_block, lint_level, span, ..
-            } => {
-                self.with_lint_level(lint_level, |this| {
+            StmtKind::Let { box ref pattern, initializer, else_block, hir_id, span, .. } => {
+                self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
                     this.with_let_source(let_source, |this| {
@@ -209,20 +207,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         self.let_source = old_let_source;
     }
 
-    fn with_lint_level<T>(
-        &mut self,
-        new_lint_level: LintLevel,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        if let LintLevel::Explicit(hir_id) = new_lint_level {
-            let old_lint_level = self.lint_level;
-            self.lint_level = hir_id;
-            let ret = f(self);
-            self.lint_level = old_lint_level;
-            ret
-        } else {
-            f(self)
-        }
+    fn with_hir_source<T>(&mut self, new_hir_source: HirId, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old_hir_source = self.hir_source;
+        self.hir_source = new_hir_source;
+        let ret = f(self);
+        self.hir_source = old_hir_source;
+        ret
     }
 
     /// Visit a nested chain of `&&`. Used for if-let chains. This must call `visit_expr` on the
@@ -233,9 +223,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         accumulator: &mut Vec<Option<(Span, RefutableFlag)>>,
     ) -> Result<(), ErrorGuaranteed> {
         match ex.kind {
-            ExprKind::Scope { value, lint_level, .. } => self.with_lint_level(lint_level, |this| {
-                this.visit_land(&this.thir[value], accumulator)
-            }),
+            ExprKind::Scope { value, hir_id, .. } => {
+                self.with_hir_source(hir_id, |this| this.visit_land(&this.thir[value], accumulator))
+            }
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
                 // We recurse into the lhs only, because `&&` chains associate to the left.
                 let res_lhs = self.visit_land(&self.thir[lhs], accumulator);
@@ -259,8 +249,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         ex: &'p Expr<'tcx>,
     ) -> Result<Option<(Span, RefutableFlag)>, ErrorGuaranteed> {
         match ex.kind {
-            ExprKind::Scope { value, lint_level, .. } => {
-                self.with_lint_level(lint_level, |this| this.visit_land_rhs(&this.thir[value]))
+            ExprKind::Scope { value, hir_id, .. } => {
+                self.with_hir_source(hir_id, |this| this.visit_land_rhs(&this.thir[value]))
             }
             ExprKind::Let { box ref pat, expr } => {
                 let expr = &self.thir()[expr];
@@ -398,9 +388,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
             typing_env: self.typing_env,
-            module: self.tcx.parent_module(self.lint_level).to_def_id(),
+            module: self.tcx.parent_module(self.hir_source).to_def_id(),
             dropless_arena: self.dropless_arena,
-            match_lint_level: self.lint_level,
+            match_lint_level: self.hir_source,
             whole_match_span,
             scrut_span,
             refutable,
@@ -448,7 +438,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             if matches!(refutability, Irrefutable) {
                 report_irrefutable_let_patterns(
                     self.tcx,
-                    self.lint_level,
+                    self.hir_source,
                     self.let_source,
                     1,
                     span,
@@ -470,10 +460,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut tarms = Vec::with_capacity(arms.len());
         for &arm in arms {
             let arm = &self.thir.arms[arm];
-            let got_error = self.with_lint_level(arm.lint_level, |this| {
+            let got_error = self.with_hir_source(arm.hir_id, |this| {
                 let Ok(pat) = this.lower_pattern(&cx, &arm.pattern) else { return true };
                 let arm =
-                    MatchArm { pat, arm_data: this.lint_level, has_guard: arm.guard.is_some() };
+                    MatchArm { pat, arm_data: this.hir_source, has_guard: arm.guard.is_some() };
                 tarms.push(arm);
                 false
             });
@@ -572,7 +562,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // The entire chain is made up of irrefutable `let` statements
             report_irrefutable_let_patterns(
                 self.tcx,
-                self.lint_level,
+                self.hir_source,
                 self.let_source,
                 chain_refutabilities.len(),
                 whole_chain_span,
@@ -605,7 +595,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 let count = prefix.len();
                 self.tcx.emit_node_span_lint(
                     IRREFUTABLE_LET_PATTERNS,
-                    self.lint_level,
+                    self.hir_source,
                     span,
                     LeadingIrrefutableLetPatterns { count },
                 );
@@ -624,7 +614,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let count = suffix.len();
             self.tcx.emit_node_span_lint(
                 IRREFUTABLE_LET_PATTERNS,
-                self.lint_level,
+                self.hir_source,
                 span,
                 TrailingIrrefutableLetPatterns { count },
             );
@@ -639,7 +629,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<(PatCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
-        let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
+        let arms = [MatchArm { pat, arm_data: self.hir_source, has_guard: false }];
         let report = self.analyze_patterns(&cx, &arms, pat.ty().inner())?;
         Ok((cx, report))
     }
@@ -886,7 +876,7 @@ fn check_for_bindings_named_same_as_variants(
         let ty_path = with_no_trimmed_paths!(cx.tcx.def_path_str(edef.did()));
         cx.tcx.emit_node_span_lint(
             BINDINGS_WITH_VARIANT_NAME,
-            cx.lint_level,
+            cx.hir_source,
             pat.span,
             BindingsWithVariantName {
                 // If this is an irrefutable pattern, and there's > 1 variant,

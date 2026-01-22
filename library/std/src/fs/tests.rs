@@ -2,7 +2,6 @@ use rand::RngCore;
 
 #[cfg(not(miri))]
 use super::Dir;
-use crate::assert_matches::assert_matches;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 #[cfg(not(miri))]
 use crate::io;
@@ -21,7 +20,7 @@ use crate::path::Path;
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
-use crate::{env, str, thread};
+use crate::{assert_matches, env, str, thread};
 
 macro_rules! check {
     ($e:expr) => {

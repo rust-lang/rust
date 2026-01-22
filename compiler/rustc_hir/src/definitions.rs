@@ -103,7 +103,7 @@ pub struct DisambiguatorState {
 }
 
 impl DisambiguatorState {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { next: Default::default() }
     }
 

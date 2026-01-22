@@ -1,4 +1,4 @@
-//@ compile-flags: -Z ui-testing=no
+//@ compile-flags: -Z ui-testing=no --diagnostic-width=80
 
 struct MyError;
 impl std::error::Error for MyError {}

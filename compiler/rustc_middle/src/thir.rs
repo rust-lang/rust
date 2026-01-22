@@ -116,12 +116,6 @@ pub struct Param<'tcx> {
     pub hir_id: Option<HirId>,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
-pub enum LintLevel {
-    Inherited,
-    Explicit(HirId),
-}
-
 #[derive(Clone, Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
@@ -236,8 +230,8 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
-        /// The lint level for this `let` statement.
-        lint_level: LintLevel,
+        /// The [`HirId`] for this `let` statement.
+        hir_id: HirId,
 
         /// Span of the `let <PAT> = <INIT>` part.
         span: Span,
@@ -271,7 +265,7 @@ pub enum ExprKind<'tcx> {
     /// and to track the `HirId` of the expressions within the scope.
     Scope {
         region_scope: region::Scope,
-        lint_level: LintLevel,
+        hir_id: HirId,
         value: ExprId,
     },
     /// A `box <value>` expression.
@@ -579,7 +573,7 @@ pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<ExprId>,
     pub body: ExprId,
-    pub lint_level: LintLevel,
+    pub hir_id: HirId,
     pub scope: region::Scope,
     pub span: Span,
 }

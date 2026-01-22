@@ -1,11 +1,9 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(file_buffered)]
-#![feature(gen_blocks)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(try_blocks)]
@@ -197,6 +195,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod ssa_range_prop: SsaRangePropagation;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -206,9 +205,9 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
-    ffi_unwind_calls::provide(providers);
-    shim::provide(providers);
-    cross_crate_inline::provide(providers);
+    ffi_unwind_calls::provide(&mut providers.queries);
+    shim::provide(&mut providers.queries);
+    cross_crate_inline::provide(&mut providers.queries);
     providers.queries = query::Providers {
         mir_keys,
         mir_built,
@@ -743,6 +742,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
+            // This pass does attempt to track assignments.
+            // Keep it close to GVN which merges identical values into the same local.
+            &ssa_range_prop::SsaRangePropagation,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,
