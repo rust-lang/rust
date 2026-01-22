@@ -25,7 +25,7 @@ impl !Sync for TokenStream {}
 // Forward `Drop::drop` to the inherent `drop` method.
 impl Drop for TokenStream {
     fn drop(&mut self) {
-        TokenStream { handle: self.handle }.drop();
+        FreeFunctions::tt_drop(TokenStream { handle: self.handle });
     }
 }
 
@@ -75,7 +75,7 @@ impl<S> Decode<'_, '_, S> for Span {
 
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
-        self.clone()
+        FreeFunctions::tt_clone(self)
     }
 }
 
@@ -95,7 +95,7 @@ impl Span {
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.debug())
+        f.write_str(&FreeFunctions::span_debug(*self))
     }
 }
 

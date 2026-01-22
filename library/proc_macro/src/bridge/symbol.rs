@@ -46,7 +46,7 @@ impl Symbol {
         if string.is_ascii() {
             Err(())
         } else {
-            client::Symbol::normalize_and_validate_ident(string)
+            client::FreeFunctions::symbol_normalize_and_validate_ident(string)
         }
         .unwrap_or_else(|_| panic!("`{:?}` is not a valid identifier", string))
     }
