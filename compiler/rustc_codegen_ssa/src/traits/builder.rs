@@ -600,10 +600,13 @@ pub trait BuilderMethods<'a, 'tcx>:
     ///
     /// ## Arguments
     ///
-    /// The `fn_attrs`, `fn_abi`, and `instance` arguments are Options because they are advisory.
-    /// They relate to optional codegen enhancements like LLVM CFI, and do not affect ABI per se.
-    /// Any ABI-related transformations should be handled by different, earlier stages of codegen.
-    /// For instance, in the caller of `BuilderMethods::call`.
+    /// `caller_attrs` are the attributes of the surrounding caller; they have nothing to do with
+    /// the callee.
+    ///
+    /// The `caller_attrs`, `fn_abi`, and `callee_instance` arguments are Options because they are
+    /// advisory. They relate to optional codegen enhancements like LLVM CFI, and do not affect ABI
+    /// per se. Any ABI-related transformations should be handled by different, earlier stages of
+    /// codegen. For instance, in the caller of `BuilderMethods::call`.
     ///
     /// This means that a codegen backend which disregards `fn_attrs`, `fn_abi`, and `instance`
     /// should still do correct codegen, and code should not be miscompiled if they are omitted.
@@ -620,23 +623,23 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn call(
         &mut self,
         llty: Self::Type,
-        fn_attrs: Option<&CodegenFnAttrs>,
+        caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         fn_val: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
-        instance: Option<Instance<'tcx>>,
+        callee_instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
 
     fn tail_call(
         &mut self,
         llty: Self::Type,
-        fn_attrs: Option<&CodegenFnAttrs>,
+        caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
-        instance: Option<Instance<'tcx>>,
+        callee_instance: Option<Instance<'tcx>>,
     );
 
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
