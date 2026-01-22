@@ -492,7 +492,22 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("hvx", Unstable(sym::hexagon_target_feature), &[]),
+    ("hvx-ieee-fp", Unstable(sym::hexagon_target_feature), &["hvx"]),
+    ("hvx-length64b", Unstable(sym::hexagon_target_feature), &["hvx"]),
     ("hvx-length128b", Unstable(sym::hexagon_target_feature), &["hvx"]),
+    ("hvx-qfloat", Unstable(sym::hexagon_target_feature), &["hvx"]),
+    ("hvxv60", Unstable(sym::hexagon_target_feature), &["hvx"]),
+    ("hvxv62", Unstable(sym::hexagon_target_feature), &["hvxv60"]),
+    ("hvxv65", Unstable(sym::hexagon_target_feature), &["hvxv62"]),
+    ("hvxv66", Unstable(sym::hexagon_target_feature), &["hvxv65", "zreg"]),
+    ("hvxv67", Unstable(sym::hexagon_target_feature), &["hvxv66"]),
+    ("hvxv68", Unstable(sym::hexagon_target_feature), &["hvxv67"]),
+    ("hvxv69", Unstable(sym::hexagon_target_feature), &["hvxv68"]),
+    ("hvxv71", Unstable(sym::hexagon_target_feature), &["hvxv69"]),
+    ("hvxv73", Unstable(sym::hexagon_target_feature), &["hvxv71"]),
+    ("hvxv75", Unstable(sym::hexagon_target_feature), &["hvxv73"]),
+    ("hvxv79", Unstable(sym::hexagon_target_feature), &["hvxv75"]),
+    ("zreg", Unstable(sym::hexagon_target_feature), &[]),
     // tidy-alphabetical-end
 ];
 
@@ -949,7 +964,7 @@ const SPARC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'stat
     &[/*(64, "vis")*/];
 
 const HEXAGON_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[/*(512, "hvx-length64b"),*/ (1024, "hvx-length128b")];
+    &[(512, "hvx-length64b"), (1024, "hvx-length128b")];
 const MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "msa")];
 const CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
