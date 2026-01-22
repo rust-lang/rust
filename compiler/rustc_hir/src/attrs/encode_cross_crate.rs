@@ -41,7 +41,7 @@ impl AttributeKind {
             Coverage(..) => No,
             CrateName { .. } => No,
             CrateType(_) => No,
-            CustomMir(_, _, _) => Yes,
+            CustomMir(..) => Yes,
             DebuggerVisualizer(..) => No,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,

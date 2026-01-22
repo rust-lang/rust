@@ -16,7 +16,9 @@ use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, CfgEntry, CollapseMacroDebuginfo, Deprecation};
+use rustc_hir::attrs::{
+    AttributeKind, CfgEntry, CollapseMacroDebuginfo, Deprecation, RustcBuiltinMacro,
+};
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
@@ -936,7 +938,7 @@ impl SyntaxExtension {
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro(box RustcBuiltinMacro { builtin_name, helper_attrs, .. }) => (builtin_name, helper_attrs))
         {
             // Override `helper_attrs` passed above if it's a built-in macro,
             // marking `proc_macro_derive` macros as built-in is not a realistic use case.
@@ -949,7 +951,8 @@ impl SyntaxExtension {
             None => (None, helper_attrs),
         };
 
-        let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
+        let stability =
+            find_attr!(attrs, AttributeKind::Stability { stability, .. } => **stability);
 
         // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
         if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability { span, .. } => *span) {
@@ -974,7 +977,7 @@ impl SyntaxExtension {
             stability,
             deprecation: find_attr!(
                 attrs,
-                AttributeKind::Deprecation { deprecation, .. } => *deprecation
+                AttributeKind::Deprecation { deprecation, .. } => **deprecation
             ),
             helper_attrs,
             edition,

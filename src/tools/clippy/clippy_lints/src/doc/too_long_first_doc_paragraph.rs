@@ -2,6 +2,7 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Attribute, Item, ItemKind};
 use rustc_lint::LateContext;
+use rustc_hir::attrs::DocComment;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
@@ -44,7 +45,7 @@ pub(super) fn check(
     let mut should_suggest_empty_doc = false;
 
     for attr in attrs {
-        if let Attribute::Parsed(AttributeKind::DocComment { span, comment, .. }) = attr {
+        if let Attribute::Parsed(AttributeKind::DocComment(box DocComment{ span, comment, .. })) = attr {
             spans.push(span);
             let doc = comment.as_str();
             let doc = doc.trim();

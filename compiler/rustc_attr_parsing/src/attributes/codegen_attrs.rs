@@ -1,4 +1,6 @@
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
+use rustc_hir::attrs::{
+    CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, TargetFeature, UsedBy,
+};
 use rustc_session::parse::feature_err;
 
 use super::prelude::*;
@@ -521,10 +523,12 @@ pub(crate) struct TargetFeatureParser;
 impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
-    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
-        features: items,
-        attr_span: span,
-        was_forced: false,
+    const CONVERT: ConvertFn<Self::Item> = |items, span| {
+        AttributeKind::TargetFeature(Box::new(TargetFeature {
+            features: items,
+            attr_span: span,
+            was_forced: false,
+        }))
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
@@ -553,10 +557,12 @@ pub(crate) struct ForceTargetFeatureParser;
 impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::force_target_feature];
-    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
-        features: items,
-        attr_span: span,
-        was_forced: true,
+    const CONVERT: ConvertFn<Self::Item> = |items, span| {
+        AttributeKind::TargetFeature(Box::new(TargetFeature {
+            features: items,
+            attr_span: span,
+            was_forced: true,
+        }))
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

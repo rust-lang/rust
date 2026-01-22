@@ -4,6 +4,7 @@
 
 // tidy-alphabetical-start
 #![feature(associated_type_defaults)]
+#![feature(box_patterns)]
 #![feature(closure_track_caller)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]

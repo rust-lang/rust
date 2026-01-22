@@ -1,3 +1,5 @@
+use rustc_hir::attrs::{ProcMacroDerive, RustcBuiltinMacro};
+
 use super::prelude::*;
 
 const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
@@ -32,11 +34,11 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
-        Some(AttributeKind::ProcMacroDerive {
+        Some(AttributeKind::ProcMacroDerive(Box::new(ProcMacroDerive {
             trait_name: trait_name.expect("Trait name is mandatory, so it is present"),
             helper_attrs,
             span: cx.attr_span,
-        })
+        })))
     }
 }
 
@@ -51,7 +53,11 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;
-        Some(AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, span: cx.attr_span })
+        Some(AttributeKind::RustcBuiltinMacro(Box::new(RustcBuiltinMacro {
+            builtin_name,
+            helper_attrs,
+            span: cx.attr_span,
+        })))
     }
 }
 

@@ -28,7 +28,7 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, CustomMir};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_attr};
@@ -492,7 +492,7 @@ fn construct_fn<'tcx>(
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
-    if let Some((dialect, phase)) = find_attr!(tcx.hir_attrs(fn_id), AttributeKind::CustomMir(dialect, phase, _) => (dialect, phase))
+    if let Some((dialect, phase)) = find_attr!(tcx.hir_attrs(fn_id), AttributeKind::CustomMir(box CustomMir { dialect, phase, .. }) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,

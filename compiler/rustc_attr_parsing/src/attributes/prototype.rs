@@ -2,7 +2,7 @@
 
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::Target;
-use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
+use rustc_hir::attrs::{AttributeKind, CustomMir, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{AttributeOrder, OnDuplicate};
@@ -62,7 +62,11 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
             return None;
         }
 
-        Some(AttributeKind::CustomMir(dialect, phase, cx.attr_span))
+        Some(AttributeKind::CustomMir(Box::new(CustomMir {
+            dialect,
+            phase,
+            attr_span: cx.attr_span,
+        })))
     }
 }
 

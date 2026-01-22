@@ -5,7 +5,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocComment};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
@@ -297,12 +297,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         continue;
                     }
 
-                    attributes.push(Attribute::Parsed(AttributeKind::DocComment {
-                        style: attr.style,
-                        kind: DocFragmentKind::Sugared(*comment_kind),
-                        span: attr_span,
-                        comment: *symbol,
-                    }))
+                    attributes.push(Attribute::Parsed(AttributeKind::DocComment(Box::new(
+                        DocComment {
+                            style: attr.style,
+                            kind: DocFragmentKind::Sugared(*comment_kind),
+                            span: attr_span,
+                            comment: *symbol,
+                        },
+                    ))))
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -359,12 +361,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             // emit an error with `AcceptContext`.
                             && let Some(comment) = nv.value_as_str()
                         {
-                            attributes.push(Attribute::Parsed(AttributeKind::DocComment {
-                                style: attr.style,
-                                kind: DocFragmentKind::Raw(nv.value_span),
-                                span: attr_span,
-                                comment,
-                            }));
+                            attributes.push(Attribute::Parsed(AttributeKind::DocComment(
+                                Box::new(DocComment {
+                                    style: attr.style,
+                                    kind: DocFragmentKind::Raw(nv.value_span),
+                                    span: attr_span,
+                                    comment,
+                                }),
+                            )));
                             continue;
                         }
 

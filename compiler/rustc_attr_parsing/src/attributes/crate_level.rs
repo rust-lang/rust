@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
+use rustc_hir::attrs::{CrateType, LimitAttribute, WindowsSubsystemKind};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
 use rustc_span::Symbol;
@@ -95,11 +95,11 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
             return None;
         };
 
-        Some(AttributeKind::RecursionLimit {
+        Some(AttributeKind::RecursionLimit(Box::new(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })
+        })))
     }
 }
 
@@ -118,11 +118,11 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
             return None;
         };
 
-        Some(AttributeKind::MoveSizeLimit {
+        Some(AttributeKind::MoveSizeLimit(Box::new(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })
+        })))
     }
 }
 
@@ -141,11 +141,11 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
             return None;
         };
 
-        Some(AttributeKind::TypeLengthLimit {
+        Some(AttributeKind::TypeLengthLimit(Box::new(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })
+        })))
     }
 }
 
@@ -164,11 +164,11 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
             return None;
         };
 
-        Some(AttributeKind::PatternComplexityLimit {
+        Some(AttributeKind::PatternComplexityLimit(Box::new(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })
+        })))
     }
 }
 

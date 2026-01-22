@@ -2,6 +2,7 @@
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
 // tidy-alphabetical-start
+#![feature(box_patterns)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
@@ -15,7 +16,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_hir::attrs::{AttributeKind, PrintAttribute};
+use rustc_hir::attrs::{AttributeKind, DocComment, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
     GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
@@ -110,7 +111,11 @@ impl<'a> State<'a> {
                 self.word("]");
                 self.hardbreak()
             }
-            hir::Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
+            hir::Attribute::Parsed(AttributeKind::DocComment(box DocComment {
+                kind,
+                comment,
+                ..
+            })) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
                     *kind, style, *comment,
                 ));

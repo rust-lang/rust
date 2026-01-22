@@ -21,8 +21,8 @@ use rustc_feature::{
     BuiltinAttribute,
 };
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    MirDialect, MirPhase, ReprAttr, SanitizerSet,
+    AttributeKind, CustomMir, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet, TargetFeature,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -148,11 +148,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(
                     AttributeKind::Stability {
                         span: attr_span,
-                        stability: Stability { level, feature },
+                        stability: box Stability { level, feature },
                     }
                     | AttributeKind::ConstStability {
                         span: attr_span,
-                        stability: PartialConstStability { level, feature, .. },
+                        stability: box PartialConstStability { level, feature, .. },
                     },
                 ) => self.check_stability(*attr_span, span, level, *feature),
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
@@ -174,7 +174,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Deprecation {span: attr_span, .. }) => {
                     self.check_deprecated(hir_id, *attr_span, target)
                 }
-                Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
+                Attribute::Parsed(AttributeKind::TargetFeature(box TargetFeature { attr_span, ..})) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
                 }
                 Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
@@ -201,7 +201,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
-                &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
+                &Attribute::Parsed(AttributeKind::CustomMir(box CustomMir { dialect, phase, attr_span })) => {
                     self.check_custom_mir(dialect, phase, attr_span)
                 }
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {

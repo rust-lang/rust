@@ -144,7 +144,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
 
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::Stability { stability, span })
+        Some(AttributeKind::Stability { stability: Box::new(stability), span })
     }
 }
 
@@ -173,7 +173,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::BodyStability { stability, span })
+        Some(AttributeKind::BodyStability { stability: Box::new(stability), span })
     }
 }
 
@@ -258,7 +258,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
 
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::ConstStability { stability, span })
+        Some(AttributeKind::ConstStability { stability: Box::new(stability), span })
     }
 }
 

@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(iter_intersperse)]

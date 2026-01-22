@@ -12,7 +12,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
+use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate, ProcMacroDerive};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
@@ -2021,7 +2021,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     MacroKind::Bang
                 } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive(box ProcMacroDerive { trait_name, ..}) => trait_name)
                 {
                     name = *trait_name;
                     MacroKind::Derive

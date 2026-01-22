@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
+use rustc_hir::attrs::{AttributeKind, EiiImplResolution, TargetFeature};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{
@@ -1652,8 +1652,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { was_forced: false, .. })
-            && safety.is_safe()
+        let safety = if find_attr!(
+            attrs,
+            AttributeKind::TargetFeature(box TargetFeature { was_forced: false, .. })
+        ) && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {
             hir::HeaderSafety::SafeTargetFeatures

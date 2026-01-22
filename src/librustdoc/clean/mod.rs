@@ -1007,7 +1007,7 @@ fn clean_proc_macro<'tcx>(
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     }
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let Some((trait_name, helper_attrs)) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
+    let Some((trait_name, helper_attrs)) = find_attr!(attrs, AttributeKind::ProcMacroDerive(box hir::attrs::ProcMacroDerive { trait_name, helper_attrs, ..}) => (*trait_name, helper_attrs))
     else {
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     };

@@ -4,6 +4,7 @@ use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_errors::Applicability;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::DocComment;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -37,12 +38,12 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
     attrs
         .iter()
         .filter_map(|attr| {
-            if let Attribute::Parsed(AttributeKind::DocComment {
+            if let Attribute::Parsed(AttributeKind::DocComment(box DocComment {
                 style: AttrStyle::Outer,
                 kind: DocFragmentKind::Sugared(comment_kind),
                 comment,
                 ..
-            }) = attr
+            })) = attr
                 && let Some(com) = comment.as_str().strip_prefix('!')
             {
                 let sugg = match comment_kind {

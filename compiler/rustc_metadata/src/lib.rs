@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(error_iter)]
 #![feature(file_buffered)]

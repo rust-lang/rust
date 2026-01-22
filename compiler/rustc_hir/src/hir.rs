@@ -31,7 +31,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use crate::attrs::AttributeKind;
+use crate::attrs::{AttributeKind, DocComment};
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
@@ -1357,7 +1357,7 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn is_doc_comment(&self) -> Option<Span> {
-        if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = self {
+        if let Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. })) = self {
             Some(*span)
         } else {
             None
@@ -1369,7 +1369,7 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. })) => *span,
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
@@ -1404,7 +1404,9 @@ impl AttributeExt for Attribute {
     #[inline]
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+            Attribute::Parsed(AttributeKind::DocComment(box DocComment { comment, .. })) => {
+                Some(*comment)
+            }
             _ => None,
         }
     }
@@ -1424,16 +1426,18 @@ impl AttributeExt for Attribute {
     #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
-                Some((*comment, *kind))
-            }
+            Attribute::Parsed(AttributeKind::DocComment(box DocComment {
+                kind, comment, ..
+            })) => Some((*comment, *kind)),
             _ => None,
         }
     }
 
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match self {
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
+            Attribute::Parsed(AttributeKind::DocComment(box DocComment { style, .. })) => {
+                Some(*style)
+            }
             Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
                 Some(attr.style)
             }

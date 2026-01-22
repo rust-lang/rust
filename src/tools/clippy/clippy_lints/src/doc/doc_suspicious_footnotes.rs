@@ -4,6 +4,7 @@ use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrStyle, Attribute};
+use rustc_hir::attrs::DocComment;
 use rustc_lint::{LateContext, LintContext};
 
 use std::ops::Range;
@@ -49,7 +50,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             .filter(|attr| {
                                 matches!(
                                     attr,
-                                    Attribute::Parsed(AttributeKind::DocComment { span, .. })
+                                    Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. }))
                                     if span.overlaps(this_fragment.span),
                                 )
                             })
