@@ -5,7 +5,7 @@
 #![feature(coroutine_trait)]
 #![feature(coroutines, stmt_expr_attributes)]
 #![feature(never_type)]
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::ops::Coroutine;
 use std::ops::CoroutineState;
 use std::pin::Pin;
