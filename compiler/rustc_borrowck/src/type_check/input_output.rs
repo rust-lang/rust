@@ -110,7 +110,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 .skip(1 + if is_coroutine_with_implicit_resume_ty { 1 } else { 0 })
                 .map(|local| &self.body.local_decls[local]),
         ) {
-            self.ascribe_user_type_skip_wf(
+            self.ascribe_user_type(
                 arg_decl.ty,
                 ty::UserType::new(ty::UserTypeKind::Ty(user_ty)),
                 arg_decl.source_info.span,
@@ -119,7 +119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         // If the user explicitly annotated the output type, enforce it.
         let output_decl = &self.body.local_decls[RETURN_PLACE];
-        self.ascribe_user_type_skip_wf(
+        self.ascribe_user_type(
             output_decl.ty,
             ty::UserType::new(ty::UserTypeKind::Ty(user_provided_sig.output())),
             output_decl.source_info.span,
