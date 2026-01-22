@@ -103,16 +103,19 @@ pub(crate) use super::FreeFunctions;
 pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
-    ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-    }),* $(,)?) => {
-        $(impl $name {
+    (
+        FreeFunctions {
+            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        },
+        $($name:ident),* $(,)?
+    ) => {
+        impl FreeFunctions {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {
                 Bridge::with(|bridge| {
                     let mut buf = bridge.cached_buffer.take();
 
                     buf.clear();
-                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
+                    api_tags::Method::$method.encode(&mut buf, &mut ());
                     $($arg.encode(&mut buf, &mut ());)*
 
                     buf = bridge.dispatch.call(buf);
@@ -124,7 +127,7 @@ macro_rules! define_client_side {
                     r.unwrap_or_else(|e| panic::resume_unwind(e.into()))
                 })
             })*
-        })*
+        }
     }
 }
 with_api!(self, self, define_client_side);

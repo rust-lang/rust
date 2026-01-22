@@ -844,12 +844,6 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     }
 }
 
-impl server::TokenStream for Rustc<'_, '_> {}
-
-impl server::Span for Rustc<'_, '_> {}
-
-impl server::Symbol for Rustc<'_, '_> {}
-
 impl server::Server for Rustc<'_, '_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {
