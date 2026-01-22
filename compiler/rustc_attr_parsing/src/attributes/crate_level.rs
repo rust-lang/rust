@@ -1,4 +1,8 @@
-use rustc_hir::attrs::WindowsSubsystemKind;
+use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
+use rustc_hir::lints::AttributeLintKind;
+use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
+use rustc_span::Symbol;
+use rustc_span::edit_distance::find_best_match_for_name;
 
 use super::prelude::*;
 
@@ -23,6 +27,56 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
         };
 
         Some(AttributeKind::CrateName { name, name_span: n.value_span, attr_span: cx.attr_span })
+    }
+}
+
+pub(crate) struct CrateTypeParser;
+
+impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
+    const PATH: &[Symbol] = &[sym::crate_type];
+    type Item = CrateType;
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+
+    const TEMPLATE: AttributeTemplate =
+        template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let ArgParser::NameValue(n) = args else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+
+        let Some(crate_type) = n.value_as_str() else {
+            cx.expected_string_literal(n.value_span, Some(n.value_as_lit()));
+            return None;
+        };
+
+        let Ok(crate_type) = crate_type.try_into() else {
+            // We don't error on invalid `#![crate_type]` when not applied to a crate
+            if cx.shared.target == Target::Crate {
+                let candidate = find_best_match_for_name(
+                    &CrateType::all_stable().iter().map(|(name, _)| *name).collect::<Vec<_>>(),
+                    crate_type,
+                    None,
+                );
+                cx.emit_lint(
+                    UNKNOWN_CRATE_TYPES,
+                    AttributeLintKind::CrateTypeUnknown {
+                        span: n.value_span,
+                        suggested: candidate,
+                    },
+                    n.value_span,
+                );
+            }
+            return None;
+        };
+
+        Some(crate_type)
     }
 }
 

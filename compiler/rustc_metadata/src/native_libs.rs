@@ -162,7 +162,7 @@ fn find_bundled_library(
 ) -> Option<Symbol> {
     let sess = tcx.sess;
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive } = kind
-        && tcx.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::Staticlib))
+        && tcx.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
