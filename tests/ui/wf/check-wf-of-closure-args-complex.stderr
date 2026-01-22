@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args-complex.rs:44:60
+   |
+LL |     bar::<for<'a> fn(&'a Payload) -> MyTy<&'a Payload>>(|x| unsafe {
+   |                                                          - ^ requires that `'1` must outlive `'static`
+   |                                                          |
+   |                                                          has type `&'1 Box<i32>`
+
+error: aborting due to 1 previous error
+

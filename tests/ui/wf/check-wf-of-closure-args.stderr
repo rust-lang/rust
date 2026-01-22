@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:11:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |_| {};
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/check-wf-of-closure-args.rs:13:41
+   |
+LL |     let _: for<'x> fn(MyTy<&'x str>) = |x| wf(x);
+   |                                         ^
+   |                                         |
+   |                                         has type `MyTy<&'1 str>`
+   |                                         requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
