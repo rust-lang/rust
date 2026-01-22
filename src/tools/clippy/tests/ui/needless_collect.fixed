@@ -219,3 +219,79 @@ fn issue16270() {
     // Do not lint, `..` implements `Index` but is not `usize`
     _ = &(1..3).collect::<Vec<i32>>()[..];
 }
+
+#[warn(clippy::needless_collect)]
+mod collect_push_then_iter {
+    use std::collections::{BinaryHeap, LinkedList, VecDeque};
+
+    fn vec_push(iter: impl Iterator<Item = i32>) -> Vec<i32> {
+        
+        //~^ needless_collect
+        
+        iter.chain([1]).map(|x| x + 1).collect()
+    }
+
+    fn vec_push_no_iter(iter: impl Iterator<Item = i32>) {
+        let mut v = iter.collect::<Vec<_>>();
+        v.push(1);
+    }
+
+    fn vec_push_multiple(iter: impl Iterator<Item = i32>) -> Vec<i32> {
+        
+        //~^ needless_collect
+        
+        
+        iter.chain([1, 2]).map(|x| x + 1).collect()
+    }
+
+    fn linked_list_push(iter: impl Iterator<Item = i32>) -> LinkedList<i32> {
+        
+        //~^ needless_collect
+        
+        iter.chain([1]).map(|x| x + 1).collect()
+    }
+
+    fn binary_heap_push(iter: impl Iterator<Item = i32>) -> BinaryHeap<i32> {
+        let mut v = iter.collect::<BinaryHeap<_>>();
+        v.push(1);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn vec_push_mixed(iter: impl Iterator<Item = i32>) -> bool {
+        let mut v = iter.collect::<Vec<_>>();
+        let ok = v.contains(&1);
+        v.push(1);
+        ok
+    }
+
+    fn linked_list_extend(iter: impl Iterator<Item = i32>, s: Vec<i32>) -> LinkedList<i32> {
+        
+        //~^ needless_collect
+        
+        iter.chain(s).map(|x| x + 1).collect()
+    }
+
+    fn deque_push_front(iter: impl Iterator<Item = i32>) -> VecDeque<i32> {
+        
+        //~^ needless_collect
+        
+        
+        [1, 2].into_iter().chain(iter).map(|x| x + 1).collect()
+    }
+
+    fn linked_list_push_front_mixed(
+        iter: impl Iterator<Item = i32>,
+        iter2: impl Iterator<Item = i32>,
+    ) -> LinkedList<i32> {
+        
+        //~^ needless_collect
+        
+        
+        
+        
+        
+        
+        
+        [5].into_iter().chain([1, 3].into_iter().chain(iter).chain([2]).chain(iter2)).chain([4, 6]).map(|x| x + 1).collect()
+    }
+}

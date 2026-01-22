@@ -60,5 +60,13 @@ help: implement the method
 LL |     fn three() {}
    |     ^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: missing trait method provided by default: `ne`
+  --> tests/ui/missing_trait_methods.rs:67:1
+   |
+LL | impl PartialEq<Partial> for Partial {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: implement the missing `ne` method of the `PartialEq<Partial>` trait
+
+error: aborting due to 6 previous errors
 

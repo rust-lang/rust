@@ -1,0 +1,53 @@
+error: manual implementation of `mem::take`
+  --> tests/ui/manual_take.rs:9:25
+   |
+LL |       let _lint_negated = if x {
+   |  _________________________^
+LL | |
+LL | |         x = false;
+LL | |         false
+LL | |     } else {
+LL | |         true
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::manual-take` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_take)]`
+help: use
+   |
+LL -     let _lint_negated = if x {
+LL -
+LL -         x = false;
+LL -         false
+LL -     } else {
+LL -         true
+LL -     };
+LL +     let _lint_negated = !std::mem::take(&mut x);
+   |
+
+error: manual implementation of `mem::take`
+  --> tests/ui/manual_take.rs:62:5
+   |
+LL | /     if x {
+LL | |
+LL | |         x = false;
+LL | |         true
+LL | |     } else {
+LL | |         false
+LL | |     }
+   | |_____^
+   |
+help: use
+   |
+LL -     if x {
+LL -
+LL -         x = false;
+LL -         true
+LL -     } else {
+LL -         false
+LL -     }
+LL +     std::mem::take(&mut x)
+   |
+
+error: aborting due to 2 previous errors
+

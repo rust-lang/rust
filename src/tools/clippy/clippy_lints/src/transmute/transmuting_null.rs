@@ -43,6 +43,18 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     }
 
     // Catching:
+    // `std::mem::transmute(std::ptr::without_provenance::<i32>(0))`
+    // `std::mem::transmute(std::ptr::without_provenance_mut::<i32>(0))`
+    if let ExprKind::Call(func1, [arg1]) = arg.kind
+        && (func1.basic_res().is_diag_item(cx, sym::ptr_without_provenance)
+            || func1.basic_res().is_diag_item(cx, sym::ptr_without_provenance_mut))
+        && is_integer_const(cx, arg1, 0)
+    {
+        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
+        return true;
+    }
+
+    // Catching:
     // `std::mem::transmute({ 0 as *const u64 })` and similar const blocks
     if let ExprKind::Block(block, _) = arg.kind
         && block.stmts.is_empty()
