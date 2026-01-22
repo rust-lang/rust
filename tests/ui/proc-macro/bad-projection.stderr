@@ -33,7 +33,7 @@ LL | pub fn uwu() -> <() as Project>::Assoc {}
    | takes 0 arguments
    | required by a bound introduced by this call
    |
-note: required by a bound in `ProcMacro::bang`
+note: required by a bound in `proc_macro::bridge::client::ProcMacro::bang`
   --> $SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
 
 error[E0277]: the trait bound `(): Project` is not satisfied

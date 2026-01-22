@@ -1857,7 +1857,7 @@ pub(crate) fn linked_symbols(
         | CrateType::Cdylib
         | CrateType::Dylib
         | CrateType::Sdylib => (),
-        CrateType::Staticlib | CrateType::Rlib => {
+        CrateType::StaticLib | CrateType::Rlib => {
             // These are not linked, so no need to generate symbols.o for them.
             return Vec::new();
         }

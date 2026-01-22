@@ -1,7 +1,7 @@
 use alloc::ffi::CString;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
-use core::assert_matches::assert_matches;
+use core::assert_matches;
 use core::ffi::{CStr, FromBytesUntilNulError, c_char};
 #[allow(deprecated)]
 use core::hash::SipHasher13 as DefaultHasher;

@@ -927,8 +927,9 @@ impl Step for Clippy {
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
-        let host_libs =
-            builder.stage_out(build_compiler, Mode::ToolRustcPrivate).join(builder.cargo_dir());
+        let host_libs = builder
+            .stage_out(build_compiler, Mode::ToolRustcPrivate)
+            .join(builder.cargo_dir(Mode::ToolRustcPrivate));
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.
@@ -1625,6 +1626,12 @@ test!(RunMakeCargo {
     suite: "run-make-cargo",
     default: true
 });
+test!(BuildStd {
+    path: "tests/build-std",
+    mode: CompiletestMode::RunMake,
+    suite: "build-std",
+    default: false
+});
 
 test!(AssemblyLlvm {
     path: "tests/assembly-llvm",
@@ -1948,7 +1955,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let stage0_rustc_path = builder.compiler(0, test_compiler.host);
             cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
 
-            if suite == "run-make-cargo" {
+            if matches!(suite, "run-make-cargo" | "build-std") {
                 let cargo_path = if test_compiler.stage == 0 {
                     // If we're using `--stage 0`, we should provide the bootstrap cargo.
                     builder.initial_cargo.clone()

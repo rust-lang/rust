@@ -7,8 +7,7 @@ pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
 use tracing::{debug, trace};
 
 use crate::error::{TranslateError, TranslateErrorKind};
-use crate::snippet::Style;
-use crate::{DiagArg, DiagMessage, FluentBundle};
+use crate::{DiagArg, DiagMessage, FluentBundle, Style};
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -76,7 +75,7 @@ impl Translator {
     ) -> Result<Cow<'a, str>, TranslateError<'a>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {
+            DiagMessage::Str(msg) => {
                 return Ok(Cow::Borrowed(msg));
             }
             DiagMessage::FluentIdentifier(identifier, attr) => (identifier, attr),

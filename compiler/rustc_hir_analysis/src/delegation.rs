@@ -2,8 +2,7 @@
 //!
 //! For more information about delegation design, see the tracking issue #118212.
 
-use std::assert_matches::debug_assert_matches;
-
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};

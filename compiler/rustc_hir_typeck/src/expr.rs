@@ -434,43 +434,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::UnOp::Not | hir::UnOp::Neg => expected,
             hir::UnOp::Deref => NoExpectation,
         };
-        let mut oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
+        let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
-        if !oprnd_t.references_error() {
-            oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
-            match unop {
-                hir::UnOp::Deref => {
-                    if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
-                        oprnd_t = ty;
-                    } else {
-                        let mut err =
-                            self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
-                        let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                        if let Some(sp) =
-                            tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
-                        {
-                            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                        }
-                        oprnd_t = Ty::new_error(tcx, err.emit());
-                    }
+        if let Err(guar) = oprnd_t.error_reported() {
+            return Ty::new_error(tcx, guar);
+        }
+
+        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        match unop {
+            hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
+                let mut err =
+                    self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
+                let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
+                if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
-                hir::UnOp::Not => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                    // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
-                        oprnd_t = result;
-                    }
-                }
-                hir::UnOp::Neg => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                    // If it's builtin, we can reuse the type, this helps inference.
-                    if !oprnd_t.is_numeric() {
-                        oprnd_t = result;
-                    }
-                }
+                Ty::new_error(tcx, err.emit())
+            }),
+            hir::UnOp::Not => {
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                // If it's builtin, we can reuse the type, this helps inference.
+                if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
+            }
+            hir::UnOp::Neg => {
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                // If it's builtin, we can reuse the type, this helps inference.
+                if oprnd_t.is_numeric() { oprnd_t } else { result }
             }
         }
-        oprnd_t
     }
 
     fn check_expr_addr_of(

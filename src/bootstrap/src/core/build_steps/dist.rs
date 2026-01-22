@@ -30,7 +30,7 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
-use crate::core::config::TargetSelection;
+use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -1008,7 +1008,7 @@ impl Step for Analysis {
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target)
-            .join(builder.cargo_dir())
+            .join(builder.cargo_dir(Mode::Std))
             .join("deps")
             .join("save-analysis");
 
@@ -2717,6 +2717,55 @@ impl Step for LlvmBitcodeLinker {
     }
 }
 
+/// Distributes the `enzyme` library so that it can be used by a compiler whose host
+/// is `target`.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Enzyme {
+    /// Enzyme will by usable by rustc on this host.
+    pub target: TargetSelection,
+}
+
+impl Step for Enzyme {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("enzyme")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.llvm_enzyme
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Enzyme { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents Enzyme from being built for "dist"
+        // or "install" on the stable/beta channels. It is not yet stable and
+        // should not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+
+        let enzyme = builder.ensure(llvm::Enzyme { target });
+
+        let target_libdir = format!("lib/rustlib/{}/lib", target.triple);
+
+        // Prepare the image directory
+        let mut tarball = Tarball::new(builder, "enzyme", &target.triple);
+        tarball.set_overlay(OverlayKind::Enzyme);
+        tarball.is_preview(true);
+
+        tarball.add_file(enzyme.enzyme_path(), target_libdir, FileType::NativeLibrary);
+
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
 /// Should not be considered stable by end users.
@@ -3033,6 +3082,14 @@ impl Step for Gcc {
         if host != "x86_64-unknown-linux-gnu" {
             builder.info(&format!("host target `{host}` not supported by gcc. skipping"));
             return None;
+        }
+
+        if builder.config.is_running_on_ci {
+            assert_eq!(
+                builder.config.gcc_ci_mode,
+                GccCiMode::BuildLocally,
+                "Cannot use gcc.download-ci-gcc when distributing GCC on CI"
+            );
         }
 
         // We need the GCC sources to build GCC and also to add its license and README

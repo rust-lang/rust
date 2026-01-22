@@ -104,7 +104,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
                 if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
             }
-            CrateType::Staticlib => {
+            CrateType::StaticLib => {
                 if sess.opts.unstable_opts.staticlib_prefer_dynamic {
                     Linkage::Dynamic
                 } else {
@@ -141,7 +141,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
             // Static executables must have all static dependencies.
             // If any are not found, generate some nice pretty errors.
-            if (ty == CrateType::Staticlib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
+            if (ty == CrateType::StaticLib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
                 || (ty == CrateType::Executable
                     && sess.crt_static(Some(ty))
                     && !sess.target.crt_static_allows_dylibs)

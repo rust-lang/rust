@@ -50,7 +50,7 @@ fn check_attr_not_crate_level<S: Stage>(
     span: Span,
     attr_name: Symbol,
 ) -> bool {
-    if cx.shared.target.is_some_and(|target| target == Target::Crate) {
+    if cx.shared.target == Target::Crate {
         cx.emit_err(DocAttrNotCrateLevel { span, attr_name });
         return false;
     }
@@ -59,7 +59,7 @@ fn check_attr_not_crate_level<S: Stage>(
 
 /// Checks that an attribute is used at the crate level. Returns `true` if valid.
 fn check_attr_crate_level<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) -> bool {
-    if cx.shared.target.is_some_and(|target| target != Target::Crate) {
+    if cx.shared.target != Target::Crate {
         cx.emit_lint(
             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
             AttributeLintKind::AttrCrateLevelOnly,

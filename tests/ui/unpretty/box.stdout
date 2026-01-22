@@ -27,7 +27,7 @@ body:
                                             remainder_scope: Remainder { block: 1, first_statement_index: 0}
                                             init_scope: Node(2)
                                             pattern: 
-                                                Pat: {
+                                                Pat {
                                                     ty: std::boxed::Box<i32, std::alloc::Global>
                                                     span: $DIR/box.rs:7:9: 7:10 (#0)
                                                     kind: PatKind {

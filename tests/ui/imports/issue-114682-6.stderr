@@ -12,6 +12,8 @@ note: `log` could refer to the function defined here
    |
 LL | pub use self::a::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `log` could also refer to the function defined here
   --> $DIR/auxiliary/issue-114682-6-extern.rs:9:9
    |
@@ -36,6 +38,8 @@ note: `log` could refer to the function defined here
    |
 LL | pub use self::a::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `log` could also refer to the function defined here
   --> $DIR/auxiliary/issue-114682-6-extern.rs:9:9
    |

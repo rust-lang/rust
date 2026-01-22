@@ -1,29 +1,57 @@
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/kw-in-item-pos-recovery-149692.rs:10:8
+error: expected identifier, found keyword `Self`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:10:4
+   |
+LL | m!(Self());
+   |    ^^^^ expected identifier, found keyword
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:10:4
    |
 LL |     ($id:item()) => {}
    |      -------- while parsing argument for this `item` macro fragment
 ...
 LL | m!(Self());
-   |        ^ expected one of `!` or `::`
+   |    ^^^^
+   |
+help: if you meant to call a macro, try
+   |
+LL | m!(Self!());
+   |        +
 
-error: expected one of `!` or `::`, found `{`
-  --> $DIR/kw-in-item-pos-recovery-149692.rs:13:8
+error: expected identifier, found keyword `Self`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:14:4
+   |
+LL | m!(Self{});
+   |    ^^^^ expected identifier, found keyword
+
+error: missing `enum` or `struct` for enum or struct definition
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:14:4
    |
 LL |     ($id:item()) => {}
    |      -------- while parsing argument for this `item` macro fragment
 ...
 LL | m!(Self{});
-   |        ^ expected one of `!` or `::`
+   |    ^^^^
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/kw-in-item-pos-recovery-149692.rs:16:9
+error: expected identifier, found keyword `crate`
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:18:4
+   |
+LL | m!(crate());
+   |    ^^^^^ expected identifier, found keyword
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/kw-in-item-pos-recovery-149692.rs:18:4
    |
 LL |     ($id:item()) => {}
    |      -------- while parsing argument for this `item` macro fragment
 ...
 LL | m!(crate());
-   |         ^ expected one of `!` or `::`
+   |    ^^^^^
+   |
+help: if you meant to call a macro, try
+   |
+LL | m!(crate!());
+   |         +
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 

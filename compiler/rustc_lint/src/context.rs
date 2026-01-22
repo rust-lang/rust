@@ -509,7 +509,6 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
@@ -548,7 +547,6 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with an associated span.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     #[track_caller]
     fn span_lint<S: Into<MultiSpan>>(
         &self,
@@ -570,7 +568,6 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with no associated span.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
     fn lint(&self, lint: &'static Lint, decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)) {
         self.opt_span_lint(lint, None as Option<Span>, decorate);
     }
@@ -590,8 +587,6 @@ pub trait LintContext {
         // and stored between compilation sessions. To not manually do these steps, we simply create
         // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
         // normal expected lint diagnostic.
-        #[allow(rustc::diagnostic_outside_of_impl)]
-        #[allow(rustc::untranslatable_diagnostic)]
         self.sess()
             .dcx()
             .struct_expect(
@@ -630,7 +625,6 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         self.tcx.sess
     }
 
-    #[rustc_lint_diagnostics]
     fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -656,7 +650,6 @@ impl LintContext for EarlyContext<'_> {
         self.builder.sess()
     }
 
-    #[rustc_lint_diagnostics]
     fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,

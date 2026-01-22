@@ -12,6 +12,8 @@ note: `id` could refer to the function defined here
    |
 LL |     pub use self::evp::*;
    |             ^^^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `id` could also refer to the function defined here
   --> $DIR/auxiliary/../ambiguous-1.rs:15:13
    |
@@ -36,6 +38,8 @@ note: `id` could refer to the function defined here
    |
 LL |     pub use self::evp::*;
    |             ^^^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `id` could also refer to the function defined here
   --> $DIR/auxiliary/../ambiguous-1.rs:15:13
    |

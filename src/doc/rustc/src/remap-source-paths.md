@@ -6,7 +6,7 @@ output, including compiler diagnostics, debugging information, macro expansions,
 This is useful for normalizing build products, for example, by removing the current directory
 out of the paths emitted into object files.
 
-The remapping is done via the `--remap-path-prefix` option.
+The remapping is done via the `--remap-path-prefix` flag and can be customized via the `--remap-path-scope` flag.
 
 ## `--remap-path-prefix`
 
@@ -38,6 +38,31 @@ rustc --remap-path-prefix "/home/user/project=/redacted"
 ```
 
 This example replaces all occurrences of `/home/user/project` in emitted paths with `/redacted`.
+
+## `--remap-path-scope`
+
+Defines which scopes of paths should be remapped by `--remap-path-prefix`.
+
+This flag accepts a comma-separated list of values and may be specified multiple times, in which case the scopes are aggregated together.
+
+The valid scopes are:
+
+- `macro` - apply remappings to the expansion of `std::file!()` macro. This is where paths in embedded panic messages come from
+- `diagnostics` - apply remappings to printed compiler diagnostics
+- `debuginfo` - apply remappings to debug information
+- `coverage` - apply remappings to coverage information
+- `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,coverage,debuginfo`.
+- `all` (default) - an alias for all of the above (and unstable scopes), also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
+
+The scopes accepted by `--remap-path-scope` are not exhaustive - new scopes may be added in future releases for eventual stabilisation.
+This implies that the `all` scope can correspond to different scopes between releases.
+
+### Example
+
+```sh
+# With `object` scope only the build outputs will be remapped, the diagnostics won't be remapped.
+rustc --remap-path-prefix=$(PWD)=/remapped --remap-path-scope=object main.rs
+```
 
 ## Caveats and Limitations
 

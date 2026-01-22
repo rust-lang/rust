@@ -1,8 +1,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-#![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -12,19 +10,21 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{cmp, fmt, fs, iter};
+use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
+use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::{FileName, RealFileName, SourceFileHashAlgorithm, Symbol, sym};
+use rustc_span::{
+    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
+};
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
     Target, TargetTuple,
@@ -1319,6 +1319,37 @@ impl OutputFilenames {
     }
 }
 
+pub(crate) fn parse_remap_path_scope(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+    unstable_opts: &UnstableOptions,
+) -> RemapPathScopeComponents {
+    if let Some(v) = matches.opt_str("remap-path-scope") {
+        let mut slot = RemapPathScopeComponents::empty();
+        for s in v.split(',') {
+            slot |= match s {
+                "macro" => RemapPathScopeComponents::MACRO,
+                "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
+                "documentation" => {
+                    if !unstable_opts.unstable_options {
+                        early_dcx.early_fatal("remapping `documentation` path scope requested but `-Zunstable-options` not specified");
+                    }
+
+                    RemapPathScopeComponents::DOCUMENTATION
+                },
+                "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
+                "coverage" => RemapPathScopeComponents::COVERAGE,
+                "object" => RemapPathScopeComponents::OBJECT,
+                "all" => RemapPathScopeComponents::all(),
+                _ => early_dcx.early_fatal("argument for `--remap-path-scope` must be a comma separated list of scopes: `macro`, `diagnostics`, `documentation`, `debuginfo`, `coverage`, `object`, `all`"),
+            }
+        }
+        slot
+    } else {
+        RemapPathScopeComponents::all()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Sysroot {
     pub explicit: Option<PathBuf>,
@@ -1355,9 +1386,9 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
-    unstable_opts: &UnstableOptions,
+    remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), unstable_opts.remap_path_scope)
+    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
 }
 
 impl Default for Options {
@@ -1369,7 +1400,7 @@ impl Default for Options {
         // to create a default working directory.
         let working_dir = {
             let working_dir = std::env::current_dir().unwrap();
-            let file_mapping = file_path_mapping(Vec::new(), &unstable_opts);
+            let file_mapping = file_path_mapping(Vec::new(), RemapPathScopeComponents::empty());
             file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
         };
 
@@ -1404,6 +1435,7 @@ impl Default for Options {
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
+            remap_path_scope: RemapPathScopeComponents::all(),
             real_rust_source_base_dir: None,
             real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -1430,7 +1462,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
+        file_path_mapping(self.remap_path_prefix.clone(), self.remap_path_scope)
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -1505,29 +1537,7 @@ pub enum EntryFnType {
     },
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, BlobDecodable)]
-#[derive(HashStable_Generic)]
-pub enum CrateType {
-    Executable,
-    Dylib,
-    Rlib,
-    Staticlib,
-    Cdylib,
-    ProcMacro,
-    Sdylib,
-}
-
-impl CrateType {
-    pub fn has_metadata(self) -> bool {
-        match self {
-            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-            CrateType::Executable
-            | CrateType::Cdylib
-            | CrateType::Staticlib
-            | CrateType::Sdylib => false,
-        }
-    }
-}
+pub use rustc_hir::attrs::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
@@ -1569,10 +1579,6 @@ pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
     pub gcs: bool,
-}
-
-pub(crate) const fn default_lib_output() -> CrateType {
-    CrateType::Rlib
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
@@ -1867,6 +1873,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "remap-path-prefix",
             "Remap source names in all output (compiler messages and output files)",
             "<FROM>=<TO>",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "remap-path-scope",
+            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
+            "<macro,diagnostics,debuginfo,coverage,object,all>",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
     ];
@@ -2671,6 +2685,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 
@@ -2737,7 +2752,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
         });
 
-        let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+        let file_mapping = file_path_mapping(remap_path_prefix.clone(), remap_path_scope);
         file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
     };
 
@@ -2774,6 +2789,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
+        remap_path_scope,
         real_rust_source_base_dir,
         real_rustc_dev_source_base_dir,
         edition,
@@ -2839,9 +2855,9 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
-                "lib" => default_lib_output(),
+                "lib" => CrateType::default(),
                 "rlib" => CrateType::Rlib,
-                "staticlib" => CrateType::Staticlib,
+                "staticlib" => CrateType::StaticLib,
                 "dylib" => CrateType::Dylib,
                 "cdylib" => CrateType::Cdylib,
                 "bin" => CrateType::Executable,
@@ -2932,26 +2948,6 @@ pub mod nightly_options {
                 if nightly_options_on_stable > 1 { "s" } else { "" }
             ));
         }
-    }
-}
-
-impl fmt::Display for CrateType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            CrateType::Executable => "bin".fmt(f),
-            CrateType::Dylib => "dylib".fmt(f),
-            CrateType::Rlib => "rlib".fmt(f),
-            CrateType::Staticlib => "staticlib".fmt(f),
-            CrateType::Cdylib => "cdylib".fmt(f),
-            CrateType::ProcMacro => "proc-macro".fmt(f),
-            CrateType::Sdylib => "sdylib".fmt(f),
-        }
-    }
-}
-
-impl IntoDiagArg for CrateType {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self.to_string().into_diag_arg(&mut None)
     }
 }
 

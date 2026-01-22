@@ -133,7 +133,7 @@
 -         _13 = copy _12 as *const () (PtrToPtr);
 +         _13 = copy _25 as *const () (PtrToPtr);
           _14 = NonNull::<()> { pointer: copy _13 };
-          _15 = Unique::<()> { pointer: copy _14, _marker: const PhantomData::<()> };
+          _15 = std::ptr::Unique::<()> { pointer: copy _14, _marker: const PhantomData::<()> };
           _3 = Box::<()>(move _15, const std::alloc::Global);
 -         (*_13) = move _4;
 +         (*_13) = const ();

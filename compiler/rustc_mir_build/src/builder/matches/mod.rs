@@ -5,13 +5,13 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 use std::sync::Arc;
 
 use itertools::{Itertools, Position};
 use rustc_abi::{FIRST_VARIANT, VariantIdx};
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
@@ -1339,19 +1339,13 @@ enum TestKind<'tcx> {
 
     /// Tests the place against a string constant using string equality.
     StringEq {
-        /// Constant `&str` value to test against.
+        /// Constant string value to test against.
+        /// Note that this value has type `str` (not `&str`).
         value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node. Usually `&str`, but could
-        /// be `str` for patterns like `deref!("..."): String`.
-        pat_ty: Ty<'tcx>,
     },
 
     /// Tests the place against a constant using scalar equality.
-    ScalarEq {
-        value: ty::Value<'tcx>,
-        /// Type of the corresponding pattern node.
-        pat_ty: Ty<'tcx>,
-    },
+    ScalarEq { value: ty::Value<'tcx> },
 
     /// Test whether the value falls within an inclusive or exclusive range.
     Range(Arc<PatRange<'tcx>>),

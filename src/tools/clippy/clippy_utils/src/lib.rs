@@ -5,14 +5,11 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![recursion_limit = "512"]
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
 )]
 #![warn(
     trivial_casts,

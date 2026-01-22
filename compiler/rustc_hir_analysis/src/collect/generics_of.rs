@@ -1,6 +1,6 @@
-use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::assert_matches;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};

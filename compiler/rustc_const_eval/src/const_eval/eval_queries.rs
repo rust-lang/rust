@@ -394,8 +394,10 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
-    let is_static = tcx.is_static(def);
+    // #[type_const] don't have bodys
+    debug_assert!(!tcx.is_type_const(def), "CTFE tried to evaluate type-const: {:?}", def);
 
+    let is_static = tcx.is_static(def);
     let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),

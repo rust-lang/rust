@@ -451,7 +451,6 @@ impl Socket {
     }
 }
 
-#[unstable(reason = "not public", issue = "none", feature = "fd_read")]
 impl<'a> Read for &'a Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)

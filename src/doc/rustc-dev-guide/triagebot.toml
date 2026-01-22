@@ -86,3 +86,6 @@ rustc-dev-guide = [
     "@jyn514",
     "@tshepang",
 ]
+
+# Make rebases more easy to read: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]
