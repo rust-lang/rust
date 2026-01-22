@@ -2858,13 +2858,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
                 && let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
             {
-                err.span_suggestion_verbose(
-                    expr.span.until(inner.span),
-                    "references are always `Sized`, even if they point to unsized data; consider \
-                     not dereferencing the expression",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
-                );
+                // Empty suggestions with empty spans ICE with debug assertions
+                let span = expr.span.until(inner.span);
+                if !span.is_empty() {
+                    err.span_suggestion_verbose(
+                        span,
+                        "references are always `Sized`, even if they point to unsized data; consider \
+                         not dereferencing the expression",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         };
         match *cause_code {
