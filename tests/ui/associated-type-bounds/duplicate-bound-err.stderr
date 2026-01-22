@@ -116,7 +116,7 @@ LL | type MustFail = dyn Iterator<Item = i32, Item = u32>;
    |                              |
    |                              `Item` bound here first
 
-error: conflicting associated type bounds for `Item`
+error: conflicting associated type bindings for `Item`
   --> $DIR/duplicate-bound-err.rs:87:17
    |
 LL | type MustFail = dyn Iterator<Item = i32, Item = u32>;
@@ -133,7 +133,7 @@ LL | type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
    |                             |
    |                             `ASSOC` bound here first
 
-error: conflicting associated type bounds for `ASSOC`
+error: conflicting associated constant bindings for `ASSOC`
   --> $DIR/duplicate-bound-err.rs:96:18
    |
 LL | type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;

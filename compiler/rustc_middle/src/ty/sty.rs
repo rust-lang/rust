@@ -762,8 +762,7 @@ impl<'tcx> Ty<'tcx> {
                 .principal_def_id()
                 .into_iter()
                 .flat_map(|principal_def_id| {
-                    // NOTE: This should agree with `needed_associated_types` in
-                    // dyn trait lowering, or else we'll have ICEs.
+                    // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
                     elaborate::supertraits(
                         tcx,
                         ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
@@ -771,7 +770,7 @@ impl<'tcx> Ty<'tcx> {
                     .map(|principal| {
                         tcx.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.is_type())
+                            .filter(|item| item.is_type() || item.is_const())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                             .count()

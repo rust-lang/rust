@@ -7,11 +7,11 @@ LL | trait Foo<T=Self> {
 LL | fn foo(x: &dyn Foo) { }
    |                ^^^
    |
-   = note: because the parameter default references `Self`, the parameter must be specified on the object type
-help: set the type parameter to the desired type
+   = note: because the parameter default references `Self`, the parameter must be specified on the trait object type
+help: explicitly specify the type parameter
    |
-LL | fn foo(x: &dyn Foo<T>) { }
-   |                   +++
+LL | fn foo(x: &dyn Foo</* T */>) { }
+   |                   +++++++++
 
 error: aborting due to 1 previous error
 

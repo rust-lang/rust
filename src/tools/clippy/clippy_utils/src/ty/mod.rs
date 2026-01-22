@@ -1226,7 +1226,7 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)
                 .next()
-                .filter(|item| item.as_tag() == AssocTag::Fn)
+                .filter(|item| item.tag() == AssocTag::Fn)
         })
     } else {
         None
