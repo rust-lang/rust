@@ -5070,6 +5070,8 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
+    static_assert_size!(Attribute, 24);
+    static_assert_size!(AttributeKind, 24);
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);
     static_assert_size!(Expr<'_>, 64);
