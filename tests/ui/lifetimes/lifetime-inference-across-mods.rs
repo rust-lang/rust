@@ -1,8 +1,9 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/11529>
 //@ run-pass
-//@ aux-build:issue-11529.rs
+//@ aux-build:lifetime-inference-across-mods.rs
 
 
-extern crate issue_11529 as a;
+extern crate lifetime_inference_across_mods as a;
 
 fn main() {
     let one = 1;

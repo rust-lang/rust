@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/18353>
 //@ run-pass
 #![allow(dead_code)]
 // Test that wrapping an unsized struct in an enum which gets optimised does
