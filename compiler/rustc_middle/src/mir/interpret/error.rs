@@ -404,6 +404,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidTag(Scalar<AllocId>),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer<AllocId>),
+    /// Using a pointer-not-to-a-va-list as variable argument list pointer.
+    InvalidVaListPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
     InvalidVTablePointer(Pointer<AllocId>),
     /// Using a vtable for the wrong trait.

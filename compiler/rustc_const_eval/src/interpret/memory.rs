@@ -1066,6 +1066,34 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .into()
     }
 
+    pub fn insert_va_list(
+        &self,
+        va_list: Vec<MPlaceTy<'tcx, M::Provenance>>,
+    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
+        trace!("get_ptr_va_list({:?})", ptr);
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        //        if offset.bytes() != 0 {
+        //            throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
+        //        }
+        self.remove_va_list_alloc(alloc_id)
+            .ok_or_else(|| err_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset))))
+            .into()
+    }
+
+    pub fn remove_va_list(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>> {
+        trace!("get_ptr_va_list({:?})", ptr);
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        //        if offset.bytes() != 0 {
+        //            throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
+        //        }
+        self.remove_va_list_alloc(alloc_id)
+            .ok_or_else(|| err_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset))))
+            .into()
+    }
+
     /// Get the dynamic type of the given vtable pointer.
     /// If `expected_trait` is `Some`, it must be a vtable for the given trait.
     pub fn get_ptr_vtable_ty(
