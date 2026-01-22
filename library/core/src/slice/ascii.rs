@@ -467,11 +467,9 @@ const CHUNK_SIZE: usize = 32;
 /// SSE2 implementation using `_mm_movemask_epi8` (compiles to `pmovmskb`) to
 /// avoid LLVM's broken AVX-512 auto-vectorization of counting loops.
 ///
-/// # Safety
-/// Requires SSE2 support (guaranteed on x86_64).
+/// FIXME(llvm#176906): Remove this workaround once LLVM generates efficient code.
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
-#[target_feature(enable = "sse2")]
-unsafe fn is_ascii_sse2(bytes: &[u8]) -> bool {
+fn is_ascii_sse2(bytes: &[u8]) -> bool {
     use crate::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128};
 
     let mut i = 0;
@@ -487,12 +485,14 @@ unsafe fn is_ascii_sse2(bytes: &[u8]) -> bool {
         // SAFETY: Same as above - ptr.add(16) is within the valid 32-byte range.
         let chunk2 = unsafe { _mm_loadu_si128(ptr.add(16) as *const __m128i) };
 
-        // OR them together - if any byte has the high bit set, the result will too
-        let combined = _mm_or_si128(chunk1, chunk2);
+        // OR them together - if any byte has the high bit set, the result will too.
+        // SAFETY: SSE2 is guaranteed by the cfg predicate.
+        let combined = unsafe { _mm_or_si128(chunk1, chunk2) };
 
         // Create a mask from the MSBs of each byte.
         // If any byte is >= 128, its MSB is 1, so the mask will be non-zero.
-        let mask = _mm_movemask_epi8(combined);
+        // SAFETY: SSE2 is guaranteed by the cfg predicate.
+        let mask = unsafe { _mm_movemask_epi8(combined) };
 
         if mask != 0 {
             return false;
@@ -541,8 +541,7 @@ const fn is_ascii(bytes: &[u8]) -> bool {
                 return remainder.iter().all(|b| b.is_ascii());
             }
 
-            // SAFETY: SSE2 is guaranteed available on x86_64
-            unsafe { is_ascii_sse2(bytes) }
+            is_ascii_sse2(bytes)
         }
     )
 }
