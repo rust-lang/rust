@@ -66,6 +66,14 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
+                        ty::Slice(ty) => {
+                            let (variant, variant_place) = downcast(sym::Slice)?;
+                            let slice_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+                            self.write_slice_type_info(slice_place, *ty)?;
+
+                            variant
+                        }
                         ty::Bool => {
                             let (variant, _variant_place) = downcast(sym::Bool)?;
                             variant
@@ -124,7 +132,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         ty::Adt(_, _)
                         | ty::Foreign(_)
                         | ty::Pat(_, _)
-                        | ty::Slice(_)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)
                         | ty::UnsafeBinder(..)
@@ -247,6 +254,27 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::element_ty => self.write_type_id(ty, &field_place)?,
                 // Write the length of the array to the `len` field.
                 sym::len => self.write_scalar(len.to_leaf(), &field_place)?,
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+
+        interp_ok(())
+    }
+
+    pub(crate) fn write_slice_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx> {
+        // Iterate over all fields of `type_info::Slice`.
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                // Write the `TypeId` of the slice's elements to the `element_ty` field.
+                sym::element_ty => self.write_type_id(ty, &field_place)?,
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }
