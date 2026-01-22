@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
         min_global_align: Some(Align::from_bits(16).unwrap()),
         panic_strategy: PanicStrategy::Abort,
         relocation_model: RelocModel::Static,
-        rustc_abi: Some(RustcAbi::S390xSoftFloat),
+        rustc_abi: Some(RustcAbi::Softfloat),
         stack_probes: StackProbeType::Inline,
         supported_sanitizers: SanitizerSet::KERNELADDRESS,
         ..Default::default()

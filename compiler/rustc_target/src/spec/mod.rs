@@ -1005,10 +1005,8 @@ crate::target_spec_enum! {
     pub enum RustcAbi {
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
-        /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
-        X86Softfloat = "x86-softfloat",
-        // On S390x only: do not use any FPU or Vector registers for the ABI.
-        S390xSoftFloat = "s390x-softfloat",
+        /// On x86-32/64 and S390x: do not use any FPU or SIMD registers for the ABI.
+        Softfloat = "softfloat", "x86-softfloat",
     }
 
     parse_error_type = "rustc abi";
@@ -3196,15 +3194,10 @@ impl Target {
                     Arch::X86,
                     "`x86-sse2` ABI is only valid for x86-32 targets"
                 ),
-                RustcAbi::X86Softfloat => check_matches!(
+                RustcAbi::Softfloat => check_matches!(
                     self.arch,
-                    Arch::X86 | Arch::X86_64,
-                    "`x86-softfloat` ABI is only valid for x86 targets"
-                ),
-                RustcAbi::S390xSoftFloat => check_matches!(
-                    self.arch,
-                    Arch::S390x,
-                    "`s390x-softfloat` ABI is only valid for s390x targets"
+                    Arch::X86 | Arch::X86_64 | Arch::S390x,
+                    "`softfloat` ABI is only valid for x86 and s390x targets"
                 ),
             }
         }

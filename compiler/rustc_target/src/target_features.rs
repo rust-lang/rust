@@ -1091,14 +1091,13 @@ impl Target {
                             incompatible: &["soft-float"],
                         }
                     }
-                    Some(RustcAbi::X86Softfloat) => {
+                    Some(RustcAbi::Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature. That feature trumps
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
-                    Some(r) => panic!("invalid Rust ABI for x86: {r:?}"),
                 }
             }
             Arch::X86_64 => {
@@ -1112,7 +1111,7 @@ impl Target {
                             incompatible: &["soft-float"],
                         }
                     }
-                    Some(RustcAbi::X86Softfloat) => {
+                    Some(RustcAbi::Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature. That feature trumps
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
@@ -1223,7 +1222,7 @@ impl Target {
                         // Default hardfloat ABI.
                         FeatureConstraints { required: &[], incompatible: &["soft-float"] }
                     }
-                    Some(RustcAbi::S390xSoftFloat) => {
+                    Some(RustcAbi::Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature.
                         // llvm will switch to soft-float ABI just based on this feature.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
