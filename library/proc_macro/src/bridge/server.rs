@@ -61,14 +61,17 @@ pub trait Types {
 }
 
 macro_rules! declare_server_traits {
-    ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-    }),* $(,)?) => {
-        $(pub trait $name: Types {
+    (
+        FreeFunctions {
+            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        },
+        $($name:ident),* $(,)?
+    ) => {
+        pub trait FreeFunctions: Types {
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
-        })*
+        }
 
-        pub trait Server: Types $(+ $name)* {
+        pub trait Server: Types + FreeFunctions {
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
             /// Intern a symbol received from RPC
@@ -96,18 +99,22 @@ impl<S: Server> Server for MarkedTypes<S> {
 }
 
 macro_rules! define_mark_types_impls {
-    ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-    }),* $(,)?) => {
+    (
+        FreeFunctions {
+            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        },
+        $($name:ident),* $(,)?
+    ) => {
         impl<S: Types> Types for MarkedTypes<S> {
+            type FreeFunctions = Marked<S::FreeFunctions, client::FreeFunctions>;
             $(type $name = Marked<S::$name, client::$name>;)*
         }
 
-        $(impl<S: $name> $name for MarkedTypes<S> {
+        impl<S: FreeFunctions> FreeFunctions for MarkedTypes<S> {
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
-                <_>::mark($name::$method(&mut self.0, $($arg.unmark()),*))
+                <_>::mark(FreeFunctions::$method(&mut self.0, $($arg.unmark()),*))
             })*
-        })*
+        }
     }
 }
 with_api!(Self, self_, define_mark_types_impls);
@@ -122,7 +129,7 @@ macro_rules! define_dispatcher_impl {
         FreeFunctions {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         },
-        $($name:ident { $($x:tt)* }),* $(,)?
+        $($name:ident),* $(,)?
     ) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
@@ -142,27 +149,25 @@ macro_rules! define_dispatcher_impl {
 
                 let mut reader = &buf[..];
                 match api_tags::Method::decode(&mut reader, &mut ()) {
-                    api_tags::Method::FreeFunctions(m) => match m {
-                        $(api_tags::FreeFunctions::$method => {
-                            let mut call_method = || {
-                                $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
-                                FreeFunctions::$method(server, $($arg),*)
-                            };
-                            // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
-                            // If client and server happen to use the same `std`,
-                            // `catch_unwind` asserts that the panic counter was 0,
-                            // even when the closure passed to it didn't panic.
-                            let r = if thread::panicking() {
-                                Ok(call_method())
-                            } else {
-                                panic::catch_unwind(panic::AssertUnwindSafe(call_method))
-                                    .map_err(PanicMessage::from)
-                            };
+                    $(api_tags::Method::$method => {
+                        let mut call_method = || {
+                            $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
+                            FreeFunctions::$method(server, $($arg),*)
+                        };
+                        // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
+                        // If client and server happen to use the same `std`,
+                        // `catch_unwind` asserts that the panic counter was 0,
+                        // even when the closure passed to it didn't panic.
+                        let r = if thread::panicking() {
+                            Ok(call_method())
+                        } else {
+                            panic::catch_unwind(panic::AssertUnwindSafe(call_method))
+                                .map_err(PanicMessage::from)
+                        };
 
-                            buf.clear();
-                            r.encode(&mut buf, handle_store);
-                        })*
-                    }
+                        buf.clear();
+                        r.encode(&mut buf, handle_store);
+                    })*
                 }
                 buf
             }

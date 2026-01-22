@@ -196,12 +196,6 @@ impl server::FreeFunctions for SpanIdServer<'_> {
     }
 }
 
-impl server::TokenStream for SpanIdServer<'_> {}
-
-impl server::Span for SpanIdServer<'_> {}
-
-impl server::Symbol for SpanIdServer<'_> {}
-
 impl server::Server for SpanIdServer<'_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {

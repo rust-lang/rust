@@ -277,12 +277,6 @@ impl server::FreeFunctions for RaSpanServer<'_> {
     }
 }
 
-impl server::TokenStream for RaSpanServer<'_> {}
-
-impl server::Span for RaSpanServer<'_> {}
-
-impl server::Symbol for RaSpanServer<'_> {}
-
 impl server::Server for RaSpanServer<'_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {

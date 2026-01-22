@@ -21,14 +21,15 @@ use crate::{Delimiter, Level, Spacing};
 /// `with_api!(MySelf, my_self, my_macro)` expands to:
 /// ```rust,ignore (pseudo-code)
 /// my_macro! {
-///     // ...
-///     Literal {
+///     FreeFunctions {
 ///         // ...
-///         fn character(ch: char) -> MySelf::Literal;
+///         fn lit_character(ch: char) -> MySelf::Literal;
 ///         // ...
-///         fn span(my_self: &MySelf::Literal) -> MySelf::Span;
-///         fn set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
+///         fn lit_span(my_self: &MySelf::Literal) -> MySelf::Span;
+///         fn lit_set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
 ///     },
+///     Literal,
+///     Span,
 ///     // ...
 /// }
 /// ```
@@ -95,9 +96,9 @@ macro_rules! with_api {
 
                 fn symbol_normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
             },
-            TokenStream {},
-            Span {},
-            Symbol {},
+            TokenStream,
+            Span,
+            Symbol,
         }
     };
 }
@@ -160,18 +161,12 @@ mod api_tags {
             FreeFunctions {
                 $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
             },
-            $($name:ident { $($x:tt)* }),* $(,)?
+            $($name:ident),* $(,)?
         ) => {
-            pub(super) enum FreeFunctions {
+            pub(super) enum Method {
                 $($method),*
             }
-            rpc_encode_decode!(enum FreeFunctions { $($method),* });
-
-
-            pub(super) enum Method {
-                FreeFunctions(FreeFunctions),
-            }
-            rpc_encode_decode!(enum Method { FreeFunctions(m) });
+            rpc_encode_decode!(enum Method { $($method),* });
         }
     }
     with_api!(self, self, declare_tags);
