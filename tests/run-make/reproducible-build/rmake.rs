@@ -205,7 +205,7 @@ fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
                 // See https://github.com/rust-lang/rust/issues/89911
                 // FIXME(#129117): Windows rlib + `-Cdebuginfo=2` + `-Z remap-cwd-prefix=.` seems
                 // to be unreproducible.
-                if !matches!(crate_type, CrateType::Bin) && !is_windows() {
+                if !is_windows() {
                     compiler1.arg("-Cdebuginfo=2");
                     compiler2.arg("-Cdebuginfo=2");
                 }
