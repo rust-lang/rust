@@ -524,7 +524,7 @@ impl Command {
                             return Ok(None);
                         }
                     }
-                    core::assert_matches::debug_assert_matches!(support, SPAWN | NO);
+                    core::debug_assert_matches!(support, SPAWN | NO);
                 }
             }
             _ => {

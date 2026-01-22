@@ -344,15 +344,38 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             }
 
             for (_, myitem) in &not_stripped_items[&type_] {
+                let visibility_and_hidden = |item: &clean::Item| match item.visibility(tcx) {
+                    Some(ty::Visibility::Restricted(_)) => {
+                        if item.is_doc_hidden() {
+                            // Don't separate with a space when there are two of them
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                        } else {
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        }
+                    }
+                    _ if item.is_doc_hidden() => "<span title=\"Hidden item\">&nbsp;👻</span> ",
+                    _ => "",
+                };
+
                 match myitem.kind {
                     clean::ExternCrateItem { ref src } => {
                         use crate::html::format::print_anchor;
 
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
+                        // Module listings use the hidden marker, so skip doc(hidden) here.
+                        super::render_attributes_in_code_with_options(
+                            w,
+                            myitem,
+                            "",
+                            cx,
+                            false,
+                            "<dt><code>",
+                        )?;
                         match *src {
                             Some(src) => {
                                 write!(
                                     w,
-                                    "<dt><code>{}extern crate {} as {};",
+                                    "{}extern crate {} as {};",
                                     visibility_print_with_space(myitem, cx),
                                     print_anchor(myitem.item_id.expect_def_id(), src, cx),
                                     EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
@@ -361,7 +384,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             None => {
                                 write!(
                                     w,
-                                    "<dt><code>{}extern crate {};",
+                                    "{}extern crate {};",
                                     visibility_print_with_space(myitem, cx),
                                     print_anchor(
                                         myitem.item_id.expect_def_id(),
@@ -371,7 +394,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 )?;
                             }
                         }
-                        write!(w, "</code></dt>")?
+                        write!(w, "</code>{visibility_and_hidden}</dt>")?
                     }
                     clean::ImportItem(ref import) => {
                         let (stab_tags, deprecation) = match import.source.did {
@@ -386,6 +409,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             }
                             None => (String::new(), item.is_deprecated(tcx)),
                         };
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
                         let id = match import.kind {
                             clean::ImportKind::Simple(s) => {
                                 format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
@@ -397,13 +421,13 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             "<dt{id}{deprecation_attr}><code>",
                             deprecation_attr = deprecation_class_attr(deprecation)
                         )?;
-                        render_attributes_in_code(w, myitem, "", cx)?;
                         write!(
                             w,
-                            "{vis}{imp}</code>{stab_tags}\
+                            "{vis}{imp}</code>{visibility_and_hidden}{stab_tags}\
                             </dt>",
                             vis = visibility_print_with_space(myitem, cx),
                             imp = print_import(import, cx),
+                            visibility_and_hidden = visibility_and_hidden,
                         )?;
                     }
                     _ => {
@@ -421,20 +445,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             }
                             _ => "",
                         };
-                        let visibility_and_hidden = match myitem.visibility(tcx) {
-                            Some(ty::Visibility::Restricted(_)) => {
-                                if myitem.is_doc_hidden() {
-                                    // Don't separate with a space when there are two of them
-                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
-                                } else {
-                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
-                                }
-                            }
-                            _ if myitem.is_doc_hidden() => {
-                                "<span title=\"Hidden item\">&nbsp;👻</span> "
-                            }
-                            _ => "",
-                        };
+                        let visibility_and_hidden = visibility_and_hidden(myitem);
 
                         let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
                             .into_string();
@@ -1868,7 +1879,6 @@ fn item_variants(
 fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
-            // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
             render_attributes_in_code(w, it, "", cx)?;
             if !t.macro_rules {
                 write!(w, "{}", visibility_print_with_space(it, cx))?;

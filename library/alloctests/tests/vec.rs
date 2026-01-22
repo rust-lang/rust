@@ -3,12 +3,10 @@ use core::num::NonZero;
 use core::ptr::NonNull;
 use core::{assert_eq, assert_ne};
 use std::alloc::System;
-use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
-use std::hint;
 use std::iter::InPlaceIterable;
 use std::mem::swap;
 use std::ops::Bound::*;
@@ -16,6 +14,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter, PeekMut};
+use std::{assert_matches, hint};
 
 use crate::testing::macros::struct_with_counted_drop;
 

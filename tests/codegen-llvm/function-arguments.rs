@@ -134,7 +134,7 @@ pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 #[no_mangle]
 pub fn notunpin_borrow(_: &NotUnpin) {}
 
-// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(none\))?}} dereferenceable(32) %_1)
+// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(none\))?}}{{( dead_on_return)?}} dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {}
 

@@ -1075,6 +1075,7 @@ fn assoc_type(
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
+        render_attributes_in_code(w, it, &" ".repeat(indent), cx)?;
         write!(
             w,
             "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
@@ -2931,6 +2932,21 @@ fn render_attributes_in_code(
     prefix: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
+    render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
+}
+
+pub(super) fn render_attributes_in_code_with_options(
+    w: &mut impl fmt::Write,
+    item: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+    render_doc_hidden: bool,
+    open_tag: &str,
+) -> fmt::Result {
+    w.write_str(open_tag)?;
+    if render_doc_hidden && item.is_doc_hidden() {
+        render_code_attribute(prefix, "#[doc(hidden)]", w)?;
+    }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {
