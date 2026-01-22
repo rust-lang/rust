@@ -1980,7 +1980,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_metadata(self) -> bool {
         self.crate_types().iter().any(|ty| match *ty {
             CrateType::Executable
-            | CrateType::Staticlib
+            | CrateType::StaticLib
             | CrateType::Cdylib
             | CrateType::Sdylib => false,
             CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
@@ -2279,7 +2279,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.crate_types().iter().any(|crate_type| {
             match crate_type {
                 CrateType::Executable
-                | CrateType::Staticlib
+                | CrateType::StaticLib
                 | CrateType::ProcMacro
                 | CrateType::Cdylib
                 | CrateType::Sdylib => false,

@@ -503,6 +503,9 @@ lint_invalid_asm_label_named = avoid using named labels in inline assembly
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 lint_invalid_asm_label_no_span = the label may be declared in the expansion of a macro
 
+lint_invalid_crate_type_value = invalid `crate_type` value
+    .suggestion = did you mean
+
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
 lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes

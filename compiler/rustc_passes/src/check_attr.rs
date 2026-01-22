@@ -225,112 +225,116 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
-                    AttributeKind::EiiDeclaration { .. }
-                    | AttributeKind::EiiForeignItem
-                    | AttributeKind::BodyStability { .. }
-                    | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_)
-                    | AttributeKind::CollapseDebugInfo(..)
-                    | AttributeKind::CfgTrace(..)
-                    | AttributeKind::Pointee(..)
-                    | AttributeKind::Dummy
-                    | AttributeKind::RustcBuiltinMacro { .. }
-                    | AttributeKind::Ignore { .. }
-                    | AttributeKind::InstructionSet(..)
-                    | AttributeKind::Path(..)
-                    | AttributeKind::NoImplicitPrelude(..)
+                    // tidy-alphabetical-start
+                    AttributeKind::AllowIncoherentImpl(..)
+                    | AttributeKind::AsPtr(..)
                     | AttributeKind::AutomaticallyDerived(..)
-                    | AttributeKind::Marker(..)
-                    | AttributeKind::SkipDuringMethodDispatch { .. }
+                    | AttributeKind::BodyStability { .. }
+                    | AttributeKind::CfgAttrTrace
+                    | AttributeKind::CfgTrace(..)
+                    | AttributeKind::CfiEncoding { .. }
                     | AttributeKind::Coinductive(..)
-                    | AttributeKind::DenyExplicitImpl(..)
-                    | AttributeKind::DynIncompatibleTrait(..)
-                    | AttributeKind::SpecializationTrait(..)
-                    | AttributeKind::UnsafeSpecializationMarker(..)
-                    | AttributeKind::ParenSugar(..)
-                    | AttributeKind::AllowIncoherentImpl(..)
+                    | AttributeKind::Cold(..)
+                    | AttributeKind::CollapseDebugInfo(..)
+                    | AttributeKind::CompilerBuiltins
                     | AttributeKind::Confusables { .. }
-                    | AttributeKind::TypeConst{..}
+                    | AttributeKind::ConstStabilityIndirect
+                    | AttributeKind::Coroutine(..)
+                    | AttributeKind::Coverage (..)
+                    | AttributeKind::CrateName { .. }
+                    | AttributeKind::CrateType(..)
+                    | AttributeKind::DebuggerVisualizer(..)
+                    | AttributeKind::DenyExplicitImpl(..)
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
+                    | AttributeKind::Dummy
+                    | AttributeKind::DynIncompatibleTrait(..)
+                    | AttributeKind::EiiDeclaration { .. }
+                    | AttributeKind::EiiForeignItem
+                    | AttributeKind::ExportName { .. }
+                    | AttributeKind::ExportStable
+                    | AttributeKind::FfiConst(..)
+                    | AttributeKind::Fundamental
+                    | AttributeKind::Ignore { .. }
+                    | AttributeKind::InstructionSet(..)
+                    | AttributeKind::LinkName { .. }
+                    | AttributeKind::LinkOrdinal { .. }
+                    | AttributeKind::LinkSection { .. }
+                    | AttributeKind::Linkage(..)
+                    | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::MacroUse { .. }
+                    | AttributeKind::Marker(..)
+                    | AttributeKind::MoveSizeLimit { .. }
+                    | AttributeKind::MustNotSupend { .. }
+                    | AttributeKind::MustUse { .. }
+                    | AttributeKind::NeedsAllocator
+                    | AttributeKind::NeedsPanicRuntime
+                    | AttributeKind::NoBuiltins
+                    | AttributeKind::NoCore { .. }
+                    | AttributeKind::NoImplicitPrelude(..)
+                    | AttributeKind::NoLink
+                    | AttributeKind::NoMain
+                    | AttributeKind::NoMangle(..)
+                    | AttributeKind::NoStd { .. }
+                    | AttributeKind::ObjcClass { .. }
+                    | AttributeKind::ObjcSelector { .. }
+                    | AttributeKind::Optimize(..)
+                    | AttributeKind::PanicRuntime
+                    | AttributeKind::ParenSugar(..)
+                    | AttributeKind::PassByValue (..)
+                    | AttributeKind::PatchableFunctionEntry { .. }
+                    | AttributeKind::Path(..)
+                    | AttributeKind::PatternComplexityLimit { .. }
+                    | AttributeKind::PinV2(..)
+                    | AttributeKind::Pointee(..)
+                    | AttributeKind::ProfilerRuntime
+                    | AttributeKind::RecursionLimit { .. }
                     // handled below this loop and elsewhere
                     | AttributeKind::Repr { .. }
-                    | AttributeKind::Cold(..)
-                    | AttributeKind::ExportName { .. }
-                    | AttributeKind::Fundamental
-                    | AttributeKind::Optimize(..)
-                    | AttributeKind::LinkSection { .. }
-                    | AttributeKind::MacroUse { .. }
-                    | AttributeKind::MacroEscape( .. )
-                    | AttributeKind::NoLink
-                    | AttributeKind::RustcNoImplicitAutorefs
-                    | AttributeKind::RustcLayoutScalarValidRangeStart(..)
+                    | AttributeKind::RustcAllocator
+                    | AttributeKind::RustcAllocatorZeroed
+                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
+                    | AttributeKind::RustcBuiltinMacro { .. }
+                    | AttributeKind::RustcCoherenceIsCore(..)
+                    | AttributeKind::RustcDeallocator
+                    | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
                     | AttributeKind::RustcLintUntrackedQueryInformation
-                    | AttributeKind::RustcNeverReturnsNullPointer
-                    | AttributeKind::RustcScalableVector { .. }
-                    | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
-                    | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
-                    | AttributeKind::RustcVariance
-                    | AttributeKind::RustcVarianceOfOpaques
-                    | AttributeKind::ExportStable
-                    | AttributeKind::FfiConst(..)
-                    | AttributeKind::UnstableFeatureBound(..)
-                    | AttributeKind::AsPtr(..)
-                    | AttributeKind::LinkName { .. }
-                    | AttributeKind::LinkOrdinal { .. }
-                    | AttributeKind::NoMangle(..)
-                    | AttributeKind::Used { .. }
-                    | AttributeKind::PassByValue (..)
-                    | AttributeKind::StdInternalSymbol (..)
-                    | AttributeKind::Coverage (..)
-                    | AttributeKind::ShouldPanic { .. }
-                    | AttributeKind::Coroutine(..)
-                    | AttributeKind::Linkage(..)
-                    | AttributeKind::MustUse { .. }
-                    | AttributeKind::CrateName { .. }
-                    | AttributeKind::RecursionLimit { .. }
-                    | AttributeKind::MoveSizeLimit { .. }
-                    | AttributeKind::TypeLengthLimit { .. }
-                    | AttributeKind::PatternComplexityLimit { .. }
-                    | AttributeKind::NoCore { .. }
-                    | AttributeKind::NoStd { .. }
-                    | AttributeKind::NoMain
-                    | AttributeKind::CompilerBuiltins
-                    | AttributeKind::PanicRuntime
-                    | AttributeKind::NeedsPanicRuntime
-                    | AttributeKind::ProfilerRuntime
-                    | AttributeKind::NoBuiltins
-                    | AttributeKind::ObjcClass { .. }
-                    | AttributeKind::ObjcSelector { .. }
-                    | AttributeKind::RustcCoherenceIsCore(..)
-                    | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
-                    | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
-                    | AttributeKind::PinV2(..)
-                    | AttributeKind::WindowsSubsystem(..)
-                    | AttributeKind::CfgAttrTrace
-                    | AttributeKind::ThreadLocal
-                    | AttributeKind::CfiEncoding { .. }
-                    | AttributeKind::RustcHasIncoherentInherentImpls
-                    | AttributeKind::MustNotSupend { .. }
-                    | AttributeKind::RustcDumpUserArgs
-                    | AttributeKind::RustcDumpItemBounds
-                    | AttributeKind::RustcDumpPredicates
-                    | AttributeKind::RustcDumpDefParents
-                    | AttributeKind::RustcDumpVtable(..)
-                    | AttributeKind::NeedsAllocator
-                    | AttributeKind::RustcAllocator
-                    | AttributeKind::RustcAllocatorZeroed
-                    | AttributeKind::RustcAllocatorZeroedVariant { .. }
-                    | AttributeKind::RustcDeallocator
-                    | AttributeKind::RustcReallocator
+                    | AttributeKind::RustcNeverReturnsNullPointer
+                    | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcOffloadKernel
-                    | AttributeKind::PatchableFunctionEntry { .. }
+                    | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
+                    | AttributeKind::RustcReallocator
+                    | AttributeKind::RustcScalableVector { .. }
+                    | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
+                    | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
+                    | AttributeKind::RustcVariance
+                    | AttributeKind::RustcVarianceOfOpaques
+                    | AttributeKind::ShouldPanic { .. }
+                    | AttributeKind::SkipDuringMethodDispatch { .. }
+                    | AttributeKind::SpecializationTrait(..)
+                    | AttributeKind::StdInternalSymbol (..)
+                    | AttributeKind::ThreadLocal
+                    | AttributeKind::TypeConst{..}
+                    | AttributeKind::TypeLengthLimit { .. }
+                    | AttributeKind::UnsafeSpecializationMarker(..)
+                    | AttributeKind::UnstableFeatureBound(..)
+                    | AttributeKind::Used { .. }
+                    | AttributeKind::WindowsSubsystem(..)
+                    // tidy-alphabetical-end
+
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -402,7 +406,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_no_implicit_bounds
                             | sym::test_runner
                             | sym::reexport_test_harness_main
-                            | sym::crate_type
                             | sym::rustc_preserve_ub_checks,
                             ..
                         ] => {}
@@ -1612,7 +1615,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .tcx
                     .crate_types()
                     .iter()
-                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
+                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib));
                 if never_needs_link {
                     errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                 } else {

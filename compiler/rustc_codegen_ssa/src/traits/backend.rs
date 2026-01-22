@@ -67,7 +67,7 @@ pub trait CodegenBackend {
             CrateType::Executable,
             CrateType::Dylib,
             CrateType::Rlib,
-            CrateType::Staticlib,
+            CrateType::StaticLib,
             CrateType::Cdylib,
             CrateType::ProcMacro,
             CrateType::Sdylib,
