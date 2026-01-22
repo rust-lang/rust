@@ -2,9 +2,7 @@
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
-    clippy::symbol_as_str,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
+    clippy::symbol_as_str
 )]
 #![warn(
     trivial_casts,
