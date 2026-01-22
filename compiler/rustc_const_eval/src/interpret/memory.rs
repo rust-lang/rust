@@ -975,6 +975,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return AllocInfo::new(Size::ZERO, align, AllocKind::Function, Mutability::Not);
         }
 
+        // # Variable argument lists
+        if let Some(_) = self.get_va_list_alloc(id) {
+            return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::VaList, Mutability::Not);
+        }
+
         // # Global allocations
         if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
             // NOTE: `static` alignment from attributes has already been applied to the allocation.
@@ -1030,6 +1035,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         id: AllocId,
     ) -> Option<Vec<MPlaceTy<'tcx, M::Provenance>>> {
+        self.memory.dead_alloc_map.insert(id, (Size::ZERO, Align::ONE));
         self.memory.va_list_map.swap_remove(&id)
     }
 
