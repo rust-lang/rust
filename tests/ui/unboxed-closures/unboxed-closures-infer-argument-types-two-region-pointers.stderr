@@ -12,5 +12,38 @@ LL |         x.set(y);
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: aborting due to 1 previous error
+warning: lifetime may not live long enough
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:9
+   |
+LL |     doit(0, &|x, y| {
+   |               -  - has type `&'1 i32`
+   |               |
+   |               has type `&'2 Cell<&i32>`
+LL |         x.set(y);
+   |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&i32>`, which makes the generic argument `&i32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: lifetime may not live long enough
+  --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:9
+   |
+LL |     doit(0, &|x, y| {
+   |               -  - has type `&'1 i32`
+   |               |
+   |               has type `&'2 Cell<&i32>`
+LL |         x.set(y);
+   |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&i32>`, which makes the generic argument `&i32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
 
