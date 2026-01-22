@@ -60,24 +60,12 @@ pub trait Types {
     type Symbol: 'static;
 }
 
-/// Declare an associated fn of one of the traits below, adding necessary
-/// default bodies.
-macro_rules! associated_fn {
-    (fn drop(&mut self, $arg:ident: $arg_ty:ty)) =>
-        (fn drop(&mut self, $arg: $arg_ty) { mem::drop($arg) });
-
-    (fn clone(&mut self, $arg:ident: $arg_ty:ty) -> $ret_ty:ty) =>
-        (fn clone(&mut self, $arg: $arg_ty) -> $ret_ty { $arg.clone() });
-
-    ($($item:tt)*) => ($($item)*;)
-}
-
 macro_rules! declare_server_traits {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         $(pub trait $name: Types {
-            $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
         })*
 
         pub trait Server: Types $(+ $name)* {
@@ -130,18 +118,23 @@ struct Dispatcher<S: Types> {
 }
 
 macro_rules! define_dispatcher_impl {
-    ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-    }),* $(,)?) => {
+    (
+        FreeFunctions {
+            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        },
+        $($name:ident { $($x:tt)* }),* $(,)?
+    ) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
+            type FreeFunctions;
             $(type $name;)*
 
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
+            type FreeFunctions = <MarkedTypes<S> as Types>::FreeFunctions;
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
@@ -149,11 +142,11 @@ macro_rules! define_dispatcher_impl {
 
                 let mut reader = &buf[..];
                 match api_tags::Method::decode(&mut reader, &mut ()) {
-                    $(api_tags::Method::$name(m) => match m {
-                        $(api_tags::$name::$method => {
+                    api_tags::Method::FreeFunctions(m) => match m {
+                        $(api_tags::FreeFunctions::$method => {
                             let mut call_method = || {
                                 $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
-                                $name::$method(server, $($arg),*)
+                                FreeFunctions::$method(server, $($arg),*)
                             };
                             // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
                             // If client and server happen to use the same `std`,
@@ -169,7 +162,7 @@ macro_rules! define_dispatcher_impl {
                             buf.clear();
                             r.encode(&mut buf, handle_store);
                         })*
-                    }),*
+                    }
                 }
                 buf
             }

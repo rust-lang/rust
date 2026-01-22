@@ -54,50 +54,50 @@ macro_rules! with_api {
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
-            },
-            TokenStream {
-                fn drop($self: $S::TokenStream);
-                fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn is_empty($self: &$S::TokenStream) -> bool;
-                fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-                fn from_str(src: &str) -> $S::TokenStream;
-                fn to_string($self: &$S::TokenStream) -> String;
-                fn from_token_tree(
+
+                fn tt_drop(stream: $S::TokenStream);
+                fn tt_clone(stream: &$S::TokenStream) -> $S::TokenStream;
+                fn tt_is_empty(stream: &$S::TokenStream) -> bool;
+                fn tt_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
+                fn tt_from_str(src: &str) -> $S::TokenStream;
+                fn tt_to_string(stream: &$S::TokenStream) -> String;
+                fn tt_from_token_tree(
                     tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
-                fn concat_trees(
+                fn tt_concat_trees(
                     base: Option<$S::TokenStream>,
                     trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
                 ) -> $S::TokenStream;
-                fn concat_streams(
+                fn tt_concat_streams(
                     base: Option<$S::TokenStream>,
                     streams: Vec<$S::TokenStream>,
                 ) -> $S::TokenStream;
-                fn into_trees(
-                    $self: $S::TokenStream
+                fn tt_into_trees(
+                    stream: $S::TokenStream
                 ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
+
+                fn span_debug(span: $S::Span) -> String;
+                fn span_parent(span: $S::Span) -> Option<$S::Span>;
+                fn span_source(span: $S::Span) -> $S::Span;
+                fn span_byte_range(span: $S::Span) -> Range<usize>;
+                fn span_start(span: $S::Span) -> $S::Span;
+                fn span_end(span: $S::Span) -> $S::Span;
+                fn span_line(span: $S::Span) -> usize;
+                fn span_column(span: $S::Span) -> usize;
+                fn span_file(span: $S::Span) -> String;
+                fn span_local_file(span: $S::Span) -> Option<String>;
+                fn span_join(span: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn span_subspan(span: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
+                fn span_resolved_at(span: $S::Span, at: $S::Span) -> $S::Span;
+                fn span_source_text(span: $S::Span) -> Option<String>;
+                fn span_save_span(span: $S::Span) -> usize;
+                fn span_recover_proc_macro_span(id: usize) -> $S::Span;
+
+                fn symbol_normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
             },
-            Span {
-                fn debug($self: $S::Span) -> String;
-                fn parent($self: $S::Span) -> Option<$S::Span>;
-                fn source($self: $S::Span) -> $S::Span;
-                fn byte_range($self: $S::Span) -> Range<usize>;
-                fn start($self: $S::Span) -> $S::Span;
-                fn end($self: $S::Span) -> $S::Span;
-                fn line($self: $S::Span) -> usize;
-                fn column($self: $S::Span) -> usize;
-                fn file($self: $S::Span) -> String;
-                fn local_file($self: $S::Span) -> Option<String>;
-                fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
-                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
-                fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
-                fn source_text($self: $S::Span) -> Option<String>;
-                fn save_span($self: $S::Span) -> usize;
-                fn recover_proc_macro_span(id: usize) -> $S::Span;
-            },
-            Symbol {
-                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
-            },
+            TokenStream {},
+            Span {},
+            Symbol {},
         }
     };
 }
@@ -156,20 +156,22 @@ mod api_tags {
     use super::rpc::{Decode, Encode, Reader, Writer};
 
     macro_rules! declare_tags {
-        ($($name:ident {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        }),* $(,)?) => {
-            $(
-                pub(super) enum $name {
-                    $($method),*
-                }
-                rpc_encode_decode!(enum $name { $($method),* });
-            )*
+        (
+            FreeFunctions {
+                $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+            },
+            $($name:ident { $($x:tt)* }),* $(,)?
+        ) => {
+            pub(super) enum FreeFunctions {
+                $($method),*
+            }
+            rpc_encode_decode!(enum FreeFunctions { $($method),* });
+
 
             pub(super) enum Method {
-                $($name($name)),*
+                FreeFunctions(FreeFunctions),
             }
-            rpc_encode_decode!(enum Method { $($name(m)),* });
+            rpc_encode_decode!(enum Method { FreeFunctions(m) });
         }
     }
     with_api!(self, self, declare_tags);
