@@ -25,8 +25,6 @@ impl std::fmt::Debug for SpanId {
 
 type Span = SpanId;
 
-pub struct FreeFunctions;
-
 pub struct SpanIdServer<'a> {
     // FIXME: Report this back to the caller to track as dependencies
     pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
@@ -39,13 +37,28 @@ pub struct SpanIdServer<'a> {
 }
 
 impl server::Types for SpanIdServer<'_> {
-    type FreeFunctions = FreeFunctions;
     type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 }
 
-impl server::FreeFunctions for SpanIdServer<'_> {
+impl server::Server for SpanIdServer<'_> {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
+            def_site: self.def_site,
+            call_site: self.call_site,
+            mixed_site: self.mixed_site,
+        }
+    }
+
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        Symbol::intern(ident)
+    }
+
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(symbol.as_str())
+    }
+
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
@@ -193,23 +206,5 @@ impl server::FreeFunctions for SpanIdServer<'_> {
     fn symbol_normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
         // FIXME: nfc-normalize and validate idents
         Ok(<Self as server::Server>::intern_symbol(string))
-    }
-}
-
-impl server::Server for SpanIdServer<'_> {
-    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
-        ExpnGlobals {
-            def_site: self.def_site,
-            call_site: self.call_site,
-            mixed_site: self.mixed_site,
-        }
-    }
-
-    fn intern_symbol(ident: &str) -> Self::Symbol {
-        Symbol::intern(ident)
-    }
-
-    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(symbol.as_str())
     }
 }

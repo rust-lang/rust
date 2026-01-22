@@ -54,7 +54,6 @@ impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>> for Marked<S::Span, c
 }
 
 pub trait Types {
-    type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
     type Span: 'static + Copy + Eq + Hash;
     type Symbol: 'static;
@@ -62,16 +61,12 @@ pub trait Types {
 
 macro_rules! declare_server_traits {
     (
-        FreeFunctions {
+        Methods {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         },
         $($name:ident),* $(,)?
     ) => {
-        pub trait FreeFunctions: Types {
-            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
-        }
-
-        pub trait Server: Types + FreeFunctions {
+        pub trait Server: Types {
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
             /// Intern a symbol received from RPC
@@ -79,6 +74,8 @@ macro_rules! declare_server_traits {
 
             /// Recover the string value of a symbol, and invoke a callback with it.
             fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str));
+
+            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
         }
     }
 }
@@ -86,33 +83,30 @@ with_api!(Self, self_, declare_server_traits);
 
 pub(super) struct MarkedTypes<S: Types>(S);
 
-impl<S: Server> Server for MarkedTypes<S> {
-    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
-        <_>::mark(Server::globals(&mut self.0))
-    }
-    fn intern_symbol(ident: &str) -> Self::Symbol {
-        <_>::mark(S::intern_symbol(ident))
-    }
-    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        S::with_symbol_string(symbol.unmark(), f)
-    }
-}
-
 macro_rules! define_mark_types_impls {
     (
-        FreeFunctions {
+        Methods {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         },
         $($name:ident),* $(,)?
     ) => {
         impl<S: Types> Types for MarkedTypes<S> {
-            type FreeFunctions = Marked<S::FreeFunctions, client::FreeFunctions>;
             $(type $name = Marked<S::$name, client::$name>;)*
         }
 
-        impl<S: FreeFunctions> FreeFunctions for MarkedTypes<S> {
+        impl<S: Server> Server for MarkedTypes<S> {
+            fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+                <_>::mark(Server::globals(&mut self.0))
+            }
+            fn intern_symbol(ident: &str) -> Self::Symbol {
+                <_>::mark(S::intern_symbol(ident))
+            }
+            fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+                S::with_symbol_string(symbol.unmark(), f)
+            }
+
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
-                <_>::mark(FreeFunctions::$method(&mut self.0, $($arg.unmark()),*))
+                <_>::mark(S::$method(&mut self.0, $($arg.unmark()),*))
             })*
         }
     }
@@ -126,7 +120,7 @@ struct Dispatcher<S: Types> {
 
 macro_rules! define_dispatcher_impl {
     (
-        FreeFunctions {
+        Methods {
             $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         },
         $($name:ident),* $(,)?
@@ -134,14 +128,12 @@ macro_rules! define_dispatcher_impl {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
-            type FreeFunctions;
             $(type $name;)*
 
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
-            type FreeFunctions = <MarkedTypes<S> as Types>::FreeFunctions;
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
@@ -152,7 +144,7 @@ macro_rules! define_dispatcher_impl {
                     $(api_tags::Method::$method => {
                         let mut call_method = || {
                             $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
-                            FreeFunctions::$method(server, $($arg),*)
+                            server.$method($($arg),*)
                         };
                         // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
                         // If client and server happen to use the same `std`,
