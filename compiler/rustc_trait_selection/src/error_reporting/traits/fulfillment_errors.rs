@@ -14,6 +14,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
     pluralize, struct_span_code_err,
 };
+use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
@@ -37,14 +38,13 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
+use crate::error_reporting::traits::on_unimplemented::{evaluate_directive, of_item_directive};
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -875,9 +875,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         diag.long_ty_path(),
                     );
 
-                    if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, impl_did)
-                    {
-                        let note = command.evaluate(
+                    if let Ok(Some(command)) = of_item_directive(self.tcx, impl_did) {
+                        let note = evaluate_directive(
+                            &command,
                             self.tcx,
                             predicate.skip_binder().trait_ref,
                             &condition_options,

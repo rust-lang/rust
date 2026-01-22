@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Range;
 
 use errors::*;
+use rustc_hir::attrs::diagnostic::*;
 use rustc_middle::ty::print::TraitRefPrintSugared;
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{
@@ -11,42 +12,6 @@ use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_FORMAT_LITERALS;
 use rustc_span::def_id::DefId;
 use rustc_span::{InnerSpan, Span, Symbol, kw, sym};
 
-/// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
-/// either as string pieces or dynamic arguments.
-#[derive(Debug)]
-pub struct FormatString {
-    #[allow(dead_code, reason = "Debug impl")]
-    input: Symbol,
-    span: Span,
-    pieces: Vec<Piece>,
-    /// The formatting string was parsed successfully but with warnings
-    pub warnings: Vec<FormatWarning>,
-}
-
-#[derive(Debug)]
-enum Piece {
-    Lit(String),
-    Arg(FormatArg),
-}
-
-#[derive(Debug)]
-enum FormatArg {
-    // A generic parameter, like `{T}` if we're on the `From<T>` trait.
-    GenericParam {
-        generic_param: Symbol,
-    },
-    // `{Self}`
-    SelfUpper,
-    /// `{This}` or `{TraitName}`
-    This,
-    /// The sugared form of the trait
-    Trait,
-    /// what we're in, like a function, method, closure etc.
-    ItemContext,
-    /// What the user typed, if it doesn't match anything we can use.
-    AsIs(String),
-}
-
 pub enum Ctx<'tcx> {
     // `#[rustc_on_unimplemented]`
     RustcOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
@@ -54,58 +19,48 @@ pub enum Ctx<'tcx> {
     DiagnosticOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
 }
 
-#[derive(Debug)]
-pub enum FormatWarning {
-    UnknownParam { argument_name: Symbol, span: Span },
-    PositionalArgument { span: Span, help: String },
-    InvalidSpecifier { name: String, span: Span },
-    FutureIncompat { span: Span, help: String },
-}
+pub fn emit_warning<'tcx>(slf: &FormatWarning, tcx: TyCtxt<'tcx>, item_def_id: DefId) {
+    match *slf {
+        FormatWarning::UnknownParam { argument_name, span } => {
+            let this = tcx.item_ident(item_def_id);
+            if let Some(item_def_id) = item_def_id.as_local() {
+                tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    tcx.local_def_id_to_hir_id(item_def_id),
+                    span,
+                    UnknownFormatParameterForOnUnimplementedAttr {
+                        argument_name,
+                        trait_name: this,
+                    },
+                );
+            }
+        }
+        FormatWarning::PositionalArgument { span, .. } => {
+            if let Some(item_def_id) = item_def_id.as_local() {
+                tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    tcx.local_def_id_to_hir_id(item_def_id),
+                    span,
+                    DisallowedPositionalArgument,
+                );
+            }
+        }
+        FormatWarning::InvalidSpecifier { span, .. } => {
+            if let Some(item_def_id) = item_def_id.as_local() {
+                tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    tcx.local_def_id_to_hir_id(item_def_id),
+                    span,
+                    InvalidFormatSpecifier,
+                );
+            }
+        }
+        FormatWarning::FutureIncompat { .. } => {
+            // We've never deprecated anything in diagnostic namespace format strings
+            // but if we do we will emit a warning here
 
-impl FormatWarning {
-    pub fn emit_warning<'tcx>(&self, tcx: TyCtxt<'tcx>, item_def_id: DefId) {
-        match *self {
-            FormatWarning::UnknownParam { argument_name, span } => {
-                let this = tcx.item_ident(item_def_id);
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        span,
-                        UnknownFormatParameterForOnUnimplementedAttr {
-                            argument_name,
-                            trait_name: this,
-                        },
-                    );
-                }
-            }
-            FormatWarning::PositionalArgument { span, .. } => {
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        span,
-                        DisallowedPositionalArgument,
-                    );
-                }
-            }
-            FormatWarning::InvalidSpecifier { span, .. } => {
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        span,
-                        InvalidFormatSpecifier,
-                    );
-                }
-            }
-            FormatWarning::FutureIncompat { .. } => {
-                // We've never deprecated anything in diagnostic namespace format strings
-                // but if we do we will emit a warning here
-
-                // FIXME(mejrs) in a couple releases, start emitting warnings for
-                // #[rustc_on_unimplemented] deprecated args
-            }
+            // FIXME(mejrs) in a couple releases, start emitting warnings for
+            // #[rustc_on_unimplemented] deprecated args
         }
     }
 }
@@ -152,75 +107,69 @@ pub struct FormatArgs<'tcx> {
     pub generic_args: Vec<(Symbol, String)>,
 }
 
-impl FormatString {
-    pub fn span(&self) -> Span {
-        self.span
+pub fn parse_format_string<'tcx>(
+    input: Symbol,
+    snippet: Option<String>,
+    span: Span,
+    ctx: &Ctx<'tcx>,
+) -> Result<FormatString, ParseError> {
+    let s = input.as_str();
+    let mut parser = Parser::new(s, None, snippet, false, ParseMode::Diagnostic);
+    let pieces: Vec<_> = parser.by_ref().collect();
+
+    if let Some(err) = parser.errors.into_iter().next() {
+        return Err(err);
     }
+    let mut warnings = Vec::new();
 
-    pub fn parse<'tcx>(
-        input: Symbol,
-        snippet: Option<String>,
-        span: Span,
-        ctx: &Ctx<'tcx>,
-    ) -> Result<Self, ParseError> {
-        let s = input.as_str();
-        let mut parser = Parser::new(s, None, snippet, false, ParseMode::Diagnostic);
-        let pieces: Vec<_> = parser.by_ref().collect();
-
-        if let Some(err) = parser.errors.into_iter().next() {
-            return Err(err);
-        }
-        let mut warnings = Vec::new();
-
-        let pieces = pieces
-            .into_iter()
-            .map(|piece| match piece {
-                RpfPiece::Lit(lit) => Piece::Lit(lit.into()),
-                RpfPiece::NextArgument(arg) => {
-                    warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
-                    let arg = parse_arg(&arg, ctx, &mut warnings, span, parser.is_source_literal);
-                    Piece::Arg(arg)
-                }
-            })
-            .collect();
-
-        Ok(FormatString { input, pieces, span, warnings })
-    }
-
-    pub fn format(&self, args: &FormatArgs<'_>) -> String {
-        let mut ret = String::new();
-        for piece in &self.pieces {
-            match piece {
-                Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
-
-                // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
-                Piece::Arg(FormatArg::GenericParam { generic_param }) => {
-                    // Should always be some but we can't raise errors here
-                    let value = match args.generic_args.iter().find(|(p, _)| p == generic_param) {
-                        Some((_, val)) => val.to_string(),
-                        None => generic_param.to_string(),
-                    };
-                    ret.push_str(&value);
-                }
-                // `{Self}`
-                Piece::Arg(FormatArg::SelfUpper) => {
-                    let slf = match args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper) {
-                        Some((_, val)) => val.to_string(),
-                        None => "Self".to_string(),
-                    };
-                    ret.push_str(&slf);
-                }
-
-                // It's only `rustc_onunimplemented` from here
-                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
-                Piece::Arg(FormatArg::Trait) => {
-                    let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
-                }
-                Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
+    let pieces = pieces
+        .into_iter()
+        .map(|piece| match piece {
+            RpfPiece::Lit(lit) => Piece::Lit(lit.into()),
+            RpfPiece::NextArgument(arg) => {
+                warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
+                let arg = parse_arg(&arg, ctx, &mut warnings, span, parser.is_source_literal);
+                Piece::Arg(arg)
             }
+        })
+        .collect();
+
+    Ok(FormatString { input, pieces, span, warnings })
+}
+
+pub fn format(slf: &FormatString, args: &FormatArgs<'_>) -> String {
+    let mut ret = String::new();
+    for piece in &slf.pieces {
+        match piece {
+            Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
+
+            // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
+            Piece::Arg(FormatArg::GenericParam { generic_param }) => {
+                // Should always be some but we can't raise errors here
+                let value = match args.generic_args.iter().find(|(p, _)| p == generic_param) {
+                    Some((_, val)) => val.to_string(),
+                    None => generic_param.to_string(),
+                };
+                ret.push_str(&value);
+            }
+            // `{Self}`
+            Piece::Arg(FormatArg::SelfUpper) => {
+                let slf = match args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper) {
+                    Some((_, val)) => val.to_string(),
+                    None => "Self".to_string(),
+                };
+                ret.push_str(&slf);
+            }
+
+            // It's only `rustc_onunimplemented` from here
+            Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
+            Piece::Arg(FormatArg::Trait) => {
+                let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
+            }
+            Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
         }
-        ret
     }
+    ret
 }
 
 fn parse_arg<'tcx>(

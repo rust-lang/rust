@@ -9,6 +9,7 @@ pub use encode_cross_crate::EncodeCrossCrate;
 pub use pretty_printing::PrintAttribute;
 
 mod data_structures;
+pub mod diagnostic;
 mod encode_cross_crate;
 mod pretty_printing;
 
