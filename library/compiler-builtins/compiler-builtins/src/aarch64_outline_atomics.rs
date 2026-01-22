@@ -37,11 +37,11 @@ intrinsics! {
 /// Translate a byte size to a Rust type.
 #[rustfmt::skip]
 macro_rules! int_ty {
-    (1) => { i8 };
-    (2) => { i16 };
-    (4) => { i32 };
-    (8) => { i64 };
-    (16) => { i128 };
+    (1) => { u8 };
+    (2) => { u16 };
+    (4) => { u32 };
+    (8) => { u64 };
+    (16) => { u128 };
 }
 
 /// Given a byte size and a register number, return a register of the appropriate size.
@@ -258,15 +258,15 @@ macro_rules! compare_and_swap {
     };
 }
 
-// i128 uses a completely different impl, so it has its own macro.
-macro_rules! compare_and_swap_i128 {
+// u128 uses a completely different impl, so it has its own macro.
+macro_rules! compare_and_swap_u128 {
     ($ordering:ident, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
-                expected: i128, desired: i128, ptr: *mut i128
-            ) -> i128 {
+                expected: u128, desired: u128, ptr: *mut u128
+            ) -> u128 {
                 core::arch::naked_asm! {
                     // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
                     try_lse_op!("cas", $ordering, 16, 0, 1, 2, 3, [x4]),
@@ -446,7 +446,7 @@ macro_rules! foreach_ldset {
 }
 
 foreach_cas!(compare_and_swap);
-foreach_cas16!(compare_and_swap_i128);
+foreach_cas16!(compare_and_swap_u128);
 foreach_swp!(swap);
 foreach_ldadd!(add);
 foreach_ldclr!(and);
