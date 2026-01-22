@@ -256,7 +256,7 @@ pub struct IntDoubleInt {
     c: i32,
 }
 
-// CHECK: define void @f_int_double_int_s_arg(ptr{{( dead_on_return)?}} noalias noundef align 8{{( captures\(address\))?}} dereferenceable(24) %a)
+// CHECK: define void @f_int_double_int_s_arg(ptr{{( dead_on_return)?}} noalias noundef align 8{{( captures\(address\))?}}{{( dead_on_return)?}} dereferenceable(24) %a)
 #[no_mangle]
 pub extern "C" fn f_int_double_int_s_arg(a: IntDoubleInt) {}
 
