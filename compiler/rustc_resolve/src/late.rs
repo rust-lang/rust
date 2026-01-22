@@ -37,15 +37,15 @@ use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    BindingError, BindingKey, Decl, Finalize, LateDecl, Module, ModuleOrUniformRoot, ParentScope,
-    PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt, UseError, Used, errors,
-    path_names_to_string, rustdoc,
+    BindingError, BindingKey, Decl, Finalize, IdentKey, LateDecl, Module, ModuleOrUniformRoot,
+    ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt, UseError, Used,
+    errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -3650,7 +3650,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return;
         };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
+        let key = BindingKey::new(IdentKey::new(ident), ns);
         let mut decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
         debug!(?decl);
         if decl.is_none() {
@@ -3661,7 +3661,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = BindingKey::new(Macros20NormalizedIdent::new(ident), ns);
+            let key = BindingKey::new(IdentKey::new(ident), ns);
             decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
             debug!(?decl);
         }
