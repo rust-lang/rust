@@ -363,7 +363,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "opendir" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [name] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*const _) -> *mut _),
                     link_name,
@@ -374,7 +373,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "closedir" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [dirp] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _) -> i32),
                     link_name,

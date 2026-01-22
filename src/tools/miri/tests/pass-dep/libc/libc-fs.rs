@@ -48,6 +48,7 @@ fn main() {
     test_nofollow_not_symlink();
     #[cfg(target_os = "macos")]
     test_ioctl();
+    test_opendir_closedir();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -578,4 +579,33 @@ fn test_ioctl() {
         let fd = libc::open(name_ptr, libc::O_RDONLY);
         assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
     }
+}
+
+fn test_opendir_closedir() {
+    // dir should exist
+    use std::fs::{create_dir, remove_dir};
+    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    create_dir(&path).expect("create_dir failed");
+    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(!dir.is_null());
+    assert_eq!(unsafe { libc::closedir(dir) }, 0);
+
+    // dir should not exist
+    remove_dir(&path).unwrap();
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(dir.is_null());
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
+    assert_eq!(e.kind(), ErrorKind::NotFound);
+
+    // open normal file as dir should fail
+    let file_path = utils::prepare_with_content("test_not_a_dir.txt", b"hello");
+    let cfile = CString::new(file_path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cfile.as_ptr()) };
+    assert!(dir.is_null());
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::ENOTDIR));
+    assert_eq!(e.kind(), ErrorKind::NotADirectory);
+    remove_file(&file_path).unwrap();
 }
