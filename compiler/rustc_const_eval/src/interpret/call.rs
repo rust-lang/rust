@@ -6,7 +6,7 @@ use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, HasDataLayout, Integer, Size, VariantIdx};
 use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{HasTyCtxt, IntegerExt, TyAndLayout};
+use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
@@ -16,8 +16,8 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
-    PlaceTy, Pointer, Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar,
-    StackPopInfo, interp_ok, throw_ub, throw_ub_custom,
+    PlaceTy, Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo,
+    interp_ok, throw_ub, throw_ub_custom,
 };
 use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
@@ -470,10 +470,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let place = self.eval_place(dest)?;
                     let mplace = self.force_allocation(&place)?;
 
-                    // This global allocation is used as a key so `va_arg` can look up the variable
-                    // argument list corresponding to a `VaList` value.
-                    let alloc_id = self.tcx().reserve_alloc_id();
-
                     // Consume the remaining arguments and store them in a global allocation.
                     let mut varargs = Vec::new();
                     for (fn_arg, abi) in &mut caller_args {
@@ -487,12 +483,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // When the frame is dropped, this ID is used to deallocate the variable arguments list.
                     self.frame_mut().va_list = varargs.clone();
 
-                    // A global map that is used to implement `va_arg`.
-                    self.memory.va_list_map.insert(alloc_id, varargs);
-
-                    // A VaList is a global allocation, so make sure we get the right root pointer.
-                    // We know this is not an `extern static` so this cannot fail.
-                    let ptr = self.global_root_pointer(Pointer::from(alloc_id)).unwrap();
+                    // This is a new VaList, so start at index 0.
+                    let ptr = self.va_list_ptr(varargs, 0);
                     let addr = Scalar::from_pointer(ptr, self);
 
                     // Store the pointer to the global variable arguments list allocation in the

@@ -750,28 +750,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (prov, offset) = src_va_list_ptr.into_raw_parts();
                 let src_alloc_id = prov.unwrap().get_alloc_id().unwrap();
-                let index = offset.bytes_usize();
+                let index = offset.bytes();
 
                 // Look up arguments without consuming src.
-                let arguments = self.memory.va_list_map.get(&src_alloc_id).ok_or_else(|| {
-                    err_unsup_format!("va_copy on unknown va_list allocation {:?}", src_alloc_id)
-                })?;
+                let Some(arguments) = self.get_va_list_alloc(src_alloc_id) else {
+                    throw_unsup_format!("va_copy on unknown va_list allocation {:?}", src_alloc_id);
+                };
 
-                // Mint a fresh alloc_id for the destination and clone the argument vector.
-                let new_alloc_id = tcx.reserve_alloc_id();
-                self.memory.va_list_map.insert(new_alloc_id, arguments.clone());
-                let tcx_ptr: Pointer<mir::interpret::CtfeProvenance> =
-                    Pointer::new(new_alloc_id.into(), Size::from_bytes(index));
-                let new_ptr: Pointer<M::Provenance> = self.global_root_pointer(tcx_ptr)?;
+                // Create a new allocation pointing at the same index.
+                let new_va_list_ptr = self.va_list_ptr(arguments.to_vec(), index);
+                let addr = Scalar::from_pointer(new_va_list_ptr, self);
 
                 // Now overwrite the token pointer stored inside the VaList.
-                // VaList is a newtype: its only field is the pointer token.
-                let x = Scalar::from_pointer(new_ptr, self);
-
                 let mplace = self.force_allocation(dest)?;
                 let mut alloc = self.get_place_alloc_mut(&mplace)?.unwrap();
-
-                alloc.write_ptr_sized(Size::ZERO, x)?;
+                alloc.write_ptr_sized(Size::ZERO, addr)?;
             }
 
             sym::va_end => {
@@ -794,7 +787,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (prov, _offset) = va_list_ptr.into_raw_parts();
                 let alloc_id = prov.unwrap().get_alloc_id().unwrap();
 
-                let Some(_) = self.memory.va_list_map.swap_remove(&alloc_id) else {
+                let Some(_) = self.remove_va_list_alloc(alloc_id) else {
                     throw_unsup_format!("va_end on unknown va_list allocation {:?}", alloc_id)
                 };
             }
@@ -818,31 +811,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (prov, offset) = va_list_ptr.into_raw_parts();
                 let alloc_id = prov.unwrap().get_alloc_id().unwrap();
-                let index = offset.bytes_usize();
+                let index = offset.bytes();
 
-                let Some(va_list) = self.memory.va_list_map.swap_remove(&alloc_id) else {
+                let Some(varargs) = self.remove_va_list_alloc(alloc_id) else {
                     throw_unsup_format!("va_arg on unknown va_list allocation {:?}", alloc_id)
                 };
 
-                let Some(src_mplace) = va_list.get(index).cloned() else {
+                let Some(src_mplace) = varargs.get(offset.bytes_usize()).cloned() else {
                     throw_ub!(VaArgOutOfBounds)
                 };
 
-                // Mint a fresh alloc_id for the destination and clone the argument vector.
-                let new_alloc_id = self.tcx.reserve_alloc_id();
-                self.memory.va_list_map.insert(new_alloc_id, va_list);
-
                 // Update the offset in this `VaList` value so that a subsequent call to `va_arg`
                 // reads the next argument.
-                let tcx_ptr: Pointer<mir::interpret::CtfeProvenance> =
-                    Pointer::new(new_alloc_id.into(), Size::from_bytes(index + 1));
-                let new_va_list_ptr: Pointer<M::Provenance> = self.global_root_pointer(tcx_ptr)?;
-
-                let x = Scalar::from_pointer(new_va_list_ptr, self);
+                let new_va_list_ptr = self.va_list_ptr(varargs, index + 1);
+                let addr = Scalar::from_pointer(new_va_list_ptr, self);
                 let mut alloc = self
                     .get_ptr_alloc_mut(ap_ref, ptr_size)?
                     .expect("va_list storage should not be a ZST");
-                alloc.write_ptr_sized(Size::ZERO, x)?;
+                alloc.write_ptr_sized(Size::ZERO, addr)?;
 
                 // NOTE: In C some type conversions are allowed (e.g. casting between signed and
                 // unsigned integers). For now we require c-variadic arguments to be read with the
