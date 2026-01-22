@@ -116,7 +116,6 @@ declare_lint_pass! {
         UNCOVERED_PARAM_IN_PROJECTION,
         UNEXPECTED_CFGS,
         UNFULFILLED_LINT_EXPECTATIONS,
-        UNINHABITED_STATIC,
         UNKNOWN_CRATE_TYPES,
         UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
@@ -2675,34 +2674,6 @@ declare_lint! {
     pub FUNCTION_ITEM_REFERENCES,
     Warn,
     "suggest casting to a function pointer when attempting to take references to function items",
-}
-
-declare_lint! {
-    /// The `uninhabited_static` lint detects uninhabited statics.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// enum Void {}
-    /// unsafe extern {
-    ///     static EXTERN: Void;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Statics with an uninhabited type can never be initialized, so they are impossible to define.
-    /// However, this can be side-stepped with an `extern static`, leading to problems later in the
-    /// compiler which assumes that there are no initialized uninhabited places (such as locals or
-    /// statics). This was accidentally allowed, but is being phased out.
-    pub UNINHABITED_STATIC,
-    Warn,
-    "uninhabited static",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #74840),
-    };
 }
 
 declare_lint! {
