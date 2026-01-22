@@ -1,3 +1,6 @@
+use rustc_hir::lints::AttributeLintKind;
+use rustc_session::lint::builtin::AMBIGUOUS_DERIVE_HELPERS;
+
 use super::prelude::*;
 
 const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
@@ -125,6 +128,13 @@ fn parse_derive_like<S: Stage>(
             if !ident.name.can_be_raw() {
                 cx.expected_identifier(ident.span);
                 return None;
+            }
+            if rustc_feature::is_builtin_attr_name(ident.name) {
+                cx.emit_lint(
+                    AMBIGUOUS_DERIVE_HELPERS,
+                    AttributeLintKind::AmbiguousDeriveHelpers,
+                    ident.span,
+                );
             }
             attributes.push(ident.name);
         }
