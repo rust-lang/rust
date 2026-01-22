@@ -758,9 +758,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 })?;
 
                 // Mint a fresh alloc_id for the destination and clone the argument vector.
-                let new_alloc_id = tcx.reserve_and_set_va_list_alloc();
+                let new_alloc_id = tcx.reserve_alloc_id();
                 self.memory.va_list_map.insert(new_alloc_id, arguments.clone());
-
                 let tcx_ptr: Pointer<mir::interpret::CtfeProvenance> =
                     Pointer::new(new_alloc_id.into(), Size::from_bytes(index));
                 let new_ptr: Pointer<M::Provenance> = self.global_root_pointer(tcx_ptr)?;
@@ -830,7 +829,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Mint a fresh alloc_id for the destination and clone the argument vector.
-                let new_alloc_id = self.tcx.reserve_and_set_va_list_alloc();
+                let new_alloc_id = self.tcx.reserve_alloc_id();
                 self.memory.va_list_map.insert(new_alloc_id, va_list);
 
                 // Update the offset in this `VaList` value so that a subsequent call to `va_arg`

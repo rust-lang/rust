@@ -204,9 +204,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 return M::extern_static_pointer(self, def_id);
             }
             None => {
+                let is_fn_ptr = self.memory.extra_fn_ptr_map.contains_key(&alloc_id);
+                let is_va_list = self.memory.va_list_map.contains_key(&alloc_id);
                 assert!(
-                    self.memory.extra_fn_ptr_map.contains_key(&alloc_id),
-                    "{alloc_id:?} is neither global nor a function pointer"
+                    is_fn_ptr || is_va_list,
+                    "{alloc_id:?} is neither global, va_list nor a function pointer"
                 );
             }
             _ => {}
