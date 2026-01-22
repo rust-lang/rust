@@ -3838,100 +3838,119 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         };
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
                         let mut sugg = vec![(lt.span, String::new())];
+
+                        // Use LifetimeFinder to locate the TyKind::Ref containing this lifetime,
+                        // so we can properly calculate the span for `&mut T` -> `T` suggestion.
+                        let mut lt_finder =
+                            LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
+
                         if let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
-                            && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {
-                            let mut lt_finder =
-                                LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
-                            lt_finder.visit_ty(&ty);
-
-                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] =
-                                &lt_finder.seen[..]
-                            {
-                                // We might have a situation like
-                                // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
-                                // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
-                                // we need to find a more accurate span to end up with
-                                // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
-                                sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
-                                owned_sugg = true;
+                            // Visit return type
+                            if let ast::FnRetTy::Ty(ty) = &sig.decl.output {
+                                lt_finder.visit_ty(ty);
                             }
-                            if let Some(ty) = lt_finder.found {
-                                if let TyKind::Path(None, path) = &ty.kind {
-                                    // Check if the path being borrowed is likely to be owned.
-                                    let path: Vec<_> = Segment::from_path(path);
-                                    match self.resolve_path(
-                                        &path,
-                                        Some(TypeNS),
-                                        None,
-                                        PathSource::Type,
-                                    ) {
-                                        PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
-                                            match module.res() {
-                                                Some(Res::PrimTy(PrimTy::Str)) => {
-                                                    // Don't suggest `-> str`, suggest `-> String`.
-                                                    sugg = vec![(
-                                                        lt.span.with_hi(ty.span.hi()),
-                                                        "String".to_string(),
-                                                    )];
-                                                }
-                                                Some(Res::PrimTy(..)) => {}
-                                                Some(Res::Def(
-                                                    DefKind::Struct
-                                                    | DefKind::Union
-                                                    | DefKind::Enum
-                                                    | DefKind::ForeignTy
-                                                    | DefKind::AssocTy
-                                                    | DefKind::OpaqueTy
-                                                    | DefKind::TyParam,
-                                                    _,
-                                                )) => {}
-                                                _ => {
-                                                    // Do not suggest in all other cases.
-                                                    owned_sugg = false;
-                                                }
-                                            }
-                                        }
-                                        PathResult::NonModule(res) => {
-                                            match res.base_res() {
-                                                Res::PrimTy(PrimTy::Str) => {
-                                                    // Don't suggest `-> str`, suggest `-> String`.
-                                                    sugg = vec![(
-                                                        lt.span.with_hi(ty.span.hi()),
-                                                        "String".to_string(),
-                                                    )];
-                                                }
-                                                Res::PrimTy(..) => {}
-                                                Res::Def(
-                                                    DefKind::Struct
-                                                    | DefKind::Union
-                                                    | DefKind::Enum
-                                                    | DefKind::ForeignTy
-                                                    | DefKind::AssocTy
-                                                    | DefKind::OpaqueTy
-                                                    | DefKind::TyParam,
-                                                    _,
-                                                ) => {}
-                                                _ => {
-                                                    // Do not suggest in all other cases.
-                                                    owned_sugg = false;
-                                                }
-                                            }
-                                        }
-                                        _ => {
-                                            // Do not suggest in all other cases.
-                                            owned_sugg = false;
-                                        }
+                            // Visit all parameter types
+                            for param in &sig.decl.inputs {
+                                lt_finder.visit_ty(&param.ty);
+                            }
+                        }
+
+                        // Visit generic bounds (for both functions and structs)
+                        if let Some(item) = self.diag_metadata.current_item
+                            && let Some(generics) = item.kind.generics()
+                        {
+                            for param in &generics.params {
+                                for bound in &param.bounds {
+                                    if let ast::GenericBound::Trait(trait_ref) = bound {
+                                        lt_finder.visit_trait_ref(&trait_ref.trait_ref);
                                     }
                                 }
-                                if let TyKind::Slice(inner_ty) = &ty.kind {
-                                    // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
-                                    sugg = vec![
-                                        (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
-                                        (ty.span.with_lo(inner_ty.span.hi()), ">".to_string()),
-                                    ];
+                            }
+                        }
+
+                        if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] = &lt_finder.seen[..]
+                        {
+                            // We might have a situation like
+                            // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
+                            // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
+                            // we need to find a more accurate span to end up with
+                            // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
+                            sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
+                            owned_sugg = true;
+                        }
+
+                        if let Some(ty) = lt_finder.found {
+                            if let TyKind::Path(None, path) = &ty.kind {
+                                // Check if the path being borrowed is likely to be owned.
+                                let path: Vec<_> = Segment::from_path(path);
+                                match self.resolve_path(&path, Some(TypeNS), None, PathSource::Type)
+                                {
+                                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                                        match module.res() {
+                                            Some(Res::PrimTy(PrimTy::Str)) => {
+                                                // Don't suggest `-> str`, suggest `-> String`.
+                                                sugg = vec![(
+                                                    lt.span.with_hi(ty.span.hi()),
+                                                    "String".to_string(),
+                                                )];
+                                            }
+                                            Some(Res::PrimTy(..)) => {}
+                                            Some(Res::Def(
+                                                DefKind::Struct
+                                                | DefKind::Union
+                                                | DefKind::Enum
+                                                | DefKind::ForeignTy
+                                                | DefKind::AssocTy
+                                                | DefKind::OpaqueTy
+                                                | DefKind::TyParam,
+                                                _,
+                                            )) => {}
+                                            _ => {
+                                                // Do not suggest in all other cases.
+                                                owned_sugg = false;
+                                            }
+                                        }
+                                    }
+                                    PathResult::NonModule(res) => {
+                                        match res.base_res() {
+                                            Res::PrimTy(PrimTy::Str) => {
+                                                // Don't suggest `-> str`, suggest `-> String`.
+                                                sugg = vec![(
+                                                    lt.span.with_hi(ty.span.hi()),
+                                                    "String".to_string(),
+                                                )];
+                                            }
+                                            Res::PrimTy(..) => {}
+                                            Res::Def(
+                                                DefKind::Struct
+                                                | DefKind::Union
+                                                | DefKind::Enum
+                                                | DefKind::ForeignTy
+                                                | DefKind::AssocTy
+                                                | DefKind::OpaqueTy
+                                                | DefKind::TyParam,
+                                                _,
+                                            ) => {}
+                                            _ => {
+                                                // Do not suggest in all other cases.
+                                                owned_sugg = false;
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        // Do not suggest in all other cases.
+                                        owned_sugg = false;
+                                    }
                                 }
+                            }
+                            if let TyKind::Slice(inner_ty) = &ty.kind {
+                                // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
+                                sugg = vec![
+                                    (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
+                                    (ty.span.with_lo(inner_ty.span.hi()), ">".to_string()),
+                                ];
                             }
                         }
                         if owned_sugg {
