@@ -1,0 +1,51 @@
+// MIR for `cmp_has_padding` after PreCodegen
+
+fn cmp_has_padding(_1: &HasPadding, _2: &HasPadding) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &HasPadding>::eq) {
+        scope 2 (inlined <HasPadding as PartialEq>::eq) {
+            let mut _3: u8;
+            let mut _4: u8;
+            let mut _5: bool;
+            let mut _6: u16;
+            let mut _7: u16;
+        }
+    }
+
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_3);
+        _3 = copy ((*_1).0: u8);
+        StorageLive(_4);
+        _4 = copy ((*_2).0: u8);
+        _5 = Eq(move _3, move _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = const false;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_6);
+        _6 = copy ((*_1).1: u16);
+        StorageLive(_7);
+        _7 = copy ((*_2).1: u16);
+        _0 = Eq(move _6, move _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_5);
+        return;
+    }
+}

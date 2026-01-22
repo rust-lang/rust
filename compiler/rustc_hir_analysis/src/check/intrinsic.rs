@@ -81,12 +81,14 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::breakpoint
         | sym::bswap
         | sym::caller_location
+        | sym::can_compare_bitwise
         | sym::carrying_mul_add
         | sym::ceilf16
         | sym::ceilf32
         | sym::ceilf64
         | sym::ceilf128
         | sym::cold_path
+        | sym::compare_bitwise
         | sym::const_eval_select
         | sym::contract_check_ensures
         | sym::contract_check_requires
@@ -366,6 +368,18 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_mut_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0)), tcx.types.usize],
             tcx.types.unit,
         ),
+        sym::compare_bitwise => {
+            let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
+            let first_arg =
+                Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
+            let br =
+                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon };
+            let second_arg =
+                Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
+
+            (1, 0, vec![first_arg, second_arg], tcx.types.bool)
+        }
+        sym::can_compare_bitwise => (1, 0, vec![], tcx.types.bool),
         sym::compare_bytes => {
             let byte_ptr = Ty::new_imm_ptr(tcx, tcx.types.u8);
             (0, 0, vec![byte_ptr, byte_ptr, tcx.types.usize], tcx.types.i32)

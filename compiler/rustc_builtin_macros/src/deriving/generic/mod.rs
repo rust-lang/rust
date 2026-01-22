@@ -278,6 +278,7 @@ pub(crate) struct Substructure<'a> {
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
     /// don't have type `&Self`.
     pub nonselflike_args: &'a [Box<Expr>],
+    pub selflike_args: &'a [Box<Expr>],
     pub fields: &'a SubstructureFields<'a>,
 }
 
@@ -884,6 +885,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
+                        &selflike_args,
                         &nonselflike_args,
                     )
                 } else {
@@ -940,6 +942,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
+                        &selflike_args,
                         &nonselflike_args,
                     )
                 } else {
@@ -976,11 +979,12 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
+        selflike_args: &[Box<Expr>],
         nonselflike_args: &[Box<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
-        let substructure = Substructure { type_ident, nonselflike_args, fields };
+        let substructure = Substructure { type_ident, selflike_args, nonselflike_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, span, &substructure)
@@ -1156,6 +1160,7 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
+            selflike_args,
             nonselflike_args,
             &Struct(struct_def, selflike_fields),
         )
@@ -1167,6 +1172,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
+        selflike_args: &[Box<Expr>],
         nonselflike_args: &[Box<Expr>],
     ) -> BlockOrExpr {
         let summary = trait_.summarise_struct(cx, struct_def);
@@ -1175,6 +1181,7 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
+            selflike_args,
             nonselflike_args,
             &StaticStruct(struct_def, summary),
         )
@@ -1311,6 +1318,7 @@ impl<'a> MethodDef<'a> {
                             cx,
                             trait_,
                             type_ident,
+                            &selflike_args,
                             nonselflike_args,
                             &EnumDiscr(discr_field, None),
                         );
@@ -1322,6 +1330,7 @@ impl<'a> MethodDef<'a> {
                             cx,
                             trait_,
                             type_ident,
+                            &selflike_args,
                             nonselflike_args,
                             &AllFieldlessEnum(enum_def),
                         );
@@ -1335,6 +1344,7 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
+                    &selflike_args,
                     nonselflike_args,
                     &EnumMatching(variant, Vec::new()),
                 );
@@ -1387,6 +1397,7 @@ impl<'a> MethodDef<'a> {
                         cx,
                         trait_,
                         type_ident,
+                        &selflike_args,
                         nonselflike_args,
                         &substructure,
                     )
@@ -1408,6 +1419,7 @@ impl<'a> MethodDef<'a> {
                         cx,
                         trait_,
                         type_ident,
+                        &selflike_args,
                         nonselflike_args,
                         &EnumMatching(v, Vec::new()),
                     )
@@ -1454,6 +1466,7 @@ impl<'a> MethodDef<'a> {
                 cx,
                 trait_,
                 type_ident,
+                &selflike_args.clone(),
                 nonselflike_args,
                 &EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
             );
@@ -1470,12 +1483,14 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
+        selflike_args: &[Box<Expr>],
         nonselflike_args: &[Box<Expr>],
     ) -> BlockOrExpr {
         self.call_substructure_method(
             cx,
             trait_,
             type_ident,
+            selflike_args,
             nonselflike_args,
             &StaticEnum(enum_def),
         )

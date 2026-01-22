@@ -134,7 +134,9 @@ impl ::core::marker::StructuralPartialEq for Point { }
 impl ::core::cmp::PartialEq for Point {
     #[inline]
     fn eq(&self, other: &Point) -> bool {
-        self.x == other.x && self.y == other.y
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else { self.x == other.x && self.y == other.y }
     }
 }
 #[automatically_derived]
@@ -222,7 +224,11 @@ impl ::core::marker::StructuralPartialEq for PackedPoint { }
 impl ::core::cmp::PartialEq for PackedPoint {
     #[inline]
     fn eq(&self, other: &PackedPoint) -> bool {
-        ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else {
+            ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
+        }
     }
 }
 #[automatically_derived]
@@ -482,10 +488,14 @@ impl ::core::marker::StructuralPartialEq for Big { }
 impl ::core::cmp::PartialEq for Big {
     #[inline]
     fn eq(&self, other: &Big) -> bool {
-        self.b1 == other.b1 && self.b2 == other.b2 && self.b3 == other.b3 &&
-                            self.b4 == other.b4 && self.b5 == other.b5 &&
-                    self.b6 == other.b6 && self.b7 == other.b7 &&
-            self.b8 == other.b8
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else {
+            self.b1 == other.b1 && self.b2 == other.b2 && self.b3 == other.b3
+                                && self.b4 == other.b4 && self.b5 == other.b5 &&
+                        self.b6 == other.b6 && self.b7 == other.b7 &&
+                self.b8 == other.b8
+        }
     }
 }
 #[automatically_derived]
@@ -601,11 +611,15 @@ impl ::core::marker::StructuralPartialEq for Reorder { }
 impl ::core::cmp::PartialEq for Reorder {
     #[inline]
     fn eq(&self, other: &Reorder) -> bool {
-        self.b2 == other.b2 && self.b4 == other.b4 && self.b5 == other.b5 &&
-                                        self.b6 == other.b6 && self.b7 == other.b7 &&
-                                self.b8 == other.b8 && self.b10 == other.b10 &&
-                        self.b1 == other.b1 && self.b3 == other.b3 &&
-                self._b == other._b && self.b9 == other.b9
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else {
+            self.b2 == other.b2 && self.b4 == other.b4 && self.b5 == other.b5
+                                            && self.b6 == other.b6 && self.b7 == other.b7 &&
+                                    self.b8 == other.b8 && self.b10 == other.b10 &&
+                            self.b1 == other.b1 && self.b3 == other.b3 &&
+                    self._b == other._b && self.b9 == other.b9
+        }
     }
 }
 #[automatically_derived]
@@ -843,7 +857,11 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
     T::A: ::core::cmp::PartialEq {
     #[inline]
     fn eq(&self, other: &Generic<T, U>) -> bool {
-        self.t == other.t && self.ta == other.ta && self.u == other.u
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else {
+            self.t == other.t && self.ta == other.ta && self.u == other.u
+        }
     }
 }
 #[automatically_derived]
@@ -963,8 +981,12 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     ::core::marker::Copy {
     #[inline]
     fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
-        ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
-            ({ self.2 }) == ({ other.2 })
+        if ::core::intrinsics::can_compare_bitwise::<Self>() {
+            ::core::intrinsics::compare_bitwise(self, other)
+        } else {
+            ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
+                ({ self.2 }) == ({ other.2 })
+        }
     }
 }
 #[automatically_derived]

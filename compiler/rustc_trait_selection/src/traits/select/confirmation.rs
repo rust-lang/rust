@@ -1184,6 +1184,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, args_a), &ty::Adt(_, args_b)) => {
+                if args_a.is_empty() || args_b.is_empty() {
+                    assert!(args_a.is_empty());
+                    assert!(args_b.is_empty());
+                    return Err(SelectionError::Unimplemented);
+                }
                 let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
                     return Err(SelectionError::Unimplemented);

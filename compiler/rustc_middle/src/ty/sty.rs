@@ -10,8 +10,9 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
 use rustc_data_structures::debug_assert_matches;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{LangItem, find_attr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
@@ -2006,6 +2007,35 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
                 false
             }
+        }
+    }
+
+    pub fn is_bitwise_comparable(self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            ty::Int(..) | ty::Uint(..) | ty::Bool | ty::Char => true,
+            ty::Array(element_ty, _len) => element_ty.is_bitwise_comparable(tcx),
+            ty::Adt(adt_def, args) => {
+                // Only structs
+                if !adt_def.is_struct() {
+                    return false;
+                }
+                // All fields must be bitwise-comparable
+                if !adt_def.all_fields().all(|f| f.ty(tcx, args).is_bitwise_comparable(tcx)) {
+                    return false;
+                }
+                // And the PartialEq impl for the ADT must be derived
+                let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
+                for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, self) {
+                    if find_attr!(
+                        tcx.get_all_attrs(def_id),
+                        AttributeKind::AutomaticallyDerived(..)
+                    ) {
+                        return true;
+                    }
+                }
+                false
+            }
+            _ => false,
         }
     }
 

@@ -2562,6 +2562,27 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     unsafe { ptr::swap_nonoverlapping(x, y, 1) };
 }
 
+#[rustc_nounwind]
+#[inline]
+#[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
+pub const fn can_compare_bitwise<T: ?Sized>() -> bool;
+
+#[rustc_nounwind]
+#[inline]
+#[rustc_intrinsic]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn compare_bitwise<T: ?Sized>(a: &T, b: &T) -> bool {
+    // SAFETY: These pointers were originally references to the same memory.
+    unsafe {
+        let len = size_of_val(a);
+        let a = ptr::from_ref(a).cast::<u8>();
+        let b = ptr::from_ref(b).cast::<u8>();
+        compare_bytes(a, b, len) == 0
+    }
+}
+
 /// Returns whether we should perform some UB-checking at runtime. This eventually evaluates to
 /// `cfg!(ub_checks)`, but behaves different from `cfg!` when mixing crates built with different
 /// flags: if the crate has UB checks enabled or carries the `#[rustc_preserve_ub_checks]`

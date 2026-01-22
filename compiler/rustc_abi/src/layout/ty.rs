@@ -192,6 +192,29 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::ty_and_layout_field(self, cx, i)
     }
 
+    pub fn is_gapless<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let Variants::Single { .. } = self.variants else {
+            return false;
+        };
+
+        let mut expected_offset = Size::ZERO;
+        for i in self.fields.index_by_increasing_offset() {
+            if self.fields.offset(i) != expected_offset {
+                return false;
+            }
+            expected_offset = self.fields.offset(i) + TyAndLayout::field(self, cx, i).size;
+        }
+
+        if expected_offset != self.size {
+            return false;
+        }
+
+        true
+    }
+
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
         Ty: TyAbiInterface<'a, C>,
