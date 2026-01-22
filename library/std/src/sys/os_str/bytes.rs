@@ -1,7 +1,6 @@
 //! The underlying OsString/OsStr implementation on Unix and many other
 //! systems: just a `Vec<u8>`/`[u8]`.
 
-use core::bstr::ByteStr;
 use core::clone::CloneToUninit;
 
 use crate::borrow::Cow;
