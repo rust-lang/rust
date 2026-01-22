@@ -5,8 +5,19 @@ set -eux
 
 arch=$1
 binutils_version=2.40
-freebsd_version=12.3
-triple=$arch-unknown-freebsd12
+# FIXME: Use the same version from FreeBSD 14
+case $arch in
+    (aarch64)
+        freebsd_version=13.5
+        triple=$arch-unknown-freebsd13
+        freebsd_date=2025-03-07
+        ;;
+    (*)
+        freebsd_version=12.3
+        triple=$arch-unknown-freebsd12
+        freebsd_date=2022-05-06
+        ;;
+esac
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -45,6 +56,7 @@ mkdir -p "$sysroot"
 case $arch in
   (x86_64) freebsd_arch=amd64 ;;
   (i686) freebsd_arch=i386 ;;
+  (aarch64) freebsd_arch=arm64 ;;
 esac
 
 files_to_extract=(
@@ -61,7 +73,7 @@ done
 
 # Originally downloaded from:
 # URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://ci-mirrors.rust-lang.org/rustc/2022-05-06-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/${freebsd_date}-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Clang can do cross-builds out of the box, if we give it the right
