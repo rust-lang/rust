@@ -118,12 +118,12 @@ use crate::{cmp, ptr};
 ///
 /// # Re-entrance
 ///
-/// When implementing a global allocator one has to be careful not to create an infinitely recursive
+/// When implementing a global allocator, one has to be careful not to create an infinitely recursive
 /// implementation by accident, as many constructs in the Rust standard library may allocate in
-/// their implementation. For example, on some platforms [`std::sync::Mutex`] may allocate, so using
+/// their implementation. For example, on some platforms, [`std::sync::Mutex`] may allocate, so using
 /// it is highly problematic in a global allocator.
 ///
-/// Generally speaking for this reason one should stick to library features available through
+/// For this reason, one should generally stick to library features available through
 /// [`core`], and avoid using [`std`] in a global allocator. A few features from [`std`] are
 /// guaranteed to not use `#[global_allocator]` to allocate:
 ///
