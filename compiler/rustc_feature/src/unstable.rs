@@ -222,7 +222,7 @@ declare_features! (
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items
-    (internal, eii_internals, "CURRENT_RUSTC_VERSION", None),
+    (internal, eii_internals, "1.94.0", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the #[rustc_intrinsic] attribute.
@@ -477,7 +477,7 @@ declare_features! (
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
     /// Externally implementable items
-    (unstable, extern_item_impls, "CURRENT_RUSTC_VERSION", Some(125418)),
+    (unstable, extern_item_impls, "1.94.0", Some(125418)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.
@@ -667,7 +667,7 @@ declare_features! (
     /// Allows using `try {...}` expressions.
     (unstable, try_blocks, "1.29.0", Some(31436)),
     /// Allows using `try bikeshed TargetType {...}` expressions.
-    (unstable, try_blocks_heterogeneous, "CURRENT_RUSTC_VERSION", Some(149488)),
+    (unstable, try_blocks_heterogeneous, "1.94.0", Some(149488)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (unstable, type_alias_impl_trait, "1.38.0", Some(63063)),
     /// Allows creation of instances of a struct by moving fields that have
