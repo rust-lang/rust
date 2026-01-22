@@ -487,12 +487,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let ptr = self.va_list_ptr(varargs, 0);
                     let addr = Scalar::from_pointer(ptr, self);
 
+                    // Zero the mplace, so it is fully initialized.
+                    self.write_bytes_ptr(
+                        mplace.ptr(),
+                        (0..mplace.layout.size.bytes()).map(|_| 0u8),
+                    )?;
+
                     // Store the pointer to the global variable arguments list allocation in the
                     // first bytes of the `VaList` value.
                     let mut alloc = self
                         .get_ptr_alloc_mut(mplace.ptr(), self.data_layout().pointer_size())?
                         .expect("not a ZST");
-
                     alloc.write_ptr_sized(Size::ZERO, addr)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
