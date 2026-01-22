@@ -320,6 +320,19 @@ pub mod arch {
     pub mod s390x {
         pub use crate::core_arch::s390x::*;
     }
+
+    /// Platform-specific intrinsics for the `hexagon` platform.
+    ///
+    /// This module provides intrinsics for the Qualcomm Hexagon DSP architecture,
+    /// including the Hexagon Vector Extensions (HVX).
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "hexagon", doc))]
+    #[doc(cfg(target_arch = "hexagon"))]
+    #[unstable(feature = "stdarch_hexagon", issue = "none")]
+    pub mod hexagon {
+        pub use crate::core_arch::hexagon::*;
+    }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", doc))]
@@ -379,3 +392,7 @@ mod loongarch64;
 #[cfg(any(target_arch = "s390x", doc))]
 #[doc(cfg(target_arch = "s390x"))]
 mod s390x;
+
+#[cfg(any(target_arch = "hexagon", doc))]
+#[doc(cfg(target_arch = "hexagon"))]
+mod hexagon;
