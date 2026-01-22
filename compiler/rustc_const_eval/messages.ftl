@@ -197,6 +197,9 @@ const_eval_invalid_uninit_bytes =
 const_eval_invalid_uninit_bytes_unknown =
     using uninitialized data, but this operation requires initialized memory
 
+const_eval_invalid_va_list_pointer =
+    using {$pointer} as variable argument list pointer but it does not point to a variable argument list
+
 const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 

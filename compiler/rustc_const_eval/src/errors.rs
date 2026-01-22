@@ -498,6 +498,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidChar(_) => const_eval_invalid_char,
             InvalidTag(_) => const_eval_invalid_tag,
             InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
+            InvalidVaList(_) => const_eval_invalid_va_list_pointer,
             InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
             InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
             InvalidStr(_) => const_eval_invalid_str,
