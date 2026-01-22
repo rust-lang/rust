@@ -153,6 +153,11 @@ jobs:
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
 
+      - name: print kernel/libc versions
+        if: runner.os == 'Linux'
+        run: |
+          uname -a
+
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
 

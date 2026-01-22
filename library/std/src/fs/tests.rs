@@ -3,6 +3,7 @@ use rand::RngCore;
 #[cfg(not(miri))]
 use super::Dir;
 use crate::assert_matches::assert_matches;
+use crate::bstr::ByteStr;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 #[cfg(not(miri))]
 use crate::io;
@@ -595,6 +596,25 @@ fn test_read_buf_exact_at() {
         assert_eq!(check!(file.stream_position()), 0);
     }
     check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
+fn file_test_append_write_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_test_append_write_at.txt");
+    let msg = b"it's not working!";
+    check!(fs::write(&filename, &msg));
+    // write_at should work even in in append mode
+    let mut f = check!(fs::File::options().append(true).open(&filename));
+    assert_eq!(check!(f.stream_position()), 0);
+    assert_eq!(check!(f.write_at(b"   ", 5)), 3);
+    assert_eq!(check!(f.stream_position()), 0);
+
+    let content = check!(fs::read(&filename));
+    assert_eq!(ByteStr::new(&content), ByteStr::new(b"it's     working!"));
 }
 
 #[test]

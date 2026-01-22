@@ -36,9 +36,12 @@ cfg_select! {
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-#[cfg(all(target_os = "android", target_pointer_width = "64"))]
+#[cfg(all(any(target_os = "android", target_os = "linux"), target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
-#[cfg(any(all(target_os = "android", target_pointer_width = "32"), target_vendor = "apple"))]
+#[cfg(any(
+    all(any(target_os = "android", target_os = "linux"), target_pointer_width = "32"),
+    target_vendor = "apple"
+))]
 use crate::sys::pal::weak::weak;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
@@ -404,6 +407,16 @@ impl FileDesc {
         ))]
         use libc::pwrite64;
 
+        // Work around linux deviating from POSIX where it ignores the
+        // offset of pwrite when the file was opened with O_APPEND.
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        {
+            let iov = [IoSlice::new(buf)];
+            if let Some(ret) = self.pwritev2(&iov, offset) {
+                return ret;
+            }
+        }
+
         unsafe {
             cvt(pwrite64(
                 self.as_raw_fd(),
@@ -428,6 +441,13 @@ impl FileDesc {
         target_os = "openbsd", // OpenBSD 2.7
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        // Work around linux deviating from POSIX where it ignores the
+        // offset of pwrite when the file was opened with O_APPEND.
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        if let Some(ret) = self.pwritev2(bufs, offset) {
+            return ret;
+        }
+
         let ret = cvt(unsafe {
             libc::pwritev(
                 self.as_raw_fd(),
@@ -632,6 +652,65 @@ impl FileDesc {
     #[inline]
     pub fn duplicate(&self) -> io::Result<FileDesc> {
         Ok(Self(self.0.try_clone()?))
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn pwritev2(&self, bufs: &[IoSlice<'_>], offset: u64) -> Option<io::Result<usize>> {
+        #[cfg(target_pointer_width = "64")]
+        syscall!(
+            fn pwritev2(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t,
+                flags: libc::c_int,
+            ) -> isize;
+        );
+        #[cfg(target_pointer_width = "32")]
+        let pwritev2 = {
+            weak!(
+                fn pwritev2(
+                    fd: libc::c_int,
+                    iovec: *const libc::iovec,
+                    n_iovec: libc::c_int,
+                    offset: off64_t,
+                    flags: libc::c_int,
+                ) -> isize;
+            );
+            let Some(pwritev2) = pwritev2.get() else {
+                return None;
+            };
+            pwritev2
+        };
+
+        use core::sync::atomic::AtomicBool;
+
+        static NOAPPEND_SUPPORTED: AtomicBool = AtomicBool::new(true);
+        if NOAPPEND_SUPPORTED.load(core::sync::atomic::Ordering::Relaxed) {
+            let r = unsafe {
+                cvt(pwritev2(
+                    self.as_raw_fd(),
+                    bufs.as_ptr() as *const libc::iovec,
+                    cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                    offset as off64_t,
+                    libc::RWF_NOAPPEND,
+                ))
+            };
+            match r {
+                Ok(ret) => return Some(Ok(ret as usize)),
+                Err(e)
+                    if let Some(err) = e.raw_os_error()
+                        && (err == libc::EOPNOTSUPP || err == libc::ENOSYS) =>
+                {
+                    eprintln!("pwritev2 NOAPPEND error: {err}");
+                    NOAPPEND_SUPPORTED.store(false, core::sync::atomic::Ordering::Relaxed);
+                    return None;
+                }
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
+        return None;
     }
 }
 
