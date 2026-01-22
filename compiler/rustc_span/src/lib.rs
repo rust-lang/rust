@@ -233,6 +233,8 @@ bitflags::bitflags! {
         const DEBUGINFO = 1 << 3;
         /// Apply remappings to coverage information
         const COVERAGE = 1 << 4;
+        /// Apply remappings to documentation information
+        const DOCUMENTATION = 1 << 5;
 
         /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
         /// executables, libraries and objects are remapped but not elsewhere.
