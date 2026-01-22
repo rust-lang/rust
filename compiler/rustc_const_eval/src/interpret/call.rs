@@ -472,7 +472,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     // This global allocation is used as a key so `va_arg` can look up the variable
                     // argument list corresponding to a `VaList` value.
-                    let alloc_id = self.tcx().reserve_and_set_va_list_alloc();
+                    let alloc_id = self.tcx().reserve_alloc_id();
 
                     // Consume the remaining arguments and store them in a global allocation.
                     let mut varargs = Vec::new();
