@@ -199,12 +199,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-        let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
+        let caller_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
             Some(bx.tcx().codegen_instance_attrs(fx.instance.def))
         } else {
             None
         };
-        let fn_attrs = fn_attrs.as_deref();
+        let caller_attrs = caller_attrs.as_deref();
 
         if !fn_abi.can_unwind {
             unwind = mir::UnwindAction::Unreachable;
@@ -233,7 +233,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         };
 
         if kind == CallKind::Tail {
-            bx.tail_call(fn_ty, fn_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
+            bx.tail_call(fn_ty, caller_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
             return MergingSucc::False;
         }
 
@@ -245,7 +245,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             };
             let invokeret = bx.invoke(
                 fn_ty,
-                fn_attrs,
+                caller_attrs,
                 Some(fn_abi),
                 fn_ptr,
                 llargs,
@@ -268,8 +268,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            let llret =
-                bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, llargs, self.funclet(fx), instance);
+            let llret = bx.call(
+                fn_ty,
+                caller_attrs,
+                Some(fn_abi),
+                fn_ptr,
+                llargs,
+                self.funclet(fx),
+                instance,
+            );
             if fx.mir[self.bb].is_cleanup {
                 bx.apply_attrs_to_cleanup_callsite(llret);
             }
