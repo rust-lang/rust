@@ -10,7 +10,7 @@ use std::{
 };
 
 use intern::Symbol;
-use proc_macro::bridge::server;
+use rustc_proc_macro::bridge::server;
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TextRange, TextSize};
 
 use crate::{
