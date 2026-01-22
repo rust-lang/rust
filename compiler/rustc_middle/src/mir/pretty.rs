@@ -1570,7 +1570,6 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                 write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
-            Some(GlobalAlloc::VaList) => write!(w, "(valist)")?,
             Some(GlobalAlloc::TypeId { ty }) => write!(w, " (typeid for {ty})")?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;

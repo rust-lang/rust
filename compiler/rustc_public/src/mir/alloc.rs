@@ -18,8 +18,6 @@ pub enum GlobalAlloc {
     /// This alloc ID points to a symbolic (not-reified) vtable.
     /// The `None` trait ref is used to represent auto traits.
     VTable(Ty, Option<Binder<ExistentialTraitRef>>),
-    /// This alloc ID points to a variable argument list (used with c-variadic functions).
-    VaList,
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(StaticDef),

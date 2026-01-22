@@ -4,7 +4,6 @@ use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
-use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
@@ -281,9 +280,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                             .unwrap_memory();
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
-                    }
-                    GlobalAlloc::VaList => {
-                        bug!("valist allocation should never make it to codegen")
                     }
                     GlobalAlloc::TypeId { .. } => {
                         let val = self.const_usize(offset.bytes());
