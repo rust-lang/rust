@@ -1225,7 +1225,7 @@ impl Target {
                     Some(RustcAbi::Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature.
                         // llvm will switch to soft-float ABI just based on this feature.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["vector"] }
                     }
                     Some(r) => {
                         panic!("invalid Rust ABI for s390x: {r:?}");

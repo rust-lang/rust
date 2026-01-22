@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         cpu: "z10".into(),
         endian: Endian::Big,
-        features: "+soft-float".into(),
+        features: "+soft-float,-vector".into(),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         max_atomic_width: Some(128),
