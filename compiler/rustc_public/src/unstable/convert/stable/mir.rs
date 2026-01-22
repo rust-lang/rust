@@ -846,7 +846,6 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
                 // FIXME: Should we record the whole vtable?
                 GlobalAlloc::VTable(ty.stable(tables, cx), dyn_ty.principal().stable(tables, cx))
             }
-            mir::interpret::GlobalAlloc::VaList => GlobalAlloc::VaList,
             mir::interpret::GlobalAlloc::Static(def) => {
                 GlobalAlloc::Static(tables.static_def(*def))
             }

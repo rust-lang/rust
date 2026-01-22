@@ -329,9 +329,6 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
                         self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
-                    GlobalAlloc::VaList => {
-                        bug!("valist allocation should never make it to codegen")
-                    }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         assert!(!self.tcx.is_thread_local_static(def_id));
