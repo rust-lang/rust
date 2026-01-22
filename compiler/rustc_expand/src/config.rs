@@ -393,9 +393,10 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs
-            .iter()
-            .all(|attr| !is_cfg(attr) || self.cfg_true(attr, ShouldEmit::ErrorsAndLints).as_bool())
+        attrs.iter().all(|attr| {
+            !is_cfg(attr)
+                || self.cfg_true(attr, ShouldEmit::ErrorsAndLints { recover: true }).as_bool()
+        })
     }
 
     pub(crate) fn cfg_true(&self, attr: &Attribute, emit_errors: ShouldEmit) -> EvalConfigResult {

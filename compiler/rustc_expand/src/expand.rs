@@ -2170,7 +2170,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 call.span(),
                 self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
-                ShouldEmit::ErrorsAndLints,
+                ShouldEmit::ErrorsAndLints { recover: true },
             );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
@@ -2220,7 +2220,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             // Target doesn't matter for `cfg` parsing.
             Target::Crate,
             self.cfg().features,
-            ShouldEmit::ErrorsAndLints,
+            ShouldEmit::ErrorsAndLints { recover: true },
             parse_cfg,
             &CFG_TEMPLATE,
         ) else {
