@@ -170,6 +170,6 @@ impl Diagnostic {
             }
         }
 
-        crate::bridge::client::FreeFunctions::emit_diagnostic(to_internal(self));
+        crate::bridge::client::Methods::emit_diagnostic(to_internal(self));
     }
 }
