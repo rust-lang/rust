@@ -2923,8 +2923,8 @@ impl Target {
         );
         check_eq!(
             self.is_like_gpu,
-            self.arch == Arch::Nvptx64 || self.arch == Arch::AmdGpu,
-            "`is_like_gpu` must be set if and only if `target` is `nvptx64` or `amdgcn`"
+            self.arch == Arch::AmdGpu || self.arch == Arch::Nvptx64 || self.arch == Arch::SpirV,
+            "`is_like_gpu` must be set if and only if `target` is `amdgcn`, `nvptx64`, or `spirv`"
         );
         check_eq!(
             self.is_like_windows,
