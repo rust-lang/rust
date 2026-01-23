@@ -438,10 +438,10 @@ fn fiber_does_not_trigger_dtor() {
     let signal2 = signal.clone();
     let t = thread::spawn(move || unsafe {
         let mut signal = Some(signal2);
+        let _ = ConvertThreadToFiber(ptr::null());
         FOO.with(|f| {
             *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
         });
-        let _ = ConvertThreadToFiber(ptr::null());
         let _ = ConvertFiberToThread();
     });
     signal.wait();
