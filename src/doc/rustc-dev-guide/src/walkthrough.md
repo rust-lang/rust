@@ -161,12 +161,12 @@ Here is the tracking issue on for our [`?` macro feature][tracking].
 
 ## Experimental RFC (eRFC)
 
-An eRFC is a variant of the RFC process used for complex features wherethe high-level need
+An eRFC is a variant of the RFC process used for complex features where the high-level need
 is clear, but the design space is too large to settle on a detailed specification upfront.
 Instead of providing a final design, an eRFC outlines a high-level strategy to authorize
 a period of active experimentation. This allows the team to implement the feature behind
 a feature gate and gather practical data, which then informs a subsequent formal RFC for stabilization.
-While this process was used for major features like coroutines ([see RFC2033][rfc2033]),
+While this process was used for major features like coroutines ([see RFC 2033][rfc2033]),
 the explicit "eRFC" label is rarely used today. The project now generally prefers approving a standard
 RFC for an initial version and iterating on it through the nightly channel before final stabilization.
 
