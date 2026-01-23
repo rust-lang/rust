@@ -1,8 +1,8 @@
 mod globs;
+mod imports;
 mod incremental;
 mod macros;
 mod mod_resolution;
-mod primitives;
 
 use base_db::RootQueryDb;
 use expect_test::{Expect, expect};
