@@ -97,6 +97,8 @@ pub struct Session {
 
     incr_comp_session: RwLock<IncrCompSession>,
 
+    pub seen_cycle_error: AtomicBool,
+
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
 
@@ -1076,6 +1078,7 @@ pub fn build_session(
         target_tlib_path,
         psess,
         io,
+        seen_cycle_error: AtomicBool::new(false),
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         timings,
