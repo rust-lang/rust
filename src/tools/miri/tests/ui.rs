@@ -197,6 +197,7 @@ fn run_tests(
         }
     }
     config.program.args.push("-Zui-testing".into());
+    config.program.args.push("-Zjit-mode".into());
 
     // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
