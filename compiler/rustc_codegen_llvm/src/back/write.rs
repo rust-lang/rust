@@ -275,6 +275,8 @@ pub(crate) fn target_machine_factory(
 
     let use_wasm_eh = wants_wasm_eh(sess);
 
+    let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
+
     let prof = SelfProfilerRef::clone(&sess.prof);
     Arc::new(move |config: TargetMachineFactoryConfig| {
         // Self-profile timer for invoking a factory to create a target machine.
@@ -316,6 +318,7 @@ pub(crate) fn target_machine_factory(
             debuginfo_compression,
             use_emulated_tls,
             use_wasm_eh,
+            large_data_threshold,
         )
     })
 }
