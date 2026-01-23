@@ -159,9 +159,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         } else {
             // We just want something nameable, even if it's not
             // actually an upper bound.
-            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
+            let upper_bound = self.regioncx.approx_universal_upper_bound(self.scc_values, r);
 
-            if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
+            if self.regioncx.upper_bound_in_region_scc(self.scc_values, r, upper_bound) {
                 self.to_error_region_vid(upper_bound)
             } else {
                 None
@@ -206,7 +206,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // find generic associated types in the given region 'lower_bound'
         let gat_id_and_generics = self
             .regioncx
-            .placeholders_contained_in(lower_bound)
+            .placeholders_contained_in(self.scc_values, lower_bound)
             .map(|placeholder| {
                 if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()

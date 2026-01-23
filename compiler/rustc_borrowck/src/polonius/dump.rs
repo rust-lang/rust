@@ -13,6 +13,7 @@ use crate::constraints::OutlivesConstraint;
 use crate::polonius::{
     LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet, PoloniusDiagnosticsContext,
 };
+use crate::region_infer::InferredRegions;
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
@@ -22,6 +23,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
@@ -40,6 +42,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         emit_polonius_mir(
             tcx,
             regioncx,
+            scc_values,
             closure_region_requirements,
             borrow_set,
             &polonius_diagnostics.localized_outlives_constraints,
@@ -191,6 +194,7 @@ fn emit_html_mir<'tcx>(
 fn emit_polonius_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
@@ -201,6 +205,7 @@ fn emit_polonius_mir<'tcx>(
     crate::nll::emit_nll_mir(
         tcx,
         regioncx,
+        scc_values,
         closure_region_requirements,
         borrow_set,
         pass_where,

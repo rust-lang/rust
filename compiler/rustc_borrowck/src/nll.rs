@@ -26,7 +26,7 @@ use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
 use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
-use crate::region_infer::RegionInferenceContext;
+use crate::region_infer::{InferredRegions, RegionInferenceContext};
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -39,6 +39,7 @@ use crate::{
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
+    pub scc_values: InferredRegions<'tcx>,
     pub polonius_input: Option<Box<PoloniusFacts>>,
     pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -96,14 +97,17 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         &universal_region_relations,
         infcx,
     );
-    let mut regioncx = RegionInferenceContext::new(
+
+    let placeholder_indices = lowered_constraints.placeholder_indices.clone(); // FIXME!!!
+
+    let regioncx = RegionInferenceContext::new(
         &infcx,
         lowered_constraints,
         universal_region_relations.clone(),
-        location_map,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    let (closure_region_requirements, _nll_errors, _scc_values) =
+        regioncx.solve(infcx, body, None, location_map, placeholder_indices);
     closure_region_requirements
 }
 
@@ -144,12 +148,10 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
-    let mut regioncx = RegionInferenceContext::new(
-        infcx,
-        lowered_constraints,
-        universal_region_relations,
-        location_map,
-    );
+    let placeholder_indices = lowered_constraints.placeholder_indices.clone();
+
+    let mut regioncx =
+        RegionInferenceContext::new(infcx, lowered_constraints, universal_region_relations);
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
@@ -179,8 +181,8 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+    let (closure_region_requirements, nll_errors, scc_values) =
+        regioncx.solve(infcx, body, polonius_output.clone(), location_map, placeholder_indices);
 
     NllOutput {
         regioncx,
@@ -189,6 +191,7 @@ pub(crate) fn compute_regions<'tcx>(
         opt_closure_req: closure_region_requirements,
         nll_errors,
         polonius_diagnostics,
+        scc_values,
     }
 }
 
@@ -205,6 +208,7 @@ pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
@@ -222,7 +226,15 @@ pub(super) fn dump_nll_mir<'tcx>(
     };
 
     let extra_data = &|pass_where, out: &mut dyn std::io::Write| {
-        emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
+        emit_nll_mir(
+            tcx,
+            regioncx,
+            scc_values,
+            closure_region_requirements,
+            borrow_set,
+            pass_where,
+            out,
+        )
     };
 
     let dumper = dumper.set_extra_data(extra_data).set_options(options);
@@ -246,6 +258,7 @@ pub(super) fn dump_nll_mir<'tcx>(
 pub(crate) fn emit_nll_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     pass_where: PassWhere,
@@ -254,7 +267,7 @@ pub(crate) fn emit_nll_mir<'tcx>(
     match pass_where {
         // Before the CFG, dump out the values for each region variable.
         PassWhere::BeforeCFG => {
-            regioncx.dump_mir(tcx, out)?;
+            regioncx.dump_mir(scc_values, tcx, out)?;
             writeln!(out, "|")?;
 
             if let Some(closure_region_requirements) = closure_region_requirements {

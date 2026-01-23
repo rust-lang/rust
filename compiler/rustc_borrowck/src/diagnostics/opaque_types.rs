@@ -41,13 +41,21 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     hidden_type,
                     member_region,
                 } => {
-                    let named_ty =
-                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, hidden_type.ty);
-                    let named_key = self
-                        .regioncx
-                        .name_regions_for_member_constraint(infcx.tcx, opaque_type_key);
-                    let named_region =
-                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, member_region);
+                    let named_ty = self.regioncx.name_regions_for_member_constraint(
+                        self.scc_values,
+                        infcx.tcx,
+                        hidden_type.ty,
+                    );
+                    let named_key = self.regioncx.name_regions_for_member_constraint(
+                        self.scc_values,
+                        infcx.tcx,
+                        opaque_type_key,
+                    );
+                    let named_region = self.regioncx.name_regions_for_member_constraint(
+                        self.scc_values,
+                        infcx.tcx,
+                        member_region,
+                    );
                     let diag = unexpected_hidden_region_diagnostic(
                         infcx,
                         self.mir_def_id(),

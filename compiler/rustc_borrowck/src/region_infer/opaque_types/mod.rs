@@ -26,6 +26,7 @@ use tracing::{debug, instrument};
 use super::reverse_sccs::ReverseSccGraph;
 use crate::BorrowckInferCtxt;
 use crate::consumers::RegionInferenceContext;
+use crate::region_infer::InferredRegions;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::type_check::canonical::fully_perform_op_raw;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -608,7 +609,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that universal region. This is useful for member region constraints since
     /// we want to suggest a universal region name to capture even if it's technically
     /// not equal to the error region.
-    pub(crate) fn name_regions_for_member_constraint<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    pub(crate) fn name_regions_for_member_constraint<T>(
+        &self,
+        scc_values: &InferredRegions<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        ty: T,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -618,7 +624,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.max_nameable_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
+                    match scc_values.0.placeholders_contained_in(scc).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
                             return ty::Region::new_placeholder(tcx, placeholder);
@@ -630,7 +636,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 // Find something that we can name
-                let upper_bound = self.approx_universal_upper_bound(vid);
+                let upper_bound = self.approx_universal_upper_bound(scc_values, vid);
                 if let Some(universal_region) = self.definitions[upper_bound].external_name {
                     return universal_region;
                 }

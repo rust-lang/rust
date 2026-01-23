@@ -67,8 +67,8 @@ use crate::polonius::legacy::{
 };
 use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::prefixes::PrefixSet;
-use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
+use crate::region_infer::{InferredRegions, RegionInferenceContext};
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -416,6 +416,7 @@ fn borrowck_check_region_constraints<'tcx>(
     // by typechecking the MIR body.
     let nll::NllOutput {
         regioncx,
+        scc_values,
         polonius_input,
         polonius_output,
         opt_closure_req,
@@ -437,11 +438,12 @@ fn borrowck_check_region_constraints<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
+    nll::dump_nll_mir(&infcx, body, &regioncx, &scc_values, &opt_closure_req, &borrow_set);
     polonius::dump_polonius_mir(
         &infcx,
         body,
         &regioncx,
+        &scc_values,
         &opt_closure_req,
         &borrow_set,
         polonius_diagnostics.as_ref(),
@@ -476,6 +478,7 @@ fn borrowck_check_region_constraints<'tcx>(
             reservation_error_reported: Default::default(),
             uninitialized_error_reported: Default::default(),
             regioncx: &regioncx,
+            scc_values: &scc_values,
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
@@ -515,6 +518,7 @@ fn borrowck_check_region_constraints<'tcx>(
         reservation_error_reported: Default::default(),
         uninitialized_error_reported: Default::default(),
         regioncx: &regioncx,
+        scc_values: &scc_values,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
@@ -535,7 +539,7 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx, &scc_values);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
@@ -585,6 +589,7 @@ fn borrowck_check_region_constraints<'tcx>(
                 location_table: polonius_input.as_ref().map(|_| location_table),
                 input_facts: polonius_input,
                 output_facts: polonius_output,
+                inferred_regions: scc_values,
             },
         );
     }
@@ -600,10 +605,11 @@ fn get_flow_results<'a, 'tcx>(
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
-    let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
+    let borrows = Borrows::new(tcx, body, regioncx, scc_values, borrow_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
@@ -752,6 +758,8 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     regioncx: &'a RegionInferenceContext<'tcx>,
+
+    scc_values: &'a InferredRegions<'tcx>,
 
     /// The set of borrows extracted from the MIR
     borrow_set: &'a BorrowSet<'tcx>,

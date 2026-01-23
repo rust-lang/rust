@@ -629,8 +629,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // is issued is the same location that invalidates the reference), this is likely a
             // loop iteration. In this case, try using the loop terminator location in
             // `find_sub_region_live_at`.
-            if let Some(loop_terminator_location) =
-                regioncx.find_loop_terminator_location(borrow.region, body)
+            if let Some(loop_terminator_location) = self
+                .scc_values
+                .find_loop_terminator_location(self.regioncx.scc(borrow.region), body)
             {
                 region_sub = self
                     .regioncx
@@ -658,7 +659,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 false
             }
         };
-        match find_use::find(body, regioncx, tcx, region_sub, use_location) {
+        match find_use::find(body, regioncx, self.scc_values, tcx, region_sub, use_location) {
             Some(Cause::LiveVar(local, location)) if !is_local_boring(local) => {
                 let span = body.source_info(location).span;
                 let spans = self

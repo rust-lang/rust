@@ -9,6 +9,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::TyCtxt;
 
 use super::{OutlivesConstraint, RegionInferenceContext};
+use crate::region_infer::InferredRegions;
 use crate::type_check::Locations;
 
 // Room for "'_#NNNNr" before things get misaligned.
@@ -18,7 +19,12 @@ const REGION_WIDTH: usize = 8;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
-    pub(crate) fn dump_mir(&self, tcx: TyCtxt<'tcx>, out: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_mir(
+        &self,
+        scc_values: &InferredRegions<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        out: &mut dyn Write,
+    ) -> io::Result<()> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
@@ -47,7 +53,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 r = region,
                 rw = REGION_WIDTH,
                 ui = self.max_nameable_universe(self.constraint_sccs.scc(region)),
-                v = self.region_value_str(region),
+                v = self.region_value_str(scc_values, region),
             )?;
         }
 
