@@ -6,36 +6,36 @@ use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
 use crate::def_use::{self, DefUse};
-use crate::region_infer::{Cause, RegionInferenceContext};
+use crate::region_infer::{Cause, InferredRegions};
 
 pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'_>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
-    let mut uf = UseFinder { body, regioncx, tcx, region_vid, start_point };
+    let mut uf = UseFinder { body, tcx, region_vid, start_point, scc_values };
 
     uf.find()
 }
 
-struct UseFinder<'a, 'tcx> {
+struct UseFinder<'a, 'b, 'tcx> {
     body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    scc_values: &'a InferredRegions<'b>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 }
 
-impl<'a, 'tcx> UseFinder<'a, 'tcx> {
+impl<'a, 'b, 'tcx> UseFinder<'a, 'b, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
         let mut visited = FxIndexSet::default();
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {
-            if !self.regioncx.region_contains(self.region_vid, p) {
+            if !self.scc_values.region_contains(self.region_vid, p) {
                 continue;
             }
 

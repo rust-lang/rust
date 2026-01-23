@@ -43,7 +43,11 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ) -> RegionCtxt<'a, 'tcx> {
         let mut outlives_constraints = constraints.outlives_constraints.clone();
         let universal_regions = &universal_region_relations.universal_regions;
-        let (definitions, _has_placeholders) = region_definitions(infcx, universal_regions);
+        let (definitions, _has_placeholders) = region_definitions(
+            infcx,
+            universal_regions,
+            &mut constraints.liveness_constraints.clone(),
+        );
 
         let compute_sccs =
             |outlives_constraints: &OutlivesConstraintSet<'tcx>,

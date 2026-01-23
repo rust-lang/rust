@@ -16,8 +16,8 @@ pub use super::polonius::legacy::{
     PoloniusFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
     RichLocation, RustcFacts,
 };
-pub use super::region_infer::RegionInferenceContext;
 use crate::BorrowCheckRootCtxt;
+use crate::region_infer::InferredRegions;
 
 /// Struct used during mir borrowck to collect bodies with facts for a typeck root and all
 /// its nested bodies.
@@ -59,15 +59,15 @@ impl<'tcx> BorrowckConsumer<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum ConsumerOptions {
     /// Retrieve the [`Body`] along with the [`BorrowSet`]
-    /// and [`RegionInferenceContext`]. If you would like the body only, use
+    /// and [`InferredRegions`]. If you would like the body only, use
     /// [`TyCtxt::mir_promoted`].
     ///
     /// These can be used in conjunction with [`calculate_borrows_out_of_scope_at_location`].
-    RegionInferenceContext,
+    InferredRegions,
     /// The recommended option. Retrieves the maximal amount of information
     /// without significant slowdowns.
     ///
-    /// Implies [`RegionInferenceContext`](ConsumerOptions::RegionInferenceContext),
+    /// Implies [`InferredRegions`](ConsumerOptions::InferredRegions),
     /// and additionally retrieve the [`PoloniusLocationTable`] and [`PoloniusInput`] that
     /// would be given to Polonius. Critically, this does not run Polonius, which
     /// one may want to avoid due to performance issues on large bodies.
@@ -89,9 +89,10 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     pub promoted: IndexVec<Promoted, Body<'tcx>>,
     /// The set of borrows occurring in `body` with data about them.
     pub borrow_set: BorrowSet<'tcx>,
-    /// Context generated during borrowck, intended to be passed to
+    /// The inferred region values. These are included because they
+    /// are necessary as input to
     /// [`calculate_borrows_out_of_scope_at_location`].
-    pub region_inference_context: RegionInferenceContext<'tcx>,
+    pub inferred_regions: InferredRegions<'tcx>,
     /// The table that maps Polonius points to locations in the table.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].

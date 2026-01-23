@@ -209,7 +209,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             // and write its result into `propagated_borrowck_results`.
             if depends_on_opaques {
                 if def_id != self.root_def_id {
-                    let req = Self::compute_closure_requirements_modulo_opaques(&input);
+                    let req = Self::compute_closure_requirements_modulo_opaques(&mut input);
                     closure_requirements_modulo_opaques.insert(def_id, req);
                 }
                 self.collect_region_constraints_results.insert(def_id, input);
@@ -222,14 +222,14 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
     }
 
     fn compute_closure_requirements_modulo_opaques(
-        input: &CollectRegionConstraintsResult<'tcx>,
+        input: &mut CollectRegionConstraintsResult<'tcx>,
     ) -> Option<ClosureRegionRequirements<'tcx>> {
         compute_closure_requirements_modulo_opaques(
             &input.infcx,
             &input.body_owned,
             Rc::clone(&input.location_map),
-            &input.universal_region_relations,
-            &input.constraints,
+            Rc::clone(&input.universal_region_relations),
+            &mut input.constraints,
         )
     }
 
