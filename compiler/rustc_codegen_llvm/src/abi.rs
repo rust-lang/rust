@@ -701,6 +701,7 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         CanonAbi::GpuKernel => match &sess.target.arch {
             Arch::AmdGpu => llvm::AmdgpuKernel,
             Arch::Nvptx64 => llvm::PtxKernel,
+            Arch::SpirV => llvm::SpirKernel,
             arch => panic!("Architecture {arch} does not support GpuKernel calling convention"),
         },
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {

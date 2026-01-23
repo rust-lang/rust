@@ -1,10 +1,12 @@
-//@ revisions: HOST AMDGPU NVPTX
+//@ revisions: HOST AMDGPU NVPTX SPIRV
 //@ add-minicore
 //@ compile-flags: --crate-type=rlib
 //@[AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx1100
 //@[AMDGPU] needs-llvm-components: amdgpu
 //@[NVPTX]  compile-flags: --target nvptx64-nvidia-cuda
 //@[NVPTX] needs-llvm-components: nvptx
+//@[SPIRV] compile-flags: --target spirv64-intel-unknown
+//@[SPIRV] needs-llvm-components: spirv
 //@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
