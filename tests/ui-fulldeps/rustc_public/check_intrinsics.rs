@@ -10,7 +10,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_middle;
 extern crate rustc_hir;

@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
+#![cfg_attr(all(feature = "nightly", bootstrap), feature(assert_matches))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(assert_matches))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 // tidy-alphabetical-end

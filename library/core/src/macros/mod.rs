@@ -137,7 +137,7 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
+/// be disabled. See  debug_assert_matches!` for assertions that are disabled in
 /// release builds by default.
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
@@ -147,8 +147,6 @@ macro_rules! assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::assert_matches;
 ///
 /// let a = Some(345);
@@ -166,7 +164,7 @@ macro_rules! assert_ne {
 /// assert_matches!(a, Some(x) if x > 100);
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
@@ -371,17 +369,15 @@ macro_rules! debug_assert_ne {
 ///
 /// Like [`assert!`], this macro has a second form, where a custom panic message can be provided.
 ///
-/// Unlike [`assert_matches!`], `debug_assert_matches!` statements are only enabled in non optimized
-/// builds by default. An optimized build will not execute `debug_assert_matches!` statements unless
-/// `-C debug-assertions` is passed to the compiler. This makes `debug_assert_matches!` useful for
+/// Unlike [ assert_matches!`],  debug_assert_matches!` statements are only enabled in non optimized
+/// builds by default. An optimized build will not execute  debug_assert_matches!` statements unless
+/// `-C debug-assertions` is passed to the compiler. This makes  debug_assert_matches!` useful for
 /// checks that are too expensive to be present in a release build but may be helpful during
-/// development. The result of expanding `debug_assert_matches!` is always type checked.
+/// development. The result of expanding  debug_assert_matches!` is always type checked.
 ///
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::debug_assert_matches;
 ///
 /// let a = Some(345);
@@ -399,7 +395,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(a, Some(x) if x > 100);
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -415,7 +411,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// return `false`.
 ///
 /// When testing that a value matches a pattern, it's generally preferable to use
-/// [`assert_matches!`] as it will print the debug representation of the value if the assertion
+/// [ assert_matches!`] as it will print the debug representation of the value if the assertion
 /// fails.
 ///
 /// # Examples
