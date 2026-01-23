@@ -148,7 +148,7 @@ impl CommandProfiler {
             })
             .collect();
 
-        entries.sort_by(|a, b| b.2.cmp(&a.2));
+        entries.sort_by_key(|e| std::cmp::Reverse(e.2));
 
         let total_bootstrap_duration = start_time.elapsed();
 
