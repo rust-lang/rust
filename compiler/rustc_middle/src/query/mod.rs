@@ -77,6 +77,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hashes::Hash128;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
@@ -1967,65 +1968,15 @@ rustc_queries! {
     /// crate. Instead use the narrower `upstream_monomorphizations_for`,
     /// `upstream_drop_glue_for`, `upstream_async_drop_glue_for`, or,
     /// even better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> &'tcx FxIndexMap<Hash128, CrateNum> {
         arena_cache
         desc { "collecting available upstream monomorphizations" }
     }
 
-    /// Returns the set of upstream monomorphizations available for the
-    /// generic function identified by the given `def_id`. The query makes
-    /// sure to make a stable selection if the same monomorphization is
-    /// available in multiple upstream crates.
-    ///
-    /// You likely want to call `Instance::upstream_monomorphization()`
-    /// instead of invoking this query directly.
-    query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx UnordMap<GenericArgsRef<'tcx>, CrateNum>>
-    {
-        desc { |tcx|
-            "collecting available upstream monomorphizations for `{}`",
-            tcx.def_path_str(def_id),
-        }
-        separate_provide_extern
-    }
-
-    /// Returns the upstream crate that exports drop-glue for the given
-    /// type (`args` is expected to be a single-item list containing the
-    /// type one wants drop-glue for).
-    ///
-    /// This is a subset of `upstream_monomorphizations_for` in order to
-    /// increase dep-tracking granularity. Otherwise adding or removing any
-    /// type with drop-glue in any upstream crate would invalidate all
-    /// functions calling drop-glue of an upstream type.
-    ///
-    /// You likely want to call `Instance::upstream_monomorphization()`
-    /// instead of invoking this query directly.
-    ///
-    /// NOTE: This query could easily be extended to also support other
-    ///       common functions that have are large set of monomorphizations
-    ///       (like `Clone::clone` for example).
-    query upstream_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
-        desc { "available upstream drop-glue for `{:?}`", args }
-    }
-
-    /// Returns the upstream crate that exports async-drop-glue for
-    /// the given type (`args` is expected to be a single-item list
-    /// containing the type one wants async-drop-glue for).
-    ///
-    /// This is a subset of `upstream_monomorphizations_for` in order
-    /// to increase dep-tracking granularity. Otherwise adding or
-    /// removing any type with async-drop-glue in any upstream crate
-    /// would invalidate all functions calling async-drop-glue of an
-    /// upstream type.
-    ///
-    /// You likely want to call `Instance::upstream_monomorphization()`
-    /// instead of invoking this query directly.
-    ///
-    /// NOTE: This query could easily be extended to also support other
-    ///       common functions that have are large set of monomorphizations
-    ///       (like `Clone::clone` for example).
-    query upstream_async_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
-        desc { "available upstream async-drop-glue for `{:?}`", args }
+    query upstream_monomorphizations_of_crate(_: CrateNum) -> &'tcx FxIndexSet<Hash128> {
+        arena_cache
+        cache_on_disk_if { true }
+        desc { "collecting available upstream monomorphizations for crate" }
     }
 
     /// Returns a list of all `extern` blocks of a crate.

@@ -1,10 +1,9 @@
-use std::collections::hash_map::Entry::*;
-
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name,
 };
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -387,86 +386,75 @@ fn exported_generic_symbols_provider_local<'tcx>(
     tcx.arena.alloc_from_iter(symbols)
 }
 
-fn upstream_monomorphizations_provider(
+fn upstream_monomorphizations_of_crate_provider(
     tcx: TyCtxt<'_>,
-    (): (),
-) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    let cnums = tcx.crates(());
-
-    let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
-
+    cnum: CrateNum,
+) -> FxIndexSet<Hash128> {
+    use rustc_data_structures::stable_hasher::HashStable;
     let drop_in_place_fn_def_id = tcx.lang_items().drop_in_place_fn();
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
-
-    for &cnum in cnums.iter() {
-        for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
-            let (def_id, args) = match *exported_symbol {
-                ExportedSymbol::Generic(def_id, args) => (def_id, args),
-                ExportedSymbol::DropGlue(ty) => {
-                    if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
-                        (drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
-                    } else {
-                        // `drop_in_place` in place does not exist, don't try
-                        // to use it.
-                        continue;
-                    }
-                }
-                ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
-                    if let Some(async_drop_in_place_fn_def_id) = async_drop_in_place_fn_def_id {
-                        (async_drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
-                    } else {
-                        continue;
-                    }
-                }
-                ExportedSymbol::AsyncDropGlue(def_id, ty) => (def_id, tcx.mk_args(&[ty.into()])),
-                ExportedSymbol::NonGeneric(..)
-                | ExportedSymbol::ThreadLocalShim(..)
-                | ExportedSymbol::NoDefId(..) => unreachable!("{exported_symbol:?}"),
-            };
-
-            let args_map = instances.entry(def_id).or_default();
-
-            match args_map.entry(args) {
-                Occupied(mut e) => {
-                    // If there are multiple monomorphizations available,
-                    // we select one deterministically.
-                    let other_cnum = *e.get();
-                    if tcx.stable_crate_id(other_cnum) > tcx.stable_crate_id(cnum) {
-                        e.insert(cnum);
-                    }
-                }
-                Vacant(e) => {
-                    e.insert(cnum);
+    let mut instances = FxIndexSet::default();
+    for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
+        let instance = match *exported_symbol {
+            ExportedSymbol::Generic(def_id, args) => rustc_middle::ty::Instance {
+                args,
+                def: rustc_middle::ty::InstanceKind::Item(def_id),
+            },
+            ExportedSymbol::DropGlue(ty) => {
+                let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id else {
+                    // `drop_in_place` in place does not exist, don't try
+                    // to use it.
+                    continue;
+                };
+                let args = tcx.mk_args(&[ty.clone().into()]);
+                rustc_middle::ty::Instance {
+                    args,
+                    def: rustc_middle::ty::InstanceKind::DropGlue(
+                        drop_in_place_fn_def_id,
+                        Some(ty),
+                    ),
                 }
             }
+            ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
+                let Some(drop_in_place) = async_drop_in_place_fn_def_id else {
+                    continue;
+                };
+                let args = tcx.mk_args(&[ty.clone().into()]);
+                rustc_middle::ty::Instance {
+                    args,
+                    def: rustc_middle::ty::InstanceKind::AsyncDropGlueCtorShim(drop_in_place, ty),
+                }
+            }
+            ExportedSymbol::AsyncDropGlue(def_id, ty) => rustc_middle::ty::Instance {
+                args: tcx.mk_args(&[ty.clone().into()]),
+                def: rustc_middle::ty::InstanceKind::AsyncDropGlue(def_id, ty),
+            },
+            ExportedSymbol::NonGeneric(..)
+            | ExportedSymbol::ThreadLocalShim(..)
+            | ExportedSymbol::NoDefId(..) => unreachable!("{exported_symbol:?}"),
+        };
+
+        tcx.with_stable_hashing_context(|mut tcx| {
+            let mut hasher = rustc_data_structures::stable_hasher::StableHasher::new();
+            instance.hash_stable(&mut tcx, &mut hasher);
+            instances.insert(hasher.finish());
+        });
+    }
+    instances
+}
+
+fn upstream_monomorphizations_provider(tcx: TyCtxt<'_>, _: ()) -> FxIndexMap<Hash128, CrateNum> {
+    let cnums = tcx.crates(());
+    let mut instances: FxIndexMap<Hash128, CrateNum> = Default::default();
+
+    for cnum in cnums.iter() {
+        let hashes = tcx.upstream_monomorphizations_of_crate(*cnum);
+        for hash in hashes {
+            instances.entry(*hash).or_insert(*cnum);
         }
     }
 
     instances
-}
-
-fn upstream_monomorphizations_for_provider(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    assert!(!def_id.is_local());
-    tcx.upstream_monomorphizations(()).get(&def_id)
-}
-
-fn upstream_drop_glue_for_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> Option<CrateNum> {
-    let def_id = tcx.lang_items().drop_in_place_fn()?;
-    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
-}
-
-fn upstream_async_drop_glue_for_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> Option<CrateNum> {
-    let def_id = tcx.lang_items().async_drop_in_place_fn()?;
-    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -480,12 +468,10 @@ pub(crate) fn provide(providers: &mut Providers) {
     providers.queries.exported_generic_symbols = exported_generic_symbols_provider_local;
     providers.queries.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.queries.is_unreachable_local_definition = is_unreachable_local_definition_provider;
-    providers.queries.upstream_drop_glue_for = upstream_drop_glue_for_provider;
-    providers.queries.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
     providers.queries.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
-    providers.extern_queries.upstream_monomorphizations_for =
-        upstream_monomorphizations_for_provider;
+    providers.queries.upstream_monomorphizations_of_crate =
+        upstream_monomorphizations_of_crate_provider;
 }
 
 pub(crate) fn allocator_shim_symbols(
