@@ -6,11 +6,12 @@
 // we expect the build to fail in the feature
 //@ build-pass
 //@ [enable-softfloat] compile-flags: --target=s390x-unknown-none-softfloat
-//@ [enable-softfloat] -C target-feature=+vector
+//@ [enable-softfloat] compile-flags: -C target-feature=+vector
 //@ [enable-softfloat] needs-llvm-components: systemz
 //@ [disable-softfloat] compile-flags: --target=s390x-unknown-linux-gnu
-//@ [disable-softfloat] -C target-feature=+soft-float
+//@ [disable-softfloat] compile-flags: -C target-feature=+soft-float
 //@ [disable-softfloat] needs-llvm-components: systemz
+//@ ignore-backends: gcc
 
 //[disable-softfloat]~? WARN target feature `soft-float` must be disabled to ensure that the ABI of the current target can be implemented correctly
 //[disable-softfloat]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`

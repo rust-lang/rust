@@ -7,6 +7,7 @@
 //@ [enable-softfloat] needs-llvm-components: systemz
 //@ [disable-softfloat] compile-flags: --target=s390x-unknown-linux-gnu
 //@ [disable-softfloat] needs-llvm-components: systemz
+//@ ignore-backends: gcc
 
 
 #![feature(no_core)]

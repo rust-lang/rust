@@ -1,5 +1,5 @@
 error[E0461]: couldn't find crate `disabled_softfloat` with expected target triple s390x-unknown-none-softfloat
-  --> $DIR/incompatible_softfloat_targets.rs:17:1
+  --> $DIR/incompatible_softfloat_targets.rs:19:1
    |
 LL | extern crate disabled_softfloat;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
