@@ -75,18 +75,18 @@ impl server::Server for SpanIdServer<'_> {
 
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
 
-    fn tt_drop(&mut self, stream: Self::TokenStream) {
+    fn ts_drop(&mut self, stream: Self::TokenStream) {
         drop(stream);
     }
 
-    fn tt_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
+    fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
         stream.clone()
     }
 
-    fn tt_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
+    fn ts_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
-    fn tt_from_str(&mut self, src: &str) -> Self::TokenStream {
+    fn ts_from_str(&mut self, src: &str) -> Self::TokenStream {
         Self::TokenStream::from_str(src, self.call_site).unwrap_or_else(|e| {
             Self::TokenStream::from_str(
                 &format!("compile_error!(\"failed to parse str to token stream: {e}\")"),
@@ -95,18 +95,18 @@ impl server::Server for SpanIdServer<'_> {
             .unwrap()
         })
     }
-    fn tt_to_string(&mut self, stream: &Self::TokenStream) -> String {
+    fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
     }
-    fn tt_from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
+    fn ts_from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
         Self::TokenStream::new(vec![tree])
     }
 
-    fn tt_expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+    fn ts_expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         Ok(self_.clone())
     }
 
-    fn tt_concat_trees(
+    fn ts_concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
         trees: Vec<TokenTree<Self::Span>>,
@@ -122,7 +122,7 @@ impl server::Server for SpanIdServer<'_> {
         }
     }
 
-    fn tt_concat_streams(
+    fn ts_concat_streams(
         &mut self,
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
@@ -134,7 +134,7 @@ impl server::Server for SpanIdServer<'_> {
         stream
     }
 
-    fn tt_into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
+    fn ts_into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
         (*stream.0).clone()
     }
 

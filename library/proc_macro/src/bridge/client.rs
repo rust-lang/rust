@@ -25,7 +25,7 @@ impl !Sync for TokenStream {}
 // Forward `Drop::drop` to the inherent `drop` method.
 impl Drop for TokenStream {
     fn drop(&mut self) {
-        Methods::tt_drop(TokenStream { handle: self.handle });
+        Methods::ts_drop(TokenStream { handle: self.handle });
     }
 }
 
@@ -75,7 +75,7 @@ impl<S> Decode<'_, '_, S> for Span {
 
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
-        Methods::tt_clone(self)
+        Methods::ts_clone(self)
     }
 }
 

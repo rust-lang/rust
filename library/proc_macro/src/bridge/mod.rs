@@ -56,24 +56,24 @@ macro_rules! with_api {
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
 
-                fn tt_drop(stream: $S::TokenStream);
-                fn tt_clone(stream: &$S::TokenStream) -> $S::TokenStream;
-                fn tt_is_empty(stream: &$S::TokenStream) -> bool;
-                fn tt_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-                fn tt_from_str(src: &str) -> $S::TokenStream;
-                fn tt_to_string(stream: &$S::TokenStream) -> String;
-                fn tt_from_token_tree(
+                fn ts_drop(stream: $S::TokenStream);
+                fn ts_clone(stream: &$S::TokenStream) -> $S::TokenStream;
+                fn ts_is_empty(stream: &$S::TokenStream) -> bool;
+                fn ts_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
+                fn ts_from_str(src: &str) -> $S::TokenStream;
+                fn ts_to_string(stream: &$S::TokenStream) -> String;
+                fn ts_from_token_tree(
                     tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
-                fn tt_concat_trees(
+                fn ts_concat_trees(
                     base: Option<$S::TokenStream>,
                     trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
                 ) -> $S::TokenStream;
-                fn tt_concat_streams(
+                fn ts_concat_streams(
                     base: Option<$S::TokenStream>,
                     streams: Vec<$S::TokenStream>,
                 ) -> $S::TokenStream;
-                fn tt_into_trees(
+                fn ts_into_trees(
                     stream: $S::TokenStream
                 ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
 
