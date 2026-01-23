@@ -3112,7 +3112,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
 }
 
 declare_lint! {
-    /// The `black_box_zst_call` lint detects calls to `core::hint::black_box`
+    /// The `black_box_zst_calls` lint detects calls to `core::hint::black_box`
     /// where the argument is a zero-sized callable (e.g. a function item or
     /// a capture-less closure). These values have no runtime representation,
     /// so the black boxing does not make subsequent calls opaque to the
