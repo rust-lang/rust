@@ -281,7 +281,10 @@ macro_rules! feedable {
 
 macro_rules! hash_result {
     ([][$V:ty]) => {{
-        Some(|hcx, result| dep_graph::hash_result(hcx, &restore::<$V>(*result)))
+        Some(|hcx, result| {
+            let result = &::rustc_middle::query::erase::restore_val::<$V>(*result);
+            ::rustc_query_system::dep_graph::hash_result(hcx, result)
+        })
     }};
     ([(no_hash) $($rest:tt)*][$V:ty]) => {{
         None
@@ -598,6 +601,7 @@ macro_rules! define_queries {
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
             use std::marker::PhantomData;
+            use ::rustc_middle::query::erase::{self, Erased};
 
             pub(crate) mod get_query_incr {
                 use super::*;
@@ -610,7 +614,7 @@ macro_rules! define_queries {
                     span: Span,
                     key: queries::$name::Key<'tcx>,
                     mode: QueryMode,
-                ) -> Option<Erase<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
                     #[cfg(debug_assertions)]
                     let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                     get_query_incr(
@@ -632,7 +636,7 @@ macro_rules! define_queries {
                     span: Span,
                     key: queries::$name::Key<'tcx>,
                     __mode: QueryMode,
-                ) -> Option<Erase<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
                     Some(get_query_non_incr(
                         QueryType::query_dispatcher(tcx),
                         QueryCtxt::new(tcx),
@@ -653,7 +657,7 @@ macro_rules! define_queries {
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
-                    execute_query: |tcx, key| erase(tcx.$name(key)),
+                    execute_query: |tcx, key| erase::erase_val(tcx.$name(key)),
                     compute: |tcx, key| {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
@@ -691,7 +695,7 @@ macro_rules! define_queries {
                     }),
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
-                        erase(result)
+                        erase::erase_val(result)
                     },
                     loadable_from_disk: |_tcx, _key, _index| {
                         should_ever_cache_on_disk!([$($modifiers)*] {
@@ -702,7 +706,7 @@ macro_rules! define_queries {
                         })
                     },
                     hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
-                    format_value: |value| format!("{:?}", restore::<queries::$name::Value<'tcx>>(*value)),
+                    format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
                 }
             }
 
@@ -732,7 +736,7 @@ macro_rules! define_queries {
 
                 #[inline(always)]
                 fn restore_val(value: <Self::Dispatcher as QueryDispatcher<QueryCtxt<'tcx>>>::Value) -> Self::UnerasedValue {
-                    restore::<queries::$name::Value<'tcx>>(value)
+                    erase::restore_val::<queries::$name::Value<'tcx>>(value)
                 }
             }
 
