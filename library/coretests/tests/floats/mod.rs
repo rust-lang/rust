@@ -391,7 +391,7 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
+// FIXME(f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
 // all platforms.
 float_test! {
     name: num_rem,
@@ -1632,7 +1632,7 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
+// FIXME(f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
 // float_test! {
 //     name: from_u64_i64,
 //     attrs: {
