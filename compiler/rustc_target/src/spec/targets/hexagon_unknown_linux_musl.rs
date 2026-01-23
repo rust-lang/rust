@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -8,8 +8,8 @@ pub(crate) fn target() -> Target {
     base.features = "-small-data,+hvx-length128b".into();
 
     base.has_rpath = true;
-    base.linker = Some("rust-lld".into());
-    base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
+    base.linker = Some("hexagon-unknown-linux-musl-clang".into());
+    base.linker_flavor = LinkerFlavor::Gnu(Cc::Yes, Lld::No);
 
     base.c_enum_min_bits = Some(8);
 

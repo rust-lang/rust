@@ -36,14 +36,19 @@ Also included in that toolchain is the C library that can be used when creating
 dynamically linked executables.
 
 ```text
-# /opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/qemu-hexagon -L /opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr/ ./hello
+# /opt/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/qemu-hexagon -L /opt/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr/ ./hello
 ```
 
 ## Linking
 
-This target selects `rust-lld` by default.  Another option to use is
-[eld](https://github.com/qualcomm/eld), which is also provided with
-the opensource hexagon toolchain and the Hexagon SDK.
+This target uses `hexagon-unknown-linux-musl-clang` as the default linker.
+The linker is available from [the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon/releases)
+at paths like `/opt/clang+llvm-21.1.8-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/hexagon-unknown-linux-musl-clang`.
+
+Alternative linkers include:
+- [eld](https://github.com/qualcomm/eld), which is provided with
+  the opensource hexagon toolchain and the Hexagon SDK
+- `rust-lld` can be used by specifying `-C linker=rust-lld`
 
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this
@@ -63,9 +68,9 @@ cxx = "hexagon-unknown-linux-musl-clang++"
 linker = "hexagon-unknown-linux-musl-clang"
 ar = "hexagon-unknown-linux-musl-ar"
 ranlib = "hexagon-unknown-linux-musl-ranlib"
-musl-root = "/opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
+musl-root = "/opt/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
 llvm-libunwind = 'in-tree'
-qemu-rootfs = "/opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
+qemu-rootfs = "/opt/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
 ```
 
 
@@ -88,7 +93,7 @@ target = "hexagon-unknown-linux-musl"
 [target.hexagon-unknown-linux-musl]
 linker = "hexagon-unknown-linux-musl-clang"
 ar = "hexagon-unknown-linux-musl-ar"
-runner = "qemu-hexagon -L /opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
+runner = "qemu-hexagon -L /opt/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
 ```
 
 Edit the "runner" in `.cargo/config` to point to the path to your toolchain's
@@ -96,13 +101,13 @@ C library.
 
 ```text
 ...
-runner = "qemu-hexagon -L /path/to/my/inst/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
+runner = "qemu-hexagon -L /path/to/my/inst/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr"
 ...
 ```
 
 Build/run your rust program with `qemu-hexagon` in your `PATH`:
 
 ```text
-export PATH=/path/to/my/inst/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/:$PATH
+export PATH=/path/to/my/inst/clang+llvm-VERSION-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/:$PATH
 cargo run -Zbuild-std -Zbuild-std-features=llvm-libunwind
 ```
