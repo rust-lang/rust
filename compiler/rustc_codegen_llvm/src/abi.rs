@@ -509,7 +509,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     let i = apply(attrs);
                     if cx.sess().opts.optimize != config::OptLevel::No
-                        && llvm_util::get_version() >= (21, 0, 0)
+                        && llvm_util::get_version() >= (21, 1, 0)
                     {
                         attributes::apply_to_llfn(
                             llfn,

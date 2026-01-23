@@ -315,7 +315,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   std::string Error;
   auto Trip = Triple(Triple::normalize(TripleStr));
   const llvm::Target *TheTarget =
-#if LLVM_VERSION_GE(21, 0)
+#if LLVM_VERSION_GE(21, 1)
       TargetRegistry::lookupTarget(Trip, Error);
 #else
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
@@ -374,7 +374,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
-#if LLVM_VERSION_GE(21, 0)
+#if LLVM_VERSION_GE(21, 1)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
                                                      Options, RM, CM, OptLevel);
 #else
@@ -702,7 +702,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   if (LintIR) {
     PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM,
                                           OptimizationLevel Level) {
-#if LLVM_VERSION_GE(21, 0)
+#if LLVM_VERSION_GE(21, 1)
       MPM.addPass(
           createModuleToFunctionPassAdaptor(LintPass(/*AbortOnError=*/true)));
 #else
@@ -1208,7 +1208,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // Convert the preserved symbols set from string to GUID, this is then needed
   // for internalization.
   for (size_t i = 0; i < num_symbols; i++) {
-#if LLVM_VERSION_GE(21, 0)
+#if LLVM_VERSION_GE(21, 1)
     auto GUID =
         GlobalValue::getGUIDAssumingExternalLinkage(preserved_symbols[i]);
 #else
@@ -1496,7 +1496,7 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   DenseSet<GlobalValue::GUID> CfiFunctionDecls;
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
-#if LLVM_VERSION_GE(21, 0)
+#if LLVM_VERSION_GE(21, 1)
   for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
     CfiFunctionDefs.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
