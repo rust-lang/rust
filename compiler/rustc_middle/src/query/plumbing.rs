@@ -4,10 +4,9 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
-use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
-use rustc_query_system::query::*;
+use rustc_query_system::query::{CycleError, CycleErrorHandling, HashResult, QueryCache};
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
@@ -23,7 +22,8 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,
     pub dep_kind: DepKind,
-    pub handle_cycle_error: HandleCycleError,
+    /// How this query deals with query cycle errors.
+    pub cycle_error_handling: CycleErrorHandling,
     // Offset of this query's state field in the QueryStates struct
     pub query_state: usize,
     // Offset of this query's cache field in the QueryCaches struct
