@@ -1,7 +1,6 @@
 use rustc_data_structures::assert_matches;
 use rustc_middle::ty::outlives::{Component, compute_alias_components_recursive};
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
-use smallvec::smallvec;
 use tracing::{debug, instrument, trace};
 
 use crate::infer::outlives::env::RegionBoundPairs;
@@ -124,9 +123,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
-            let mut components = smallvec![];
             let kind = alias_ty.kind(self.tcx);
-            compute_alias_components_recursive(self.tcx, kind, alias_ty, &mut components);
+            let components = compute_alias_components_recursive(self.tcx, kind, alias_ty);
             self.bound_from_components(&components)
         };
 

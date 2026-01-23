@@ -1,5 +1,5 @@
 //! Code that handles "type-outlives" constraints like `T: 'a`. This
-//! is based on the `push_outlives_components` function defined in rustc_infer,
+//! is based on the `compute_outlives_components` function defined in rustc_infer,
 //! but it adds a bit of heuristics on top, in particular to deal with
 //! associated types and projections.
 //!
@@ -63,12 +63,11 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::outlives::{Component, push_outlives_components};
+use rustc_middle::ty::outlives::{Component, compute_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
-use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use super::env::OutlivesEnvironment;
@@ -267,17 +266,18 @@ impl<'tcx> InferCtxt<'tcx> {
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
+//
+// TODO: rename this lol
 pub struct TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
-    // See the comments on `process_registered_region_obligations` for the meaning
-    // of these fields.
     delegate: D,
     tcx: TyCtxt<'tcx>,
     verify_bound: VerifyBoundCx<'cx, 'tcx>,
 }
 
+// TODO: rename this
 pub trait TypeOutlivesDelegate<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
@@ -337,8 +337,7 @@ where
     ) {
         assert!(!ty.has_escaping_bound_vars());
 
-        let mut components = smallvec![];
-        push_outlives_components(self.tcx, ty, &mut components);
+        let components = compute_outlives_components(self.tcx, ty);
         self.components_must_outlive(origin, &components, region, category);
     }
 
