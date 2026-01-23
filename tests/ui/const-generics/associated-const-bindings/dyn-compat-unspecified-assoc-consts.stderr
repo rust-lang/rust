@@ -1,0 +1,30 @@
+error[E0191]: the value of the associated constant `K` in `Trait` must be specified
+  --> $DIR/dyn-compat-unspecified-assoc-consts.rs:20:18
+   |
+LL |     const K: usize;
+   |     -------------- `K` defined here
+...
+LL | struct Store(dyn Trait);
+   |                  ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+
+error[E0191]: the value of the associated constant `K` in `Trait` must be specified
+  --> $DIR/dyn-compat-unspecified-assoc-consts.rs:24:21
+   |
+LL |     const K: usize;
+   |     -------------- `K` defined here
+...
+LL | type DynTrait = dyn Trait;
+   |                     ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+
+error[E0191]: the value of the associated constant `K` in `Trait` must be specified
+  --> $DIR/dyn-compat-unspecified-assoc-consts.rs:15:16
+   |
+LL |     const K: usize;
+   |     -------------- `K` defined here
+...
+LL |     let _: dyn Trait;
+   |                ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0191`.

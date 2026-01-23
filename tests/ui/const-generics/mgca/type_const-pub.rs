@@ -7,4 +7,6 @@
 
 #[type_const]
 pub const TYPE_CONST : usize = 1;
-fn main() {}
+fn main() {
+    print!("{}", TYPE_CONST)
+}

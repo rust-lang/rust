@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/2214
+
 //@ run-pass
 //@ ignore-wasm32 wasi-libc does not have lgamma
 //@ ignore-sgx no libc
@@ -19,7 +21,7 @@ mod m {
     use std::ffi::{c_double, c_int};
     extern "C" {
         #[cfg(all(unix, not(target_os = "vxworks")))]
-        #[link_name="lgamma_r"]
+        #[link_name = "lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]
         #[link_name = "lgamma"]

@@ -196,26 +196,26 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] unaligned_vector_mem: "unaligned-vector-mem";
     /// Has reasonably performant unaligned vector
 
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zicsr: "zicsr";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zicsr: "zicsr";
     /// "Zicsr" Extension for Control and Status Register (CSR) Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zicntr: "zicntr";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zicntr: "zicntr";
     /// "Zicntr" Extension for Base Counters and Timers
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zihpm: "zihpm";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zihpm: "zihpm";
     /// "Zihpm" Extension for Hardware Performance Counters
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zifencei: "zifencei";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zifencei: "zifencei";
     /// "Zifencei" Extension for Instruction-Fetch Fence
 
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zihintntl: "zihintntl";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zihintntl: "zihintntl";
     /// "Zihintntl" Extension for Non-Temporal Locality Hints
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zihintpause: "zihintpause";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zihintpause: "zihintpause";
     /// "Zihintpause" Extension for Pause Hint
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zimop: "zimop";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zimop: "zimop";
     /// "Zimop" Extension for May-Be-Operations
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zicbom: "zicbom";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zicbom: "zicbom";
     /// "Zicbom" Extension for Cache-Block Management Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zicboz: "zicboz";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zicboz: "zicboz";
     /// "Zicboz" Extension for Cache-Block Zero Instruction
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zicond: "zicond";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zicond: "zicond";
     /// "Zicond" Extension for Integer Conditional Operations
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] m: "m";
@@ -223,20 +223,20 @@ features! {
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] a: "a";
     /// "A" Extension for Atomic Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zalrsc: "zalrsc";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zalrsc: "zalrsc";
     /// "Zalrsc" Extension for Load-Reserved/Store-Conditional Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zaamo: "zaamo";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zaamo: "zaamo";
     /// "Zaamo" Extension for Atomic Memory Operations
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zawrs: "zawrs";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zawrs: "zawrs";
     /// "Zawrs" Extension for Wait-on-Reservation-Set Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zabha: "zabha";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zabha: "zabha";
     /// "Zabha" Extension for Byte and Halfword Atomic Memory Operations
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zacas: "zacas";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zacas: "zacas";
     /// "Zacas" Extension for Atomic Compare-and-Swap (CAS) Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zam: "zam";
     without cfg check: true;
     /// "Zam" Extension for Misaligned Atomics
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] ztso: "ztso";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] ztso: "ztso";
     /// "Ztso" Extension for Total Store Ordering
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] f: "f";
@@ -266,7 +266,7 @@ features! {
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] c: "c";
     /// "C" Extension for Compressed Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zca: "zca";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zca: "zca";
     /// "Zca" Compressed Instructions excluding Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcf: "zcf";
     without cfg check: true;
@@ -274,12 +274,12 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcd: "zcd";
     without cfg check: true;
     /// "Zcd" Compressed Instructions for Double-Precision Floating-Point Loads/Stores
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zcb: "zcb";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zcb: "zcb";
     /// "Zcb" Simple Code-size Saving Compressed Instructions
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] zcmop: "zcmop";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] zcmop: "zcmop";
     /// "Zcmop" Extension for Compressed May-Be-Operations
 
-    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "CURRENT_RUSTC_VERSION")] b: "b";
+    @FEATURE: #[stable(feature = "riscv_ratified_v2", since = "1.94.0")] b: "b";
     /// "B" Extension for Bit Manipulation
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zba: "zba";
     /// "Zba" Extension for Address Generation

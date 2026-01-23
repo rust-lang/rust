@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
-use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
+use rustc_ast::{LitKind, MetaItem, MetaItemInner};
 use rustc_hir::attrs::{
     AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
 };
@@ -353,7 +353,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
     let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-    let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
+    let no_builtins = find_attr!(crate_attrs, AttributeKind::NoBuiltins);
     if no_builtins {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
     }

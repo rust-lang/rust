@@ -52,7 +52,7 @@ pub use ascii::is_ascii_simple;
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::{range, try_range};
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 pub use iter::ArrayWindows;
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
@@ -1639,7 +1639,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`windows`]: slice::windows
-    #[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "array_windows", since = "1.94.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
@@ -5045,7 +5045,7 @@ impl<T> [T] {
     /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
-    #[stable(feature = "element_offset", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "element_offset", since = "1.94.0")]
     pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");

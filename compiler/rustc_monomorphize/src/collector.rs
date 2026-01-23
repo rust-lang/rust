@@ -1563,11 +1563,22 @@ impl<'v> RootCollector<'_, 'v> {
                 // If we're collecting items eagerly, then recurse into all constants.
                 // Otherwise the value is only collected when explicitly mentioned in other items.
                 if self.strategy == MonoItemCollectionStrategy::Eager {
-                    if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
-                        && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
-                    {
-                        collect_const_value(self.tcx, val, self.output);
+                    let def_id = id.owner_id.to_def_id();
+                    // Type Consts don't have bodies to evaluate
+                    // nor do they make sense as a static.
+                    if self.tcx.is_type_const(def_id) {
+                        // FIXME(mgca): Is this actually what we want? We may want to
+                        // normalize to a ValTree then convert to a const allocation and
+                        // collect that?
+                        return;
                     }
+                    if self.tcx.generics_of(id.owner_id).own_requires_monomorphization() {
+                        return;
+                    }
+                    let Ok(val) = self.tcx.const_eval_poly(def_id) else {
+                        return;
+                    };
+                    collect_const_value(self.tcx, val, self.output);
                 }
             }
             DefKind::Impl { of_trait: true } => {
