@@ -356,7 +356,7 @@ impl<D: Deps> DepGraphData<D> {
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
-        let dcx = cx.dep_context();
+        let dcx = *cx.dep_context();
         let dep_node_index = self.hash_result_and_alloc_node(dcx, key, edges, &result, hash_result);
 
         (result, dep_node_index)
@@ -444,7 +444,7 @@ impl<D: Deps> DepGraphData<D> {
     /// Intern the new `DepNode` with the dependencies up-to-now.
     fn hash_result_and_alloc_node<Ctxt: DepContext<Deps = D>, R>(
         &self,
-        cx: &Ctxt,
+        cx: Ctxt,
         node: DepNode,
         edges: EdgesVec,
         result: &R,
@@ -454,7 +454,7 @@ impl<D: Deps> DepGraphData<D> {
         let current_fingerprint = hash_result.map(|hash_result| {
             cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
         });
-        let dep_node_index = self.alloc_and_color_node(node, edges, current_fingerprint);
+        let dep_node_index = self.alloc_and_color_node(cx, node, edges, current_fingerprint);
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
         dep_node_index
     }
@@ -608,7 +608,7 @@ impl<D: Deps> DepGraph<D> {
                 }
             });
 
-            data.hash_result_and_alloc_node(&cx, node, edges, result, hash_result)
+            data.hash_result_and_alloc_node(cx, node, edges, result, hash_result)
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
@@ -726,13 +726,97 @@ impl<D: Deps> DepGraphData<D> {
         })
     }
 
-    fn alloc_and_color_node(
+    // Checks if the node is expected to be green after execution.
+    fn post_exec_expect_green<Ctxt: DepContext<Deps = D>>(
         &self,
+        cx: Ctxt,
+        kind: DepKind,
+        dep_node_index: SerializedDepNodeIndex,
+        frame: Option<&MarkFrame<'_>>,
+    ) -> bool {
+        let frame = MarkFrame { index: dep_node_index, parent: frame };
+
+        if cx.is_eval_always(kind) {
+            return false;
+        }
+
+        let prev_deps = self.previous.edge_targets_from(dep_node_index);
+
+        for dep_dep_node_index in prev_deps {
+            match self.colors.get(dep_dep_node_index) {
+                DepNodeColor::Green(_) => {}
+                DepNodeColor::Red => return false,
+                DepNodeColor::Unknown => {
+                    let dep_node = self.previous.index_to_node(dep_dep_node_index);
+
+                    if cx.dep_kind_info(dep_node.kind).is_anon {
+                        if dep_node.kind == <Ctxt as DepContext>::Deps::DEP_KIND_TRAIT_SELECT {
+                            // TraitSelect doesn't behave like other anon queries. Maybe a bug?
+                            return false;
+                        }
+
+                        if !self.post_exec_expect_green(
+                            cx,
+                            dep_node.kind,
+                            dep_dep_node_index,
+                            Some(&frame),
+                        ) {
+                            return false;
+                        }
+                        // The anon node is expected to be green, continue checking dependencies
+                    } else {
+                        if cx.sess().seen_cycle_error.load(Ordering::Acquire) {
+                            // Cycle can leave uncolored, but execution still continues.
+                            // Unsure how this happens.
+                            return false;
+                        }
+
+                        // Unexpected uncolored dependency, we expect either all green, or a red node
+                        // to be present before any uncolored node.
+
+                        // Check if it's possible to color it currently.
+                        let _ = self.try_mark_parent_green(cx, dep_dep_node_index, &frame);
+                        let color = self.colors.get(dep_dep_node_index);
+
+                        eprintln!("post_exec_expect_green dep node stack:");
+
+                        let mut i = 0;
+                        let mut current = Some(&frame);
+                        while let Some(frame) = current {
+                            let node = self.previous.index_to_node(frame.index);
+                            eprintln!("#{i} {node:?}");
+                            current = frame.parent;
+                            i += 1;
+                        }
+
+                        eprintln!("end of post_exec_expect_green dep node stack");
+
+                        panic!(
+                            "unexpected uncolored dependency {:?} found, can be marked as: {:?}",
+                            self.previous.index_to_node(dep_dep_node_index),
+                            color
+                        )
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    fn alloc_and_color_node<Ctxt: DepContext<Deps = D>>(
+        &self,
+        cx: Ctxt,
         key: DepNode,
         edges: EdgesVec,
         fingerprint: Option<Fingerprint>,
     ) -> DepNodeIndex {
         if let Some(prev_index) = self.previous.node_to_index_opt(&key) {
+            let expect_green = if cx.dep_kind_info(key.kind).is_feedable {
+                false // No assumptions about feedable nodes (probably an implementation error)
+            } else {
+                self.post_exec_expect_green(cx, key.kind, prev_index, None)
+            };
+
             // Determine the color and index of the new `DepNode`.
             let is_green = if let Some(fingerprint) = fingerprint {
                 if fingerprint == self.previous.fingerprint_by_index(prev_index) {
@@ -740,6 +824,12 @@ impl<D: Deps> DepGraphData<D> {
                     // its query was re-executed, and it has the same result as before.
                     true
                 } else {
+                    assert!(
+                        !expect_green,
+                        "expected {:?} to be green, but fingerprint changed (feedable-{:?})",
+                        key,
+                        cx.dep_kind_info(key.kind).is_feedable
+                    );
                     // This is a red node: it existed in the previous compilation, its query
                     // was re-executed, but it has a different result from before.
                     false
@@ -749,7 +839,7 @@ impl<D: Deps> DepGraphData<D> {
                 // session, its query was re-executed, but it doesn't compute a result hash
                 // (i.e. it represents a `no_hash` query), so we have no way of determining
                 // whether or not the result was the same as before.
-                false
+                expect_green
             };
 
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
@@ -876,16 +966,16 @@ impl<D: Deps> DepGraphData<D> {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(qcx, prev_index, dep_node, None)
+                self.try_mark_previous_green(*qcx.dep_context(), prev_index, dep_node, None)
                     .map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
     }
 
-    #[instrument(skip(self, qcx, parent_dep_node_index, frame), level = "debug")]
-    fn try_mark_parent_green<Qcx: QueryContext<Deps = D>>(
+    #[instrument(skip(self, cx, parent_dep_node_index, frame), level = "debug")]
+    fn try_mark_parent_green<Ctxt: DepContext<Deps = D>>(
         &self,
-        qcx: Qcx,
+        cx: Ctxt,
         parent_dep_node_index: SerializedDepNodeIndex,
         frame: &MarkFrame<'_>,
     ) -> Option<()> {
@@ -918,14 +1008,14 @@ impl<D: Deps> DepGraphData<D> {
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
-        if !qcx.dep_context().is_eval_always(dep_dep_node.kind) {
+        if !cx.is_eval_always(dep_dep_node.kind) {
             debug!(
                 "state of dependency {:?} ({}) is unknown, trying to mark it green",
                 dep_dep_node, dep_dep_node.hash,
             );
 
             let node_index =
-                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, Some(frame));
+                self.try_mark_previous_green(cx, parent_dep_node_index, dep_dep_node, Some(frame));
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green");
@@ -935,7 +1025,7 @@ impl<D: Deps> DepGraphData<D> {
 
         // We failed to mark it green, so we try to force the query.
         debug!("trying to force dependency {dep_dep_node:?}");
-        if !qcx.dep_context().try_force_from_dep_node(*dep_dep_node, parent_dep_node_index, frame) {
+        if !cx.try_force_from_dep_node(*dep_dep_node, parent_dep_node_index, frame) {
             // The DepNode could not be forced.
             debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
@@ -953,7 +1043,7 @@ impl<D: Deps> DepGraphData<D> {
             DepNodeColor::Unknown => {}
         }
 
-        if let None = qcx.dep_context().sess().dcx().has_errors_or_delayed_bugs() {
+        if let None = cx.sess().dcx().has_errors_or_delayed_bugs() {
             panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
         }
 
@@ -972,10 +1062,10 @@ impl<D: Deps> DepGraphData<D> {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, qcx, prev_dep_node_index, frame), level = "debug")]
-    fn try_mark_previous_green<Qcx: QueryContext<Deps = D>>(
+    #[instrument(skip(self, cx, prev_dep_node_index, frame), level = "debug")]
+    fn try_mark_previous_green<Ctxt: DepContext<Deps = D>>(
         &self,
-        qcx: Qcx,
+        cx: Ctxt,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode,
         frame: Option<&MarkFrame<'_>>,
@@ -983,14 +1073,14 @@ impl<D: Deps> DepGraphData<D> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
+        debug_assert!(!cx.is_eval_always(dep_node.kind));
 
         debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), *dep_node);
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
         for dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(qcx, dep_dep_node_index, &frame)?;
+            self.try_mark_parent_green(cx, dep_dep_node_index, &frame)?;
         }
 
         // If we got here without hitting a `return` that means that all
