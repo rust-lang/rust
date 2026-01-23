@@ -7,10 +7,9 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 
 use crate::dep_graph::{DepKind, DepNode, DepNodeParams, SerializedDepNodeIndex};
-use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::{CycleError, DepNodeIndex, QueryContext, QueryState};
+use crate::query::{CycleError, CycleErrorHandling, DepNodeIndex, QueryContext, QueryState};
 
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
 
@@ -67,7 +66,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn feedable(self) -> bool;
 
     fn dep_kind(self) -> DepKind;
-    fn handle_cycle_error(self) -> HandleCycleError;
+    fn cycle_error_handling(self) -> CycleErrorHandling;
     fn hash_result(self) -> HashResult<Self::Value>;
 
     // Just here for convenience and checking that the key matches the kind, don't override this.

@@ -18,13 +18,13 @@ use rustc_middle::query::{
     queries,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_query_system::Value;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryState,
-    get_query_incr, get_query_non_incr,
+    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode,
+    QueryState, get_query_incr, get_query_non_incr,
 };
-use rustc_query_system::{HandleCycleError, Value};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
@@ -181,8 +181,8 @@ where
     }
 
     #[inline(always)]
-    fn handle_cycle_error(self) -> HandleCycleError {
-        self.dynamic.handle_cycle_error
+    fn cycle_error_handling(self) -> CycleErrorHandling {
+        self.dynamic.cycle_error_handling
     }
 
     #[inline(always)]

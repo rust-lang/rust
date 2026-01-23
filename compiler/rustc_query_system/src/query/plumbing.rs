@@ -19,12 +19,13 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::instrument;
 
 use super::QueryConfig;
-use crate::HandleCycleError;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
-use crate::query::{QueryContext, QueryMap, QueryStackFrame, SerializedDepNodeIndex};
+use crate::query::{
+    CycleErrorHandling, QueryContext, QueryMap, QueryStackFrame, SerializedDepNodeIndex,
+};
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
@@ -142,22 +143,21 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    use HandleCycleError::*;
-    match query.handle_cycle_error() {
-        Error => {
+    match query.cycle_error_handling() {
+        CycleErrorHandling::Error => {
             let guar = error.emit();
             query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
-        Fatal => {
+        CycleErrorHandling::Fatal => {
             error.emit();
             qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
-        DelayBug => {
+        CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
             query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
-        Stash => {
+        CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
                 && let Some(span) = root.query.span
             {
