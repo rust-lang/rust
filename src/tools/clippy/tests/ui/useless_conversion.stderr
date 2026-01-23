@@ -69,25 +69,25 @@ LL -         consume(items.into_iter());
 LL +         consume(*items);
    |
 
-error: useless conversion to the same type: `std::string::String`
+error: useless conversion to the same type: `std::string::generic::String`
   --> tests/ui/useless_conversion.rs:154:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
-error: useless conversion to the same type: `std::string::String`
+error: useless conversion to the same type: `std::string::generic::String`
   --> tests/ui/useless_conversion.rs:156:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
-error: useless conversion to the same type: `std::string::String`
+error: useless conversion to the same type: `std::string::generic::String`
   --> tests/ui/useless_conversion.rs:158:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
-error: useless conversion to the same type: `std::string::String`
+error: useless conversion to the same type: `std::string::generic::String`
   --> tests/ui/useless_conversion.rs:160:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
@@ -105,7 +105,7 @@ error: useless conversion to the same type: `std::vec::IntoIter<i32>`
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
-error: useless conversion to the same type: `std::string::String`
+error: useless conversion to the same type: `std::string::generic::String`
   --> tests/ui/useless_conversion.rs:166:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();

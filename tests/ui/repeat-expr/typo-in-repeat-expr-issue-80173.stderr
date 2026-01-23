@@ -40,6 +40,8 @@ error[E0308]: mismatched types
 LL |     let e = [String::new(), 10];
    |                             ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |     let e = [String::new(), 10.to_string()];
@@ -69,6 +71,8 @@ error[E0308]: mismatched types
 LL |     let g = vec![String::new(), 10];
    |                                 ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: replace the comma with a semicolon to create a vector
    |
 LL -     let g = vec![String::new(), 10];

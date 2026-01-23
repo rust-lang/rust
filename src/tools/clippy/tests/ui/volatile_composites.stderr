@@ -79,7 +79,7 @@ error: type `main::ReprSumType` is not volatile-compatible
 LL |         (0xdead as *mut ReprSumType).write_volatile(ReprSumType::C);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: type `std::string::String` is not volatile-compatible
+error: type `std::string::generic::String` is not volatile-compatible
   --> tests/ui/volatile_composites.rs:211:9
    |
 LL |         std::ptr::write_volatile(&mut s, String::from("bar"));

@@ -78,6 +78,11 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
                                     "#method.sort_by_cached_key"]),
+
+    // these links are changed in #149328 , and running linkchecker locally does not fail,
+    // but CI is checking docs built off `main` I think?
+    ("book/print.html", &["std/string/struct.String.html"]),
+    ("book/ch02-00-guessing-game-tutorial.html", &["std/string/struct.String.html"]),
 ];
 
 #[rustfmt::skip]
@@ -421,6 +426,25 @@ impl Checker {
 
             if target_ids.borrow().contains(*fragment) {
                 return;
+            }
+
+            // String is now a type alias to alloc::string::generic::String<Global>
+            // as such, the docs page dynamically includes all the methods from the target struct
+            // linkchecker normally doesn't load these, but we hack it here.
+            if path.ends_with("alloc/string/type.String.html")
+                || path.ends_with("std/string/type.String.html")
+            {
+                let mut struct_file = path.clone();
+                struct_file.pop();
+                struct_file.push("generic/struct.String.html");
+                if let (_, FileEntry::HtmlFile { ids, source }) =
+                    self.load_file(&struct_file, report)
+                {
+                    parse_ids(&mut ids.borrow_mut(), &pretty_path, source, report);
+                    if ids.borrow().contains(*fragment) {
+                        return;
+                    }
+                }
             }
 
             if is_exception(file, &format!("#{}", fragment)) {

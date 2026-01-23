@@ -179,7 +179,7 @@ impl fmt::Debug for Debug<'_> {
 /// }
 /// ```
 ///
-/// [`String::from_utf8_lossy`]: ../../std/string/struct.String.html#method.from_utf8_lossy
+/// [`String::from_utf8_lossy`]: ../../std/string/type.String.html#method.from_utf8_lossy
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "utf8_chunks", since = "1.79.0")]
 #[derive(Clone)]

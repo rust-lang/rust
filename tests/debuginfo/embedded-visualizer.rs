@@ -39,7 +39,7 @@
 //@ cdb-command: dx person
 //@ cdb-check:person           : "Person A" is 10 years old. [Type: dependency_with_embedded_visualizers::Person]
 //@ cdb-check:    [<Raw View>]     [Type: dependency_with_embedded_visualizers::Person]
-//@ cdb-check:    [name]           : "Person A" [Type: alloc::string::String]
+//@ cdb-check:    [name]           : "Person A" [Type: alloc::string::generic::String<alloc::alloc::Global>]
 //@ cdb-check:    [age]            : 10 [Type: int]
 
 // === GDB TESTS ===================================================================================

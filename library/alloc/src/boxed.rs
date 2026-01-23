@@ -210,6 +210,8 @@ use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
+#[cfg(not(no_global_oom_handling))]
+use crate::vec::Vec;
 
 /// Conversion related impls for `Box<_>` (`From`, `downcast`, etc)
 mod convert;
@@ -2038,11 +2040,13 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl Clone for Box<str> {
+impl<A: Allocator + Clone> Clone for Box<str, A> {
     fn clone(&self) -> Self {
-        // this makes a copy of the data
-        let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe { from_boxed_utf8_unchecked(buf) }
+        let alloc = Box::allocator(self).clone();
+        let len = self.len();
+        let mut vec: Vec<u8, A> = Vec::with_capacity_in(len, alloc);
+        vec.extend_from_slice(self.as_bytes());
+        unsafe { from_boxed_utf8_unchecked(vec.into_boxed_slice()) }
     }
 }
 

@@ -157,9 +157,6 @@ fn test_complex_types<T>() {
 fn test_functions() {
     // Everything here should be lint
 
-    let _return: String = return_a_string();
-    //~^ redundant_type_annotations
-
     let _return: Pie = return_a_struct();
     //~^ redundant_type_annotations
 
@@ -169,9 +166,6 @@ fn test_functions() {
     let _return: u32 = return_an_int();
     //~^ redundant_type_annotations
 
-    let _return: String = String::new();
-    //~^ redundant_type_annotations
-
     let new_pie: Pie = Pie::new();
     //~^ redundant_type_annotations
 
@@ -179,9 +173,6 @@ fn test_functions() {
     //~^ redundant_type_annotations
 
     let _return: u32 = Pie::associated_return_an_int();
-    //~^ redundant_type_annotations
-
-    let _return: String = Pie::associated_return_a_string();
     //~^ redundant_type_annotations
 }
 

@@ -5,16 +5,20 @@ LL |     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
    |                                    ^^ no implementation for `String == T`
    |
    = help: the trait `PartialEq<T>` is not implemented for `String`
-   = help: the following other types implement trait `PartialEq<Rhs>`:
-             `String` implements `PartialEq<&str>`
-             `String` implements `PartialEq<ByteStr>`
-             `String` implements `PartialEq<ByteString>`
-             `String` implements `PartialEq<Cow<'_, str>>`
-             `String` implements `PartialEq<Path>`
-             `String` implements `PartialEq<PathBuf>`
-             `String` implements `PartialEq<str>`
-             `String` implements `PartialEq`
+help: the following other types implement trait `PartialEq<Rhs>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `String` implements `PartialEq<ByteStr>`
+   |
+   = note: `String` implements `PartialEq<ByteString>`
+  --> $SRC_DIR/alloc/src/bstr.rs:LL:COL
+   |
+   = note: in this macro invocation
+  ::: $SRC_DIR/alloc/src/bstr.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: `T` implements `PartialEq<String>`
+   = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider swapping the equality
    |
 LL -     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));

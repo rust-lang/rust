@@ -8,9 +8,9 @@ LL |     let _ = &str::from("value");
              `String` implements `From<&String>`
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
-             `String` implements `From<Box<str>>`
              `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
+             `String<A>` implements `From<Box<str, A>>`
 help: you likely meant to call the associated function `from` for type `&str`, but the code as written calls associated function `from` on type `str`
    |
 LL |     let _ = <&str>::from("value");

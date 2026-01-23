@@ -4,9 +4,9 @@ fn drop_in_place(_1: *mut [String]) -> () {
     let mut _0: ();
     let mut _2: usize;
     let mut _3: usize;
-    let mut _4: *mut std::string::String;
+    let mut _4: *mut std::string::generic::String;
     let mut _5: bool;
-    let mut _6: *mut std::string::String;
+    let mut _6: *mut std::string::generic::String;
     let mut _7: bool;
 
     bb0: {

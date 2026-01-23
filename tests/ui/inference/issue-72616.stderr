@@ -6,10 +6,20 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |                              |
    |                              type must be known at this point
    |
-   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the following crates: `alloc`, `std`:
-           - impl PartialEq for String;
-           - impl PartialEq<Path> for String;
-           - impl PartialEq<PathBuf> for String;
+   = note: cannot satisfy `String: PartialEq<_>`
+help: the following types implement trait `PartialEq<Rhs>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `String` implements `PartialEq<ByteStr>`
+   |
+   = note: `String` implements `PartialEq<ByteString>`
+  --> $SRC_DIR/alloc/src/bstr.rs:LL:COL
+   |
+   = note: in this macro invocation
+  ::: $SRC_DIR/alloc/src/bstr.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try using a fully qualified path to specify the expected types
    |
 LL -         if String::from("a") == "a".try_into().unwrap() {}

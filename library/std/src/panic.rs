@@ -69,7 +69,7 @@ impl<'a> PanicHookInfo<'a> {
     /// (or, in Rust 2018 and earlier, `panic!(x)` where `x` is something other than a string)
     /// can result in a panic payload other than a `&'static str` or `String`.
     ///
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [`String`]: crate::string::generic::String
     /// [`payload_as_str`]: PanicHookInfo::payload_as_str
     ///
     /// # Examples

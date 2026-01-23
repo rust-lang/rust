@@ -31,7 +31,7 @@
 //@ lldb-check:(msvc_pretty_enums::CStyleEnum) j = High
 
 //@ lldb-command:v k
-//@ lldb-check:(core::option::Option<alloc::string::String>) k = { value = { 0 = "IAMA optional string!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'o' [6] = 'p' [7] = 't' [8] = 'i' [9] = 'o' [10] = 'n' [11] = 'a' [12] = 'l' [13] = ' ' [14] = 's' [15] = 't' [16] = 'r' [17] = 'i' [18] = 'n' [19] = 'g' [20] = '!' } } }
+//@ lldb-check:(core::option::Option<alloc::string::generic::String>) k = { value = { 0 = "IAMA optional string!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'o' [6] = 'p' [7] = 't' [8] = 'i' [9] = 'o' [10] = 'n' [11] = 'a' [12] = 'l' [13] = ' ' [14] = 's' [15] = 't' [16] = 'r' [17] = 'i' [18] = 'n' [19] = 'g' [20] = '!' } } }
 
 //@ lldb-command:v l
 //@ lldb-check:(core::result::Result<u32, msvc_pretty_enums::Empty>) l = { value = { 0 = {} } }
@@ -113,8 +113,8 @@
 //@ cdb-check:j                : High (0x10) [Type: msvc_pretty_enums::CStyleEnum]
 
 //@ cdb-command: dx k
-//@ cdb-check:k                : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
-//@ cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
+//@ cdb-check:k                : Some [Type: enum2$<core::option::Option<alloc::string::generic::String<alloc::alloc::Global> > >]
+//@ cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::generic::String<alloc::alloc::Global>]
 
 //@ cdb-command: dx l
 //@ cdb-check:l                : Ok [Type: enum2$<core::result::Result<u32,enum2$<msvc_pretty_enums::Empty> > >]
