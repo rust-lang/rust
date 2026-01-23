@@ -12,8 +12,8 @@ use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
-    dep_kinds,
+    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, MarkFrame,
+    SerializedDepNodeIndex, dep_kinds,
 };
 use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
@@ -459,7 +459,12 @@ where
     value
 }
 
-fn force_from_dep_node<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
+fn force_from_dep_node<'tcx, Q>(
+    query: Q,
+    tcx: TyCtxt<'tcx>,
+    dep_node: DepNode,
+    frame: &MarkFrame<'_>,
+) -> bool
 where
     Q: QueryConfig<QueryCtxt<'tcx>>,
 {
@@ -482,7 +487,7 @@ where
     );
 
     if let Some(key) = Q::Key::recover(tcx, &dep_node) {
-        force_query(query, QueryCtxt::new(tcx), key, dep_node);
+        force_query(query, QueryCtxt::new(tcx), key, dep_node, frame);
         true
     } else {
         false
@@ -510,8 +515,8 @@ where
         is_anon,
         is_eval_always,
         fingerprint_style,
-        force_from_dep_node: Some(|tcx, dep_node, _| {
-            force_from_dep_node(Q::config(tcx), tcx, dep_node)
+        force_from_dep_node: Some(|tcx, dep_node, _, frame| {
+            force_from_dep_node(Q::config(tcx), tcx, dep_node, frame)
         }),
         try_load_from_on_disk_cache: Some(|tcx, dep_node| {
             try_load_from_on_disk_cache(Q::config(tcx), tcx, dep_node)
@@ -823,7 +828,7 @@ macro_rules! define_queries {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
-                    force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    force_from_dep_node: Some(|_, dep_node, _, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
                     name: &"Null",
                 }
@@ -835,7 +840,7 @@ macro_rules! define_queries {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
-                    force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    force_from_dep_node: Some(|_, dep_node, _, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
                     name: &"Red",
                 }
@@ -846,7 +851,7 @@ macro_rules! define_queries {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
-                    force_from_dep_node: Some(|tcx, _, prev_index| {
+                    force_from_dep_node: Some(|tcx, _, prev_index, _| {
                         tcx.dep_graph.force_diagnostic_node(QueryCtxt::new(tcx), prev_index);
                         true
                     }),
@@ -860,7 +865,7 @@ macro_rules! define_queries {
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
-                    force_from_dep_node: Some(|_, _, _| bug!("cannot force an anon node")),
+                    force_from_dep_node: Some(|_, _, _, _| bug!("cannot force an anon node")),
                     try_load_from_on_disk_cache: None,
                     name: &"AnonZeroDeps",
                 }
