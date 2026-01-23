@@ -139,9 +139,16 @@ cfg_select! {
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
 
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
+    // The clock source used for `sleep` might not be the same used for `Instant`.
+    // Since this function *must not* return before the deadline, we recheck the
+    // time after every call to `sleep`. See #149935 for an example of this
+    // occurring on older Windows systems.
+    while let Some(delay) = deadline.checked_duration_since(Instant::now()) {
+        // Sleep for the estimated time remaining until the deadline.
+        //
+        // If your system has a better way of estimating the delay time or
+        // provides a way to sleep until an absolute time, specialize this
+        // function for your system.
         sleep(delay);
     }
 }

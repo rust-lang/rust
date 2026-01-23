@@ -528,8 +528,51 @@ pub fn set_name(name: &CStr) {
     debug_assert_eq!(res, libc::OK);
 }
 
-#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
+#[cfg(not(target_os = "espidf"))]
 pub fn sleep(dur: Duration) {
+    cfg_select! {
+        // Any unix that has clock_nanosleep
+        // If this list changes update the MIRI chock_nanosleep shim
+        any(
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "linux",
+            target_os = "android",
+            target_os = "solaris",
+            target_os = "illumos",
+            target_os = "dragonfly",
+            target_os = "hurd",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            target_os = "wasi",
+        ) => {
+            // POSIX specifies that `nanosleep` uses CLOCK_REALTIME, but is not
+            // affected by clock adjustments. The timing of `sleep` however should
+            // be tied to `Instant` where possible. Thus, we use `clock_nanosleep`
+            // with a relative time interval instead, which allows explicitly
+            // specifying the clock.
+            //
+            // In practice, most systems (like e.g. Linux) actually use
+            // CLOCK_MONOTONIC for `nanosleep` anyway, but others like FreeBSD don't
+            // so it's better to be safe.
+            //
+            // wasi-libc prior to WebAssembly/wasi-libc#696 has a broken implementation
+            // of `nanosleep` which used `CLOCK_REALTIME` even though it is unsupported
+            // on WASIp2. Using `clock_nanosleep` directly bypasses the issue.
+            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> libc::c_int {
+                unsafe { libc::clock_nanosleep(crate::sys::time::Instant::CLOCK_ID, 0, rqtp, rmtp) }
+            }
+        }
+        _ => {
+            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> libc::c_int {
+                let r = unsafe { libc::nanosleep(rqtp, rmtp) };
+                // `clock_nanosleep` returns the error number directly, so mimic
+                // that behaviour to make the shared code below simpler.
+                if r == 0 { 0 } else { sys::io::errno() }
+            }
+        }
+    }
+
     let mut secs = dur.as_secs();
     let mut nsecs = dur.subsec_nanos() as _;
 
@@ -543,8 +586,9 @@ pub fn sleep(dur: Duration) {
             };
             secs -= ts.tv_sec as u64;
             let ts_ptr = &raw mut ts;
-            if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
-                assert_eq!(sys::io::errno(), libc::EINTR);
+            let r = nanosleep(ts_ptr, ts_ptr);
+            if r != 0 {
+                assert_eq!(r, libc::EINTR);
                 secs += ts.tv_sec as u64;
                 nsecs = ts.tv_nsec;
             } else {
@@ -554,13 +598,7 @@ pub fn sleep(dur: Duration) {
     }
 }
 
-#[cfg(any(
-    target_os = "espidf",
-    // wasi-libc prior to WebAssembly/wasi-libc#696 has a broken implementation
-    // of `nanosleep`, used above by most platforms, so use `usleep` until
-    // that fix propagates throughout the ecosystem.
-    target_os = "wasi",
-))]
+#[cfg(target_os = "espidf")]
 pub fn sleep(dur: Duration) {
     // ESP-IDF does not have `nanosleep`, so we use `usleep` instead.
     // As per the documentation of `usleep`, it is expected to support

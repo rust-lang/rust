@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17877>
 //@ run-pass
 
 fn main() {

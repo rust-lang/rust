@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/11681>
 // This tests verifies that unary structs and enum variants
 // are treated as rvalues and their lifetime is not bounded to
 // the static scope.
