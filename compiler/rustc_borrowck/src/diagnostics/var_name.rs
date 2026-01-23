@@ -5,11 +5,9 @@ use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::{Span, Symbol};
 use tracing::debug;
 
-use crate::region_infer::RegionInferenceContext;
+use crate::universal_regions::UniversalRegions;
 
-impl<'tcx> RegionInferenceContext<'tcx> {
-    /// Find the name and span of the variable corresponding to the given region.
-    /// The returned var will also be ensured to actually be used in `body`.
+impl<'tcx> UniversalRegions<'tcx> {
     pub(crate) fn get_var_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -19,7 +17,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
         debug!("get_var_name_and_span_for_region(fr={fr:?})");
-        assert!(self.universal_regions().is_universal_region(fr));
+        assert!(self.is_universal_region(fr));
 
         debug!("get_var_name_and_span_for_region: attempting upvar");
         self.get_upvar_index_for_region(tcx, fr)
@@ -49,17 +47,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
-        let upvar_index =
-            self.universal_regions().defining_ty.upvar_tys().iter().position(|upvar_ty| {
-                debug!("get_upvar_index_for_region: upvar_ty={upvar_ty:?}");
-                tcx.any_free_region_meets(&upvar_ty, |r| {
-                    let r = r.as_var();
-                    debug!("get_upvar_index_for_region: r={r:?} fr={fr:?}");
-                    r == fr
-                })
-            })?;
+        let upvar_index = self.defining_ty.upvar_tys().iter().position(|upvar_ty| {
+            debug!("get_upvar_index_for_region: upvar_ty={upvar_ty:?}");
+            tcx.any_free_region_meets(&upvar_ty, |r| {
+                let r = r.as_var();
+                debug!("get_upvar_index_for_region: r={r:?} fr={fr:?}");
+                r == fr
+            })
+        })?;
 
-        let upvar_ty = self.universal_regions().defining_ty.upvar_tys().get(upvar_index);
+        let upvar_ty = self.defining_ty.upvar_tys().get(upvar_index);
 
         debug!(
             "get_upvar_index_for_region: found {fr:?} in upvar {upvar_index} which has type {upvar_ty:?}",
@@ -98,18 +95,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
-        let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
+        let implicit_inputs = self.defining_ty.implicit_inputs();
         let user_arg_index =
-            self.universal_regions().unnormalized_input_tys.iter().skip(implicit_inputs).position(
-                |arg_ty| {
-                    debug!("get_user_arg_index_for_region: arg_ty = {arg_ty:?}");
-                    tcx.any_free_region_meets(arg_ty, |r| r.as_var() == fr)
-                },
-            )?;
+            self.unnormalized_input_tys.iter().skip(implicit_inputs).position(|arg_ty| {
+                debug!("get_argument_index_for_region: arg_ty = {arg_ty:?}");
+                tcx.any_free_region_meets(arg_ty, |r| r.as_var() == fr)
+            })?;
 
         debug!(
-            "get_user_arg_index_for_region: found {fr:?} in argument {user_arg_index} which has type {:?}",
-            self.universal_regions().unnormalized_input_tys[user_arg_index],
+            "get_argument_index_for_region: found {fr:?} in argument {user_arg_index} which has type {:?}",
+            self.unnormalized_input_tys[user_arg_index],
         );
 
         Some(user_arg_index)
@@ -118,7 +113,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Given the index of an argument as seen from the user (i.e. excluding
     /// implicit inputs), returns the corresponding MIR local.
     fn user_arg_index_to_local(&self, body: &Body<'tcx>, user_arg_index: usize) -> Local {
-        let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
+        let implicit_inputs = self.defining_ty.implicit_inputs();
         body.args_iter().nth(implicit_inputs + user_arg_index).unwrap()
     }
 

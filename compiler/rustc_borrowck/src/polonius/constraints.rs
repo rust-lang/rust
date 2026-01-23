@@ -7,7 +7,7 @@ use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
 use crate::BorrowSet;
-use crate::constraints::OutlivesConstraint;
+use crate::constraints::OutlivesConstraintSet;
 use crate::dataflow::BorrowIndex;
 use crate::polonius::ConstraintDirection;
 use crate::region_infer::values::LivenessValues;
@@ -66,12 +66,12 @@ impl LocalizedConstraintGraph {
     /// Traverses the constraints and returns the indexed graph of edges per node.
     pub(super) fn new<'tcx>(
         liveness: &LivenessValues,
-        outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
+        outlives_constraints: &OutlivesConstraintSet<'tcx>,
     ) -> Self {
         let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
         let mut logical_edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
 
-        for outlives_constraint in outlives_constraints {
+        for outlives_constraint in outlives_constraints.outlives() {
             match outlives_constraint.locations {
                 Locations::All(_) => {
                     logical_edges

@@ -11,9 +11,6 @@ use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
-use crate::BorrowIndex;
-use crate::polonius::LiveLoans;
-
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
     #[debug_format = "PlaceholderIndex({})"]
@@ -56,9 +53,6 @@ pub(crate) struct LivenessValues {
 
     /// Where a region is live.
     live_regions: LiveRegions,
-
-    /// When using `-Zpolonius=next`, the set of loans that are live at a given point in the CFG.
-    live_loans: Option<LiveLoans>,
 }
 
 impl LivenessValues {
@@ -69,7 +63,6 @@ impl LivenessValues {
                 location_map.num_points(),
             )),
             location_map,
-            live_loans: None,
         }
     }
 
@@ -78,11 +71,7 @@ impl LivenessValues {
     /// Unlike `with_specific_points`, does not track exact locations where something is live, only
     /// which regions are live.
     pub(crate) fn without_specific_points(location_map: Rc<DenseLocationMap>) -> Self {
-        LivenessValues {
-            live_regions: LiveRegions::InBody(Default::default()),
-            location_map,
-            live_loans: None,
-        }
+        LivenessValues { live_regions: LiveRegions::InBody(Default::default()), location_map }
     }
 
     /// Returns the liveness matrix of points where each region is live. Panics if the liveness
@@ -195,20 +184,6 @@ impl LivenessValues {
     #[inline]
     pub(crate) fn location_from_point(&self, point: PointIndex) -> Location {
         self.location_map.to_location(point)
-    }
-
-    /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
-    /// loans dataflow computations.
-    pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
-        self.live_loans = Some(live_loans);
-    }
-
-    /// When using `-Zpolonius=next`, returns whether the `loan_idx` is live at the given `point`.
-    pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, point: PointIndex) -> bool {
-        self.live_loans
-            .as_ref()
-            .expect("Accessing live loans requires `-Zpolonius=next`")
-            .contains(point, loan_idx)
     }
 }
 
