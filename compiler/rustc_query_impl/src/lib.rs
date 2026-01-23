@@ -10,7 +10,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
-use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::{
