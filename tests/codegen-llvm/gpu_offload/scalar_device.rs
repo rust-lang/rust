@@ -1,9 +1,11 @@
 //@ add-minicore
-//@ revisions: amdgpu nvptx
+//@ revisions: amdgpu nvptx spirv
 //@[nvptx] compile-flags: -Copt-level=0 -Zunstable-options -Zoffload=Device --target nvptx64-nvidia-cuda --crate-type=rlib
 //@[nvptx] needs-llvm-components: nvptx
 //@[amdgpu] compile-flags: -Copt-level=0 -Zunstable-options -Zoffload=Device --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
 //@[amdgpu] needs-llvm-components: amdgpu
+//@[spirv] compile-flags: -Copt-level=0 -Zunstable-options -Zoffload=Device --target spirv64-intel-unknown --crate-type=rlib
+//@[spirv] needs-llvm-components: spirv
 //@ no-prefer-dynamic
 //@ needs-offload
 
@@ -18,6 +20,7 @@ extern crate minicore;
 // CHECK: ; Function Attrs
 // nvptx-NEXT: define ptx_kernel void @foo(ptr %dyn_ptr, ptr %0, i64 %1)
 // amdgpu-NEXT: define amdgpu_kernel void @foo(ptr %dyn_ptr, ptr %0, i64 %1)
+// spirv-NEXT: define spir_kernel void @foo(ptr %dyn_ptr, ptr %0, i64 %1)
 // CHECK-NEXT: entry:
 // CHECK-NEXT: %2 = trunc i64 %1 to i32
 // CHECK-NEXT: %3 = bitcast i32 %2 to float
