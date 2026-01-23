@@ -34,17 +34,28 @@ fn fls_0_zero_value_does_not_run() {
 
 fn fls_1_dtor_simple() {
     extern "system" fn dtor(val: *mut c_void) {
-        assert_eq!(val.addr(), 1);
+        assert!(!val.is_null());
         println!("fls_1_dtor_simple");
+        
+        // Keys are freed in-order. Without a dtor, the early key's value is not zeroed out.
+        let early_key = val as u32;
+        assert_eq!(unsafe { FlsGetValue(early_key).addr() }, 1);
     }
 
-    let key = unsafe { FlsAlloc(Some(dtor)) };
-    assert_eq!(unsafe { FlsSetValue(key, ptr::without_provenance_mut(1)) }, TRUE);
-    assert_eq!(unsafe { FlsGetValue(key).addr() }, 1);
+    let early_key = unsafe { FlsAlloc(None) };
+    let later_key = unsafe { FlsAlloc(Some(dtor)) };
+
+    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(1)) }, TRUE);
+    assert_eq!(unsafe { FlsGetValue(later_key).addr() }, 1);
+
+    assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
+    // Will be used in the dtor to check early_key's value.
+    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) }, TRUE);
 }
 
 fn fls_2_dtor_update_value_ignored() {
-    extern "system" fn early_dtor(_val: *mut c_void) {
+    extern "system" fn early_dtor(val: *mut c_void) {
+        assert!(!val.is_null());
         println!("fls_2.1_early_dtor");
     }
 
@@ -53,6 +64,13 @@ fn fls_2_dtor_update_value_ignored() {
 
         // Updating a different fls slot's value doesn't cause their dtor to run, if it already did.
         let early_key = val as u32;
+        
+        // After the early key's dtor run, the key's value is zeroed out.
+        assert_eq!(
+            unsafe { FlsGetValue(early_key).addr() },
+            0
+        );
+
         assert_eq!(
             unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) },
             TRUE
@@ -108,6 +126,21 @@ fn fls_4_dtor_update_value_used() {
     assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(0)) }, TRUE);
 }
 
+fn fls_5_dtor_value() {
+    extern "system" fn dtor(val: *mut c_void) {
+        assert!(!val.is_null());
+        println!("fls_5_dtor_value");
+        
+        // When the key's dtor run, the key's value equals the destructor argument.
+        let key = val as u32;
+        assert_eq!(unsafe { FlsGetValue(key) }, val);
+    }
+
+    let key = unsafe { FlsAlloc(Some(dtor)) };
+
+    assert_eq!(unsafe { FlsSetValue(key, ptr::without_provenance_mut(key as usize)) }, TRUE);
+}
+
 fn fls() {
     assert_eq!(unsafe { IsThreadAFiber() }, FALSE);
 
@@ -116,6 +149,7 @@ fn fls() {
     fls_2_dtor_update_value_ignored();
     fls_3_dtor_update_value_skipped_ignored();
     fls_4_dtor_update_value_used();
+    fls_5_dtor_value();
 }
 
 fn main() {
