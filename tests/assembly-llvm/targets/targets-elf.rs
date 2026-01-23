@@ -559,6 +559,21 @@
 //@ revisions: thumbv5te_none_eabi
 //@ [thumbv5te_none_eabi] compile-flags: --target thumbv5te-none-eabi
 //@ [thumbv5te_none_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_none_eabi
+//@ [thumbv7a_none_eabi] compile-flags: --target thumbv7a-none-eabi
+//@ [thumbv7a_none_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_none_eabihf
+//@ [thumbv7a_none_eabihf] compile-flags: --target thumbv7a-none-eabihf
+//@ [thumbv7a_none_eabihf] needs-llvm-components: arm
+//@ revisions: thumbv7r_none_eabi
+//@ [thumbv7r_none_eabi] compile-flags: --target thumbv7r-none-eabi
+//@ [thumbv7r_none_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7r_none_eabihf
+//@ [thumbv7r_none_eabihf] compile-flags: --target thumbv7r-none-eabihf
+//@ [thumbv7r_none_eabihf] needs-llvm-components: arm
+//@ revisions: thumbv8r_none_eabihf
+//@ [thumbv8r_none_eabihf] compile-flags: --target thumbv8r-none-eabihf
+//@ [thumbv8r_none_eabihf] needs-llvm-components: arm
 //@ revisions: thumbv6m_none_eabi
 //@ [thumbv6m_none_eabi] compile-flags: --target thumbv6m-none-eabi
 //@ [thumbv6m_none_eabi] needs-llvm-components: arm

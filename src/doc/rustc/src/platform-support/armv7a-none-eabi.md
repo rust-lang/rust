@@ -1,10 +1,14 @@
-# `armv7a-none-eabi` and `armv7a-none-eabihf`
+# `armv7a-none-eabi*` and `thumbv7a-none-eabi*`
 
-* **Tier: 2**
+* **Tier: 2** (`armv7a-none-eabi` and `armv7a-none-eabihf`)
+* **Tier: 3** (`thumbv7a-none-eabi` and `thumbv7a-none-eabihf`)
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
-Bare-metal target for CPUs in the Armv7-A architecture family, supporting
-dual ARM/Thumb mode, with ARM mode as the default.
+Bare-metal target for CPUs in the Armv7-A architecture family, supporting dual
+ARM/Thumb mode. The `armv7a-none-eabi*` targets use Arm mode by default and the
+`thumbv7a-none-eabi` targets use Thumb mode by default. The `-eabi` targets use
+a soft-float ABI and do not require an FPU, while the `-eabihf` targets use a
+hard-float ABI and do require an FPU.
 
 Note, this is for processors running in AArch32 mode. For the AArch64 mode
 added in Armv8-A, see [`aarch64-unknown-none`](aarch64-unknown-none.md) instead.
