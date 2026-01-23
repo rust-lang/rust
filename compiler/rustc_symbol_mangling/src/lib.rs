@@ -88,7 +88,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 // tidy-alphabetical-start
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 // tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;

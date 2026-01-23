@@ -16,7 +16,6 @@
 // tidy-alphabetical-start
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
-#![feature(assert_matches)]
 #![feature(box_vec_non_null)]
 #![feature(char_internals)]
 #![feature(const_alloc_error)]
