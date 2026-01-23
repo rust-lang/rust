@@ -1326,9 +1326,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        // FIXME(f16_f128): replace with `intrinsics::fabsf128` when available
-        // We don't do this now because LLVM has lowering bugs for f128 math.
-        Self::from_bits(self.to_bits() & !(1 << 127))
+        intrinsics::fabsf128(self)
     }
 
     /// Returns a number that represents the sign of `self`.
