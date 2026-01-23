@@ -711,9 +711,9 @@ pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::{
-    assert, assert_matches, cfg, column, compile_error, concat, const_format_args, env, file,
-    format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    assert, cfg, column, compile_error, concat, const_format_args, env, file, format_args,
+    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
+    stringify, trace_macros,
 };
 // Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -722,6 +722,8 @@ pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,
 };
+#[unstable(feature = "assert_matches", issue = "82775")]
+pub use core::{assert_matches, debug_assert_matches};
 
 // Re-export unstable derive macro defined through core.
 #[unstable(feature = "derive_from", issue = "144889")]

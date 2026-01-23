@@ -822,6 +822,10 @@ pub enum AttributeLintKind {
     DocTestLiteral,
     AttrCrateLevelOnly,
     DoNotRecommendDoesNotExpectArgs,
+    CrateTypeUnknown {
+        span: Span,
+        suggested: Option<Symbol>,
+    },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

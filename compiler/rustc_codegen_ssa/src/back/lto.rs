@@ -67,7 +67,7 @@ fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Executable
         | CrateType::Dylib
-        | CrateType::Staticlib
+        | CrateType::StaticLib
         | CrateType::Cdylib
         | CrateType::ProcMacro
         | CrateType::Sdylib => true,

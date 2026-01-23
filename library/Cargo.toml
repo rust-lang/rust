@@ -54,6 +54,32 @@ rustflags = ["-Cpanic=abort"]
 [profile.release.package.panic_abort]
 rustflags = ["-Cpanic=abort"]
 
+# The "dist" profile is used by bootstrap for prebuilt libstd artifacts
+# These settings ensure that the prebuilt artifacts support a variety of features
+# in the user's profile.
+[profile.dist]
+inherits = "release"
+codegen-units = 1
+debug = 1 # "limited"
+rustflags = [
+    # `profile.lto=off` implies `-Cembed-bitcode=no`, but unconditionally embedding
+    # bitcode is necessary for when users enable LTO.
+    # Required until Cargo can re-build the standard library based on the value
+    # of `profile.lto` in the user's profile.
+    "-Cembed-bitcode=yes",
+    # Enable frame pointers
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
+
+[profile.dist.package.panic_abort]
+rustflags = [
+    "-Cpanic=abort",
+    "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
+
 [patch.crates-io]
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on here
 rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }

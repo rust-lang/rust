@@ -20,7 +20,7 @@ extern crate rustc_interface;
 extern crate rustc_public;
 
 use std::ascii::Char;
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::ffi::CStr;

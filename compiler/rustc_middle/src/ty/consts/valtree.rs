@@ -147,7 +147,12 @@ impl<'tcx> Value<'tcx> {
             _ => return None,
         }
 
-        Some(tcx.arena.alloc_from_iter(self.to_branch().into_iter().map(|ct| ct.to_leaf().to_u8())))
+        // We create an iterator that yields `Option<u8>`
+        let iterator = self.to_branch().into_iter().map(|ct| Some(ct.try_to_leaf()?.to_u8()));
+        // If there is `None` in the iterator, then the array is not a valid array of u8s and we return `None`
+        let bytes: Vec<u8> = iterator.collect::<Option<Vec<u8>>>()?;
+
+        Some(tcx.arena.alloc_from_iter(bytes))
     }
 
     /// Converts to a `ValTreeKind::Leaf` value, `panic`'ing

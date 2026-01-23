@@ -927,8 +927,9 @@ impl Step for Clippy {
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
-        let host_libs =
-            builder.stage_out(build_compiler, Mode::ToolRustcPrivate).join(builder.cargo_dir());
+        let host_libs = builder
+            .stage_out(build_compiler, Mode::ToolRustcPrivate)
+            .join(builder.cargo_dir(Mode::ToolRustcPrivate));
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.

@@ -30,7 +30,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let dest = dest.force_mplace(self)?;
 
         match intrinsic_name {
-            sym::simd_insert => {
+            sym::simd_insert | sym::simd_insert_dyn => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
                 let (input, input_len) = self.project_to_simd(&args[0])?;
@@ -39,7 +39,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
-                        "`simd_insert` index {index} is out-of-bounds of vector with length {input_len}"
+                        "`{intrinsic_name}` index {index} is out-of-bounds of vector with length {input_len}"
                     );
                 }
 
@@ -50,13 +50,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.copy_op(&value, &place)?;
                 }
             }
-            sym::simd_extract => {
+            sym::simd_extract | sym::simd_extract_dyn => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let (input, input_len) = self.project_to_simd(&args[0])?;
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
-                        "`simd_extract` index {index} is out-of-bounds of vector with length {input_len}"
+                        "`{intrinsic_name}` index {index} is out-of-bounds of vector with length {input_len}"
                     );
                 }
                 self.copy_op(&self.project_index(&input, index)?, &dest)?;

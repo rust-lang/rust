@@ -1768,7 +1768,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let item = tcx
             .associated_items(scope)
             .filter_by_name_unhygienic(ident.name)
-            .find(|i| i.as_tag() == assoc_tag && i.ident(tcx).normalize_to_macros_2_0() == ident)?;
+            .find(|i| i.tag() == assoc_tag && i.ident(tcx).normalize_to_macros_2_0() == ident)?;
 
         Some((*item, def_scope))
     }

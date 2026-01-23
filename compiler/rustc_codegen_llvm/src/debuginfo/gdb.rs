@@ -92,7 +92,7 @@ pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
         CrateType::Executable
         | CrateType::Dylib
         | CrateType::Cdylib
-        | CrateType::Staticlib
+        | CrateType::StaticLib
         | CrateType::Sdylib => {
             // These are crate types for which we will embed pretty printers since they
             // are treated as leaf crates.

@@ -10,7 +10,6 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
 #![feature(ascii_char)]
@@ -42,8 +41,11 @@
 // have to worry about it being moved to a different module in std during stabilization.
 // FIXME(#151359): Remove this when `feature(assert_matches)` is stable in stage0.
 // (This doesn't necessarily need to be fixed during the beta bump itself.)
+#[cfg(bootstrap)]
 pub use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::fmt;
+#[cfg(not(bootstrap))]
+pub use std::{assert_matches, debug_assert_matches};
 
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};

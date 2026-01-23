@@ -5,7 +5,6 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![recursion_limit = "512"]
 #![allow(
     clippy::missing_errors_doc,

@@ -28,7 +28,7 @@ fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
 
 fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
     match crate_type {
-        CrateType::Executable | CrateType::Staticlib | CrateType::ProcMacro | CrateType::Cdylib => {
+        CrateType::Executable | CrateType::StaticLib | CrateType::ProcMacro | CrateType::Cdylib => {
             SymbolExportLevel::C
         }
         CrateType::Rlib | CrateType::Dylib | CrateType::Sdylib => SymbolExportLevel::Rust,

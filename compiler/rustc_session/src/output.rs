@@ -2,12 +2,11 @@
 
 use std::path::Path;
 
-use rustc_ast as ast;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 use crate::Session;
-use crate::config::{self, CrateType, OutFileName, OutputFilenames, OutputType};
-use crate::errors::{self, CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
+use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
+use crate::errors::{CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
 
 pub fn out_filename(
     sess: &Session,
@@ -101,7 +100,7 @@ pub fn filename_for_input(
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
-        CrateType::Staticlib => {
+        CrateType::StaticLib => {
             let (prefix, suffix) = sess.staticlib_components(false);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
@@ -119,19 +118,6 @@ pub fn filename_for_input(
             }
         }
     }
-}
-
-/// Returns default crate type for target
-///
-/// Default crate type is used when crate type isn't provided neither
-/// through cmd line arguments nor through crate attributes
-///
-/// It is CrateType::Executable for all platforms but iOS as there is no
-/// way to run iOS binaries anyway without jailbreaking and
-/// interaction with Rust code through static library is the only
-/// option for now
-pub fn default_output_for_target(sess: &Session) -> CrateType {
-    if !sess.target.executables { CrateType::Staticlib } else { CrateType::Executable }
 }
 
 /// Checks if target supports crate_type as output
@@ -156,89 +142,4 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
     }
 
     false
-}
-
-pub const CRATE_TYPES: &[(Symbol, CrateType)] = &[
-    (sym::rlib, CrateType::Rlib),
-    (sym::dylib, CrateType::Dylib),
-    (sym::cdylib, CrateType::Cdylib),
-    (sym::lib, config::default_lib_output()),
-    (sym::staticlib, CrateType::Staticlib),
-    (sym::proc_dash_macro, CrateType::ProcMacro),
-    (sym::bin, CrateType::Executable),
-    (sym::sdylib, CrateType::Sdylib),
-];
-
-pub fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
-    Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
-}
-
-pub fn collect_crate_types(
-    session: &Session,
-    backend_crate_types: &[CrateType],
-    codegen_backend_name: &'static str,
-    attrs: &[ast::Attribute],
-) -> Vec<CrateType> {
-    // If we're generating a test executable, then ignore all other output
-    // styles at all other locations
-    if session.opts.test {
-        if !session.target.executables {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
-                crate_type: CrateType::Executable,
-                target_triple: &session.opts.target_triple,
-            });
-            return Vec::new();
-        }
-        return vec![CrateType::Executable];
-    }
-
-    // Shadow `sdylib` crate type in interface build.
-    if session.opts.unstable_opts.build_sdylib_interface {
-        return vec![CrateType::Rlib];
-    }
-
-    // Only check command line flags if present. If no types are specified by
-    // command line, then reuse the empty `base` Vec to hold the types that
-    // will be found in crate attributes.
-    // JUSTIFICATION: before wrapper fn is available
-    #[allow(rustc::bad_opt_access)]
-    let mut base = session.opts.crate_types.clone();
-    if base.is_empty() {
-        let attr_types = attrs.iter().filter_map(|a| {
-            if a.has_name(sym::crate_type)
-                && let Some(s) = a.value_str()
-            {
-                categorize_crate_type(s)
-            } else {
-                None
-            }
-        });
-        base.extend(attr_types);
-        if base.is_empty() {
-            base.push(default_output_for_target(session));
-        } else {
-            base.sort();
-            base.dedup();
-        }
-    }
-
-    base.retain(|crate_type| {
-        if invalid_output_for_target(session, *crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
-                crate_type: *crate_type,
-                target_triple: &session.opts.target_triple,
-            });
-            false
-        } else if !backend_crate_types.contains(crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForCodegenBackend {
-                crate_type: *crate_type,
-                codegen_backend: codegen_backend_name,
-            });
-            false
-        } else {
-            true
-        }
-    });
-
-    base
 }

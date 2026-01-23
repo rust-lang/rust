@@ -1,0 +1,20 @@
+error: symbol-name(_RMCsCRATE_HASH_3symDNtB<REF>_5Traitp1NKj0_EL_)
+  --> $DIR/dyn-compat-symbol-mangling.rs:22:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<dyn sym[HASH]::Trait<N = 0usize>>)
+  --> $DIR/dyn-compat-symbol-mangling.rs:22:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<dyn sym::Trait<N = 0>>)
+  --> $DIR/dyn-compat-symbol-mangling.rs:22:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
