@@ -1,4 +1,3 @@
-// FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
 use std::f128::consts;

@@ -1,4 +1,3 @@
-// FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f16)]
 
 use std::f16::consts;
@@ -258,8 +257,6 @@ fn test_ln_gamma() {
 
 #[test]
 fn test_real_consts() {
-    // FIXME(f16_f128): add math tests when available
-
     let pi: f16 = consts::PI;
     let frac_pi_2: f16 = consts::FRAC_PI_2;
     let frac_pi_3: f16 = consts::FRAC_PI_3;

@@ -1357,15 +1357,11 @@ float_test! {
     }
 }
 
-// FIXME(f16): Tests involving sNaN are disabled because without optimizations, `total_cmp` is
-// getting incorrectly lowered to code that includes a `extend`/`trunc` round trip, which quiets
-// sNaNs. See: https://github.com/llvm/llvm-project/issues/104915
-
 float_test! {
     name: total_cmp_s_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(miri)],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {

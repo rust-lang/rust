@@ -134,9 +134,6 @@ pub mod consts {
 
 #[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), allow(internal_features))))]
 impl f16 {
-    // FIXME(f16_f128): almost all methods in this `impl` are missing examples and a const
-    // implementation. Add these once we can run code on all platforms and have f16/f128 in CTFE.
-
     /// The radix or base of the internal representation of `f16`.
     #[unstable(feature = "f16", issue = "116909")]
     pub const RADIX: u32 = 2;
