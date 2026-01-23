@@ -3,6 +3,8 @@
 fn ub_if_b(_1: Thing) -> Thing {
     debug t => _1;
     let mut _0: Thing;
+    let mut _2: isize;
+    let mut _3: bool;
     scope 1 (inlined #[track_caller] unreachable_unchecked) {
         scope 2 (inlined core::ub_checks::check_language_ub) {
             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
@@ -11,6 +13,9 @@ fn ub_if_b(_1: Thing) -> Thing {
     }
 
     bb0: {
+        _2 = discriminant(_1);
+        _3 = Eq(copy _2, const 0_isize);
+        assume(move _3);
         _0 = move _1;
         return;
     }

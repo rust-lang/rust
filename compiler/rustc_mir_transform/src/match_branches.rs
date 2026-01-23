@@ -7,6 +7,7 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 
 use super::simplify::simplify_cfg;
 use crate::patch::MirPatch;
+use crate::unreachable_prop::remove_successors_from_switch;
 
 /// Unifies all targets into one basic block if each statement can have the same statement.
 pub(super) struct MatchBranchSimplification;
@@ -389,10 +390,12 @@ fn simplify_match<'tcx>(
         Some(targets.otherwise())
     };
     // We can patch the terminator to goto because there is a single target.
-    match (&reachable_cases[..], otherwise) {
-        (&[(_, single_target)], None) | (&[], Some(single_target)) => {
+    match (reachable_cases.len(), otherwise.is_none()) {
+        (1, true) | (0, false) => {
             let mut patch = simplify_match.patch;
-            patch.patch_terminator(switch_bb, TerminatorKind::Goto { target: single_target });
+            remove_successors_from_switch(tcx, switch_bb, body, &mut patch, |bb| {
+                body.basic_blocks[bb].is_empty_unreachable()
+            });
             patch.apply(body);
             return true;
         }

@@ -14,6 +14,7 @@ pub unsafe fn foo(x: &mut Copied<Iter<'_, u32>>) -> u32 {
     // CHECK-NOT: br {{.*}}
     // CHECK-NOT: select
     // CHECK: [[RET:%.*]] = load i32, ptr
+    // CHECK-NEXT: assume
     // CHECK-NEXT: ret i32 [[RET]]
     x.next().unwrap_unchecked()
 }
