@@ -2411,10 +2411,11 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     }
     let resolver = def.resolver(db);
 
+    let store_for_self = generic_params.store();
     let mut ctx = TyLoweringContext::new(
         db,
         &resolver,
-        generic_params.store(),
+        store_for_self,
         def,
         LifetimeElisionKind::AnonymousReportError,
     )
@@ -2432,6 +2433,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
         })
         .collect::<Vec<_>>();
     ctx.diagnostics.clear(); // Don't include diagnostics from the parent.
+    ctx.store = store_for_self;
     defaults.extend(generic_params.iter_self().map(|(_id, p)| {
         let (result, has_default) = handle_generic_param(&mut ctx, idx, p);
         has_any_default |= has_default;
