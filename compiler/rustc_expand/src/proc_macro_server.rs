@@ -566,19 +566,19 @@ impl server::Server for Rustc<'_, '_> {
         diag.emit();
     }
 
-    fn tt_drop(&mut self, stream: Self::TokenStream) {
+    fn ts_drop(&mut self, stream: Self::TokenStream) {
         drop(stream);
     }
 
-    fn tt_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
+    fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
         stream.clone()
     }
 
-    fn tt_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
+    fn ts_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
 
-    fn tt_from_str(&mut self, src: &str) -> Self::TokenStream {
+    fn ts_from_str(&mut self, src: &str) -> Self::TokenStream {
         unwrap_or_emit_fatal(source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
@@ -587,11 +587,11 @@ impl server::Server for Rustc<'_, '_> {
         ))
     }
 
-    fn tt_to_string(&mut self, stream: &Self::TokenStream) -> String {
+    fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
         pprust::tts_to_string(stream)
     }
 
-    fn tt_expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+    fn ts_expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr: PResult<'_, _> = try {
             let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
@@ -652,14 +652,14 @@ impl server::Server for Rustc<'_, '_> {
         }
     }
 
-    fn tt_from_token_tree(
+    fn ts_from_token_tree(
         &mut self,
         tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
         Self::TokenStream::new((tree, &mut *self).to_internal().into_iter().collect::<Vec<_>>())
     }
 
-    fn tt_concat_trees(
+    fn ts_concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
         trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
@@ -673,7 +673,7 @@ impl server::Server for Rustc<'_, '_> {
         stream
     }
 
-    fn tt_concat_streams(
+    fn ts_concat_streams(
         &mut self,
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
@@ -685,7 +685,7 @@ impl server::Server for Rustc<'_, '_> {
         stream
     }
 
-    fn tt_into_trees(
+    fn ts_into_trees(
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
