@@ -32,47 +32,37 @@
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/22/polonius-part-1/>
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/29/polonius-part-2/>
 //!
-//!
-//! Data flows like this:
-//! 1) during MIR typeck, record liveness data needed later: live region variances, as well as the
-//!    usual NLL liveness data (just computed on more locals). That's the [PoloniusLivenessContext].
-//! 2) once that is done, variance data is transferred, and the NLL region liveness is converted to
-//!    the polonius shape. That's the main [PoloniusContext].
-//! 3) during region inference, that data and the NLL outlives constraints are used to create the
-//!    localized outlives constraints, as described above. That's the [PoloniusDiagnosticsContext].
-//! 4) transfer this back to the main borrowck procedure: it handles computing errors and
-//!    diagnostics, debugging and MIR dumping concerns.
 
 mod constraints;
 mod dump;
 pub(crate) mod legacy;
 mod liveness_constraints;
-mod loan_liveness;
-mod typeck_constraints;
 
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::SparseBitMatrix;
-use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Local};
-use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
-pub(crate) use self::constraints::*;
+pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
-use self::liveness_constraints::create_liveness_constraints;
-use self::loan_liveness::compute_loan_liveness;
-use self::typeck_constraints::convert_typeck_constraints;
 use crate::dataflow::BorrowIndex;
+use crate::region_infer::values::LivenessValues;
 use crate::{BorrowSet, RegionInferenceContext};
 
 pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 
-/// This struct holds the liveness data created during MIR typeck, and which will be used later in
-/// the process, to compute the polonius localized constraints.
+/// This struct holds the necessary
+///  - liveness data, created during MIR typeck, and which will be used to lazily compute the
+///    polonius localized constraints, during NLL region inference as well as MIR dumping,
+///  - data needed by the borrowck error computation and diagnostics.
 #[derive(Default)]
-pub(crate) struct PoloniusLivenessContext {
+pub(crate) struct PoloniusContext {
+    /// The graph from which we extract the localized outlives constraints.
+    graph: Option<LocalizedConstraintGraph>,
+
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
     live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
@@ -81,27 +71,6 @@ pub(crate) struct PoloniusLivenessContext {
     /// boring locals. A boring local is one whose type contains only such regions. Polonius
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
-    pub(crate) boring_nll_locals: FxHashSet<Local>,
-}
-
-/// This struct holds the data needed to create the Polonius localized constraints. Its data is
-/// transferred and converted from the [PoloniusLivenessContext] at the end of MIR typeck.
-pub(crate) struct PoloniusContext {
-    /// The liveness data we recorded during MIR typeck.
-    liveness_context: PoloniusLivenessContext,
-
-    /// The set of regions that are live at a given point in the CFG, used to create localized
-    /// outlives constraints between regions that are live at connected points in the CFG.
-    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
-}
-
-/// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
-/// computed from the [PoloniusContext] when computing NLL regions.
-pub(crate) struct PoloniusDiagnosticsContext {
-    /// The localized outlives constraints that were computed in the main analysis.
-    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
-
-    /// The liveness data computed during MIR typeck: [PoloniusLivenessContext::boring_nll_locals].
     pub(crate) boring_nll_locals: FxHashSet<Local>,
 }
 
@@ -120,26 +89,6 @@ enum ConstraintDirection {
 }
 
 impl PoloniusContext {
-    /// Unlike NLLs, in polonius we traverse the cfg to look for regions live across an edge, so we
-    /// need to transpose the "points where each region is live" matrix to a "live regions per point"
-    /// matrix.
-    // FIXME: avoid this conversion by always storing liveness data in this shape in the rest of
-    // borrowck.
-    pub(crate) fn create_from_liveness(
-        liveness_context: PoloniusLivenessContext,
-        num_regions: usize,
-        points_per_live_region: &SparseIntervalMatrix<RegionVid, PointIndex>,
-    ) -> PoloniusContext {
-        let mut live_regions_per_point = SparseBitMatrix::new(num_regions);
-        for region in points_per_live_region.rows() {
-            for point in points_per_live_region.row(region).unwrap().iter() {
-                live_regions_per_point.insert(point, region);
-            }
-        }
-
-        PoloniusContext { live_regions: live_regions_per_point, liveness_context }
-    }
-
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
     ///
     /// First, creates a constraint graph combining regions and CFG points, by:
@@ -151,44 +100,91 @@ impl PoloniusContext {
     ///
     /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
-        self,
-        tcx: TyCtxt<'tcx>,
+        &mut self,
         regioncx: &mut RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
-    ) -> PoloniusDiagnosticsContext {
-        let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
-            self.liveness_context;
+    ) {
+        let liveness = regioncx.liveness_constraints();
 
-        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-        convert_typeck_constraints(
-            tcx,
-            body,
-            regioncx.liveness_constraints(),
-            regioncx.outlives_constraints(),
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
+        // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
+        // trace throughout localized constraints.
+        if borrow_set.len() > 0 {
+            // From the outlives constraints, liveness, and variances, we can compute reachability
+            // on the lazy localized constraint graph to trace the liveness of loans, for the next
+            // step in the chain (the NLL loan scope and active loans computations).
+            let graph = LocalizedConstraintGraph::new(liveness, regioncx.outlives_constraints());
 
-        create_liveness_constraints(
-            body,
-            regioncx.liveness_constraints(),
-            &self.live_regions,
-            &live_region_variances,
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
+            let mut live_loans = LiveLoans::new(borrow_set.len());
+            let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
+            graph.traverse(
+                body,
+                liveness,
+                &self.live_region_variances,
+                regioncx.universal_regions(),
+                borrow_set,
+                &mut visitor,
+            );
+            regioncx.record_live_loans(live_loans);
 
-        // Now that we have a complete graph, we can compute reachability to trace the liveness of
-        // loans for the next step in the chain, the NLL loan scope and active loans computations.
-        let live_loans = compute_loan_liveness(
-            regioncx.liveness_constraints(),
-            regioncx.outlives_constraints(),
-            borrow_set,
-            &localized_outlives_constraints,
-        );
-        regioncx.record_live_loans(live_loans);
+            // The graph can be traversed again during MIR dumping, so we store it here.
+            self.graph = Some(graph);
+        }
+    }
+}
 
-        PoloniusDiagnosticsContext { localized_outlives_constraints, boring_nll_locals }
+/// Visitor to record loan liveness when traversing the localized constraint graph.
+struct LoanLivenessVisitor<'a> {
+    liveness: &'a LivenessValues,
+    live_loans: &'a mut LiveLoans,
+}
+
+impl LocalizedConstraintGraphVisitor for LoanLivenessVisitor<'_> {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+        // Record the loan as being live on entry to this point if it reaches a live region
+        // there.
+        //
+        // This is an approximation of liveness (which is the thing we want), in that we're
+        // using a single notion of reachability to represent what used to be _two_ different
+        // transitive closures. It didn't seem impactful when coming up with the single-graph
+        // and reachability through space (regions) + time (CFG) concepts, but in practice the
+        // combination of time-traveling with kills is more impactful than initially
+        // anticipated.
+        //
+        // Kills should prevent a loan from reaching its successor points in the CFG, but not
+        // while time-traveling: we're not actually at that CFG point, but looking for
+        // predecessor regions that contain the loan. One of the two TCs we had pushed the
+        // transitive subset edges to each point instead of having backward edges, and the
+        // problem didn't exist before. In the abstract, naive reachability is not enough to
+        // model this, we'd need a slightly different solution. For example, maybe with a
+        // two-step traversal:
+        // - at each point we first traverse the subgraph (and possibly time-travel) looking for
+        //   exit nodes while ignoring kills,
+        // - and then when we're back at the current point, we continue normally.
+        //
+        // Another (less annoying) subtlety is that kills and the loan use-map are
+        // flow-insensitive. Kills can actually appear in places before a loan is introduced, or
+        // at a location that is actually unreachable in the CFG from the introduction point,
+        // and these can also be encountered during time-traveling.
+        //
+        // The simplest change that made sense to "fix" the issues above is taking into account
+        // kills that are:
+        // - reachable from the introduction point
+        // - encountered during forward traversal. Note that this is not transitive like the
+        //   two-step traversal described above: only kills encountered on exit via a backward
+        //   edge are ignored.
+        //
+        // This version of the analysis, however, is enough in practice to pass the tests that
+        // we care about and NLLs reject, without regressions on crater, and is an actionable
+        // subset of the full analysis. It also naturally points to areas of improvement that we
+        // wish to explore later, namely handling kills appropriately during traversal, instead
+        // of continuing traversal to all the reachable nodes.
+        //
+        // FIXME: analyze potential unsoundness, possibly in concert with a borrowck
+        // implementation in a-mir-formality, fuzzing, or manually crafting counter-examples.
+        let location = self.liveness.location_from_point(node.point);
+        if self.liveness.is_live_at(node.region, location) {
+            self.live_loans.insert(node.point, loan);
+        }
     }
 }
