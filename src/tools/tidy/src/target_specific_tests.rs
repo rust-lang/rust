@@ -115,6 +115,7 @@ fn arch_to_llvm_component(arch: &str) -> String {
         _ if arch.starts_with("mips") => "mips".into(),
         _ if arch.starts_with("powerpc") => "powerpc".into(),
         _ if arch.starts_with("riscv") => "riscv".into(),
+        _ if arch.starts_with("spirv") => "spirv".into(),
         _ => arch.to_ascii_lowercase(),
     }
 }
