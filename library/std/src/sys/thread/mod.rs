@@ -135,6 +135,7 @@ cfg_select! {
     target_os = "vxworks",
     target_os = "wasi",
     target_vendor = "apple",
+    target_os = "motor",
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
