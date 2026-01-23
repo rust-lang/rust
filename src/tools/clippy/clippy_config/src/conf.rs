@@ -780,6 +780,7 @@ define_Conf! {
         manual_split_once,
         manual_str_repeat,
         manual_strip,
+        manual_take,
         manual_try_fold,
         map_clone,
         map_unwrap_or,

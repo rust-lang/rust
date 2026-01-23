@@ -692,6 +692,12 @@ declare_clippy_lint! {
     /// ///
     /// /// It was chosen by a fair dice roll.
     /// ```
+    ///
+    /// ### Terminal punctuation marks
+    /// This lint treats these characters as end markers: '.', '?', '!', '…' and ':'.
+    ///
+    /// The colon is not exactly a terminal punctuation mark, but this is required for paragraphs that
+    /// introduce a table or a list for example.
     #[clippy::version = "1.93.0"]
     pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
     restriction,

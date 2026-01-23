@@ -1,0 +1,40 @@
+error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
+  --> tests/ui/duration_suboptimal_units_days_weeks.rs:9:15
+   |
+LL |     let dur = Duration::from_secs(60);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::duration-suboptimal-units` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::duration_suboptimal_units)]`
+help: try using from_mins
+   |
+LL -     let dur = Duration::from_secs(60);
+LL +     let dur = Duration::from_mins(1);
+   |
+
+error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
+  --> tests/ui/duration_suboptimal_units_days_weeks.rs:12:15
+   |
+LL |     let dur = Duration::from_hours(24);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try using from_days
+   |
+LL -     let dur = Duration::from_hours(24);
+LL +     let dur = Duration::from_days(1);
+   |
+
+error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
+  --> tests/ui/duration_suboptimal_units_days_weeks.rs:15:15
+   |
+LL |     let dur = Duration::from_nanos(13 * 7 * 24 * 60 * 60 * 1_000 * 1_000 * 1_000);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try using from_weeks
+   |
+LL -     let dur = Duration::from_nanos(13 * 7 * 24 * 60 * 60 * 1_000 * 1_000 * 1_000);
+LL +     let dur = Duration::from_weeks(13);
+   |
+
+error: aborting due to 3 previous errors
+

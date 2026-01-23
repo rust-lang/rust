@@ -6,11 +6,7 @@
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::must_use_candidate,
-)]
+#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -2028,12 +2024,12 @@ pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
-    if !is_no_std_crate(cx) {
-        Some("std")
-    } else if !is_no_core_crate(cx) {
+    if is_no_core_crate(cx) {
+        None
+    } else if is_no_std_crate(cx) {
         Some("core")
     } else {
-        None
+        Some("std")
     }
 }
 

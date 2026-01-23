@@ -905,6 +905,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_split_once`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_split_once)
 * [`manual_str_repeat`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_str_repeat)
 * [`manual_strip`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_strip)
+* [`manual_take`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_take)
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`map_clone`](https://rust-lang.github.io/rust-clippy/master/index.html#map_clone)
 * [`map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or)
