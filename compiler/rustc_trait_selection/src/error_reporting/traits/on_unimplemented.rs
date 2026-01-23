@@ -5,13 +5,15 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{
-    AppendConstMessage, ConditionOptions, FormatString, FormatWarning, OnUnimplementedDirective,
-    OnUnimplementedFormatString, OnUnimplementedNote,
+    AppendConstMessage, ConditionOptions, FormatString, OnUnimplementedDirective,
+    OnUnimplementedNote, Piece,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{AttrArgs, Attribute};
+pub use rustc_hir::lints::FormatWarning;
+use rustc_hir::{AttrArgs, Attribute, find_attr};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -20,6 +22,7 @@ use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
 };
 use rustc_span::{Span, Symbol, sym};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, info};
 
 use super::{ObligationCauseCode, PredicateObligation};
@@ -343,9 +346,9 @@ pub struct MissingOptionsForOnUnimplementedAttr;
 pub struct IgnoredDiagnosticOption {
     pub option_name: &'static str,
     #[label]
-    pub span: Span,
-    #[label(trait_selection_other_label)]
-    pub prev_span: Span,
+    pub first_span: Span,
+    #[label(trait_selection_later_label)]
+    pub later_span: Span,
 }
 
 impl IgnoredDiagnosticOption {
@@ -363,7 +366,7 @@ impl IgnoredDiagnosticOption {
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 tcx.local_def_id_to_hir_id(item_def_id),
                 new_item,
-                IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
+                IgnoredDiagnosticOption { later_span: new_item, first_span: old_item, option_name },
             );
         }
     }
@@ -418,9 +421,9 @@ fn parse_directive<'tcx>(
 
     let mut message = None;
     let mut label = None;
-    let mut notes = Vec::new();
+    let mut notes = ThinVec::new();
     let mut parent_label = None;
-    let mut subcommands = vec![];
+    let mut subcommands = ThinVec::new();
     let mut append_const_msg = None;
 
     let get_value_and_span = |item: &_, key| {
@@ -546,6 +549,8 @@ pub fn of_item_directive<'tcx>(
     };
     if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
         return parse_attribute_directive(attr, false, tcx, item_def_id);
+    } else if attr == sym::on_unimplemented {
+        Ok(find_attr!(tcx.get_all_attrs(item_def_id), AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref().cloned()).flatten())
     } else {
         tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
             .filter_map(|attr| parse_attribute_directive(attr, true, tcx, item_def_id).transpose())
@@ -632,7 +637,7 @@ fn parse_attribute_directive<'tcx>(
             Ok(Some(OnUnimplementedDirective {
                 condition: None,
                 message: None,
-                subcommands: vec![],
+                subcommands: thin_vec![],
                 label: Some((
                     attr.span(),
                     try_parse_format_string(
@@ -643,7 +648,7 @@ fn parse_attribute_directive<'tcx>(
                         is_diagnostic_namespace_variant,
                     )?,
                 )),
-                notes: Vec::new(),
+                notes: thin_vec![],
                 parent_label: None,
                 append_const_msg: None,
             }))
@@ -743,37 +748,22 @@ pub(crate) fn evaluate_directive<'tcx>(
     }
 
     OnUnimplementedNote {
-        label: label.map(|l| format_directive(&l.1, tcx, trait_ref, args)),
-        message: message.map(|m| format_directive(&m.1, tcx, trait_ref, args)),
-        notes: notes.into_iter().map(|n| format_directive(&n, tcx, trait_ref, args)).collect(),
-        parent_label: parent_label.map(|e_s| format_directive(&e_s, tcx, trait_ref, args)),
+        label: label.map(|l| format_directive(l.1, tcx, trait_ref, args)),
+        message: message.map(|m| format_directive(m.1, tcx, trait_ref, args)),
+        notes: notes.into_iter().map(|n| format_directive(n, tcx, trait_ref, args)).collect(),
+        parent_label: parent_label.map(|e_s| format_directive(e_s, tcx, trait_ref, args)),
         append_const_msg,
     }
 }
 
 fn try_parse_format_string<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item_def_id: DefId,
-    from: Symbol,
+    trait_def_id: DefId,
+    input: Symbol,
     span: Span,
     is_diagnostic_namespace_variant: bool,
-) -> Result<OnUnimplementedFormatString, ErrorGuaranteed> {
-    let result =
-        OnUnimplementedFormatString { symbol: from, span, is_diagnostic_namespace_variant };
-    verify(&result, tcx, item_def_id)?;
-    Ok(result)
-}
-
-fn verify<'tcx>(
-    slf: &OnUnimplementedFormatString,
-    tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
-) -> Result<(), ErrorGuaranteed> {
-    if !tcx.is_trait(trait_def_id) {
-        return Ok(());
-    };
-
-    let ctx = if slf.is_diagnostic_namespace_variant {
+) -> Result<FormatString, ErrorGuaranteed> {
+    let ctx = if is_diagnostic_namespace_variant {
         Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }
     } else {
         Ctx::RustcOnUnimplemented { tcx, trait_def_id }
@@ -783,12 +773,12 @@ fn verify<'tcx>(
 
     use crate::error_reporting::traits::on_unimplemented_format::parse_format_string;
 
-    let snippet = tcx.sess.source_map().span_to_snippet(slf.span).ok();
-    match parse_format_string(slf.symbol, snippet, slf.span, &ctx) {
+    let snippet = tcx.sess.source_map().span_to_snippet(span).ok();
+    let ret = match parse_format_string(input, snippet, span, &ctx) {
         // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
         // In other words we'd like to let the author know, but we can still try to format the string later
-        Ok(FormatString { warnings, .. }) => {
-            if slf.is_diagnostic_namespace_variant {
+        Ok((f, warnings)) => {
+            if is_diagnostic_namespace_variant {
                 for w in warnings {
                     use crate::error_reporting::traits::on_unimplemented_format::emit_warning;
 
@@ -797,17 +787,6 @@ fn verify<'tcx>(
             } else {
                 for w in warnings {
                     match w {
-                        FormatWarning::UnknownParam { argument_name, span } => {
-                            let reported = struct_span_code_err!(
-                                tcx.dcx(),
-                                span,
-                                E0230,
-                                "cannot find parameter {} on this trait",
-                                argument_name,
-                            )
-                            .emit();
-                            result = Err(reported);
-                        }
                         FormatWarning::PositionalArgument { span, .. } => {
                             let reported = struct_span_code_err!(
                                 tcx.dcx(),
@@ -818,11 +797,11 @@ fn verify<'tcx>(
                             .emit();
                             result = Err(reported);
                         }
-                        FormatWarning::InvalidSpecifier { .. }
-                        | FormatWarning::FutureIncompat { .. } => {}
+                        FormatWarning::InvalidSpecifier { .. } => {}
                     }
                 }
-            }
+            };
+            f
         }
         // Error from the underlying `rustc_parse_format::Parser`
         Err(e) => {
@@ -831,54 +810,36 @@ fn verify<'tcx>(
             //
             // if we encounter any error while processing we nevertheless want to show it as warning
             // so that users are aware that something is not correct
-            if slf.is_diagnostic_namespace_variant {
+            if is_diagnostic_namespace_variant {
                 if let Some(trait_def_id) = trait_def_id.as_local() {
                     tcx.emit_node_span_lint(
                         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(trait_def_id),
-                        slf.span,
+                        span,
                         WrappedParserError { description: e.description, label: e.label },
                     );
                 }
             } else {
                 let reported =
-                    struct_span_code_err!(tcx.dcx(), slf.span, E0231, "{}", e.description,).emit();
+                    struct_span_code_err!(tcx.dcx(), span, E0231, "{}", e.description,).emit();
                 result = Err(reported);
             }
-        }
-    }
 
-    result
+            // We could not parse the input, just use it as-is.
+            FormatString { input, span, pieces: thin_vec![Piece::Lit(input)] }
+        }
+    };
+
+    result?;
+    Ok(ret)
 }
 
 pub fn format_directive<'tcx>(
-    slf: &OnUnimplementedFormatString,
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
+    slf: FormatString,
+    _tcx: TyCtxt<'tcx>,
+    _trait_ref: ty::TraitRef<'tcx>,
     args: &FormatArgs<'tcx>,
 ) -> String {
-    let trait_def_id = trait_ref.def_id;
-    let ctx = if slf.is_diagnostic_namespace_variant {
-        Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }
-    } else {
-        Ctx::RustcOnUnimplemented { tcx, trait_def_id }
-    };
-
-    use crate::error_reporting::traits::on_unimplemented_format::{format, parse_format_string};
-
-    // No point passing a snippet here, we already did that in `verify`
-    if let Ok(s) = parse_format_string(slf.symbol, None, slf.span, &ctx) {
-        format(&s, args)
-    } else {
-        // we cannot return errors from processing the format string as hard error here
-        // as the diagnostic namespace guarantees that malformed input cannot cause an error
-        //
-        // if we encounter any error while processing the format string
-        // we don't want to show the potentially half assembled formatted string,
-        // therefore we fall back to just showing the input string in this case
-        //
-        // The actual parser errors are emitted earlier
-        // as lint warnings in OnUnimplementedFormatString::verify
-        slf.symbol.as_str().into()
-    }
+    use crate::error_reporting::traits::on_unimplemented_format::format;
+    format(&slf, args)
 }

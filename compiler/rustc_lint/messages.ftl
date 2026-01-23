@@ -236,6 +236,8 @@ lint_deprecated_where_clause_location = where clause not allowed here
     .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
     .suggestion_move_to_end = move it to the end of the type declaration
     .suggestion_remove_where = remove this `where`
+lint_disallowed_positional_argument = positional format arguments are not allowed here
+    .help = only named format arguments with the name of one of the generic types are allowed in this context
 
 lint_doc_alias_duplicated = doc alias is duplicated
     .label = first defined here
@@ -384,6 +386,9 @@ lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
     .help = the value is now dropped here in Edition 2024
     .suggestion = a `match` with a single arm can preserve the drop order up to Edition 2021
 
+lint_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
+    .later_label = `{$option_name}` is later redundantly declared here
+    .label = `{$option_name}` is first declared here
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
 lint_ill_formed_attribute_input = {$num_suggestions ->
@@ -505,7 +510,8 @@ lint_invalid_asm_label_no_span = the label may be declared in the expansion of a
 
 lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
-
+lint_invalid_format_specifier = invalid format specifier
+    .help = no format specifier are supported in this position
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
 lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
@@ -557,6 +563,9 @@ lint_macro_expr_fragment_specifier_2024_migration =
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
 
 lint_malformed_attribute = malformed lint attribute input
+lint_malformed_on_unimplemented_attr = malformed `on_unimplemented` attribute
+    .help = only `message`, `note` and `label` are allowed as options
+    .label = invalid option found here
 
 lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
     .note = `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
@@ -613,7 +622,8 @@ lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
 lint_missing_gpu_kernel_export_name = function with the "gpu-kernel" ABI has a mangled name
     .note = mangled names make it hard to find the kernel, this is usually not intended
     .help = use `unsafe(no_mangle)` or `unsafe(export_name = "<name>")`
-
+lint_missing_options_for_on_unimplemented_attr = missing options for `on_unimplemented` attribute
+    .help = at least one of the `message`, `note` and `label` options are expected
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
     .includes_note = the usage includes {$includes}
@@ -1067,3 +1077,5 @@ lint_uses_power_alignment = repr(C) does not follow the power alignment rule. Th
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
+lint_wrapped_parser_error = {$description}
+    .label = {$label}

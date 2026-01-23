@@ -5,9 +5,14 @@ use ::std::prelude::rust_2015::*;
 //@ check-pass
 //@ edition: 2015
 
-#[diagnostic::on_unimplemented(message =
-"My Message for `ImportantTrait<{A}>` implemented for `{Self}`", label =
-"My Label", note = "Note 1", note = "Note 2")]
+#[attr = OnUnimplemented {directive: OnUnimplementedDirective {subcommands: [],
+message: FormatString {input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",
+pieces: [Lit("My Message for `ImportantTrait<"),
+Arg(GenericParam {generic_param: "A"}), Lit(">` implemented for `"),
+Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",
+pieces: [Lit("My Label")]}, notes: [FormatString {input: "Note 1",
+pieces: [Lit("Note 1")]}, FormatString {input: "Note 2",
+pieces: [Lit("Note 2")]}]}}]
 trait ImportantTrait<A> { }
 
 #[attr = DoNotRecommend]

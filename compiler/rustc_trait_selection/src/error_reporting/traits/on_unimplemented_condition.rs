@@ -2,6 +2,7 @@ use rustc_ast::{MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_hir::attrs::diagnostic::*;
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_span::{Ident, Symbol, kw, sym};
+use thin_vec::ThinVec;
 
 use crate::errors::InvalidOnClause;
 
@@ -73,7 +74,7 @@ fn parse_predicate(
 fn parse_predicate_sequence(
     sequence: &[MetaItemInner],
     generics: &[Symbol],
-) -> Result<Vec<Predicate>, InvalidOnClause> {
+) -> Result<ThinVec<Predicate>, InvalidOnClause> {
     sequence.iter().map(|item| parse_predicate(item, generics)).collect()
 }
 
@@ -99,7 +100,7 @@ fn parse_name(Ident { name, span }: Ident, generics: &[Symbol]) -> Result<Name, 
 fn parse_filter(input: Symbol) -> FilterFormatString {
     let pieces = Parser::new(input.as_str(), None, None, false, ParseMode::Diagnostic)
         .map(|p| match p {
-            Piece::Lit(s) => LitOrArg::Lit(s.to_owned()),
+            Piece::Lit(s) => LitOrArg::Lit(Symbol::intern(s)),
             // We just ignore formatspecs here
             Piece::NextArgument(a) => match a.position {
                 // In `TypeErrCtxt::on_unimplemented_note` we substitute `"{integral}"` even
@@ -109,15 +110,15 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
                 //
                 // Don't try to format these later!
                 Position::ArgumentNamed(arg @ "integer" | arg @ "integral" | arg @ "float") => {
-                    LitOrArg::Lit(format!("{{{arg}}}"))
+                    LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}")))
                 }
 
                 // FIXME(mejrs) We should check if these correspond to a generic of the trait.
-                Position::ArgumentNamed(arg) => LitOrArg::Arg(arg.to_owned()),
+                Position::ArgumentNamed(arg) => LitOrArg::Arg(Symbol::intern(arg)),
 
                 // FIXME(mejrs) These should really be warnings/errors
-                Position::ArgumentImplicitlyIs(_) => LitOrArg::Lit(String::from("{}")),
-                Position::ArgumentIs(idx) => LitOrArg::Lit(format!("{{{idx}}}")),
+                Position::ArgumentImplicitlyIs(_) => LitOrArg::Lit(sym::empty_braces),
+                Position::ArgumentIs(idx) => LitOrArg::Lit(Symbol::intern(&format!("{{{idx}}}"))),
             },
         })
         .collect();
@@ -129,10 +130,9 @@ fn format_filter(slf: &FilterFormatString, generic_args: &[(Symbol, String)]) ->
 
     for piece in &slf.pieces {
         match piece {
-            LitOrArg::Lit(s) => ret.push_str(s),
-            LitOrArg::Arg(arg) => {
-                let s = Symbol::intern(arg);
-                match generic_args.iter().find(|(k, _)| *k == s) {
+            LitOrArg::Lit(s) => ret.push_str(s.as_str()),
+            LitOrArg::Arg(s) => {
+                match generic_args.iter().find(|(k, _)| k == s) {
                     Some((_, val)) => ret.push_str(val),
                     None => {
                         // FIXME(mejrs) If we start checking as mentioned in

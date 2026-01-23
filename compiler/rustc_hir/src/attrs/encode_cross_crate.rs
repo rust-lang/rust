@@ -89,6 +89,7 @@ impl AttributeKind {
             NonExhaustive(..) => Yes, // Needed for rustdoc
             ObjcClass { .. } => No,
             ObjcSelector { .. } => No,
+            OnUnimplemented { .. } => Yes,
             Optimize(..) => No,
             PanicRuntime => No,
             ParenSugar(..) => No,

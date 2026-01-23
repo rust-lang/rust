@@ -1,27 +1,39 @@
 //! Contains the data structures used by the diagnostic attribute family.
-
+pub use rustc_ast::attr::data_structures::*;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::{DesugaringKind, Span, Symbol};
+use thin_vec::ThinVec;
 
-/// Represents a format string in a on_unimplemented attribute,
-/// like the "content" in `#[diagnostic::on_unimplemented(message = "content")]`
-#[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString {
-    /// Symbol of the format string, i.e. `"content"`
-    pub symbol: Symbol,
-    /// The span of the format string, i.e. `"content"`
-    pub span: Span,
-    pub is_diagnostic_namespace_variant: bool,
-}
+use crate::attrs::PrintAttribute;
 
-#[derive(Debug)]
+#[derive(Clone, Default, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct OnUnimplementedDirective {
     pub condition: Option<OnUnimplementedCondition>,
-    pub subcommands: Vec<OnUnimplementedDirective>,
-    pub message: Option<(Span, OnUnimplementedFormatString)>,
-    pub label: Option<(Span, OnUnimplementedFormatString)>,
-    pub notes: Vec<OnUnimplementedFormatString>,
-    pub parent_label: Option<OnUnimplementedFormatString>,
+    pub subcommands: ThinVec<OnUnimplementedDirective>,
+    pub message: Option<(Span, FormatString)>,
+    pub label: Option<(Span, FormatString)>,
+    pub notes: ThinVec<FormatString>,
+    pub parent_label: Option<FormatString>,
     pub append_const_msg: Option<AppendConstMessage>,
+}
+
+impl OnUnimplementedDirective {
+    pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
+        if let Some((_, message)) = &self.message {
+            message.visit_params(visit);
+        }
+        if let Some((_, label)) = &self.label {
+            label.visit_params(visit);
+        }
+
+        if let Some(parent_label) = &self.parent_label {
+            parent_label.visit_params(visit);
+        }
+
+        for note in &self.notes {
+            note.visit_params(visit);
+        }
+    }
 }
 
 /// For the `#[rustc_on_unimplemented]` attribute
@@ -36,7 +48,18 @@ pub struct OnUnimplementedNote {
 }
 
 /// Append a message for `[const] Trait` errors.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Debug,
+    Default,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    PrintAttribute
+)]
 pub enum AppendConstMessage {
     #[default]
     Default,
@@ -45,26 +68,35 @@ pub enum AppendConstMessage {
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
 /// either as string pieces or dynamic arguments.
-#[derive(Debug)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct FormatString {
     pub input: Symbol,
     pub span: Span,
-    pub pieces: Vec<Piece>,
-    /// The formatting string was parsed successfully but with warnings
-    pub warnings: Vec<FormatWarning>,
+    pub pieces: ThinVec<Piece>,
 }
 
-#[derive(Debug)]
+impl FormatString {
+    fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
+        for piece in &self.pieces {
+            if let Piece::Arg(FormatArg::GenericParam { generic_param, span }) = piece {
+                visit(*generic_param, *span);
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum Piece {
-    Lit(String),
+    Lit(Symbol),
     Arg(FormatArg),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum FormatArg {
     // A generic parameter, like `{T}` if we're on the `From<T>` trait.
     GenericParam {
         generic_param: Symbol,
+        span: Span,
     },
     // `{Self}`
     SelfUpper,
@@ -75,19 +107,11 @@ pub enum FormatArg {
     /// what we're in, like a function, method, closure etc.
     ItemContext,
     /// What the user typed, if it doesn't match anything we can use.
-    AsIs(String),
-}
-
-#[derive(Debug)]
-pub enum FormatWarning {
-    UnknownParam { argument_name: Symbol, span: Span },
-    PositionalArgument { span: Span, help: String },
-    InvalidSpecifier { name: String, span: Span },
-    FutureIncompat { span: Span, help: String },
+    AsIs(Symbol),
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
-#[derive(Debug)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct OnUnimplementedCondition {
     pub span: Span,
     pub pred: Predicate,
@@ -97,7 +121,7 @@ pub struct OnUnimplementedCondition {
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
-#[derive(Debug)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum Predicate {
     /// A condition like `on(crate_local)`.
     Flag(Flag),
@@ -106,9 +130,9 @@ pub enum Predicate {
     /// Negation, like `on(not($pred))`.
     Not(Box<Predicate>),
     /// True if all predicates are true, like `on(all($a, $b, $c))`.
-    All(Vec<Predicate>),
+    All(ThinVec<Predicate>),
     /// True if any predicate is true, like `on(any($a, $b, $c))`.
-    Any(Vec<Predicate>),
+    Any(ThinVec<Predicate>),
 }
 
 impl Predicate {
@@ -124,7 +148,7 @@ impl Predicate {
 }
 
 /// Represents a `MetaWord` in an `on`-filter.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum Flag {
     /// Whether the code causing the trait bound to not be fulfilled
     /// is part of the user's crate.
@@ -139,7 +163,7 @@ pub enum Flag {
 /// A `MetaNameValueStr` in an `on`-filter.
 ///
 /// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct NameValue {
     pub name: Name,
     /// Something like `"&str"` or `"alloc::string::String"`,
@@ -149,7 +173,7 @@ pub struct NameValue {
 }
 
 /// The valid names of the `on` filter.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum Name {
     Cause,
     FromDesugaring,
@@ -169,15 +193,15 @@ pub enum FlagOrNv<'p> {
 /// If it is a simple literal like this then `pieces` will be `[LitOrArg::Lit("value")]`.
 /// The `Arg` variant is used when it contains formatting like
 /// `#[rustc_on_unimplemented(on(Self = "&[{A}]", message = "hello"))]`.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct FilterFormatString {
-    pub pieces: Vec<LitOrArg>,
+    pub pieces: ThinVec<LitOrArg>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum LitOrArg {
-    Lit(String),
-    Arg(String),
+    Lit(Symbol),
+    Arg(Symbol),
 }
 
 /// Used with `OnUnimplementedCondition::matches_predicate` to evaluate the

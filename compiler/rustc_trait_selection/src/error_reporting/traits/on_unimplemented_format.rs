@@ -1,10 +1,10 @@
 use std::fmt;
 use std::ops::Range;
 
-use errors::*;
 use rustc_hir::attrs::diagnostic::*;
+use rustc_hir::lints::FormatWarning;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::TraitRefPrintSugared;
-use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
@@ -12,6 +12,7 @@ use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_FORMAT_LITERALS;
 use rustc_span::def_id::DefId;
 use rustc_span::{InnerSpan, Span, Symbol, kw, sym};
 
+use crate::error_reporting::traits::on_unimplemented_format::errors::*;
 pub enum Ctx<'tcx> {
     // `#[rustc_on_unimplemented]`
     RustcOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
@@ -21,20 +22,6 @@ pub enum Ctx<'tcx> {
 
 pub fn emit_warning<'tcx>(slf: &FormatWarning, tcx: TyCtxt<'tcx>, item_def_id: DefId) {
     match *slf {
-        FormatWarning::UnknownParam { argument_name, span } => {
-            let this = tcx.item_ident(item_def_id);
-            if let Some(item_def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
-                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                    tcx.local_def_id_to_hir_id(item_def_id),
-                    span,
-                    UnknownFormatParameterForOnUnimplementedAttr {
-                        argument_name,
-                        trait_name: this,
-                    },
-                );
-            }
-        }
         FormatWarning::PositionalArgument { span, .. } => {
             if let Some(item_def_id) = item_def_id.as_local() {
                 tcx.emit_node_span_lint(
@@ -54,13 +41,6 @@ pub fn emit_warning<'tcx>(slf: &FormatWarning, tcx: TyCtxt<'tcx>, item_def_id: D
                     InvalidFormatSpecifier,
                 );
             }
-        }
-        FormatWarning::FutureIncompat { .. } => {
-            // We've never deprecated anything in diagnostic namespace format strings
-            // but if we do we will emit a warning here
-
-            // FIXME(mejrs) in a couple releases, start emitting warnings for
-            // #[rustc_on_unimplemented] deprecated args
         }
     }
 }
@@ -112,7 +92,7 @@ pub fn parse_format_string<'tcx>(
     snippet: Option<String>,
     span: Span,
     ctx: &Ctx<'tcx>,
-) -> Result<FormatString, ParseError> {
+) -> Result<(FormatString, Vec<FormatWarning>), ParseError> {
     let s = input.as_str();
     let mut parser = Parser::new(s, None, snippet, false, ParseMode::Diagnostic);
     let pieces: Vec<_> = parser.by_ref().collect();
@@ -125,7 +105,7 @@ pub fn parse_format_string<'tcx>(
     let pieces = pieces
         .into_iter()
         .map(|piece| match piece {
-            RpfPiece::Lit(lit) => Piece::Lit(lit.into()),
+            RpfPiece::Lit(lit) => Piece::Lit(Symbol::intern(lit)),
             RpfPiece::NextArgument(arg) => {
                 warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
                 let arg = parse_arg(&arg, ctx, &mut warnings, span, parser.is_source_literal);
@@ -134,23 +114,26 @@ pub fn parse_format_string<'tcx>(
         })
         .collect();
 
-    Ok(FormatString { input, pieces, span, warnings })
+    Ok((FormatString { input, pieces, span }, warnings))
 }
 
 pub fn format(slf: &FormatString, args: &FormatArgs<'_>) -> String {
     let mut ret = String::new();
     for piece in &slf.pieces {
         match piece {
-            Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
+            Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(s.as_str()),
 
             // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
-            Piece::Arg(FormatArg::GenericParam { generic_param }) => {
-                // Should always be some but we can't raise errors here
-                let value = match args.generic_args.iter().find(|(p, _)| p == generic_param) {
-                    Some((_, val)) => val.to_string(),
-                    None => generic_param.to_string(),
-                };
-                ret.push_str(&value);
+            Piece::Arg(FormatArg::GenericParam { generic_param, .. }) => {
+                match args.generic_args.iter().find(|(p, _)| p == generic_param) {
+                    Some((_, val)) => ret.push_str(val.as_str()),
+
+                    None => {
+                        // Apparently this was not actually a generic parameter, so lets write
+                        // what the user wrote.
+                        let _ = fmt::write(&mut ret, format_args!("{{{generic_param}}}"));
+                    }
+                }
             }
             // `{Self}`
             Piece::Arg(FormatArg::SelfUpper) => {
@@ -179,9 +162,6 @@ fn parse_arg<'tcx>(
     input_span: Span,
     is_source_literal: bool,
 ) -> FormatArg {
-    let (Ctx::RustcOnUnimplemented { tcx, trait_def_id }
-    | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = ctx;
-
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
 
     match arg.position {
@@ -199,17 +179,7 @@ fn parse_arg<'tcx>(
             (
                 Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
                 generic_param,
-            ) if tcx.generics_of(trait_def_id).own_params.iter().any(|param| {
-                !matches!(param.kind, GenericParamDefKind::Lifetime) && param.name == generic_param
-            }) =>
-            {
-                FormatArg::GenericParam { generic_param }
-            }
-
-            (_, argument_name) => {
-                warnings.push(FormatWarning::UnknownParam { argument_name, span });
-                FormatArg::AsIs(format!("{{{}}}", argument_name.as_str()))
-            }
+            ) => FormatArg::GenericParam { generic_param, span },
         },
 
         // `{:1}` and `{}` are ignored
@@ -218,14 +188,14 @@ fn parse_arg<'tcx>(
                 span,
                 help: format!("use `{{{idx}}}` to print a number in braces"),
             });
-            FormatArg::AsIs(format!("{{{idx}}}"))
+            FormatArg::AsIs(Symbol::intern(&format!("{{{idx}}}")))
         }
         Position::ArgumentImplicitlyIs(_) => {
             warnings.push(FormatWarning::PositionalArgument {
                 span,
                 help: String::from("use `{{}}` to print empty braces"),
             });
-            FormatArg::AsIs(String::from("{}"))
+            FormatArg::AsIs(sym::empty_braces)
         }
     }
 }

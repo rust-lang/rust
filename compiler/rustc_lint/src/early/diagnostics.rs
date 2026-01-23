@@ -4,7 +4,7 @@ use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
-use rustc_hir::lints::AttributeLintKind;
+use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -428,5 +428,26 @@ pub fn decorate_attribute_lint(
             sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
         }
         .decorate_lint(diag),
+        &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
+            lints::MalformedOnUnimplementedAttrLint { span }.decorate_lint(diag)
+        }
+        AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
+            FormatWarning::PositionalArgument { .. } => {
+                lints::DisallowedPositionalArgument.decorate_lint(diag)
+            }
+            FormatWarning::InvalidSpecifier { .. } => {
+                lints::InvalidFormatSpecifier.decorate_lint(diag)
+            }
+        },
+        AttributeLintKind::DiagnosticWrappedParserError { description, label } => {
+            lints::WrappedParserError { description, label }.decorate_lint(diag)
+        }
+        &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
+            lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
+                .decorate_lint(diag)
+        }
+        &AttributeLintKind::MissingOptionsForOnUnimplemented => {
+            lints::MissingOptionsForOnUnimplementedAttr.decorate_lint(diag)
+        }
     }
 }

@@ -355,7 +355,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
-                            err.span_label(span, s);
+                            err.span_label(span, s.as_str().to_owned());
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
