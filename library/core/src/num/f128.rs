@@ -887,10 +887,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
-    /// # // FIXME(f16_f128): enable this once const casting works
-    /// # // assert_ne!((1f128).to_bits(), 1f128 as u128); // to_bits() is not casting!
+    /// assert_ne!((1f128).to_bits(), 1f128 as u128); // to_bits() is not casting!
     /// assert_eq!((12.5f128).to_bits(), 0x40029000000000000000000000000000);
+    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]

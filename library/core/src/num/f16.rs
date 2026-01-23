@@ -884,8 +884,7 @@ impl f16 {
     /// #![feature(f16)]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
-    /// # // FIXME(f16_f128): enable this once const casting works
-    /// # // assert_ne!((1f16).to_bits(), 1f16 as u128); // to_bits() is not casting!
+    /// assert_ne!((1f16).to_bits(), 1f16 as u16); // to_bits() is not casting!
     /// assert_eq!((12.5f16).to_bits(), 0x4a40);
     /// # }
     /// ```
