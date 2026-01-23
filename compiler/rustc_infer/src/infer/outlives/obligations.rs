@@ -272,7 +272,7 @@ where
 {
     delegate: D,
     tcx: TyCtxt<'tcx>,
-    verify_bound: VerifyBoundCx<'cx, 'tcx>,
+    verify_bound_cx: VerifyBoundCx<'cx, 'tcx>,
 }
 
 pub trait OutlivesHandlingDelegate<'tcx> {
@@ -307,7 +307,7 @@ where
         Self {
             delegate,
             tcx,
-            verify_bound: VerifyBoundCx::new(
+            verify_bound_cx: VerifyBoundCx::new(
                 tcx,
                 region_bound_pairs,
                 implicit_region_bound,
@@ -387,7 +387,7 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
     ) {
-        let verify_bound = self.verify_bound.param_or_placeholder_bound(param_ty.to_ty(self.tcx));
+        let verify_bound = self.verify_bound_cx.param_or_placeholder_bound(param_ty.to_ty(self.tcx));
         self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
     }
 
@@ -399,7 +399,7 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         placeholder_ty: ty::PlaceholderType<'tcx>,
     ) {
         let verify_bound = self
-            .verify_bound
+            .verify_bound_cx
             .param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty));
         self.delegate.push_verify(
             origin,
@@ -446,14 +446,14 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         // These are guaranteed to apply, no matter the inference
         // results.
         let trait_bounds: Vec<_> =
-            self.verify_bound.declared_bounds_from_definition(alias_ty).collect();
+            self.verify_bound_cx.declared_bounds_from_definition(alias_ty).collect();
 
         debug!(?trait_bounds);
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(alias_ty);
+        let approx_env_bounds = self.verify_bound_cx.approx_declared_bounds_from_env(alias_ty);
         debug!(?approx_env_bounds);
 
         // If declared bounds list is empty, the only applicable rule is
@@ -518,7 +518,7 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound.alias_bound(alias_ty);
+        let verify_bound = self.verify_bound_cx.alias_bound(alias_ty);
         debug!("alias_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }
