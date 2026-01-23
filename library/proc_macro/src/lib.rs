@@ -54,7 +54,9 @@ use std::{error, fmt};
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 #[unstable(feature = "proc_macro_value", issue = "136652")]
 pub use rustc_literal_escaper::EscapeError;
-use rustc_literal_escaper::{MixedUnit, unescape_byte_str, unescape_c_str, unescape_str};
+use rustc_literal_escaper::{
+    MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
+};
 #[unstable(feature = "proc_macro_totokens", issue = "130977")]
 pub use to_tokens::ToTokens;
 
@@ -1440,6 +1442,28 @@ impl Literal {
             bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
                 f(&[symbol, suffix])
             }
+        })
+    }
+
+    /// Returns the unescaped char value if the current literal is a char.
+    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    pub fn byte_value(&self) -> Result<u8, ConversionErrorKind> {
+        self.0.symbol.with(|symbol| match self.0.kind {
+            bridge::LitKind::Char => {
+                unescape_byte(symbol).map_err(ConversionErrorKind::FailedToUnescape)
+            }
+            _ => Err(ConversionErrorKind::InvalidLiteralKind),
+        })
+    }
+
+    /// Returns the unescaped char value if the current literal is a char.
+    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    pub fn char_value(&self) -> Result<char, ConversionErrorKind> {
+        self.0.symbol.with(|symbol| match self.0.kind {
+            bridge::LitKind::Char => {
+                unescape_char(symbol).map_err(ConversionErrorKind::FailedToUnescape)
+            }
+            _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
 
