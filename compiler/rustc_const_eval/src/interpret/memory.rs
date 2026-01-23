@@ -237,21 +237,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.global_root_pointer(Pointer::from(id)).unwrap()
     }
 
-    pub fn va_list_ptr(
-        &mut self,
-        varargs: Vec<MPlaceTy<'tcx, M::Provenance>>,
-        index: u64,
-    ) -> Pointer<M::Provenance> {
-        let id = self.tcx.reserve_alloc_id();
-        let old = self.memory.va_list_map.insert(id, varargs);
-        assert!(old.is_none());
-        // The offset is used to store the current index.
-        let ptr = Pointer::new(id.into(), Size::from_bytes(index));
-        // Variable argument lists are global allocations, so make sure we get the right root
-        // pointer. We know this is not an `extern static` so this cannot fail.
-        self.global_root_pointer(ptr).unwrap()
-    }
-
     pub fn allocate_ptr(
         &mut self,
         size: Size,
@@ -976,7 +961,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         // # Variable argument lists
-        if let Some(_) = self.get_va_list_alloc(id) {
+        if self.memory.va_list_map.contains_key(&id) {
             return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::VaList, Mutability::Not);
         }
 
@@ -1027,18 +1012,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    pub fn get_va_list_alloc(&self, id: AllocId) -> Option<&[MPlaceTy<'tcx, M::Provenance>]> {
-        self.memory.va_list_map.get(&id).map(|v| &**v)
-    }
-
-    pub fn remove_va_list_alloc(
-        &mut self,
-        id: AllocId,
-    ) -> Option<Vec<MPlaceTy<'tcx, M::Provenance>>> {
-        self.memory.dead_alloc_map.insert(id, (Size::ZERO, Align::ONE));
-        self.memory.va_list_map.swap_remove(&id)
-    }
-
     /// Takes a pointer that is the first chunk of a `TypeId` and return the type that its
     /// provenance refers to, as well as the segment of the hash that this pointer covers.
     pub fn get_ptr_type_id(
@@ -1066,32 +1039,85 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .into()
     }
 
-    pub fn insert_va_list(
-        &self,
-        va_list: Vec<MPlaceTy<'tcx, M::Provenance>>,
-    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        trace!("get_ptr_va_list({:?})", ptr);
-        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
-        //        if offset.bytes() != 0 {
-        //            throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
-        //        }
-        self.remove_va_list_alloc(alloc_id)
-            .ok_or_else(|| err_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset))))
-            .into()
+    pub fn va_list_insert(
+        &mut self,
+        varargs: Vec<MPlaceTy<'tcx, M::Provenance>>,
+    ) -> Pointer<M::Provenance> {
+        let id = self.tcx.reserve_alloc_id();
+        let old = self.memory.va_list_map.insert(id, varargs);
+        assert!(old.is_none());
+        // Variable argument lists are global allocations, so make sure we get the right root
+        // pointer. We know this is not an `extern static` so this cannot fail.
+        self.global_root_pointer(Pointer::from(id)).unwrap()
     }
 
-    pub fn remove_va_list(
-        &self,
+    pub fn va_list_copy(
+        &mut self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        let Some(va_list) = self.memory.va_list_map.get(&alloc_id) else {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        };
+
+        let alloc_id = self.tcx.reserve_alloc_id();
+        let old = self.memory.va_list_map.insert(alloc_id, va_list.clone());
+        assert!(old.is_none());
+
+        self.global_root_pointer(Pointer::from(alloc_id))
+    }
+
+    pub fn va_list_read_arg(
+        &mut self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, Pointer<M::Provenance>)> {
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        let Some(mut va_list) = self.memory.va_list_map.swap_remove(&alloc_id) else {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        };
+
+        if va_list.is_empty() {
+            throw_ub!(VaArgOutOfBounds)
+        }
+
+        let arg = va_list.remove(0);
+
+        let alloc_id = self.tcx.reserve_alloc_id();
+        let old = self.memory.va_list_map.insert(alloc_id, va_list);
+        assert!(old.is_none());
+
+        let new_va_list_ptr = self.global_root_pointer(Pointer::from(alloc_id))?;
+        interp_ok((arg, new_va_list_ptr))
+    }
+
+    pub fn va_list_remove(
+        &mut self,
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>> {
-        trace!("get_ptr_va_list({:?})", ptr);
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
-        //        if offset.bytes() != 0 {
-        //            throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
-        //        }
-        self.remove_va_list_alloc(alloc_id)
-            .ok_or_else(|| err_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset))))
-            .into()
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        let Some(va_list) = self.memory.va_list_map.swap_remove(&alloc_id) else {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        };
+
+        self.memory.dead_alloc_map.insert(alloc_id, (Size::ZERO, Align::ONE));
+
+        interp_ok(va_list)
     }
 
     /// Get the dynamic type of the given vtable pointer.

@@ -498,7 +498,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidChar(_) => const_eval_invalid_char,
             InvalidTag(_) => const_eval_invalid_tag,
             InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
-            InvalidVaList(_) => const_eval_invalid_va_list_pointer,
+            InvalidVaListPointer(_) => const_eval_invalid_va_list_pointer,
             InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
             InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
             InvalidStr(_) => const_eval_invalid_str,
@@ -559,7 +559,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("len", len);
                 diag.arg("index", index);
             }
-            UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
+            UnterminatedCString(ptr)
+            | InvalidFunctionPointer(ptr)
+            | InvalidVTablePointer(ptr)
+            | InvalidVaListPointer(ptr) => {
                 diag.arg("pointer", ptr);
             }
             InvalidVTableTrait { expected_dyn_type, vtable_dyn_type } => {

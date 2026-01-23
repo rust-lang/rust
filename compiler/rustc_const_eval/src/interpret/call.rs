@@ -483,8 +483,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // When the frame is dropped, this ID is used to deallocate the variable arguments list.
                     self.frame_mut().va_list = varargs.clone();
 
-                    // This is a new VaList, so start at index 0.
-                    let ptr = self.va_list_ptr(varargs, 0);
+                    let ptr = self.va_list_insert(varargs);
                     let addr = Scalar::from_pointer(ptr, self);
 
                     // Zero the mplace, so it is fully initialized.
