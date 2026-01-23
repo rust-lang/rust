@@ -287,7 +287,7 @@ where
     check_exact!(f(f16::MIN_POSITIVE) => b"6103515625       ", -4);
     check_exact!(f(minf16)            => b"59604644775390625", -7);
 
-    // FIXME(f16_f128): these should gain the check_exact_one tests like `f32` and `f64` have,
+    // FIXME(f16): these should gain the check_exact_one tests like `f32` and `f64` have,
     // but these values are not easy to generate. The algorithm from the Paxon paper [1] needs
     // to be adapted to binary16.
 }

@@ -1,9 +1,11 @@
 //@ run-pass
+//@ compile-flags: --check-cfg=cfg(target_has_reliable_f16,target_has_reliable_f128)
 
 // Test half-open range patterns against their expression equivalents
 // via `.contains(...)` and make sure the dynamic semantics match.
 
 #![allow(unreachable_patterns)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(f128)]
 #![feature(f16)]
 
@@ -42,8 +44,7 @@ fn range_to_inclusive() {
     assert!(!yes!('b', ..='a'));
 
     // f16; `..=X`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert!(yes!(f16::NEG_INFINITY, ..=f16::NEG_INFINITY));
         assert!(yes!(f16::NEG_INFINITY, ..=1.0f16));
@@ -64,8 +65,7 @@ fn range_to_inclusive() {
     assert!(!yes!(1.6f64, ..=-1.5f64));
 
     // f128; `..=X`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f128)]
     {
         assert!(yes!(f128::NEG_INFINITY, ..=f128::NEG_INFINITY));
         assert!(yes!(f128::NEG_INFINITY, ..=1.0f128));
@@ -106,8 +106,7 @@ fn range_to() {
     assert!(!yes!('b', ..'a'));
 
     // f16; `..X`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert!(yes!(f16::NEG_INFINITY, ..1.0f16));
         assert!(!yes!(1.5f16, ..1.5f16));
@@ -131,8 +130,7 @@ fn range_to() {
     assert!(!yes!(1.6f64, ..1.5f64));
 
     // f128; `..X`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f128)]
     {
         assert!(yes!(f128::NEG_INFINITY, ..1.0f128));
         assert!(!yes!(1.5f128, ..1.5f128));
@@ -174,8 +172,7 @@ fn range_from() {
     assert!(yes!(core::char::MAX, core::char::MAX..));
 
     // f16; `X..`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert!(yes!(f16::NEG_INFINITY, f16::NEG_INFINITY..));
         assert!(yes!(f16::INFINITY, f16::NEG_INFINITY..));
@@ -208,8 +205,7 @@ fn range_from() {
     assert!(yes!(f64::INFINITY, f64::INFINITY..));
 
     // f128; `X..`
-    // FIXME(f16_f128): remove gate when ABI issues are resolved
-    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    #[cfg(target_has_reliable_f128)]
     {
         assert!(yes!(f128::NEG_INFINITY, f128::NEG_INFINITY..));
         assert!(yes!(f128::INFINITY, f128::NEG_INFINITY..));
