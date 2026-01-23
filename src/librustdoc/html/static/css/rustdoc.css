@@ -341,7 +341,8 @@ summary.hideme,
 .rustdoc-breadcrumbs,
 .search-switcher,
 /* This selector is for the items listed in the "all items" page. */
-ul.all-items {
+ul.all-items,
+.deprecated-count {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
@@ -2650,6 +2651,14 @@ However, it's not needed with smaller screen width because the doc/code block is
 .hide-deprecated-items .deprecated,
 .hide-deprecated-items .deprecated + .item-info {
 	display: none;
+}
+
+.deprecated-count {
+	display: none;
+}
+.hide-deprecated-items .deprecated-count:not(:empty) {
+	display: block;
+	margin: 10px 0;
 }
 
 /*
