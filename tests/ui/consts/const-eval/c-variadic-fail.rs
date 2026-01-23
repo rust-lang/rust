@@ -7,6 +7,7 @@
 #![feature(const_clone)]
 
 use std::ffi::VaList;
+use std::mem::MaybeUninit;
 
 const unsafe extern "C" fn read_n<const N: usize>(mut ap: ...) {
     let mut i = N;
@@ -104,7 +105,7 @@ fn manual_copy_drop() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR va_end on unknown va_list allocation ALLOC0 [E0080]
+    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_forget() {
@@ -120,7 +121,7 @@ fn manual_copy_forget() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR va_end on unknown va_list allocation ALLOC0 [E0080]
+    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
 }
 
 fn manual_copy_read() {
@@ -133,7 +134,16 @@ fn manual_copy_read() {
     }
 
     const { unsafe { helper(1, 2, 3) } };
-    //~^ ERROR va_arg on unknown va_list allocation ALLOC0
+    //~^ ERROR using ALLOC0 as variable argument list pointer but it does not point to a variable argument list [E0080]
+}
+
+fn drop_of_invalid() {
+    const {
+        let mut invalid: MaybeUninit<VaList> = MaybeUninit::zeroed();
+        unsafe { invalid.as_mut_ptr().cast::<usize>().write(0xdeadbeef) };
+        let ap = unsafe { invalid.assume_init() };
+    }
+    //~^ ERROR pointer not dereferenceable: pointer must point to some allocation, but got 0xdeadbeef[noalloc]
 }
 
 fn main() {
@@ -143,5 +153,6 @@ fn main() {
         manual_copy_read();
         manual_copy_drop();
         manual_copy_forget();
+        drop_of_invalid();
     }
 }

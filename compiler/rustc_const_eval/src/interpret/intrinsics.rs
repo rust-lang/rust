@@ -23,7 +23,7 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
     PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
-    throw_ub, throw_ub_custom, throw_ub_format, throw_unsup_format,
+    throw_ub_custom, throw_ub_format, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
@@ -748,18 +748,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     scalar.to_pointer(self)?
                 };
 
-                let (prov, offset) = src_va_list_ptr.into_raw_parts();
-                let src_alloc_id = prov.unwrap().get_alloc_id().unwrap();
-                let index = offset.bytes();
-
-                // Look up arguments without consuming src.
-                let Some(arguments) = self.get_va_list_alloc(src_alloc_id) else {
-                    throw_unsup_format!("va_copy on unknown va_list allocation {:?}", src_alloc_id);
-                };
-
-                // Create a new allocation pointing at the same index.
-                let new_va_list_ptr = self.va_list_ptr(arguments.to_vec(), index);
-                let addr = Scalar::from_pointer(new_va_list_ptr, self);
+                let copy_va_list_ptr = self.va_list_copy(src_va_list_ptr)?;
+                let addr = Scalar::from_pointer(copy_va_list_ptr, self);
 
                 // Now overwrite the token pointer stored inside the VaList.
                 let mplace = self.force_allocation(dest)?;
@@ -784,12 +774,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     scalar.to_pointer(self)?
                 };
 
-                let (prov, _offset) = va_list_ptr.into_raw_parts();
-                let alloc_id = prov.unwrap().get_alloc_id().unwrap();
-
-                let Some(_) = self.remove_va_list_alloc(alloc_id) else {
-                    throw_unsup_format!("va_end on unknown va_list allocation {:?}", alloc_id)
-                };
+                self.va_list_remove(va_list_ptr)?;
             }
 
             sym::va_arg => {
@@ -809,21 +794,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     scalar.to_pointer(self)?
                 };
 
-                let (prov, offset) = va_list_ptr.into_raw_parts();
-                let alloc_id = prov.unwrap().get_alloc_id().unwrap();
-                let index = offset.bytes();
+                let (src_mplace, new_va_list_ptr) = self.va_list_read_arg(va_list_ptr)?;
 
-                let Some(varargs) = self.remove_va_list_alloc(alloc_id) else {
-                    throw_unsup_format!("va_arg on unknown va_list allocation {:?}", alloc_id)
-                };
-
-                let Some(src_mplace) = varargs.get(offset.bytes_usize()).cloned() else {
-                    throw_ub!(VaArgOutOfBounds)
-                };
-
-                // Update the offset in this `VaList` value so that a subsequent call to `va_arg`
-                // reads the next argument.
-                let new_va_list_ptr = self.va_list_ptr(varargs, index + 1);
                 let addr = Scalar::from_pointer(new_va_list_ptr, self);
                 let mut alloc = self
                     .get_ptr_alloc_mut(ap_ref, ptr_size)?
