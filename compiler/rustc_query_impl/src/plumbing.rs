@@ -199,21 +199,21 @@ pub fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-macro_rules! handle_cycle_error {
+macro_rules! cycle_error_handling {
     ([]) => {{
-        rustc_query_system::HandleCycleError::Error
+        rustc_query_system::query::CycleErrorHandling::Error
     }};
     ([(cycle_fatal) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::Fatal
+        rustc_query_system::query::CycleErrorHandling::Fatal
     }};
     ([(cycle_stash) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::Stash
+        rustc_query_system::query::CycleErrorHandling::Stash
     }};
     ([(cycle_delay_bug) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::DelayBug
+        rustc_query_system::query::CycleErrorHandling::DelayBug
     }};
     ([$other:tt $($modifiers:tt)*]) => {
-        handle_cycle_error!([$($modifiers)*])
+        cycle_error_handling!([$($modifiers)*])
     };
 }
 
@@ -618,7 +618,7 @@ macro_rules! define_queries {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
-                    handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
+                    cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),

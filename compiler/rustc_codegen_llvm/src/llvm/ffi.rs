@@ -2347,6 +2347,7 @@ unsafe extern "C" {
         DebugInfoCompression: CompressionKind,
         UseEmulatedTls: bool,
         UseWasmEH: bool,
+        LargeDataThreshold: u64,
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
