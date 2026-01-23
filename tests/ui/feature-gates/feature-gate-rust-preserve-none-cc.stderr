@@ -1,0 +1,73 @@
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:3:8
+   |
+LL | extern "rust-preserve-none" fn apple() {}
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:6:12
+   |
+LL |     extern "rust-preserve-none" fn banana();
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:7:12
+   |
+LL |     extern "rust-preserve-none" fn citrus() {}
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:12:12
+   |
+LL |     extern "rust-preserve-none" fn banana() {}
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:16:12
+   |
+LL |     extern "rust-preserve-none" fn durian() {}
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:19:19
+   |
+LL | type Fig = extern "rust-preserve-none" fn();
+   |                   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-preserve-none" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust-preserve-none-cc.rs:21:8
+   |
+LL | extern "rust-preserve-none" {}
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151401 <https://github.com/rust-lang/rust/issues/151401> for more information
+   = help: add `#![feature(rust_preserve_none_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
