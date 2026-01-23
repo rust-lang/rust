@@ -5,8 +5,8 @@ use std::cell::RefCell;
 use proc_macro2::TokenStream;
 use quote::quote;
 use synstructure::Structure;
-
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
+use crate::diagnostics::diagnostic_attr::PrimaryMessage;
+use crate::diagnostics::diagnostic_builder::{DiagnosticDeriveKind};
 use crate::diagnostics::error::DiagnosticDeriveError;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
@@ -24,11 +24,12 @@ impl<'a> DiagnosticDerive<'a> {
         let kind = DiagnosticDeriveKind::Diagnostic;
         let slugs = RefCell::new(Vec::new());
         let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(variant);
-            let body = builder.body(variant);
+            let preamble = builder.preamble();
+            // let body = builder.body(variant);
 
-            let Some(slug) = builder.primary_message() else {
-                return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+            let slug = builder.diag_attr.primary_message;
+            let PrimaryMessage::Slug(slug) = slug else {
+                todo!()
             };
             slugs.borrow_mut().push(slug.clone());
             let init = quote! {
@@ -39,12 +40,12 @@ impl<'a> DiagnosticDerive<'a> {
                 );
             };
 
-            let formatting_init = &builder.formatting_init;
+            // let formatting_init = &builder.formatting_init;
             quote! {
                 #init
-                #formatting_init
+                // #formatting_init
                 #preamble
-                #body
+                // #body
                 diag
             }
         });
@@ -88,23 +89,25 @@ impl<'a> LintDiagnosticDerive<'a> {
         let kind = DiagnosticDeriveKind::LintDiagnostic;
         let slugs = RefCell::new(Vec::new());
         let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(variant);
-            let body = builder.body(variant);
+            let preamble = builder.preamble();
+            // let body = builder.body(variant);
 
-            let Some(slug) = builder.primary_message() else {
-                return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+            let slug = builder.diag_attr.primary_message;
+            let PrimaryMessage::Slug(slug) = slug else {
+                todo!()
             };
             slugs.borrow_mut().push(slug.clone());
+
             let primary_message = quote! {
                 diag.primary_message(crate::fluent_generated::#slug);
             };
 
-            let formatting_init = &builder.formatting_init;
+            // let formatting_init = &builder.formatting_init;
             quote! {
                 #primary_message
                 #preamble
-                #formatting_init
-                #body
+                // #formatting_init
+                // #body
                 diag
             }
         });

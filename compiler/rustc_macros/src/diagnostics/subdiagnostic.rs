@@ -11,7 +11,7 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError, invalid_attr, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::utils::{
-    AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
+    AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, SetOnce,
     SpannedOption, SubdiagnosticKind, build_field_mapping, build_suggestion_code, is_doc_comment,
     new_code_ident, report_error_if_not_applied_to_applicability,
     report_error_if_not_applied_to_span, should_generate_arg,
@@ -142,12 +142,6 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     is_enum: bool,
 }
 
-impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
-        self.fields.get(field)
-    }
-}
-
 /// Provides frequently-needed information about the diagnostic kinds being derived for this type.
 #[derive(Clone, Copy, Debug)]
 struct KindsStatistics {
@@ -194,7 +188,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         for attr in self.variant.ast().attrs {
             let Some(SubdiagnosticVariant { kind, slug, no_span }) =
-                SubdiagnosticVariant::from_attr(attr, self)?
+                SubdiagnosticVariant::from_attr(attr, &self.fields)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
@@ -444,7 +438,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                         let formatting_init = build_suggestion_code(
                             &code_field,
                             nested,
-                            self,
+                            &self.fields,
                             AllowMultipleAlternatives::No,
                         );
                         code.set_once((code_field, formatting_init), span);
