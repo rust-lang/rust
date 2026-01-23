@@ -144,11 +144,6 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             error = true;
         }
-        let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
-            infcx.err_ctxt().report_fulfillment_errors(errors);
-            error = true;
-        }
 
         let region_errors =
             infcx.resolve_regions(main_diagnostics_def_id, param_env, tcx.mk_type_list(&[]));
