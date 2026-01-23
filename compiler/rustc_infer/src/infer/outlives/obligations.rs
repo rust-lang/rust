@@ -244,15 +244,20 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 debug!(?sup_type, ?sub_region, ?origin);
 
-                let outlives = &mut TypeOutlives::new(
-                    self,
-                    self.tcx,
-                    outlives_env.region_bound_pairs(),
-                    None,
-                    outlives_env.known_type_outlives(),
-                );
                 let category = origin.to_constraint_category();
-                outlives.type_must_outlive(origin, sup_type, sub_region, category);
+                require_type_outlives(
+                    &mut TypeOutlivesOpCtxt::new(
+                        self,
+                        self.tcx,
+                        outlives_env.region_bound_pairs(),
+                        None,
+                        outlives_env.known_type_outlives(),
+                    ),
+                    origin,
+                    sup_type,
+                    sub_region,
+                    category,
+                );
             }
         }
 
@@ -260,25 +265,17 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
-/// obligation into a series of `'a: 'b` constraints and "verify"s, as
-/// described on the module comment. The final constraints are emitted
-/// via a "delegate" of type `D` -- this is usually the `infcx`, which
-/// accrues them into the `region_obligations` code, but for NLL we
-/// use something else.
-//
-// TODO: rename this lol
-pub struct TypeOutlives<'cx, 'tcx, D>
+/// Holds necessary context for the [`require_type_outlives`] operation.
+pub struct TypeOutlivesOpCtxt<'cx, 'tcx, D>
 where
-    D: TypeOutlivesDelegate<'tcx>,
+    D: OutlivesHandlingDelegate<'tcx>,
 {
     delegate: D,
     tcx: TyCtxt<'tcx>,
     verify_bound: VerifyBoundCx<'cx, 'tcx>,
 }
 
-// TODO: rename this
-pub trait TypeOutlivesDelegate<'tcx> {
+pub trait OutlivesHandlingDelegate<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -296,9 +293,9 @@ pub trait TypeOutlivesDelegate<'tcx> {
     );
 }
 
-impl<'cx, 'tcx, D> TypeOutlives<'cx, 'tcx, D>
+impl<'cx, 'tcx, D> TypeOutlivesOpCtxt<'cx, 'tcx, D>
 where
-    D: TypeOutlivesDelegate<'tcx>,
+    D: OutlivesHandlingDelegate<'tcx>,
 {
     pub fn new(
         delegate: D,
@@ -318,29 +315,35 @@ where
             ),
         }
     }
+}
 
-    /// Adds constraints to inference such that `T: 'a` holds (or
-    /// reports an error if it cannot).
-    ///
-    /// # Parameters
-    ///
-    /// - `origin`, the reason we need this constraint
-    /// - `ty`, the type `T`
-    /// - `region`, the region `'a`
-    #[instrument(level = "debug", skip(self))]
-    pub fn type_must_outlive(
-        &mut self,
-        origin: infer::SubregionOrigin<'tcx>,
-        ty: Ty<'tcx>,
-        region: ty::Region<'tcx>,
-        category: ConstraintCategory<'tcx>,
-    ) {
-        assert!(!ty.has_escaping_bound_vars());
+/// "lowers" a `T: 'a` obligation into a series of `'a: 'b` constraints
+/// and "verify"s, as described on the module comment. The final constraints
+/// are emitted via a "delegate" of type `D` -- this is either the `infcx`, which
+/// accrues them into the `region_obligations` code, or a `ConstraintConversion`
+/// (used during borrow checking).
+///
+/// # Parameters
+///
+/// - `origin`, the reason we need this constraint
+/// - `ty`, the type `T`
+/// - `region`, the region `'a`
+#[instrument(level = "debug", skip(ctxt))]
+pub fn require_type_outlives<'tcx, D: OutlivesHandlingDelegate<'tcx>>(
+    ctxt: &mut TypeOutlivesOpCtxt<'_, 'tcx, D>,
+    // ideally this would be in `ctxt` but then we lose ownership
+    origin: infer::SubregionOrigin<'tcx>,
+    ty: Ty<'tcx>,
+    region: ty::Region<'tcx>,
+    category: ConstraintCategory<'tcx>,
+) {
+    assert!(!ty.has_escaping_bound_vars());
 
-        let components = compute_outlives_components(self.tcx, ty);
-        self.components_must_outlive(origin, &components, region, category);
-    }
+    let components = compute_outlives_components(ctxt.tcx, ty);
+    ctxt.components_must_outlive(origin, &components, region, category);
+}
 
+impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
     fn components_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
@@ -547,7 +550,7 @@ where
                     }
                 }
                 GenericArgKind::Type(ty) => {
-                    self.type_must_outlive(origin.clone(), ty, region, constraint);
+                    require_type_outlives(self, origin.clone(), ty, region, constraint);
                 }
                 GenericArgKind::Const(_) => {
                     // Const parameters don't impose constraints.
@@ -557,7 +560,7 @@ where
     }
 }
 
-impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
+impl<'cx, 'tcx> OutlivesHandlingDelegate<'tcx> for &'cx InferCtxt<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
