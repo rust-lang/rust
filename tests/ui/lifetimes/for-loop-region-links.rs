@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17068>
 //@ run-pass
 // Test that regionck creates the right region links in the pattern
 // binding of a for loop

@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/74564>
 //@ build-pass
 // ignore-tidy-filelength
 #![crate_type = "rlib"]

@@ -1,3 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/47715>
+
 trait Foo {}
 
 trait Bar<T> {}
