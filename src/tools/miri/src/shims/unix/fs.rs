@@ -443,7 +443,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
 
-    fn lseek64(
+    fn lseek(
         &mut self,
         fd_num: i32,
         offset: i128,
@@ -899,14 +899,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+    fn readdir(&mut self, dirp_op: &OpTy<'tcx>, dest: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         if !matches!(
             &this.tcx.sess.target.os,
             Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
         ) {
-            panic!("`readdir64` should not be called on {}", this.tcx.sess.target.os);
+            panic!("`readdir` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -915,11 +915,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir`", reject_with)?;
             this.set_last_error(LibcError("EBADF"))?;
-            return interp_ok(Scalar::null_ptr(this));
+            this.write_null(dest)?;
+            return interp_ok(());
         }
 
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).ok_or_else(|| {
-            err_unsup_format!("the DIR pointer passed to readdir64 did not come from opendir")
+            err_ub_format!("the DIR pointer passed to `readdir` did not come from opendir")
         })?;
 
         let entry = match open_dir.read_dir.next() {
@@ -967,7 +968,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let name_bytes = name.as_encoded_bytes();
                 let name_len = u64::try_from(name_bytes.len()).unwrap();
 
-                let dirent_layout = this.libc_ty_layout(dirent_type);
+                // We just use the pointee type here since determining the right pointee type
+                // independently is highly non-trivial: it depends on which exact alias of the
+                // function was invoked (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also
+                // depends on the ABI level which can be different between the libc used by std and
+                // the libc used by everyone else.
+                let dirent_ty = dest.layout.ty.builtin_deref(true).unwrap();
+                let dirent_layout = this.layout_of(dirent_ty)?;
                 let fields = &dirent_layout.fields;
                 let last_field = fields.count().strict_sub(1);
                 let d_name_offset = fields.offset(last_field).bytes();
@@ -1025,7 +1032,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.deallocate_ptr(old_entry, None, MiriMemoryKind::Runtime.into())?;
         }
 
-        interp_ok(Scalar::from_maybe_pointer(entry.unwrap_or_else(Pointer::null), this))
+        this.write_pointer(entry.unwrap_or_else(Pointer::null), dest)?;
+        interp_ok(())
     }
 
     fn macos_readdir_r(

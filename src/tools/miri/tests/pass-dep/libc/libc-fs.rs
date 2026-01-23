@@ -614,7 +614,6 @@ fn test_opendir_closedir() {
 fn test_readdir() {
     use std::fs::{create_dir, remove_dir, write};
 
-    use libc::opendir;
     let dir_path = utils::prepare_dir("miri_test_libc_readdir");
     create_dir(&dir_path).ok();
 
@@ -627,12 +626,13 @@ fn test_readdir() {
     let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
 
     unsafe {
-        let dirp = opendir(c_path.as_ptr());
+        let dirp = libc::opendir(c_path.as_ptr());
         assert!(!dirp.is_null());
         let mut entries = Vec::new();
         loop {
             cfg_if::cfg_if! {
                 if #[cfg(target_os = "macos")] {
+                    // On macos we only support readdir_r as that's what std uses there.
                     use std::mem::MaybeUninit;
                     use libc::dirent;
                     let mut entry: MaybeUninit<dirent> = MaybeUninit::uninit();
@@ -641,8 +641,6 @@ fn test_readdir() {
                     assert_eq!(ret, 0);
                     let entry_ptr = result;
                 } else {
-                    // TODO : Fix the bug with FreeBSD (reading files with empty names)
-                    // run  : ./miri test --target x86_64-unknown-freebsd tests/pass-dep/libc/libc-fs.rs
                     let entry_ptr = libc::readdir(dirp);
                 }
             }
@@ -652,13 +650,11 @@ fn test_readdir() {
             let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
             let name = CStr::from_ptr(name_ptr);
             let name_str = name.to_string_lossy();
-            if name_str != "." && name_str != ".." {
-                entries.push(name_str.into_owned());
-            }
+            entries.push(name_str.into_owned());
         }
         assert_eq!(libc::closedir(dirp), 0);
         entries.sort();
-        assert_eq!(entries, vec!["file1.txt", "file2.txt"]);
+        assert_eq!(&entries, &["file1.txt", "file2.txt"]);
     }
 
     remove_file(&file1).unwrap();
