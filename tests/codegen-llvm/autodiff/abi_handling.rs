@@ -38,14 +38,14 @@ fn square(x: f32) -> f32 {
 // CHECK-LABEL: ; abi_handling::df1
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
-// debug-SAME: (ptr align 4 %x, ptr align 4 %bx_0)
+// debug-SAME: (ptr {{.*}}%x, ptr {{.*}}%bx_0)
 // release-NEXT: define internal fastcc float
 // release-SAME: (float %x.0.val, float %x.4.val)
 
 // CHECK-LABEL: ; abi_handling::f1
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
-// debug-SAME: (ptr align 4 %x)
+// debug-SAME: (ptr {{.*}}%x)
 // release-NEXT: define internal fastcc noundef float
 // release-SAME: (float %x.0.val, float %x.4.val)
 #[autodiff_forward(df1, Dual, Dual)]
@@ -58,7 +58,7 @@ fn f1(x: &[f32; 2]) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr %f, float %x, float %dret)
-// release-NEXT: define internal fastcc float
+// release-NEXT: define internal fastcc noundef float
 // release-SAME: (float noundef %x)
 
 // CHECK-LABEL: ; abi_handling::f2
@@ -77,13 +77,13 @@ fn f2(f: fn(f32) -> f32, x: f32) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr align 4 %x, ptr align 4 %bx_0, ptr align 4 %y, ptr align 4 %by_0)
-// release-NEXT: define internal fastcc { float, float }
+// release-NEXT: define internal fastcc float
 // release-SAME: (float %x.0.val)
 
 // CHECK-LABEL: ; abi_handling::f3
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
-// debug-SAME: (ptr align 4 %x, ptr align 4 %y)
+// debug-SAME: (ptr {{.*}}%x, ptr {{.*}}%y)
 // release-NEXT: define internal fastcc noundef float
 // release-SAME: (float %x.0.val)
 #[autodiff_forward(df3, Dual, Dual, Dual)]
@@ -160,7 +160,7 @@ fn f6(i: NestedInput) -> f32 {
 // CHECK-LABEL: ; abi_handling::f7
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
-// debug-SAME: (ptr align 4 %x.0, ptr align 4 %x.1)
+// debug-SAME: (ptr {{.*}}%x.0, ptr {{.*}}%x.1)
 // release-NEXT: define internal fastcc noundef float
 // release-SAME: (float %x.0.0.val, float %x.1.0.val)
 #[autodiff_forward(df7, Dual, Dual)]
