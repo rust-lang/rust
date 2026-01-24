@@ -173,7 +173,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::BodyStability { stability: Box::new(stability), span })
+        Some(AttributeKind::BodyStability { stability, span })
     }
 }
 

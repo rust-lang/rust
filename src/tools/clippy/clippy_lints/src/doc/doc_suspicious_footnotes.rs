@@ -50,7 +50,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             .filter(|attr| {
                                 matches!(
                                     attr,
-                                    Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. }))
+                                    Attribute::Parsed(AttributeKind::DocComment(DocComment { span, .. }))
                                     if span.overlaps(this_fragment.span),
                                 )
                             })

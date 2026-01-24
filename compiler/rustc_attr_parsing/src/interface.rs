@@ -297,14 +297,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         continue;
                     }
 
-                    attributes.push(Attribute::Parsed(AttributeKind::DocComment(Box::new(
-                        DocComment {
-                            style: attr.style,
-                            kind: DocFragmentKind::Sugared(*comment_kind),
-                            span: attr_span,
-                            comment: *symbol,
-                        },
-                    ))))
+                    attributes.push(Attribute::Parsed(AttributeKind::DocComment(DocComment {
+                        style: attr.style,
+                        kind: DocFragmentKind::Sugared(*comment_kind),
+                        span: attr_span,
+                        comment: *symbol,
+                    })))
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -362,12 +360,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             && let Some(comment) = nv.value_as_str()
                         {
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment(
-                                Box::new(DocComment {
+                                DocComment {
                                     style: attr.style,
                                     kind: DocFragmentKind::Raw(nv.value_span),
                                     span: attr_span,
                                     comment,
-                                }),
+                                },
                             )));
                             continue;
                         }

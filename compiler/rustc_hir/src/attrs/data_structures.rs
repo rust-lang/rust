@@ -809,7 +809,7 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
-        stability: Box<DefaultBodyStability>,
+        stability: DefaultBodyStability,
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
@@ -889,7 +889,7 @@ pub enum AttributeKind {
 
     /// Represents specifically [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     /// i.e. doc comments.
-    DocComment(Box<DocComment>),
+    DocComment(DocComment),
 
     /// Represents `#[rustc_dummy]`.
     Dummy,
@@ -976,7 +976,7 @@ pub enum AttributeKind {
     MayDangle(Span),
 
     /// Represents `#[move_size_limit]`
-    MoveSizeLimit(Box<LimitAttribute>),
+    MoveSizeLimit(LimitAttribute),
 
     /// Represents `#[must_not_suspend]`
     MustNotSupend { reason: Option<Symbol> },
@@ -1046,7 +1046,7 @@ pub enum AttributeKind {
     Path(Symbol, Span),
 
     /// Represents `#[pattern_complexity_limit]`
-    PatternComplexityLimit(Box<LimitAttribute>),
+    PatternComplexityLimit(LimitAttribute),
 
     /// Represents `#[pin_v2]`
     PinV2(Span),
@@ -1061,7 +1061,7 @@ pub enum AttributeKind {
     ProcMacroAttribute(Span),
 
     /// Represents `#[proc_macro_derive]`
-    ProcMacroDerive(Box<ProcMacroDerive>),
+    ProcMacroDerive(ProcMacroDerive),
 
     /// Represents `#[profiler_runtime]`
     ProfilerRuntime,
@@ -1070,7 +1070,7 @@ pub enum AttributeKind {
     PubTransparent(Span),
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
-    RecursionLimit(Box<LimitAttribute>),
+    RecursionLimit(LimitAttribute),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
@@ -1085,7 +1085,7 @@ pub enum AttributeKind {
     RustcAllocatorZeroedVariant { name: Symbol },
 
     /// Represents `#[rustc_builtin_macro]`.
-    RustcBuiltinMacro(Box<RustcBuiltinMacro>),
+    RustcBuiltinMacro(RustcBuiltinMacro),
 
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
@@ -1212,7 +1212,7 @@ pub enum AttributeKind {
 
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
-    TargetFeature(Box<TargetFeature>),
+    TargetFeature(TargetFeature),
 
     /// Represents `#[thread_local]`
     ThreadLocal,
@@ -1224,7 +1224,7 @@ pub enum AttributeKind {
     TypeConst(Span),
 
     /// Represents `#[type_length_limit]`
-    TypeLengthLimit(Box<LimitAttribute>),
+    TypeLengthLimit(LimitAttribute),
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),

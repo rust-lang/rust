@@ -111,10 +111,8 @@ impl<'a> State<'a> {
                 self.word("]");
                 self.hardbreak()
             }
-            hir::Attribute::Parsed(AttributeKind::DocComment(box DocComment {
-                kind,
-                comment,
-                ..
+            hir::Attribute::Parsed(AttributeKind::DocComment(DocComment {
+                kind, comment, ..
             })) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
                     *kind, style, *comment,

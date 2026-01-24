@@ -1654,7 +1654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
         let safety = if find_attr!(
             attrs,
-            AttributeKind::TargetFeature(box TargetFeature { was_forced: false, .. })
+            AttributeKind::TargetFeature(TargetFeature { was_forced: false, .. })
         ) && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {

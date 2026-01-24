@@ -2021,7 +2021,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     MacroKind::Bang
                 } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive(box ProcMacroDerive { trait_name, ..}) => trait_name)
+                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive(ProcMacroDerive { trait_name, ..}) => trait_name)
                 {
                     name = *trait_name;
                     MacroKind::Derive

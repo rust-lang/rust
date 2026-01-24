@@ -96,12 +96,12 @@ hir-stats - Trait                    256 (NN.N%)             4
 hir-stats Variant                  144 (NN.N%)             2            72
 hir-stats GenericArgs              144 (NN.N%)             3            48
 hir-stats FieldDef                 128 (NN.N%)             2            64
+hir-stats Attribute                128 (NN.N%)             4            32
 hir-stats FnDecl                   120 (NN.N%)             3            40
 hir-stats Stmt                      96 (NN.N%)             3            32
 hir-stats - Expr                      32 (NN.N%)             1
 hir-stats - Let                       32 (NN.N%)             1
 hir-stats - Semi                      32 (NN.N%)             1
-hir-stats Attribute                 96 (NN.N%)             4            24
 hir-stats Arm                       80 (NN.N%)             2            40
 hir-stats WherePredicate            72 (NN.N%)             3            24
 hir-stats - BoundPredicate            72 (NN.N%)             3
@@ -119,5 +119,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_512                   172
+hir-stats Total                  8_544                   172
 hir-stats ================================================================

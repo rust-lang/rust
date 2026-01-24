@@ -38,7 +38,7 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
     attrs
         .iter()
         .filter_map(|attr| {
-            if let Attribute::Parsed(AttributeKind::DocComment(box DocComment {
+            if let Attribute::Parsed(AttributeKind::DocComment(DocComment {
                 style: AttrStyle::Outer,
                 kind: DocFragmentKind::Sugared(comment_kind),
                 comment,

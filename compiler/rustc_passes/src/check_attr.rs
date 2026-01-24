@@ -174,7 +174,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Deprecation {span: attr_span, .. }) => {
                     self.check_deprecated(hir_id, *attr_span, target)
                 }
-                Attribute::Parsed(AttributeKind::TargetFeature(box TargetFeature { attr_span, ..})) => {
+                Attribute::Parsed(AttributeKind::TargetFeature(TargetFeature { attr_span, ..})) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
                 }
                 Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {

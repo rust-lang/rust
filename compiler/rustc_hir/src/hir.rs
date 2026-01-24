@@ -1357,7 +1357,7 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn is_doc_comment(&self) -> Option<Span> {
-        if let Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. })) = self {
+        if let Attribute::Parsed(AttributeKind::DocComment(DocComment { span, .. })) = self {
             Some(*span)
         } else {
             None
@@ -1369,7 +1369,7 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::DocComment(box DocComment { span, .. })) => *span,
+            Attribute::Parsed(AttributeKind::DocComment(DocComment { span, .. })) => *span,
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
@@ -1404,7 +1404,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment(box DocComment { comment, .. })) => {
+            Attribute::Parsed(AttributeKind::DocComment(DocComment { comment, .. })) => {
                 Some(*comment)
             }
             _ => None,
@@ -1426,18 +1426,16 @@ impl AttributeExt for Attribute {
     #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment(box DocComment {
-                kind, comment, ..
-            })) => Some((*comment, *kind)),
+            Attribute::Parsed(AttributeKind::DocComment(DocComment { kind, comment, .. })) => {
+                Some((*comment, *kind))
+            }
             _ => None,
         }
     }
 
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match self {
-            Attribute::Parsed(AttributeKind::DocComment(box DocComment { style, .. })) => {
-                Some(*style)
-            }
+            Attribute::Parsed(AttributeKind::DocComment(DocComment { style, .. })) => Some(*style),
             Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
                 Some(attr.style)
             }
@@ -5070,8 +5068,8 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Attribute, 24);
-    static_assert_size!(AttributeKind, 24);
+    static_assert_size!(Attribute, 32);
+    static_assert_size!(AttributeKind, 32);
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);
     static_assert_size!(Expr<'_>, 64);

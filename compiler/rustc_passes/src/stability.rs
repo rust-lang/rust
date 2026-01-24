@@ -197,7 +197,7 @@ fn lookup_default_body_stability(
 
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
     // FIXME: check that this item can have body stability
-    find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => **stability)
+    find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability)
 }
 
 #[instrument(level = "debug", skip(tcx))]

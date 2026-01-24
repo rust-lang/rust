@@ -533,7 +533,7 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature(box TargetFeature {attr_span: span, was_forced: false, ..}) => *span);
+                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature(TargetFeature {attr_span: span, was_forced: false, ..}) => *span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );

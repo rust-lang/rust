@@ -524,11 +524,11 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
     const CONVERT: ConvertFn<Self::Item> = |items, span| {
-        AttributeKind::TargetFeature(Box::new(TargetFeature {
+        AttributeKind::TargetFeature(TargetFeature {
             features: items,
             attr_span: span,
             was_forced: false,
-        }))
+        })
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
@@ -558,11 +558,11 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::force_target_feature];
     const CONVERT: ConvertFn<Self::Item> = |items, span| {
-        AttributeKind::TargetFeature(Box::new(TargetFeature {
+        AttributeKind::TargetFeature(TargetFeature {
             features: items,
             attr_span: span,
             was_forced: true,
-        }))
+        })
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

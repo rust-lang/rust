@@ -929,11 +929,9 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
         ),
         AK::ExportName { name, span: _ } => Attribute::ExportName(name.to_string()),
         AK::LinkSection { name, span: _ } => Attribute::LinkSection(name.to_string()),
-        AK::TargetFeature(box hir::attrs::TargetFeature { features, .. }) => {
-            Attribute::TargetFeature {
-                enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
-            }
-        }
+        AK::TargetFeature(hir::attrs::TargetFeature { features, .. }) => Attribute::TargetFeature {
+            enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
+        },
 
         AK::NoMangle(_) => Attribute::NoMangle,
         AK::NonExhaustive(_) => Attribute::NonExhaustive,

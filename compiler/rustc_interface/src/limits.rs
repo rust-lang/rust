@@ -20,13 +20,13 @@ pub(crate) fn provide(providers: &mut Providers) {
         Limits {
             recursion_limit: get_recursion_limit(tcx.hir_krate_attrs()),
             move_size_limit:
-                find_attr!(attrs, AttributeKind::MoveSizeLimit(box LimitAttribute { limit, .. }) => *limit)
+                find_attr!(attrs, AttributeKind::MoveSizeLimit(LimitAttribute { limit, .. }) => *limit)
                     .unwrap_or(Limit::new(tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0))),
             type_length_limit:
-                find_attr!(attrs, AttributeKind::TypeLengthLimit (box LimitAttribute { limit, .. }) => *limit)
+                find_attr!(attrs, AttributeKind::TypeLengthLimit (LimitAttribute { limit, .. }) => *limit)
                     .unwrap_or(Limit::new(2usize.pow(24))),
             pattern_complexity_limit:
-                find_attr!(attrs, AttributeKind::PatternComplexityLimit (box LimitAttribute { limit, .. }) => *limit)
+                find_attr!(attrs, AttributeKind::PatternComplexityLimit (LimitAttribute { limit, .. }) => *limit)
                     .unwrap_or(Limit::unlimited()),
         }
     }
@@ -34,6 +34,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 // This one is separate because it must be read prior to macro expansion.
 pub(crate) fn get_recursion_limit(attrs: &[Attribute]) -> Limit {
-    find_attr!(attrs, AttributeKind::RecursionLimit (box LimitAttribute { limit, .. }) => *limit)
+    find_attr!(attrs, AttributeKind::RecursionLimit (LimitAttribute { limit, .. }) => *limit)
         .unwrap_or(Limit::new(128))
 }

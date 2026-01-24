@@ -103,7 +103,7 @@ fn process_builtin_attrs(
                 }
             }
             AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
-            AttributeKind::TargetFeature(box TargetFeature { features, attr_span, was_forced }) => {
+            AttributeKind::TargetFeature(TargetFeature { features, attr_span, was_forced }) => {
                 let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
                     tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
                     continue;
@@ -484,7 +484,7 @@ fn check_result(
             .collect(),
     ) {
         let span =
-            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature( box TargetFeature {attr_span: span, ..}) => *span)
+            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature( TargetFeature {attr_span: span, ..}) => *span)
                 .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()

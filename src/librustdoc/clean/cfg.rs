@@ -728,7 +728,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 }
             }
         } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature(
-            box hir::attrs::TargetFeature { features, .. },
+            hir::attrs::TargetFeature { features, .. },
         )) = attr
         {
             // Treat `#[target_feature(enable = "feat")]` attributes as if they were

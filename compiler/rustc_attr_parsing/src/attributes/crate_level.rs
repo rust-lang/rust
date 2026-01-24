@@ -95,11 +95,11 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
             return None;
         };
 
-        Some(AttributeKind::RecursionLimit(Box::new(LimitAttribute {
+        Some(AttributeKind::RecursionLimit(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })))
+        }))
     }
 }
 
@@ -118,11 +118,11 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
             return None;
         };
 
-        Some(AttributeKind::MoveSizeLimit(Box::new(LimitAttribute {
+        Some(AttributeKind::MoveSizeLimit(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })))
+        }))
     }
 }
 
@@ -141,11 +141,11 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
             return None;
         };
 
-        Some(AttributeKind::TypeLengthLimit(Box::new(LimitAttribute {
+        Some(AttributeKind::TypeLengthLimit(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })))
+        }))
     }
 }
 
@@ -164,11 +164,11 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
             return None;
         };
 
-        Some(AttributeKind::PatternComplexityLimit(Box::new(LimitAttribute {
+        Some(AttributeKind::PatternComplexityLimit(LimitAttribute {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
             limit_span: nv.value_span,
-        })))
+        }))
     }
 }
 
