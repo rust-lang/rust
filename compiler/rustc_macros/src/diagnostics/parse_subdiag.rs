@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use proc_macro2::TokenStream;
 use syn::{Attribute, Path, parse_quote};
 
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
 use crate::diagnostics::error::{DiagnosticDeriveError, throw_invalid_attr};
+use crate::diagnostics::generate_diag::DiagnosticDeriveKind;
 use crate::diagnostics::utils::{SubdiagnosticKind, SubdiagnosticVariant};
 
 pub(crate) struct SubdiagnosticAttribute {

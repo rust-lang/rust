@@ -1,6 +1,6 @@
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{Error, Expr, Path, Token};
+use syn::{Expr, Path, Token};
 
 use crate::diagnostics::error::span_err;
 use crate::diagnostics::utils::SetOnce;
@@ -18,15 +18,6 @@ pub(crate) struct DiagAttribute {
 impl Parse for DiagAttribute {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let slug = input.parse::<Path>()?;
-        if let Some(Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(&slug) {
-            return Err(Error::new(
-                slug.span(),
-                format!(
-                    "diagnostic slug and crate name do not match. slug is `{slug_name}` but the crate name is `{crate_name}`. expected a slug starting with `{slug_prefix}_...`"
-                ),
-            ));
-        }
-
         let mut code = None;
 
         while !input.is_empty() {
@@ -50,15 +41,15 @@ impl Parse for DiagAttribute {
     }
 }
 
-struct Mismatch {
-    slug_name: String,
-    crate_name: String,
-    slug_prefix: String,
+pub(crate) struct Mismatch {
+    pub(crate) slug_name: String,
+    pub(crate) crate_name: String,
+    pub(crate) slug_prefix: String,
 }
 
 impl Mismatch {
     /// Checks whether the slug starts with the crate name it's in.
-    fn check(slug: &syn::Path) -> Option<Mismatch> {
+    pub(crate) fn check(slug: &syn::Path) -> Option<Mismatch> {
         // If this is missing we're probably in a test, so bail.
         let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
 

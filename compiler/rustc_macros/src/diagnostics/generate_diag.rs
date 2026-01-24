@@ -7,7 +7,7 @@ use synstructure::{BindingInfo, Structure, VariantInfo};
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
-use crate::diagnostics::parse_diag::DiagAttribute;
+use crate::diagnostics::parse_diag::{DiagAttribute, Mismatch};
 use crate::diagnostics::parse_subdiag::SubdiagnosticAttribute;
 use crate::diagnostics::utils::{
     FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
@@ -102,6 +102,18 @@ impl DiagnosticDeriveKind {
             let name = attr.path().segments.last().unwrap().ident.to_string();
             if name == "diag" {
                 let diag = attr.meta.require_list()?.parse_args::<DiagAttribute>()?;
+                if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
+                    Mismatch::check(&diag.slug)
+                {
+                    span_err(
+                        diag.slug.span().unwrap(),
+                        "diagnostic slug and crate name do not match",
+                    )
+                    .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
+                    .help(format!("expected a slug starting with `{slug_prefix}_...`"))
+                    .emit();
+                    return Err(DiagnosticDeriveError::ErrorHandled);
+                }
                 diag_attr.set_once(diag, attr.path().span().unwrap());
             } else if let Some(subdiag) = self.parse_subdiag_attribute(attr, &field_map)? {
                 subdiag_attrs.push(subdiag);

@@ -1,6 +1,6 @@
 mod diagnostic;
-mod diagnostic_builder;
 mod error;
+mod generate_diag;
 mod parse_diag;
 mod parse_subdiag;
 mod subdiagnostic;

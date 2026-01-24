@@ -6,7 +6,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use synstructure::Structure;
 
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
+use crate::diagnostics::generate_diag::DiagnosticDeriveKind;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
