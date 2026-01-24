@@ -184,8 +184,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 #[cfg(not(all(unix, feature = "native-lib")))]
                 AllocKind::Function => dummy_alloc(params),
-                AllocKind::VTable => dummy_alloc(params),
-                AllocKind::TypeId | AllocKind::Dead | AllocKind::VaList => unreachable!(),
+                AllocKind::VTable | AllocKind::VaList => dummy_alloc(params),
+                AllocKind::TypeId | AllocKind::Dead => unreachable!(),
             };
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
             return interp_ok(base_ptr.addr().to_u64());
