@@ -708,6 +708,10 @@ pub const fn unlikely(b: bool) -> bool {
 /// Hints to the compiler that given path is cold, i.e., unlikely to be taken. The compiler may
 /// choose to optimize paths that are not cold at the expense of paths that are cold.
 ///
+/// Note that like all hints, the exact effect to codegen is not guaranteed. Using `cold_path`
+/// can actually *decrease* performance if the branch is called more than expected. It is advisable
+/// to perform benchmarks to tell if this function is useful.
+///
 /// # Examples
 ///
 /// ```
