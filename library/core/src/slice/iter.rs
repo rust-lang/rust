@@ -2260,6 +2260,9 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     }
 }
 
+#[stable(feature = "array_windows", since = "1.94.0")]
+impl<T, const N: usize> FusedIterator for ArrayWindows<'_, T, N> {}
+
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
 /// time), starting at the end of the slice.
 ///
