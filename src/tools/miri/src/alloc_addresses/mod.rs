@@ -363,8 +363,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
                 static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
-                this.dedup_diagnostic(&DEDUP, |first| NonHaltingDiagnostic::Int2Ptr {
-                    details: first,
+                this.dedup_diagnostic(&DEDUP, |first| {
+                    NonHaltingDiagnostic::Int2Ptr { details: first }
                 });
             }
             ProvenanceMode::Strict => {
