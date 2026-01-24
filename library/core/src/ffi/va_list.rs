@@ -299,6 +299,7 @@ impl<'f> VaList<'f> {
 
 // Checks (via an assert in `compiler/rustc_ty_utils/src/abi.rs`) that the C ABI for the current
 // target correctly implements `rustc_pass_indirectly_in_non_rustic_abis`.
+#[cfg(not(target_arch = "spirv"))]
 const _: () = {
     #[repr(C)]
     #[rustc_pass_indirectly_in_non_rustic_abis]

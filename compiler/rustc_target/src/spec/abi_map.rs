@@ -60,6 +60,7 @@ impl AbiMap {
             Arch::Msp430 => ArchKind::Msp430,
             Arch::Nvptx64 => ArchKind::Nvptx,
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::SpirV => ArchKind::Spirv,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
             _ => ArchKind::Other,
@@ -131,7 +132,9 @@ impl AbiMap {
 
             /* gpu */
             (ExternAbi::PtxKernel, ArchKind::Nvptx) => CanonAbi::GpuKernel,
-            (ExternAbi::GpuKernel, ArchKind::Amdgpu | ArchKind::Nvptx) => CanonAbi::GpuKernel,
+            (ExternAbi::GpuKernel, ArchKind::Amdgpu | ArchKind::Nvptx | ArchKind::Spirv) => {
+                CanonAbi::GpuKernel
+            }
             (ExternAbi::PtxKernel | ExternAbi::GpuKernel, _) => return AbiMapping::Invalid,
 
             /* x86 */
@@ -203,6 +206,7 @@ enum ArchKind {
     LoongArch,
     Msp430,
     Nvptx,
+    Spirv,
     Riscv,
     X86,
     X86_64,

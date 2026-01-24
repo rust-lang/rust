@@ -1720,6 +1720,9 @@ supported_targets! {
 
     ("amdgcn-amd-amdhsa", amdgcn_amd_amdhsa),
 
+    ("spirv64-intel-unknown", spirv64_intel_unknown),
+    ("spirv-unknown-vulkan1.3", spirv_unknown_vulkan1_3),
+
     ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
     ("xtensa-esp32-espidf", xtensa_esp32_espidf),
     ("xtensa-esp32s2-none-elf", xtensa_esp32s2_none_elf),
@@ -1995,6 +1998,7 @@ crate::target_spec_enum! {
         VexOs = "vexos",
         VisionOs = "visionos",
         Vita = "vita",
+        Vulkan = "vulkan",
         VxWorks = "vxworks",
         Wasi = "wasi",
         WatchOs = "watchos",
@@ -2919,8 +2923,8 @@ impl Target {
         );
         check_eq!(
             self.is_like_gpu,
-            self.arch == Arch::Nvptx64 || self.arch == Arch::AmdGpu,
-            "`is_like_gpu` must be set if and only if `target` is `nvptx64` or `amdgcn`"
+            self.arch == Arch::AmdGpu || self.arch == Arch::Nvptx64 || self.arch == Arch::SpirV,
+            "`is_like_gpu` must be set if and only if `target` is `amdgcn`, `nvptx64`, or `spirv`"
         );
         check_eq!(
             self.is_like_windows,
@@ -3271,6 +3275,7 @@ impl Target {
     fn can_use_os_unknown(&self) -> bool {
         self.llvm_target == "wasm32-unknown-unknown"
             || self.llvm_target == "wasm64-unknown-unknown"
+            || self.llvm_target == "spirv64-intel-unknown"
             || (self.env == Env::Sgx && self.vendor == "fortanix")
     }
 

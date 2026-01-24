@@ -330,7 +330,7 @@ impl Step for Llvm {
             Some(s) => s,
             None => {
                 "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
-                     Sparc;SystemZ;WebAssembly;X86"
+                     Sparc;SPIRV;SystemZ;WebAssembly;X86"
             }
         };
 
@@ -1050,8 +1050,14 @@ impl Step for OmpOffload {
             .profile(profile)
             .env("LLVM_CONFIG_REAL", &host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
-            .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
+            .define("LLVM_ENABLE_RUNTIMES", "openmp;offload;libsycl")
+            .define("LLVM_RUNTIME_TARGETS", "spirv64-intel-unknown")
+            .define("LIBOMPTARGET_PLUGINS_TO_BUILD", "level_zero")
+            .define("RUNTIMES_spirv64-intel-unknown_LLVM_ENABLE_RUNTIMES", "openmp")
             .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+            .define("CMAKE_C_COMPILER", "clang")
+            .define("CMAKE_CXX_COMPILER", "clang++")
             .define("OFFLOAD_INCLUDE_TESTS", "OFF")
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", builder.llvm_out(target).join("build"))

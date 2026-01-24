@@ -43,6 +43,8 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     "thumbv7r-none-eabi",
     "thumbv7r-none-eabihf",
     "thumbv8r-none-eabihf",
+    "spirv-unknown-vulkan1.3",
+    "spirv64-intel-unknown",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -249,6 +251,10 @@ than building it.
             continue;
         }
 
+        if target.contains("spirv") {
+            continue;
+        }
+
         // skip check for cross-targets
         if skip_target_sanity && target != &build.host_target {
             continue;
@@ -357,7 +363,7 @@ than building it.
             }
         }
 
-        if (target.contains("-none-") || target.contains("nvptx"))
+        if (target.contains("-none-") || target.contains("nvptx") || target.contains("spirv"))
             && build.no_std(*target) == Some(false)
         {
             panic!("All the *-none-* and nvptx* targets are no-std targets")

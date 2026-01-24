@@ -168,6 +168,13 @@ pub fn initialize_available_targets() {
         LLVMInitializePowerPCAsmParser
     );
     init_target!(
+        llvm_component = "spirv",
+        LLVMInitializeSPIRVTargetInfo,
+        LLVMInitializeSPIRVTarget,
+        LLVMInitializeSPIRVTargetMC,
+        LLVMInitializeSPIRVAsmPrinter
+    );
+    init_target!(
         llvm_component = "systemz",
         LLVMInitializeSystemZTargetInfo,
         LLVMInitializeSystemZTarget,

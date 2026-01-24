@@ -259,6 +259,10 @@ impl Cargo {
         let target = self.target;
         let compiler = self.compiler;
 
+        if target.contains("spirv") {
+            return self;
+        }
+
         // Dealing with rpath here is a little special, so let's go into some
         // detail. First off, `-rpath` is a linker option on Unix platforms
         // which adds to the runtime dynamic loader path when looking for
