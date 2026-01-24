@@ -72,7 +72,7 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
 pub fn dep_kind_debug(kind: DepKind, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     tls::with_opt(|opt_tcx| {
         if let Some(tcx) = opt_tcx {
-            write!(f, "{}", tcx.dep_kind_info(kind).name)
+            write!(f, "{}", tcx.dep_kind_vtable(kind).name)
         } else {
             default_dep_kind_debug(kind, f)
         }

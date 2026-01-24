@@ -221,12 +221,12 @@ where
     }
 }
 
-/// This struct stores metadata about each DepKind.
+/// This struct stores function pointers and other metadata for a particular DepKind.
 ///
 /// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
-pub struct DepKindStruct<Tcx: DepContext> {
+pub struct DepKindVTable<Tcx: DepContext> {
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
