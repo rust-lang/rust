@@ -1648,13 +1648,16 @@ impl<'test> TestCx<'test> {
                         rustc.arg("-O");
                     }
                 }
+
                 TestMode::DebugInfo => { /* debuginfo tests must be unoptimized */ }
-                TestMode::CoverageMap | TestMode::CoverageRun => {
-                    // Coverage mappings and coverage reports are affected by
-                    // optimization level, so they ignore the optimize-tests
-                    // setting and set an optimization level in their mode's
-                    // compile flags (below) or in per-test `compile-flags`.
-                }
+
+                // Codegen tests and coverage tests are sensitive to optimization
+                // level, so they ignore the optimize-tests setting and set a
+                // default optimization level in their mode's compile flags
+                // (below), which can be overridden by `//@ compile-flags`.
+                TestMode::Assembly | TestMode::Codegen => {}
+                TestMode::CoverageMap | TestMode::CoverageRun => {}
+
                 _ => {
                     rustc.arg("-O");
                 }
@@ -1749,6 +1752,10 @@ impl<'test> TestCx<'test> {
                 // of the items of a codegen unit as the source order, so that
                 // we can compare the output with the source code through filecheck.
                 rustc.arg("-Zcodegen-source-order");
+                // These tests are sensitive to opt-level, and will typically
+                // want to test "release" codegen unless the individual test
+                // specifies otherwise.
+                rustc.arg("-Copt-level=3");
             }
             TestMode::Crashes => {
                 set_mir_dump_dir(&mut rustc);
