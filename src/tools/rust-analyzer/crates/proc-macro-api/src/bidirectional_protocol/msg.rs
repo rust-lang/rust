@@ -84,29 +84,17 @@ pub struct ExpandMacroData {
     pub macro_body: FlatTree,
     pub macro_name: String,
     pub attributes: Option<FlatTree>,
-    #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
     #[serde(default)]
     pub has_global_spans: ExpnGlobals,
-
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub span_data_table: Vec<u32>,
 }
 
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
-    #[serde(skip_serializing)]
-    #[serde(default)]
-    pub serialize: bool,
     pub def_site: usize,
     pub call_site: usize,
     pub mixed_site: usize,
-}
-
-impl ExpnGlobals {
-    fn skip_serializing_if(&self) -> bool {
-        !self.serialize
-    }
 }
 
 impl Message for BidirectionalMessage {}

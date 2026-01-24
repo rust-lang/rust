@@ -7,8 +7,12 @@ use std::{
 
 use paths::Utf8PathBuf;
 use proc_macro_api::{
+    ServerError,
+    bidirectional_protocol::msg::{
+        BidirectionalMessage, Request as BiRequest, Response as BiResponse, SubRequest, SubResponse,
+    },
     legacy_protocol::msg::{FlatTree, Message, Request, Response, SpanDataIndexMap},
-    transport::codec::json::JsonProtocol,
+    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
 };
 use span::{Edition, EditionedFileId, FileId, Span, SpanAnchor, SyntaxContext, TextRange};
 use tt::{Delimiter, DelimiterKind, TopSubtreeBuilder};
@@ -132,61 +136,6 @@ pub(crate) fn proc_macro_test_dylib_path() -> Utf8PathBuf {
     path.into()
 }
 
-/// Runs a test with the server in a background thread.
-pub(crate) fn with_server<F, R>(test_fn: F) -> R
-where
-    F: FnOnce(&mut dyn Write, &mut dyn BufRead) -> R,
-{
-    let (mut client_writer, mut client_reader, mut server_writer, mut server_reader) =
-        create_channel_pair();
-
-    let server_handle = thread::spawn(move || {
-        proc_macro_srv_cli::main_loop::run(
-            &mut server_reader,
-            &mut server_writer,
-            proc_macro_api::ProtocolFormat::JsonLegacy,
-        )
-    });
-
-    let result = test_fn(&mut client_writer, &mut client_reader);
-
-    // Close the client writer to signal the server to stop
-    drop(client_writer);
-
-    // Wait for server to finish
-    match server_handle.join() {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => {
-            // IO error from server is expected when client disconnects
-            if matches!(
-                e.kind(),
-                io::ErrorKind::BrokenPipe
-                    | io::ErrorKind::UnexpectedEof
-                    | io::ErrorKind::InvalidData
-            ) {
-                panic!("Server error: {e}");
-            }
-        }
-        Err(e) => std::panic::resume_unwind(e),
-    }
-
-    result
-}
-
-/// Sends a request and reads the response using JSON protocol.
-pub(crate) fn request(
-    writer: &mut dyn Write,
-    reader: &mut dyn BufRead,
-    request: Request,
-) -> Response {
-    request.write::<JsonProtocol>(writer).expect("failed to write request");
-
-    let mut buf = String::new();
-    Response::read::<JsonProtocol>(reader, &mut buf)
-        .expect("failed to read response")
-        .expect("no response received")
-}
-
 /// Creates a simple empty token tree suitable for testing.
 pub(crate) fn create_empty_token_tree(
     version: u32,
@@ -210,4 +159,131 @@ pub(crate) fn create_empty_token_tree(
     let tt = builder.build();
 
     FlatTree::from_subtree(tt.view(), version, span_data_table)
+}
+
+pub(crate) fn with_server<F, R>(format: proc_macro_api::ProtocolFormat, test_fn: F) -> R
+where
+    F: FnOnce(&mut dyn Write, &mut dyn BufRead) -> R,
+{
+    let (mut client_writer, mut client_reader, mut server_writer, mut server_reader) =
+        create_channel_pair();
+
+    let server_handle = thread::spawn(move || {
+        proc_macro_srv_cli::main_loop::run(&mut server_reader, &mut server_writer, format)
+    });
+
+    let result = test_fn(&mut client_writer, &mut client_reader);
+
+    drop(client_writer);
+
+    match server_handle.join() {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => {
+            if !matches!(
+                e.kind(),
+                io::ErrorKind::BrokenPipe
+                    | io::ErrorKind::UnexpectedEof
+                    | io::ErrorKind::InvalidData
+            ) {
+                panic!("Server error: {e}");
+            }
+        }
+        Err(e) => std::panic::resume_unwind(e),
+    }
+
+    result
+}
+
+trait TestProtocol {
+    type Request;
+    type Response;
+
+    fn request(&self, writer: &mut dyn Write, req: Self::Request);
+    fn receive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> Self::Response;
+}
+
+#[allow(dead_code)]
+struct JsonLegacy;
+
+impl TestProtocol for JsonLegacy {
+    type Request = Request;
+    type Response = Response;
+
+    fn request(&self, writer: &mut dyn Write, req: Request) {
+        req.write::<JsonProtocol>(writer).expect("failed to write request");
+    }
+
+    fn receive(&self, reader: &mut dyn BufRead, _writer: &mut dyn Write) -> Response {
+        let mut buf = String::new();
+        Response::read::<JsonProtocol>(reader, &mut buf)
+            .expect("failed to read response")
+            .expect("no response received")
+    }
+}
+
+#[allow(dead_code)]
+struct PostcardBidirectional<F>
+where
+    F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
+{
+    callback: F,
+}
+
+impl<F> TestProtocol for PostcardBidirectional<F>
+where
+    F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
+{
+    type Request = BiRequest;
+    type Response = BiResponse;
+
+    fn request(&self, writer: &mut dyn Write, req: BiRequest) {
+        let msg = BidirectionalMessage::Request(req);
+        msg.write::<PostcardProtocol>(writer).expect("failed to write request");
+    }
+
+    fn receive(&self, reader: &mut dyn BufRead, writer: &mut dyn Write) -> BiResponse {
+        let mut buf = Vec::new();
+
+        loop {
+            let msg = BidirectionalMessage::read::<PostcardProtocol>(reader, &mut buf)
+                .expect("failed to read message")
+                .expect("no message received");
+
+            match msg {
+                BidirectionalMessage::Response(resp) => return resp,
+                BidirectionalMessage::SubRequest(sr) => {
+                    let reply = (self.callback)(sr).expect("subrequest callback failed");
+                    let msg = BidirectionalMessage::SubResponse(reply);
+                    msg.write::<PostcardProtocol>(writer).expect("failed to write subresponse");
+                }
+                other => panic!("unexpected message: {other:?}"),
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn request_legacy(
+    writer: &mut dyn Write,
+    reader: &mut dyn BufRead,
+    request: Request,
+) -> Response {
+    let protocol = JsonLegacy;
+    protocol.request(writer, request);
+    protocol.receive(reader, writer)
+}
+
+#[allow(dead_code)]
+pub(crate) fn request_bidirectional<F>(
+    writer: &mut dyn Write,
+    reader: &mut dyn BufRead,
+    request: BiRequest,
+    callback: F,
+) -> BiResponse
+where
+    F: Fn(SubRequest) -> Result<SubResponse, ServerError>,
+{
+    let protocol = PostcardBidirectional { callback };
+    protocol.request(writer, request);
+    protocol.receive(reader, writer)
 }

@@ -1,8 +1,3 @@
-//! Integration tests for the proc-macro-srv-cli main loop.
-//!
-//! These tests exercise the full client-server RPC procedure using in-memory
-//! channels without needing to spawn the actual server and client processes.
-
 #![cfg(feature = "sysroot-abi")]
 
 mod common {
@@ -10,22 +5,24 @@ mod common {
 }
 
 use common::utils::{
-    create_empty_token_tree, proc_macro_test_dylib_path, request_legacy, with_server,
+    create_empty_token_tree, proc_macro_test_dylib_path, request_bidirectional, with_server,
 };
 use expect_test::expect;
 use proc_macro_api::{
-    ProtocolFormat::JsonLegacy,
-    legacy_protocol::msg::{
-        ExpandMacro, ExpandMacroData, ExpnGlobals, PanicMessage, Request, Response, ServerConfig,
-        SpanDataIndexMap, SpanMode,
+    ProtocolFormat::BidirectionalPostcardPrototype,
+    bidirectional_protocol::{
+        msg::{ExpandMacro, ExpandMacroData, ExpnGlobals, Request, Response},
+        reject_subrequests,
     },
+    legacy_protocol::msg::{PanicMessage, ServerConfig, SpanDataIndexMap, SpanMode},
     version::CURRENT_API_VERSION,
 };
 
 #[test]
-fn test_version_check() {
-    with_server(JsonLegacy, |writer, reader| {
-        let response = request_legacy(writer, reader, Request::ApiVersionCheck {});
+fn test_bidi_version_check_bidirectional() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
+        let response =
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
 
         match response {
             Response::ApiVersionCheck(version) => {
@@ -37,10 +34,15 @@ fn test_version_check() {
 }
 
 #[test]
-fn test_list_macros() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_list_macros() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
-        let response = request_legacy(writer, reader, Request::ListMacros { dylib_path });
+        let response = request_bidirectional(
+            writer,
+            reader,
+            Request::ListMacros { dylib_path },
+            &reject_subrequests,
+        );
 
         let Response::ListMacros(Ok(macros)) = response else {
             panic!("expected successful ListMacros response");
@@ -73,12 +75,13 @@ fn test_list_macros() {
 }
 
 #[test]
-fn test_list_macros_invalid_path() {
-    with_server(JsonLegacy, |writer, reader| {
-        let response = request_legacy(
+fn test_bidi_list_macros_invalid_path() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
+        let response = request_bidirectional(
             writer,
             reader,
             Request::ListMacros { dylib_path: "/nonexistent/path/to/dylib.so".into() },
+            reject_subrequests,
         );
 
         match response {
@@ -92,10 +95,11 @@ fn test_list_macros_invalid_path() {
 }
 
 #[test]
-fn test_set_config() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_set_config() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let config = ServerConfig { span_mode: SpanMode::Id };
-        let response = request_legacy(writer, reader, Request::SetConfig(config));
+        let response =
+            request_bidirectional(writer, reader, Request::SetConfig(config), reject_subrequests);
 
         match response {
             Response::SetConfig(returned_config) => {
@@ -107,10 +111,11 @@ fn test_set_config() {
 }
 
 #[test]
-fn test_set_config_rust_analyzer_mode() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_set_config_rust_analyzer_mode() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let config = ServerConfig { span_mode: SpanMode::RustAnalyzer };
-        let response = request_legacy(writer, reader, Request::SetConfig(config));
+        let response =
+            request_bidirectional(writer, reader, Request::SetConfig(config), reject_subrequests);
 
         match response {
             Response::SetConfig(returned_config) => {
@@ -122,19 +127,15 @@ fn test_set_config_rust_analyzer_mode() {
 }
 
 #[test]
-fn test_expand_macro_panic() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_expand_macro_panic() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
 
-        let version_response = request_legacy(writer, reader, Request::ApiVersionCheck {});
-        let Response::ApiVersionCheck(version) = version_response else {
-            panic!("expected version check response");
-        };
-
         let mut span_data_table = SpanDataIndexMap::default();
-        let macro_body = create_empty_token_tree(version, &mut span_data_table);
+        let macro_body =
+            common::utils::create_empty_token_tree(CURRENT_API_VERSION, &mut span_data_table);
 
-        let expand_request = Request::ExpandMacro(Box::new(ExpandMacro {
+        let request1 = Request::ExpandMacro(Box::new(ExpandMacro {
             lib: dylib_path,
             env: vec![],
             current_dir: None,
@@ -142,57 +143,56 @@ fn test_expand_macro_panic() {
                 macro_body,
                 macro_name: "fn_like_panic".to_owned(),
                 attributes: None,
-                has_global_spans: ExpnGlobals {
-                    serialize: version >= 3,
-                    def_site: 0,
-                    call_site: 0,
-                    mixed_site: 0,
-                },
+                has_global_spans: ExpnGlobals { def_site: 0, call_site: 0, mixed_site: 0 },
                 span_data_table: vec![],
             },
         }));
 
-        let response = request_legacy(writer, reader, expand_request);
+        let response = request_bidirectional(writer, reader, request1, reject_subrequests);
 
         match response {
             Response::ExpandMacro(Err(PanicMessage(msg))) => {
-                assert!(msg.contains("fn_like_panic"), "panic message should mention the macro");
+                assert!(msg.contains("fn_like_panic"), "panic message should mention macro name");
             }
-            Response::ExpandMacro(Ok(_)) => {
-                panic!("expected panic, but macro succeeded");
-            }
-            other => panic!("unexpected response: {other:?}"),
+            other => panic!("expected panic response, got: {other:?}"),
         }
     });
 }
 
 #[test]
-fn test_basic_call_flow() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_basic_call_flow() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
 
-        let response1 = request_legacy(writer, reader, Request::ApiVersionCheck {});
+        let response1 =
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
         assert!(matches!(response1, Response::ApiVersionCheck(_)));
 
-        let response2 = request_legacy(
+        let response2 = request_bidirectional(
             writer,
             reader,
             Request::SetConfig(ServerConfig { span_mode: SpanMode::Id }),
+            reject_subrequests,
         );
         assert!(matches!(response2, Response::SetConfig(_)));
 
-        let response3 =
-            request_legacy(writer, reader, Request::ListMacros { dylib_path: dylib_path.clone() });
+        let response3 = request_bidirectional(
+            writer,
+            reader,
+            Request::ListMacros { dylib_path: dylib_path.clone() },
+            reject_subrequests,
+        );
         assert!(matches!(response3, Response::ListMacros(Ok(_))));
     });
 }
 
 #[test]
-fn test_expand_nonexistent_macro() {
-    with_server(JsonLegacy, |writer, reader| {
+fn test_bidi_expand_nonexistent_macro() {
+    with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
 
-        let version_response = request_legacy(writer, reader, Request::ApiVersionCheck {});
+        let version_response =
+            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
         let Response::ApiVersionCheck(version) = version_response else {
             panic!("expected version check response");
         };
@@ -208,17 +208,12 @@ fn test_expand_nonexistent_macro() {
                 macro_body,
                 macro_name: "NonexistentMacro".to_owned(),
                 attributes: None,
-                has_global_spans: ExpnGlobals {
-                    serialize: version >= 3,
-                    def_site: 0,
-                    call_site: 0,
-                    mixed_site: 0,
-                },
+                has_global_spans: ExpnGlobals { def_site: 0, call_site: 0, mixed_site: 0 },
                 span_data_table: vec![],
             },
         }));
 
-        let response = request_legacy(writer, reader, expand_request);
+        let response = request_bidirectional(writer, reader, expand_request, reject_subrequests);
 
         match response {
             Response::ExpandMacro(Err(PanicMessage(msg))) => {
