@@ -736,6 +736,38 @@ pub const fn unlikely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
+///
+/// This can also be used to implement `likely` and `unlikely` helpers to hint the condition rather
+/// than the branch:
+///
+/// ```
+/// #![feature(cold_path)]
+/// use core::hint::cold_path;
+///
+/// #[inline(always)]
+/// pub const fn likely(b: bool) -> bool {
+///     if !b {
+///         cold_path();
+///     }
+///     b
+/// }
+///
+/// #[inline(always)]
+/// pub const fn unlikely(b: bool) -> bool {
+///     if b {
+///         cold_path();
+///     }
+///     b
+/// }
+///
+/// fn foo(x: i32) {
+///     if likely(x > 0) {
+///         println!("this branch is likely to be taken");
+///     } else {
+///         println!("this branch is unlikely to be taken");
+///     }
+/// }
+/// ```
 #[unstable(feature = "cold_path", issue = "136873")]
 #[inline(always)]
 pub const fn cold_path() {
