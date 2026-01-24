@@ -654,7 +654,7 @@ fn test_readdir() {
         }
         assert_eq!(libc::closedir(dirp), 0);
         entries.sort();
-        assert_eq!(&entries, &["file1.txt", "file2.txt"]);
+        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
     }
 
     remove_file(&file1).unwrap();

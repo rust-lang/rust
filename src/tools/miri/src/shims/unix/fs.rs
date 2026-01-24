@@ -1,15 +1,17 @@
 //! File and file system access
 
 use std::borrow::Cow;
+use std::ffi::OsString;
 use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, TryLockError, read_dir, remove_dir,
-    remove_file, rename,
+    self, DirBuilder, File, FileType, OpenOptions, TryLockError, read_dir, remove_dir, remove_file,
+    rename,
 };
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rustc_abi::Size;
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
 
@@ -19,6 +21,40 @@ use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
+
+/// An open directory, tracked by DirHandler.
+#[derive(Debug)]
+struct OpenDir {
+    /// The "special" entries that must still be yielded by the iterator.
+    /// Used for `.` and `..`.
+    special_entries: Vec<&'static str>,
+    /// The directory reader on the host.
+    read_dir: fs::ReadDir,
+    /// The most recent entry returned by readdir().
+    /// Will be freed by the next call.
+    entry: Option<Pointer>,
+}
+
+impl OpenDir {
+    fn new(read_dir: fs::ReadDir) -> Self {
+        Self { special_entries: vec!["..", "."], read_dir, entry: None }
+    }
+
+    fn next_host_entry(&mut self) -> Option<io::Result<Either<fs::DirEntry, &'static str>>> {
+        if let Some(special) = self.special_entries.pop() {
+            return Some(Ok(Either::Right(special)));
+        }
+        let entry = self.read_dir.next()?;
+        Some(entry.map(Either::Left))
+    }
+}
+
+#[derive(Debug)]
+struct DirEntry {
+    name: OsString,
+    ino: u64,
+    d_type: i32,
+}
 
 impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
@@ -116,6 +152,71 @@ impl UnixFileDescription for FileHandle {
     }
 }
 
+/// The table of open directories.
+/// Curiously, Unix/POSIX does not unify this into the "file descriptor" concept... everything
+/// is a file, except a directory is not?
+#[derive(Debug)]
+pub struct DirTable {
+    /// Directory iterators used to emulate libc "directory streams", as used in opendir, readdir,
+    /// and closedir.
+    ///
+    /// When opendir is called, a directory iterator is created on the host for the target
+    /// directory, and an entry is stored in this hash map, indexed by an ID which represents
+    /// the directory stream. When readdir is called, the directory stream ID is used to look up
+    /// the corresponding ReadDir iterator from this map, and information from the next
+    /// directory entry is returned. When closedir is called, the ReadDir iterator is removed from
+    /// the map.
+    streams: FxHashMap<u64, OpenDir>,
+    /// ID number to be used by the next call to opendir
+    next_id: u64,
+}
+
+impl DirTable {
+    #[expect(clippy::arithmetic_side_effects)]
+    fn insert_new(&mut self, read_dir: fs::ReadDir) -> u64 {
+        let id = self.next_id;
+        self.next_id += 1;
+        self.streams.try_insert(id, OpenDir::new(read_dir)).unwrap();
+        id
+    }
+}
+
+impl Default for DirTable {
+    fn default() -> DirTable {
+        DirTable {
+            streams: FxHashMap::default(),
+            // Skip 0 as an ID, because it looks like a null pointer to libc
+            next_id: 1,
+        }
+    }
+}
+
+impl VisitProvenance for DirTable {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        let DirTable { streams, next_id: _ } = self;
+
+        for dir in streams.values() {
+            dir.entry.visit_provenance(visit);
+        }
+    }
+}
+
+fn maybe_sync_file(
+    file: &File,
+    writable: bool,
+    operation: fn(&File) -> std::io::Result<()>,
+) -> std::io::Result<i32> {
+    if !writable && cfg!(windows) {
+        // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
+        // for writing. (FlushFileBuffers requires that the file handle have the
+        // GENERIC_WRITE right)
+        Ok(0i32)
+    } else {
+        let result = operation(file);
+        result.map(|_| 0i32)
+    }
+}
+
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn write_stat_buf(
@@ -178,14 +279,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(0)
     }
 
-    fn file_type_to_d_type(
-        &mut self,
-        file_type: std::io::Result<FileType>,
-    ) -> InterpResult<'tcx, i32> {
+    fn file_type_to_d_type(&self, file_type: std::io::Result<FileType>) -> InterpResult<'tcx, i32> {
         #[cfg(unix)]
         use std::os::unix::fs::FileTypeExt;
 
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         match file_type {
             Ok(file_type) => {
                 match () {
@@ -216,86 +314,32 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
     }
-}
 
-/// An open directory, tracked by DirHandler.
-#[derive(Debug)]
-struct OpenDir {
-    /// The directory reader on the host.
-    read_dir: ReadDir,
-    /// The most recent entry returned by readdir().
-    /// Will be freed by the next call.
-    entry: Option<Pointer>,
-}
-
-impl OpenDir {
-    fn new(read_dir: ReadDir) -> Self {
-        Self { read_dir, entry: None }
-    }
-}
-
-/// The table of open directories.
-/// Curiously, Unix/POSIX does not unify this into the "file descriptor" concept... everything
-/// is a file, except a directory is not?
-#[derive(Debug)]
-pub struct DirTable {
-    /// Directory iterators used to emulate libc "directory streams", as used in opendir, readdir,
-    /// and closedir.
-    ///
-    /// When opendir is called, a directory iterator is created on the host for the target
-    /// directory, and an entry is stored in this hash map, indexed by an ID which represents
-    /// the directory stream. When readdir is called, the directory stream ID is used to look up
-    /// the corresponding ReadDir iterator from this map, and information from the next
-    /// directory entry is returned. When closedir is called, the ReadDir iterator is removed from
-    /// the map.
-    streams: FxHashMap<u64, OpenDir>,
-    /// ID number to be used by the next call to opendir
-    next_id: u64,
-}
-
-impl DirTable {
-    #[expect(clippy::arithmetic_side_effects)]
-    fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.streams.try_insert(id, OpenDir::new(read_dir)).unwrap();
-        id
-    }
-}
-
-impl Default for DirTable {
-    fn default() -> DirTable {
-        DirTable {
-            streams: FxHashMap::default(),
-            // Skip 0 as an ID, because it looks like a null pointer to libc
-            next_id: 1,
-        }
-    }
-}
-
-impl VisitProvenance for DirTable {
-    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let DirTable { streams, next_id: _ } = self;
-
-        for dir in streams.values() {
-            dir.entry.visit_provenance(visit);
-        }
-    }
-}
-
-fn maybe_sync_file(
-    file: &File,
-    writable: bool,
-    operation: fn(&File) -> std::io::Result<()>,
-) -> std::io::Result<i32> {
-    if !writable && cfg!(windows) {
-        // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
-        // for writing. (FlushFileBuffers requires that the file handle have the
-        // GENERIC_WRITE right)
-        Ok(0i32)
-    } else {
-        let result = operation(file);
-        result.map(|_| 0i32)
+    fn dir_entry_fields(
+        &self,
+        entry: Either<fs::DirEntry, &'static str>,
+    ) -> InterpResult<'tcx, DirEntry> {
+        let this = self.eval_context_ref();
+        interp_ok(match entry {
+            Either::Left(dir_entry) => {
+                DirEntry {
+                    name: dir_entry.file_name(),
+                    d_type: this.file_type_to_d_type(dir_entry.file_type())?,
+                    // If the host is a Unix system, fill in the inode number with its real value.
+                    // If not, use 0 as a fallback value.
+                    #[cfg(unix)]
+                    ino: std::os::unix::fs::DirEntryExt::ino(&dir_entry),
+                    #[cfg(not(unix))]
+                    ino: 0u64,
+                }
+            }
+            Either::Right(special) =>
+                DirEntry {
+                    name: special.into(),
+                    d_type: this.eval_libc("DT_DIR").to_u8()?.into(),
+                    ino: 0,
+                },
+        })
     }
 }
 
@@ -923,14 +967,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             err_ub_format!("the DIR pointer passed to `readdir` did not come from opendir")
         })?;
 
-        let entry = match open_dir.read_dir.next() {
+        let entry = match open_dir.next_host_entry() {
             Some(Ok(dir_entry)) => {
-                // If the host is a Unix system, fill in the inode number with its real value.
-                // If not, use 0 as a fallback value.
-                #[cfg(unix)]
-                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
-                #[cfg(not(unix))]
-                let ino = 0u64;
+                let dir_entry = this.dir_entry_fields(dir_entry)?;
 
                 // Write the directory entry into a newly allocated buffer.
                 // The name is written with write_bytes, while the rest of the
@@ -955,18 +994,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // }
                 //
                 // On FreeBSD:
-                // pub struct dirent{
+                // pub struct dirent {
                 //     pub d_fileno: uint32_t,
                 //     pub d_reclen: uint16_t,
                 //     pub d_type: uint8_t,
                 //     pub d_namlen: uint8_t,
-                //     pub d_name: [c_char; 256]
+                //     pub d_name: [c_char; 256],
                 // }
-
-                let mut name = dir_entry.file_name(); // not a Path as there are no separators!
-                name.push("\0"); // Add a NUL terminator
-                let name_bytes = name.as_encoded_bytes();
-                let name_len = u64::try_from(name_bytes.len()).unwrap();
 
                 // We just use the pointee type here since determining the right pointee type
                 // independently is highly non-trivial: it depends on which exact alias of the
@@ -976,8 +1010,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dirent_ty = dest.layout.ty.builtin_deref(true).unwrap();
                 let dirent_layout = this.layout_of(dirent_ty)?;
                 let fields = &dirent_layout.fields;
-                let last_field = fields.count().strict_sub(1);
-                let d_name_offset = fields.offset(last_field).bytes();
+                let d_name_offset = fields.offset(fields.count().strict_sub(1)).bytes();
+
+                // Determine the size of the buffer we have to allocate.
+                let mut name = dir_entry.name; // not a Path as there are no separators!
+                name.push("\0"); // Add a NUL terminator
+                let name_bytes = name.as_encoded_bytes();
+                let name_len = u64::try_from(name_bytes.len()).unwrap();
                 let size = d_name_offset.strict_add(name_len);
 
                 let entry = this.allocate_ptr(
@@ -988,11 +1027,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let entry = this.ptr_to_mplace(entry.into(), dirent_layout);
 
-                // Write common fields
+                // Write the name.
+                // The name is not a normal field, we already computed the offset above.
+                let name_ptr = entry.ptr().wrapping_offset(Size::from_bytes(d_name_offset), this);
+                this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
+
+                // Write common fields.
                 let ino_name =
                     if this.tcx.sess.target.os == Os::FreeBsd { "d_fileno" } else { "d_ino" };
                 this.write_int_fields_named(
-                    &[(ino_name, ino.into()), ("d_reclen", size.into())],
+                    &[(ino_name, dir_entry.ino.into()), ("d_reclen", size.into())],
                     &entry,
                 )?;
 
@@ -1000,19 +1044,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
                     this.write_null(&d_off)?;
                 }
-
                 if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
                     this.write_int(name_len.strict_sub(1), &d_namlen)?;
                 }
-
-                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
                 if let Some(d_type) = this.try_project_field_named(&entry, "d_type")? {
-                    this.write_int(file_type, &d_type)?;
+                    this.write_int(dir_entry.d_type, &d_type)?;
                 }
-
-                // The name is not a normal field, we already computed the offset above.
-                let name_ptr = entry.ptr().wrapping_offset(Size::from_bytes(d_name_offset), this);
-                this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
 
                 Some(entry.ptr())
             }
@@ -1059,8 +1096,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
         })?;
-        interp_ok(match open_dir.read_dir.next() {
+        interp_ok(match open_dir.next_host_entry() {
             Some(Ok(dir_entry)) => {
+                let dir_entry = this.dir_entry_fields(dir_entry)?;
                 // Write into entry, write pointer to result, return 0 on success.
                 // The name is written with write_os_str_to_c_str, while the rest of the
                 // dirent struct is written using write_int_fields.
@@ -1076,36 +1114,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // }
 
                 let entry_place = this.deref_pointer_as(entry_op, this.libc_ty_layout("dirent"))?;
-                let name_place = this.project_field_named(&entry_place, "d_name")?;
 
-                let file_name = dir_entry.file_name(); // not a Path as there are no separators!
+                // Write the name.
+                let name_place = this.project_field_named(&entry_place, "d_name")?;
                 let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(
-                    &file_name,
+                    &dir_entry.name,
                     name_place.ptr(),
                     name_place.layout.size.bytes(),
                 )?;
-                let file_name_len = file_name_buf_len.strict_sub(1);
                 if !name_fits {
                     throw_unsup_format!(
                         "a directory entry had a name too large to fit in libc::dirent"
                     );
                 }
 
-                // If the host is a Unix system, fill in the inode number with its real value.
-                // If not, use 0 as a fallback value.
-                #[cfg(unix)]
-                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
-                #[cfg(not(unix))]
-                let ino = 0u64;
-
-                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
-
+                // Write the other fields.
                 this.write_int_fields_named(
                     &[
-                        ("d_reclen", 0),
-                        ("d_namlen", file_name_len.into()),
-                        ("d_type", file_type.into()),
-                        ("d_ino", ino.into()),
+                        ("d_reclen", entry_place.layout.size.bytes().into()),
+                        ("d_namlen", file_name_buf_len.strict_sub(1).into()),
+                        ("d_type", dir_entry.d_type.into()),
+                        ("d_ino", dir_entry.ino.into()),
                         ("d_seekoff", 0),
                     ],
                     &entry_place,
