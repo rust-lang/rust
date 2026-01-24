@@ -18,7 +18,7 @@ use crate::detect::{Feature, cache};
 /// conflicting extensions and/or complicated requirements.  Eliminating such
 /// inconsistencies is the responsibility of the feature detection logic and
 /// its provider(s).
-pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initializer {
+pub fn imply_features(mut value: cache::Initializer) -> cache::Initializer {
     loop {
         // Check convergence of the feature flags later.
         let prev = value;
@@ -153,7 +153,3 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         }
     }
 }
-
-#[cfg(test)]
-#[path = "riscv/tests.rs"]
-mod tests;
