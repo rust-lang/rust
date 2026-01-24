@@ -3,7 +3,7 @@
 mod proc_macros;
 mod version;
 
-use proc_macro::bridge;
+use rustc_proc_macro::bridge;
 use std::{fmt, fs, io, time::SystemTime};
 use temp_dir::TempDir;
 
