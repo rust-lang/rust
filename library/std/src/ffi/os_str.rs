@@ -1551,10 +1551,7 @@ impl PartialOrd<str> for OsStr {
     }
 }
 
-// FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
-// have more flexible coherence rules.
-
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "partial_ord_osstr_for_str", since = "CURRENT_RUSTC_VERSION")]
 impl PartialOrd<OsStr> for str {
     #[inline]
     fn partial_cmp(&self, other: &OsStr) -> Option<cmp::Ordering> {
