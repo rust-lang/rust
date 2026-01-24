@@ -138,6 +138,17 @@ declare_lint_pass!(ImproperCTypesLint => [
     USES_POWER_ALIGNMENT
 ]);
 
+/// Getting the (normalized) type out of a field (for, e.g., an enum variant or a tuple).
+#[inline]
+fn get_type_from_field<'tcx>(
+    cx: &LateContext<'tcx>,
+    field: &ty::FieldDef,
+    args: GenericArgsRef<'tcx>,
+) -> Ty<'tcx> {
+    let field_ty = field.ty(cx.tcx, args);
+    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), field_ty).unwrap_or(field_ty)
+}
+
 /// Check a variant of a non-exhaustive enum for improper ctypes
 ///
 /// We treat `#[non_exhaustive] enum` as "ensure that code will compile if new variants are added".
@@ -365,22 +376,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         Self { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
     }
 
-    /// Checks if the given field's type is "ffi-safe".
-    fn check_field_type_for_ffi(
-        &mut self,
-        state: VisitorState,
-        field: &ty::FieldDef,
-        args: GenericArgsRef<'tcx>,
-    ) -> FfiResult<'tcx> {
-        let field_ty = field.ty(self.cx.tcx, args);
-        let field_ty = self
-            .cx
-            .tcx
-            .try_normalize_erasing_regions(self.cx.typing_env(), field_ty)
-            .unwrap_or(field_ty);
-        self.visit_type(state, field_ty)
-    }
-
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
     fn check_variant_for_ffi(
         &mut self,
@@ -394,7 +389,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                match self.check_field_type_for_ffi(state, field, args) {
+                let field_ty = get_type_from_field(self.cx, field, args);
+                match self.visit_type(state, field_ty) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -412,7 +408,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            all_phantom &= match self.check_field_type_for_ffi(state, field, args) {
+            let field_ty = get_type_from_field(self.cx, field, args);
+            all_phantom &= match self.visit_type(state, field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -721,22 +718,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        if let Some(ty) = self
-            .cx
-            .tcx
-            .try_normalize_erasing_regions(self.cx.typing_env(), ty)
-            .unwrap_or(ty)
-            .visit_with(&mut ProhibitOpaqueTypes)
-            .break_value()
-        {
-            Some(FfiResult::FfiUnsafe {
-                ty,
-                reason: msg!("opaque types have no C equivalent"),
-                help: None,
-            })
-        } else {
-            None
-        }
+        ty.visit_with(&mut ProhibitOpaqueTypes).break_value().map(|ty| FfiResult::FfiUnsafe {
+            ty,
+            reason: msg!("opaque types have no C equivalent"),
+            help: None,
+        })
     }
 
     /// Check if the type is array and emit an unsafe type lint.
@@ -754,11 +740,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Determine the FFI-safety of a single (MIR) type, given the context of how it is used.
     fn check_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
         }
-
-        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
 
         // C doesn't really support passing arrays by value - the only way to pass an array by value
         // is through a struct. So, first test that the top level isn't an array, and then
