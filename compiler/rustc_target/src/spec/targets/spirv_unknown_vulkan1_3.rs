@@ -24,6 +24,7 @@ pub(crate) fn target() -> Target {
             only_cdylib: true,
             dll_prefix: "".into(),
             dll_suffix: ".spvt".into(),
+            is_like_gpu: true,
             // The LLVM backend does not support stack canaries for this target
             supports_stack_protector: false,
 
