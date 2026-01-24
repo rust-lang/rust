@@ -1,20 +1,17 @@
-#![deny(unused_must_use)]
-
-use std::collections::HashMap;
-
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{Attribute, Meta, Path, Type, parse_quote};
+use syn::{Attribute, Meta, Path, Type};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::parse_diag::DiagAttribute;
+use crate::diagnostics::parse_subdiag::SubdiagnosticAttribute;
 use crate::diagnostics::utils::{
     FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
-    SubdiagnosticVariant, build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span,
+    build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span,
     report_type_error, should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
 };
 
@@ -40,7 +37,7 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     pub field_map: FieldMap,
 
     pub diag_attr: DiagAttribute,
-    pub subdiag_attrs: Vec<SubdiagnosticVariant>,
+    pub subdiag_attrs: Vec<SubdiagnosticAttribute>,
 }
 
 impl DiagnosticDeriveKind {
@@ -126,38 +123,6 @@ impl DiagnosticDeriveKind {
             field_map,
         })
     }
-
-    /// Parse a `SubdiagnosticKind` from an `Attribute`.
-    fn parse_subdiag_attribute(
-        self,
-        attr: &Attribute,
-        field_map: &HashMap<String, TokenStream>,
-    ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
-        let Some(mut subdiag) = SubdiagnosticVariant::from_attr(attr, field_map)? else {
-            // Some attributes aren't errors - like documentation comments - but also aren't
-            // subdiagnostics.
-            return Ok(None);
-        };
-
-        if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag.kind {
-            throw_invalid_attr!(attr, |diag| diag
-                .help("consider creating a `Subdiagnostic` instead"));
-        }
-
-        // Put in fallback slug
-        subdiag.slug.get_or_insert(match subdiag.kind {
-            SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
-            SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
-            SubdiagnosticKind::NoteOnce => parse_quote! { _subdiag::note_once },
-            SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
-            SubdiagnosticKind::HelpOnce => parse_quote! { _subdiag::help_once },
-            SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
-            SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
-            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
-        });
-
-        Ok(Some(subdiag))
-    }
 }
 
 impl DiagnosticDeriveVariantBuilder {
@@ -168,8 +133,7 @@ impl DiagnosticDeriveVariantBuilder {
                 diag.code(#code);
             });
         }
-        for SubdiagnosticVariant { kind, slug, .. } in &self.subdiag_attrs {
-            let slug = slug.as_ref().unwrap(); //TODO
+        for SubdiagnosticAttribute { kind, slug, .. } in &self.subdiag_attrs {
             let kind = format_ident!("{}", kind);
             tokens.extend(quote! {
                 diag.#kind(crate::fluent_generated::#slug);
@@ -297,14 +261,13 @@ impl DiagnosticDeriveVariantBuilder {
             _ => (),
         }
 
-        let Some(SubdiagnosticVariant { kind, slug, no_span: _ }) =
+        let Some(SubdiagnosticAttribute { kind, slug }) =
             self.kind.parse_subdiag_attribute(attr, &self.field_map)?
         else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(quote! {});
         };
-        let slug = slug.unwrap(); //TODO
         let fn_ident = format_ident!("{}", kind);
         match kind {
             SubdiagnosticKind::Label => {

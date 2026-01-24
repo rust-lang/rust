@@ -4,6 +4,7 @@ mod error;
 mod parse_diag;
 mod subdiagnostic;
 mod utils;
+mod parse_subdiag;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
 use proc_macro2::TokenStream;
