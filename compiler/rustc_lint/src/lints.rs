@@ -3308,10 +3308,6 @@ pub(crate) struct DocTestLiteral;
 pub(crate) struct AttrCrateLevelOnly;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_incorrect_do_not_recommend_args)]
-pub(crate) struct DoNotRecommendDoesNotExpectArgs;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub(crate) struct UnknownCrateTypes {
     #[subdiagnostic]

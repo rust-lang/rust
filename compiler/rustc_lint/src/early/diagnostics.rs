@@ -420,10 +420,6 @@ pub fn decorate_attribute_lint(
 
         &AttributeLintKind::AttrCrateLevelOnly => lints::AttrCrateLevelOnly.decorate_lint(diag),
 
-        &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
-            lints::DoNotRecommendDoesNotExpectArgs.decorate_lint(diag)
-        }
-
         &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
             sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
         }

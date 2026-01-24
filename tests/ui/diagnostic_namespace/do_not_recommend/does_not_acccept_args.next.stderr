@@ -1,28 +1,39 @@
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/does_not_acccept_args.rs:12:1
+error[E0565]: malformed `diagnostic::do_not_recommend` attribute input
+  --> $DIR/does_not_acccept_args.rs:11:1
    |
 LL | #[diagnostic::do_not_recommend(not_accepted)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------^
+   | |                             |
+   | |                             didn't expect any arguments here
+   | help: must be of the form: `#[diagnostic::do_not_recommend]`
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
+error[E0565]: malformed `diagnostic::do_not_recommend` attribute input
   --> $DIR/does_not_acccept_args.rs:16:1
    |
 LL | #[diagnostic::do_not_recommend(not_accepted = "foo")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------^
+   | |                             |
+   | |                             didn't expect any arguments here
+   | help: must be of the form: `#[diagnostic::do_not_recommend]`
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/does_not_acccept_args.rs:20:1
+error[E0565]: malformed `diagnostic::do_not_recommend` attribute input
+  --> $DIR/does_not_acccept_args.rs:21:1
    |
 LL | #[diagnostic::do_not_recommend(not_accepted(42))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^
+   | |                             |
+   | |                             didn't expect any arguments here
+   | help: must be of the form: `#[diagnostic::do_not_recommend]`
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/does_not_acccept_args.rs:24:1
+error[E0565]: malformed `diagnostic::do_not_recommend` attribute input
+  --> $DIR/does_not_acccept_args.rs:26:1
    |
 LL | #[diagnostic::do_not_recommend(x = y + z)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   | |                             |
+   | |                             didn't expect any arguments here
+   | help: must be of the form: `#[diagnostic::do_not_recommend]`
 
-warning: 4 warnings emitted
+error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0565`.

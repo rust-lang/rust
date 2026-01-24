@@ -1,4 +1,3 @@
-//@ check-pass
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
@@ -10,19 +9,23 @@ trait Baz {}
 trait Boo {}
 
 #[diagnostic::do_not_recommend(not_accepted)]
-//~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
+//~^ ERROR  malformed `diagnostic::do_not_recommend` attribute input
+//~| NOTE didn't expect any arguments here
 impl<T> Foo for T where T: Send {}
 
 #[diagnostic::do_not_recommend(not_accepted = "foo")]
-//~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
+//~^ ERROR  malformed `diagnostic::do_not_recommend` attribute input
+//~| NOTE didn't expect any arguments here
 impl<T> Bar for T where T: Send {}
 
 #[diagnostic::do_not_recommend(not_accepted(42))]
-//~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
+//~^ ERROR  malformed `diagnostic::do_not_recommend` attribute input
+//~| NOTE didn't expect any arguments here
 impl<T> Baz for T where T: Send {}
 
 #[diagnostic::do_not_recommend(x = y + z)]
-//~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
+//~^ ERROR  malformed `diagnostic::do_not_recommend` attribute input
+//~| NOTE didn't expect any arguments here
 impl<T> Boo for T where T: Send {}
 
 fn main() {}

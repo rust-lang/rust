@@ -153,7 +153,7 @@ trait Hey {
 
 struct Empty;
 #[diagnostic::do_not_recommend()]
-//~^ WARN does not expect any arguments
+//~^ ERROR  malformed `diagnostic::do_not_recommend` attribute input
 impl Hey for Empty {
 
 }

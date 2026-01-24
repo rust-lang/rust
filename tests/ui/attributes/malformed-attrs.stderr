@@ -693,6 +693,15 @@ LL |     #[type_const = 1]
    |     |            didn't expect any arguments here
    |     help: must be of the form: `#[type_const]`
 
+error[E0565]: malformed `diagnostic::do_not_recommend` attribute input
+  --> $DIR/malformed-attrs.rs:155:1
+   |
+LL | #[diagnostic::do_not_recommend()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   | |                             |
+   | |                             didn't expect any arguments here
+   | help: must be of the form: `#[diagnostic::do_not_recommend]`
+
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:31:1
    |
@@ -819,12 +828,6 @@ LL | #[no_implicit_prelude = 23]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
-warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
-  --> $DIR/malformed-attrs.rs:155:1
-   |
-LL | #[diagnostic::do_not_recommend()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 warning: `#[automatically_derived]` attribute cannot be used on modules
   --> $DIR/malformed-attrs.rs:196:1
    |
@@ -854,7 +857,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:117:23: 117:25}`
 
-error: aborting due to 76 previous errors; 8 warnings emitted
+error: aborting due to 77 previous errors; 7 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
