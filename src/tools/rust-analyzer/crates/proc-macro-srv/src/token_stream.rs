@@ -4,8 +4,8 @@ use core::fmt;
 use std::{mem, sync::Arc};
 
 use intern::Symbol;
-use proc_macro::Delimiter;
 use rustc_lexer::{DocStyle, LiteralKind};
+use rustc_proc_macro::Delimiter;
 
 use crate::bridge::{DelimSpan, Group, Ident, LitKind, Literal, Punct, TokenTree};
 
@@ -52,7 +52,7 @@ impl<S> TokenStream<S> {
         S: SpanLike + Copy,
     {
         let mut groups = Vec::new();
-        groups.push((proc_macro::Delimiter::None, 0..0, vec![]));
+        groups.push((rustc_proc_macro::Delimiter::None, 0..0, vec![]));
         let mut offset = 0;
         let mut tokens = rustc_lexer::tokenize(s, rustc_lexer::FrontmatterAllowed::No).peekable();
         while let Some(token) = tokens.next() {
@@ -102,7 +102,7 @@ impl<S> TokenStream<S> {
             };
             match token.kind {
                 rustc_lexer::TokenKind::OpenParen => {
-                    groups.push((proc_macro::Delimiter::Parenthesis, range, vec![]))
+                    groups.push((rustc_proc_macro::Delimiter::Parenthesis, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseParen if *open_delim != Delimiter::Parenthesis => {
                     return if *open_delim == Delimiter::None {
@@ -130,7 +130,7 @@ impl<S> TokenStream<S> {
                     );
                 }
                 rustc_lexer::TokenKind::OpenBrace => {
-                    groups.push((proc_macro::Delimiter::Brace, range, vec![]))
+                    groups.push((rustc_proc_macro::Delimiter::Brace, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseBrace if *open_delim != Delimiter::Brace => {
                     return if *open_delim == Delimiter::None {
@@ -158,7 +158,7 @@ impl<S> TokenStream<S> {
                     );
                 }
                 rustc_lexer::TokenKind::OpenBracket => {
-                    groups.push((proc_macro::Delimiter::Bracket, range, vec![]))
+                    groups.push((rustc_proc_macro::Delimiter::Bracket, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseBracket if *open_delim != Delimiter::Bracket => {
                     return if *open_delim == Delimiter::None {
@@ -460,10 +460,10 @@ fn display_token_tree<S>(
                 f,
                 "{}",
                 match delimiter {
-                    proc_macro::Delimiter::Parenthesis => "(",
-                    proc_macro::Delimiter::Brace => "{",
-                    proc_macro::Delimiter::Bracket => "[",
-                    proc_macro::Delimiter::None => "",
+                    rustc_proc_macro::Delimiter::Parenthesis => "(",
+                    rustc_proc_macro::Delimiter::Brace => "{",
+                    rustc_proc_macro::Delimiter::Bracket => "[",
+                    rustc_proc_macro::Delimiter::None => "",
                 }
             )?;
             if let Some(stream) = stream {
@@ -473,10 +473,10 @@ fn display_token_tree<S>(
                 f,
                 "{}",
                 match delimiter {
-                    proc_macro::Delimiter::Parenthesis => ")",
-                    proc_macro::Delimiter::Brace => "}",
-                    proc_macro::Delimiter::Bracket => "]",
-                    proc_macro::Delimiter::None => "",
+                    rustc_proc_macro::Delimiter::Parenthesis => ")",
+                    rustc_proc_macro::Delimiter::Brace => "}",
+                    rustc_proc_macro::Delimiter::Bracket => "]",
+                    rustc_proc_macro::Delimiter::None => "",
                 }
             )?;
         }
@@ -587,16 +587,16 @@ fn debug_token_tree<S: fmt::Debug>(
                 f,
                 "GROUP {}{} {:#?} {:#?} {:#?}",
                 match delimiter {
-                    proc_macro::Delimiter::Parenthesis => "(",
-                    proc_macro::Delimiter::Brace => "{",
-                    proc_macro::Delimiter::Bracket => "[",
-                    proc_macro::Delimiter::None => "$",
+                    rustc_proc_macro::Delimiter::Parenthesis => "(",
+                    rustc_proc_macro::Delimiter::Brace => "{",
+                    rustc_proc_macro::Delimiter::Bracket => "[",
+                    rustc_proc_macro::Delimiter::None => "$",
                 },
                 match delimiter {
-                    proc_macro::Delimiter::Parenthesis => ")",
-                    proc_macro::Delimiter::Brace => "}",
-                    proc_macro::Delimiter::Bracket => "]",
-                    proc_macro::Delimiter::None => "$",
+                    rustc_proc_macro::Delimiter::Parenthesis => ")",
+                    rustc_proc_macro::Delimiter::Brace => "}",
+                    rustc_proc_macro::Delimiter::Bracket => "]",
+                    rustc_proc_macro::Delimiter::None => "$",
                 },
                 span.open,
                 span.close,
