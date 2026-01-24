@@ -49,11 +49,7 @@ pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,
     cx: &'a mut DocContext<'tcx>,
 ) -> (Crate, LinkCollector<'a, 'tcx>) {
-    let mut collector = LinkCollector {
-        cx,
-        visited_links: FxHashMap::default(),
-        ambiguous_links: FxIndexMap::default(),
-    };
+    let mut collector = LinkCollector::new(cx);
     collector.visit_crate(&krate);
     (krate, collector)
 }
@@ -270,6 +266,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// codepaths, but we want to distinguish different kinds of error conditions, and this is easy
     /// to do by resolving links as soon as possible.
     pub(crate) ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    psess: ParseSess,
 }
 
 pub(crate) struct AmbiguousLinks {
@@ -278,7 +275,20 @@ pub(crate) struct AmbiguousLinks {
     resolved: Vec<(Res, Option<UrlFragment>)>,
 }
 
-impl<'tcx> LinkCollector<'_, 'tcx> {
+impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
+    pub(crate) fn new(cx: &'a mut DocContext<'tcx>) -> Self {
+        Self::new_with(cx, FxHashMap::default(), FxIndexMap::default())
+    }
+
+    pub(crate) fn new_with(
+        cx: &'a mut DocContext<'tcx>,
+        visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+        ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    ) -> Self {
+        let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
+        Self { cx, visited_links, ambiguous_links, psess }
+    }
+
     /// Convenience wrapper around `doc_link_resolutions`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -349,7 +359,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             });
         }
 
-        if let Ok(path) = parse_path(path_str) {
+        if let Ok(path) = parse_path(&self.psess, path_str) {
             let candidates =
                 self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
             if !candidates.is_empty() {
@@ -470,11 +480,10 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
     assoc_item.map_or(base, |def_id| Res::from_def_id(tcx, def_id))
 }
 
-fn parse_path(path_str: &str) -> Result<Path, ()> {
-    let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
+fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
     let file_name = FileName::anon_source_code(path_str);
     let mut parser = match rustc_parse::new_parser_from_source_str(
-        &psess,
+        psess,
         file_name,
         path_str.to_owned(),
         StripTokens::Nothing,
