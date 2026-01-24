@@ -293,6 +293,8 @@ target | std | host | notes
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
 `armv5te-unknown-linux-uclibceabi` | ? |  | Armv5TE Linux with uClibc
+[`armv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Bare Armv6
+[`armv6-none-eabihf`](platform-support/armv6-none-eabi.md) | * | | Bare Armv6, hardfloat
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
@@ -410,6 +412,7 @@ target | std | host | notes
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 [`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare Armv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
+[`thumbv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Thumb-mode Bare Armv6
 [`thumbv6m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv6M with NuttX
 [`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A
 [`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A, hardfloat

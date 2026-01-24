@@ -43,6 +43,9 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     "thumbv7r-none-eabi",
     "thumbv7r-none-eabihf",
     "thumbv8r-none-eabihf",
+    "armv6-none-eabi",
+    "armv6-none-eabihf",
+    "thumbv6-none-eabi",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
