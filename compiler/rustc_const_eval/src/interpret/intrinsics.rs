@@ -735,85 +735,46 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             sym::va_copy => {
-                // fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f>
-                let src_ptr = self.read_pointer(&args[0])?;
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
 
-                // Read the token pointer from the src VaList (alloc_id + offset-as-index).
-                let src_va_list_ptr = {
-                    let pointer_size = tcx.data_layout.pointer_size();
-                    let alloc = self
-                        .get_ptr_alloc(src_ptr, pointer_size)?
-                        .expect("va_list storage should not be a ZST");
-                    let scalar = alloc.read_pointer(Size::ZERO)?;
-                    scalar.to_pointer(self)?
-                };
+                let copy_key = self.va_list_copy(key)?;
 
-                let copy_va_list_ptr = self.va_list_copy(src_va_list_ptr)?;
-                let addr = Scalar::from_pointer(copy_va_list_ptr, self);
-
-                // Now overwrite the token pointer stored inside the VaList.
-                let mplace = self.force_allocation(dest)?;
-                let mut alloc = self.get_place_alloc_mut(&mplace)?.unwrap();
-                alloc.write_ptr_sized(Size::ZERO, addr)?;
+                let dest_mplace = self.force_allocation(dest)?;
+                let copy_key_mplace = self.va_list_key_mplace(&dest_mplace)?;
+                self.write_pointer(copy_key, &copy_key_mplace)?;
             }
 
             sym::va_end => {
-                let ptr_size = self.tcx.data_layout.pointer_size();
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
 
-                // The only argument is a `&mut VaList`.
-                let ap_ref = self.read_pointer(&args[0])?;
-
-                // The first bytes of the `VaList` value store a pointer. The `AllocId` of this
-                // pointer is a key into a global map of variable argument lists. The offset is
-                // used as the index of the argument to read.
-                let va_list_ptr = {
-                    let alloc = self
-                        .get_ptr_alloc(ap_ref, ptr_size)?
-                        .expect("va_list storage should not be a ZST");
-                    let scalar = alloc.read_pointer(Size::ZERO)?;
-                    scalar.to_pointer(self)?
-                };
-
-                self.va_list_remove(va_list_ptr)?;
+                self.va_list_remove(key)?;
             }
 
             sym::va_arg => {
-                let ptr_size = self.tcx.data_layout.pointer_size();
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
 
-                // The only argument is a `&mut VaList`.
-                let ap_ref = self.read_pointer(&args[0])?;
-
-                // The first bytes of the `VaList` value store a pointer. The `AllocId` of this
-                // pointer is a key into a global map of variable argument lists. The offset is
-                // used as the index of the argument to read.
-                let va_list_ptr = {
-                    let alloc = self
-                        .get_ptr_alloc(ap_ref, ptr_size)?
-                        .expect("va_list storage should not be a ZST");
-                    let scalar = alloc.read_pointer(Size::ZERO)?;
-                    scalar.to_pointer(self)?
-                };
-
-                let (src_mplace, new_va_list_ptr) = self.va_list_read_arg(va_list_ptr)?;
-
-                let addr = Scalar::from_pointer(new_va_list_ptr, self);
-                let mut alloc = self
-                    .get_ptr_alloc_mut(ap_ref, ptr_size)?
-                    .expect("va_list storage should not be a ZST");
-                alloc.write_ptr_sized(Size::ZERO, addr)?;
+                let (arg_mplace, new_key) = self.va_list_read_arg(key)?;
 
                 // NOTE: In C some type conversions are allowed (e.g. casting between signed and
                 // unsigned integers). For now we require c-variadic arguments to be read with the
                 // exact type they were passed as.
-                if src_mplace.layout.ty != dest.layout.ty {
+                if arg_mplace.layout.ty != dest.layout.ty {
                     throw_unsup_format!(
                         "va_arg type mismatch: requested `{}`, but next argument is `{}`",
                         dest.layout.ty,
-                        src_mplace.layout.ty
+                        arg_mplace.layout.ty
                     );
                 }
 
-                self.copy_op(&src_mplace, dest)?;
+                self.write_pointer(new_key, &key_mplace)?;
+
+                self.copy_op(&arg_mplace, dest)?;
             }
 
             // Unsupported intrinsic: skip the return_to_block below.

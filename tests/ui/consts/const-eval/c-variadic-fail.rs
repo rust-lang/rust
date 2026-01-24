@@ -140,10 +140,9 @@ fn manual_copy_read() {
 fn drop_of_invalid() {
     const {
         let mut invalid: MaybeUninit<VaList> = MaybeUninit::zeroed();
-        unsafe { invalid.as_mut_ptr().cast::<usize>().write(0xdeadbeef) };
         let ap = unsafe { invalid.assume_init() };
     }
-    //~^ ERROR pointer not dereferenceable: pointer must point to some allocation, but got 0xdeadbeef[noalloc]
+    //~^ ERROR pointer not dereferenceable: pointer must point to some allocation, but got null pointer [E0080]
 }
 
 fn main() {
