@@ -131,7 +131,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 mutability: s.mutability,
                 nested: false,
             },
-            ItemKind::Const(..) => DefKind::Const,
+            ItemKind::Const(..) | ItemKind::ConstBlock(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();

@@ -381,7 +381,7 @@ impl Stage for Late {
     }
 
     fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints
+        ShouldEmit::ErrorsAndLints { recover: true }
     }
 }
 
@@ -438,7 +438,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     pub(crate) fn emit_lint(&mut self, lint: &'static Lint, kind: AttributeLintKind, span: Span) {
         if !matches!(
             self.stage.should_emit(),
-            ShouldEmit::ErrorsAndLints | ShouldEmit::EarlyFatal { also_emit_lints: true }
+            ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;
         }
@@ -765,9 +765,18 @@ pub enum ShouldEmit {
     EarlyFatal { also_emit_lints: bool },
     /// The operation will emit errors and lints.
     /// This is usually what you need.
-    ErrorsAndLints,
-    /// The operation will emit *not* errors and lints.
-    /// Use this if you are *sure* that this operation will be called at a different time with `ShouldEmit::ErrorsAndLints`.
+    ErrorsAndLints {
+        /// Whether [`ArgParser`] will attempt to recover from errors.
+        ///
+        /// If true, it will attempt to recover from bad input (like an invalid literal). Setting
+        /// this to false will instead return early, and not raise errors except at the top level
+        /// (in [`ArgParser::from_attr_args`]).
+        recover: bool,
+    },
+    /// The operation will *not* emit errors and lints.
+    ///
+    /// The parser can still call `delay_bug`, so you *must* ensure that this operation will also be
+    /// called with `ShouldEmit::ErrorsAndLints`.
     Nothing,
 }
 
@@ -776,7 +785,7 @@ impl ShouldEmit {
         match self {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
-            ShouldEmit::ErrorsAndLints => diag.emit(),
+            ShouldEmit::ErrorsAndLints { .. } => diag.emit(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }
     }
