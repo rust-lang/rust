@@ -600,18 +600,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::Char => FfiUnsafe {
+            // Pattern types are just extra invariants on the type that you need to uphold,
+            // but only the base type is relevant for being representable in FFI.
+            // (note: this lint was written when pattern types could only be integers constrained to ranges)
+            ty::Pat(pat_ty, _) => self.visit_type(state, pat_ty),
+
+            // types which likely have a stable representation, if the target architecture defines those
+            // note: before rust 1.77, 128-bit ints were not FFI-safe on x86_64
+            ty::Int(..) | ty::Uint(..) | ty::Float(..) => FfiResult::FfiSafe,
+
+            ty::Bool => FfiResult::FfiSafe,
+
+            ty::Char => FfiResult::FfiUnsafe {
                 ty,
                 reason: msg!("the `char` type has no C equivalent"),
                 help: Some(msg!("consider using `u32` or `libc::wchar_t` instead")),
             },
-
-            // It's just extra invariants on the type that you need to uphold,
-            // but only the base type is relevant for being representable in FFI.
-            ty::Pat(base, ..) => self.visit_type(state, base),
-
-            // Primitive types with a stable representation.
-            ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
 
             ty::Slice(_) => FfiUnsafe {
                 ty,
@@ -686,6 +690,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Foreign(..) => FfiSafe,
+
+            ty::Never => FfiSafe,
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
