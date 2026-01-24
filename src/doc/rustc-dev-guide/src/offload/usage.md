@@ -7,6 +7,8 @@ We currently work on launching the following Rust kernel on the GPU. To follow a
 #![feature(abi_gpu_kernel)]
 #![feature(rustc_attrs)]
 #![feature(core_intrinsics)]
+#![feature(rustc_private)]
+#![allow(internal_features)]
 #![no_std]
 
 #[cfg(target_os = "linux")]
@@ -56,8 +58,8 @@ fn main() {
 }
 
 #[inline(never)]
-unsafe fn kernel(x: *mut [f64; 256]) {
-    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], (x,))
+pub unsafe fn kernel(x: *mut [f64; 256]) {
+    core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
 }
 
 #[cfg(target_os = "linux")]
