@@ -121,6 +121,42 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.vector_select(vector_mask, arg1, args[2].immediate()));
     }
 
+    #[cfg(feature = "master")]
+    if name == sym::simd_splat {
+        let (out_len, out_ty) = require_simd2!(ret_ty, SimdReturn);
+
+        require!(
+            args[0].layout.ty == out_ty,
+            InvalidMonomorphization::ExpectedVectorElementType {
+                span,
+                name,
+                expected_element: out_ty,
+                vector_type: ret_ty,
+            }
+        );
+
+        let vec_ty = llret_ty.unqualified().dyncast_vector().expect("vector return type");
+        let elem_ty = vec_ty.get_element_type();
+
+        // Cast pointer type to usize (GCC does not support pointer SIMD vectors).
+        let value = args[0];
+        let scalar = if value.layout.ty.is_numeric() {
+            value.immediate()
+        } else if value.layout.ty.is_raw_ptr() {
+            bx.ptrtoint(value.immediate(), elem_ty)
+        } else {
+            return_error!(InvalidMonomorphization::UnsupportedOperation {
+                span,
+                name,
+                in_ty: ret_ty,
+                in_elem: value.layout.ty
+            });
+        };
+
+        let elements = vec![scalar; out_len as usize];
+        return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &elements));
+    }
+
     // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(
         args[0].layout.ty,
