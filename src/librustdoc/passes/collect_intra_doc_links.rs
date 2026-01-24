@@ -46,13 +46,15 @@ pub(super) fn collect_intra_doc_links(
     krate: Crate,
     cx: &mut DocContext<'_>,
 ) -> (Crate, LinkCollection) {
-    let mut collector = LinkCollector { cx, links: LinkCollection::default() };
+    let mut collector =
+        LinkCollector { cx, psess: ParseSess::new(), links: LinkCollection::default() };
     collector.visit_crate(&krate);
     (krate, collector.links)
 }
 
 pub(super) fn resolve_ambiguous_links(links: LinkCollection, cx: &mut DocContext<'_>) {
-    LinkCollector { cx, links }.resolve_ambiguities();
+    // FIXME: should we somehow share psess with above?
+    LinkCollector { cx, psess: ParseSess::new(), links }.resolve_ambiguities();
 }
 
 fn filter_assoc_items_by_name_and_namespace(
@@ -257,6 +259,7 @@ impl OwnedDiagnosticInfo {
 
 struct LinkCollector<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
+    psess: ParseSess,
     links: LinkCollection,
 }
 
@@ -284,7 +287,7 @@ pub(crate) struct AmbiguousLinks {
     resolved: Vec<(Res, Option<UrlFragment>)>,
 }
 
-impl<'tcx> LinkCollector<'_, 'tcx> {
+impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// Convenience wrapper around `doc_link_resolutions`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -355,7 +358,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             });
         }
 
-        if let Ok(path) = parse_path(path_str) {
+        if let Ok(path) = parse_path(&self.psess, path_str) {
             let candidates =
                 self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
             if !candidates.is_empty() {
@@ -477,11 +480,10 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
     assoc_item.map_or(base, |def_id| Res::from_def_id(tcx, def_id))
 }
 
-fn parse_path(path_str: &str) -> Result<Path, ()> {
-    let psess = ParseSess::new();
+fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
     let file_name = FileName::anon_source_code(path_str);
     let mut parser = match rustc_parse::new_parser_from_source_str(
-        &psess,
+        psess,
         file_name,
         path_str.to_owned(),
         StripTokens::Nothing,
