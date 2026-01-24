@@ -1554,6 +1554,17 @@ impl PartialOrd<str> for OsStr {
 // FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
+// This should be unstable because of str and OsStr,
+// But because of this issue: https://github.com/rust-lang/rust/issues/55436
+// unable to mark this as unstable
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd<OsStr> for str {
+    #[inline]
+    fn partial_cmp(&self, other: &OsStr) -> Option<cmp::Ordering> {
+        self.as_bytes().partial_cmp(other.as_encoded_bytes())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsStr {
     #[inline]
