@@ -369,6 +369,35 @@ impl VisitorState {
     }
 }
 
+bitflags! {
+    /// Data that summarises how an "outer type" surrounds its inner type(s)
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    struct OuterTyData: u8 {
+        /// To show that there is no outer type, the current type is directly used by a `static`
+        /// variable or a function/FnPtr
+        const NO_OUTER_TY = 0b01;
+        /// For NO_OUTER_TY cases, show that we are being directly used by a FnPtr specifically
+        /// FIXME(ctypes): this is only used for "bad behaviour" reproduced for compatibility's sake
+        const NO_OUTER_TY_FNPTR = 0b10;
+    }
+}
+
+impl OuterTyData {
+    /// Get the proper data for a given outer type.
+    fn from_ty<'tcx>(ty: Ty<'tcx>) -> Self {
+        match ty.kind() {
+            ty::FnPtr(..) => Self::NO_OUTER_TY | Self::NO_OUTER_TY_FNPTR,
+            ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::Adt(..)
+            | ty::Tuple(..)
+            | ty::Array(..)
+            | ty::Slice(_) => Self::empty(),
+            k @ _ => bug!("unexpected outer type {:?} of kind {:?}", ty, k),
+        }
+    }
+}
+
 /// Visitor used to recursively traverse MIR types and evaluate FFI-safety.
 /// It uses ``check_*`` methods as entrypoints to be called elsewhere,
 /// and ``visit_*`` methods to recurse.
@@ -454,7 +483,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 {
                     FfiSafe
                 } else {
-                    self.visit_type(state, inner_ty)
+                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
                 }
             }
         }
@@ -475,7 +504,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
                 let field_ty = get_type_from_field(self.cx, field, args);
-                match self.visit_type(state, field_ty) {
+                match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -494,7 +523,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
             let field_ty = get_type_from_field(self.cx, field, args);
-            all_phantom &= match self.visit_type(state, field_ty) {
+            all_phantom &= match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -592,11 +621,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Empty enums are okay... although sort of useless.
             return FfiSafe;
         }
-        // Check for a repr() attribute to specify the size of the discriminant.
+        // Check for a repr() attribute to specify the size of the
+        // discriminant.
         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-            if let Some(ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
-                return self.visit_type(state, ty);
+            if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
+                return self.visit_type(state, OuterTyData::from_ty(ty), inner_ty);
             }
 
             return FfiUnsafe {
@@ -628,7 +658,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn visit_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn visit_type(
+        &mut self,
+        state: VisitorState,
+        outer_ty: OuterTyData,
+        ty: Ty<'tcx>,
+    ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -672,7 +707,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Pattern types are just extra invariants on the type that you need to uphold,
             // but only the base type is relevant for being representable in FFI.
             // (note: this lint was written when pattern types could only be integers constrained to ranges)
-            ty::Pat(pat_ty, _) => self.visit_type(state, pat_ty),
+            ty::Pat(pat_ty, _) => self.visit_type(state, outer_ty, pat_ty),
 
             // types which likely have a stable representation, if the target architecture defines those
             // note: before rust 1.77, 128-bit ints were not FFI-safe on x86_64
@@ -702,11 +737,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(msg!("consider using `*const u8` and a length instead")),
             },
 
-            ty::Tuple(..) => FfiUnsafe {
-                ty,
-                reason: msg!("tuples have unspecified layout"),
-                help: Some(msg!("consider using a struct instead")),
-            },
+            ty::Tuple(tuple) => {
+                // C functions can return void
+                let empty_and_safe = tuple.is_empty()
+                    && outer_ty.contains(OuterTyData::NO_OUTER_TY)
+                    && state.is_in_function_return();
+
+                if empty_and_safe {
+                    FfiSafe
+                } else {
+                    FfiUnsafe {
+                        ty,
+                        reason: msg!("tuples have unspecified layout"),
+                        help: Some(msg!("consider using a struct instead")),
+                    }
+                }
+            }
 
             ty::RawPtr(ty, _)
                 if match ty.kind() {
@@ -724,7 +770,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Ref);
             }
 
-            ty::Array(inner_ty, _) => self.visit_type(state, inner_ty),
+            ty::Array(inner_ty, _) => {
+                if state.is_in_function()
+                    && outer_ty.contains(OuterTyData::NO_OUTER_TY)
+                    // FIXME(ctypes): VVV-this-VVV shouldn't be the case
+                    && !outer_ty.contains(OuterTyData::NO_OUTER_TY_FNPTR)
+                {
+                    // C doesn't really support passing arrays by value - the only way to pass an array by value
+                    // is through a struct.
+                    FfiResult::FfiUnsafe {
+                        ty,
+                        reason: msg!("passing raw arrays by value is not FFI-safe"),
+                        help: Some(msg!("consider passing a pointer to the array")),
+                    }
+                } else {
+                    // let's allow phantoms to go through,
+                    // since an array of 1-ZSTs is also a 1-ZST
+                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
+                }
+            }
 
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
@@ -740,18 +804,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
-                    match self.visit_type(VisitorState::ARGUMENT_TY_IN_FNPTR, *arg) {
+                    match self.visit_type(
+                        VisitorState::ARGUMENT_TY_IN_FNPTR,
+                        OuterTyData::from_ty(ty),
+                        *arg,
+                    ) {
                         FfiSafe => {}
                         r => return r,
                     }
                 }
 
                 let ret_ty = sig.output();
-                if ret_ty.is_unit() {
-                    return FfiSafe;
-                }
 
-                self.visit_type(VisitorState::RETURN_TY_IN_FNPTR, ret_ty)
+                self.visit_type(VisitorState::RETURN_TY_IN_FNPTR, OuterTyData::from_ty(ty), ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -819,43 +884,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         })
     }
 
-    /// Check if the type is array and emit an unsafe type lint.
-    fn check_for_array_ty(&mut self, ty: Ty<'tcx>) -> PartialFfiResult<'tcx> {
-        if let ty::Array(..) = ty.kind() {
-            Some(FfiResult::FfiUnsafe {
-                ty,
-                reason: msg!("passing raw arrays by value is not FFI-safe"),
-                help: Some(msg!("consider passing a pointer to the array")),
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Determine the FFI-safety of a single (MIR) type, given the context of how it is used.
     fn check_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
         }
 
-        // C doesn't really support passing arrays by value - the only way to pass an array by value
-        // is through a struct. So, first test that the top level isn't an array, and then
-        // recursively check the types inside.
-        if state.is_in_function() {
-            if let Some(res) = self.check_for_array_ty(ty) {
-                return res;
-            }
-        }
-
-        // Don't report FFI errors for unit return types. This check exists here, and not in
-        // the caller (where it would make more sense) so that normalization has definitely
-        // happened.
-        if state.is_in_function_return() && ty.is_unit() {
-            return FfiResult::FfiSafe;
-        }
-
-        self.visit_type(state, ty)
+        self.visit_type(state, OuterTyData::NO_OUTER_TY, ty)
     }
 }
 
