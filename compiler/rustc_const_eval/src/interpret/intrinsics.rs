@@ -7,6 +7,7 @@ mod simd;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::assert_matches;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
@@ -22,8 +23,8 @@ use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
-    throw_ub_custom, throw_ub_format, throw_unsup_format,
+    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok,
+    throw_inval, throw_ub, throw_ub_custom, throw_ub_format, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
@@ -739,7 +740,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let key_mplace = self.va_list_key_mplace(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
-                let copy_key = self.va_list_copy(key)?;
+                let varargs = self.get_ptr_va_list(key)?;
+                let copy_key = self.va_list(varargs.to_vec());
 
                 let dest_mplace = self.force_allocation(dest)?;
                 let copy_key_mplace = self.va_list_key_mplace(&dest_mplace)?;
@@ -751,7 +753,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let key_mplace = self.va_list_key_mplace(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
-                self.va_list_remove(key)?;
+                self.deallocate_va_list(key)?;
             }
 
             sym::va_arg => {
@@ -759,7 +761,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let key_mplace = self.va_list_key_mplace(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
-                let (arg_mplace, new_key) = self.va_list_read_arg(key)?;
+                let mut varargs = self.deallocate_va_list(key)?;
+
+                if varargs.is_empty() {
+                    throw_ub!(VaArgOutOfBounds)
+                }
+
+                let arg_mplace = varargs.remove(0);
 
                 // NOTE: In C some type conversions are allowed (e.g. casting between signed and
                 // unsigned integers). For now we require c-variadic arguments to be read with the
@@ -772,6 +780,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     );
                 }
 
+                let new_key = self.va_list(varargs);
                 self.write_pointer(new_key, &key_mplace)?;
 
                 self.copy_op(&arg_mplace, dest)?;
@@ -1256,5 +1265,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // The INEXACT flag is ignored on purpose to allow rounding.
             interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
         }
+    }
+
+    fn va_list_key_index(&self) -> FieldIdx {
+        let def_id = self.tcx.lang_items().get(LangItem::VaList).unwrap();
+
+        // VaList is a transparent wrapper around a struct.
+        let va_list_ty = self.tcx.type_of(def_id).instantiate_identity();
+        let layout = self.layout_of(va_list_ty).unwrap();
+        let (_, inner) = layout.non_1zst_field(self).unwrap();
+
+        // Find the first pointer field in this struct. The exact index is target-specific.
+        let ty::Adt(adt, _substs) = inner.ty.kind() else {
+            bug!("invalid VaListImpl layout");
+        };
+
+        for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            let field_ty = self.tcx.type_of(field.did);
+            if field_ty.skip_binder().is_raw_ptr() {
+                return FieldIdx::from_usize(i);
+            }
+        }
+
+        bug!("no VaListImpl field is a pointer");
+    }
+
+    /// Get the MPlace of the key from the place storing the VaList.
+    pub(super) fn va_list_key_mplace<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        va_list: &P,
+    ) -> InterpResult<'tcx, P> {
+        let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
+        let field_idx = self.va_list_key_index();
+        self.project_field(&va_list_inner, field_idx)
     }
 }
