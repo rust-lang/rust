@@ -268,7 +268,7 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
         | PatKind::Error(_) => {}
 
         PatKind::Binding { subpattern: Some(subpattern), .. }
-        | PatKind::Deref { subpattern }
+        | PatKind::Deref { subpattern, .. }
         | PatKind::DerefPattern { subpattern, .. } => callback(subpattern),
 
         PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns } => {

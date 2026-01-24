@@ -4,6 +4,7 @@
 
 // tidy-alphabetical-start
 #![allow(unused_crate_dependencies)]
+#![cfg_attr(feature = "rustc", feature(if_let_guard))]
 // tidy-alphabetical-end
 
 pub(crate) mod checks;

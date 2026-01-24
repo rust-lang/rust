@@ -132,12 +132,16 @@ impl<'tcx> PatCtxt<'tcx> {
             debug!("{:?}: wrapping pattern with adjustment {:?}", thir_pat, adjust);
             let span = thir_pat.span;
             let kind = match adjust.kind {
-                PatAdjust::BuiltinDeref => PatKind::Deref { subpattern: thir_pat },
+                PatAdjust::BuiltinDeref => {
+                    PatKind::Deref { pin: hir::Pinnedness::Not, subpattern: thir_pat }
+                }
                 PatAdjust::OverloadedDeref => {
                     let borrow = self.typeck_results.deref_pat_borrow_mode(adjust.source, pat);
                     PatKind::DerefPattern { subpattern: thir_pat, borrow }
                 }
-                PatAdjust::PinDeref => PatKind::Deref { subpattern: thir_pat },
+                PatAdjust::PinDeref => {
+                    PatKind::Deref { pin: hir::Pinnedness::Pinned, subpattern: thir_pat }
+                }
             };
             Box::new(Pat { span, ty: adjust.source, kind, extra: None })
         });
@@ -334,7 +338,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 let borrow = self.typeck_results.deref_pat_borrow_mode(ty, subpattern);
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), borrow }
             }
-            hir::PatKind::Ref(subpattern, _, _) => {
+            hir::PatKind::Ref(subpattern, pin, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
                 let opt_old_mode_span =
                     self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
@@ -342,7 +346,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 if let Some(s) = &mut self.rust_2024_migration {
                     s.leave_ref(opt_old_mode_span);
                 }
-                PatKind::Deref { subpattern }
+                PatKind::Deref { pin, subpattern }
             }
             hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
                 subpattern: self.lower_pattern(subpattern),
