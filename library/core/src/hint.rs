@@ -724,7 +724,6 @@ pub const fn unlikely(b: bool) -> bool {
 /// # Examples
 ///
 /// ```
-/// #![feature(cold_path)]
 /// use core::hint::cold_path;
 ///
 /// fn foo(x: &[i32]) {
@@ -750,7 +749,6 @@ pub const fn unlikely(b: bool) -> bool {
 /// than the branch:
 ///
 /// ```
-/// #![feature(cold_path)]
 /// use core::hint::cold_path;
 ///
 /// #[inline(always)]
@@ -777,7 +775,8 @@ pub const fn unlikely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "cold_path", issue = "136873")]
+#[stable(feature = "cold_path", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "cold_path", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()
