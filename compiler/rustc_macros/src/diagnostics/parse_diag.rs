@@ -8,15 +8,11 @@ use crate::diagnostics::utils::SetOnce;
 pub(crate) struct DiagAttribute {
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
-    pub primary_message: PrimaryMessage,
+    pub slug: Path,
 
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
     pub code: Option<Expr>,
-}
-
-pub(crate) enum PrimaryMessage {
-    Slug(Path),
 }
 
 impl Parse for DiagAttribute {
@@ -50,10 +46,7 @@ impl Parse for DiagAttribute {
             }
         }
 
-        Ok(Self {
-            primary_message: PrimaryMessage::Slug(slug),
-            code: code.map(|(code, _span)| code),
-        })
+        Ok(Self { slug, code: code.map(|(code, _span)| code) })
     }
 }
 

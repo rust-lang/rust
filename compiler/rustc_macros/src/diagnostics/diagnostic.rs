@@ -7,7 +7,6 @@ use quote::quote;
 use synstructure::Structure;
 
 use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
-use crate::diagnostics::parse_diag::PrimaryMessage;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
@@ -27,7 +26,7 @@ impl<'a> DiagnosticDerive<'a> {
             let preamble = builder.preamble();
             let body = builder.body(variant);
 
-            let PrimaryMessage::Slug(slug) = builder.diag_attr.primary_message;
+            let slug = builder.diag_attr.slug;
             slugs.borrow_mut().push(slug.clone());
             let init = quote! {
                 let mut diag = rustc_errors::Diag::new(
@@ -89,7 +88,7 @@ impl<'a> LintDiagnosticDerive<'a> {
             let preamble = builder.preamble();
             let body = builder.body(variant);
 
-            let PrimaryMessage::Slug(slug) = builder.diag_attr.primary_message;
+            let slug = builder.diag_attr.slug;
             slugs.borrow_mut().push(slug.clone());
 
             let primary_message = quote! {
