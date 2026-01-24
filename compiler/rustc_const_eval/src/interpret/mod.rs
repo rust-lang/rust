@@ -16,7 +16,6 @@ mod stack;
 mod step;
 mod traits;
 mod util;
-mod va_list;
 mod validity;
 mod visitor;
 

@@ -483,8 +483,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // When the frame is dropped, this ID is used to deallocate the variable arguments list.
                     self.frame_mut().va_list = varargs.clone();
 
-                    let key = self.va_list_insert(varargs);
-
                     // Zero the mplace, so it is fully initialized.
                     self.write_bytes_ptr(
                         mplace.ptr(),
@@ -492,6 +490,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     )?;
 
                     let key_mplace = self.va_list_key_mplace(&mplace)?;
+                    let key = self.va_list(varargs);
                     self.write_pointer(key, &key_mplace)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
