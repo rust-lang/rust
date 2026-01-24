@@ -91,7 +91,7 @@ cfg_select! {
     }
     target_os = "vexos" => {
         mod vexos;
-        pub use vexos::{sleep, yield_now};
+        pub use vexos::{sleep, sleep_until, yield_now};
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
@@ -135,6 +135,8 @@ cfg_select! {
     target_os = "vxworks",
     target_os = "wasi",
     target_vendor = "apple",
+    target_os = "motor",
+    target_os = "vexos"
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

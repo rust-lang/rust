@@ -2141,6 +2141,7 @@ symbols! {
         simd_shr,
         simd_shuffle,
         simd_shuffle_const_generic,
+        simd_splat,
         simd_sub,
         simd_trunc,
         simd_with_exposed_provenance,

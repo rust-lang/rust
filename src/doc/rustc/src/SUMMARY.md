@@ -56,6 +56,7 @@
     - [arm-none-eabi](platform-support/arm-none-eabi.md)
       - [{arm,thumb}v4t-none-eabi](platform-support/armv4t-none-eabi.md)
       - [{arm,thumb}v5te-none-eabi](platform-support/armv5te-none-eabi.md)
+      - [{arm,thumb}v6-none-eabi{,hf}](platform-support/armv6-none-eabi.md)
       - [{arm,thumb}v7a-none-eabi{,hf}](platform-support/armv7a-none-eabi.md)
       - [{arm,thumb}v7r-none-eabi{,hf}](platform-support/armv7r-none-eabi.md)
       - [{arm,thumb}v8r-none-eabihf](platform-support/armv8r-none-eabihf.md)

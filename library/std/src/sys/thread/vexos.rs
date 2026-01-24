@@ -10,8 +10,12 @@ pub fn sleep(dur: Duration) {
     let start = Instant::now();
 
     while start.elapsed() < dur {
-        unsafe {
-            vex_sdk::vexTasksRun();
-        }
+        yield_now();
+    }
+}
+
+pub fn sleep_until(deadline: Instant) {
+    while Instant::now() < deadline {
+        yield_now();
     }
 }
