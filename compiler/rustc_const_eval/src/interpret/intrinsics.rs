@@ -741,7 +741,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let key = self.read_pointer(&key_mplace)?;
 
                 let varargs = self.get_ptr_va_list(key)?;
-                let copy_key = self.va_list(varargs.to_vec());
+                let copy_key = self.va_list_ptr(varargs.to_vec());
 
                 let dest_mplace = self.force_allocation(dest)?;
                 let copy_key_mplace = self.va_list_key_mplace(&dest_mplace)?;
@@ -780,7 +780,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     );
                 }
 
-                let new_key = self.va_list(varargs);
+                let new_key = self.va_list_ptr(varargs);
                 self.write_pointer(new_key, &key_mplace)?;
 
                 self.copy_op(&arg_mplace, dest)?;
