@@ -363,7 +363,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "opendir" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [name] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*const _) -> *mut _),
                     link_name,
@@ -374,7 +373,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "closedir" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [dirp] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _) -> i32),
                     link_name,
@@ -383,6 +381,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let result = this.closedir(dirp)?;
                 this.write_scalar(result, dest)?;
+            }
+            "readdir" => {
+                let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                this.readdir(dirp, dest)?;
             }
             "lseek" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -395,7 +397,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
                 let whence = this.read_scalar(whence)?.to_i32()?;
-                this.lseek64(fd, offset, whence, dest)?;
+                this.lseek(fd, offset, whence, dest)?;
             }
             "ftruncate" => {
                 let [fd, length] = this.check_shim_sig(
