@@ -509,6 +509,12 @@ impl Step for RustAnalyzer {
         cargo.arg("--workspace");
         cargo.arg("--exclude=xtask");
 
+        if build_compiler.stage == 0 {
+            // This builds a proc macro against the bootstrap libproc_macro, which is not ABI
+            // compatible with the ABI proc-macro-srv expects to load.
+            cargo.arg("--exclude=proc-macro-srv");
+        }
+
         let mut skip_tests = vec![];
 
         // NOTE: the following test skips is a bit cheeky in that it assumes there are no
