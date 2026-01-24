@@ -21,14 +21,15 @@ use crate::{Delimiter, Level, Spacing};
 /// `with_api!(MySelf, my_self, my_macro)` expands to:
 /// ```rust,ignore (pseudo-code)
 /// my_macro! {
-///     // ...
-///     Literal {
+///     Methods {
 ///         // ...
-///         fn character(ch: char) -> MySelf::Literal;
+///         fn lit_character(ch: char) -> MySelf::Literal;
 ///         // ...
-///         fn span(my_self: &MySelf::Literal) -> MySelf::Span;
-///         fn set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
+///         fn lit_span(my_self: &MySelf::Literal) -> MySelf::Span;
+///         fn lit_set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
 ///     },
+///     Literal,
+///     Span,
 ///     // ...
 /// }
 /// ```
@@ -48,76 +49,61 @@ use crate::{Delimiter, Level, Spacing};
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
-            FreeFunctions {
-                fn drop($self: $S::FreeFunctions);
+            Methods {
                 fn injected_env_var(var: &str) -> Option<String>;
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
-            },
-            TokenStream {
-                fn drop($self: $S::TokenStream);
-                fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn is_empty($self: &$S::TokenStream) -> bool;
-                fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-                fn from_str(src: &str) -> $S::TokenStream;
-                fn to_string($self: &$S::TokenStream) -> String;
-                fn from_token_tree(
+
+                fn ts_drop(stream: $S::TokenStream);
+                fn ts_clone(stream: &$S::TokenStream) -> $S::TokenStream;
+                fn ts_is_empty(stream: &$S::TokenStream) -> bool;
+                fn ts_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
+                fn ts_from_str(src: &str) -> $S::TokenStream;
+                fn ts_to_string(stream: &$S::TokenStream) -> String;
+                fn ts_from_token_tree(
                     tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
-                fn concat_trees(
+                fn ts_concat_trees(
                     base: Option<$S::TokenStream>,
                     trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
                 ) -> $S::TokenStream;
-                fn concat_streams(
+                fn ts_concat_streams(
                     base: Option<$S::TokenStream>,
                     streams: Vec<$S::TokenStream>,
                 ) -> $S::TokenStream;
-                fn into_trees(
-                    $self: $S::TokenStream
+                fn ts_into_trees(
+                    stream: $S::TokenStream
                 ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
-            },
-            Span {
-                fn debug($self: $S::Span) -> String;
-                fn parent($self: $S::Span) -> Option<$S::Span>;
-                fn source($self: $S::Span) -> $S::Span;
-                fn byte_range($self: $S::Span) -> Range<usize>;
-                fn start($self: $S::Span) -> $S::Span;
-                fn end($self: $S::Span) -> $S::Span;
-                fn line($self: $S::Span) -> usize;
-                fn column($self: $S::Span) -> usize;
-                fn file($self: $S::Span) -> String;
-                fn local_file($self: $S::Span) -> Option<String>;
-                fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
-                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
-                fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
-                fn source_text($self: $S::Span) -> Option<String>;
-                fn save_span($self: $S::Span) -> usize;
-                fn recover_proc_macro_span(id: usize) -> $S::Span;
-            },
-            Symbol {
-                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
-            },
-        }
-    };
-}
 
-// Similar to `with_api`, but only lists the types requiring handles, and they
-// are divided into the two storage categories.
-macro_rules! with_api_handle_types {
-    ($m:ident) => {
-        $m! {
-            'owned:
-            FreeFunctions,
+                fn span_debug(span: $S::Span) -> String;
+                fn span_parent(span: $S::Span) -> Option<$S::Span>;
+                fn span_source(span: $S::Span) -> $S::Span;
+                fn span_byte_range(span: $S::Span) -> Range<usize>;
+                fn span_start(span: $S::Span) -> $S::Span;
+                fn span_end(span: $S::Span) -> $S::Span;
+                fn span_line(span: $S::Span) -> usize;
+                fn span_column(span: $S::Span) -> usize;
+                fn span_file(span: $S::Span) -> String;
+                fn span_local_file(span: $S::Span) -> Option<String>;
+                fn span_join(span: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn span_subspan(span: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
+                fn span_resolved_at(span: $S::Span, at: $S::Span) -> $S::Span;
+                fn span_source_text(span: $S::Span) -> Option<String>;
+                fn span_save_span(span: $S::Span) -> usize;
+                fn span_recover_proc_macro_span(id: usize) -> $S::Span;
+
+                fn symbol_normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
+            },
             TokenStream,
-
-            'interned:
             Span,
-            // Symbol is handled manually
+            Symbol,
         }
     };
 }
+
+pub(crate) struct Methods;
 
 #[allow(unsafe_code)]
 mod arena;
@@ -171,20 +157,16 @@ mod api_tags {
     use super::rpc::{Decode, Encode, Reader, Writer};
 
     macro_rules! declare_tags {
-        ($($name:ident {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        }),* $(,)?) => {
-            $(
-                pub(super) enum $name {
-                    $($method),*
-                }
-                rpc_encode_decode!(enum $name { $($method),* });
-            )*
-
+        (
+            Methods {
+                $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+            },
+            $($name:ident),* $(,)?
+        ) => {
             pub(super) enum Method {
-                $($name($name)),*
+                $($method),*
             }
-            rpc_encode_decode!(enum Method { $($name(m)),* });
+            rpc_encode_decode!(enum Method { $($method),* });
         }
     }
     with_api!(self, self, declare_tags);
