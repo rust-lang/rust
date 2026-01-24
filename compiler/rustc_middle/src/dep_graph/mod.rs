@@ -18,7 +18,7 @@ pub use rustc_query_system::dep_graph::{
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 
-pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
+pub type DepKindVTable<'tcx> = rustc_query_system::dep_graph::DepKindVTable<TyCtxt<'tcx>>;
 
 pub struct DepsType;
 
@@ -79,8 +79,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     #[inline]
-    fn dep_kind_info(&self, dk: DepKind) -> &DepKindStruct<'tcx> {
-        &self.query_kinds[dk.as_usize()]
+    fn dep_kind_vtable(&self, dk: DepKind) -> &DepKindVTable<'tcx> {
+        &self.dep_kind_vtables[dk.as_usize()]
     }
 
     fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
