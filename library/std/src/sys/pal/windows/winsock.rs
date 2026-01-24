@@ -78,3 +78,46 @@ where
 {
     cvt(f())
 }
+
+#[cfg(target_vendor = "win7")]
+pub unsafe fn hostname_fallback(name: c::PWSTR, namelen: i32) -> i32 {
+    assert!(namelen >= 1);
+
+    // The documentation of gethostname says that a buffer size of 256 is
+    // always enough.
+    let mut buffer = [const { mem::MaybeUninit::<u8>::uninit() }; 256];
+
+    // SAFETY: these parameters specify a valid, writable region of memory.
+    unsafe {
+        if c::gethostname(buffer.as_mut_ptr().cast(), buffer.len() as i32) == c::SOCKET_ERROR {
+            return c::SOCKET_ERROR;
+        }
+
+        // Subtract one to leave space for the null terminator, as MultiByteToWideChar doesn't terminate the output buffer
+        // if the number of output characters is equal to the buffer length.
+        let len = c::MultiByteToWideChar(
+            c::CP_ACP,
+            c::MB_ERR_INVALID_CHARS,
+            buffer.as_mut_ptr().cast(),
+            -1,
+            name,
+            namelen - 1,
+        );
+
+        if len <= 0 {
+            // GetHostNameW reports WSAEFAULT if the buffer is too small
+            if c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
+                c::SetLastError(c::WSAEFAULT as _);
+            }
+            return c::SOCKET_ERROR;
+        }
+
+        // Ensure the output is always null terminated.
+        // If MultiByteToWideChar has already written a null terminator, that null terminator will be included in len
+        // and this will add a second one, but writing a zero is cheap enough to omit the length comparison.
+        name.add(len as _).write(0);
+    }
+
+    // Success
+    0
+}

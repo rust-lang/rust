@@ -130,6 +130,7 @@ windows_targets::link!("ws2_32.dll" "system" fn closesocket(s : SOCKET) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn connect(s : SOCKET, name : *const SOCKADDR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn freeaddrinfo(paddrinfo : *const ADDRINFOA));
 windows_targets::link!("ws2_32.dll" "system" fn getaddrinfo(pnodename : PCSTR, pservicename : PCSTR, phints : *const ADDRINFOA, ppresult : *mut *mut ADDRINFOA) -> i32);
+windows_targets::link!("ws2_32.dll" "system" fn gethostname(name : PSTR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getpeername(s : SOCKET, name : *mut SOCKADDR, namelen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getsockname(s : SOCKET, name : *mut SOCKADDR, namelen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getsockopt(s : SOCKET, level : i32, optname : i32, optval : PSTR, optlen : *mut i32) -> i32);
@@ -444,6 +445,7 @@ pub struct CONTEXT_0_0 {
 pub type CONTEXT_FLAGS = u32;
 pub type COPYFILE_FLAGS = u32;
 pub type COPYPROGRESSROUTINE_PROGRESS = u32;
+pub const CP_ACP: u32 = 0u32;
 pub const CP_UTF8: u32 = 65001u32;
 pub const CREATE_ALWAYS: FILE_CREATION_DISPOSITION = 2u32;
 pub const CREATE_BREAKAWAY_FROM_JOB: PROCESS_CREATION_FLAGS = 16777216u32;
