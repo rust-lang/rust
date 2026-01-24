@@ -342,11 +342,8 @@ fn build_format(fields: &FieldMap, input: &str, span: proc_macro2::Span) -> Toke
             Some(value) => value.clone(),
             // This field doesn't exist. Emit a diagnostic.
             None => {
-                span_err(
-                    span.unwrap(),
-                    format!("`{field}` doesn't refer to a field on this type"),
-                )
-                .emit();
+                span_err(span.unwrap(), format!("`{field}` doesn't refer to a field on this type"))
+                    .emit();
                 quote! {
                     "{#field}"
                 }

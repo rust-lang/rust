@@ -1,9 +1,9 @@
 mod diagnostic;
 mod diagnostic_builder;
 mod error;
+mod parse_diag;
 mod subdiagnostic;
 mod utils;
-mod diagnostic_attr;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
 use proc_macro2::TokenStream;

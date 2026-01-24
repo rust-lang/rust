@@ -1,10 +1,9 @@
 use syn::parse::{Parse, ParseStream};
-use syn::{Attribute, Error, Expr, Path, Token};
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
 use syn::spanned::Spanned;
-use crate::diagnostics::error::{span_err, throw_invalid_attr, DiagnosticDeriveError};
-use crate::diagnostics::utils::{is_doc_comment, SetOnce, SubdiagnosticKind};
+use syn::{Error, Expr, Path, Token};
+
+use crate::diagnostics::error::span_err;
+use crate::diagnostics::utils::SetOnce;
 
 pub(crate) struct DiagAttribute {
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
@@ -18,21 +17,27 @@ pub(crate) struct DiagAttribute {
 
 pub(crate) enum PrimaryMessage {
     Slug(Path),
-    Inline(String),
 }
 
 impl Parse for DiagAttribute {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let slug = input.parse::<Path>()?;
         if let Some(Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(&slug) {
-            return Err(Error::new(slug.span(), format!("diagnostic slug and crate name do not match. slug is `{slug_name}` but the crate name is `{crate_name}`. expected a slug starting with `{slug_prefix}_...`")));
+            return Err(Error::new(
+                slug.span(),
+                format!(
+                    "diagnostic slug and crate name do not match. slug is `{slug_name}` but the crate name is `{crate_name}`. expected a slug starting with `{slug_prefix}_...`"
+                ),
+            ));
         }
 
         let mut code = None;
 
         while !input.is_empty() {
             input.parse::<Token![,]>()?;
-            if input.is_empty() { break } // Allow trailing comma
+            if input.is_empty() {
+                break;
+            } // Allow trailing comma
             let arg_path = input.parse::<Path>()?;
             input.parse::<Token![=]>()?;
             if arg_path.is_ident("code") {
@@ -47,7 +52,7 @@ impl Parse for DiagAttribute {
 
         Ok(Self {
             primary_message: PrimaryMessage::Slug(slug),
-            code: code.map(|(code, _span)| code)
+            code: code.map(|(code, _span)| code),
         })
     }
 }
