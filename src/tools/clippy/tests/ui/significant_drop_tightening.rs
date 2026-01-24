@@ -155,7 +155,7 @@ fn issue15574() {
     let mut stdin = stdin.take(40);
     //~^ significant_drop_tightening
     if stdin.read_line(&mut buffer).is_err() {
-        eprintln!("An error has occured while reading.");
+        eprintln!("An error has occurred while reading.");
         return;
     }
     println!("Our string has a capacity of {}", buffer.capacity());

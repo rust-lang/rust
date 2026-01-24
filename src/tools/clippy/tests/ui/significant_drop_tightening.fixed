@@ -160,7 +160,7 @@ fn issue15574() {
     
     //~^ significant_drop_tightening
     if stdin.read_line(&mut buffer).is_err() {
-        eprintln!("An error has occured while reading.");
+        eprintln!("An error has occurred while reading.");
         return;
     }
     drop(stdin);
