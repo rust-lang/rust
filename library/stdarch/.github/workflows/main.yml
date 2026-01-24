@@ -101,9 +101,9 @@ jobs:
 
         # macOS targets
         - tuple: x86_64-apple-darwin
-          os: macos-15-large
+          os: macos-15-intel
         - tuple: x86_64-apple-ios-macabi
-          os: macos-15-large
+          os: macos-15-intel
         - tuple: aarch64-apple-darwin
           os: macos-15
         - tuple: aarch64-apple-ios-macabi
