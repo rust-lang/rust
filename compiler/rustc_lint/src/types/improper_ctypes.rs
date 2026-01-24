@@ -190,6 +190,7 @@ fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
 fn check_arg_for_power_alignment<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     let tcx = cx.tcx;
     assert!(tcx.sess.target.os == Os::Aix);
+
     // Structs (under repr(C)) follow the power alignment rule if:
     //   - the first field of the struct is a floating-point type that
     //     is greater than 4-bytes, or
@@ -377,15 +378,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
-    fn check_variant_for_ffi(
+    fn visit_variant_fields(
         &mut self,
         state: VisitorState,
         ty: Ty<'tcx>,
-        def: ty::AdtDef<'tcx>,
+        def: AdtDef<'tcx>,
         variant: &ty::VariantDef,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
+
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
@@ -429,6 +431,115 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             FfiSafe
         }
+    }
+
+    fn visit_struct_or_union(
+        &mut self,
+        state: VisitorState,
+        ty: Ty<'tcx>,
+        def: AdtDef<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> FfiResult<'tcx> {
+        debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
+        use FfiResult::*;
+
+        if !def.repr().c() && !def.repr().transparent() {
+            return FfiUnsafe {
+                ty,
+                reason: if def.is_struct() {
+                    msg!("this struct has unspecified layout")
+                } else {
+                    msg!("this union has unspecified layout")
+                },
+                help: if def.is_struct() {
+                    Some(msg!(
+                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct"
+                    ))
+                } else {
+                    // FIXME(ctypes): confirm that this makes sense for unions once #60405 / RFC2645 stabilises
+                    Some(msg!(
+                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union"
+                    ))
+                },
+            };
+        }
+
+        if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
+            return FfiUnsafe {
+                ty,
+                reason: if def.is_struct() {
+                    msg!("this struct is non-exhaustive")
+                } else {
+                    msg!("this union is non-exhaustive")
+                },
+                help: None,
+            };
+        }
+
+        if def.non_enum_variant().fields.is_empty() {
+            return FfiUnsafe {
+                ty,
+                reason: if def.is_struct() {
+                    msg!("this struct has no fields")
+                } else {
+                    msg!("this union has no fields")
+                },
+                help: if def.is_struct() {
+                    Some(msg!("consider adding a member to this struct"))
+                } else {
+                    Some(msg!("consider adding a member to this union"))
+                },
+            };
+        }
+        self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
+    }
+
+    fn visit_enum(
+        &mut self,
+        state: VisitorState,
+        ty: Ty<'tcx>,
+        def: AdtDef<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> FfiResult<'tcx> {
+        debug_assert!(matches!(def.adt_kind(), AdtKind::Enum));
+        use FfiResult::*;
+
+        if def.variants().is_empty() {
+            // Empty enums are okay... although sort of useless.
+            return FfiSafe;
+        }
+        // Check for a repr() attribute to specify the size of the discriminant.
+        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
+            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
+            if let Some(ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
+                return self.visit_type(state, ty);
+            }
+
+            return FfiUnsafe {
+                ty,
+                reason: msg!("enum has no representation hint"),
+                help: Some(msg!(
+                    "consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum"
+                )),
+            };
+        }
+
+        let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
+        // Check the contained variants.
+        let ret = def.variants().iter().try_for_each(|variant| {
+            check_non_exhaustive_variant(non_exhaustive, variant)
+                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
+
+            match self.visit_variant_fields(state, ty, def, variant, args) {
+                FfiSafe => ControlFlow::Continue(()),
+                r => ControlFlow::Break(r),
+            }
+        });
+        if let ControlFlow::Break(result) = ret {
+            return result;
+        }
+
+        FfiSafe
     }
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
@@ -483,99 +594,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 )),
                             };
                         }
-
-                        if !def.repr().c() && !def.repr().transparent() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: if def.is_struct() {
-                                    msg!("this struct has unspecified layout")
-                                } else {
-                                    msg!("this union has unspecified layout")
-                                },
-                                help: if def.is_struct() {
-                                    Some(msg!(
-                                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct"
-                                    ))
-                                } else {
-                                    Some(msg!(
-                                        "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union"
-                                    ))
-                                },
-                            };
-                        }
-
-                        if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: if def.is_struct() {
-                                    msg!("this struct is non-exhaustive")
-                                } else {
-                                    msg!("this union is non-exhaustive")
-                                },
-                                help: None,
-                            };
-                        }
-
-                        if def.non_enum_variant().fields.is_empty() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: if def.is_struct() {
-                                    msg!("this struct has no fields")
-                                } else {
-                                    msg!("this union has no fields")
-                                },
-                                help: if def.is_struct() {
-                                    Some(msg!("consider adding a member to this struct"))
-                                } else {
-                                    Some(msg!("consider adding a member to this union"))
-                                },
-                            };
-                        }
-
-                        self.check_variant_for_ffi(state, ty, def, def.non_enum_variant(), args)
+                        self.visit_struct_or_union(state, ty, def, args)
                     }
-                    AdtKind::Enum => {
-                        if def.variants().is_empty() {
-                            // Empty enums are okay... although sort of useless.
-                            return FfiSafe;
-                        }
-                        // Check for a repr() attribute to specify the size of the
-                        // discriminant.
-                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
-                        {
-                            // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-                            if let Some(ty) =
-                                repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty)
-                            {
-                                return self.visit_type(state, ty);
-                            }
-
-                            return FfiUnsafe {
-                                ty,
-                                reason: msg!("enum has no representation hint"),
-                                help: Some(msg!(
-                                    "consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum"
-                                )),
-                            };
-                        }
-
-                        let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
-                        // Check the contained variants.
-                        let ret = def.variants().iter().try_for_each(|variant| {
-                            check_non_exhaustive_variant(non_exhaustive, variant)
-                                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
-
-                            match self.check_variant_for_ffi(state, ty, def, variant, args) {
-                                FfiSafe => ControlFlow::Continue(()),
-                                r => ControlFlow::Break(r),
-                            }
-                        });
-                        if let ControlFlow::Break(result) = ret {
-                            return result;
-                        }
-
-                        FfiSafe
-                    }
+                    AdtKind::Enum => self.visit_enum(state, ty, def, args),
                 }
             }
 
