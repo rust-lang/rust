@@ -10,24 +10,25 @@ where
     if !ret.layout.is_sized() {
         return;
     }
+
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
         return;
     }
 
+    // Per the Hexagon ABI:
+    // - Aggregates up to 32 bits are returned in R0
+    // - Aggregates 33-64 bits are returned in R1:R0
+    // - Aggregates > 64 bits are returned indirectly via hidden first argument
     let size = ret.layout.size;
     let bits = size.bits();
-
-    // Aggregates larger than 64 bits are returned indirectly
-    if bits > 64 {
+    if bits <= 32 {
+        ret.cast_to(Uniform::new(Reg::i32(), size));
+    } else if bits <= 64 {
+        ret.cast_to(Uniform::new(Reg::i64(), size));
+    } else {
         ret.make_indirect();
-        return;
     }
-
-    // Small aggregates are returned in registers
-    // Cast to appropriate register type to ensure proper ABI
-    let align = ret.layout.align.bytes();
-    ret.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, size));
 }
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
@@ -42,24 +43,25 @@ where
         arg.make_indirect();
         return;
     }
+
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(32);
         return;
     }
 
+    // Per the Hexagon ABI:
+    // - Aggregates up to 32 bits are passed in a single register
+    // - Aggregates 33-64 bits are passed in a register pair
+    // - Aggregates > 64 bits are passed on the stack
     let size = arg.layout.size;
     let bits = size.bits();
-
-    // Aggregates larger than 64 bits are passed indirectly
-    if bits > 64 {
-        arg.make_indirect();
-        return;
+    if bits <= 32 {
+        arg.cast_to(Uniform::new(Reg::i32(), size));
+    } else if bits <= 64 {
+        arg.cast_to(Uniform::new(Reg::i64(), size));
+    } else {
+        arg.pass_by_stack_offset(None);
     }
-
-    // Small aggregates are passed in registers
-    // Cast to consecutive register-sized chunks to match the C ABI
-    let align = arg.layout.align.bytes();
-    arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, size));
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
