@@ -129,6 +129,7 @@ expression: check compiletest --include-default-paths
     - Set({check::library/rustc-std-workspace-core})
     - Set({check::library/std})
     - Set({check::library/std_detect})
+    - Set({check::library/std_detect_tests})
     - Set({check::library/sysroot})
     - Set({check::library/test})
     - Set({check::library/unwind})
