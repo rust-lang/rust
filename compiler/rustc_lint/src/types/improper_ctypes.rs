@@ -272,6 +272,17 @@ enum FfiResult<'tcx> {
 /// in the `FfiResult` is final.
 type PartialFfiResult<'tcx> = Option<FfiResult<'tcx>>;
 
+/// What type indirection points to a given type.
+#[derive(Clone, Copy)]
+enum IndirectionKind {
+    /// Box (valid non-null pointer, owns pointee).
+    Box,
+    /// Ref (valid non-null pointer, borrows pointee).
+    Ref,
+    /// Raw pointer (not necessarily non-null or valid. no info on ownership).
+    RawPtr,
+}
+
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     struct VisitorState: u8 {
@@ -377,6 +388,78 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         Self { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
     }
 
+    /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
+    fn visit_indirection(
+        &mut self,
+        state: VisitorState,
+        ty: Ty<'tcx>,
+        inner_ty: Ty<'tcx>,
+        indirection_kind: IndirectionKind,
+    ) -> FfiResult<'tcx> {
+        use FfiResult::*;
+        let tcx = self.cx.tcx;
+
+        match indirection_kind {
+            IndirectionKind::Box => {
+                // FIXME(ctypes): this logic is broken, but it still fits the current tests:
+                // - for some reason `Box<_>`es in `extern "ABI" {}` blocks
+                //   (including within FnPtr:s)
+                //   are not treated as pointers but as FFI-unsafe structs
+                // - otherwise, treat the box itself correctly, and follow pointee safety logic
+                //   as described in the other `indirection_type` match branch.
+                if state.is_in_defined_function()
+                    || (state.is_in_fnptr() && matches!(self.base_fn_mode, CItemKind::Definition))
+                {
+                    if inner_ty.is_sized(tcx, self.cx.typing_env()) {
+                        return FfiSafe;
+                    } else {
+                        return FfiUnsafe {
+                            ty,
+                            reason: msg!("box cannot be represented as a single pointer"),
+                            help: None,
+                        };
+                    }
+                } else {
+                    // (mid-retcon-commit-chain comment:)
+                    // this is the original fallback behavior, which is wrong
+                    if let ty::Adt(def, args) = ty.kind() {
+                        self.visit_struct_or_union(state, ty, *def, args)
+                    } else if cfg!(debug_assertions) {
+                        bug!("ImproperCTypes: this retcon commit was badly written")
+                    } else {
+                        FfiSafe
+                    }
+                }
+            }
+            IndirectionKind::Ref | IndirectionKind::RawPtr => {
+                // Weird behaviour for pointee safety. the big question here is
+                // "if you have a FFI-unsafe pointee behind a FFI-safe pointer type, is it ok?"
+                // The answer until now is:
+                // "It's OK for rust-defined functions and callbacks, we'll assume those are
+                // meant to be opaque types on the other side of the FFI boundary".
+                //
+                // Reasoning:
+                // For extern function declarations, the actual definition of the function is
+                // written somewhere else, meaning the declaration is free to express this
+                // opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void
+                // (opaque callee-side). For extern function definitions, however, in the case
+                // where the type is opaque caller-side, it is not opaque callee-side,
+                // and having the full type information is necessary to compile the function.
+                //
+                // It might be better to rething this, or even ignore pointee safety for a first
+                // batch of behaviour changes. See the discussion that ends with
+                // https://github.com/rust-lang/rust/pull/134697#issuecomment-2692610258
+                if (state.is_in_defined_function() || state.is_in_fnptr())
+                    && inner_ty.is_sized(self.cx.tcx, self.cx.typing_env())
+                {
+                    FfiSafe
+                } else {
+                    self.visit_type(state, inner_ty)
+                }
+            }
+        }
+    }
+
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
     fn visit_variant_fields(
         &mut self,
@@ -477,7 +560,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         if def.non_enum_variant().fields.is_empty() {
-            return FfiUnsafe {
+            FfiUnsafe {
                 ty,
                 reason: if def.is_struct() {
                     msg!("this struct has no fields")
@@ -489,9 +572,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 } else {
                     Some(msg!("consider adding a member to this union"))
                 },
-            };
+            }
+        } else {
+            self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
         }
-        self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
     }
 
     fn visit_enum(
@@ -559,23 +643,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match *ty.kind() {
             ty::Adt(def, args) => {
-                if let Some(boxed) = ty.boxed_ty()
-                    && (
-                        // FIXME(ctypes): this logic is broken, but it still fits the current tests
-                        state.is_in_defined_function()
-                            || (state.is_in_fnptr()
-                                && matches!(self.base_fn_mode, CItemKind::Definition))
-                    )
-                {
-                    if boxed.is_sized(tcx, self.cx.typing_env()) {
-                        return FfiSafe;
-                    } else {
-                        return FfiUnsafe {
-                            ty,
-                            reason: msg!("box cannot be represented as a single pointer"),
-                            help: None,
-                        };
-                    }
+                if let Some(inner_ty) = ty.boxed_ty() {
+                    return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Box);
                 }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -639,15 +708,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(msg!("consider using a struct instead")),
             },
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
-                if {
-                    (state.is_in_defined_function() || state.is_in_fnptr())
-                        && ty.is_sized(self.cx.tcx, self.cx.typing_env())
-                } =>
-            {
-                FfiSafe
-            }
-
             ty::RawPtr(ty, _)
                 if match ty.kind() {
                     ty::Tuple(tuple) => tuple.is_empty(),
@@ -657,7 +717,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.visit_type(state, ty),
+            ty::RawPtr(inner_ty, _) => {
+                return self.visit_indirection(state, ty, inner_ty, IndirectionKind::RawPtr);
+            }
+            ty::Ref(_, inner_ty, _) => {
+                return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Ref);
+            }
 
             ty::Array(inner_ty, _) => self.visit_type(state, inner_ty),
 
