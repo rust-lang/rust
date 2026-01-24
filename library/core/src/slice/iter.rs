@@ -2260,6 +2260,9 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, const N: usize> TrustedLen for ArrayWindows<'_, T, N> {}
+
 #[stable(feature = "array_windows", since = "1.94.0")]
 impl<T, const N: usize> FusedIterator for ArrayWindows<'_, T, N> {}
 
