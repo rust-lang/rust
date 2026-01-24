@@ -12,7 +12,7 @@ use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, DepContext, DepKind, DepKindVTable, DepNode, DepNodeIndex, SerializedDepNodeIndex,
     dep_kinds,
 };
 use rustc_middle::query::Key;
@@ -489,14 +489,17 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
+pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
+    is_anon: bool,
+    is_eval_always: bool,
+) -> DepKindVTable<'tcx>
 where
     Q: QueryConfigRestored<'tcx>,
 {
     let fingerprint_style = <Q::Config as QueryConfig<QueryCtxt<'tcx>>>::Key::fingerprint_style();
 
     if is_anon || !fingerprint_style.reconstructible() {
-        return DepKindStruct {
+        return DepKindVTable {
             is_anon,
             is_eval_always,
             fingerprint_style,
@@ -506,7 +509,7 @@ where
         };
     }
 
-    DepKindStruct {
+    DepKindVTable {
         is_anon,
         is_eval_always,
         fingerprint_style,
@@ -811,15 +814,19 @@ macro_rules! define_queries {
             for<'tcx> fn(TyCtxt<'tcx>)
         ] = &[$(query_impl::$name::query_key_hash_verify),*];
 
-        #[allow(nonstandard_style)]
-        mod query_callbacks {
+        /// Module containing a named function for each dep kind (including queries)
+        /// that creates a `DepKindVTable`.
+        ///
+        /// Consumed via `make_dep_kind_array!` to create a list of vtables.
+        #[expect(non_snake_case)]
+        mod _dep_kind_vtable_ctors {
             use super::*;
             use rustc_middle::bug;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub(crate) fn Null<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Null<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -830,8 +837,8 @@ macro_rules! define_queries {
             }
 
             // We use this for the forever-red node.
-            pub(crate) fn Red<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Red<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -841,8 +848,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn SideEffect<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn SideEffect<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -855,8 +862,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -866,8 +873,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn TraitSelect<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -877,8 +884,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -888,8 +895,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn CompileMonoItem<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn CompileMonoItem<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -899,8 +906,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn Metadata<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Metadata<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -910,16 +917,17 @@ macro_rules! define_queries {
                 }
             }
 
-            $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
-                $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
+            $(pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
+                use $crate::query_impl::$name::QueryType;
+                $crate::plumbing::make_dep_kind_vtable_for_query::<QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
                     is_eval_always!([$($modifiers)*]),
                 )
             })*
         }
 
-        pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
-            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(query_callbacks))
+        pub fn make_dep_kind_vtables<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindVTable<'tcx>] {
+            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(_dep_kind_vtable_ctors))
         }
     }
 }

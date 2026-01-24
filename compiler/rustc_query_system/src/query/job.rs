@@ -626,7 +626,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
                 file,
                 "#{} [{}] {}",
                 count_total,
-                qcx.dep_context().dep_kind_info(query_info.query.dep_kind).name,
+                qcx.dep_context().dep_kind_vtable(query_info.query.dep_kind).name,
                 query_info.query.description
             );
         }
