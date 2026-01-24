@@ -1501,32 +1501,30 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(disjoint_bitor)]
         ///
-        /// // SAFETY: `1` and `4` have no bits in common.
-        /// unsafe {
-        #[doc = concat!("    assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4), 5);")]
-        /// }
+        /// // SAFETY: `1` and `4` have no ones in common.
+        #[doc = concat!("unsafe { assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4), 5) };")]
         /// ```
         ///
         /// # Safety
         ///
-        /// Requires that `(self & other) == 0`, otherwise it's immediate UB.
-        ///
-        /// Equivalently, requires that `(self | other) == (self + other)`.
+        /// Requires that `self` and `rhs` are disjoint to each other, i.e. do not
+        /// have overlapping ones (thus `self & rhs == 0`). By extension, requires
+        /// that `self | rhs`, `self + rhs`, and `self ^ rhs` are equivalent.
         #[unstable(feature = "disjoint_bitor", issue = "135758")]
         #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
         #[inline]
-        pub const unsafe fn unchecked_disjoint_bitor(self, other: Self) -> Self {
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot have overlapping bits"),
+                "attempt to disjoint or conjoint values",
                 (
                     lhs: $SelfT = self,
-                    rhs: $SelfT = other,
+                    rhs: $SelfT = rhs,
                 ) => (lhs & rhs) == 0,
             );
 
-            // SAFETY: Same precondition
-            unsafe { intrinsics::disjoint_bitor(self, other) }
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,

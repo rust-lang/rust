@@ -1248,6 +1248,48 @@ macro_rules! int_impl {
             if b { overflow_panic::rem() } else { a }
         }
 
+        /// Same value as `self | other`, but UB if any bit position is set in both inputs.
+        ///
+        /// This is a situational micro-optimization for places where you'd rather
+        /// use addition on some platforms and bitwise or on other platforms, based
+        /// on exactly which instructions combine better with whatever else you're
+        /// doing.  Note that there's no reason to bother using this for places
+        /// where it's clear from the operations involved that they can't overlap.
+        /// For example, if you're combining `u16`s into a `u32` with
+        /// `((a as u32) << 16) | (b as u32)`, that's fine, as the backend will
+        /// know those sides of the `|` are disjoint without needing help.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(disjoint_bitor)]
+        ///
+        /// // SAFETY: `1` and `-2` have no ones in common.
+        #[doc = concat!("unsafe { assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(-2), -1) };")]
+        /// ```
+        ///
+        /// # Safety
+        ///
+        /// Requires that `self` and `rhs` are disjoint to each other, i.e. do not
+        /// have overlapping ones (thus `self & rhs == 0`). By extension, requires
+        /// that `self | rhs`, `self + rhs`, and `self ^ rhs` are equivalent.
+        #[unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[inline]
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                "attempt to disjoint or conjoint values",
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => (lhs & rhs) == 0,
+            );
+
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
+        }
+
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
         ///
         /// # Examples
