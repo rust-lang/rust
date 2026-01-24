@@ -66,6 +66,7 @@
     {{ layout.external_html.in_header|safe }}
 </head> {# #}
 <body class="rustdoc {{+page.css_class}}"> {# #}
+    <a class="skip-main-content" href="#main-content">Skip to main content</a> {# #}
     <!--[if lte IE 11]> {# #}
     <div class="warning"> {# #}
         This old browser is unsupported and will most likely display funky things. {# #}
@@ -109,7 +110,7 @@
     <div class="sidebar-resizer" title="Drag to resize sidebar"></div> {# #}
     <main>
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
-            <section id="main-content" class="content">{{ content|safe }}</section>
+            <section id="main-content" class="content" tabindex="-1">{{ content|safe }}</section>
         {% if page.css_class != "src" %}</div>{% endif %}
     </main>
     {{ layout.external_html.after_content|safe }}
