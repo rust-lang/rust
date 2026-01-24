@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "spirv64-intel-unknown".into(),
         metadata: TargetMetadata {
-            description: Some("Intel GPU".into()),
+            description: Some("SPIR-V with Intel GPU extensions".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
