@@ -490,7 +490,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     )?;
 
                     let key_mplace = self.va_list_key_mplace(&mplace)?;
-                    let key = self.va_list(varargs);
+                    let key = self.va_list_ptr(varargs);
                     self.write_pointer(key, &key_mplace)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.

@@ -238,7 +238,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Insert a new variable argument list in the global map of variable argument lists.
-    pub fn va_list(
+    pub fn va_list_ptr(
         &mut self,
         varargs: Vec<MPlaceTy<'tcx, M::Provenance>>,
     ) -> Pointer<M::Provenance> {
