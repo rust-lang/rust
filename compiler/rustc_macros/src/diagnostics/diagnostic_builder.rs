@@ -11,8 +11,8 @@ use crate::diagnostics::parse_diag::DiagAttribute;
 use crate::diagnostics::parse_subdiag::SubdiagnosticAttribute;
 use crate::diagnostics::utils::{
     FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
-    build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span,
-    report_type_error, should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
+    build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
+    should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
 };
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
