@@ -33,7 +33,7 @@ use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
 use crate::config::native_libs::parse_native_libs;
-pub use crate::config::print_request::{PrintKind, PrintRequest};
+pub use crate::config::print_request::{PrintKind, PrintRequest, collect_print_requests};
 use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;

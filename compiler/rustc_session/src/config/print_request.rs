@@ -142,7 +142,7 @@ pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     )
 });
 
-pub(crate) fn collect_print_requests(
+pub fn collect_print_requests(
     early_dcx: &EarlyDiagCtxt,
     cg: &mut CodegenOptions,
     unstable_opts: &UnstableOptions,
