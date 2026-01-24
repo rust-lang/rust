@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use either::{Left, Right};
-use rustc_abi::{self as abi, ExternAbi, FieldIdx, HasDataLayout, Integer, Size, VariantIdx};
+use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
@@ -483,8 +483,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // When the frame is dropped, this ID is used to deallocate the variable arguments list.
                     self.frame_mut().va_list = varargs.clone();
 
-                    let ptr = self.va_list_insert(varargs);
-                    let addr = Scalar::from_pointer(ptr, self);
+                    let key = self.va_list_insert(varargs);
 
                     // Zero the mplace, so it is fully initialized.
                     self.write_bytes_ptr(
@@ -492,12 +491,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         (0..mplace.layout.size.bytes()).map(|_| 0u8),
                     )?;
 
-                    // Store the pointer to the global variable arguments list allocation in the
-                    // first bytes of the `VaList` value.
-                    let mut alloc = self
-                        .get_ptr_alloc_mut(mplace.ptr(), self.data_layout().pointer_size())?
-                        .expect("not a ZST");
-                    alloc.write_ptr_sized(Size::ZERO, addr)?;
+                    let key_mplace = self.va_list_key_mplace(&mplace)?;
+                    self.write_pointer(key, &key_mplace)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     self.storage_live(local)?;

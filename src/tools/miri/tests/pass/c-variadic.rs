@@ -2,10 +2,8 @@
 
 use core::ffi::VaList;
 
-fn helper(ap: VaList) -> i32 {
-    // unsafe { ap.arg::<i32>() }
-    let _ = ap;
-    0
+fn helper(mut ap: VaList) -> i32 {
+    unsafe { ap.arg::<i32>() }
 }
 
 unsafe extern "C" fn variadic(a: i32, ap: ...) -> i32 {

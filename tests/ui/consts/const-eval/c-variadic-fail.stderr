@@ -319,8 +319,8 @@ LL |     const { unsafe { helper(1, 2, 3) } };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got 0xdeadbeef[noalloc] which is a dangling pointer (it has no provenance)
-  --> $DIR/c-variadic-fail.rs:145:5
+error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got null pointer
+  --> $DIR/c-variadic-fail.rs:144:5
    |
 LL |     }
    |     ^ evaluation of `drop_of_invalid::{constant#0}` failed inside this call
@@ -335,7 +335,6 @@ note: erroneous constant encountered
    |
 LL | /     const {
 LL | |         let mut invalid: MaybeUninit<VaList> = MaybeUninit::zeroed();
-LL | |         unsafe { invalid.as_mut_ptr().cast::<usize>().write(0xdeadbeef) };
 LL | |         let ap = unsafe { invalid.assume_init() };
 LL | |     }
    | |_____^
@@ -345,7 +344,6 @@ note: erroneous constant encountered
    |
 LL | /     const {
 LL | |         let mut invalid: MaybeUninit<VaList> = MaybeUninit::zeroed();
-LL | |         unsafe { invalid.as_mut_ptr().cast::<usize>().write(0xdeadbeef) };
 LL | |         let ap = unsafe { invalid.assume_init() };
 LL | |     }
    | |_____^
