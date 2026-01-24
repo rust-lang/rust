@@ -4,9 +4,9 @@ use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, ba
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv8r-none-eabihf".into(),
+        llvm_target: "thumbv8r-none-eabihf".into(),
         metadata: TargetMetadata {
-            description: Some("Bare Armv8-R, hardfloat".into()),
+            description: Some("Thumb-mode Bare Armv8-R, hardfloat".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
