@@ -1,12 +1,12 @@
-// Targets the Little-endian Cortex-R4/R5 processor (ARMv7-R)
+// Targets the Little-endian Cortex-A8 (and similar) processors (ARMv7-A)
 
 use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7r-none-eabi".into(),
+        llvm_target: "thumbv7a-none-eabi".into(),
         metadata: TargetMetadata {
-            description: Some("Bare Armv7-R".into()),
+            description: Some("Thumb-mode Bare Armv7-A".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
+            features: "+soft-float,-neon,+strict-align".into(),
             max_atomic_width: Some(64),
             has_thumb_interworking: true,
             ..base::arm_none::opts()
