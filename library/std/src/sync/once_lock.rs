@@ -64,13 +64,18 @@ use crate::sync::Once;
 ///     const fn new() -> OnceList<T> {
 ///         OnceList { data: OnceLock::new(), next: OnceLock::new() }
 ///     }
-///     fn push(&self, value: T) {
-///         // FIXME: this impl is concise, but is also slow for long lists or many threads.
-///         // as an exercise, consider how you might improve on it while preserving the behavior
-///         if let Err(value) = self.data.set(value) {
-///             let next = self.next.get_or_init(|| Box::new(OnceList::new()));
-///             next.push(value)
-///         };
+///     fn push(&self, mut value: T) {
+///         let mut current = self;
+///         loop {
+///             match current.data.set(value) {
+///                 Ok(()) => break,
+///                 Err(v) => {
+///                     value = v;
+///                     let next = current.next.get_or_init(|| Box::new(OnceList::new()));
+///                     current = next;
+///                 }
+///             }
+///         }
 ///     }
 ///     fn contains(&self, example: &T) -> bool
 ///     where
