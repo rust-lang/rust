@@ -636,6 +636,7 @@ By default, test suites under UI test mode (`tests/ui`, `tests/ui-fulldeps`,
 but not `tests/rustdoc-ui`) will specify
 
 - `-A unused`
+- `-W unused_attributes` (since these tend to be interesting for ui tests)
 - `-A internal_features`
 
 If:
