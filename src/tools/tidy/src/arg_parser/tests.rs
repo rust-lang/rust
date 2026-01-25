@@ -2,15 +2,21 @@ use std::path::PathBuf;
 
 use crate::arg_parser::TidyArgParser;
 
+// Test all arguments
 #[test]
-fn test_tidy_parser() {
+fn test_tidy_parser_full() {
     let args = vec![
         "rust-tidy",
-        "/home/user/rust", // Root dir
-        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo", // Cardo location
-        "/home/user/rust/build", // Build dir
-        "16",              // Number of concurrency
-        "/home/user/rust/build/misc-tools/bin/yarn", // Yarn location
+        "--root-path",
+        "/home/user/rust",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--concurrency",
+        "16",
+        "--npm-path",
+        "yarn",
         "--verbose",
         "--bless",
         "--extra-checks",
@@ -29,7 +35,7 @@ fn test_tidy_parser() {
     );
     assert_eq!(parsed_args.output_directory, PathBuf::from("/home/user/rust/build"));
     assert_eq!(parsed_args.concurrency.get(), 16);
-    assert_eq!(parsed_args.npm, PathBuf::from("/home/user/rust/build/misc-tools/bin/yarn"));
+    assert_eq!(parsed_args.npm, PathBuf::from("yarn"));
     assert!(parsed_args.verbose);
     assert!(parsed_args.bless);
     assert_eq!(
