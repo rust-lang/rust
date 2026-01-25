@@ -705,9 +705,24 @@ pub const unsafe fn zeroed<T>() -> T {
 /// Therefore, it is immediate undefined behavior to call this function on nearly all types,
 /// including integer types and arrays of integer types, and even if the result is unused.
 ///
+/// # Safety
+///
+/// This function is highly unsafe, as calling this function on nearly all types causes
+/// undefined behavior. You should **always** prefer using [`MaybeUninit<T>`] instead.
+///
+/// If you absolutely must use this function, the following conditions must be upheld:
+///
+/// - `T` must be *valid* with any sequence of bytes of the appropriate length,
+///   initialized or uninitialized.
+/// - `T` must be *[inhabited]*, i.e. possible to construct. This means that types
+///   like zero-variant enums and [`!`] are unsound to construct with this function.
+/// - You must use the value only in ways which do not violate any *safety*
+///   invariants of the type.
+///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
+/// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
 #[inline(always)]
 #[must_use]
 #[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
