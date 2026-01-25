@@ -192,14 +192,14 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 52: expected `[`
+error 52: expected L_BRACK
 error 52: expected pattern
 error 53: expected FAT_ARROW
 error 78: expected `,`
-error 161: expected `[`
+error 161: expected L_BRACK
 error 161: expected pattern
 error 162: expected FAT_ARROW
-error 232: expected `[`
+error 232: expected L_BRACK
 error 232: expected pattern
 error 233: expected FAT_ARROW
 error 250: expected `,`

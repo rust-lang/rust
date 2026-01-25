@@ -24,15 +24,11 @@ fn attr(p: &mut Parser<'_>, inner: bool) {
         p.bump(T![!]);
     }
 
-    if p.eat(T!['[']) {
+    if p.expect(T!['[']) {
         meta(p);
-
-        if !p.eat(T![']']) {
-            p.error("expected `]`");
-        }
-    } else {
-        p.error("expected `[`");
+        p.expect(T![']']);
     }
+
     attr.complete(p, ATTR);
 }
 
