@@ -703,12 +703,12 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
-    pub fn num_lifetime_params(&self) -> usize {
+    pub fn num_lifetime_args(&self) -> usize {
         self.args.iter().filter(|arg| matches!(arg, GenericArg::Lifetime(_))).count()
     }
 
     #[inline]
-    pub fn has_lifetime_params(&self) -> bool {
+    pub fn has_lifetime_args(&self) -> bool {
         self.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
     }
 
