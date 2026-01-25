@@ -9,9 +9,8 @@ pub unsafe fn generic_in_place<T: Copy>(ptr: *mut Box<[T]>) {
     // CHECK-LABEL: fn generic_in_place(_1: *mut Box<[T]>)
     // CHECK: (inlined <Box<[T]> as Drop>::drop)
     // CHECK: [[SIZE:_.+]] = std::intrinsics::size_of_val::<[T]>
-    // CHECK: [[ALIGN:_.+]] = const <T as std::mem::SizedTypeProperties>::ALIGN;
-    // CHECK: [[B:_.+]] = copy [[ALIGN]] as std::ptr::Alignment (Transmute);
-    // CHECK: [[C:_.+]] = move ([[B]].0: std::ptr::alignment::AlignmentEnum);
+    // CHECK: [[ALIGN:_.+]] = const <T as std::mem::SizedTypeProperties>::ALIGN as std::ptr::Alignment (Transmute);
+    // CHECK: [[C:_.+]] = move ([[ALIGN]].0: std::ptr::alignment::AlignmentEnum);
     // CHECK: [[D:_.+]] = discriminant([[C]]);
     // CHECK: = alloc::alloc::__rust_dealloc({{.+}}, move [[SIZE]], move [[D]]) ->
     std::ptr::drop_in_place(ptr)

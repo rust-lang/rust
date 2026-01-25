@@ -61,10 +61,8 @@
 //! The evaluated form is inserted in `evaluated` as an `OpTy` or `None` if evaluation failed.
 //!
 //! The difficulty is non-deterministic evaluation of MIR constants. Some `Const` can have
-//! different runtime values each time they are evaluated. This is the case with
-//! `Const::Slice` which have a new pointer each time they are evaluated, and constants that
-//! contain a fn pointer (`AllocId` pointing to a `GlobalAlloc::Function`) pointing to a different
-//! symbol in each codegen unit.
+//! different runtime values each time they are evaluated. This happens with valtrees that
+//! generate a new allocation each time they are used. This is checked by `is_deterministic`.
 //!
 //! Meanwhile, we want to be able to read indirect constants. For instance:
 //! ```
@@ -81,8 +79,12 @@
 //! may be non-deterministic. When that happens, we assign a disambiguator to ensure that we do not
 //! merge the constants. See `duplicate_slice` test in `gvn.rs`.
 //!
-//! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
-//! that contain `AllocId`s.
+//! Conversely, some constants cannot cross function boundaries, which could happen because of
+//! inlining. For instance, constants that contain a fn pointer (`AllocId` pointing to a
+//! `GlobalAlloc::Function`) point to a different symbol in each codegen unit. To avoid this,
+//! when writing constants in MIR, we do not write `Const`s that contain `AllocId`s. This is
+//! checked by `may_have_provenance`. See <https://github.com/rust-lang/rust/issues/128775> for
+//! more information.
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -103,7 +105,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::GlobalAlloc;
+use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
@@ -491,7 +493,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        if value.is_deterministic() {
+        if is_deterministic(value) {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
             self.insert(value.ty(), constant)
@@ -526,14 +528,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
-        debug_assert!(value.is_deterministic());
+        debug_assert!(is_deterministic(value));
         self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: None })
     }
 
     fn insert_scalar(&mut self, ty: Ty<'tcx>, scalar: Scalar) -> VnIndex {
         // Scalars are deterministic.
         let value = Const::from_scalar(self.tcx, scalar, ty);
-        debug_assert!(value.is_deterministic());
+        debug_assert!(is_deterministic(value));
         self.insert(ty, Value::Constant { value, disambiguator: None })
     }
 
@@ -1004,21 +1006,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         operand: &mut Operand<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        match *operand {
-            Operand::RuntimeChecks(c) => {
-                Some(self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)))
-            }
-            Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
+        let value = match *operand {
+            Operand::RuntimeChecks(c) => self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)),
+            Operand::Constant(ref constant) => self.insert_constant(constant.const_),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
-                let value = self.simplify_place_value(place, location)?;
-                if let Some(const_) = self.try_as_constant(value) {
-                    *operand = Operand::Constant(Box::new(const_));
-                } else if let Value::RuntimeChecks(c) = self.get(value) {
-                    *operand = Operand::RuntimeChecks(c);
-                }
-                Some(value)
+                self.simplify_place_value(place, location)?
             }
+        };
+        if let Some(const_) = self.try_as_constant(value) {
+            *operand = Operand::Constant(Box::new(const_));
+        } else if let Value::RuntimeChecks(c) = self.get(value) {
+            *operand = Operand::RuntimeChecks(c);
         }
+        Some(value)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1696,6 +1696,45 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 }
 
+/// Return true if any evaluation of this constant in the same MIR body
+/// always returns the same value, taking into account even pointer identity tests.
+///
+/// In other words, this answers: is "cloning" the `Const` ok?
+fn is_deterministic(c: Const<'_>) -> bool {
+    // Primitive types cannot contain provenance and always have the same value.
+    if c.ty().is_primitive() {
+        return true;
+    }
+
+    match c {
+        // Some constants may generate fresh allocations for pointers they contain,
+        // so using the same constant twice can yield two different results.
+        // Notably, valtrees purposefully generate new allocations.
+        Const::Ty(..) => false,
+        // We do not know the contents, so don't attempt to do anything clever.
+        Const::Unevaluated(..) => false,
+        // When an evaluated constant contains provenance, it is encoded as an `AllocId`.
+        // Cloning the constant will reuse the same `AllocId`. If this is in the same MIR
+        // body, this same `AllocId` will result in the same pointer in codegen.
+        Const::Val(..) => true,
+    }
+}
+
+/// Check if a constant may contain provenance information.
+/// Can return `true` even if there is no provenance.
+fn may_have_provenance(tcx: TyCtxt<'_>, value: ConstValue, size: Size) -> bool {
+    match value {
+        ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
+        ConstValue::Scalar(Scalar::Ptr(..)) | ConstValue::Slice { .. } => return true,
+        ConstValue::Indirect { alloc_id, offset } => !tcx
+            .global_alloc(alloc_id)
+            .unwrap_memory()
+            .inner()
+            .provenance()
+            .range_empty(AllocRange::from(offset..offset + size), &tcx),
+    }
+}
+
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
@@ -1727,7 +1766,7 @@ fn op_to_prop_const<'tcx>(
         if !scalar.try_to_scalar_int().is_ok() {
             // Check that we do not leak a pointer.
             // Those pointers may lose part of their identity in codegen.
-            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
             return None;
         }
         return Some(ConstValue::Scalar(scalar));
@@ -1739,7 +1778,7 @@ fn op_to_prop_const<'tcx>(
         let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
-        // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
+        // Due to https://github.com/rust-lang/rust/issues/128775, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
         let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
         if alloc_ref.has_provenance() {
@@ -1766,16 +1805,7 @@ fn op_to_prop_const<'tcx>(
     // Everything failed: create a new allocation to hold the data.
     let alloc_id =
         ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).discard_err()?;
-    let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
-
-    // Check that we do not leak a pointer.
-    // Those pointers may lose part of their identity in codegen.
-    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-    if ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty() {
-        return Some(value);
-    }
-
-    None
+    Some(ConstValue::Indirect { alloc_id, offset: Size::ZERO })
 }
 
 impl<'tcx> VnState<'_, '_, 'tcx> {
@@ -1796,14 +1826,28 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
-        // This was already constant in MIR, do not change it. If the constant is not
-        // deterministic, adding an additional mention of it in MIR will not give the same value as
-        // the former mention.
-        if let Value::Constant { value, disambiguator: None } = self.get(index) {
-            debug_assert!(value.is_deterministic());
+        let value = self.get(index);
+
+        // This was already an *evaluated* constant in MIR, do not change it.
+        if let Value::Constant { value, disambiguator: None } = value
+            && let Const::Val(..) = value
+        {
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
+        if let Some(value) = self.try_as_evaluated_constant(index) {
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
+        }
+
+        // We failed to provide an evaluated form, fallback to using the unevaluated constant.
+        if let Value::Constant { value, disambiguator: None } = value {
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
+        }
+
+        None
+    }
+
+    fn try_as_evaluated_constant(&mut self, index: VnIndex) -> Option<Const<'tcx>> {
         let op = self.eval_to_const(index)?;
         if op.layout.is_unsized() {
             // Do not attempt to propagate unsized locals.
@@ -1814,11 +1858,12 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
-        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-        assert!(!value.may_have_provenance(self.tcx, op.layout.size));
+        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/128775 is fixed.
+        if may_have_provenance(self.tcx, value, op.layout.size) {
+            return None;
+        }
 
-        let const_ = Const::Val(value, op.layout.ty);
-        Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
+        Some(Const::Val(value, op.layout.ty))
     }
 
     /// Construct a place which holds the same value as `index` and for which all locals strictly
