@@ -203,6 +203,10 @@ cfg_has_statx! {{
             if err2 == Some(libc::EFAULT) {
                 STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
                 return Some(Err(err));
+            } else if err2 == Some(libc::ENOMEM) {
+                // ENOMEM is transient, so don't permanently disable statx.
+                // Fallback to stat64 for this call.
+                return None;
             } else {
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
                 return None;
