@@ -2,10 +2,11 @@ use core::ffi::c_void;
 
 use crate::ffi::CStr;
 use crate::num::NonZero;
-use crate::os::windows::io::{AsRawHandle, HandleOrNull};
+use crate::os::windows::io::{AsRawHandle, FromRawHandle, HandleOrNull};
+use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicBool};
 use crate::sys::handle::Handle;
-use crate::sys::pal::time::WaitableTimer;
-use crate::sys::pal::{dur2timeout, to_u16s};
+use crate::sys::pal::to_u16s;
 use crate::sys::{FromInner, c, stack_overflow};
 use crate::thread::ThreadInit;
 use crate::time::Duration;
@@ -115,16 +116,70 @@ pub unsafe fn set_name_wide(name: &[u16]) {
 }
 
 pub fn sleep(dur: Duration) {
-    fn high_precision_sleep(dur: Duration) -> Result<(), ()> {
-        let timer = WaitableTimer::high_resolution()?;
-        timer.set(dur)?;
-        timer.wait()
+    // Preserve the zero duration behavior of `Sleep`.
+    if dur.is_zero() {
+        unsafe { c::Sleep(0) };
+        return;
     }
-    // Attempt to use high-precision sleep (Windows 10, version 1803+).
-    // On error fallback to the standard `Sleep` function.
-    // Also preserves the zero duration behavior of `Sleep`.
-    if dur.is_zero() || high_precision_sleep(dur).is_err() {
-        unsafe { c::Sleep(dur2timeout(dur)) }
+
+    static HIGH_RESULTION_SUPPORTED: Atomic<bool> = AtomicBool::new(true);
+
+    // Otherwise, create a waitable timer object in order to pass the system
+    // a more accurate sleep time – waitable timer objects can be set with
+    // 100 ns precision instead of the millisecond precision of `Sleep`.
+    //
+    // Incidentally, this also bypasses an issue with `Sleep`: `Sleep` can
+    // return before the duration has elapsed since it is allowed to round
+    // the sleep duration *down* to a clock interval (see #149935).
+    let handle = loop {
+        // Use high-precision sleep if available (Windows 10, version 1803+).
+        let flags = if HIGH_RESULTION_SUPPORTED.load(Relaxed) {
+            c::CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+        } else {
+            0
+        };
+        let handle = unsafe {
+            c::CreateWaitableTimerExW(ptr::null(), ptr::null(), flags, c::TIMER_ALL_ACCESS)
+        };
+
+        if !handle.is_null() {
+            break unsafe { Handle::from_raw_handle(handle) };
+        } else {
+            match unsafe { c::GetLastError() } {
+                c::ERROR_INVALID_PARAMETER if flags != 0 => {
+                    HIGH_RESULTION_SUPPORTED.store(false, Relaxed);
+                    continue;
+                }
+                error => {
+                    panic!(
+                        "failed to create waitable timer for sleep: {}",
+                        io::Error::from_raw_os_error(error as i32)
+                    );
+                }
+            }
+        }
+    };
+
+    // Round up to sleep for at least the required duration.
+    let mut intervals = dur.as_nanos().div_ceil(100);
+    while intervals > 0 {
+        // Set the timer. Since relative durations are negative, we can sleep
+        // at most -i64::MIN intervals at a time.
+        let to_sleep = u128::min(intervals, i64::MIN as u128);
+        let time_param = (to_sleep as i64).wrapping_neg();
+        let result = unsafe {
+            c::SetWaitableTimer(handle.as_raw_handle(), &time_param, 0, None, ptr::null(), c::FALSE)
+        };
+        if result == 0 {
+            panic!("failed to set waitable timer for sleep: {}", io::Error::last_os_error());
+        }
+
+        let result = unsafe { c::WaitForSingleObject(handle.as_raw_handle(), c::INFINITE) };
+        if result != c::WAIT_OBJECT_0 {
+            panic!("failed to wait on waitable timer for sleep: {}", io::Error::last_os_error());
+        }
+
+        intervals -= to_sleep;
     }
 }
 
