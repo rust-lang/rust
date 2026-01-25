@@ -196,6 +196,7 @@ cfg_has_statx! {{
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
+            // FIXME what about transient conditions like `ENOMEM`?
 
             let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
                 .err()
