@@ -69,7 +69,7 @@ jobs:
         id: jobs
   job:
     name: ${{ matrix.full_name }}
-    needs: [ calculate_matrix ]
+    needs: [calculate_matrix]
     runs-on: "${{ matrix.os }}"
     timeout-minutes: 360
     # The bors environment contains secrets required for elevated workflows (try and auto builds),
@@ -98,6 +98,26 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
+      # On Windows. speed up CI by ensuring the temp directory
+      # is on the same drive as the build directory.
+      # This uses powershell to avoid needing to do path conversion.
+      - name: Set temp directory
+        run: |
+          $temp_dir = "/temp"
+          New-Item -Path $temp_dir -ItemType Directory -Force
+          $temp_dir = Resolve-Path $temp_dir
+          echo "TEMP=$temp_dir" >> $Env:GITHUB_ENV
+          echo "TMP=$temp_dir" >> $Env:GITHUB_ENV
+        if: runner.os == 'windows'
+        shell: pwsh
+
+      - name: (dbg)Print temp directory
+        run: |
+          echo TMP=$env:TMP
+          echo TEMP=$env:TEMP
+        shell: pwsh
+        if: runner.os == 'windows'
+
       - name: Install cargo in AWS CodeBuild
         if: matrix.codebuild
         run: |
@@ -309,7 +329,7 @@ jobs:
   outcome:
     name: publish toolstate
     runs-on: ubuntu-24.04
-    needs: [ calculate_matrix, job ]
+    needs: [calculate_matrix, job]
     if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
     environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}
     steps:
