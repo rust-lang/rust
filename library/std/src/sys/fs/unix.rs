@@ -196,13 +196,15 @@ cfg_has_statx! {{
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
-            // FIXME what about transient conditions like `ENOMEM`?
+
             let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
                 .err()
                 .and_then(|e| e.raw_os_error());
             if err2 == Some(libc::EFAULT) {
                 STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
                 return Some(Err(err));
+            } else if err2 == Some(libc::ENOMEM) {
+                return None;
             } else {
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
                 return None;
