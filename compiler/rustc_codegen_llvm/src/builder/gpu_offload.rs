@@ -1,5 +1,6 @@
 use std::ffi::CString;
 
+use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::common::TypeKind;
@@ -431,21 +432,27 @@ pub(crate) fn gen_define_handling<'ll>(
     // Our begin mapper should only see simplified information about which args have to be
     // transferred to the device, the end mapper only about which args should be transferred back.
     // Any information beyond that makes it harder for LLVM's opt pass to evaluate whether it can
-    // savely move (=optimize) the LLVM-IR location of this data transfer.
-    // FIXME(offload): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
-    let transfer_kernel: Vec<u64> =
-        transfer.clone().iter().map(|v| v.bits() | 0x20).collect::<Vec<_>>();
+    // safely move (=optimize) the LLVM-IR location of this data transfer. Only the mapping types
+    // mentioned below are handled, so make sure that we don't generate any other ones.
+    let handled_mappings = MappingFlags::TO
+        | MappingFlags::FROM
+        | MappingFlags::TARGET_PARAM
+        | MappingFlags::LITERAL
+        | MappingFlags::IMPLICIT;
+    for arg in &transfer {
+        debug_assert!(!arg.contains_unknown_bits());
+        debug_assert!(arg.difference(handled_mappings).is_empty());
+    }
+
+    let valid_begin_mappings = MappingFlags::TO | MappingFlags::LITERAL | MappingFlags::IMPLICIT;
     let transfer_to: Vec<u64> =
-        transfer.clone().iter().map(|v| v.intersection(MappingFlags::TO).bits()).collect();
+        transfer.clone().iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
     let transfer_from: Vec<u64> =
-        transfer.iter().map(|v| v.intersection(MappingFlags::FROM).bits()).collect();
+        transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
+    // FIXME(offload): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
+    let transfer_kernel = vec![MappingFlags::TARGET_PARAM.bits(); transfer_to.len()];
 
     let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
-    // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
-    // or both to and from the gpu (=3). Other values shouldn't affect us for now.
-    // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
-    // will be 2. For now, everything is 3, until we have our frontend set up.
-    // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
     let memtransfer_begin =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
     let memtransfer_kernel =
