@@ -465,6 +465,7 @@ const fn is_ascii(s: &[u8]) -> bool {
 const SSE2_CHUNK_SIZE: usize = 64;
 
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+#[inline]
 fn is_ascii_sse2(bytes: &[u8]) -> bool {
     use crate::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128};
 
