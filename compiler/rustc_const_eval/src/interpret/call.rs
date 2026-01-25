@@ -446,7 +446,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this is a single iterator (that handles `spread_arg`), then
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = callee_fn_abi.args[..fixed_count].iter().enumerate();
+            let mut callee_args_abis = if caller_fn_abi.c_variadic {
+                // Only the fixed arguments are passed normally.
+                callee_fn_abi.args[..fixed_count].iter().enumerate()
+            } else {
+                // NOTE: this handles the extra caller location argument
+                // when `#[track_caller]` is used.
+                callee_fn_abi.args.iter().enumerate()
+            };
 
             let mut it = body.args_iter().peekable();
             while let Some(local) = it.next() {
