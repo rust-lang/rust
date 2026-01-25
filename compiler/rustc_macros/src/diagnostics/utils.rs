@@ -592,12 +592,11 @@ pub(super) enum SubdiagnosticKind {
 pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
     pub(super) slug: Option<Path>,
-    pub(super) no_span: bool,
 }
 
 impl SubdiagnosticVariant {
     /// Constructs a `SubdiagnosticVariant` from a field or type attribute such as `#[note]`,
-    /// `#[error(parser::add_paren, no_span)]` or `#[suggestion(code = "...")]`. Returns the
+    /// `#[error(parser::add_paren)]` or `#[suggestion(code = "...")]`. Returns the
     /// `SubdiagnosticKind` and the diagnostic slug, if specified.
     pub(super) fn from_attr(
         attr: &Attribute,
@@ -681,7 +680,7 @@ impl SubdiagnosticVariant {
                     | SubdiagnosticKind::HelpOnce
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
-                        return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
+                        return Ok(Some(SubdiagnosticVariant { kind, slug: None }));
                     }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
@@ -697,7 +696,6 @@ impl SubdiagnosticVariant {
         let mut suggestion_kind = None;
 
         let mut slug = None;
-        let mut no_span = false;
 
         list.parse_args_with(|input: ParseStream<'_>| {
             let mut is_first = true;
@@ -716,7 +714,6 @@ impl SubdiagnosticVariant {
                 is_first = false;
 
                 match (arg_name.require_ident()?.to_string().as_str(), &mut kind) {
-                    // ("no_span", _) => no_span = true,
                     ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                         let code_init = build_suggestion_code(
                             &code_field,
@@ -762,7 +759,7 @@ impl SubdiagnosticVariant {
                     (_, SubdiagnosticKind::Suggestion { .. }) => {
                         span_err(arg_name_span, "invalid nested attribute")
                             .help(
-                                "only `no_span`, `style`, `code` and `applicability` are valid nested attributes",
+                                "only `style`, `code` and `applicability` are valid nested attributes",
                             )
                             .emit();
                         // Consume the rest of the input to avoid spamming errors
@@ -770,13 +767,13 @@ impl SubdiagnosticVariant {
                     }
                     (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
                         span_err(arg_name_span, "invalid nested attribute")
-                            .help("only `no_span`, `style` and `applicability` are valid nested attributes")
+                            .help("only `style` and `applicability` are valid nested attributes")
                             .emit();
                         // Consume the rest of the input to avoid spamming errors
                         let _ = input.parse::<TokenStream>();
                     }
                     _ => {
-                        span_err(arg_name_span, "only `no_span` is a valid nested attribute").emit();
+                        span_err(arg_name_span, "no nested attribute expected here").emit();
                         // Consume the rest of the input to avoid spamming errors
                         let _ = input.parse::<TokenStream>();
                     }
@@ -821,7 +818,7 @@ impl SubdiagnosticVariant {
             | SubdiagnosticKind::Warn => {}
         }
 
-        Ok(Some(SubdiagnosticVariant { kind, slug, no_span }))
+        Ok(Some(SubdiagnosticVariant { kind, slug }))
     }
 }
 

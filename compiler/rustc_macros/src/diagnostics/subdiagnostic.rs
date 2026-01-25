@@ -188,13 +188,11 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 }
 
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn identify_kind(
-        &mut self,
-    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+    fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug, no_span }) =
+            let Some(SubdiagnosticVariant { kind, slug }) =
                 SubdiagnosticVariant::from_attr(attr, self)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
@@ -214,7 +212,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 );
             };
 
-            kind_slugs.push((kind, slug, no_span));
+            kind_slugs.push((kind, slug));
         }
 
         Ok(kind_slugs)
@@ -505,8 +503,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
 
-        let kind_stats: KindsStatistics =
-            kind_slugs.iter().map(|(kind, _slug, _no_span)| kind).collect();
+        let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -539,17 +536,13 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         let diag = &self.parent.diag;
         let mut calls = TokenStream::new();
-        for (kind, slug, no_span) in kind_slugs {
+        for (kind, slug) in kind_slugs {
             let message = format_ident!("__message");
             calls.extend(
                 quote! { let #message = #diag.eagerly_translate(crate::fluent_generated::#slug); },
             );
 
-            let name = format_ident!(
-                "{}{}",
-                if span_field.is_some() && !no_span { "span_" } else { "" },
-                kind
-            );
+            let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {
                 SubdiagnosticKind::Suggestion {
                     suggestion_kind,
@@ -601,9 +594,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
                 _ => {
-                    if let Some(span) = span_field
-                        && !no_span
-                    {
+                    if let Some(span) = span_field {
                         quote! { #diag.#name(#span, #message); }
                     } else {
                         quote! { #diag.#name(#message); }

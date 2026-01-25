@@ -192,7 +192,7 @@ impl DiagnosticDeriveVariantBuilder {
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         });
 
-        Ok(Some((subdiag.kind, slug, subdiag.no_span)))
+        Ok(Some((subdiag.kind, slug, false)))
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct

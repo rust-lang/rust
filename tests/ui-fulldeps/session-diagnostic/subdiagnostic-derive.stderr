@@ -22,7 +22,7 @@ error: derive(Diagnostic): `#[label = ...]` is not a valid attribute
 LL | #[label = "..."]
    | ^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:87:9
    |
 LL | #[label(bug = "...")]
@@ -40,7 +40,7 @@ error: expected identifier
 LL | #[label("...")]
    |         ^^^^^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:106:9
    |
 LL | #[label(slug = 4)]
@@ -52,7 +52,7 @@ error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(
 LL | #[label(slug = 4)]
    | ^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:116:9
    |
 LL | #[label(slug("..."))]
@@ -70,13 +70,13 @@ error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(
 LL | #[label()]
    | ^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:135:27
    |
 LL | #[label(no_crate_example, code = "...")]
    |                           ^^^^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:144:27
    |
 LL | #[label(no_crate_example, applicability = "machine-applicable")]
@@ -112,7 +112,7 @@ error: derive(Diagnostic): `#[bar(...)]` is not a valid attribute
 LL |     #[bar("...")]
    |     ^
 
-error: derive(Diagnostic): only `no_span` is a valid nested attribute
+error: derive(Diagnostic): no nested attribute expected here
   --> $DIR/subdiagnostic-derive.rs:215:13
    |
 LL |     #[label(code = "...")]
@@ -292,7 +292,7 @@ error: derive(Diagnostic): invalid nested attribute
 LL | #[multipart_suggestion(no_crate_example, code = "...", applicability = "machine-applicable")]
    |                                          ^^^^
    |
-   = help: only `no_span`, `style` and `applicability` are valid nested attributes
+   = help: only `style` and `applicability` are valid nested attributes
 
 error: derive(Diagnostic): multipart suggestion without any `#[suggestion_part(...)]` fields
   --> $DIR/subdiagnostic-derive.rs:530:1
