@@ -65,6 +65,7 @@ use crate::sync::Once;
 ///         OnceList { data: OnceLock::new(), next: OnceLock::new() }
 ///     }
 ///     fn push(&self, mut value: T) {
+///         // FIXME: this impl is concise, but is also slow for long lists or many threads.
 ///         let mut current = self;
 ///         loop {
 ///             match current.data.set(value) {
