@@ -22,6 +22,11 @@
 // X86_64-LABEL: test_is_ascii
 // X86_64-NOT: kshiftrd
 // X86_64-NOT: kshiftrq
+// Verify explicit SSE2/AVX intrinsics are used:
+// - pmovmskb/vpmovmskb: efficient mask extraction from the MSBs
+// - vpor/por: OR-combining of 4x 16-byte loads (2x unrolled, 64-byte chunks)
+// X86_64: {{vpmovmskb|pmovmskb}}
+// X86_64: {{vpor|por}}
 
 // LA64-LABEL: test_is_ascii
 // LA64: vmskltz.b
