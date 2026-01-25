@@ -466,9 +466,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sha512", Stable, &["avx2"]),
     ("sm3", Stable, &["avx"]),
     ("sm4", Stable, &["avx2"]),
-    // This cannot actually be toggled, the ABI always fixes it, so it'd make little sense to
-    // stabilize. It must be in this list for the ABI check to be able to use it.
-    ("soft-float", Stability::Unstable(sym::x87_target_feature), &[]),
+    ("soft-float", Stability::Forbidden { reason: "use a soft-float target instead" }, &[]),
     ("sse", Stable, &[]),
     ("sse2", Stable, &["sse"]),
     ("sse3", Stable, &["sse2"]),
