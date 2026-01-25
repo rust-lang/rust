@@ -1793,38 +1793,45 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        // Hack: When resolving the type `XX` in an assoc ty binding like
-        // `dyn Foo<'b, Item = XX>`, the current object-lifetime default
-        // would be to examine the trait `Foo` to check whether it has
-        // a lifetime bound declared on `Item`. e.g., if `Foo` is
-        // declared like so, then the default object lifetime bound in
-        // `XX` should be `'b`:
-        //
-        // ```rust
-        // trait Foo<'a> {
-        //   type Item: 'a;
-        // }
-        // ```
-        //
-        // but if we just have `type Item;`, then it would be
-        // `'static`. However, we don't get all of this logic correct.
-        //
-        // Instead, we do something hacky: if there are no lifetime parameters
-        // to the trait, then we simply use a default object lifetime
-        // bound of `'static`, because there is no other possibility. On the other hand,
-        // if there ARE lifetime parameters, then we require the user to give an
-        // explicit bound for now.
-        //
-        // This is intended to leave room for us to implement the
-        // correct behavior in the future.
-        let has_lifetime_parameter =
-            generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
+        let has_lifetime_args = generic_args.has_lifetime_args();
 
-        // Resolve lifetimes found in the bindings, so either in the type `XX` in `Item = XX` or
-        // in the trait ref `YY<...>` in `Item: YY<...>`.
+        // Resolve lifetimes found in the constraints, so either in the type `Ty` in `AssocTy = Ty`
+        // or in the trait ref `TraitRef<..>` in `AssocTy: TraitRef<..>`.
         for constraint in generic_args.constraints {
             let scope = Scope::ObjectLifetimeDefault {
-                lifetime: if has_lifetime_parameter {
+                // FIXME: Ideally we would consider the *item bounds* of assoc types when deducing
+                //        the ambient object lifetime default for the RHS of assoc type bindings.
+                //        For example, given
+                //
+                //            trait TraitA<'a> { type AssocTy: ?Sized + 'a; }
+                //            trait TraitB { type AssocTy<'a>: ?Sized + 'a; }
+                //
+                //        we would elaborate the `dyn Bound` in `TraitA<'r, AssocTy = dyn Bound>`
+                //        and `TraitB<AssocTy<'r> = dyn Bound>` to `dyn Bound + 'r`.
+                //
+                // FIXME: Moreover, ideally GAT args in bindings could induce ambient object
+                //        lifetime defaults. For example, given
+                //
+                //           trait TraitA<'a> { type AssocTy<T: ?Sized + 'a>; }
+                //           trait TraitB { type AssocTy<'a, T: ?Sized + 'a>; }
+                //
+                //        we would elab the `dyn Bound` in `TraitA<'r, AssocTy<dyn Bound> = ()>`
+                //        and `TraitB<AssocTy<'r, dyn Bound> = ()>` to `dyn Bound + 'r`.
+                //
+                // HACK: For now however, if the user passes any lifetime arguments to the trait or
+                //       the (generic) assoc type, we will treat the ambient object lifetime default
+                //       as indeterminate thus forcing the user to explicitly specify the lifetime.
+                //
+                //       If the trait or the assoc type have generic parameters, it's *possible*
+                //       that they occur in the predicates or item bounds of the assoc type, so we
+                //       conservatively reject such cases to allow us to implement the correct
+                //       behavior in the future (here we assume that the number of arguments equals
+                //       the number of parameters which is fine since a mismatch would get rejected
+                //       later anyway).
+                //
+                //       If the items don't have any lifetime parameters we can safely use `'static`
+                //       since there is no other possibility.
+                lifetime: if has_lifetime_args || constraint.gen_args.has_lifetime_args() {
                     None
                 } else {
                     Some(ResolvedArg::StaticLifetime)

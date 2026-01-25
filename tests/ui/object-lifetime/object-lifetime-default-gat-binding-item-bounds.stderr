@@ -1,0 +1,15 @@
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-gat-binding-item-bounds.rs:17:33
+   |
+LL | fn f0<'r>(x: impl Outer<A<'r> = dyn Inner>) { /*check*/ g0(x) }
+   |                                 ^^^^^^^^^
+
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-gat-binding-item-bounds.rs:23:33
+   |
+LL | fn g1<'r>(_: impl Outer<B<'r> = dyn Inner>) {}
+   |                                 ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0228`.
