@@ -196,20 +196,30 @@ cfg_has_statx! {{
             //
             // See: https://github.com/rust-lang/rust/issues/65662
             //
-            // FIXME what about transient conditions like `ENOMEM`?
+            // We check for transient conditions like `ENOMEM` specifically;
+            // for other errors, we assume `statx` is unavailable and fall back to `stat`.
+            let err2 = cvt(statx(
+                0,
+                ptr::null(),
+                0,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                ptr::null_mut(),
+            ))
+            .err()
+            .and_then(|e| e.raw_os_error());
 
-            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
-                .err()
-                .and_then(|e| e.raw_os_error());
-            if err2 == Some(libc::EFAULT) {
-                STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
-                return Some(Err(err));
-            } else if err2 == Some(libc::ENOMEM) {
-                return None;
-            } else {
-                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
-                return None;
+            match err2 {
+                Some(libc::EFAULT) => {
+                    STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+                    return Some(Err(err));
+                }
+                Some(libc::ENOMEM) => {} // Transient condition, retry later
+                _ => {
+                    STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+                }
             }
+
+            return None;
         }
         if statx_availability == STATX_STATE::Unknown as u8 {
             STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
