@@ -15,9 +15,9 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
-    PlaceTy, Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo,
-    interp_ok, throw_ub, throw_ub_custom,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
+    throw_ub, throw_ub_custom,
 };
 use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
@@ -472,19 +472,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let place = self.eval_place(dest)?;
                     let mplace = self.force_allocation(&place)?;
 
-                    // Consume the remaining arguments and store them in fresh allocations.
-                    let mut varargs = Vec::new();
-                    for (fn_arg, abi) in &mut caller_args {
-                        // FIXME: do we have to worry about in-place argument passing?
-                        let op = self.copy_fn_arg(fn_arg);
-                        let mplace = self.allocate(abi.layout, MemoryKind::Stack)?;
-                        self.copy_op(&op, &mplace)?;
-
-                        varargs.push(mplace);
-                    }
-
-                    // When the frame is dropped, these variable arguments are deallocated.
-                    self.frame_mut().va_list = varargs.clone();
+                    // Consume the remaining arguments by putting them into the variable argument
+                    // list.
+                    let varargs = self.allocate_varargs(&mut caller_args)?;
+                    let key = self.va_list_ptr(varargs);
 
                     // Zero the VaList, so it is fully initialized.
                     self.write_bytes_ptr(
@@ -494,7 +485,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     // Store the "key" pointer in the right field.
                     let key_mplace = self.va_list_key_field(&mplace)?;
-                    let key = self.va_list_ptr(varargs);
                     self.write_pointer(key, &key_mplace)?;
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
