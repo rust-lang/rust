@@ -86,6 +86,15 @@ impl PidFd {
     pub fn try_wait(&self) -> Result<Option<ExitStatus>> {
         Ok(self.inner.try_wait()?.map(FromInner::from_inner))
     }
+
+    /// Obtains a duplicate of the file descriptor `targetfd`
+    ///
+    /// So we can get file descriptors from another process
+    /// without relying on that process to explicitly send them via
+    /// `SCM_RIGHTS` or similar mechanisms
+    pub fn getfd(&self, targetfd: RawFd) -> Result<OwnedFd> {
+        self.inner.getfd(targetfd)
+    }
 }
 
 impl AsInner<InnerPidFd> for PidFd {
