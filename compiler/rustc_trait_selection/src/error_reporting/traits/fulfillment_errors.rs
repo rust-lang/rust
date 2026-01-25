@@ -257,6 +257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             match self.get_safe_transmute_error_and_reason(
                                 obligation.clone(),
                                 main_trait_predicate,
+                                root_obligation,
                                 span,
                             ) {
                                 GetSafeTransmuteErrorAndReason::Silent => {
@@ -2797,6 +2798,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> GetSafeTransmuteErrorAndReason {
         use rustc_transmute::Answer;
@@ -2913,11 +2915,28 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         safe_transmute_explanation: Some(safe_transmute_explanation),
                     }
                 }
-                // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
-                Answer::Yes => span_bug!(
-                    span,
-                    "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
-                ),
+                // The normalized types pass, but the original check failed.
+                // This can happen when type aliases were normalized for diagnostics.
+                // Retry with root_obligation's types to get the real error.
+                Answer::Yes => {
+                    if obligation.predicate != root_obligation.predicate {
+                        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(root_pred)) =
+                            root_obligation.predicate.kind().skip_binder()
+                            && root_pred.def_id() == trait_pred.trait_ref.def_id
+                        {
+                            return self.get_safe_transmute_error_and_reason(
+                                root_obligation.clone(),
+                                root_obligation.predicate.kind().rebind(root_pred),
+                                root_obligation,
+                                span,
+                            );
+                        }
+                    }
+                    span_bug!(
+                        span,
+                        "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
+                    )
+                }
                 // Reached when a different obligation (namely `Freeze`) causes the
                 // transmutability analysis to fail. In this case, silence the
                 // transmutability error message in favor of that more specific
