@@ -483,6 +483,7 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - The sum of `len` and `additional` must be greater than the current capacity
+    /// - `len` must be a valid possible length given the element layout
     unsafe fn grow_amortized(
         &mut self,
         len: usize,
@@ -492,14 +493,12 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
-        if elem_layout.size() == 0 {
-            // Since we return a capacity of `usize::MAX` when `elem_size` is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
+        let Some(required_cap) =
+            // SAFETY: Precondition passed to caller
+            (unsafe { Self::len_plus_additional_in_grow(len, additional, elem_layout) })
+        else {
             return Err(CapacityOverflow.into());
-        }
-
-        // Nothing we can really do about these checks, sadly.
-        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+        };
 
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
@@ -746,24 +745,66 @@ impl<A: Allocator> RawVecInner<A> {
         self.cap = unsafe { Cap::new_unchecked(cap) };
     }
 
+    /// Calculates `len + additional` with checking, returning `None` in cases
+    /// where either it would overflow `usize` or is guaranteed to fail in
+    /// `Layout` calculations later (for elements with `elem_layout`).
+    ///
+    /// # Safety
+    /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
+    ///   initially construct `self`
+    /// - `len` must be a valid possible length given the element layout
+    ///   (trivially true when the element type is a ZST)
+    #[inline]
+    const unsafe fn len_plus_additional_in_grow(
+        len: usize,
+        additional: usize,
+        elem_layout: Layout,
+    ) -> Option<usize> {
+        if elem_layout.size() == 0 {
+            // Since we return a capacity of `usize::MAX` when the type size is
+            // 0, getting to here necessarily means the `RawVec` is overfull.
+            return None;
+        }
+
+        // SAFETY: Conceptually, we want to calculate `len + additional` to get the
+        // capacity to pass to `finish_grow`, but that might overflow `usize`.
+        // (Take `Vec::from([1, 2]).reserve(usize::MAX)`, for example.)
+        // To avoid needing checked arithmetic, we use a slightly-simpler test:
+        // because the element isn't a ZST we have `len <= capacity <= isize::MAX`
+        // so it can't overflow as long as we also have `additional <= isize::MAX`
+        // and if it's above that it was going to fail in the `layout_array`
+        // calculation later anyway, so we can just error here.
+        unsafe {
+            let len = Cap::new_unchecked(len);
+            if let Some(additional) = Cap::new(additional) {
+                Some(usize::unchecked_add(len.as_inner(), additional.as_inner()))
+            } else {
+                None
+            }
+        }
+    }
+
     /// # Safety
     /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - The sum of `len` and `additional` must be greater than the current capacity
+    /// - `len` must be a valid possible length given the element layout
     unsafe fn grow_exact(
         &mut self,
         len: usize,
         additional: usize,
         elem_layout: Layout,
     ) -> Result<(), TryReserveError> {
-        if elem_layout.size() == 0 {
-            // Since we return a capacity of `usize::MAX` when the type size is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow.into());
-        }
+        // This is ensured by the calling contexts.
+        debug_assert!(additional > 0);
 
-        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+        let Some(cap) =
+            // SAFETY: Precondition passed to caller
+            (unsafe { Self::len_plus_additional_in_grow(len, additional, elem_layout) })
+        else {
+            return Err(CapacityOverflow.into());
+        };
 
         // SAFETY: preconditions passed to caller
         let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
