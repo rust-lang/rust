@@ -21,7 +21,7 @@ use rustc_query_system::Value;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode,
+    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
     QueryStackDeferred, QueryState, get_query_incr, get_query_non_incr,
 };
 use rustc_span::{ErrorGuaranteed, Span};
@@ -36,7 +36,13 @@ pub use crate::plumbing::{QueryCtxt, query_key_hash_verify_all};
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
-struct DynamicConfig<
+/// Combines a [`QueryVTable`] with some additional compile-time booleans
+/// to implement [`QueryDispatcher`], for use by code in [`rustc_query_system`].
+///
+/// Baking these boolean flags into the type gives a modest but measurable
+/// improvement to compiler perf and compiler code size; see
+/// <https://github.com/rust-lang/rust/pull/151633>.
+struct SemiDynamicQueryDispatcher<
     'tcx,
     C: QueryCache,
     const ANON: bool,
@@ -46,20 +52,23 @@ struct DynamicConfig<
     vtable: &'tcx QueryVTable<'tcx, C>,
 }
 
+// Manually implement Copy/Clone, because deriving would put trait bounds on the cache type.
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 {
 }
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 {
     fn clone(&self) -> Self {
         *self
     }
 }
 
+// This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    QueryDispatcher<QueryCtxt<'tcx>>
+    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
@@ -193,17 +202,28 @@ where
     }
 }
 
-/// This is implemented per query. It allows restoring query values from their erased state
-/// and constructing a QueryConfig.
-trait QueryConfigRestored<'tcx> {
-    type RestoredValue;
-    type Config: QueryConfig<QueryCtxt<'tcx>>;
+/// Provides access to vtable-like operations for a query
+/// (by creating a [`QueryDispatcher`]),
+/// but also keeps track of the "unerased" value type of the query
+/// (i.e. the actual result type in the query declaration).
+///
+/// This trait allows some per-query code to be defined in generic functions
+/// with a trait bound, instead of having to be defined inline within a macro
+/// expansion.
+///
+/// There is one macro-generated implementation of this trait for each query,
+/// on the type `rustc_query_impl::query_impl::$name::QueryType`.
+trait QueryDispatcherUnerased<'tcx> {
+    type UnerasedValue;
+    type Dispatcher: QueryDispatcher<QueryCtxt<'tcx>>;
 
     const NAME: &'static &'static str;
 
-    fn config(tcx: TyCtxt<'tcx>) -> Self::Config;
-    fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value)
-    -> Self::RestoredValue;
+    fn query_dispatcher(tcx: TyCtxt<'tcx>) -> Self::Dispatcher;
+
+    fn restore_val(
+        value: <Self::Dispatcher as QueryDispatcher<QueryCtxt<'tcx>>>::Value,
+    ) -> Self::UnerasedValue;
 }
 
 pub fn query_system<'a>(
