@@ -152,7 +152,7 @@ impl ExternalCrate {
             FileName::Real(ref p) => {
                 match p
                     .local_path()
-                    .or(Some(p.path(RemapPathScopeComponents::MACRO)))
+                    .or(Some(p.path(RemapPathScopeComponents::DOCUMENTATION)))
                     .unwrap()
                     .parent()
                 {
