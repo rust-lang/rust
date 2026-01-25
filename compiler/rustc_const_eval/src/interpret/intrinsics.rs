@@ -737,20 +737,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::va_copy => {
                 let va_list = self.deref_pointer(&args[0])?;
-                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
                 let varargs = self.get_ptr_va_list(key)?;
                 let copy_key = self.va_list_ptr(varargs.to_vec());
 
-                let dest_mplace = self.force_allocation(dest)?;
-                let copy_key_mplace = self.va_list_key_mplace(&dest_mplace)?;
+                let copy_key_mplace = self.va_list_key_field(dest)?;
                 self.write_pointer(copy_key, &copy_key_mplace)?;
             }
 
             sym::va_end => {
                 let va_list = self.deref_pointer(&args[0])?;
-                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
                 self.deallocate_va_list(key)?;
@@ -758,9 +757,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::va_arg => {
                 let va_list = self.deref_pointer(&args[0])?;
-                let key_mplace = self.va_list_key_mplace(&va_list)?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
+                // Invalidate the old list and get its content. We'll recreate the
+                // new list (one element shorter) below.
                 let mut varargs = self.deallocate_va_list(key)?;
 
                 if varargs.is_empty() {
@@ -1292,7 +1293,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Get the MPlace of the key from the place storing the VaList.
-    pub(super) fn va_list_key_mplace<P: Projectable<'tcx, M::Provenance>>(
+    pub(super) fn va_list_key_field<P: Projectable<'tcx, M::Provenance>>(
         &self,
         va_list: &P,
     ) -> InterpResult<'tcx, P> {
