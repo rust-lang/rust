@@ -78,23 +78,13 @@ fn use_after_free() {
     };
 }
 
-macro_rules! va_list_copy {
-    ($ap:expr) => {{
-        // A copy created using Clone is valid, and can be used to read arguments.
-        let mut copy = $ap.clone();
-        assert!(copy.arg::<i32>() == 1i32);
-
-        let mut u = core::mem::MaybeUninit::uninit();
-        unsafe { core::ptr::copy_nonoverlapping(&$ap, u.as_mut_ptr(), 1) };
-
-        // Manually creating the copy is fine.
-        unsafe { u.assume_init() }
-    }};
-}
-
 fn manual_copy_drop() {
     const unsafe extern "C" fn helper(ap: ...) {
-        let mut copy: VaList = va_list_copy!(ap);
+        // A copy created using Clone is valid, and can be used to read arguments.
+        let mut copy = ap.clone();
+        assert!(copy.arg::<i32>() == 1i32);
+
+        let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Using the copy is actually fine.
         let _ = copy.arg::<i32>();
@@ -110,7 +100,7 @@ fn manual_copy_drop() {
 
 fn manual_copy_forget() {
     const unsafe extern "C" fn helper(ap: ...) {
-        let mut copy: VaList = va_list_copy!(ap);
+        let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Using the copy is actually fine.
         let _ = copy.arg::<i32>();
@@ -126,7 +116,7 @@ fn manual_copy_forget() {
 
 fn manual_copy_read() {
     const unsafe extern "C" fn helper(mut ap: ...) {
-        let mut copy: VaList = va_list_copy!(ap);
+        let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Reading from `ap` after reading from `copy` is UB.
         let _ = copy.arg::<i32>();
