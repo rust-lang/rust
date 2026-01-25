@@ -1,6 +1,4 @@
-//@ ignore-loongarch64 (handles dso_local differently)
-//@ ignore-powerpc64 (handles dso_local differently)
-//@ ignore-apple (handles dso_local differently)
+//@ only-loongarch64
 
 //@ revisions: DEFAULT PIE DIRECT INDIRECT
 //@ [DEFAULT] compile-flags: -C relocation-model=static
@@ -13,7 +11,7 @@
 
 unsafe extern "C" {
     // CHECK: @VAR = external
-    // DEFAULT-SAME: dso_local
+    // DEFAULT-NOT: dso_local
     // PIE-NOT: dso_local
     // DIRECT-SAME: dso_local
     // INDIRECT-NOT: dso_local
@@ -23,7 +21,7 @@ unsafe extern "C" {
     // When "linkage" is used, we generate an indirection global.
     // Check dso_local is still applied to the actual global.
     // CHECK: @EXTERNAL = external
-    // DEFAULT-SAME: dso_local
+    // DEFAULT-NOT: dso_local
     // PIE-NOT: dso_local
     // DIRECT-SAME: dso_local
     // INDIRECT-NOT: dso_local
@@ -32,7 +30,7 @@ unsafe extern "C" {
     safe static EXTERNAL: *const u32;
 
     // CHECK: @WEAK = extern_weak
-    // DEFAULT-SAME: dso_local
+    // DEFAULT-NOT: dso_local
     // PIE-NOT: dso_local
     // DIRECT-SAME: dso_local
     // INDIRECT-NOT: dso_local
