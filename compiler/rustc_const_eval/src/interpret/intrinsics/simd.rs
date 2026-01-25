@@ -2,7 +2,6 @@ use either::Either;
 use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
-use rustc_data_structures::assert_matches;
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -829,7 +828,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         vector_layout: TyAndLayout<'tcx>,
         alignment: SimdAlign,
     ) -> InterpResult<'tcx> {
-        assert_matches!(vector_layout.backend_repr, BackendRepr::SimdVector { .. });
+        // Packed SIMD types with non-power-of-two element counts use BackendRepr::Memory
+        // instead of BackendRepr::SimdVector. We need to handle both cases.
+        // FIXME: remove the BackendRepr::Memory case when SIMD vectors are always passed as BackendRepr::SimdVector.
+        assert!(vector_layout.ty.is_simd(), "check_simd_ptr_alignment called on non-SIMD type");
+        match vector_layout.backend_repr {
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => {}
+            _ => {
+                span_bug!(
+                    self.cur_span(),
+                    "SIMD type has unexpected backend_repr: {:?}",
+                    vector_layout.backend_repr
+                );
+            }
+        }
 
         let align = match alignment {
             ty::SimdAlign::Unaligned => {
