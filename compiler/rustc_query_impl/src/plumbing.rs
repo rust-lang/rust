@@ -616,7 +616,12 @@ macro_rules! define_queries {
             {
                 DynamicQuery {
                     name: stringify!($name),
-                    eval_always: is_eval_always!([$($modifiers)*]),
+
+                    is_anon: is_anon!([$($modifiers)*]),
+                    is_depth_limit: depth_limit!([$($modifiers)*]),
+                    is_eval_always: is_eval_always!([$($modifiers)*]),
+                    is_feedable: feedable!([$($modifiers)*]),
+
                     dep_kind: dep_graph::dep_kinds::$name,
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
@@ -685,9 +690,6 @@ macro_rules! define_queries {
                 type Config = DynamicConfig<
                     'tcx,
                     queries::$name::Storage<'tcx>,
-                    { is_anon!([$($modifiers)*]) },
-                    { depth_limit!([$($modifiers)*]) },
-                    { feedable!([$($modifiers)*]) },
                 >;
 
                 const NAME: &'static &'static str = &stringify!($name);

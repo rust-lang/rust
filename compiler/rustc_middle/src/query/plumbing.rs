@@ -20,7 +20,12 @@ use crate::ty::TyCtxt;
 
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
-    pub eval_always: bool,
+
+    pub is_anon: bool,
+    pub is_depth_limit: bool,
+    pub is_eval_always: bool,
+    pub is_feedable: bool,
+
     pub dep_kind: DepKind,
     /// How this query deals with query cycle errors.
     pub cycle_error_handling: CycleErrorHandling,
