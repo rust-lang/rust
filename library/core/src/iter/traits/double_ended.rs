@@ -1,4 +1,5 @@
 use crate::marker::Destruct;
+use crate::array;
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
@@ -94,6 +95,20 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
+
+    /// Pulls `N` items from the back of the iterator and returns them as an array.
+    ///
+    /// See [`Iterator::next_chunk`] for more details.
+    #[inline]
+    #[unstable(feature = "iter_next_chunk", issue = "98326")]
+    fn next_chunk_back<const N: usize>(
+        &mut self,
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
+    where
+        Self: Sized,
+    {
+        crate::array::iter_next_chunk_back(self)
+    }
 
     /// Advances the iterator from the back by `n` elements.
     ///
