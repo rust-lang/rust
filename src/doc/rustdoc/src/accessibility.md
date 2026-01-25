@@ -32,6 +32,7 @@ Rustdoc follows all major guidelines to make its content accessible for everyone
 | **2.1.4 Character Key Shortcuts (Level A)**          | Single-key shortcuts exist and can be disabled via rustdoc UI settings.                                                          |
 | **2.2.1 Timing Adjustable (Level A)**                | No time-limited interactions or content that expires.                                                                            |
 | **2.3.1 Three Flashes or Below Threshold (Level A)** | No flashing or strobing content present.                                                                                         |
+| **2.4.1 Bypass Blocks (Level A)**                    | A mechanism is available to bypass blocks of content that are repeated on multiple web pages.                                    |
 | **2.4.2 Page Titled (Level A)**                      | Each documentation page includes a unique and descriptive `<title>`.                                                             |
 | **2.4.3 Focus Order (Level A)**                      | Keyboard focus order follows a logical and predictable sequence.                                                                 |
 | **2.4.6 Headings and Labels (Level AA)**             | Clear, hierarchical headings and properly labeled controls are used throughout.                                                  |
@@ -46,9 +47,8 @@ Rustdoc follows all major guidelines to make its content accessible for everyone
 
 ## Known Accessibility Issues in Rustdoc
 
-1. `rustdoc` currently lacks "Skip Navigation" links (see [#151420](https://github.com/rust-lang/rust/issues/151420) )
-2. There are some contrast issues with certain parts of the webpage (see [#151422](https://github.com/rust-lang/rust/issues/151422))
-3. WCAG 4.1.3 Status Messages is not implemented yet.
+1. There are some contrast issues with certain parts of the webpage (see [#151422](https://github.com/rust-lang/rust/issues/151422))
+2. WCAG 4.1.3 Status Messages is not implemented yet.
 
 ## Where to Get Help
 
