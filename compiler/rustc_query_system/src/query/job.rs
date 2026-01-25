@@ -3,6 +3,7 @@ use std::io::Write;
 use std::iter;
 use std::num::NonZero;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -539,6 +540,8 @@ pub fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: &CycleError,
 ) -> Diag<'a> {
+    sess.seen_cycle_error.store(true, Ordering::Release);
+
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);

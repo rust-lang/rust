@@ -489,7 +489,11 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
+pub(crate) fn query_callback<'tcx, Q>(
+    is_anon: bool,
+    is_eval_always: bool,
+    is_feedable: bool,
+) -> DepKindStruct<'tcx>
 where
     Q: QueryConfigRestored<'tcx>,
 {
@@ -499,6 +503,7 @@ where
         return DepKindStruct {
             is_anon,
             is_eval_always,
+            is_feedable,
             fingerprint_style,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
@@ -509,6 +514,7 @@ where
     DepKindStruct {
         is_anon,
         is_eval_always,
+        is_feedable,
         fingerprint_style,
         force_from_dep_node: Some(|tcx, dep_node, _| {
             force_from_dep_node(Q::config(tcx), tcx, dep_node)
@@ -822,6 +828,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
@@ -834,6 +841,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
@@ -845,6 +853,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|tcx, _, prev_index| {
                         tcx.dep_graph.force_diagnostic_node(QueryCtxt::new(tcx), prev_index);
@@ -859,6 +868,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: true,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: Some(|_, _, _| bug!("cannot force an anon node")),
                     try_load_from_on_disk_cache: None,
@@ -870,6 +880,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: true,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -881,6 +892,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -892,6 +904,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -903,6 +916,7 @@ macro_rules! define_queries {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
+                    is_feedable: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -914,6 +928,7 @@ macro_rules! define_queries {
                 $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
                     is_eval_always!([$($modifiers)*]),
+                    feedable!([$($modifiers)*]),
                 )
             })*
         }

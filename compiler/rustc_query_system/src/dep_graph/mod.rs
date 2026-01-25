@@ -117,6 +117,8 @@ pub trait Deps: DynSync {
     /// We use this to create the anon node with zero dependencies.
     const DEP_KIND_ANON_ZERO_DEPS: DepKind;
 
+    const DEP_KIND_TRAIT_SELECT: DepKind;
+
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.
     const DEP_KIND_MAX: u16;
