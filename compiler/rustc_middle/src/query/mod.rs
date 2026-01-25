@@ -122,7 +122,7 @@ use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::erase::{Erase, erase, restore};
-use crate::query::plumbing::{CyclePlaceholder, DynamicQuery};
+use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
