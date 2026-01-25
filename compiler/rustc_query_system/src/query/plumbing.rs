@@ -18,7 +18,7 @@ use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::instrument;
 
-use super::QueryConfig;
+use super::QueryDispatcher;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -126,7 +126,7 @@ where
 #[inline(never)]
 fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError) -> Q::Value
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
@@ -140,7 +140,7 @@ fn handle_cycle_error<Q, Qcx>(
     error: Diag<'_>,
 ) -> Q::Value
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     match query.cycle_error_handling() {
@@ -270,7 +270,7 @@ fn cycle_error<Q, Qcx>(
     span: Span,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     // Ensure there was no errors collecting all active jobs.
@@ -291,7 +291,7 @@ fn wait_for_query<Q, Qcx>(
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     // For parallel queries, we'll block and wait until the query running
@@ -340,7 +340,7 @@ fn try_execute_query<Q, Qcx, const INCR: bool>(
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
@@ -412,7 +412,7 @@ fn execute_job<Q, Qcx, const INCR: bool>(
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     // Use `JobOwner` so the query will be poisoned if executing it panics.
@@ -482,7 +482,7 @@ fn execute_job_non_incr<Q, Qcx>(
     job_id: QueryJobId,
 ) -> (Q::Value, DepNodeIndex)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
@@ -521,7 +521,7 @@ fn execute_job_incr<Q, Qcx>(
     job_id: QueryJobId,
 ) -> (Q::Value, DepNodeIndex)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     if !query.anon() && !query.eval_always() {
@@ -576,7 +576,7 @@ fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     dep_node: &DepNode,
 ) -> Option<(Q::Value, DepNodeIndex)>
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     // Note this function can be called concurrently from the same query
@@ -762,7 +762,7 @@ fn ensure_must_run<Q, Qcx>(
     check_cache: bool,
 ) -> (bool, Option<DepNode>)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     if query.eval_always() {
@@ -810,7 +810,7 @@ pub enum QueryMode {
 #[inline(always)]
 pub fn get_query_non_incr<Q, Qcx>(query: Q, qcx: Qcx, span: Span, key: Q::Key) -> Q::Value
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
@@ -827,7 +827,7 @@ pub fn get_query_incr<Q, Qcx>(
     mode: QueryMode,
 ) -> Option<Q::Value>
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     debug_assert!(qcx.dep_context().dep_graph().is_fully_enabled());
@@ -853,7 +853,7 @@ where
 
 pub fn force_query<Q, Qcx>(query: Q, qcx: Qcx, key: Q::Key, dep_node: DepNode)
 where
-    Q: QueryConfig<Qcx>,
+    Q: QueryDispatcher<Qcx>,
     Qcx: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.
