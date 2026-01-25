@@ -2,9 +2,12 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
+use crate::bridge::server::{Dispatcher, DispatcherTrait};
+use crate::bridge::standalone::NoRustc;
 
 macro_rules! define_client_handles {
     (
@@ -107,6 +110,10 @@ impl Clone for TokenStream {
 }
 
 impl Span {
+    pub(crate) fn dummy() -> Span {
+        Span { handle: NonZero::new(1).unwrap() }
+    }
+
     pub(crate) fn def_site() -> Span {
         Bridge::with(|bridge| bridge.globals.def_site)
     }
@@ -141,7 +148,10 @@ macro_rules! define_client_side {
                     api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
                     $($arg.encode(&mut buf, &mut ());)*
 
-                    buf = bridge.dispatch.call(buf);
+                    buf = match &mut bridge.dispatch {
+                        DispatchWay::Closure(f) => f.call(buf),
+                        DispatchWay::Directly(disp) => disp.dispatch(buf),
+                    };
 
                     let r = Result::<_, PanicMessage>::decode(&mut &buf[..], &mut ());
 
@@ -155,13 +165,18 @@ macro_rules! define_client_side {
 }
 with_api!(self, self, define_client_side);
 
+enum DispatchWay<'a> {
+    Closure(closure::Closure<'a, Buffer, Buffer>),
+    Directly(Dispatcher<NoRustc>),
+}
+
 struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests.
     cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: DispatchWay<'a>,
 
     /// Provided globals for this macro expansion.
     globals: ExpnGlobals<Span>,
@@ -173,12 +188,31 @@ impl<'a> !Sync for Bridge<'a> {}
 #[allow(unsafe_code)]
 mod state {
     use std::cell::{Cell, RefCell};
+    use std::marker::PhantomData;
     use std::ptr;
 
     use super::Bridge;
+    use crate::bridge::buffer::Buffer;
+    use crate::bridge::client::{COUNTERS, DispatchWay};
+    use crate::bridge::server::{Dispatcher, HandleStore, MarkedTypes};
+    use crate::bridge::{ExpnGlobals, Marked, standalone};
 
     thread_local! {
         static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
+        static STANDALONE: RefCell<Bridge<'static>> = RefCell::new(standalone_bridge());
+    }
+
+    fn standalone_bridge() -> Bridge<'static> {
+        let mut store = HandleStore::new(&COUNTERS);
+        let id = store.Span.alloc(Marked { value: standalone::Span, _marker: PhantomData });
+        let dummy = super::Span { handle: id };
+        let dispatcher =
+            Dispatcher { handle_store: store, server: MarkedTypes(standalone::NoRustc) };
+        Bridge {
+            cached_buffer: Buffer::new(),
+            dispatch: DispatchWay::Directly(dispatcher),
+            globals: ExpnGlobals { call_site: dummy, def_site: dummy, mixed_site: dummy },
+        }
     }
 
     pub(super) fn set<'bridge, R>(state: &RefCell<Bridge<'bridge>>, f: impl FnOnce() -> R) -> R {
@@ -207,8 +241,16 @@ mod state {
         // works the same for any lifetime of the bridge, including the actual
         // one, we can lie here and say that the lifetime is `'static` without
         // anyone noticing.
+        // The other option is that the pointer was set is in `use_standalone`.
+        // In this case, the pointer points to the static `STANDALONE`,
+        // so it actually has a `'static` lifetime already and we are fine.
         let bridge = unsafe { state.cast::<RefCell<Bridge<'static>>>().as_ref() };
         f(bridge)
+    }
+
+    pub(super) fn use_standalone() {
+        let ptr = STANDALONE.with(|r| (&raw const *r).cast());
+        BRIDGE_STATE.set(ptr);
     }
 }
 
@@ -226,6 +268,13 @@ impl Bridge<'_> {
 
 pub(crate) fn is_available() -> bool {
     state::with(|s| s.is_some())
+}
+
+pub(crate) fn enable_standalone() {
+    if is_available() {
+        panic!("cannot enable standalone backend inside a procedural macro");
+    }
+    state::use_standalone();
 }
 
 /// A client-side RPC entry-point, which may be using a different `proc_macro`
@@ -292,7 +341,11 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
         let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
         // Put the buffer we used for input back in the `Bridge` for requests.
-        let state = RefCell::new(Bridge { cached_buffer: buf.take(), dispatch, globals });
+        let state = RefCell::new(Bridge {
+            cached_buffer: buf.take(),
+            dispatch: DispatchWay::Closure(dispatch),
+            globals,
+        });
 
         let output = state::set(&state, || f(input));
 
