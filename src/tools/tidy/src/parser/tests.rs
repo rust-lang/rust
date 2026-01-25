@@ -2,15 +2,21 @@ use std::path::PathBuf;
 
 use crate::parser::TidyParser;
 
+// Test all arguments
 #[test]
-fn test_tidy_parser() {
+fn test_tidy_parser_full() {
     let args = vec![
         "rust-tidy",
-        "/home/user/rust", // Root dir
-        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo", // Cardo location
-        "/home/user/rust/build", // Build dir
-        "16",              // Number of concurrency
-        "/home/user/rust/build/misc-tools/bin/yarn", // Yarn location
+        "--root-path",
+        "/home/user/rust",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--concurrency",
+        "16",
+        "--npm-path",
+        "yarn",
         "--verbose",
         "--bless",
         "--extra-checks",
@@ -20,20 +26,20 @@ fn test_tidy_parser() {
         "some-file2",
     ];
     let cmd = TidyParser::command();
-    let tidy_flags = TidyParser::build(cmd.get_matches_from(args));
+    let parsed_args = TidyParser::build(cmd.get_matches_from(args));
 
-    assert_eq!(tidy_flags.root_path, PathBuf::from("/home/user/rust"));
+    assert_eq!(parsed_args.root_path, PathBuf::from("/home/user/rust"));
     assert_eq!(
-        tidy_flags.cargo,
+        parsed_args.cargo,
         PathBuf::from("/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo")
     );
-    assert_eq!(tidy_flags.output_directory, PathBuf::from("/home/user/rust/build"));
-    assert_eq!(tidy_flags.concurrency.get(), 16);
-    assert_eq!(tidy_flags.npm, PathBuf::from("/home/user/rust/build/misc-tools/bin/yarn"));
-    assert!(tidy_flags.verbose);
-    assert!(tidy_flags.bless);
+    assert_eq!(parsed_args.output_directory, PathBuf::from("/home/user/rust/build"));
+    assert_eq!(parsed_args.concurrency.get(), 16);
+    assert_eq!(parsed_args.npm, PathBuf::from("yarn"));
+    assert!(parsed_args.verbose);
+    assert!(parsed_args.bless);
     assert_eq!(
-        tidy_flags.extra_checks,
+        parsed_args.extra_checks,
         Some(vec![
             "if-installed:auto:js".to_string(),
             "auto:if-installed:py".to_string(),
@@ -41,5 +47,122 @@ fn test_tidy_parser() {
             "if-installed:auto:spellcheck".to_string(),
         ])
     );
-    assert_eq!(tidy_flags.pos, vec!["some-file".to_string(), "some-file2".to_string()]);
+    assert_eq!(parsed_args.pos, vec!["some-file".to_string(), "some-file2".to_string()]);
+}
+
+// The parser can take required args any order
+#[test]
+fn test_tidy_parser_any_order() {
+    let args = vec![
+        "rust-tidy",
+        "--npm-path",
+        "yarn",
+        "--concurrency",
+        "16",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--root-path",
+        "/home/user/rust",
+    ];
+    let cmd = TidyParser::command();
+    let parsed_args = TidyParser::build(cmd.get_matches_from(args));
+
+    assert_eq!(parsed_args.root_path, PathBuf::from("/home/user/rust"));
+    assert_eq!(
+        parsed_args.cargo,
+        PathBuf::from("/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo")
+    );
+    assert_eq!(parsed_args.output_directory, PathBuf::from("/home/user/rust/build"));
+    assert_eq!(parsed_args.concurrency.get(), 16);
+    assert_eq!(parsed_args.npm, PathBuf::from("yarn"));
+}
+
+// --root-path is required
+#[test]
+fn test_tidy_parser_missing_root_path() {
+    let args = vec![
+        "rust-tidy",
+        "--npm-path",
+        "yarn",
+        "--concurrency",
+        "16",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+    ];
+    let cmd = TidyParser::command();
+    assert!(cmd.try_get_matches_from(args).is_err());
+}
+
+// --cargo-path is required
+#[test]
+fn test_tidy_parser_missing_cargo_path() {
+    let args = vec![
+        "rust-tidy",
+        "--npm-path",
+        "yarn",
+        "--concurrency",
+        "16",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--root-path",
+        "/home/user/rust",
+    ];
+    let cmd = TidyParser::command();
+    assert!(cmd.try_get_matches_from(args).is_err());
+}
+
+// --output-dir is required
+#[test]
+fn test_tidy_parser_missing_output_dir() {
+    let args = vec![
+        "rust-tidy",
+        "--npm-path",
+        "yarn",
+        "--concurrency",
+        "16",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--root-path",
+        "/home/user/rust",
+    ];
+    let cmd = TidyParser::command();
+    assert!(cmd.try_get_matches_from(args).is_err());
+}
+
+// --concurrency is required
+#[test]
+fn test_tidy_parser_missing_concurrency() {
+    let args = vec![
+        "rust-tidy",
+        "--npm-path",
+        "yarn",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+        "--root-path",
+        "/home/user/rust",
+    ];
+    let cmd = TidyParser::command();
+    assert!(cmd.try_get_matches_from(args).is_err());
+}
+
+// --npm-path is required
+#[test]
+fn test_tidy_parser_missing_npm_path() {
+    let args = vec![
+        "rust-tidy",
+        "--concurrency",
+        "16",
+        "--output-dir",
+        "/home/user/rust/build",
+        "--cargo-path",
+        "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
+    ];
+    let cmd = TidyParser::command();
+    assert!(cmd.try_get_matches_from(args).is_err());
 }

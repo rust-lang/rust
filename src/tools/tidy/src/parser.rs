@@ -25,30 +25,40 @@ impl TidyParser {
             .arg(
                 Arg::new("root_path")
                     .help("path of the root directory")
+                    .long("root-path")
                     .required(true)
                     .value_parser(value_parser!(PathBuf)),
             )
             .arg(
                 Arg::new("cargo")
                     .help("path of cargo")
+                    .long("cargo-path")
                     .required(true)
                     .value_parser(value_parser!(PathBuf)),
             )
             .arg(
                 Arg::new("output_directory")
                     .help("path of output directory")
+                    .long("output-dir")
                     .required(true)
                     .value_parser(value_parser!(PathBuf)),
             )
-            .arg(Arg::new("concurrency").required(true).value_parser(value_parser!(NonZeroUsize)))
+            .arg(
+                Arg::new("concurrency")
+                    .help("number of threads working concurrently")
+                    .long("concurrency")
+                    .required(true)
+                    .value_parser(value_parser!(NonZeroUsize)),
+            )
             .arg(
                 Arg::new("npm")
                     .help("path of npm")
+                    .long("npm-path")
                     .required(true)
                     .value_parser(value_parser!(PathBuf)),
             )
             .arg(Arg::new("verbose").help("verbose").long("verbose").action(ArgAction::SetTrue))
-            .arg(Arg::new("bless").help("bless").long("bless").action(ArgAction::SetTrue))
+            .arg(Arg::new("bless").help("target files are modified").long("bless").action(ArgAction::SetTrue))
             .arg(
                 Arg::new("extra_checks")
                     .help("extra checks")
@@ -56,7 +66,7 @@ impl TidyParser {
                     .value_delimiter(',')
                     .action(ArgAction::Append),
             )
-            .arg(Arg::new("pos").help("some files").action(ArgAction::Append).last(true))
+            .arg(Arg::new("pos").help("for extra checks. you can specify configs and target files for external check tools").action(ArgAction::Append).last(true))
     }
 
     fn build(matches: ArgMatches) -> Self {
