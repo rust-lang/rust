@@ -12,10 +12,9 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
 use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
+use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
 use rustc_middle::query::{
-    AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
-    queries,
+    AsLocalKey, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates, queries,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::Value;
@@ -44,7 +43,7 @@ struct DynamicConfig<
     const DEPTH_LIMIT: bool,
     const FEEDABLE: bool,
 > {
-    dynamic: &'tcx DynamicQuery<'tcx, C>,
+    vtable: &'tcx QueryVTable<'tcx, C>,
 }
 
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
@@ -70,12 +69,12 @@ where
 
     #[inline(always)]
     fn name(self) -> &'static str {
-        self.dynamic.name
+        self.vtable.name
     }
 
     #[inline(always)]
     fn cache_on_disk(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
-        (self.dynamic.cache_on_disk)(tcx, key)
+        (self.vtable.cache_on_disk)(tcx, key)
     }
 
     #[inline(always)]
@@ -87,7 +86,7 @@ where
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
-                .byte_add(self.dynamic.query_state)
+                .byte_add(self.vtable.query_state)
                 .cast::<QueryState<Self::Key>>()
         }
     }
@@ -101,19 +100,19 @@ where
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
             &*(&qcx.tcx.query_system.caches as *const QueryCaches<'tcx>)
-                .byte_add(self.dynamic.query_cache)
+                .byte_add(self.vtable.query_cache)
                 .cast::<Self::Cache>()
         }
     }
 
     #[inline(always)]
     fn execute_query(self, tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
-        (self.dynamic.execute_query)(tcx, key)
+        (self.vtable.execute_query)(tcx, key)
     }
 
     #[inline(always)]
     fn compute(self, qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
-        (self.dynamic.compute)(qcx.tcx, key)
+        (self.vtable.compute)(qcx.tcx, key)
     }
 
     #[inline(always)]
@@ -124,8 +123,8 @@ where
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<Self::Value> {
-        if self.dynamic.can_load_from_disk {
-            (self.dynamic.try_load_from_disk)(qcx.tcx, key, prev_index, index)
+        if self.vtable.can_load_from_disk {
+            (self.vtable.try_load_from_disk)(qcx.tcx, key, prev_index, index)
         } else {
             None
         }
@@ -138,7 +137,7 @@ where
         key: &Self::Key,
         index: SerializedDepNodeIndex,
     ) -> bool {
-        (self.dynamic.loadable_from_disk)(qcx.tcx, key, index)
+        (self.vtable.loadable_from_disk)(qcx.tcx, key, index)
     }
 
     fn value_from_cycle_error(
@@ -147,12 +146,12 @@ where
         cycle_error: &CycleError,
         guar: ErrorGuaranteed,
     ) -> Self::Value {
-        (self.dynamic.value_from_cycle_error)(tcx, cycle_error, guar)
+        (self.vtable.value_from_cycle_error)(tcx, cycle_error, guar)
     }
 
     #[inline(always)]
     fn format_value(self) -> fn(&Self::Value) -> String {
-        self.dynamic.format_value
+        self.vtable.format_value
     }
 
     #[inline(always)]
@@ -162,7 +161,7 @@ where
 
     #[inline(always)]
     fn eval_always(self) -> bool {
-        self.dynamic.eval_always
+        self.vtable.eval_always
     }
 
     #[inline(always)]
@@ -177,17 +176,17 @@ where
 
     #[inline(always)]
     fn dep_kind(self) -> DepKind {
-        self.dynamic.dep_kind
+        self.vtable.dep_kind
     }
 
     #[inline(always)]
     fn cycle_error_handling(self) -> CycleErrorHandling {
-        self.dynamic.cycle_error_handling
+        self.vtable.cycle_error_handling
     }
 
     #[inline(always)]
     fn hash_result(self) -> HashResult<Self::Value> {
-        self.dynamic.hash_result
+        self.vtable.hash_result
     }
 }
 
@@ -214,7 +213,7 @@ pub fn query_system<'a>(
         states: Default::default(),
         arenas: Default::default(),
         caches: Default::default(),
-        dynamic_queries: dynamic_queries(),
+        query_vtables: make_query_vtables(),
         on_disk_cache,
         fns: QuerySystemFns {
             engine: engine(incremental),

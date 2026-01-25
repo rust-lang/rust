@@ -614,10 +614,10 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn dynamic_query<'tcx>()
-                -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>>
+            pub(crate) fn make_query_vtable<'tcx>()
+                -> QueryVTable<'tcx, queries::$name::Storage<'tcx>>
             {
-                DynamicQuery {
+                QueryVTable {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
@@ -698,7 +698,7 @@ macro_rules! define_queries {
                 #[inline(always)]
                 fn config(tcx: TyCtxt<'tcx>) -> Self::Config {
                     DynamicConfig {
-                        dynamic: &tcx.query_system.dynamic_queries.$name,
+                        vtable: &tcx.query_system.query_vtables.$name,
                     }
                 }
 
@@ -783,10 +783,10 @@ macro_rules! define_queries {
             }
         }
 
-        pub fn dynamic_queries<'tcx>() -> DynamicQueries<'tcx> {
-            DynamicQueries {
+        pub fn make_query_vtables<'tcx>() -> ::rustc_middle::query::PerQueryVTables<'tcx> {
+            ::rustc_middle::query::PerQueryVTables {
                 $(
-                    $name: query_impl::$name::dynamic_query(),
+                    $name: query_impl::$name::make_query_vtable(),
                 )*
             }
         }
