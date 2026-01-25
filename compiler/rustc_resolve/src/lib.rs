@@ -1923,7 +1923,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         current_trait: Option<Module<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        ctxt: Span,
+        sp: Span,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> Vec<TraitCandidate> {
         let mut found_traits = Vec::new();
@@ -1940,7 +1940,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let scope_set = ScopeSet::All(TypeNS);
-        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |mut this, scope, _, _| {
+        let ctxt = Macros20NormalizedSyntaxContext::new(sp.ctxt());
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, sp, None, |mut this, scope, _, _| {
             match scope {
                 Scope::ModuleNonGlobs(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);

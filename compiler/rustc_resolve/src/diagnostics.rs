@@ -32,7 +32,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 
@@ -41,6 +41,7 @@ use crate::errors::{
     ExplicitUnsafeTraits, MacroDefinedLater, MacroRulesNot, MacroSuggMovePosition,
     MaybeMissingMacroRulesName,
 };
+use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
@@ -1163,11 +1164,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         suggestions: &mut Vec<TypoSuggestion>,
         scope_set: ScopeSet<'ra>,
         ps: &ParentScope<'ra>,
-        ctxt: SyntaxContext,
+        sp: Span,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        let ctxt = DUMMY_SP.with_ctxt(ctxt);
-        self.cm().visit_scopes(scope_set, ps, ctxt, None, |this, scope, use_prelude, _| {
+        let ctxt = Macros20NormalizedSyntaxContext::new(sp.ctxt());
+        self.cm().visit_scopes(scope_set, ps, ctxt, sp, None, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
@@ -1269,8 +1270,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
-        let ctxt = ident.span.ctxt();
-        self.add_scope_set_candidates(&mut suggestions, scope_set, parent_scope, ctxt, filter_fn);
+        self.add_scope_set_candidates(
+            &mut suggestions,
+            scope_set,
+            parent_scope,
+            ident.span,
+            filter_fn,
+        );
 
         // Make sure error reporting is deterministic.
         suggestions.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
