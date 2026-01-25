@@ -779,11 +779,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         arg_mplace.layout.ty
                     );
                 }
+                // Copy the argument.
+                self.copy_op(&arg_mplace, dest)?;
 
+                // Update the VaList pointer.
                 let new_key = self.va_list_ptr(varargs);
                 self.write_pointer(new_key, &key_mplace)?;
-
-                self.copy_op(&arg_mplace, dest)?;
             }
 
             // Unsupported intrinsic: skip the return_to_block below.
