@@ -455,7 +455,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         let return_action = if cleanup {
-            // We need to take the locals out, since we need to mutate while iterating.
             for local in &frame.locals {
                 self.deallocate_local(local.value)?;
             }
@@ -613,11 +612,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn deallocate_vararg(&mut self, vararg: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let ptr = vararg.ptr();
 
-        // FIXME: is the `unwrap` valid here?
         trace!(
             "deallocating vararg {:?}: {:?}",
             vararg,
-            // FIXME: what do we do with this comment?
             // Locals always have a `alloc_id` (they are never the result of a int2ptr).
             self.dump_alloc(ptr.provenance.unwrap().get_alloc_id().unwrap())
         );

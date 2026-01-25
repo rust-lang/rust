@@ -353,17 +353,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let sig = self.tcx.fn_sig(instance.def_id()).skip_binder();
             let fixed_count = sig.inputs().skip_binder().len();
             assert!(caller_fn_abi.args.len() >= fixed_count);
-            let extra_tys: Vec<Ty<'tcx>> =
-                caller_fn_abi.args[fixed_count..].iter().map(|arg_abi| arg_abi.layout.ty).collect();
+            let extra_tys =
+                caller_fn_abi.args[fixed_count..].iter().map(|arg_abi| arg_abi.layout.ty);
 
-            (fixed_count, self.tcx.mk_type_list(&extra_tys))
+            (fixed_count, self.tcx.mk_type_list_from_iter(extra_tys))
         } else {
             (caller_fn_abi.args.len(), ty::List::empty())
         };
 
         let callee_fn_abi = self.fn_abi_of_instance(instance, c_variadic_args)?;
 
-        if callee_fn_abi.c_variadic ^ caller_fn_abi.c_variadic {
+        if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
             unreachable!("caller and callee disagree on being c-variadic");
         }
 
@@ -446,11 +446,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this is a single iterator (that handles `spread_arg`), then
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = if caller_fn_abi.c_variadic {
-                callee_fn_abi.args[..fixed_count].iter().enumerate()
-            } else {
-                callee_fn_abi.args.iter().enumerate()
-            };
+            let mut callee_args_abis = callee_fn_abi.args[..fixed_count].iter().enumerate();
 
             let mut it = body.args_iter().peekable();
             while let Some(local) = it.next() {
@@ -462,17 +458,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // query *again* the next time this local is accessed.
                 let ty = self.layout_of_local(self.frame(), local, None)?.ty;
                 if caller_fn_abi.c_variadic && it.peek().is_none() {
-                    // The callee's signature has an additional VaList argument, that the caller
-                    // won't actually pass. Here we synthesize a `VaList` value, whose leading bytes
-                    // are a pointer that can be mapped to the corresponding variable argument list.
+                    // This is the last callee-side argument of a variadic function.
+                    // This argument is a VaList holding the remaining caller-side arguments.
                     self.storage_live(local)?;
 
                     let place = self.eval_place(dest)?;
                     let mplace = self.force_allocation(&place)?;
 
-                    // Consume the remaining arguments and store them in a global allocation.
+                    // Consume the remaining arguments and store them in fresh allocations.
                     let mut varargs = Vec::new();
                     for (fn_arg, abi) in &mut caller_args {
+                        // FIXME: do we have to worry about in-place argument passing?
                         let op = self.copy_fn_arg(fn_arg);
                         let mplace = self.allocate(abi.layout, MemoryKind::Stack)?;
                         self.copy_op(&op, &mplace)?;
@@ -480,16 +476,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         varargs.push(mplace);
                     }
 
-                    // When the frame is dropped, this ID is used to deallocate the variable arguments list.
+                    // When the frame is dropped, these variable arguments are deallocated.
                     self.frame_mut().va_list = varargs.clone();
 
-                    // Zero the mplace, so it is fully initialized.
+                    // Zero the VaList, so it is fully initialized.
                     self.write_bytes_ptr(
                         mplace.ptr(),
                         (0..mplace.layout.size.bytes()).map(|_| 0u8),
                     )?;
 
-                    let key_mplace = self.va_list_key_mplace(&mplace)?;
+                    // Store the "key" pointer in the right field.
+                    let key_mplace = self.va_list_key_field(&mplace)?;
                     let key = self.va_list_ptr(varargs);
                     self.write_pointer(key, &key_mplace)?;
                 } else if Some(local) == body.spread_arg {
