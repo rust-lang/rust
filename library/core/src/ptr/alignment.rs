@@ -166,7 +166,10 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_usize(self) -> usize {
-        self.0 as usize
+        // Going through `as_nonzero` helps this be more clearly the inverse of
+        // `new_unchecked`, letting MIR optimizations fold it away.
+
+        self.as_nonzero().get()
     }
 
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
