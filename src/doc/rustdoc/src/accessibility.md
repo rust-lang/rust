@@ -1,16 +1,14 @@
 # A Note on Accessibility in Rustdoc
 
-At `rustdoc`, we take accessibility seriously. Throughout its history, we've implemented WCAG-compliant and accessible documentation generation, with support for many accessibility practices and we strive to fully comply with WCAG Level AA.
+`rustdoc` is WCAG-compliant[^1] and implements accessible documentation generation, with support for many accessibility practices and we strive to fully comply with WCAG Level AA[^2].
 
 ## Accessibility Practices Followed by Rustdoc
 
-Rustdoc follows all major guidelines to make its content accessible for everyone.
-
-1. `rustdoc` has a no JavaScript policy, meaning that all search indices and interactive features should work well without JavaScript. This ensures that no hidden scripts or interactive elements mess with screen readers and other accessibility tools.
+1. `rustdoc` only uses JavaScript to make your experience better, but `rustdoc` works perfectly well without it, meaning that all search indices and interactive features should work well without JavaScript. This ensures that no hidden scripts or interactive elements mess with screen readers and other accessibility tools.
 2. `rustdoc` uses semantic HTML elements wherever possible.
     1. We use `<details>` instead of checkboxes so text can still be searched in hidden and collapsed content.
-    2. We use the `title` attribute wherever applicable. The **`title`** global attribute contains text representing advisory information related to the element it belongs to.[^1]
-3. All necessary elements are annotated by aria labels, to ensure that all elements have an accessible name[^2] for screen reader compatibility.
+    2. We use the `title` attribute wherever applicable. The **`title`** global attribute contains text representing advisory information related to the element it belongs to.[^4]
+3. All necessary elements are annotated by aria labels, to ensure that all elements have an accessible name[^4] for screen reader compatibility.
 4. `rustdoc` has expansive support for keyboard navigation, such as keybinds for searching, focusing and interacting with the UI.
 
 ### WCAG 2.1 Compliance
@@ -54,6 +52,10 @@ Rustdoc follows all major guidelines to make its content accessible for everyone
 
 If you experience any issues with accessibility while using `rustdoc`, please consider filling an issue at https://github.com/rust-lang/rust/issues.
 
-[^1]: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/title
+[^1]: Consider reading https://www.w3.org/TR/WCAG22/ for more information about WCAG 2.2.
 
-[^2]: https://developer.mozilla.org/en-US/docs/Glossary/Accessible_name
+[^2]: Details about conformance levels can be found at https://www.w3.org/WAI/WCAG22/Understanding/conformance#levels.
+
+[^3]: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/title
+
+[^4]: https://developer.mozilla.org/en-US/docs/Glossary/Accessible_name
