@@ -20,13 +20,13 @@ impl<S: Server> HandleStore<S> {
 }
 
 impl<S: Server> Encode<HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
-    fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
+    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.token_stream.alloc(self).encode(w, s);
     }
 }
 
 impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
-    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
+    fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.token_stream.take(handle::Handle::decode(r, &mut ()))
     }
 }
@@ -34,19 +34,19 @@ impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client
 impl<'s, S: Server> Decode<'_, 's, HandleStore<S>>
     for &'s Marked<S::TokenStream, client::TokenStream>
 {
-    fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<S>) -> Self {
+    fn decode(r: &mut &[u8], s: &'s mut HandleStore<S>) -> Self {
         &s.token_stream[handle::Handle::decode(r, &mut ())]
     }
 }
 
 impl<S: Server> Encode<HandleStore<S>> for Marked<S::Span, client::Span> {
-    fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
+    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.span.alloc(self).encode(w, s);
     }
 }
 
 impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::Span, client::Span> {
-    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
+    fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.span.copy(handle::Handle::decode(r, &mut ()))
     }
 }

@@ -30,19 +30,19 @@ impl Drop for TokenStream {
 }
 
 impl<S> Encode<S> for TokenStream {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         mem::ManuallyDrop::new(self).handle.encode(w, s);
     }
 }
 
 impl<S> Encode<S> for &TokenStream {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for TokenStream {
-    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
         TokenStream { handle: handle::Handle::decode(r, s) }
     }
 }
@@ -56,13 +56,13 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for Span {
-    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Span { handle: handle::Handle::decode(r, s) }
     }
 }
