@@ -511,6 +511,7 @@ impl Hierarchy {
             .filter(|component| matches!(component, Component::Normal(_) | Component::ParentDir))
             .peekable();
 
+        assert!(components.peek().is_some(), "empty file path");
         while let Some(component) = components.next() {
             match component {
                 Component::Normal(s) => {
@@ -518,7 +519,7 @@ impl Hierarchy {
                         h.elems.borrow_mut().insert(s.to_owned());
                         break;
                     }
-                    let next_h = {
+                    h = {
                         let mut children = h.children.borrow_mut();
 
                         if let Some(existing) = children.get(s) {
@@ -529,12 +530,9 @@ impl Hierarchy {
                             new_node
                         }
                     };
-                    h = next_h;
                 }
-                Component::ParentDir => {
-                    if let Some(parent) = h.parent.upgrade() {
-                        h = parent;
-                    }
+                Component::ParentDir if let Some(parent) = h.parent.upgrade() => {
+                    h = parent;
                 }
                 _ => {}
             }
