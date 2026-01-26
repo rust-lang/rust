@@ -42,7 +42,7 @@ debug = 2
 # lsp-server = { path = "lib/lsp-server" }
 
 
-# ungrammar = { path = "lin/ungrammar" }
+# ungrammar = { path = "lib/ungrammar" }
 
 # salsa = { path = "../salsa" }
 # salsa-macros = { path = "../salsa/components/salsa-macros" }
