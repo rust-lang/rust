@@ -52,7 +52,7 @@ The valid scopes are:
 - `debuginfo` - apply remappings to debug information
 - `coverage` - apply remappings to coverage information
 - `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,coverage,debuginfo`.
-- `all` (default) - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
+- `all` (default) - an alias for all of the above (and unstable scopes), also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 
 The scopes accepted by `--remap-path-scope` are not exhaustive - new scopes may be added in future releases for eventual stabilisation.
 This implies that the `all` scope can correspond to different scopes between releases.

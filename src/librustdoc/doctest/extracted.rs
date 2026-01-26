@@ -3,6 +3,7 @@
 //! This module contains the logic to extract doctests and output a JSON containing this
 //! information.
 
+use rustc_span::RemapPathScopeComponents;
 use rustc_span::edition::Edition;
 use serde::Serialize;
 
@@ -62,7 +63,7 @@ impl ExtractedDocTests {
             Some(&opts.crate_name),
         );
         self.doctests.push(ExtractedDocTest {
-            file: filename.prefer_remapped_unconditionally().to_string(),
+            file: filename.display(RemapPathScopeComponents::DOCUMENTATION).to_string(),
             line,
             doctest_attributes: langstr.into(),
             doctest_code: match wrapped {
