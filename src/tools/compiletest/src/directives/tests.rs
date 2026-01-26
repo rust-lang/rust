@@ -105,6 +105,7 @@ fn test_parse_normalize_rule() {
 #[derive(Default)]
 struct ConfigBuilder {
     mode: Option<String>,
+    suite: Option<String>,
     channel: Option<String>,
     edition: Option<Edition>,
     host: Option<String>,
@@ -123,6 +124,11 @@ struct ConfigBuilder {
 impl ConfigBuilder {
     fn mode(&mut self, s: &str) -> &mut Self {
         self.mode = Some(s.to_owned());
+        self
+    }
+
+    fn suite(&mut self, s: &str) -> &mut Self {
+        self.suite = Some(s.to_owned());
         self
     }
 
@@ -196,7 +202,8 @@ impl ConfigBuilder {
             "compiletest",
             "--mode",
             self.mode.as_deref().unwrap_or("ui"),
-            "--suite=ui",
+            "--suite",
+            self.suite.as_deref().unwrap_or("ui"),
             "--compile-lib-path=",
             "--run-lib-path=",
             "--python=",
@@ -1017,6 +1024,93 @@ fn test_needs_target_std() {
     assert!(check_ignore(&config, "//@ needs-target-std"));
     let config = cfg().target("x86_64-unknown-linux-gnu").build();
     assert!(!check_ignore(&config, "//@ needs-target-std"));
+}
+
+#[test]
+fn implied_needs_target_std() {
+    let config = cfg().mode("codegen").suite("codegen-llvm").target("x86_64-unknown-none").build();
+    // Implied `needs-target-std` due to no `#![no_std]`/`#![no_core]`.
+    assert!(check_ignore(&config, ""));
+    assert!(check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    // Make sure that `//@ needs-target-std` takes precedence.
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config =
+        cfg().mode("codegen").suite("codegen-llvm").target("x86_64-unknown-linux-gnu").build();
+    assert!(!check_ignore(&config, ""));
+    assert!(!check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config = cfg().mode("ui").suite("ui").target("x86_64-unknown-none").build();
+    // The implied `//@ needs-target-std` is only applicable for mode=codegen tests.
+    assert!(!check_ignore(&config, ""));
+    assert!(check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config = cfg().mode("ui").suite("ui").target("x86_64-unknown-linux-gnu").build();
+    assert!(!check_ignore(&config, ""));
+    assert!(!check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
 }
 
 fn parse_edition_range(line: &str) -> Option<EditionRange> {

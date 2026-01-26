@@ -206,7 +206,7 @@ pub(crate) struct TestProps {
     pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
     pub minicore_compile_flags: Vec<String>,
-    /// Whether line annotatins are required for the given error kind.
+    /// Whether line annotations are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
     pub disable_gdb_pretty_printers: bool,
@@ -598,6 +598,19 @@ fn iter_directives(
                 .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
             it(&directive_line);
         }
+    }
+
+    // Note: affects all codegen test suites under test mode `codegen`, e.g. `codegen-llvm`.
+    //
+    // Codegen tests automatically receive implied `//@ needs-target-std`, unless
+    // `#![no_std]`/`#![no_core]` attribute was explicitly seen. The rationale is basically to avoid
+    // having to manually maintain a bunch of `//@ needs-target-std` directives esp. for targets
+    // tested/built out-of-tree.
+    if mode == TestMode::Codegen && !file_directives.has_explicit_no_std_core_attribute {
+        let implied_needs_target_std_line =
+            line_directive(testfile, LineNumber::ZERO, "//@ needs-target-std")
+                .expect("valid `needs-target-std` directive line");
+        it(&implied_needs_target_std_line);
     }
 
     for directive_line in &file_directives.lines {
