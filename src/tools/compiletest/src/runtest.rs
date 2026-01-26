@@ -1609,7 +1609,8 @@ impl<'test> TestCx<'test> {
         link_to_aux: LinkToAux,
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
-        let is_rustdoc = compiler_kind == CompilerKind::Rustdoc;
+        // FIXME(Zalathar): We should have a cleaner distinction between
+        // `rustc` flags, `rustdoc` flags, and flags shared by both.
         let mut rustc = match compiler_kind {
             CompilerKind::Rustc => Command::new(&self.config.rustc_path),
             CompilerKind::Rustdoc => {
@@ -1672,7 +1673,7 @@ impl<'test> TestCx<'test> {
         }
         self.set_revision_flags(&mut rustc);
 
-        if !is_rustdoc {
+        if compiler_kind == CompilerKind::Rustc {
             if let Some(ref incremental_dir) = self.props.incremental_dir {
                 rustc.args(&["-C", &format!("incremental={}", incremental_dir)]);
                 rustc.args(&["-Z", "incremental-verify-ich"]);
@@ -1683,7 +1684,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.config.optimize_tests && !is_rustdoc {
+        if self.config.optimize_tests && compiler_kind == CompilerKind::Rustc {
             match self.config.mode {
                 TestMode::Ui => {
                     // If optimize-tests is true we still only want to optimize tests that actually get
@@ -1825,27 +1826,28 @@ impl<'test> TestCx<'test> {
             ));
         }
 
-        match emit {
-            Emit::None => {}
-            Emit::Metadata if is_rustdoc => {}
-            Emit::Metadata => {
-                rustc.args(&["--emit", "metadata"]);
-            }
-            Emit::LlvmIr => {
-                rustc.args(&["--emit", "llvm-ir"]);
-            }
-            Emit::Mir => {
-                rustc.args(&["--emit", "mir"]);
-            }
-            Emit::Asm => {
-                rustc.args(&["--emit", "asm"]);
-            }
-            Emit::LinkArgsAsm => {
-                rustc.args(&["-Clink-args=--emit=asm"]);
+        if compiler_kind == CompilerKind::Rustc {
+            match emit {
+                Emit::None => {}
+                Emit::Metadata => {
+                    rustc.args(&["--emit", "metadata"]);
+                }
+                Emit::LlvmIr => {
+                    rustc.args(&["--emit", "llvm-ir"]);
+                }
+                Emit::Mir => {
+                    rustc.args(&["--emit", "mir"]);
+                }
+                Emit::Asm => {
+                    rustc.args(&["--emit", "asm"]);
+                }
+                Emit::LinkArgsAsm => {
+                    rustc.args(&["-Clink-args=--emit=asm"]);
+                }
             }
         }
 
-        if !is_rustdoc {
+        if compiler_kind == CompilerKind::Rustc {
             if self.config.target == "wasm32-unknown-unknown" || self.is_vxworks_pure_static() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
@@ -1860,14 +1862,15 @@ impl<'test> TestCx<'test> {
             TargetLocation::ThisFile(path) => {
                 rustc.arg("-o").arg(path);
             }
-            TargetLocation::ThisDirectory(path) => {
-                if is_rustdoc {
+            TargetLocation::ThisDirectory(path) => match compiler_kind {
+                CompilerKind::Rustdoc => {
                     // `rustdoc` uses `-o` for the output directory.
                     rustc.arg("-o").arg(path);
-                } else {
+                }
+                CompilerKind::Rustc => {
                     rustc.arg("--out-dir").arg(path);
                 }
-            }
+            },
         }
 
         match self.config.compare_mode {
@@ -1910,17 +1913,17 @@ impl<'test> TestCx<'test> {
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
-            if !is_rustdoc {
-                if let Some(ref linker) = self.config.host_linker {
-                    rustc.arg(format!("-Clinker={}", linker));
-                }
+            if compiler_kind == CompilerKind::Rustc
+                && let Some(ref linker) = self.config.host_linker
+            {
+                rustc.arg(format!("-Clinker={linker}"));
             }
         } else {
             self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
-            if !is_rustdoc {
-                if let Some(ref linker) = self.config.target_linker {
-                    rustc.arg(format!("-Clinker={}", linker));
-                }
+            if compiler_kind == CompilerKind::Rustc
+                && let Some(ref linker) = self.config.target_linker
+            {
+                rustc.arg(format!("-Clinker={linker}"));
             }
         }
 
