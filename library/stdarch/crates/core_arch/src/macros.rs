@@ -90,17 +90,10 @@ macro_rules! types {
         pub struct $name($v [$elem_type; $len]);
 
         impl $name {
-            /// Using `my_simd([x; N])` seemingly fails tests,
-            /// so use this internal helper for it instead.
+            /// Put the same value in every lane.
             #[inline(always)]
             $v fn splat(value: $elem_type) -> $name {
-                #[derive(Copy, Clone)]
-                #[repr(simd)]
-                struct JustOne([$elem_type; 1]);
-                let one = JustOne([value]);
-                // SAFETY: 0 is always in-bounds because we're shuffling
-                // a simd type with exactly one element.
-                unsafe { simd_shuffle!(one, one, [0; $len]) }
+                unsafe { $crate::intrinsics::simd::simd_splat(value) }
             }
 
             /// Returns an array reference containing the entire SIMD vector.

@@ -1457,7 +1457,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vspltb, IMM4 = 15))]
     unsafe fn vspltb<const IMM4: u32>(a: vector_signed_char) -> vector_signed_char {
         static_assert_uimm_bits!(IMM4, 4);
-        simd_shuffle(a, a, const { u32x16::from_array([IMM4; 16]) })
+        simd_shuffle(a, a, const { u32x16::splat(IMM4) })
     }
 
     #[inline]
@@ -1465,7 +1465,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vsplth, IMM3 = 7))]
     unsafe fn vsplth<const IMM3: u32>(a: vector_signed_short) -> vector_signed_short {
         static_assert_uimm_bits!(IMM3, 3);
-        simd_shuffle(a, a, const { u32x8::from_array([IMM3; 8]) })
+        simd_shuffle(a, a, const { u32x8::splat(IMM3) })
     }
 
     #[inline]
@@ -1474,7 +1474,7 @@ mod sealed {
     #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxspltw, IMM2 = 3))]
     unsafe fn vspltw<const IMM2: u32>(a: vector_signed_int) -> vector_signed_int {
         static_assert_uimm_bits!(IMM2, 2);
-        simd_shuffle(a, a, const { u32x4::from_array([IMM2; 4]) })
+        simd_shuffle(a, a, const { u32x4::splat(IMM2) })
     }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
