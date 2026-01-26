@@ -5,7 +5,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 52
-        span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+        span: $DIR/offset_of.rs:37:19: LL:CC (#0)
         kind: 
             Scope {
                 region_scope: Node(52)
@@ -14,11 +14,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 52
-                        span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+                        span: $DIR/offset_of.rs:37:19: LL:CC (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+                                span: $DIR/offset_of.rs:37:19: LL:CC (#0)
                                 region_scope: Node(1)
                                 safety_mode: Safe
                                 stmts: [
@@ -29,7 +29,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:37:9: 37:10 (#0)
+                                                    span: $DIR/offset_of.rs:38:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "x"
@@ -68,7 +68,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::concrete).10)
-                                            span: $DIR/offset_of.rs:37:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:38:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -78,7 +78,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:38:9: 38:10 (#0)
+                                                    span: $DIR/offset_of.rs:39:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "y"
@@ -117,7 +117,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::concrete).20)
-                                            span: $DIR/offset_of.rs:38:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:39:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -127,7 +127,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:39:9: 39:10 (#0)
+                                                    span: $DIR/offset_of.rs:40:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "h"
@@ -166,7 +166,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::concrete).30)
-                                            span: $DIR/offset_of.rs:39:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:40:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -176,7 +176,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:40:9: 40:11 (#0)
+                                                    span: $DIR/offset_of.rs:41:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "z0"
@@ -215,7 +215,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::concrete).40)
-                                            span: $DIR/offset_of.rs:40:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:41:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -225,7 +225,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:41:9: 41:11 (#0)
+                                                    span: $DIR/offset_of.rs:42:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "z1"
@@ -264,7 +264,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::concrete).50)
-                                            span: $DIR/offset_of.rs:41:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:42:5: LL:CC (#0)
                                         }
                                     }
                                 ]
@@ -801,7 +801,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 50
-        span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+        span: $DIR/offset_of.rs:45:21: LL:CC (#0)
         kind: 
             Scope {
                 region_scope: Node(50)
@@ -810,11 +810,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 50
-                        span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+                        span: $DIR/offset_of.rs:45:21: LL:CC (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+                                span: $DIR/offset_of.rs:45:21: LL:CC (#0)
                                 region_scope: Node(1)
                                 safety_mode: Safe
                                 stmts: [
@@ -825,7 +825,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:45:9: 45:11 (#0)
+                                                    span: $DIR/offset_of.rs:46:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "gx"
@@ -864,7 +864,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::generic).12)
-                                            span: $DIR/offset_of.rs:45:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:46:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -874,7 +874,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:46:9: 46:11 (#0)
+                                                    span: $DIR/offset_of.rs:47:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "gy"
@@ -913,7 +913,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::generic).24)
-                                            span: $DIR/offset_of.rs:46:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:47:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -923,7 +923,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:47:9: 47:11 (#0)
+                                                    span: $DIR/offset_of.rs:48:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "dx"
@@ -962,7 +962,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::generic).36)
-                                            span: $DIR/offset_of.rs:47:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:48:5: LL:CC (#0)
                                         }
                                     }
                                     Stmt {
@@ -972,7 +972,7 @@ body:
                                             pattern: 
                                                 Pat {
                                                     ty: usize
-                                                    span: $DIR/offset_of.rs:48:9: 48:11 (#0)
+                                                    span: $DIR/offset_of.rs:49:9: LL:CC (#0)
                                                     kind: PatKind {
                                                         Binding {
                                                             name: "dy"
@@ -1011,7 +1011,7 @@ body:
                                             )
                                             else_block: None
                                             hir_id: HirId(DefId(offset_of::generic).48)
-                                            span: $DIR/offset_of.rs:48:5: 1445:57 (#0)
+                                            span: $DIR/offset_of.rs:49:5: LL:CC (#0)
                                         }
                                     }
                                 ]

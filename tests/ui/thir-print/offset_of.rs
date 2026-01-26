@@ -1,5 +1,6 @@
 //@ compile-flags: -Zunpretty=thir-tree --crate-type=lib
 //@ normalize-stdout: "DefId\([^ ]* ~ (\w*)\[....\]" -> "DefId($1"
+//@ normalize-stdout: "DIR/offset_of.rs:(\d+:\d+): \d+:\d+ \(" -> "DIR/offset_of.rs:$1: LL:CC ("
 //@ check-pass
 
 #![feature(offset_of_enum)]
