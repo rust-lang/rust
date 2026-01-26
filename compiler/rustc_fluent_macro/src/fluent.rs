@@ -8,10 +8,7 @@ use fluent_syntax::ast::{
     Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern, PatternElement,
 };
 use fluent_syntax::parser::ParserError;
-#[cfg(not(bootstrap))]
 use proc_macro::tracked::path;
-#[cfg(bootstrap)]
-use proc_macro::tracked_path::path;
 use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;

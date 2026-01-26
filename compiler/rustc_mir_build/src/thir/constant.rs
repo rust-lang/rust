@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, UintTy};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::LitToConstInput;
@@ -44,12 +44,14 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
         (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
-            if matches!(inner_ty.kind(), ty::Slice(_) | ty::Array(..)) =>
+            if let ty::Slice(ty) | ty::Array(ty, _) = inner_ty.kind()
+                && let ty::Uint(UintTy::U8) = ty.kind() =>
         {
             ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str())
         }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(_) | ty::Array(..))
-            if tcx.features().deref_patterns() =>
+        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(inner_ty) | ty::Array(inner_ty, _))
+            if tcx.features().deref_patterns()
+                && let ty::Uint(UintTy::U8) = inner_ty.kind() =>
         {
             // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
             // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
@@ -70,10 +72,10 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (ast::LitKind::Int(n, _), ty::Int(i)) => {
-            let scalar_int = trunc(
-                if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
-                i.to_unsigned(),
-            );
+            // Unsigned "negation" has the same bitwise effect as signed negation,
+            // which gets the result we want without additional casts.
+            let scalar_int =
+                trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, b.into()),

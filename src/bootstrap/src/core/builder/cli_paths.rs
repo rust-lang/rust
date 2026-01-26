@@ -20,6 +20,7 @@ pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
         &[
             // tidy-alphabetical-start
             "tests/assembly-llvm",
+            "tests/build-std",
             "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/coverage",
@@ -31,8 +32,8 @@ pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/pretty",
             "tests/run-make",
             "tests/run-make-cargo",
-            "tests/rustdoc",
             "tests/rustdoc-gui",
+            "tests/rustdoc-html",
             "tests/rustdoc-js",
             "tests/rustdoc-js-std",
             "tests/rustdoc-json",

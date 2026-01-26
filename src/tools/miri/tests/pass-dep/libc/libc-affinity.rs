@@ -7,6 +7,10 @@ use std::mem::{size_of, size_of_val};
 
 use libc::{cpu_set_t, sched_getaffinity, sched_setaffinity};
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+use libc_utils::errno_check;
+
 // If pid is zero, then the calling thread is used.
 const PID: i32 = 0;
 
@@ -41,8 +45,7 @@ fn configure_unavailable_cpu() {
     // Safety: valid value for this type
     let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
 
     // by default, only available CPUs are configured
     for i in 0..cpu_count {
@@ -53,11 +56,9 @@ fn configure_unavailable_cpu() {
     // configure CPU that we don't have
     unsafe { libc::CPU_SET(cpu_count, &mut cpuset) };
 
-    let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) });
 
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
 
     // the CPU is not set because it is not available
     assert!(!unsafe { libc::CPU_ISSET(cpu_count, &cpuset) });
@@ -70,11 +71,11 @@ fn large_set() {
     // i.e. this has 2048 bits, twice the standard number
     let mut cpuset = [u64::MAX; 32];
 
-    let err = unsafe { sched_setaffinity(PID, size_of_val(&cpuset), cpuset.as_ptr().cast()) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, size_of_val(&cpuset), cpuset.as_ptr().cast()) });
 
-    let err = unsafe { sched_getaffinity(PID, size_of_val(&cpuset), cpuset.as_mut_ptr().cast()) };
-    assert_eq!(err, 0);
+    errno_check(unsafe {
+        sched_getaffinity(PID, size_of_val(&cpuset), cpuset.as_mut_ptr().cast())
+    });
 }
 
 fn get_small_cpu_mask() {
@@ -91,8 +92,7 @@ fn get_small_cpu_mask() {
             assert_eq!(std::io::Error::last_os_error().kind(), std::io::ErrorKind::InvalidInput);
         } else {
             // other whole multiples of the size of c_ulong works
-            let err = unsafe { sched_getaffinity(PID, i, &mut cpuset) };
-            assert_eq!(err, 0, "fail for {i}");
+            errno_check(unsafe { sched_getaffinity(PID, i, &mut cpuset) });
         }
 
         // anything else returns an error
@@ -107,8 +107,7 @@ fn get_small_cpu_mask() {
 fn set_small_cpu_mask() {
     let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
 
     // setting a mask of size 0 is invalid
     let err = unsafe { sched_setaffinity(PID, 0, &cpuset) };
@@ -122,8 +121,7 @@ fn set_small_cpu_mask() {
         if cfg!(target_endian = "little") { 1 } else { core::mem::size_of::<std::ffi::c_ulong>() };
 
     for i in cpu_zero_included_length..24 {
-        let err = unsafe { sched_setaffinity(PID, i, &cpuset) };
-        assert_eq!(err, 0, "fail for {i}");
+        errno_check(unsafe { sched_setaffinity(PID, i, &cpuset) });
     }
 }
 
@@ -135,8 +133,7 @@ fn set_custom_cpu_mask() {
     let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
     // at the start, thread 1 should be set
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
     assert!(unsafe { libc::CPU_ISSET(1, &cpuset) });
 
     // make a valid mask
@@ -144,12 +141,10 @@ fn set_custom_cpu_mask() {
     unsafe { libc::CPU_SET(0, &mut cpuset) };
 
     // giving a smaller mask is fine
-    let err = unsafe { sched_setaffinity(PID, 8, &cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, 8, &cpuset) });
 
     // and actually disables other threads
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
     assert!(unsafe { !libc::CPU_ISSET(1, &cpuset) });
 
     // it is important that we reset the cpu mask now for future tests
@@ -157,8 +152,7 @@ fn set_custom_cpu_mask() {
         unsafe { libc::CPU_SET(i, &mut cpuset) };
     }
 
-    let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) });
 }
 
 fn parent_child() {
@@ -170,15 +164,13 @@ fn parent_child() {
     let mut parent_cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
     unsafe { libc::CPU_SET(0, &mut parent_cpuset) };
 
-    let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &parent_cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &parent_cpuset) });
 
     std::thread::scope(|spawner| {
         spawner.spawn(|| {
             let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
-            let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
-            assert_eq!(err, 0);
+            errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) });
 
             // the child inherits its parent's set
             assert!(unsafe { libc::CPU_ISSET(0, &cpuset) });
@@ -189,8 +181,7 @@ fn parent_child() {
         });
     });
 
-    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut parent_cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut parent_cpuset) });
 
     // the parent's set should be unaffected
     assert!(unsafe { !libc::CPU_ISSET(1, &parent_cpuset) });
@@ -201,8 +192,7 @@ fn parent_child() {
         unsafe { libc::CPU_SET(i, &mut cpuset) };
     }
 
-    let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) };
-    assert_eq!(err, 0);
+    errno_check(unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>(), &cpuset) });
 }
 
 fn main() {

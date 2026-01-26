@@ -292,7 +292,12 @@ impl<T: SliceInternable> InternSliceStorage<T> {
 
 impl<T: SliceInternable> InternSliceStorage<T> {
     pub(crate) fn get(&self) -> &InternMap<T> {
-        self.map.get_or_init(DashMap::default)
+        self.map.get_or_init(|| {
+            DashMap::with_capacity_and_hasher(
+                (64 * 1024) / std::mem::size_of::<T::SliceType>(),
+                Default::default(),
+            )
+        })
     }
 }
 

@@ -117,3 +117,15 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_static_initializer_cyclic)]
+#[note]
+pub(crate) struct StaticInitializerCyclic<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub labels: Vec<Span>,
+    pub head: &'a str,
+    pub target: &'a str,
+}

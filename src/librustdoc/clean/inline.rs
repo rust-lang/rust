@@ -561,7 +561,7 @@ pub(crate) fn build_impl(
                             .find_by_ident_and_kind(
                                 tcx,
                                 item.ident(tcx),
-                                item.as_tag(),
+                                item.tag(),
                                 associated_trait.def_id,
                             )
                             .unwrap(); // corresponding associated item has to exist
@@ -645,6 +645,9 @@ pub(crate) fn build_impl(
             } else {
                 ImplKind::Normal
             },
+            is_deprecated: tcx
+                .lookup_deprecation(did)
+                .is_some_and(|deprecation| deprecation.is_in_effect()),
         })),
         merged_attrs,
         cfg,

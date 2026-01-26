@@ -444,16 +444,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let pat_hir_id = self.lower_node_id(pattern.id);
         let node = match &pattern.kind {
             TyPatKind::Range(e1, e2, Spanned { node: end, span }) => hir::TyPatKind::Range(
-                e1.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)).unwrap_or_else(|| {
-                    self.lower_ty_pat_range_end(
-                        hir::LangItem::RangeMin,
-                        span.shrink_to_lo(),
-                        base_type,
-                    )
-                }),
+                e1.as_deref()
+                    .map(|e| self.lower_anon_const_to_const_arg_and_alloc(e))
+                    .unwrap_or_else(|| {
+                        self.lower_ty_pat_range_end(
+                            hir::LangItem::RangeMin,
+                            span.shrink_to_lo(),
+                            base_type,
+                        )
+                    }),
                 e2.as_deref()
                     .map(|e| match end {
-                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg(e),
+                        RangeEnd::Included(..) => self.lower_anon_const_to_const_arg_and_alloc(e),
                         RangeEnd::Excluded => self.lower_excluded_range_end(e),
                     })
                     .unwrap_or_else(|| {
@@ -511,6 +513,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::ConstArg {
             hir_id: self.next_id(),
             kind: hir::ConstArgKind::Anon(self.arena.alloc(anon_const)),
+            span,
         })
     }
 
@@ -555,6 +558,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
         });
         let hir_id = self.next_id();
-        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id })
+        self.arena.alloc(hir::ConstArg { kind: hir::ConstArgKind::Anon(ct), hir_id, span })
     }
 }

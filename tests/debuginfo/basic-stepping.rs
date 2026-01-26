@@ -5,8 +5,14 @@
 //@ ignore-aarch64: Doesn't work yet.
 //@ ignore-loongarch64: Doesn't work yet.
 //@ ignore-riscv64: Doesn't work yet.
-//@ compile-flags: -g
 //@ ignore-backends: gcc
+
+// Debugger tests need debuginfo
+//@ compile-flags: -g
+
+// FIXME(#128945): SingleUseConsts shouldn't need to be disabled.
+//@ revisions: default-mir-passes no-SingleUseConsts-mir-pass
+//@ [no-SingleUseConsts-mir-pass] compile-flags: -Zmir-enable-passes=-SingleUseConsts
 
 //@ gdb-command: run
 // FIXME(#97083): Should we be able to break on initialization of zero-sized types?
@@ -15,12 +21,12 @@
 //@ gdb-command: next
 //@ gdb-check:   let d = c = 99;
 //@ gdb-command: next
-// FIXME(#33013): gdb-check:   let e = "hi bob";
-// FIXME(#33013): gdb-command: next
-// FIXME(#33013): gdb-check:   let f = b"hi bob";
-// FIXME(#33013): gdb-command: next
-// FIXME(#33013): gdb-check:   let g = b'9';
-// FIXME(#33013): gdb-command: next
+//@ [no-SingleUseConsts-mir-pass] gdb-check:   let e = "hi bob";
+//@ [no-SingleUseConsts-mir-pass] gdb-command: next
+//@ [no-SingleUseConsts-mir-pass] gdb-check:   let f = b"hi bob";
+//@ [no-SingleUseConsts-mir-pass] gdb-command: next
+//@ [no-SingleUseConsts-mir-pass] gdb-check:   let g = b'9';
+//@ [no-SingleUseConsts-mir-pass] gdb-command: next
 //@ gdb-check:   let h = ["whatever"; 8];
 //@ gdb-command: next
 //@ gdb-check:   let i = [1,2,3,4];

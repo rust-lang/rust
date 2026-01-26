@@ -5,9 +5,6 @@ expand_attributes_on_expressions_experimental =
 
 expand_cfg_attr_no_attributes = `#[cfg_attr]` does not expand to any attributes
 
-expand_collapse_debuginfo_illegal =
-    illegal value for attribute #[collapse_debuginfo(no|external|yes)]
-
 expand_count_repetition_misplaced =
     `count` can not be placed inside the innermost repetition
 

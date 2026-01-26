@@ -9,7 +9,7 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKind, DepKindStruct, DepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
 use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
@@ -18,13 +18,13 @@ use rustc_middle::query::{
     queries,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_query_system::Value;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryStackDeferred,
+    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode,
     QueryState, get_query_incr, get_query_non_incr,
 };
-use rustc_query_system::{HandleCycleError, Value};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
@@ -79,10 +79,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(
-        self,
-        qcx: QueryCtxt<'tcx>,
-    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -91,7 +88,7 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.dynamic.query_state)
-                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
+                .cast::<QueryState<Self::Key>>()
         }
     }
 
@@ -184,8 +181,8 @@ where
     }
 
     #[inline(always)]
-    fn handle_cycle_error(self) -> HandleCycleError {
-        self.dynamic.handle_cycle_error
+    fn cycle_error_handling(self) -> CycleErrorHandling {
+        self.dynamic.cycle_error_handling
     }
 
     #[inline(always)]

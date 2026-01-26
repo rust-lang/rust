@@ -1,0 +1,225 @@
+Type {
+    kind: Tuple(
+        Tuple {
+            fields: [
+                Field {
+                    ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+                    offset: 0,
+                },
+                Field {
+                    ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+                    offset: 1,
+                },
+                Field {
+                    ty: TypeId(0x41223169ff28813ba79b7268a2a968d9),
+                    offset: 2,
+                },
+            ],
+        },
+    ),
+    size: Some(
+        2,
+    ),
+}
+Type {
+    kind: Array(
+        Array {
+            element_ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+            len: 2,
+        },
+    ),
+    size: Some(
+        2,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 8,
+            signed: true,
+        },
+    ),
+    size: Some(
+        1,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 32,
+            signed: true,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 64,
+            signed: true,
+        },
+    ),
+    size: Some(
+        8,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 128,
+            signed: true,
+        },
+    ),
+    size: Some(
+        16,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 32,
+            signed: true,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 8,
+            signed: false,
+        },
+    ),
+    size: Some(
+        1,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 32,
+            signed: false,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 64,
+            signed: false,
+        },
+    ),
+    size: Some(
+        8,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 128,
+            signed: false,
+        },
+    ),
+    size: Some(
+        16,
+    ),
+}
+Type {
+    kind: Int(
+        Int {
+            bits: 32,
+            signed: false,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Other,
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Other,
+    size: Some(
+        12,
+    ),
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0xda1b6da9bd297bb2900de9303aadea79),
+            mutable: false,
+        },
+    ),
+    size: Some(
+        8,
+    ),
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x474ccf3b5db264ef53916706f7d7bb2c),
+            mutable: false,
+        },
+    ),
+    size: Some(
+        8,
+    ),
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x641e3def269c37acc6dcb92bf8c5f196),
+            mutable: false,
+        },
+    ),
+    size: Some(
+        8,
+    ),
+}
+Type {
+    kind: Str(
+        Str,
+    ),
+    size: None,
+}
+Type {
+    kind: Slice(
+        Slice {
+            element_ty: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+        },
+    ),
+    size: None,
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+            mutable: false,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}
+Type {
+    kind: Reference(
+        Reference {
+            pointee: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
+            mutable: true,
+        },
+    ),
+    size: Some(
+        4,
+    ),
+}

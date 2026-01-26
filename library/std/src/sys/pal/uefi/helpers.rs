@@ -10,7 +10,7 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text, service_binding, shell};
+use r_efi::protocols::{device_path, device_path_to_text, file, service_binding, shell};
 
 use crate::alloc::Layout;
 use crate::ffi::{OsStr, OsString};
@@ -24,7 +24,7 @@ use crate::path::Path;
 use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
-use crate::sys_common::wstr::WStrUnits;
+use crate::sys::helpers::WStrUnits;
 
 type BootInstallMultipleProtocolInterfaces =
     unsafe extern "efiapi" fn(_: *mut r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
@@ -651,34 +651,38 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
 
 /// Helper for UEFI Protocols which are created and destroyed using
 /// [EFI_SERVICE_BINDING_PROTOCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+///
+/// # Invariant
+/// - `handle` must always be a valid UEFI handle corresponding to the `service_guid`.
+/// - Copying `ServiceProtocol` is sound as long as `handle` remains valid.
+/// - For most service binding protocols (in edk2 implementations), such handles remain valid
+///   for the lifetime of the UEFI environment — effectively `'static`.
+#[derive(Clone, Copy)]
 pub(crate) struct ServiceProtocol {
     service_guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,
-    child_handle: NonNull<crate::ffi::c_void>,
 }
 
 impl ServiceProtocol {
-    pub(crate) fn open(service_guid: r_efi::efi::Guid) -> io::Result<Self> {
+    /// Open a child handle on a service_binding protocol.
+    pub(crate) fn open(
+        service_guid: r_efi::efi::Guid,
+    ) -> io::Result<(Self, NonNull<crate::ffi::c_void>)> {
         let handles = locate_handles(service_guid)?;
 
         for handle in handles {
             if let Ok(protocol) = open_protocol::<service_binding::Protocol>(handle, service_guid) {
-                let Ok(child_handle) = Self::create_child(protocol) else {
-                    continue;
-                };
-
-                return Ok(Self { service_guid, handle, child_handle });
+                if let Ok(child_handle) = unsafe { Self::create_child(protocol) } {
+                    return Ok((Self { service_guid, handle }, child_handle));
+                }
             }
         }
 
         Err(io::const_error!(io::ErrorKind::NotFound, "no service binding protocol found"))
     }
 
-    pub(crate) fn child_handle(&self) -> NonNull<crate::ffi::c_void> {
-        self.child_handle
-    }
-
-    fn create_child(
+    // SAFETY: sbp must be a valid service binding protocol pointer
+    unsafe fn create_child(
         sbp: NonNull<service_binding::Protocol>,
     ) -> io::Result<NonNull<crate::ffi::c_void>> {
         let mut child_handle: r_efi::efi::Handle = crate::ptr::null_mut();
@@ -692,17 +696,17 @@ impl ServiceProtocol {
                 .ok_or(const_error!(io::ErrorKind::Other, "null child handle"))
         }
     }
-}
 
-impl Drop for ServiceProtocol {
-    fn drop(&mut self) {
-        if let Ok(sbp) = open_protocol::<service_binding::Protocol>(self.handle, self.service_guid)
-        {
-            // SAFETY: Child handle must be allocated by the current service binding protocol.
-            let _ = unsafe {
-                ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), self.child_handle.as_ptr())
-            };
-        }
+    // SAFETY: Child handle must be allocated by the current service binding protocol and must be
+    // valid.
+    pub(crate) unsafe fn destroy_child(
+        &self,
+        handle: NonNull<crate::ffi::c_void>,
+    ) -> io::Result<()> {
+        let sbp = open_protocol::<service_binding::Protocol>(self.handle, self.service_guid)?;
+
+        let r = unsafe { ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), handle.as_ptr()) };
+        if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 }
 
@@ -787,7 +791,7 @@ impl<T> UefiBox<T> {
 
         match NonNull::new(ptr.cast()) {
             Some(inner) => Ok(Self { inner, size: len }),
-            None => Err(io::Error::new(io::ErrorKind::OutOfMemory, "Allocation failed")),
+            None => Err(const_error!(io::ErrorKind::OutOfMemory, "Allocation failed")),
         }
     }
 
@@ -812,5 +816,60 @@ impl<T> Drop for UefiBox<T> {
     fn drop(&mut self) {
         let layout = Layout::from_size_align(self.size, 8).unwrap();
         unsafe { crate::alloc::dealloc(self.inner.as_ptr().cast(), layout) };
+    }
+}
+
+impl UefiBox<file::Info> {
+    fn size(&self) -> u64 {
+        unsafe { (*self.as_ptr()).size }
+    }
+
+    fn set_size(&mut self, s: u64) {
+        unsafe { (*self.as_mut_ptr()).size = s }
+    }
+
+    // Length of string (including NULL), not number of bytes.
+    fn file_name_len(&self) -> usize {
+        (self.size() as usize - size_of::<file::Info<0>>()) / size_of::<u16>()
+    }
+
+    pub(crate) fn file_name(&self) -> &[u16] {
+        unsafe {
+            crate::slice::from_raw_parts((*self.as_ptr()).file_name.as_ptr(), self.file_name_len())
+        }
+    }
+
+    fn file_name_mut(&mut self) -> &mut [u16] {
+        unsafe {
+            crate::slice::from_raw_parts_mut(
+                (*self.as_mut_ptr()).file_name.as_mut_ptr(),
+                self.file_name_len(),
+            )
+        }
+    }
+
+    pub(crate) fn with_file_name(mut self, name: &OsStr) -> io::Result<Self> {
+        // os_string_to_raw returns NULL terminated string. So no need to handle it separately.
+        let fname = os_string_to_raw(name)
+            .ok_or(const_error!(io::ErrorKind::OutOfMemory, "Allocation failed"))?;
+        let new_size = size_of::<file::Info<0>>() + fname.len() * size_of::<u16>();
+
+        // Reuse the current structure if the new name can fit in it.
+        if self.size() >= new_size as u64 {
+            self.file_name_mut()[..fname.len()].copy_from_slice(&fname);
+            self.set_size(new_size as u64);
+
+            return Ok(self);
+        }
+
+        let mut new_box = UefiBox::new(new_size)?;
+
+        unsafe {
+            crate::ptr::copy_nonoverlapping(self.as_ptr(), new_box.as_mut_ptr(), 1);
+        }
+        new_box.set_size(new_size as u64);
+        new_box.file_name_mut().copy_from_slice(&fname);
+
+        Ok(new_box)
     }
 }

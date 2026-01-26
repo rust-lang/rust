@@ -868,7 +868,7 @@ where
             .map(|(pred, _)| pred),
     ));
 
-    // FIXME(associated_const_equality): Also add associated consts to
+    // FIXME(mgca): Also add associated consts to
     // the requirements here.
     for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id) {
         // associated types that require `Self: Sized` do not show up in the built-in

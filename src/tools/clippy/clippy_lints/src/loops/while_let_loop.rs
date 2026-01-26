@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
             let_info,
             Some(if_let.if_then),
         );
-    } else if els.and_then(|x| x.expr).is_some_and(is_simple_break_expr)
+    } else if els.is_some_and(is_simple_break_block)
         && let Some((pat, _)) = let_info
     {
         could_be_while_let(cx, expr, pat, init, has_trailing_exprs, let_info, None);
@@ -61,17 +61,23 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
     }
 }
 
-/// Returns `true` if expr contains a single break expression without a label or sub-expression,
-/// possibly embedded in blocks.
-fn is_simple_break_expr(e: &Expr<'_>) -> bool {
-    if let ExprKind::Block(b, _) = e.kind {
-        match (b.stmts, b.expr) {
-            ([s], None) => matches!(s.kind, StmtKind::Expr(e) | StmtKind::Semi(e) if is_simple_break_expr(e)),
-            ([], Some(e)) => is_simple_break_expr(e),
-            _ => false,
-        }
-    } else {
-        matches!(e.kind, ExprKind::Break(dest, None) if dest.label.is_none())
+/// Checks if `block` contains a single unlabeled `break` expression or statement, possibly embedded
+/// inside other blocks.
+fn is_simple_break_block(block: &Block<'_>) -> bool {
+    match (block.stmts, block.expr) {
+        ([s], None) => matches!(s.kind, StmtKind::Expr(e) | StmtKind::Semi(e) if is_simple_break_expr(e)),
+        ([], Some(e)) => is_simple_break_expr(e),
+        _ => false,
+    }
+}
+
+/// Checks if `expr` contains a single unlabeled `break` expression or statement, possibly embedded
+/// inside other blocks.
+fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Block(b, _) => is_simple_break_block(b),
+        ExprKind::Break(dest, None) => dest.label.is_none(),
+        _ => false,
     }
 }
 

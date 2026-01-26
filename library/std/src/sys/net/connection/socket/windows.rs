@@ -439,7 +439,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> c::SOCKET {
         debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
         debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
@@ -452,7 +451,6 @@ impl Socket {
     }
 }
 
-#[unstable(reason = "not public", issue = "none", feature = "fd_read")]
 impl<'a> Read for &'a Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)

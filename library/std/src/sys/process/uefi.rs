@@ -8,8 +8,8 @@ use crate::num::{NonZero, NonZeroI32};
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
+use crate::sys::io::error_string;
 use crate::sys::pal::helpers;
-use crate::sys::pal::os::error_string;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 
@@ -377,8 +377,8 @@ mod uefi_command_internal {
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::ptr::NonNull;
     use crate::slice;
+    use crate::sys::helpers::WStrUnits;
     use crate::sys::pal::helpers::{self, OwnedTable};
-    use crate::sys_common::wstr::WStrUnits;
 
     pub struct Image {
         handle: NonNull<crate::ffi::c_void>,

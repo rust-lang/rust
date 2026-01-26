@@ -251,7 +251,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+    #[unstable(feature = "peer_credentials_unix_socket", issue = "42839")]
     #[cfg(any(
         target_os = "android",
         target_os = "linux",

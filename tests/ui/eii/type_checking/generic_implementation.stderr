@@ -1,0 +1,12 @@
+error: `foo_impl` cannot have generic parameters other than lifetimes
+  --> $DIR/generic_implementation.rs:10:1
+   |
+LL | #[foo]
+   | ------ required by this attribute
+LL | fn foo_impl<T>() {}
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[foo]` marks the implementation of an "externally implementable item"
+
+error: aborting due to 1 previous error
+

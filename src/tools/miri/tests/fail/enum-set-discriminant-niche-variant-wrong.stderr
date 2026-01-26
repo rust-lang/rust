@@ -6,13 +6,11 @@ LL |             SetDiscriminant(*ptr, 1);
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `set_discriminant` at tests/fail/enum-set-discriminant-niche-variant-wrong.rs:LL:CC
-note: inside `main`
-  --> tests/fail/enum-set-discriminant-niche-variant-wrong.rs:LL:CC
-   |
-LL |     set_discriminant(&mut v);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: set_discriminant
+               at tests/fail/enum-set-discriminant-niche-variant-wrong.rs:LL:CC
+           1: main
+               at tests/fail/enum-set-discriminant-niche-variant-wrong.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

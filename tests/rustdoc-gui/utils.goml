@@ -1,13 +1,46 @@
 // This file contains code to be re-used by other tests.
 
 define-function: (
+    "click-settings-button",
+    [],
+    block {
+        store-count: ("rustdoc-topbar", __topbar_count)
+        store-value: (__topbar_display, "none")
+        // The `rustdoc-topbar` element is created with JS when the window size is below a given
+        // size, however if the window size gets bigger again, the element isn't deleted, just
+        // hidden, so we need to check for both that it exists and is visible.
+        if: (|__topbar_count| != 0, block {
+            store-css: ("rustdoc-topbar", {"display": __topbar_display})
+        })
+
+        // Open the settings menu.
+        if: (|__topbar_display| != "none", block {
+            // In mobile mode, this is instead the "topbar" the settings button is located into.
+            click: "rustdoc-topbar .settings-menu"
+        })
+        else: block {
+            // We're not in mobile mode so clicking on the "normal" sidebar.
+            click: "rustdoc-toolbar .settings-menu"
+        }
+    }
+)
+
+define-function: (
     "open-settings-menu",
     [],
     block {
-        // Open the settings menu.
-        click: "rustdoc-toolbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for-css: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "none")
+        }
+        if: (|settings_display| != "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to appear...
+            wait-for-css: ("#settings", {"display": "block"})
+        })
     }
 )
 
@@ -15,8 +48,18 @@ define-function: (
     "close-settings-menu",
     [],
     block {
-        click: "rustdoc-toolbar .settings-menu"
-        wait-for-css-false: ("#settings", {"display": "block"})
+        store-count: ("#settings", nb_settings_menu)
+        if: (|nb_settings_menu| != 0, block {
+            store-css: ("#settings", {"display": settings_display})
+        })
+        else: block {
+            store-value: (settings_display, "block")
+        }
+        if: (|settings_display| == "block", block {
+            call-function: ("click-settings-button", {})
+            // Wait for the popover to disappear...
+            wait-for-css-false: ("#settings", {"display": "block"})
+        })
     }
 )
 
@@ -34,37 +77,40 @@ define-function: (
     },
 )
 
-// FIXME: To be removed once `browser-ui-test` has conditions.
 define-function: (
-    "switch-theme-mobile",
-    [theme],
+    "open-search",
+    [],
     block {
-        // Open the settings menu.
-        click: "rustdoc-topbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for-css: ("#settings", {"display": "block"})
-        // Change the setting.
-        click: "#theme-"+ |theme|
-        click: "rustdoc-topbar .settings-menu"
-        wait-for-css-false: ("#settings", {"display": "block"})
-        // Ensure that the local storage was correctly updated.
-        assert-local-storage: {"rustdoc-theme": |theme|}
-    },
+        store-count: (".search-input", __search_input_count)
+        if: (|__search_input_count| != 0, block {
+            store-css: ("#alternative-display", {"display": __search_input_display})
+        })
+        else: block {
+            // Block requests with doubled `//`.
+            // Amazon S3 doesn't support them, but other web hosts do,
+            // and so do file:/// URLs, which means we need to block
+            // it here if we want to avoid breaking the main docs site.
+            // https://github.com/rust-lang/rust/issues/145646
+            block-network-request: "file://*//*"
+            store-value: (__search_input_display, "none")
+        }
+
+        if: (|__search_input_display| == "none", block {
+            // Open search
+            click: "#search-button"
+            wait-for: ".search-input"
+        })
+    }
 )
 
 define-function: (
     "perform-search",
     [query],
     block {
-        // Block requests with doubled `//`.
-        // Amazon S3 doesn't support them, but other web hosts do,
-        // and so do file:/// URLs, which means we need to block
-        // it here if we want to avoid breaking the main docs site.
-        // https://github.com/rust-lang/rust/issues/145646
-        block-network-request: "file://*//*"
-        // Perform search
-        click: "#search-button"
-        wait-for: ".search-input"
+        call-function: ("open-search", {})
+        // We empty the search input in case it wasn't empty.
+        set-property: (".search-input", {"value": ""})
+        // We write the actual query.
         write-into: (".search-input", |query|)
         press-key: 'Enter'
         // wait for the search to start

@@ -6,7 +6,9 @@ use rustc_span::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::parser::{FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle};
+use crate::parser::{
+    AllowConstBlockItems, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle,
+};
 
 impl<'a> Parser<'a> {
     /// Checks whether a non-terminal may begin with a particular token.
@@ -118,7 +120,9 @@ impl<'a> Parser<'a> {
         match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
-            NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
+            NonterminalKind::Item => match self
+                .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
+            {
                 Some(item) => Ok(ParseNtResult::Item(item)),
                 None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
             },

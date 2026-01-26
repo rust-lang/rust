@@ -18,36 +18,37 @@ use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::instrument;
 
-use super::{QueryConfig, QueryStackFrameExtra};
-use crate::HandleCycleError;
+use super::QueryConfig;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
-use crate::query::{QueryContext, QueryMap, QueryStackFrame, SerializedDepNodeIndex};
+use crate::query::{
+    CycleErrorHandling, QueryContext, QueryMap, QueryStackFrame, SerializedDepNodeIndex,
+};
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
     move |x| x.0 == *k
 }
 
-pub struct QueryState<K, I> {
-    active: Sharded<hashbrown::HashTable<(K, QueryResult<I>)>>,
+pub struct QueryState<K> {
+    active: Sharded<hashbrown::HashTable<(K, QueryResult)>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult<I> {
+enum QueryResult {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob<I>),
+    Started(QueryJob),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<I> QueryResult<I> {
+impl QueryResult {
     /// Unwraps the query job expecting that it has started.
-    fn expect_job(self) -> QueryJob<I> {
+    fn expect_job(self) -> QueryJob {
         match self {
             Self::Started(job) => job,
             Self::Poisoned => {
@@ -57,7 +58,7 @@ impl<I> QueryResult<I> {
     }
 }
 
-impl<K, I> QueryState<K, I>
+impl<K> QueryState<K>
 where
     K: Eq + Hash + Copy + Debug,
 {
@@ -68,13 +69,13 @@ where
     pub fn collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<I>,
-        jobs: &mut QueryMap<I>,
+        make_query: fn(Qcx, K) -> QueryStackFrame,
+        jobs: &mut QueryMap,
         require_complete: bool,
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<I>)>>| {
+        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult)>>| {
             for (k, v) in iter.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     active.push((*k, job.clone()));
@@ -105,19 +106,19 @@ where
     }
 }
 
-impl<K, I> Default for QueryState<K, I> {
-    fn default() -> QueryState<K, I> {
+impl<K> Default for QueryState<K> {
+    fn default() -> QueryState<K> {
         QueryState { active: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K, I>
+struct JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'tcx QueryState<K, I>,
+    state: &'tcx QueryState<K>,
     key: K,
 }
 
@@ -142,24 +143,23 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    use HandleCycleError::*;
-    match query.handle_cycle_error() {
-        Error => {
+    match query.cycle_error_handling() {
+        CycleErrorHandling::Error => {
             let guar = error.emit();
             query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
-        Fatal => {
+        CycleErrorHandling::Fatal => {
             error.emit();
             qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
-        DelayBug => {
+        CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
             query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
-        Stash => {
+        CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
-                && let Some(span) = root.query.info.span
+                && let Some(span) = root.query.span
             {
                 error.stash(span, StashKey::Cycle).unwrap()
             } else {
@@ -170,7 +170,7 @@ where
     }
 }
 
-impl<'tcx, K, I> JobOwner<'tcx, K, I>
+impl<'tcx, K> JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -207,7 +207,7 @@ where
     }
 }
 
-impl<'tcx, K, I> Drop for JobOwner<'tcx, K, I>
+impl<'tcx, K> Drop for JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -235,19 +235,10 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct CycleError<I = QueryStackFrameExtra> {
+pub struct CycleError {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame<I>)>,
-    pub cycle: Vec<QueryInfo<I>>,
-}
-
-impl<I> CycleError<I> {
-    fn lift<Qcx: QueryContext<QueryInfo = I>>(&self, qcx: Qcx) -> CycleError<QueryStackFrameExtra> {
-        CycleError {
-            usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift(qcx))),
-            cycle: self.cycle.iter().map(|info| info.lift(qcx)).collect(),
-        }
-    }
+    pub usage: Option<(Span, QueryStackFrame)>,
+    pub cycle: Vec<QueryInfo>,
 }
 
 /// Checks whether there is already a value for this key in the in-memory
@@ -284,10 +275,10 @@ where
 {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let query_map = qcx.collect_active_jobs(false).ok().expect("failed to collect active queries");
+    let query_map = qcx.collect_active_jobs(false).expect("failed to collect active queries");
 
     let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
-    (mk_cycle(query, qcx, error.lift(qcx)), None)
+    (mk_cycle(query, qcx, error), None)
 }
 
 #[inline(always)]
@@ -296,7 +287,7 @@ fn wait_for_query<Q, Qcx>(
     qcx: Qcx,
     span: Span,
     key: Q::Key,
-    latch: QueryLatch<Qcx::QueryInfo>,
+    latch: QueryLatch,
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
@@ -336,7 +327,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, qcx, cycle.lift(qcx)), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle), None),
     }
 }
 
@@ -414,7 +405,7 @@ where
 fn execute_job<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
-    state: &QueryState<Q::Key, Qcx::QueryInfo>,
+    state: &QueryState<Q::Key>,
     key: Q::Key,
     key_hash: u64,
     id: QueryJobId,

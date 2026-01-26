@@ -8,7 +8,7 @@ use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
-use rustc_ast::LitKind::Bool;
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
@@ -48,12 +48,13 @@ pub(super) fn check<'a>(
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
     };
-
-    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
-
-    let Bool(def_bool) = def_kind.node else {
+    let LitKind::Bool(def_bool) = def_kind.node else {
         return;
     };
+
+    let typeck = cx.typeck_results();
+
+    let recv_ty = typeck.expr_ty_adjusted(recv);
 
     let variant = match recv_ty.opt_diag_name(cx) {
         Some(sym::Option) => Variant::Some,
@@ -63,12 +64,12 @@ pub(super) fn check<'a>(
 
     let ext_def_span = def.span.until(map.span);
 
-    let (sugg, method, applicability) = if cx.typeck_results().expr_adjustments(recv).is_empty()
+    let (sugg, method, applicability): (_, Cow<'_, _>, _) = if typeck.expr_adjustments(recv).is_empty()
             && let ExprKind::Closure(map_closure) = map.kind
             && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
-            && let Some(param) = closure_body.params.first()
+            && let [param] = closure_body.params
             && let PatKind::Binding(_, hir_id, _, _) = param.pat.kind
             // checking that map_or is one of the following:
             // .map_or(false, |x| x == y)
@@ -78,14 +79,13 @@ pub(super) fn check<'a>(
             && ((BinOpKind::Eq == op.node && !def_bool) || (BinOpKind::Ne == op.node && def_bool))
             && let non_binding_location = if l.res_local_id() == Some(hir_id) { r } else { l }
             && switch_to_eager_eval(cx, non_binding_location)
-            // if its both then that's a strange edge case and
+            // if it's both then that's a strange edge case and
             // we can just ignore it, since by default clippy will error on this
             && (l.res_local_id() == Some(hir_id)) != (r.res_local_id() == Some(hir_id))
             && !is_local_used(cx, non_binding_location, hir_id)
-            && let typeck_results = cx.typeck_results()
-            && let l_ty = typeck_results.expr_ty(l)
-            && l_ty == typeck_results.expr_ty(r)
-            && let Some(partial_eq) = cx.tcx.get_diagnostic_item(sym::PartialEq)
+            && let l_ty = typeck.expr_ty(l)
+            && l_ty == typeck.expr_ty(r)
+            && let Some(partial_eq) = cx.tcx.lang_items().eq_trait()
             && implements_trait(cx, recv_ty, partial_eq, &[recv_ty.into()])
             && is_copy(cx, l_ty)
     {
@@ -97,12 +97,12 @@ pub(super) fn check<'a>(
         // being converted to `Some(5) == Some(5).then(|| 1)` isn't
         // the same thing
 
+        let mut app = Applicability::MachineApplicable;
         let inner_non_binding = Sugg::NonParen(Cow::Owned(format!(
             "{wrap}({})",
-            Sugg::hir(cx, non_binding_location, "")
+            Sugg::hir_with_applicability(cx, non_binding_location, "", &mut app)
         )));
 
-        let mut app = Applicability::MachineApplicable;
         let binop = make_binop(
             op.node,
             &Sugg::hir_with_applicability(cx, recv, "..", &mut app),
@@ -126,18 +126,18 @@ pub(super) fn check<'a>(
         }
         .into_string();
 
-        (vec![(expr.span, sugg)], "a standard comparison", app)
+        (vec![(expr.span, sugg)], "a standard comparison".into(), app)
     } else if !def_bool && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         let suggested_name = variant.method_name();
         (
-            vec![(method_span, suggested_name.into()), (ext_def_span, String::default())],
-            suggested_name,
+            vec![(method_span, suggested_name.into()), (ext_def_span, String::new())],
+            format!("`{suggested_name}`").into(),
             Applicability::MachineApplicable,
         )
     } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(cx, msrvs::IS_NONE_OR) {
         (
-            vec![(method_span, "is_none_or".into()), (ext_def_span, String::default())],
-            "is_none_or",
+            vec![(method_span, "is_none_or".into()), (ext_def_span, String::new())],
+            "`is_none_or`".into(),
             Applicability::MachineApplicable,
         )
     } else {

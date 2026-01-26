@@ -6,7 +6,9 @@
 extern crate proc_macro;
 
 mod cmp;
+mod ident;
 mod literal;
+mod tokenstream;
 
 use proc_macro::TokenStream;
 
@@ -15,7 +17,9 @@ pub fn run(input: TokenStream) -> TokenStream {
     assert!(input.is_empty());
 
     cmp::test();
+    ident::test();
     literal::test();
+    tokenstream::test();
 
     TokenStream::new()
 }

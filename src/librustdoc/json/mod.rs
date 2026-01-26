@@ -104,22 +104,6 @@ impl<'tcx> JsonRenderer<'tcx> {
             })
             .unwrap_or_default()
     }
-
-    fn serialize_and_write<T: Write>(
-        &self,
-        output_crate: types::Crate,
-        mut writer: BufWriter<T>,
-        path: &str,
-    ) -> Result<(), Error> {
-        self.sess().time("rustdoc_json_serialize_and_write", || {
-            try_err!(
-                serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
-                path
-            );
-            try_err!(writer.flush(), path);
-            Ok(())
-        })
-    }
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -252,26 +236,23 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         unreachable!("RUN_ON_MODULE = false, should never call mod_item_in")
     }
 
-    fn after_krate(mut self) -> Result<(), Error> {
+    fn after_krate(self) -> Result<(), Error> {
         debug!("Done with crate");
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
-
-        // We've finished using the index, and don't want to clone it, because it is big.
-        let index = std::mem::take(&mut self.index);
+        let sess = self.sess();
 
         // Note that tcx.rust_target_features is inappropriate here because rustdoc tries to run for
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
         //
         // We want to describe a single target, so pass tcx.sess rather than tcx.
-        let target = conversions::target(self.tcx.sess);
+        let target = conversions::target(sess);
 
         debug!("Constructing Output");
         let output_crate = types::Crate {
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            index,
             paths: self
                 .cache
                 .paths
@@ -313,6 +294,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
+            // Be careful to not clone the `index`, it is big.
+            index: self.index,
             target,
             format_version: types::FORMAT_VERSION,
         };
@@ -323,15 +306,32 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
             p.set_extension("json");
 
-            self.serialize_and_write(
+            serialize_and_write(
+                sess,
                 output_crate,
                 try_err!(File::create_buffered(&p), p),
                 &p.display().to_string(),
             )
         } else {
-            self.serialize_and_write(output_crate, BufWriter::new(stdout().lock()), "<stdout>")
+            serialize_and_write(sess, output_crate, BufWriter::new(stdout().lock()), "<stdout>")
         }
     }
+}
+
+fn serialize_and_write<T: Write>(
+    sess: &Session,
+    output_crate: types::Crate,
+    mut writer: BufWriter<T>,
+    path: &str,
+) -> Result<(), Error> {
+    sess.time("rustdoc_json_serialize_and_write", || {
+        try_err!(
+            serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
+            path
+        );
+        try_err!(writer.flush(), path);
+        Ok(())
+    })
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

@@ -2,7 +2,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{OsStr, OsString};
-use crate::io::ErrorKind;
+use crate::io;
 use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
@@ -32,13 +32,13 @@ cfg_select! {
 }
 pub mod winsock;
 
-/// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
+/// Map a [`Result<T, WinError>`] to [`io::Result<T>`].
 pub trait IoResult<T> {
-    fn io_result(self) -> crate::io::Result<T>;
+    fn io_result(self) -> io::Result<T>;
 }
 impl<T> IoResult<T> for Result<T, api::WinError> {
-    fn io_result(self) -> crate::io::Result<T> {
-        self.map_err(|e| crate::io::Error::from_raw_os_error(e.code as i32))
+    fn io_result(self) -> io::Result<T> {
+        self.map_err(|e| io::Error::from_raw_os_error(e.code as i32))
     }
 }
 
@@ -58,84 +58,6 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
     winsock::cleanup();
-}
-
-#[inline]
-pub fn is_interrupted(_errno: i32) -> bool {
-    false
-}
-
-pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    use ErrorKind::*;
-
-    match errno as u32 {
-        c::ERROR_ACCESS_DENIED => return PermissionDenied,
-        c::ERROR_ALREADY_EXISTS => return AlreadyExists,
-        c::ERROR_FILE_EXISTS => return AlreadyExists,
-        c::ERROR_BROKEN_PIPE => return BrokenPipe,
-        c::ERROR_FILE_NOT_FOUND
-        | c::ERROR_PATH_NOT_FOUND
-        | c::ERROR_INVALID_DRIVE
-        | c::ERROR_BAD_NETPATH
-        | c::ERROR_BAD_NET_NAME => return NotFound,
-        c::ERROR_NO_DATA => return BrokenPipe,
-        c::ERROR_INVALID_NAME | c::ERROR_BAD_PATHNAME => return InvalidFilename,
-        c::ERROR_INVALID_PARAMETER => return InvalidInput,
-        c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
-        c::ERROR_SEM_TIMEOUT
-        | c::WAIT_TIMEOUT
-        | c::ERROR_DRIVER_CANCEL_TIMEOUT
-        | c::ERROR_OPERATION_ABORTED
-        | c::ERROR_SERVICE_REQUEST_TIMEOUT
-        | c::ERROR_COUNTER_TIMEOUT
-        | c::ERROR_TIMEOUT
-        | c::ERROR_RESOURCE_CALL_TIMED_OUT
-        | c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT
-        | c::ERROR_CTX_CLIENT_QUERY_TIMEOUT
-        | c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT
-        | c::ERROR_DS_TIMELIMIT_EXCEEDED
-        | c::DNS_ERROR_RECORD_TIMED_OUT
-        | c::ERROR_IPSEC_IKE_TIMED_OUT
-        | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
-        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
-        c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
-        c::ERROR_HOST_UNREACHABLE => return HostUnreachable,
-        c::ERROR_NETWORK_UNREACHABLE => return NetworkUnreachable,
-        c::ERROR_DIRECTORY => return NotADirectory,
-        c::ERROR_DIRECTORY_NOT_SUPPORTED => return IsADirectory,
-        c::ERROR_DIR_NOT_EMPTY => return DirectoryNotEmpty,
-        c::ERROR_WRITE_PROTECT => return ReadOnlyFilesystem,
-        c::ERROR_DISK_FULL | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
-        c::ERROR_SEEK_ON_DEVICE => return NotSeekable,
-        c::ERROR_DISK_QUOTA_EXCEEDED => return QuotaExceeded,
-        c::ERROR_FILE_TOO_LARGE => return FileTooLarge,
-        c::ERROR_BUSY => return ResourceBusy,
-        c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
-        c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
-        c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
-        c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
-        c::ERROR_CANT_RESOLVE_FILENAME => return FilesystemLoop,
-        _ => {}
-    }
-
-    match errno {
-        c::WSAEACCES => PermissionDenied,
-        c::WSAEADDRINUSE => AddrInUse,
-        c::WSAEADDRNOTAVAIL => AddrNotAvailable,
-        c::WSAECONNABORTED => ConnectionAborted,
-        c::WSAECONNREFUSED => ConnectionRefused,
-        c::WSAECONNRESET => ConnectionReset,
-        c::WSAEINVAL => InvalidInput,
-        c::WSAENOTCONN => NotConnected,
-        c::WSAEWOULDBLOCK => WouldBlock,
-        c::WSAETIMEDOUT => TimedOut,
-        c::WSAEHOSTUNREACH => HostUnreachable,
-        c::WSAENETDOWN => NetworkDown,
-        c::WSAENETUNREACH => NetworkUnreachable,
-        c::WSAEDQUOT => QuotaExceeded,
-
-        _ => Uncategorized,
-    }
 }
 
 pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
@@ -167,8 +89,8 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     None
 }
 
-pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
-    fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
+pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
+    fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
         // Most paths are ASCII, so reserve capacity for as much as there are bytes
         // in the OsStr plus one for the null-terminating character. We are not
         // wasting bytes here as paths created by this function are primarily used
@@ -177,8 +99,8 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
         maybe_result.extend(s.encode_wide());
 
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::const_error!(
-                ErrorKind::InvalidInput,
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
             ));
         }
@@ -209,7 +131,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // passed the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
+pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
 where
     F1: FnMut(*mut u16, u32) -> u32,
     F2: FnOnce(&[u16]) -> T,
@@ -251,7 +173,7 @@ where
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as u32) {
                 0 if api::get_last_error().code == 0 => 0,
-                0 => return Err(crate::io::Error::last_os_error()),
+                0 => return Err(io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && api::get_last_error().code == c::ERROR_INSUFFICIENT_BUFFER {
@@ -285,9 +207,9 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     }
 }
 
-pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> crate::io::Result<T> {
+pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
     if s.as_ref().encode_wide().any(|b| b == 0) {
-        Err(crate::io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(s)
     }
@@ -307,8 +229,8 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-pub fn cvt<I: IsZero>(i: I) -> crate::io::Result<I> {
-    if i.is_zero() { Err(crate::io::Error::last_os_error()) } else { Ok(i) }
+pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+    if i.is_zero() { Err(io::Error::last_os_error()) } else { Ok(i) }
 }
 
 pub fn dur2timeout(dur: Duration) -> u32 {

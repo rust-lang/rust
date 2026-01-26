@@ -1,4 +1,5 @@
 // Ensures that the font serif change is working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // By default, it should be the serif fonts.
@@ -8,8 +9,7 @@ assert-css: ("body", {"font-family": |serif_font|})
 assert-css: ("p code", {"font-family": |serif_code_font|})
 
 // We now switch to the sans serif font
-click: "main .settings-menu"
-wait-for: "#sans-serif-fonts"
+call-function: ("open-settings-menu", {})
 click: "#sans-serif-fonts"
 
 store-value: (font, '"Fira Sans", sans-serif')
@@ -23,8 +23,7 @@ assert-css: ("body", {"font-family": |font|})
 assert-css: ("p code", {"font-family": |code_font|})
 
 // We switch back to the serif font
-click: "main .settings-menu"
-wait-for: "#sans-serif-fonts"
+call-function: ("open-settings-menu", {})
 click: "#sans-serif-fonts"
 
 assert-css: ("body", {"font-family": |serif_font|})

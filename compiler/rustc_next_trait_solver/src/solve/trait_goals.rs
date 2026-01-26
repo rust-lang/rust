@@ -659,7 +659,7 @@ where
         }
 
         // `rustc_transmute` does not have support for type or const params
-        if goal.has_non_region_placeholders() {
+        if goal.predicate.has_non_region_placeholders() {
             return Err(NoSolution);
         }
 

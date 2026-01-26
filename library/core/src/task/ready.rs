@@ -46,7 +46,7 @@
 /// # }
 /// ```
 #[stable(feature = "ready_macro", since = "1.64.0")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro ready($e:expr) {
     match $e {
         $crate::task::Poll::Ready(t) => t,

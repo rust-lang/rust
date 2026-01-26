@@ -14,13 +14,13 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
@@ -47,9 +47,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use crate::errors;
-use crate::hir_ty_lowering::{
-    FeedConstTy, HirTyLowerer, InherentAssocCandidate, RegionInferReason,
-};
+use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -926,7 +924,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     );
 
     let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
-    let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
+    let force_dyn_incompatible =
+        find_attr!(attrs, AttributeKind::DynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -941,7 +940,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         skip_boxed_slice_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,
-        implement_via_object,
+        force_dyn_incompatible,
         deny_explicit_impl,
     }
 }
@@ -1479,23 +1478,27 @@ fn rendered_precise_capturing_args<'tcx>(
 
 fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    local_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let hir::Node::GenericParam(hir::GenericParam {
         kind: hir::GenericParamKind::Const { default: Some(default_ct), .. },
         ..
-    }) = tcx.hir_node_by_def_id(def_id)
+    }) = tcx.hir_node_by_def_id(local_def_id)
     else {
         span_bug!(
-            tcx.def_span(def_id),
+            tcx.def_span(local_def_id),
             "`const_param_default` expected a generic parameter with a constant"
         )
     };
-    let icx = ItemCtxt::new(tcx, def_id);
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+
+    let icx = ItemCtxt::new(tcx, local_def_id);
+
+    let def_id = local_def_id.to_def_id();
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
+
     let ct = icx
         .lowerer()
-        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(default_ct, tcx.type_of(def_id).instantiate(tcx, identity_args));
     ty::EarlyBinder::bind(ct)
 }
 
@@ -1553,7 +1556,7 @@ fn const_of_item<'tcx>(
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let ct = icx
         .lowerer()
-        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(ct_arg, tcx.type_of(def_id.to_def_id()).instantiate(tcx, identity_args));
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {

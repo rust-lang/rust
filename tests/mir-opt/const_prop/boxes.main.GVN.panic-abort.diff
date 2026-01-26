@@ -29,10 +29,10 @@
           StorageLive(_5);
 -         _6 = move _4 as *const i32 (Transmute);
 -         _7 = NonNull::<i32> { pointer: move _6 };
--         _8 = Unique::<i32> { pointer: move _7, _marker: const PhantomData::<i32> };
+-         _8 = std::ptr::Unique::<i32> { pointer: move _7, _marker: const PhantomData::<i32> };
 +         _6 = copy _4 as *const i32 (PtrToPtr);
 +         _7 = NonNull::<i32> { pointer: copy _6 };
-+         _8 = Unique::<i32> { pointer: copy _7, _marker: const PhantomData::<i32> };
++         _8 = std::ptr::Unique::<i32> { pointer: copy _7, _marker: const PhantomData::<i32> };
           _5 = Box::<i32>(move _8, const std::alloc::Global);
 -         _9 = copy ((_5.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
 -         (*_9) = const 42_i32;

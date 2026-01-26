@@ -10,13 +10,13 @@
 //! themselves having support libraries. All data over the TCP sockets is in a
 //! basically custom format suiting our needs.
 
-#[cfg(all(not(windows), not(target_os = "motor")))]
+#[cfg(not(any(windows, target_os = "motor", target_os = "uefi")))]
 use std::fs::Permissions;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-#[cfg(all(not(windows), not(target_os = "motor")))]
+#[cfg(not(any(windows, target_os = "motor", target_os = "uefi")))]
 use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -325,7 +325,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     ]));
 }
 
-#[cfg(all(not(windows), not(target_os = "motor")))]
+#[cfg(not(any(windows, target_os = "motor", target_os = "uefi")))]
 fn get_status_code(status: &ExitStatus) -> (u8, i32) {
     match status.code() {
         Some(n) => (0, n),
@@ -333,7 +333,7 @@ fn get_status_code(status: &ExitStatus) -> (u8, i32) {
     }
 }
 
-#[cfg(any(windows, target_os = "motor"))]
+#[cfg(any(windows, target_os = "motor", target_os = "uefi"))]
 fn get_status_code(status: &ExitStatus) -> (u8, i32) {
     (0, status.code().unwrap())
 }
@@ -359,11 +359,11 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     dst
 }
 
-#[cfg(all(not(windows), not(target_os = "motor")))]
+#[cfg(not(any(windows, target_os = "motor", target_os = "uefi")))]
 fn set_permissions(path: &Path) {
     t!(fs::set_permissions(&path, Permissions::from_mode(0o755)));
 }
-#[cfg(any(windows, target_os = "motor"))]
+#[cfg(any(windows, target_os = "motor", target_os = "uefi"))]
 fn set_permissions(_path: &Path) {}
 
 fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
@@ -387,7 +387,7 @@ fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
     if n > 0 {
         t!(dst.write_all(buf));
         // Marking buf finished
-        t!(dst.write_all(&[which, 0, 0, 0, 0,]));
+        t!(dst.write_all(&create_header(which, 0)));
     }
 }
 

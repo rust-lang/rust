@@ -24,7 +24,7 @@ Also, talk about how it works
 ## jsondocck
 
 [jsondocck] processes directives given in comments, to assert that the values in the output are expected.
-It's a lot like [htmldocck](./rustdoc-test-suite.md) in that way.
+It's a lot like [htmldocck](./rustdoc-html-test-suite.md) in that way.
 
 It uses [JSONPath] as a query language, which takes a path, and returns a *list* of values that that path is said to match to.
 

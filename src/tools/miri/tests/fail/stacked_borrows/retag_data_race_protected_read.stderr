@@ -14,6 +14,18 @@ LL |     unsafe { ptr.0.read() };
    = help: therefore from the perspective of data races, a retag has the same implications as a read or write
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC
+   |
+LL |       let t = thread::spawn(move || {
+   |  _____________^
+LL | |         let ptr = ptr;
+LL | |         // We do a protected mutable retag (but no write!) in this thread.
+LL | |         fn retag(_x: &mut i32) {}
+LL | |         retag(unsafe { &mut *ptr.0 });
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

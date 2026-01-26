@@ -4,8 +4,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{snippet, snippet_with_context};
-use clippy_utils::sym;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
+use clippy_utils::{contains_return, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Closure, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind,
@@ -82,7 +82,7 @@ pub(super) fn check_iterator_reduction<'tcx>(
 ) {
     let closure_body = cx.tcx.hir_body(closure.body).value;
     let body_ty = cx.typeck_results().expr_ty(closure_body);
-    if body_ty.is_never() {
+    if body_ty.is_never() && !contains_return(closure_body) {
         span_lint_and_then(
             cx,
             NEVER_LOOP,

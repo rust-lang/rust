@@ -16,13 +16,11 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
    |
 LL |     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
    |     ^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `fun2` at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
-note: inside `main`
-  --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
-   |
-LL |     fun2(); // if they now use a raw ptr they break our reference
-   |     ^^^^^^
+   = note: stack backtrace:
+           0: fun2
+               at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+           1: main
+               at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

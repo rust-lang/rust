@@ -646,8 +646,6 @@ pub trait Features<I: Interner>: Copy {
 
     fn coroutine_clone(self) -> bool;
 
-    fn associated_const_equality(self) -> bool;
-
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 

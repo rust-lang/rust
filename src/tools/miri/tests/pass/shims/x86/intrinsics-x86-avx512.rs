@@ -1,6 +1,6 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
-//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bitalg,+avx512vpopcntdq
+//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -11,14 +11,18 @@ use std::mem::transmute;
 fn main() {
     assert!(is_x86_feature_detected!("avx512f"));
     assert!(is_x86_feature_detected!("avx512vl"));
+    assert!(is_x86_feature_detected!("avx512bw"));
     assert!(is_x86_feature_detected!("avx512bitalg"));
     assert!(is_x86_feature_detected!("avx512vpopcntdq"));
+    assert!(is_x86_feature_detected!("avx512vnni"));
 
     unsafe {
         test_avx512();
+        test_avx512bw();
         test_avx512bitalg();
         test_avx512vpopcntdq();
         test_avx512ternarylogic();
+        test_avx512vnni();
     }
 }
 
@@ -97,6 +101,77 @@ unsafe fn test_avx512() {
         assert_eq_m512i(r, e);
     }
     test_mm512_maddubs_epi16();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_madd_epi16() {
+        // Input pairs
+        //
+        // - `i16::MIN * i16::MIN + i16::MIN * i16::MIN`: the 32-bit addition overflows
+        // - `i16::MAX * i16::MAX + i16::MAX * i16::MAX`: check that widening happens before
+        // arithmetic
+        // - `i16::MIN * i16::MAX + i16::MAX * i16::MIN`: check that large negative values are
+        // handled correctly
+        // - `3 * 1 + 4 * 2`: A sanity check, the result should be 14.
+
+        #[rustfmt::skip]
+        let a = _mm512_set_epi16(
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MIN, i16::MAX,
+            3, 1,
+        );
+
+        #[rustfmt::skip]
+        let b = _mm512_set_epi16(
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+
+            i16::MIN, i16::MIN,
+            i16::MAX, i16::MAX,
+            i16::MAX, i16::MIN,
+            4, 2,
+        );
+
+        let r = _mm512_madd_epi16(a, b);
+
+        #[rustfmt::skip]
+        let e = _mm512_set_epi32(
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+            i32::MIN, 2_147_352_578, -2_147_418_112, 14,
+        );
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_madd_epi16();
 
     #[target_feature(enable = "avx512f")]
     unsafe fn test_mm512_permutexvar_epi32() {
@@ -411,9 +486,228 @@ unsafe fn test_avx512ternarylogic() {
     test_mm_ternarylogic_epi32();
 }
 
+#[target_feature(enable = "avx512vnni")]
+unsafe fn test_avx512vnni() {
+    #[target_feature(enable = "avx512vnni")]
+    unsafe fn test_mm512_dpbusd_epi32() {
+        const SRC: [i32; 16] = [
+            1,
+            // Test that addition with the `src` element uses wrapping arithmetic.
+            i32::MAX,
+            i32::MIN,
+            0,
+            0,
+            7,
+            12345,
+            -9876,
+            0x01020304,
+            -1,
+            42,
+            0,
+            1_000_000_000,
+            -1_000_000_000,
+            17,
+            -17,
+        ];
+
+        // The `A` array must be interpreted as a sequence of unsigned 8-bit integers. Setting
+        // the high bit of a byte tests that this is implemented correctly.
+        const A: [i32; 16] = [
+            0x01010101,
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([u8::MAX; 4]),
+            i32::from_le_bytes([u8::MAX; 4]),
+            0x02_80_01_FF,
+            0x00_FF_00_FF,
+            0x7F_80_FF_01,
+            0x10_20_30_40,
+            0xDE_AD_BE_EFu32 as i32,
+            0x00_00_00_FF,
+            0x12_34_56_78,
+            0xFF_00_FF_00u32 as i32,
+            0x01_02_03_04,
+            0xAA_55_AA_55u32 as i32,
+            0x11_22_33_44,
+        ];
+
+        // The `B` array must be interpreted as a sequence of signed 8-bit integers. Setting
+        // the high bit of a byte tests that this is implemented correctly.
+        const B: [i32; 16] = [
+            0x01010101,
+            i32::from_le_bytes([1; 4]),
+            i32::from_le_bytes([(-1i8).cast_unsigned(); 4]),
+            i32::from_le_bytes([i8::MAX.cast_unsigned(); 4]),
+            i32::from_le_bytes([i8::MIN.cast_unsigned(); 4]),
+            0xFF_01_80_7Fu32 as i32,
+            0x01_FF_01_FF,
+            0x80_7F_00_FFu32 as i32,
+            0x7F_01_FF_80u32 as i32,
+            0x01_02_03_04,
+            0xFF_FF_FF_FFu32 as i32,
+            0x80_00_7F_FFu32 as i32,
+            0x7F_80_7F_80u32 as i32,
+            0x40_C0_20_E0u32 as i32,
+            0x00_01_02_03,
+            0x7F_7E_80_81u32 as i32,
+        ];
+
+        const DST: [i32; 16] = [
+            5,
+            i32::MAX.wrapping_add(4),
+            i32::MIN.wrapping_add(-4),
+            129540,
+            -130560,
+            32390,
+            11835,
+            -9877,
+            16902884,
+            2093,
+            -213,
+            8498,
+            1000064770,
+            -1000000096,
+            697,
+            -8738,
+        ];
+
+        let src = _mm512_loadu_si512(SRC.as_ptr().cast::<__m512i>());
+        let a = _mm512_loadu_si512(A.as_ptr().cast::<__m512i>());
+        let b = _mm512_loadu_si512(B.as_ptr().cast::<__m512i>());
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+
+        assert_eq_m512i(_mm512_dpbusd_epi32(src, a, b), dst);
+    }
+    test_mm512_dpbusd_epi32();
+}
+
+#[target_feature(enable = "avx512bw")]
+unsafe fn test_avx512bw() {
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_packs_epi16() {
+        let a = _mm512_set1_epi16(120);
+
+        // Because `packs` instructions do signed saturation, we expect
+        // that any value over `i8::MAX` will be saturated to `i8::MAX`, and any value
+        // less than `i8::MIN` will also be saturated to `i8::MIN`.
+        let b = _mm512_set_epi16(
+            200, 200, 200, 200, 200, 200, 200, 200, -200, -200, -200, -200, -200, -200, -200, -200,
+            200, 200, 200, 200, 200, 200, 200, 200, -200, -200, -200, -200, -200, -200, -200, -200,
+        );
+
+        // The pack* family of instructions in x86 operate in blocks
+        // of 128-bit lanes, meaning the first 128-bit lane in `a` is converted and written
+        // then the first 128-bit lane of `b`, followed by the second 128-bit lane in `a`, etc...
+        // Because we are going from 16-bits to 8-bits our 128-bit block becomes 64-bits in
+        // the output register.
+        // This leaves us with 8x 8-bit values interleaved in the final register.
+        #[rustfmt::skip]
+        const DST: [i8; 64] = [
+            120, 120, 120, 120, 120, 120, 120, 120,
+            i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN, i8::MIN,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX, i8::MAX,
+        ];
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+        assert_eq_m512i(_mm512_packs_epi16(a, b), dst);
+    }
+    test_mm512_packs_epi16();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_packus_epi16() {
+        let a = _mm512_set1_epi16(120);
+
+        // Because `packus` instructions do unsigned saturation, we expect
+        // that any value over `u8::MAX` will be saturated to `u8::MAX`, and any value
+        // less than `u8::MIN` will also be saturated to `u8::MIN`.
+        let b = _mm512_set_epi16(
+            300, 300, 300, 300, 300, 300, 300, 300, -200, -200, -200, -200, -200, -200, -200, -200,
+            300, 300, 300, 300, 300, 300, 300, 300, -200, -200, -200, -200, -200, -200, -200, -200,
+        );
+
+        // See `test_mm512_packs_epi16` for an explanation of the output structure.
+        #[rustfmt::skip]
+        const DST: [u8; 64] = [
+            120, 120, 120, 120, 120, 120, 120, 120,
+            u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN, u8::MIN,
+            120, 120, 120, 120, 120, 120, 120, 120,
+            u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX, u8::MAX,
+        ];
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+        assert_eq_m512i(_mm512_packus_epi16(a, b), dst);
+    }
+    test_mm512_packus_epi16();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_packs_epi32() {
+        let a = _mm512_set1_epi32(8_000);
+
+        // Because `packs` instructions do signed saturation, we expect
+        // that any value over `i16::MAX` will be saturated to `i16::MAX`, and any value
+        // less than `i16::MIN` will also be saturated to `i16::MIN`.
+        let b = _mm512_set_epi32(
+            50_000, 50_000, 50_000, 50_000, -50_000, -50_000, -50_000, -50_000, 50_000, 50_000,
+            50_000, 50_000, -50_000, -50_000, -50_000, -50_000,
+        );
+
+        // See `test_mm512_packs_epi16` for an explanation of the output structure.
+        #[rustfmt::skip]
+        const DST: [i16; 32] = [
+            8_000, 8_000, 8_000, 8_000,
+            i16::MIN, i16::MIN, i16::MIN, i16::MIN,
+            8_000, 8_000, 8_000, 8_000,
+            i16::MAX, i16::MAX, i16::MAX, i16::MAX,
+            8_000, 8_000, 8_000, 8_000,
+            i16::MIN, i16::MIN, i16::MIN, i16::MIN,
+            8_000, 8_000, 8_000, 8_000,
+            i16::MAX, i16::MAX, i16::MAX, i16::MAX,
+        ];
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+        assert_eq_m512i(_mm512_packs_epi32(a, b), dst);
+    }
+    test_mm512_packs_epi32();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_packus_epi32() {
+        let a = _mm512_set1_epi32(8_000);
+
+        // Because `packus` instructions do unsigned saturation, we expect
+        // that any value over `u16::MAX` will be saturated to `u16::MAX`, and any value
+        // less than `u16::MIN` will also be saturated to `u16::MIN`.
+        let b = _mm512_set_epi32(
+            80_000, 80_000, 80_000, 80_000, -50_000, -50_000, -50_000, -50_000, 80_000, 80_000,
+            80_000, 80_000, -50_000, -50_000, -50_000, -50_000,
+        );
+
+        // See `test_mm512_packs_epi16` for an explanation of the output structure.
+        #[rustfmt::skip]
+        const DST: [u16; 32] = [
+            8_000, 8_000, 8_000, 8_000,
+            u16::MIN, u16::MIN, u16::MIN, u16::MIN,
+            8_000, 8_000, 8_000, 8_000,
+            u16::MAX, u16::MAX, u16::MAX, u16::MAX,
+            8_000, 8_000, 8_000, 8_000,
+            u16::MIN, u16::MIN, u16::MIN, u16::MIN,
+            8_000, 8_000, 8_000, 8_000,
+            u16::MAX, u16::MAX, u16::MAX, u16::MAX,
+        ];
+        let dst = _mm512_loadu_si512(DST.as_ptr().cast::<__m512i>());
+        assert_eq_m512i(_mm512_packus_epi32(a, b), dst);
+    }
+    test_mm512_packus_epi32();
+}
+
 #[track_caller]
 unsafe fn assert_eq_m512i(a: __m512i, b: __m512i) {
-    assert_eq!(transmute::<_, [i32; 16]>(a), transmute::<_, [i32; 16]>(b))
+    assert_eq!(transmute::<_, [u16; 32]>(a), transmute::<_, [u16; 32]>(b))
 }
 
 #[track_caller]

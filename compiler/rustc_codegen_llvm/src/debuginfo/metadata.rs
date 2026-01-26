@@ -665,8 +665,8 @@ impl MsvcBasicName for ty::UintTy {
 
 impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
-        // FIXME(f16_f128): `f16` and `f128` have no MSVC representation. We could improve the
-        // debuginfo. See: <https://github.com/rust-lang/rust/issues/121837>
+        // FIXME(f128): `f128` has no MSVC representation. We could improve the debuginfo.
+        // See: <https://github.com/rust-lang/rust/issues/121837>
         match self {
             ty::FloatTy::F16 => {
                 bug!("`f16` should have been handled in `build_basic_type_di_node`")
@@ -1520,7 +1520,6 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     // Unwrap potential addrspacecast
     let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
-    let trait_ref_self = cx.tcx.erase_and_anonymize_regions(trait_ref_self);
     let trait_def_id = trait_ref_self.def_id;
     let trait_vis = cx.tcx.visibility(trait_def_id);
 

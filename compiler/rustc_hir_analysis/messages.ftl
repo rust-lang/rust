@@ -165,9 +165,15 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
 
+hir_analysis_dyn_trait_assoc_item_binding_mentions_self =
+    {$kind} binding in trait object type mentions `Self`
+    .label = contains a mention of `Self`
+    .binding_label = this binding mentions `Self`
+
 hir_analysis_eii_with_generics =
-    #[{$eii_name}] cannot have generic parameters other than lifetimes
+    `{$impl_name}` cannot have generic parameters other than lifetimes
     .label = required by this attribute
+    .help = `#[{$eii_name}]` marks the implementation of an "externally implementable item"
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
@@ -329,6 +335,31 @@ hir_analysis_manual_implementation =
 hir_analysis_method_should_return_future = method should be `async` or return a future, but it is synchronous
     .note = this method is `async` so it expects a future to be returned
 
+hir_analysis_missing_generic_params =
+    the {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be explicitly specified
+    .label = {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be specified for this
+    .suggestion = explicitly specify the {$descr} {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    }
+    .no_suggestion_label = missing {$parameterCount ->
+        [one] reference
+        *[other] references
+    } to {$parameters}
+    .note = because the parameter {$parameterCount ->
+        [one] default references
+        *[other] defaults reference
+    } `Self`, the {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } must be specified on the trait object type
+
 hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
     .label = missing one of `{$missing_items_msg}` in implementation
     .note = required because of this annotation
@@ -344,34 +375,6 @@ hir_analysis_missing_trait_item_unstable = not all trait items implemented, miss
     .note = default implementation of `{$missing_item_name}` is unstable
     .some_note = use of unstable library feature `{$feature}`: {$reason}
     .none_note = use of unstable library feature `{$feature}`
-
-hir_analysis_missing_type_params =
-    the type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } {$parameters} must be explicitly specified
-    .label = type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } {$parameters} must be specified for this
-    .suggestion = set the type {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } to the desired {$parameterCount ->
-        [one] type
-        *[other] types
-    }
-    .no_suggestion_label = missing {$parameterCount ->
-        [one] reference
-        *[other] references
-    } to {$parameters}
-    .note = because the parameter {$parameterCount ->
-        [one] default references
-        *[other] defaults reference
-    } `Self`, the {$parameterCount ->
-        [one] parameter
-        *[other] parameters
-    } must be specified on the object type
 
 hir_analysis_no_variant_named = no variant named `{$ident}` found for enum `{$ty}`
 
@@ -479,9 +482,6 @@ hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
-
-hir_analysis_self_in_type_alias = `Self` is not allowed in type aliases
-    .label = `Self` is only available in impls, traits, and concrete type definitions
 
 hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
     .label = `Self` type parameter is implicitly captured by this `impl Trait`

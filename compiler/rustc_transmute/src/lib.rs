@@ -93,15 +93,6 @@ mod rustc {
 
     use super::*;
 
-    /// The source and destination types of a transmutation.
-    #[derive(Debug, Clone, Copy)]
-    pub struct Types<'tcx> {
-        /// The source type.
-        pub src: Ty<'tcx>,
-        /// The destination type.
-        pub dst: Ty<'tcx>,
-    }
-
     pub struct TransmuteTypeEnv<'tcx> {
         tcx: TyCtxt<'tcx>,
     }
@@ -113,13 +104,12 @@ mod rustc {
 
         pub fn is_transmutable(
             &mut self,
-            types: Types<'tcx>,
+            src: Ty<'tcx>,
+            dst: Ty<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<Region<'tcx>, Ty<'tcx>> {
-            crate::maybe_transmutable::MaybeTransmutableQuery::new(
-                types.src, types.dst, assume, self.tcx,
-            )
-            .answer()
+            crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, self.tcx)
+                .answer()
         }
     }
 
@@ -155,14 +145,14 @@ mod rustc {
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)
                     .unwrap_or_else(|| panic!("There were no fields named `{name}`."));
-                fields[field_idx].to_leaf() == ScalarInt::TRUE
+                fields[field_idx].try_to_leaf().map(|leaf| leaf == ScalarInt::TRUE)
             };
 
             Some(Self {
-                alignment: get_field(sym::alignment),
-                lifetimes: get_field(sym::lifetimes),
-                safety: get_field(sym::safety),
-                validity: get_field(sym::validity),
+                alignment: get_field(sym::alignment)?,
+                lifetimes: get_field(sym::lifetimes)?,
+                safety: get_field(sym::safety)?,
+                validity: get_field(sym::validity)?,
             })
         }
     }

@@ -6,6 +6,24 @@ use std::iter;
 use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 use crate::common::Config;
 use crate::directives::DirectiveLine;
+use crate::util::static_regex;
+
+#[cfg(test)]
+mod tests;
+
+/// The value of an `aux-crate` directive.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AuxCrate {
+    /// Contains `--extern` modifiers, if any. See the tracking issue for more
+    /// info: <https://github.com/rust-lang/rust/issues/98405>
+    /// With `aux-crate: noprelude:foo=bar.rs` this will be `noprelude`.
+    pub extern_modifiers: Option<String>,
+    /// With `aux-crate: foo=bar.rs` this will be `foo`.
+    /// With `aux-crate: noprelude:foo=bar.rs` this will be `foo`.
+    pub name: String,
+    /// With `aux-crate: foo=bar.rs` this will be `bar.rs`.
+    pub path: String,
+}
 
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
@@ -17,7 +35,7 @@ pub(crate) struct AuxProps {
     pub(crate) bins: Vec<String>,
     /// Similar to `builds`, but a list of NAME=somelib.rs of dependencies
     /// to build and pass with the `--extern` flag.
-    pub(crate) crates: Vec<(String, String)>,
+    pub(crate) crates: Vec<AuxCrate>,
     /// Same as `builds`, but for proc-macros.
     pub(crate) proc_macros: Vec<String>,
     /// Similar to `builds`, but also uses the resulting dylib as a
@@ -34,7 +52,7 @@ impl AuxProps {
         iter::empty()
             .chain(builds.iter().map(String::as_str))
             .chain(bins.iter().map(String::as_str))
-            .chain(crates.iter().map(|(_, path)| path.as_str()))
+            .chain(crates.iter().map(|c| c.path.as_str()))
             .chain(proc_macros.iter().map(String::as_str))
             .chain(codegen_backend.iter().map(String::as_str))
     }
@@ -63,10 +81,21 @@ pub(super) fn parse_and_update_aux(
     }
 }
 
-fn parse_aux_crate(r: String) -> (String, String) {
-    let mut parts = r.trim().splitn(2, '=');
-    (
-        parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
-        parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
-    )
+fn parse_aux_crate(r: String) -> AuxCrate {
+    let r = r.trim();
+
+    // Matches:
+    //   name=path
+    //   modifiers:name=path
+    let caps = static_regex!(r"^(?:(?<modifiers>[^=]*?):)?(?<name>[^=]*)=(?<path>.*)$")
+        .captures(r)
+        .unwrap_or_else(|| {
+            panic!("couldn't parse aux-crate value `{r}` (should be e.g. `log=log.rs`)")
+        });
+
+    let modifiers = caps.name("modifiers").map(|m| m.as_str().to_string());
+    let name = caps["name"].to_string();
+    let path = caps["path"].to_string();
+
+    AuxCrate { extern_modifiers: modifiers, name, path }
 }

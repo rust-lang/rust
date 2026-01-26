@@ -1,5 +1,6 @@
 #![feature(duration_constants)]
 #![feature(time_systemtime_limits)]
+#![feature(time_saturating_systemtime)]
 
 use std::fmt::Debug;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -268,4 +269,42 @@ fn system_time_max_min() {
     assert!(SystemTime::MAX.checked_sub(MIN_INTERVAL).is_some());
     assert!(SystemTime::MIN.checked_add(MIN_INTERVAL).is_some());
     assert!(SystemTime::MIN.checked_sub(MIN_INTERVAL).is_none());
+}
+
+#[test]
+fn system_time_saturating() {
+    // Perform saturating addition on SystemTime::MAX to see how it behaves.
+    assert_eq!(SystemTime::MAX.saturating_add(Duration::ZERO), SystemTime::MAX);
+    assert_eq!(SystemTime::MAX.saturating_add(Duration::new(1, 0)), SystemTime::MAX);
+    assert!(SystemTime::MAX.checked_add(Duration::new(1, 0)).is_none());
+    assert_eq!(
+        SystemTime::MAX.saturating_sub(Duration::new(1, 0)),
+        SystemTime::MAX.checked_sub(Duration::new(1, 0)).unwrap()
+    );
+
+    // Perform saturating subtraction on SystemTime::MIn to see how it behaves.
+    assert_eq!(SystemTime::MIN.saturating_sub(Duration::ZERO), SystemTime::MIN);
+    assert_eq!(SystemTime::MIN.saturating_sub(Duration::new(1, 0)), SystemTime::MIN);
+    assert!(SystemTime::MIN.checked_sub(Duration::new(1, 0)).is_none());
+    assert_eq!(
+        SystemTime::MIN.saturating_add(Duration::new(1, 0)),
+        SystemTime::MIN.checked_add(Duration::new(1, 0)).unwrap()
+    );
+
+    // Check saturating_duration_since with various constant values.
+    assert!(SystemTime::MAX.saturating_duration_since(SystemTime::MIN) >= Duration::ZERO);
+    assert_eq!(SystemTime::MAX.saturating_duration_since(SystemTime::MAX), Duration::ZERO);
+    assert!(SystemTime::MAX.duration_since(SystemTime::MAX).is_ok());
+    assert_eq!(SystemTime::MIN.saturating_duration_since(SystemTime::MAX), Duration::ZERO);
+    assert!(SystemTime::MIN.duration_since(SystemTime::MAX).is_err());
+    assert_eq!(
+        (SystemTime::UNIX_EPOCH + Duration::new(1, 0))
+            .saturating_duration_since(SystemTime::UNIX_EPOCH),
+        Duration::new(1, 0)
+    );
+    assert_eq!(
+        SystemTime::UNIX_EPOCH
+            .saturating_duration_since(SystemTime::UNIX_EPOCH + Duration::new(1, 0)),
+        Duration::ZERO
+    );
 }

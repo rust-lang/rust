@@ -37,8 +37,30 @@ fn transmute_const_int() {
     }
 }
 
+fn transumute_single_expr_blocks() {
+    unsafe {
+        let _: &u64 = std::mem::transmute({ 0 as *const u64 });
+        //~^ transmuting_null
+
+        let _: &u64 = std::mem::transmute(const { u64::MIN as *const u64 });
+        //~^ transmuting_null
+    }
+}
+
+fn transmute_pointer_creators() {
+    unsafe {
+        let _: &u64 = std::mem::transmute(std::ptr::without_provenance::<u64>(0));
+        //~^ transmuting_null
+
+        let _: &u64 = std::mem::transmute(std::ptr::without_provenance_mut::<u64>(0));
+        //~^ transmuting_null
+    }
+}
+
 fn main() {
     one_liners();
     transmute_const();
     transmute_const_int();
+    transumute_single_expr_blocks();
+    transmute_pointer_creators();
 }

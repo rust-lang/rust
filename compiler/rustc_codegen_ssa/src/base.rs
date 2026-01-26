@@ -6,7 +6,8 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
+    AllocatorTy,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -48,9 +49,7 @@ use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{
-    CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
-};
+use crate::{CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, errors, meth, mir};
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match (op, signed) {
@@ -671,7 +670,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
         methods.push(AllocatorMethod {
             name: ALLOC_ERROR_HANDLER,
             special: None,
-            inputs: &[],
+            inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
             output: AllocatorTy::Never,
         });
     }
@@ -1010,7 +1009,7 @@ impl CrateInfo {
             info.linked_symbols
                 .iter_mut()
                 .filter(|(crate_type, _)| {
-                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                    !matches!(crate_type, CrateType::Rlib | CrateType::StaticLib)
                 })
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
@@ -1042,7 +1041,7 @@ impl CrateInfo {
                 // this is a rare use case and we don't want to slow down the common case.
                 false
             }
-            CrateType::Staticlib | CrateType::Rlib => {
+            CrateType::StaticLib | CrateType::Rlib => {
                 // We don't invoke the linker for these, so we don't need to collect the NatVis for
                 // them.
                 false
@@ -1125,9 +1124,8 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
         // reuse pre-LTO artifacts
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
-            &tcx.sess.opts,
+            tcx.sess.opts.cg.linker_plugin_lto.enabled(),
             tcx.crate_types(),
-            ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,
             _ => CguReuse::PreLto,

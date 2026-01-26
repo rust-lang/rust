@@ -124,6 +124,8 @@ macro_rules! assert_ne {
     };
 }
 
+// FIXME add back debug_assert_matches doc link after bootstrap.
+
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `assert!(matches!(value, pattern))`, because it can print
@@ -135,10 +137,8 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
+/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
 /// release builds by default.
-///
-/// [`debug_assert_matches!`]: crate::assert_matches::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -149,7 +149,7 @@ macro_rules! assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::assert_matches;
+/// use std::assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -168,7 +168,7 @@ macro_rules! assert_ne {
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(panic_internals)]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {
@@ -382,7 +382,7 @@ macro_rules! debug_assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::debug_assert_matches;
+/// use std::debug_assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -401,10 +401,10 @@ macro_rules! debug_assert_ne {
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(assert_matches)]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
-        $crate::assert_matches::assert_matches!($($arg)*);
+        $crate::assert_matches!($($arg)*);
     }
 }
 
@@ -1912,7 +1912,7 @@ pub(crate) mod builtin {
     /// Impl detail of EII
     #[unstable(feature = "eii_internals", issue = "none")]
     #[rustc_builtin_macro]
-    pub macro eii_extern_target($item:item) {
+    pub macro eii_declaration($item:item) {
         /* compiler built-in */
     }
 }

@@ -12,6 +12,8 @@ fn main() {
     #[cfg(not(target_os = "solaris"))]
     getrandom_01::getrandom(&mut data).unwrap();
 
+    // On Windows, getrandom 0.2 uses the wrong return type for BCryptGenRandom
+    #[cfg(not(target_os = "windows"))]
     getrandom_02::getrandom(&mut data).unwrap();
 
     getrandom_03::fill(&mut data).unwrap();

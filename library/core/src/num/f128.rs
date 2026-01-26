@@ -34,13 +34,13 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const PHI: f128 = 1.61803398874989484820458683436563811772030917980576286213545_f128;
+    pub const GOLDEN_RATIO: f128 =
+        1.61803398874989484820458683436563811772030917980576286213545_f128;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const EGAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
+    pub const EULER_GAMMA: f128 =
+        0.577215664901532860606512090082402431042159335939923598805767_f128;
 
     /// π/2
     #[unstable(feature = "f128", issue = "116909")]
@@ -137,10 +137,8 @@ pub mod consts {
     pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
+#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), allow(internal_features))))]
 impl f128 {
-    // FIXME(f16_f128): almost all methods in this `impl` are missing examples and a const
-    // implementation. Add these once we can run code on all platforms and have f16/f128 in CTFE.
-
     /// The radix or base of the internal representation of `f128`.
     #[unstable(feature = "f128", issue = "116909")]
     pub const RADIX: u32 = 2;
@@ -277,8 +275,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `unordtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let nan = f128::NAN;
     /// let f = 7.0_f128;
@@ -300,8 +297,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let f = 7.0f128;
     /// let inf = f128::INFINITY;
@@ -326,8 +322,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `lttf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let f = 7.0f128;
     /// let inf: f128 = f128::INFINITY;
@@ -355,8 +350,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let min = f128::MIN_POSITIVE; // 3.362103143e-4932f128
     /// let max = f128::MAX;
@@ -386,8 +380,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let min = f128::MIN_POSITIVE; // 3.362103143e-4932f128
     /// let max = f128::MAX;
@@ -419,8 +412,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// use std::num::FpCategory;
     ///
@@ -514,8 +506,7 @@ impl f128 {
     ///
     /// ```rust
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// // f128::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f128.next_up(), 1.0 + f128::EPSILON);
@@ -569,8 +560,7 @@ impl f128 {
     ///
     /// ```rust
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let x = 1.0f128;
     /// // Clamp value into range [0, 1).
@@ -613,8 +603,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
@@ -640,8 +629,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let angle = std::f128::consts::PI;
     ///
@@ -671,8 +659,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let angle = 180.0f128;
     ///
@@ -706,8 +693,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // Using aarch64 because `reliable_f128_math` is needed
-    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -738,8 +724,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // Using aarch64 because `reliable_f128_math` is needed
-    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -771,8 +756,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # // Using aarch64 because `reliable_f128_math` is needed
-    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -804,8 +788,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # // Using aarch64 because `reliable_f128_math` is needed
-    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -831,8 +814,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // Using aarch64 because `reliable_f128_math` is needed
-    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// assert_eq!(1f128.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f128).midpoint(8.0), 1.25);
@@ -862,8 +844,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `float*itf` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let value = 4.6_f128;
     /// let rounded = unsafe { value.to_int_unchecked::<u16>() };
@@ -906,10 +887,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
-    /// # // FIXME(f16_f128): enable this once const casting works
-    /// # // assert_ne!((1f128).to_bits(), 1f128 as u128); // to_bits() is not casting!
+    /// assert_ne!((1f128).to_bits(), 1f128 as u128); // to_bits() is not casting!
     /// assert_eq!((12.5f128).to_bits(), 0x40029000000000000000000000000000);
+    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
@@ -952,8 +934,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// #  // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let v = f128::from_bits(0x40029000000000000000000000000000);
     /// assert_eq!(v, 12.5);
@@ -1064,8 +1045,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let value = f128::from_be_bytes(
     ///     [0x40, 0x02, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1090,8 +1070,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let value = f128::from_le_bytes(
     ///     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1123,8 +1102,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `eqtf2` is available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let value = f128::from_ne_bytes(if cfg!(target_endian = "big") {
     ///     [0x40, 0x02, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1257,8 +1235,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # // FIXME(f16_f128): remove when `{eq,gt,unord}tf` are available
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// assert!((-3.0f128).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f128).clamp(-2.0, 1.0) == 0.0);
@@ -1333,7 +1310,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let x = 3.5_f128;
     /// let y = -3.5_f128;
@@ -1349,9 +1326,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        // FIXME(f16_f128): replace with `intrinsics::fabsf128` when available
-        // We don't do this now because LLVM has lowering bugs for f128 math.
-        Self::from_bits(self.to_bits() & !(1 << 127))
+        intrinsics::fabsf128(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1364,7 +1339,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let f = 3.5_f128;
     ///
@@ -1400,7 +1375,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// # #[cfg(target_has_reliable_f128)] {
     ///
     /// let f = 3.5_f128;
     ///
@@ -1477,8 +1452,6 @@ impl f128 {
 }
 
 // Functions in this module fall into `core_float_math`
-// FIXME(f16_f128): all doctests must be gated to platforms that have `long double` === `_Float128`
-// due to https://github.com/llvm/llvm-project/issues/44744. aarch64 linux matches this.
 // #[unstable(feature = "core_float_math", issue = "137578")]
 #[cfg(not(test))]
 #[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), expect(internal_features))))]

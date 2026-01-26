@@ -169,7 +169,9 @@ declare_tests!(
     (x_test_library, "test library"),
     (x_test_librustdoc, "test librustdoc"),
     (x_test_librustdoc_rustdoc, "test librustdoc rustdoc"),
+    (x_test_librustdoc_rustdoc_html, "test librustdoc rustdoc-html"),
     (x_test_rustdoc, "test rustdoc"),
+    (x_test_rustdoc_html, "test rustdoc-html"),
     (x_test_skip_coverage, "test --skip=coverage"),
     // FIXME(Zalathar): This doesn't skip the coverage-map or coverage-run tests.
     (x_test_skip_tests, "test --skip=tests"),

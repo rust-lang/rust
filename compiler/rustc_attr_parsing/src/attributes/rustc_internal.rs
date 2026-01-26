@@ -164,21 +164,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     }
 }
 
-pub(crate) struct RustcLintDiagnosticsParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcLintDiagnosticsParser {
-    const PATH: &[Symbol] = &[sym::rustc_lint_diagnostics];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintDiagnostics;
-}
-
 pub(crate) struct RustcLintOptDenyFieldAccessParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
@@ -304,4 +289,43 @@ impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
         };
         Some(AttributeKind::RustcScalableVector { element_count: Some(n), span: cx.attr_span })
     }
+}
+
+pub(crate) struct RustcHasIncoherentInherentImplsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParser {
+    const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Trait),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::ForeignTy),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
+}
+
+pub(crate) struct RustcNounwindParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
+    const PATH: &[Symbol] = &[sym::rustc_nounwind];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
+}
+
+pub(crate) struct RustcOffloadKernelParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
+    const PATH: &[Symbol] = &[sym::rustc_offload_kernel];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
 }

@@ -152,10 +152,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
 
-        let ids = self.get_delegation_ids(
-            self.resolver.delegation_infos[&self.local_def_id(item_id)].resolution_node,
-            span,
-        );
+        // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
+        let ids = if let Some(delegation_info) =
+            self.resolver.delegation_infos.get(&self.local_def_id(item_id))
+        {
+            self.get_delegation_ids(delegation_info.resolution_node, span)
+        } else {
+            return self.generate_delegation_error(
+                self.dcx().span_delayed_bug(
+                    span,
+                    format!("LoweringContext: the delegation {:?} is unresolved", item_id),
+                ),
+                span,
+                delegation,
+            );
+        };
 
         match ids {
             Ok(ids) => {

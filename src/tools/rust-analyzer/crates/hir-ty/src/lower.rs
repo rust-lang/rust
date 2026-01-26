@@ -27,8 +27,8 @@ use hir_def::{
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs, ValueNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
-        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
-        TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
+        ConstRef, LifetimeRefId, PathId, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound,
+        TypeRef, TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -281,21 +281,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             hir_def::hir::Expr::Path(path) => {
                 self.path_to_const(path).unwrap_or_else(|| unknown_const(const_type))
             }
-            hir_def::hir::Expr::Literal(literal) => intern_const_ref(
-                self.db,
-                &match *literal {
-                    hir_def::hir::Literal::Float(_, _)
-                    | hir_def::hir::Literal::String(_)
-                    | hir_def::hir::Literal::ByteString(_)
-                    | hir_def::hir::Literal::CString(_) => LiteralConstRef::Unknown,
-                    hir_def::hir::Literal::Char(c) => LiteralConstRef::Char(c),
-                    hir_def::hir::Literal::Bool(b) => LiteralConstRef::Bool(b),
-                    hir_def::hir::Literal::Int(val, _) => LiteralConstRef::Int(val),
-                    hir_def::hir::Literal::Uint(val, _) => LiteralConstRef::UInt(val),
-                },
-                const_type,
-                self.resolver.krate(),
-            ),
+            hir_def::hir::Expr::Literal(literal) => {
+                intern_const_ref(self.db, literal, const_type, self.resolver.krate())
+            }
             hir_def::hir::Expr::UnaryOp { expr: inner_expr, op: hir_def::hir::UnaryOp::Neg } => {
                 if let hir_def::hir::Expr::Literal(literal) = &self.store[*inner_expr] {
                     // Only handle negation for signed integers and floats
@@ -304,7 +292,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             if let Some(negated_literal) = literal.clone().negate() {
                                 intern_const_ref(
                                     self.db,
-                                    &negated_literal.into(),
+                                    &negated_literal,
                                     const_type,
                                     self.resolver.krate(),
                                 )
@@ -862,7 +850,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                 TermKind::Ty(ty) => {
                                     ty.walk().any(|arg| arg == dummy_self_ty.into())
                                 }
-                                // FIXME(associated_const_equality): We should walk the const instead of not doing anything
+                                // FIXME(mgca): We should walk the const instead of not doing anything
                                 TermKind::Const(_) => false,
                             };
 
@@ -1319,7 +1307,7 @@ fn type_for_struct_constructor(
     db: &dyn HirDatabase,
     def: StructId,
 ) -> Option<StoredEarlyBinder<StoredTy>> {
-    let struct_data = def.fields(db);
+    let struct_data = db.struct_signature(def);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),

@@ -1596,8 +1596,11 @@ supported_targets! {
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
+    ("thumbv7r-none-eabi", thumbv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
+    ("thumbv7r-none-eabihf", thumbv7r_none_eabihf),
     ("armv8r-none-eabihf", armv8r_none_eabihf),
+    ("thumbv8r-none-eabihf", thumbv8r_none_eabihf),
 
     ("armv7-rtems-eabihf", armv7_rtems_eabihf),
 
@@ -1649,7 +1652,9 @@ supported_targets! {
     ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
     ("armv7a-none-eabi", armv7a_none_eabi),
+    ("thumbv7a-none-eabi", thumbv7a_none_eabi),
     ("armv7a-none-eabihf", armv7a_none_eabihf),
+    ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
     ("armv7a-vex-v5", armv7a_vex_v5),
@@ -1741,10 +1746,14 @@ supported_targets! {
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("mips-mti-none-elf", mips_mti_none_elf),
     ("mipsel-mti-none-elf", mipsel_mti_none_elf),
-    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+
     ("armv4t-none-eabi", armv4t_none_eabi),
-    ("thumbv5te-none-eabi", thumbv5te_none_eabi),
     ("armv5te-none-eabi", armv5te_none_eabi),
+    ("armv6-none-eabi", armv6_none_eabi),
+    ("armv6-none-eabihf", armv6_none_eabihf),
+    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+    ("thumbv5te-none-eabi", thumbv5te_none_eabi),
+    ("thumbv6-none-eabi", thumbv6_none_eabi),
 
     ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
     ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),
@@ -1801,6 +1810,8 @@ supported_targets! {
     ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
+
+    ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1873,7 +1884,6 @@ crate::target_spec_enum! {
         Nvptx64 = "nvptx64",
         PowerPC = "powerpc",
         PowerPC64 = "powerpc64",
-        PowerPC64LE = "powerpc64le",
         RiscV32 = "riscv32",
         RiscV64 = "riscv64",
         S390x = "s390x",
@@ -1911,7 +1921,6 @@ impl Arch {
             Self::Nvptx64 => sym::nvptx64,
             Self::PowerPC => sym::powerpc,
             Self::PowerPC64 => sym::powerpc64,
-            Self::PowerPC64LE => sym::powerpc64le,
             Self::RiscV32 => sym::riscv32,
             Self::RiscV64 => sym::riscv64,
             Self::S390x => sym::s390x,
@@ -1940,8 +1949,8 @@ impl Arch {
 
             AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
             | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
-            | PowerPC64 | PowerPC64LE | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32
-            | Wasm64 | X86 | X86_64 | Xtensa => true,
+            | PowerPC64 | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32 | Wasm64 | X86
+            | X86_64 | Xtensa => true,
         }
     }
 }
@@ -2394,6 +2403,9 @@ pub struct TargetOptions {
     pub archive_format: StaticCow<str>,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
+    /// Static initializers must be acyclic.
+    /// Defaults to false
+    pub static_initializer_must_be_acyclic: bool,
     /// Whether the runtime startup code requires the `main` function be passed
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
@@ -2777,6 +2789,7 @@ impl Default for TargetOptions {
             archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
+            static_initializer_must_be_acyclic: false,
             has_thread_local: false,
             obj_is_bitcode: false,
             min_atomic_width: None,
@@ -3294,10 +3307,19 @@ impl Target {
     pub fn search(
         target_tuple: &TargetTuple,
         sysroot: &Path,
+        unstable_options: bool,
     ) -> Result<(Target, TargetWarnings), String> {
         use std::{env, fs};
 
-        fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
+        fn load_file(
+            path: &Path,
+            unstable_options: bool,
+        ) -> Result<(Target, TargetWarnings), String> {
+            if !unstable_options {
+                return Err(
+                    "custom targets are unstable and require `-Zunstable-options`".to_string()
+                );
+            }
             let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
             Target::from_json(&contents)
         }
@@ -3321,7 +3343,7 @@ impl Target {
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
                     if p.is_file() {
-                        return load_file(&p);
+                        return load_file(&p, unstable_options);
                     }
                 }
 
@@ -3334,7 +3356,7 @@ impl Target {
                     Path::new("target.json"),
                 ]);
                 if p.is_file() {
-                    return load_file(&p);
+                    return load_file(&p, unstable_options);
                 }
 
                 Err(format!("could not find specification for target {target_tuple:?}"))
@@ -3432,7 +3454,6 @@ impl Target {
             Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
             Arch::AmdGpu
             | Arch::Nvptx64
-            | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64

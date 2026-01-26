@@ -428,6 +428,14 @@ specified multiple times.
 Refer to the [Remap source paths](remap-source-paths.md) section of this book for
 further details and explanation.
 
+<a id="option-remap-path-scope"></a>
+## `--remap-path-scope`: remap source paths in output
+
+Defines which scopes of paths should be remapped by `--remap-path-prefix`.
+
+Refer to the [Remap source paths](remap-source-paths.md) section of this book for
+further details and explanation.
+
 <a id="option-json"></a>
 ## `--json`: configure json messages printed by the compiler
 

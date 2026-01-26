@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-build_helper = { path = "../../build_helper" }
+build_helper = { path = "../../build_helper", features = ["metrics"] }
 env_logger = "0.11"
 log = "0.4"
 anyhow = "1"

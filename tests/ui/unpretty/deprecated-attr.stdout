@@ -1,4 +1,3 @@
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
@@ -10,19 +9,19 @@ use ::std::prelude::rust_2015::*;
 struct PlainDeprecated;
 
 #[attr = Deprecation {deprecation: Deprecation {since: Unspecified,
-note: "here's why this is deprecated"}}]
+note: here's why this is deprecated#0}}]
 struct DirectNote;
 
 #[attr = Deprecation {deprecation: Deprecation {since: Unspecified,
-note: "here's why this is deprecated"}}]
+note: here's why this is deprecated#0}}]
 struct ExplicitNote;
 
 #[attr = Deprecation {deprecation: Deprecation {since: NonStandard("1.2.3"),
-note: "here's why this is deprecated"}}]
+note: here's why this is deprecated#0}}]
 struct SinceAndNote;
 
 #[attr = Deprecation {deprecation: Deprecation {since: NonStandard("1.2.3"),
-note: "here's why this is deprecated"}}]
+note: here's why this is deprecated#0}}]
 struct FlippedOrder;
 
 fn f() {

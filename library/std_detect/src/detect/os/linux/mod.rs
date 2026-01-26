@@ -1,11 +1,9 @@
 //! Run-time feature detection on Linux
-//!
-#[cfg(feature = "std_detect_file_io")]
+
 use alloc::vec::Vec;
 
 mod auxvec;
 
-#[cfg(feature = "std_detect_file_io")]
 fn read_file(orig_path: &str) -> Result<Vec<u8>, alloc::string::String> {
     use alloc::format;
 

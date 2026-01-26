@@ -1,4 +1,3 @@
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
@@ -11,5 +10,5 @@ use ::std::prelude::rust_2015::*;
 "My Label", note = "Note 1", note = "Note 2")]
 trait ImportantTrait<A> { }
 
-#[diagnostic::do_not_recommend]
+#[attr = DoNotRecommend]
 impl <T> ImportantTrait<T> for T where T: Clone { }

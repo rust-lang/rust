@@ -13,8 +13,6 @@
 //! [`OsString`]: crate::ffi::OsString
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::io::RawOsError;
-
 pub mod helpers;
 pub mod os;
 pub mod time;
@@ -22,7 +20,7 @@ pub mod time;
 #[cfg(test)]
 mod tests;
 
-use crate::io as std_io;
+use crate::io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
@@ -76,61 +74,13 @@ pub unsafe fn cleanup() {
 }
 
 #[inline]
-pub const fn unsupported<T>() -> std_io::Result<T> {
+pub const fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
 #[inline]
-pub const fn unsupported_err() -> std_io::Error {
-    std_io::const_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI")
-}
-
-pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
-    use r_efi::efi::Status;
-
-    use crate::io::ErrorKind;
-
-    match r_efi::efi::Status::from_usize(code) {
-        Status::ALREADY_STARTED
-        | Status::COMPROMISED_DATA
-        | Status::CONNECTION_FIN
-        | Status::CRC_ERROR
-        | Status::DEVICE_ERROR
-        | Status::END_OF_MEDIA
-        | Status::HTTP_ERROR
-        | Status::ICMP_ERROR
-        | Status::INCOMPATIBLE_VERSION
-        | Status::LOAD_ERROR
-        | Status::MEDIA_CHANGED
-        | Status::NO_MAPPING
-        | Status::NO_MEDIA
-        | Status::NOT_STARTED
-        | Status::PROTOCOL_ERROR
-        | Status::PROTOCOL_UNREACHABLE
-        | Status::TFTP_ERROR
-        | Status::VOLUME_CORRUPTED => ErrorKind::Other,
-        Status::BAD_BUFFER_SIZE | Status::INVALID_LANGUAGE => ErrorKind::InvalidData,
-        Status::ABORTED => ErrorKind::ConnectionAborted,
-        Status::ACCESS_DENIED => ErrorKind::PermissionDenied,
-        Status::BUFFER_TOO_SMALL => ErrorKind::FileTooLarge,
-        Status::CONNECTION_REFUSED => ErrorKind::ConnectionRefused,
-        Status::CONNECTION_RESET => ErrorKind::ConnectionReset,
-        Status::END_OF_FILE => ErrorKind::UnexpectedEof,
-        Status::HOST_UNREACHABLE => ErrorKind::HostUnreachable,
-        Status::INVALID_PARAMETER => ErrorKind::InvalidInput,
-        Status::IP_ADDRESS_CONFLICT => ErrorKind::AddrInUse,
-        Status::NETWORK_UNREACHABLE => ErrorKind::NetworkUnreachable,
-        Status::NO_RESPONSE => ErrorKind::HostUnreachable,
-        Status::NOT_FOUND => ErrorKind::NotFound,
-        Status::NOT_READY => ErrorKind::ResourceBusy,
-        Status::OUT_OF_RESOURCES => ErrorKind::OutOfMemory,
-        Status::SECURITY_VIOLATION => ErrorKind::PermissionDenied,
-        Status::TIMEOUT => ErrorKind::TimedOut,
-        Status::UNSUPPORTED => ErrorKind::Unsupported,
-        Status::VOLUME_FULL => ErrorKind::StorageFull,
-        Status::WRITE_PROTECTED => ErrorKind::ReadOnlyFilesystem,
-        _ => ErrorKind::Uncategorized,
-    }
+pub const fn unsupported_err() -> io::Error {
+    io::const_error!(io::ErrorKind::Unsupported, "operation not supported on UEFI")
 }
 
 pub fn abort_internal() -> ! {
@@ -161,8 +111,4 @@ pub fn abort_internal() -> ! {
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
 extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
     uefi::env::disable_boot_services();
-}
-
-pub fn is_interrupted(_code: RawOsError) -> bool {
-    false
 }

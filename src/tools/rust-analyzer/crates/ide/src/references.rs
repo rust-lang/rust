@@ -38,7 +38,8 @@ use syntax::{
 };
 
 use crate::{
-    Analysis, FilePosition, HighlightedRange, NavigationTarget, TryToNav, highlight_related,
+    Analysis, FilePosition, HighlightedRange, NavigationTarget, TryToNav,
+    doc_links::token_as_doc_comment, highlight_related,
 };
 
 /// Result of a reference search operation.
@@ -211,6 +212,13 @@ pub(crate) fn find_defs(
     syntax: &SyntaxNode,
     offset: TextSize,
 ) -> Option<Vec<Definition>> {
+    if let Some(token) = syntax.token_at_offset(offset).left_biased()
+        && let Some(doc_comment) = token_as_doc_comment(&token)
+    {
+        return doc_comment
+            .get_definition_with_descend_at(sema, offset, |def, _, _| Some(vec![def]));
+    }
+
     let token = syntax.token_at_offset(offset).find(|t| {
         matches!(
             t.kind(),
@@ -781,6 +789,23 @@ fn main() {
                 FileId(0) 54..55 read
                 FileId(0) 76..77 write
                 FileId(0) 94..95 write
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_all_refs_in_comments() {
+        check(
+            r#"
+struct Foo;
+
+/// $0[`Foo`] is just above
+struct Bar;
+"#,
+            expect![[r#"
+                Foo Struct FileId(0) 0..11 7..10
+
+                (no references)
             "#]],
         );
     }

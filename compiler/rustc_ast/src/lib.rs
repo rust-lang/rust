@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![doc(test(attr(deny(warnings), allow(internal_features))))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]

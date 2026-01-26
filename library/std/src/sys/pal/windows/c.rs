@@ -237,3 +237,7 @@ cfg_select! {
     }
     _ => {}
 }
+
+// Only available starting with Windows 8.
+#[cfg(not(target_vendor = "win7"))]
+windows_targets::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);

@@ -6,7 +6,7 @@ use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl};
+use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -1196,27 +1196,28 @@ fn check_item_fn(
 fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
-    for EiiImpl { eii_macro, span, .. } in
+    for EiiImpl { resolution, span, .. } in
         find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
             .into_iter()
             .flatten()
     {
-        // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
-        // signature that we'd like to compare the function we're currently checking with
-        if let Some(eii_extern_target) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target, ..}) => *eii_extern_target)
-        {
-            let _ = compare_eii_function_types(
-                tcx,
-                def_id,
-                eii_extern_target,
-                tcx.item_name(*eii_macro),
-                *span,
-            );
-        } else {
-            panic!(
-                "EII impl macro {eii_macro:?} did not have an eii extern target attribute pointing to a foreign function"
-            )
-        }
+        let (foreign_item, name) = match resolution {
+            EiiImplResolution::Macro(def_id) => {
+                // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
+                // signature that we'd like to compare the function we're currently checking with
+                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
+                {
+                    (foreign_item, tcx.item_name(*def_id))
+                } else {
+                    tcx.dcx().span_delayed_bug(*span, "resolved to something that's not an EII");
+                    continue;
+                }
+            }
+            EiiImplResolution::Known(decl) => (decl.foreign_item, decl.name.name),
+            EiiImplResolution::Error(_eg) => continue,
+        };
+
+        let _ = compare_eii_function_types(tcx, def_id, foreign_item, name, *span);
     }
 }
 
@@ -2159,7 +2160,12 @@ fn report_bivariance<'tcx>(
         const_param_help,
     });
     diag.code(E0392);
-    diag.emit()
+    if item.kind.recovered() {
+        // Silence potentially redundant error, as the item had a parse error.
+        diag.delay_as_bug()
+    } else {
+        diag.emit()
+    }
 }
 
 /// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so

@@ -503,10 +503,6 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        #[expect(
-            rustc::untranslatable_diagnostic,
-            reason = "cannot translate user-provided messages"
-        )]
         let mut diag = Diag::new(dcx, level, self.msg_from_user.to_string());
         diag.span(self.span);
         diag
@@ -642,6 +638,15 @@ pub(crate) enum InvalidFormatStringSuggestion {
         #[primary_span]
         span: Span,
         replacement: String,
+    },
+    #[suggestion(
+        builtin_macros_format_add_missing_colon,
+        code = ":?",
+        applicability = "machine-applicable"
+    )]
+    AddMissingColon {
+        #[primary_span]
+        span: Span,
     },
 }
 
@@ -1001,21 +1006,21 @@ pub(crate) struct CfgSelectUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_macro)]
+#[diag(builtin_macros_eii_declaration_expected_macro)]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_list)]
+#[diag(builtin_macros_eii_declaration_expected_list)]
 pub(crate) struct EiiExternTargetExpectedList {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_eii_extern_target_expected_unsafe)]
+#[diag(builtin_macros_eii_declaration_expected_unsafe)]
 pub(crate) struct EiiExternTargetExpectedUnsafe {
     #[primary_span]
     #[note]
@@ -1028,6 +1033,16 @@ pub(crate) struct EiiSharedMacroExpectedFunction {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_in_statement_position)]
+pub(crate) struct EiiSharedMacroInStatementPosition {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+    #[label]
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
