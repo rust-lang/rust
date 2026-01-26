@@ -2003,12 +2003,30 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or_default()
     }
 
+    pub fn record_literal_matched_fields(
+        &self,
+        literal: &ast::RecordExpr,
+    ) -> Vec<(Field, Type<'db>)> {
+        self.analyze(literal.syntax())
+            .and_then(|it| it.record_literal_matched_fields(self.db, literal))
+            .unwrap_or_default()
+    }
+
     pub fn record_pattern_missing_fields(
         &self,
         pattern: &ast::RecordPat,
     ) -> Vec<(Field, Type<'db>)> {
         self.analyze(pattern.syntax())
             .and_then(|it| it.record_pattern_missing_fields(self.db, pattern))
+            .unwrap_or_default()
+    }
+
+    pub fn record_pattern_matched_fields(
+        &self,
+        pattern: &ast::RecordPat,
+    ) -> Vec<(Field, Type<'db>)> {
+        self.analyze(pattern.syntax())
+            .and_then(|it| it.record_pattern_matched_fields(self.db, pattern))
             .unwrap_or_default()
     }
 

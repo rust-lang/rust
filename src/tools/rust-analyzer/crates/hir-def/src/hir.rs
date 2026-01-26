@@ -187,6 +187,13 @@ impl From<ast::LiteralKind> for Literal {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Copy)]
+pub enum RecordSpread {
+    None,
+    FieldDefaults,
+    Expr(ExprId),
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.
@@ -259,7 +266,7 @@ pub enum Expr {
     RecordLit {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
-        spread: Option<ExprId>,
+        spread: RecordSpread,
     },
     Field {
         expr: ExprId,

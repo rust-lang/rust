@@ -2,7 +2,8 @@
 //! between `Deref` and `DerefMut` or `Index` and `IndexMut` or similar.
 
 use hir_def::hir::{
-    Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement, UnaryOp,
+    Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, RecordSpread,
+    Statement, UnaryOp,
 };
 use rustc_ast_ir::Mutability;
 
@@ -132,8 +133,11 @@ impl<'db> InferenceContext<'_, 'db> {
             Expr::Become { expr } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
-            Expr::RecordLit { path: _, fields, spread } => {
-                self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
+            Expr::RecordLit { path: _, fields, spread, .. } => {
+                self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr));
+                if let RecordSpread::Expr(expr) = *spread {
+                    self.infer_mut_expr(expr, Mutability::Not);
+                }
             }
             &Expr::Index { base, index } => {
                 if mutability == Mutability::Mut {

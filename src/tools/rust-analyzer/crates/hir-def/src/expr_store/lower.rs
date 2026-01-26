@@ -47,7 +47,7 @@ use crate::{
     hir::{
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
         Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
-        RecordFieldPat, RecordLitField, Statement, generics::GenericParams,
+        RecordFieldPat, RecordLitField, RecordSpread, Statement, generics::GenericParams,
     },
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
@@ -1266,10 +1266,16 @@ impl<'db> ExprCollector<'db> {
                             Some(RecordLitField { name, expr })
                         })
                         .collect();
-                    let spread = nfl.spread().map(|s| self.collect_expr(s));
+                    let spread_expr = nfl.spread().map(|s| self.collect_expr(s));
+                    let has_spread_syntax = nfl.dotdot_token().is_some();
+                    let spread = match (spread_expr, has_spread_syntax) {
+                        (None, false) => RecordSpread::None,
+                        (None, true) => RecordSpread::FieldDefaults,
+                        (Some(expr), _) => RecordSpread::Expr(expr),
+                    };
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: None }
+                    Expr::RecordLit { path, fields: Box::default(), spread: RecordSpread::None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
@@ -1995,7 +2001,7 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
+    pub fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
         match expr {
             Some(expr) => self.collect_expr(expr),
             None => self.missing_expr(),
