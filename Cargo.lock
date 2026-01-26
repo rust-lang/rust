@@ -4354,7 +4354,6 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "hashbrown 0.16.1",
  "itertools",
  "rustc_abi",
  "rustc_arena",
@@ -4565,7 +4564,6 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "hashbrown 0.16.1",
  "parking_lot",
  "rustc_abi",
  "rustc_ast",

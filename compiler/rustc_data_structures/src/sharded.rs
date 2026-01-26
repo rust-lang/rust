@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::{iter, mem};
 
 use either::Either;
-use hashbrown::hash_table::{Entry, HashTable};
+use hashbrown::hash_table::{self, Entry, HashTable};
 
 use crate::fx::FxHasher;
 use crate::sync::{CacheAligned, Lock, LockGuard, Mode, is_dyn_thread_safe};
@@ -140,7 +140,7 @@ pub fn shards() -> usize {
     1
 }
 
-pub type ShardedHashMap<K, V> = Sharded<HashTable<(K, V)>>;
+pub type ShardedHashMap<K, V> = Sharded<hash_table::HashTable<(K, V)>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn with_capacity(cap: usize) -> Self {
