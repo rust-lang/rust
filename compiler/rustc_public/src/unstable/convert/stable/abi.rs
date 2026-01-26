@@ -11,7 +11,7 @@ use rustc_target::callconv;
 use crate::abi::{
     AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
     IntegerType, Layout, LayoutShape, PassMode, Primitive, ReprFlags, ReprOptions, Scalar,
-    TagEncoding, TyAndLayout, ValueAbi, VariantsShape, WrappingRange,
+    TagEncoding, TyAndLayout, ValueAbi, VariantFields, VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -213,7 +213,15 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                     tag: tag.stable(tables, cx),
                     tag_encoding: tag_encoding.stable(tables, cx),
                     tag_field: tag_field.stable(tables, cx),
-                    variants: variants.iter().as_slice().stable(tables, cx),
+                    variants: variants
+                        .iter()
+                        .map(|v| match &v.fields {
+                            rustc_abi::FieldsShape::Arbitrary { offsets, .. } => VariantFields {
+                                offsets: offsets.iter().as_slice().stable(tables, cx),
+                            },
+                            _ => panic!("variant layout should be Arbitrary"),
+                        })
+                        .collect(),
                 }
             }
         }
