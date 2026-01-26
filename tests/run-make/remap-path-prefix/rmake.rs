@@ -12,7 +12,9 @@ fn main() {
     let mut out_simple = rustc();
     let mut out_object = rustc();
     let mut out_macro = rustc();
+    let mut out_doc = rustc();
     let mut out_diagobj = rustc();
+    let mut out_diagdocobj = rustc();
     out_simple
         .remap_path_prefix("auxiliary", "/the/aux")
         .crate_type("lib")
@@ -28,7 +30,17 @@ fn main() {
         .crate_type("lib")
         .emit("metadata")
         .input("auxiliary/lib.rs");
+    out_doc
+        .remap_path_prefix("auxiliary", "/the/aux")
+        .crate_type("lib")
+        .emit("metadata")
+        .input("auxiliary/lib.rs");
     out_diagobj
+        .remap_path_prefix("auxiliary", "/the/aux")
+        .crate_type("lib")
+        .emit("metadata")
+        .input("auxiliary/lib.rs");
+    out_diagdocobj
         .remap_path_prefix("auxiliary", "/the/aux")
         .crate_type("lib")
         .emit("metadata")
@@ -40,11 +52,17 @@ fn main() {
 
     out_object.arg("--remap-path-scope=object");
     out_macro.arg("--remap-path-scope=macro");
+    out_doc.arg("--remap-path-scope=documentation").arg("-Zunstable-options");
     out_diagobj.arg("--remap-path-scope=diagnostics,object");
+    out_diagdocobj
+        .arg("--remap-path-scope=diagnostics,documentation,object")
+        .arg("-Zunstable-options");
     if is_darwin() {
         out_object.arg("-Csplit-debuginfo=off");
         out_macro.arg("-Csplit-debuginfo=off");
+        out_doc.arg("-Csplit-debuginfo=off");
         out_diagobj.arg("-Csplit-debuginfo=off");
+        out_diagdocobj.arg("-Csplit-debuginfo=off");
     }
 
     out_object.run();
@@ -53,7 +71,13 @@ fn main() {
     out_macro.run();
     rmeta_contains("/the/aux/lib.rs");
     rmeta_contains("auxiliary");
+    out_doc.run();
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_contains("auxiliary");
     out_diagobj.run();
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_contains("auxiliary");
+    out_diagdocobj.run();
     rmeta_contains("/the/aux/lib.rs");
     rmeta_not_contains("auxiliary");
 }
