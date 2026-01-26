@@ -7,7 +7,7 @@
 1. `rustdoc` only uses JavaScript to make your experience better, but `rustdoc` works perfectly well without it, meaning that most interactive features should work well without JavaScript. This ensures that no hidden scripts or interactive elements mess with screen readers and other accessibility tools.
 2. `rustdoc` uses semantic HTML elements wherever possible.
     1. We use `<details>` instead of checkboxes so text can still be searched in hidden and collapsed content.
-    2. We use the `title` attribute wherever applicable. The **`title`** global attribute contains text representing advisory information related to the element it belongs to.[^4]
+    2. We use the `title` attribute to make your experience better, but `rustdoc` is perfectly usable without them. The **`title`** global attribute contains text representing advisory information related to the element it belongs to.[^4]
 3. All necessary elements are annotated by aria labels, to ensure that all elements have an accessible name[^4] for screen reader compatibility.
 4. `rustdoc` has expansive support for keyboard navigation, such as keybinds for searching, focusing and interacting with the UI.
 
