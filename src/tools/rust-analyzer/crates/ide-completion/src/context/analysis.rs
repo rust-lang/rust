@@ -2030,9 +2030,10 @@ fn is_after_if_expr(node: SyntaxNode) -> bool {
         Some(stmt) => stmt.syntax().clone(),
         None => node,
     };
-    let prev_sibling =
-        non_trivia_sibling(node.into(), Direction::Prev).and_then(NodeOrToken::into_node);
-    iter::successors(prev_sibling, |it| it.last_child_or_token()?.into_node())
+    let Some(prev_token) = previous_non_trivia_token(node) else { return false };
+    prev_token
+        .parent_ancestors()
+        .take_while(|it| it.text_range().end() == prev_token.text_range().end())
         .find_map(ast::IfExpr::cast)
         .is_some()
 }
