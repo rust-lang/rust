@@ -587,6 +587,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
+            // TODO: Remove this and replace with reflection. Blocked on reflection supporting dyn traits.
             sym::type_id_is_trait => {
                 let kind = ecx.read_type_id(&args[0])?.kind();
                 let is_trait = matches!(kind, ty::Dynamic(..));
