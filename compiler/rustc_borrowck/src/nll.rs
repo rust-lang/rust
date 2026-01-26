@@ -21,7 +21,9 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::RustcFacts;
 use crate::diagnostics::RegionErrors;
-use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
+use crate::handle_placeholders::{
+    LoweredConstraints, compute_sccs_applying_placeholder_outlives_constraints,
+};
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
@@ -92,17 +94,30 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
 ) -> Option<ClosureRegionRequirements<'tcx>> {
     // FIXME(#146079): we shouldn't have to clone all this stuff here.
     // Computing the region graph should take at least some of it by reference/`Rc`.
-    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let LoweredConstraints {
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        liveness_constraints,
+        universe_causes,
+        placeholder_indices,
+    } = compute_sccs_applying_placeholder_outlives_constraints(
         constraints.clone(),
         &universal_region_relations,
         infcx,
     );
 
-    let placeholder_indices = lowered_constraints.placeholder_indices.clone(); // FIXME!!!
-
     let regioncx = RegionInferenceContext::new(
         &infcx,
-        lowered_constraints,
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        liveness_constraints,
+        universe_causes,
         universal_region_relations.clone(),
     );
 
@@ -148,10 +163,28 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
-    let placeholder_indices = lowered_constraints.placeholder_indices.clone();
+    let LoweredConstraints {
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        liveness_constraints,
+        universe_causes,
+        placeholder_indices,
+    } = lowered_constraints;
 
-    let mut regioncx =
-        RegionInferenceContext::new(infcx, lowered_constraints, universal_region_relations);
+    let mut regioncx = RegionInferenceContext::new(
+        &infcx,
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        liveness_constraints,
+        universe_causes,
+        universal_region_relations,
+    );
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.

@@ -26,7 +26,7 @@ use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
+use crate::handle_placeholders::RegionTracker;
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::values::{
@@ -312,23 +312,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// of constraints produced by the MIR type check.
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
-        lowered_constraints: LoweredConstraints<'tcx>,
+        constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
+        definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
+        scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
+        outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
+        type_tests: Vec<TypeTest<'tcx>>,
+        mut liveness_constraints: LivenessValues,
+        universe_causes: FxIndexMap<UniverseIndex, UniverseInfo<'tcx>>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     ) -> Self {
-        let LoweredConstraints {
-            constraint_sccs,
-            definitions,
-            outlives_constraints,
-            scc_annotations,
-            type_tests,
-            mut liveness_constraints,
-            universe_causes,
-            placeholder_indices,
-        } = lowered_constraints;
-
         debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
-        debug!("placeholder_indices: {:#?}", placeholder_indices);
         debug!("type tests: {:#?}", type_tests);
 
         let constraint_graph = Frozen::freeze(outlives_constraints.graph(definitions.len()));

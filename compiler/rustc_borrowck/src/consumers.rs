@@ -94,7 +94,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     /// [`calculate_borrows_out_of_scope_at_location`].
     pub region_inference_context: RegionInferenceContext<'tcx>,
     /// The inferred region values. These are included because they
-    /// are necesssary as input to
+    /// are necessary as input to
     /// [`calculate_borrows_out_of_scope_at_location`].
     pub inferred_regions: InferredRegions<'tcx>,
     /// The table that maps Polonius points to locations in the table.
