@@ -24,7 +24,8 @@ use crate::infer::canonical::{
 };
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin, TypeOutlivesConstraint,
+    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
+    TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
@@ -81,6 +82,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
+        prev_entries: OpaqueTypeStorageEntries,
     ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -96,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
             self.inner
                 .borrow_mut()
                 .opaque_type_storage
-                .iter_opaque_types()
+                .opaque_types_added_since(prev_entries)
                 .map(|(k, v)| (k, v.ty))
                 .collect()
         } else {
