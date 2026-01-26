@@ -220,14 +220,13 @@ impl fmt::Debug for VarsOs {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
-    _var(key.as_ref())
-}
-
-fn _var(key: &OsStr) -> Result<String, VarError> {
-    match var_os(key) {
-        Some(s) => s.into_string().map_err(VarError::NotUnicode),
-        None => Err(VarError::NotPresent),
+    fn inner(key: &OsStr) -> Result<String, VarError> {
+        env_imp::getenv(key)
+            .ok_or(VarError::NotPresent)?
+            .into_string()
+            .map_err(VarError::NotUnicode)
     }
+    inner(key.as_ref())
 }
 
 /// Fetches the environment variable `key` from the current process, returning
@@ -257,11 +256,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
-    _var_os(key.as_ref())
-}
-
-fn _var_os(key: &OsStr) -> Option<OsString> {
-    env_imp::getenv(key)
+    env_imp::getenv(key.as_ref())
 }
 
 /// The error type for operations interacting with environment variables.
